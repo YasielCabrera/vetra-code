@@ -5,13 +5,15 @@ import type {
   VcsStatusRemoteResult,
   VcsStatusResult,
   VcsStatusStreamEvent,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
 import * as Arr from "effect/Array";
 import * as Result from "effect/Result";
 import { detectSourceControlProviderFromRemoteUrl } from "./sourceControl.ts";
+import { PRODUCT_WORKTREE_BRANCH_PREFIX } from "./productIdentity.ts";
 
-export const WORKTREE_BRANCH_PREFIX = "t3code";
-// Canonical form is `t3code/<8 hex>`. Older mobile builds generated `t3code/<uuid>`
+export const WORKTREE_BRANCH_PREFIX = PRODUCT_WORKTREE_BRANCH_PREFIX;
+// Canonical form is `vetra/<8 hex>`. Older upstream mobile builds generated
+// `vetra/<uuid>`
 // via Crypto.randomUUID() (always RFC 4122 v4), so the matcher also accepts exactly
 // that shape — version nibble `4`, variant nibble `[89ab]` — to keep those threads
 // eligible for branch regeneration without loosening beyond what was ever generated.

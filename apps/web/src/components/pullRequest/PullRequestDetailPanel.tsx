@@ -1,12 +1,12 @@
-import { scopeProjectRef } from "@t3tools/client-runtime/environment";
-import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import { scopeProjectRef } from "@vetra-studio/client-runtime/environment";
+import { squashAtomCommandFailure } from "@vetra-studio/client-runtime/state/runtime";
 import type {
   EnvironmentId,
   PullRequestAction,
   PullRequestMergeMethod,
   PullRequestRef,
   PullRequestState,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
 import {
   ArrowDownUpIcon,
   ArrowLeftIcon,

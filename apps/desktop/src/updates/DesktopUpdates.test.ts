@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import type { DesktopUpdateState } from "@t3tools/contracts";
+import type { DesktopUpdateState } from "@vetra-studio/contracts";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";
@@ -131,7 +131,7 @@ function makeHarness(options: UpdatesHarnessOptions = {}) {
 
   const environmentLayer = DesktopEnvironment.layer({
     dirname: "/repo/apps/desktop/src",
-    homeDirectory: `/tmp/t3-desktop-updates-home-${process.pid}`,
+    homeDirectory: `/tmp/vetra-desktop-updates-home-${process.pid}`,
     platform: "darwin",
     processArch: "x64",
     appVersion: "1.2.3",
@@ -144,9 +144,10 @@ function makeHarness(options: UpdatesHarnessOptions = {}) {
       Layer.mergeAll(
         NodeServices.layer,
         DesktopConfig.layerTest({
-          T3CODE_HOME: `/tmp/t3-desktop-updates-test-${process.pid}`,
-          T3CODE_DESKTOP_MOCK_UPDATES: "true",
-          T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT: "4141",
+          VETRA_HOME: `/tmp/vetra-desktop-updates-test-${process.pid}`,
+          VETRA_ENABLE_AUTO_UPDATE: "true",
+          VETRA_DESKTOP_MOCK_UPDATES: "true",
+          VETRA_DESKTOP_MOCK_UPDATE_SERVER_PORT: "4141",
           ...options.env,
         }),
       ),
@@ -178,9 +179,10 @@ function makeHarness(options: UpdatesHarnessOptions = {}) {
     Layer.provideMerge(settingsLayer),
     Layer.provideMerge(
       DesktopConfig.layerTest({
-        T3CODE_HOME: `/tmp/t3-desktop-updates-test-${process.pid}`,
-        T3CODE_DESKTOP_MOCK_UPDATES: "true",
-        T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT: "4141",
+        VETRA_HOME: `/tmp/vetra-desktop-updates-test-${process.pid}`,
+        VETRA_ENABLE_AUTO_UPDATE: "true",
+        VETRA_DESKTOP_MOCK_UPDATES: "true",
+        VETRA_DESKTOP_MOCK_UPDATE_SERVER_PORT: "4141",
         ...options.env,
       }),
     ),
@@ -208,6 +210,26 @@ function makeHarness(options: UpdatesHarnessOptions = {}) {
 }
 
 describe("DesktopUpdates", () => {
+  it.effect("keeps updates disabled until a Vetra release feed is explicitly enabled", () => {
+    const harness = makeHarness({ env: { VETRA_ENABLE_AUTO_UPDATE: "false" } });
+
+    return Effect.scoped(
+      Effect.gen(function* () {
+        const updates = yield* DesktopUpdates.DesktopUpdates;
+        yield* updates.configure;
+
+        const state = yield* updates.getState;
+        assert.equal(state.enabled, false);
+        assert.equal(state.status, "disabled");
+        assert.deepEqual(harness.feedUrls(), [
+          { provider: "generic", url: "http://localhost:4141" },
+        ]);
+        assert.equal(harness.listenerCount(), 0);
+        assert.equal(harness.checkCount(), 0);
+      }),
+    ).pipe(Effect.provide(Layer.merge(TestClock.layer(), harness.layer)));
+  });
+
   it("preserves complete causes for update poller and event failures", () => {
     const cause = Cause.combine(
       Cause.fail(new Error("updater failed")),

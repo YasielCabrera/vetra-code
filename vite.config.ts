@@ -36,11 +36,8 @@ export default defineConfig({
       "pnpm-lock.yaml",
       "*.tsbuildinfo",
       "**/routeTree.gen.ts",
-      "apps/mobile/android/**",
-      "apps/mobile/ios/**",
       "apps/web/public/mockServiceWorker.js",
       "apps/web/src/lib/vendor/qrcodegen.ts",
-      "apps/mobile/uniwind-types.d.ts",
       "*.icon/**",
     ],
     sortPackageJson: {},
@@ -63,12 +60,9 @@ export default defineConfig({
       "pnpm-lock.yaml",
       "*.tsbuildinfo",
       "**/routeTree.gen.ts",
-      "apps/mobile/android/**",
-      "apps/mobile/ios/**",
-      "apps/mobile/uniwind-types.d.ts",
     ],
     plugins: ["eslint", "oxc", "react", "unicorn", "typescript"],
-    jsPlugins: ["./oxlint-plugin-t3code/index.ts"],
+    jsPlugins: ["./oxlint-plugin-vetra/index.ts"],
     categories: {
       correctness: "warn",
       suspicious: "warn",
@@ -105,9 +99,9 @@ export default defineConfig({
         {
           paths: [
             {
-              name: "@t3tools/client-runtime",
+              name: "@vetra-studio/client-runtime",
               message:
-                "Import from an explicit @t3tools/client-runtime/* subpath. The package has no root export.",
+                "Import from an explicit @vetra-studio/client-runtime/* subpath. The package has no root export.",
             },
             {
               name: "@pierre/diffs/react",
@@ -118,10 +112,10 @@ export default defineConfig({
           ],
         },
       ],
-      "t3code/no-global-process-runtime": "error",
-      "t3code/no-inline-schema-compile": "warn",
-      "t3code/no-manual-effect-runtime-in-tests": "error",
-      "t3code/namespace-node-imports": "error",
+      "vetra/no-global-process-runtime": "error",
+      "vetra/no-inline-schema-compile": "warn",
+      "vetra/no-manual-effect-runtime-in-tests": "error",
+      "vetra/namespace-node-imports": "error",
     },
     options: {
       // Revisit once Oxlint's tsgolint path can integrate with @effect/tsgo diagnostics.

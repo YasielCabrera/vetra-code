@@ -26,9 +26,9 @@ import type {
   PreviewAutomationStatus,
   PreviewAutomationTypeInput,
   PreviewAutomationWaitForInput,
-} from "@t3tools/contracts";
-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
-import { normalizePreviewUrl } from "@t3tools/shared/preview";
+} from "@vetra-studio/contracts";
+import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { normalizePreviewUrl } from "@vetra-studio/shared/preview";
 import { BrowserWindow, type Session, clipboard, nativeImage, shell, webContents } from "electron";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
@@ -1171,7 +1171,7 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
     const installed = yield* evaluateWithDebugger<boolean>(
       tabId,
       send,
-      "Boolean(globalThis.__t3PlaywrightInjected)",
+      "Boolean(globalThis.__vetraPlaywrightInjected)",
       true,
     );
     if (installed) return;
@@ -2753,7 +2753,7 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
       send,
       `(() => {
           try {
-            const injected = globalThis.__t3PlaywrightInjected;
+            const injected = globalThis.__vetraPlaywrightInjected;
             const parsed = injected.parseSelector(${locatorJson});
             const element = injected.querySelector(parsed, document, true);
             if (!element) return { notFound: true };
@@ -2890,7 +2890,7 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
       send,
       `(() => {
           try {
-            const element = ${locatorJson ? `(() => { const injected = globalThis.__t3PlaywrightInjected; return injected.querySelector(injected.parseSelector(${locatorJson}), document, true); })()` : "document.activeElement"};
+            const element = ${locatorJson ? `(() => { const injected = globalThis.__vetraPlaywrightInjected; return injected.querySelector(injected.parseSelector(${locatorJson}), document, true); })()` : "document.activeElement"};
             if (!element) return { notFound: true };
             const textControl =
               element instanceof HTMLTextAreaElement ||
@@ -3072,7 +3072,7 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
       send,
       `(() => {
         try {
-          const target = ${locatorJson ? `(() => { const injected = globalThis.__t3PlaywrightInjected; return injected.querySelector(injected.parseSelector(${locatorJson}), document, true); })()` : "window"};
+          const target = ${locatorJson ? `(() => { const injected = globalThis.__vetraPlaywrightInjected; return injected.querySelector(injected.parseSelector(${locatorJson}), document, true); })()` : "window"};
           if (!target) return { notFound: true };
           target.scrollBy({ left: ${input.deltaX ?? 0}, top: ${input.deltaY ?? 0}, behavior: "instant" });
           return { ok: true };
@@ -3175,7 +3175,7 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
         send,
         `(() => {
               try {
-                const selectorMatched = ${locatorJson ? `(() => { const injected = globalThis.__t3PlaywrightInjected; return injected.querySelector(injected.parseSelector(${locatorJson}), document, false) !== null; })()` : "true"};
+                const selectorMatched = ${locatorJson ? `(() => { const injected = globalThis.__vetraPlaywrightInjected; return injected.querySelector(injected.parseSelector(${locatorJson}), document, false) !== null; })()` : "true"};
                 const textMatched = ${
                   textJson ? `(document.body?.innerText || "").includes(${textJson})` : "true"
                 };
@@ -3659,7 +3659,7 @@ export class PreviewManager extends Context.Service<
       listener: RecordingFrameListener,
     ) => Effect.Effect<void, never, Scope.Scope>;
   }
->()("@t3tools/desktop/preview/Manager/PreviewManager") {}
+>()("@vetra-studio/desktop/preview/Manager/PreviewManager") {}
 
 export const make = Effect.gen(function* PreviewManagerMake() {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;

@@ -1,12 +1,12 @@
 import type {
   RelayClientEnvironmentRecord,
   RelayEnvironmentStatusResponse,
-} from "@t3tools/contracts/relay";
+} from "@vetra-studio/contracts/relay";
 import {
   RelayEnvironmentConnectScope,
   RelayEnvironmentStatusScope,
-} from "@t3tools/contracts/relay";
-import { decodeRelayJwt } from "@t3tools/shared/relayJwt";
+} from "@vetra-studio/contracts/relay";
+import { decodeRelayJwt } from "@vetra-studio/shared/relayJwt";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Data from "effect/Data";
@@ -123,7 +123,7 @@ export function createManagedRelaySession(input: ManagedRelaySessionInput): Mana
         try: () => readCachedClerkToken(nowMillis),
         catch: (cause) =>
           new ManagedRelaySessionError({
-            message: "Could not obtain the T3 Connect session token.",
+            message: "Could not obtain the Vetra Connect session token.",
             cause,
           }),
       });
@@ -181,7 +181,7 @@ function readSessionClerkToken(
         ? Effect.succeed(token)
         : Effect.fail(
             new ManagedRelaySessionError({
-              message: "The T3 Connect session token is unavailable.",
+              message: "The Vetra Connect session token is unavailable.",
             }),
           ),
     ),
@@ -226,7 +226,7 @@ function requireClerkToken(
   if (!session || session.accountId !== accountId) {
     return Effect.fail(
       new ManagedRelaySessionError({
-        message: "Sign in to T3 Connect before loading relay data.",
+        message: "Sign in to Vetra Connect before loading relay data.",
       }),
     );
   }
@@ -296,7 +296,7 @@ export function readManagedRelaySnapshotState<A>(
   let errorTraceId: string | null = null;
   if (result._tag === "Failure") {
     const cause = Cause.squash(result.cause);
-    error = cause instanceof Error ? cause.message : "Could not load T3 Connect data.";
+    error = cause instanceof Error ? cause.message : "Could not load Vetra Connect data.";
     errorTraceId = findErrorTraceId(cause);
   }
   return {

@@ -2,7 +2,7 @@
 import * as NodeCrypto from "node:crypto";
 import * as NodeFS from "node:fs";
 
-import type { ChatAttachment } from "@t3tools/contracts";
+import type { ChatAttachment } from "@vetra-studio/contracts";
 
 import {
   normalizeAttachmentRelativePath,

@@ -1,5 +1,5 @@
-import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
-import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
+import { scopeProjectRef, scopeThreadRef } from "@vetra-studio/client-runtime/environment";
+import type { EnvironmentId, ThreadId } from "@vetra-studio/contracts";
 import {
   ChevronDownIcon,
   CloudIcon,

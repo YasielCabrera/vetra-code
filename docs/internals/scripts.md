@@ -1,58 +1,56 @@
 # Scripts
 
-> For maintainers. Using T3 Code? See [docs/user](../user/).
+> For maintainers. Using Vetra Studio? See [docs/user](../user/).
 
 ## First checkout
 
-T3 Code uses [Vite+](https://viteplus.dev/guide/). Install the global `vp` command, install
-dependencies, then start the dev stack:
+Vetra Studio uses [Vite+](https://viteplus.dev/guide/) as a workspace dependency. Install
+dependencies, then start the dev stack without requiring a global `vp` command:
 
 ```bash
-curl -fsSL https://vite.plus | bash   # Windows: irm https://vite.plus/ps1 | iex
-vp i
-vp run dev
+pnpm install
+pnpm dev
 ```
 
 Node 24 is required. Bun is not: the server picks Bun adapters when it detects Bun and falls back to
 Node otherwise, and nothing in contributor setup needs it.
 
-`vp run dev` prints a one-time pairing URL. Open it so the first browser navigation is
+`pnpm dev` prints a one-time pairing URL. Open it so the first browser navigation is
 authenticated.
 
 ## Dev
 
-- `vp run dev`: Starts contracts, server, and web in watch mode.
-- `vp run dev --share`: Also publishes the web port over HTTPS on this machine's tailnet. The
+- `pnpm dev`: Starts contracts, server, and web in watch mode.
+- `pnpm dev --share`: Also publishes the web port over HTTPS on this machine's tailnet. The
   startup pairing URL is built against the shared origin, and the mapping is removed on exit.
-  Shared runs default to Vite's bundled dev mode (`T3CODE_BUNDLED_DEV=1`): a remote browser pays a
+  Shared runs default to Vite's bundled dev mode (`VETRA_BUNDLED_DEV=1`): a remote browser pays a
   network round trip per import level in unbundled dev, which turns a cold module graph into
-  minutes of waterfall. Set `T3CODE_BUNDLED_DEV=0` to opt a shared run back out.
-- `vp run dev --browser`: Auto-opens a browser. Off by default. The dev runner writes
-  `T3CODE_NO_BROWSER` itself from this flag, so setting `T3CODE_NO_BROWSER=0` in your environment has
+  minutes of waterfall. Set `VETRA_BUNDLED_DEV=0` to opt a shared run back out.
+- `pnpm dev --browser`: Auto-opens a browser. Off by default. The dev runner writes
+  `VETRA_NO_BROWSER` itself from this flag, so setting `VETRA_NO_BROWSER=0` in your environment has
   no effect; use `--browser`.
-- `vp run dev:server`: Starts just the server. It runs on Node (`node --watch src/bin.ts`), so
+- `pnpm dev:server`: Starts just the server. It runs on Node (`node --watch src/bin.ts`), so
   without Bun present it selects `NodePtyAdapter` and `NodeHttpServer`.
-- `vp run dev:web`: Starts just the Vite dev server for the web app.
-- `vp run dev:desktop`: Starts the Electron shell against the dev server.
-- `vp run dev:marketing`: Starts the Astro marketing site.
+- `pnpm dev:web`: Starts just the Vite dev server for the web app.
+- `pnpm dev:desktop`: Starts the Electron shell against the dev server.
 - Pass dev-runner flags directly after the root task name, for example:
-  `vp run dev --home-dir /tmp/t3code-dev`
+  `pnpm dev --home-dir /tmp/vetra-studio-dev`
 
 ### Dev state directories
 
-- Dev commands run from a linked **git worktree** default to that worktree's gitignored `.t3`, even
-  when `T3CODE_HOME` is set, storing state in `<worktree>/.t3/userdata`. Pass `--home-dir <path>` to
+- Dev commands run from a linked **git worktree** default to that worktree's gitignored `.vetra-studio`, even
+  when `VETRA_HOME` is set, storing state in `<worktree>/.vetra-studio/userdata`. Pass `--home-dir <path>` to
   choose another isolated directory explicitly. Submodules are not worktrees and keep the normal
   precedence.
-- From the **main checkout**, dev commands implicitly use `~/.t3/dev`, keeping development state
-  separate from `~/.t3/userdata`. An explicit `--home-dir <path>` stores state under
+- From the **main checkout**, dev commands implicitly use `~/.vetra-studio/dev`, keeping development state
+  separate from `~/.vetra-studio/userdata`. An explicit `--home-dir <path>` stores state under
   `<path>/userdata`; the base directory remains available for caches, worktrees, and other shared
   data.
 
 ## Build, check, test
 
-- `vp run build`: Fans out over `apps/*`, `packages/*`, `oxlint-plugin-t3code`, and `scripts`.
-  Workspaces that define a build task run one: desktop, marketing, server (which depends on web), and
+- `vp run build`: Fans out over `apps/*`, `packages/*`, `oxlint-plugin-vetra`, and `scripts`.
+  Workspaces that define a build task run one: desktop, server (which depends on web), and
   web. Shared packages are consumed and bundled transitively rather than built separately.
 - `vp run build:desktop`: Builds the desktop pipeline (desktop plus server).
 - `vp run start`: Runs the production server (serves the built web app as static files).
@@ -60,9 +58,8 @@ authenticated.
   options, so workspace type checking runs separately.
 - `vp run typecheck`: Strict TypeScript checks for all packages.
 - `vp run test`: Runs workspace tests.
-- `vp run lint:mobile`: Mobile native static analysis (`scripts/mobile-native-static-check.ts`).
-- `node apps/server/scripts/t3-sqlite-state.ts <query|exec> --base-dir <path> ...`: Inspects or seeds
-  an isolated T3 SQLite database; writes create a private backup first.
+- `node apps/server/scripts/vetra-sqlite-state.ts <query|exec> --base-dir <path> ...`: Inspects or seeds
+  an isolated Vetra SQLite database; writes create a private backup first.
 
 ## Desktop artifacts
 
@@ -78,17 +75,17 @@ authenticated.
 
 - Default build is unsigned/not notarized for local sharing.
 - The DMG build uses `assets/prod/black-macos-1024.png` as the production app icon source.
-- Desktop production windows load the bundled UI from the `t3code://app/` root URL (not a
+- Desktop production windows load the bundled UI from the `vetra://app/` root URL (not a
   `127.0.0.1` document URL, and not an explicit `index.html` path).
-- Desktop packaging includes `apps/server/dist` (the `t3` backend) and starts it on loopback with an
+- Desktop packaging includes `apps/server/dist` (the Vetra backend) and starts it on loopback with an
   auth token for WebSocket/API traffic.
 - Your tester can still open it on macOS by right-clicking the app and choosing **Open** on first
   launch.
 - To keep staging files for debugging package contents, run: `vp run dist:desktop:dmg --keep-stage`
 - To allow code-signing/notarization when configured in CI/secrets, add: `--signed`.
-- Signed macOS builds also require `T3CODE_APPLE_TEAM_ID` and
-  `T3CODE_MACOS_PROVISIONING_PROFILE`. The passkey RP domain is derived from
-  `T3CODE_CLERK_PUBLISHABLE_KEY` unless `T3CODE_CLERK_PASSKEY_RP_DOMAINS` overrides it.
+- Signed macOS builds also require `VETRA_APPLE_TEAM_ID` and
+  `VETRA_MACOS_PROVISIONING_PROFILE`. The passkey RP domain is derived from
+  `VETRA_CLERK_PUBLISHABLE_KEY` unless `VETRA_CLERK_PASSKEY_RP_DOMAINS` overrides it.
 - Windows `--signed` uses Azure Trusted Signing and expects:
   `AZURE_TRUSTED_SIGNING_ENDPOINT`, `AZURE_TRUSTED_SIGNING_ACCOUNT_NAME`,
   `AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE_NAME`, and `AZURE_TRUSTED_SIGNING_PUBLISHER_NAME`.
@@ -105,14 +102,14 @@ server, allowing the same bundle to work from localhost or a tailnet hostname.
 
 Worktrees derive a preferred port offset from their path.
 
-- Default ports: server `13773`, web `5733`
+- Default ports: server `14873`, web `6733`
 - Shifted ports: `base + offset`
-- Example: `T3CODE_DEV_INSTANCE=branch-a vp run dev:desktop`
+- Example: `VETRA_DEV_INSTANCE=branch-a vp run dev:desktop`
 
 Offset resolution, in order:
 
-1. `T3CODE_PORT_OFFSET`, which must be a non-negative integer. Negative values are rejected.
-2. `T3CODE_DEV_INSTANCE`. An all-digit value is used directly as the offset; any other non-empty
+1. `VETRA_PORT_OFFSET`, which must be a non-negative integer. Negative values are rejected.
+2. `VETRA_DEV_INSTANCE`. An all-digit value is used directly as the offset; any other non-empty
    value is hashed into one.
 3. The worktree path hash.
 

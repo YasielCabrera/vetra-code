@@ -1,15 +1,16 @@
-import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { HostProcessEnvironment, HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
 import {
   listLoginShellCandidates,
   mergePathEntries,
   readPathFromLoginShell,
   readPathFromLaunchctl,
   resolveWindowsEnvironment,
-} from "@t3tools/shared/shell";
+} from "@vetra-studio/shared/shell";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as NodeOS from "node:os";
+import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-studio/shared/productIdentity";
 
 function logPathHydrationWarning(message: string, error?: unknown): void {
   process.stderr.write(
@@ -105,7 +106,7 @@ export const expandHomePath = Effect.fn(function* (input: string) {
 export const resolveBaseDir = Effect.fn(function* (raw: string | undefined) {
   const { join, resolve } = yield* Path.Path;
   if (!raw || raw.trim().length === 0) {
-    return join(NodeOS.homedir(), ".t3");
+    return join(NodeOS.homedir(), PRODUCT_HOME_DIRECTORY_NAME);
   }
   return resolve(yield* expandHomePath(raw.trim()));
 });

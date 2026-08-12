@@ -2,7 +2,7 @@ import type {
   RelayAgentActivityAggregateRow,
   RelayAgentActivityAggregateState,
   RelayAgentActivityState,
-} from "@t3tools/contracts/relay";
+} from "@vetra-studio/contracts/relay";
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 

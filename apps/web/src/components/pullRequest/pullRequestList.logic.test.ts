@@ -1,4 +1,4 @@
-import type { PullRequestListEntry } from "@t3tools/contracts";
+import type { PullRequestListEntry } from "@vetra-studio/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -24,10 +24,10 @@ function entry(overrides: Partial<PullRequestListEntry> & Pick<PullRequestListEn
     provider: "github",
     host: "github.com",
     projectId: "project-1",
-    projectTitle: "t3code",
-    repository: "pingdotgg/t3code",
+    projectTitle: "vetra-studio",
+    repository: "vetra-studio/vetra-studio",
     title: "Add the pull requests page",
-    url: `https://github.com/pingdotgg/t3code/pull/${overrides.number}`,
+    url: `https://github.com/vetra-studio/vetra/pull/${overrides.number}`,
     author: { login: "octocat", name: null, avatarUrl: null },
     headBranch: `feat/branch-${overrides.number}`,
     baseBranch: "main",
@@ -397,7 +397,7 @@ describe("the list snapshot across a reload", () => {
     providers: [],
     errors: [{ projectId: "project-1", message: "boom" }],
     truncated: true,
-    nextCursors: { "pingdotgg/t3code": "cursor-1" },
+    nextCursors: { "vetra-studio/vetra-studio": "cursor-1" },
   } as never;
 
   it("hydrates the retained rows so ghosts never replace them", () => {
@@ -425,12 +425,12 @@ describe("the list snapshot across a reload", () => {
   it("rejects a snapshot whose rows do not decode as entries", () => {
     const storage = makeStorage();
     storage.setItem(
-      "t3.pullRequests.list:env-1",
+      "vetra.pullRequests.list:env-1",
       JSON.stringify({ scope: "s", data: { entries: [null] } }),
     );
     expect(readPullRequestListSnapshot(storage, "env-1")).toBeNull();
     storage.setItem(
-      "t3.pullRequests.list:env-1",
+      "vetra.pullRequests.list:env-1",
       JSON.stringify({ scope: "s", data: { entries: [{ host: "github.com" }] } }),
     );
     expect(readPullRequestListSnapshot(storage, "env-1")).toBeNull();
@@ -438,7 +438,7 @@ describe("the list snapshot across a reload", () => {
 
   it("shrugs off corrupt storage and no storage at all", () => {
     const storage = makeStorage();
-    storage.setItem("t3.pullRequests.list:env-1", "{not json");
+    storage.setItem("vetra.pullRequests.list:env-1", "{not json");
     expect(readPullRequestListSnapshot(storage, "env-1")).toBeNull();
     expect(readPullRequestListSnapshot(undefined, "env-1")).toBeNull();
   });

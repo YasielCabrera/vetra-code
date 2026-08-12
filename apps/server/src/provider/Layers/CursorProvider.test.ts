@@ -7,9 +7,9 @@ import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import type * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
 import { describe, expect, it } from "vite-plus/test";
-import type * as EffectAcpSchema from "effect-acp/schema";
-import type { CursorSettings } from "@t3tools/contracts";
-import { createModelCapabilities } from "@t3tools/shared/model";
+import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
+import type { CursorSettings } from "@vetra-studio/contracts";
+import { createModelCapabilities } from "@vetra-studio/shared/model";
 
 import {
   buildCursorProviderSnapshot,
@@ -153,7 +153,7 @@ const makeExitLogFixture = Effect.fn("makeExitLogFixture")(function* (prefix: st
   return {
     exitLogPath,
     wrapperPath: yield* makeMockAgentWrapper({
-      T3_ACP_EXIT_LOG_PATH: exitLogPath,
+      VETRA_ACP_EXIT_LOG_PATH: exitLogPath,
     }),
   };
 });
@@ -301,14 +301,14 @@ const baseCursorSettings: CursorSettings = {
 };
 const cursorAcpDiscoveryFailedMessage = [
   "Cursor ACP model discovery failed.",
-  "Cursor CLI setup may be incomplete; install or enable the Cursor CLI, restart T3 Code, and try again.",
+  "Cursor CLI setup may be incomplete; install or enable the Cursor CLI, restart Vetra Studio, and try again.",
   "See https://cursor.com/docs/cli/installation.",
   "Check server logs for ACP details.",
 ].join(" ");
-const missingCursorBinaryPath = "/definitely/not/installed/t3-cursor-agent";
+const missingCursorBinaryPath = "/definitely/not/installed/vetra-cursor-agent";
 const cursorCliCommandMissingMessage = [
   `Cursor CLI command \`${missingCursorBinaryPath}\` was not found.`,
-  `Install or enable the Cursor CLI, make sure \`${missingCursorBinaryPath}\` is on PATH, then restart T3 Code.`,
+  `Install or enable the Cursor CLI, make sure \`${missingCursorBinaryPath}\` is on PATH, then restart Vetra Studio.`,
   "See https://cursor.com/docs/cli/installation.",
 ].join(" ");
 
@@ -459,7 +459,7 @@ describe("checkCursorProviderStatus", () => {
         },
         {
           ...process.env,
-          T3_ACP_REQUEST_LOG_PATH: requestLogPath,
+          VETRA_ACP_REQUEST_LOG_PATH: requestLogPath,
         },
       ),
     );

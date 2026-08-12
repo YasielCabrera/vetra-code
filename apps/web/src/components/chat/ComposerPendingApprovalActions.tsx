@@ -1,4 +1,4 @@
-import { type ApprovalRequestId, type ProviderApprovalDecision } from "@t3tools/contracts";
+import { type ApprovalRequestId, type ProviderApprovalDecision } from "@vetra-studio/contracts";
 import { memo } from "react";
 import { Button } from "../ui/button";
 

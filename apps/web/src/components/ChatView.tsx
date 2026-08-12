@@ -21,31 +21,32 @@ import {
   ProviderDriverKind,
   RuntimeMode,
   TerminalOpenInput,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
 import {
   connectionStatusTitle,
   type EnvironmentConnectionPresentation,
-} from "@t3tools/client-runtime/connection";
+} from "@vetra-studio/client-runtime/connection";
+import type { EnvironmentProject } from "@vetra-studio/client-runtime/state/shell";
 import {
   effectiveSettled,
   effectiveSnoozed,
   threadWokeAt,
-} from "@t3tools/client-runtime/state/thread-settled";
+} from "@vetra-studio/client-runtime/state/thread-settled";
 import {
   parseScopedThreadKey,
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@t3tools/client-runtime/environment";
+} from "@vetra-studio/client-runtime/environment";
 import {
   applyClaudePromptEffortPrefix,
   createModelSelection,
   resolvePromptInjectedEffort,
-} from "@t3tools/shared/model";
-import { CHAT_LIST_ANCHOR_OFFSET } from "@t3tools/shared/chatList";
-import { projectScriptCwd, projectScriptRuntimeEnv } from "@t3tools/shared/projectScripts";
-import { truncate } from "@t3tools/shared/String";
-import { nextTerminalId, resolveTerminalSessionLabel } from "@t3tools/shared/terminalLabels";
+} from "@vetra-studio/shared/model";
+import { CHAT_LIST_ANCHOR_OFFSET } from "@vetra-studio/shared/chatList";
+import { projectScriptCwd, projectScriptRuntimeEnv } from "@vetra-studio/shared/projectScripts";
+import { truncate } from "@vetra-studio/shared/String";
+import { nextTerminalId, resolveTerminalSessionLabel } from "@vetra-studio/shared/terminalLabels";
 import { Debouncer } from "@tanstack/react-pacer";
 import { useAtomValue } from "@effect/atom-react";
 import {
@@ -68,7 +69,7 @@ import {
   settlePromise,
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@t3tools/client-runtime/state/runtime";
+} from "@vetra-studio/client-runtime/state/runtime";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { isElectron } from "../env";
@@ -119,7 +120,7 @@ import {
 import { useTheme } from "../hooks/useTheme";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
 import { isCommandPaletteOpen } from "../commandPaletteBus";
-import { buildTemporaryWorktreeBranchName } from "@t3tools/shared/git";
+import { buildTemporaryWorktreeBranchName } from "@vetra-studio/shared/git";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY } from "../rightPanelLayout";
 import {
@@ -152,7 +153,7 @@ import { AgentsPanel } from "./AgentsPanel";
 import {
   deriveAgentPanelModel,
   foldSubagentActivities,
-} from "@t3tools/client-runtime/state/subagentRuntime";
+} from "@vetra-studio/client-runtime/state/subagentRuntime";
 import { DiffWorkerPoolProvider } from "./DiffWorkerPoolProvider";
 import { BranchToolbar } from "./BranchToolbar";
 import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings";
@@ -175,7 +176,7 @@ import {
   nextProjectScriptId,
   projectScriptIdFromCommand,
 } from "~/projectScripts";
-import { newDraftId, newMessageId, newThreadId } from "~/lib/utils";
+import { newDraftId, newMessageId, newProjectId, newThreadId } from "~/lib/utils";
 import { useBrowserHistoryStore } from "~/browserHistoryStore";
 import { getProviderModelCapabilities, resolveSelectableProvider } from "../providerModels";
 import { NO_PROVIDER_MODEL_SELECTION } from "../providerInstances";
@@ -199,9 +200,10 @@ import { buildPhysicalToLogicalProjectKeyMap } from "../sidebarProjectGrouping";
 import { buildDraftThreadRouteParams } from "../threadRoutes";
 import {
   type ComposerImageAttachment,
-  type DraftThreadEnvMode,
-  useComposerDraftStore,
   type DraftId,
+  type DraftThreadEnvMode,
+  type PendingProjectDraftState,
+  useComposerDraftStore,
 } from "../composerDraftStore";
 import {
   appendTerminalContextsToPrompt,
@@ -217,6 +219,10 @@ import {
 import { appendPreviewAnnotationPrompt } from "../lib/previewAnnotation";
 import { appendReviewCommentsToPrompt, type ReviewCommentContext } from "../reviewCommentContext";
 import { environmentCatalog } from "../connection/catalog";
+import {
+  DEFAULT_NEW_PROJECTS_PARENT_DIRECTORY,
+  resolvePendingProjectLocation,
+} from "../lib/pendingProject";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { useKnownTerminalSessions, useThreadRunningTerminalIds } from "../state/terminalSessions";
 import { projectEnvironment } from "../state/projects";
@@ -232,7 +238,7 @@ import { threadEnvironment, useEnvironmentThread } from "../state/threads";
 import {
   requestOlderThreadTurns,
   threadHasOlderTurns,
-} from "@t3tools/client-runtime/state/threads";
+} from "@vetra-studio/client-runtime/state/threads";
 import { vcsEnvironment } from "../state/vcs";
 import { useEnvironments, usePrimaryEnvironment } from "../state/environments";
 import {
@@ -318,6 +324,8 @@ import {
 import type { ThreadSyncPhase } from "../threadSync";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { useComposerHandleContext } from "../composerHandleContext";
+import { ProjectLocationControl } from "./chat/ProjectLocationControl";
+import { ProjectSelectorControl } from "./chat/ProjectSelectorControl";
 import { sanitizeThreadErrorMessage } from "~/rpc/transportError";
 import { RightPanelSheet } from "./RightPanelSheet";
 import { previewEnvironment } from "../state/preview";
@@ -1194,6 +1202,7 @@ function ChatViewContent(props: ChatViewProps) {
     [environmentId, threadId],
   );
   const routeThreadKey = useMemo(() => scopedThreadKey(routeThreadRef), [routeThreadRef]);
+  const createProject = useAtomCommand(projectEnvironment.create, { reportFailure: false });
   const updateProject = useAtomCommand(projectEnvironment.update, { reportFailure: false });
   const upsertKeybinding = useAtomCommand(serverEnvironment.upsertKeybinding, {
     reportFailure: false,
@@ -1244,6 +1253,7 @@ function ChatViewContent(props: ChatViewProps) {
         ? store.getDraftSession(draftId)
         : null,
   );
+  const pendingProject = draftThread?.pendingProject ?? null;
   const routeServerThreadShell = useThreadShell(routeKind === "server" ? routeThreadRef : null);
   const serverThread = useThread(routeThreadRef, { waitForShell: draftThread !== null });
   const loadingServerThread = useMemo(
@@ -1337,6 +1347,8 @@ function ChatViewContent(props: ChatViewProps) {
     Record<string, LocalThreadErrorEntry>
   >({});
   const [isConnecting, _setIsConnecting] = useState(false);
+  const [projectLocationOpen, setProjectLocationOpen] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [isRevertingCheckpoint, setIsRevertingCheckpoint] = useState(false);
   const [maximizedRightPanelThreadKey, setMaximizedRightPanelThreadKey] = useState<string | null>(
     null,
@@ -3918,7 +3930,7 @@ function ChatViewContent(props: ChatViewProps) {
   }, []);
 
   // Anchored end space intentionally disables LegendList's normal end-follow so
-  // the sent message can stay near the top. T3 only owns streaming adjustments
+  // the sent message can stay near the top. Vetra only owns streaming adjustments
   // during that mode; LegendList owns ordinary end-follow everywhere else.
   useEffect(() => {
     if (!activeThread?.id) {
@@ -5004,7 +5016,7 @@ function ChatViewContent(props: ChatViewProps) {
         stackedThreadToast({
           type: "warning",
           title: "Choose a project first",
-          description: "This draft no longer points to an available project.",
+          description: "Select an existing project or create a new one before starting the thread.",
         }),
       );
       return;
@@ -5304,6 +5316,124 @@ function ChatViewContent(props: ChatViewProps) {
       );
       resetLocalDispatch();
     }
+  };
+
+  const handleSelectProject = (project: EnvironmentProject) => {
+    if (!draftId || isCreatingProject) {
+      return;
+    }
+    setDraftThreadContext(draftId, {
+      projectRef: scopeProjectRef(project.environmentId, project.id),
+      pendingProject: null,
+    });
+    if (activeThread) {
+      setThreadError(activeThread.id, null);
+    }
+  };
+
+  const handleCreateProjectSelection = () => {
+    if (!draftId || !activeThread || isCreatingProject) {
+      return;
+    }
+    const targetEnvironmentId = activeThread.environmentId;
+    const configuredParentDirectory =
+      environmentById
+        .get(targetEnvironmentId)
+        ?.serverConfig?.settings.addProjectBaseDirectory.trim() ?? "";
+    const canReusePendingIdentity = activeProject === null && pendingProject !== null;
+    const projectId = canReusePendingIdentity ? activeThread.projectId : newProjectId();
+    const nextPendingProject: PendingProjectDraftState = {
+      ...(canReusePendingIdentity && pendingProject
+        ? pendingProject
+        : {
+            parentDirectory: configuredParentDirectory || DEFAULT_NEW_PROJECTS_PARENT_DIRECTORY,
+            folderName: "",
+          }),
+      association: "create",
+      locationConfirmed: false,
+      materialized: false,
+    };
+    setDraftThreadContext(draftId, {
+      projectRef: scopeProjectRef(targetEnvironmentId, projectId),
+      pendingProject: nextPendingProject,
+    });
+    setProjectLocationOpen(true);
+  };
+
+  const handlePendingProjectLocationConfirmed = async (
+    nextPendingProject: PendingProjectDraftState,
+  ): Promise<boolean> => {
+    if (!draftId || isCreatingProject) {
+      return false;
+    }
+    const targetDraft = useComposerDraftStore.getState().getDraftSession(draftId);
+    if (!targetDraft) {
+      return false;
+    }
+    const location = resolvePendingProjectLocation({
+      parentDirectory: nextPendingProject.parentDirectory,
+      customFolderName: nextPendingProject.folderName,
+      prompt: promptRef.current,
+      projectId: targetDraft.projectId,
+    });
+    const defaultModelSelection =
+      composerRef.current?.getSendContext().selectedModelSelection ?? null;
+
+    setIsCreatingProject(true);
+    setThreadError(targetDraft.threadId, null);
+    try {
+      const createResult = await createProject({
+        environmentId: targetDraft.environmentId,
+        input: {
+          projectId: targetDraft.projectId,
+          title: location.title,
+          workspaceRoot: location.workspaceRoot,
+          createWorkspaceRootIfMissing: true,
+          defaultModelSelection,
+        },
+      });
+      if (createResult._tag === "Failure") {
+        const error = squashAtomCommandFailure(createResult);
+        setThreadError(
+          targetDraft.threadId,
+          error instanceof Error ? error.message : "Failed to create project.",
+        );
+        return false;
+      }
+      setDraftThreadContext(draftId, { pendingProject: null });
+      return true;
+    } catch (error) {
+      setThreadError(targetDraft.threadId, chatActionErrorMessage(error));
+      return false;
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
+  const handlePendingProjectEnvironmentChange = (nextEnvironmentId: EnvironmentId) => {
+    if (!draftId || !activeThread || nextEnvironmentId === environmentId) {
+      return;
+    }
+    const currentPendingProject = pendingProject;
+    if (!currentPendingProject) {
+      return;
+    }
+    const nextEnvironment = environmentById.get(nextEnvironmentId);
+    if (!nextEnvironment || nextEnvironment.connection.phase !== "connected") {
+      return;
+    }
+    const configuredParentDirectory =
+      nextEnvironment.serverConfig?.settings.addProjectBaseDirectory.trim() ?? "";
+    const nextPendingProject: PendingProjectDraftState = {
+      ...currentPendingProject,
+      parentDirectory: configuredParentDirectory || DEFAULT_NEW_PROJECTS_PARENT_DIRECTORY,
+      locationConfirmed: false,
+      materialized: false,
+    };
+    setDraftThreadContext(draftId, {
+      projectRef: scopeProjectRef(nextEnvironmentId, activeThread.projectId),
+      pendingProject: nextPendingProject,
+    });
   };
 
   const onInterrupt = async () => {
@@ -6057,7 +6187,7 @@ function ChatViewContent(props: ChatViewProps) {
     ) : activeRightPanelSurface?.kind === "pull-request" && !supportsPullRequests ? (
       <PullRequestsUnavailableState
         title="Pull requests unavailable"
-        error="Update this environment's T3 Code server to browse pull requests."
+        error="Update this environment's Vetra Studio server to browse pull requests."
       />
     ) : activeRightPanelSurface?.kind === "pull-request" ? (
       // No onClose: the surface tab's own X owns closing here, and a second X in the header
@@ -6279,8 +6409,8 @@ function ChatViewContent(props: ChatViewProps) {
                         }
                       >
                         <DraftHeroHeadline
-                          activeProjectRef={activeProjectRef}
                           activeProjectTitle={activeProject?.title ?? null}
+                          pendingProject={pendingProject !== null}
                         />
                       </div>
                       <ComposerBannerStack className="relative z-0" items={composerBannerItems} />
@@ -6352,6 +6482,18 @@ function ChatViewContent(props: ChatViewProps) {
                             keybindings={keybindings}
                             terminalOpen={Boolean(terminalUiState.terminalOpen)}
                             gitCwd={gitCwd}
+                            projectControl={
+                              isLocalDraftThread && draftId ? (
+                                <ProjectSelectorControl
+                                  selectedProjectRef={activeProject ? activeProjectRef : null}
+                                  selectedProjectTitle={activeProject?.title ?? null}
+                                  pendingNewProject={pendingProject?.association === "create"}
+                                  creatingProject={isCreatingProject}
+                                  onSelectProject={handleSelectProject}
+                                  onCreateProject={handleCreateProjectSelection}
+                                />
+                              ) : undefined
+                            }
                             promptRef={promptRef}
                             composerImagesRef={composerImagesRef}
                             composerTerminalContextsRef={composerTerminalContextsRef}
@@ -6380,6 +6522,29 @@ function ChatViewContent(props: ChatViewProps) {
                             setThreadError={setThreadError}
                             onExpandImage={onExpandTimelineImage}
                           />
+                          {pendingProject?.association === "create" && draftId && activeThread ? (
+                            <ProjectLocationControl
+                              draftId={draftId}
+                              environmentId={environmentId}
+                              environmentLabel={
+                                environmentById.get(environmentId)?.label ?? "This environment"
+                              }
+                              projectId={activeThread.projectId}
+                              environmentOptions={environments
+                                .filter(
+                                  (environment) => environment.connection.phase === "connected",
+                                )
+                                .map((environment) => ({
+                                  environmentId: environment.environmentId,
+                                  label: environment.label,
+                                }))}
+                              canBrowse={primaryEnvironment?.environmentId === environmentId}
+                              open={projectLocationOpen}
+                              onOpenChange={setProjectLocationOpen}
+                              onConfirmed={handlePendingProjectLocationConfirmed}
+                              onEnvironmentChange={handlePendingProjectEnvironmentChange}
+                            />
+                          ) : null}
                         </div>
                       </div>
                       <div className="min-h-0">

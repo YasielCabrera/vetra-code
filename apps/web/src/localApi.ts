@@ -1,4 +1,4 @@
-import type { ConfirmDialogOptions, ContextMenuItem, LocalApi } from "@t3tools/contracts";
+import type { ConfirmDialogOptions, ContextMenuItem, LocalApi } from "@vetra-studio/contracts";
 
 import { requestConfirmDialog } from "./confirmDialog";
 import { showContextMenuFallback } from "./contextMenuFallback";

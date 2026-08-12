@@ -3,9 +3,9 @@ import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
-import type * as EffectAcpSchema from "effect-acp/schema";
-import { deriveToolActivityPresentation } from "@t3tools/shared/toolActivity";
-import type { ToolLifecycleItemType } from "@t3tools/contracts";
+import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
+import { deriveToolActivityPresentation } from "@vetra-studio/shared/toolActivity";
+import type { ToolLifecycleItemType } from "@vetra-studio/contracts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -500,7 +500,7 @@ export function syntheticLoadSessionResponseFromInitialize(
     ...(models ? { models } : {}),
     ...(modes ? { modes } : {}),
     _meta: {
-      t3SessionLoadReady: "replay_idle",
+      vetraSessionLoadReady: "replay_idle",
     },
   };
 }

@@ -1,5 +1,5 @@
 {
-  "name": "effect-codex-app-server",
+  "name": "@vetra-studio/effect-codex-app-server",
   "private": true,
   "type": "module",
   "exports": {

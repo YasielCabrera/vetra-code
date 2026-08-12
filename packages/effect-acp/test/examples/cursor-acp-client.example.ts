@@ -44,7 +44,7 @@ const program = Effect.gen(function* () {
         },
       },
       clientInfo: {
-        name: "effect-acp-example",
+        name: "@vetra-studio/effect-acp-example",
         version: "0.0.0",
       },
     });

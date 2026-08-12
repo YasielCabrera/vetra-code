@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema";
 
-import { PullRequestListEntry, PullRequestListResult } from "@t3tools/contracts";
-import type { PullRequestInvolvement, PullRequestListState } from "@t3tools/contracts";
+import { PullRequestListEntry, PullRequestListResult } from "@vetra-studio/contracts";
+import type { PullRequestInvolvement, PullRequestListState } from "@vetra-studio/contracts";
 
 export type PullRequestGroupKey = "reviewRequested" | "authored" | "others";
 
@@ -205,7 +205,7 @@ const SNAPSHOT_MAX_ENTRIES = 99;
 
 type SnapshotStorage = Pick<Storage, "getItem" | "setItem">;
 
-const snapshotStorageKey = (environmentId: string) => `t3.pullRequests.list:${environmentId}`;
+const snapshotStorageKey = (environmentId: string) => `vetra.pullRequests.list:${environmentId}`;
 
 /**
  * The priority groups' own server-filtered answers, carried with the feed. An authored pull

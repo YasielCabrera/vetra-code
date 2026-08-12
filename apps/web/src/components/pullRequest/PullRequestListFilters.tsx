@@ -4,7 +4,7 @@ import type {
   PullRequestInvolvement,
   PullRequestListState,
   SourceControlProviderKind,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
 import { FolderGit2Icon, LayersIcon, ListFilterIcon, LoaderIcon, SearchIcon } from "lucide-react";
 import type { ElementType } from "react";
 

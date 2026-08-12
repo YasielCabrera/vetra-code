@@ -11,29 +11,29 @@ html[data-mobile-composer-route-transition="true"]::view-transition-new(root) {
   animation: none;
 }
 
-html[data-mobile-composer-route-transition="true"]::view-transition-group(t3-mobile-composer) {
+html[data-mobile-composer-route-transition="true"]::view-transition-group(vetra-mobile-composer) {
   animation-duration: 180ms;
   animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-html[data-mobile-composer-route-transition="true"]::view-transition-image-pair(t3-mobile-composer) {
+html[data-mobile-composer-route-transition="true"]::view-transition-image-pair(vetra-mobile-composer) {
   isolation: isolate;
 }
 
-html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobile-composer) {
-  animation: t3-mobile-composer-old 180ms linear both;
+html[data-mobile-composer-route-transition="true"]::view-transition-old(vetra-mobile-composer) {
+  animation: vetra-mobile-composer-old 180ms linear both;
   mix-blend-mode: normal;
 }
 
-html[data-mobile-composer-route-transition="true"]::view-transition-new(t3-mobile-composer) {
-  animation: t3-mobile-composer-new 180ms linear both;
+html[data-mobile-composer-route-transition="true"]::view-transition-new(vetra-mobile-composer) {
+  animation: vetra-mobile-composer-new 180ms linear both;
   mix-blend-mode: normal;
 }
 
 /* The expanded and compact composers have different internal layouts. Use a
    brief crossfade while their shared wrapper moves so the layout change does
    not read as a single-frame cut. */
-@keyframes t3-mobile-composer-old {
+@keyframes vetra-mobile-composer-old {
   0%,
   35% {
     opacity: 1;
@@ -44,7 +44,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-new(t3-mobil
   }
 }
 
-@keyframes t3-mobile-composer-new {
+@keyframes vetra-mobile-composer-new {
   0%,
   35% {
     opacity: 0;
@@ -55,16 +55,16 @@ html[data-mobile-composer-route-transition="true"]::view-transition-new(t3-mobil
   }
 }
 
-html[data-mobile-composer-route-transition="true"]::view-transition-group(t3-mobile-draft-headline) {
+html[data-mobile-composer-route-transition="true"]::view-transition-group(vetra-mobile-draft-headline) {
   animation-duration: 130ms;
 }
 
-html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobile-draft-headline) {
-  animation: t3-mobile-draft-headline-exit 130ms cubic-bezier(0.4, 0, 1, 1) both;
+html[data-mobile-composer-route-transition="true"]::view-transition-old(vetra-mobile-draft-headline) {
+  animation: vetra-mobile-draft-headline-exit 130ms cubic-bezier(0.4, 0, 1, 1) both;
   mix-blend-mode: normal;
 }
 
-@keyframes t3-mobile-draft-headline-exit {
+@keyframes vetra-mobile-draft-headline-exit {
   from {
     opacity: 1;
     transform: translateY(0);
@@ -266,30 +266,18 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 
 @layer base {
   :root {
-    /* Dev artwork defaults. Built-in themes override these seven pigments in
-       the components layer; Nightly derives a darker matching palette. */
-    --stage-art-top: oklch(0.782169 0.123386 240.226);
-    --stage-art-mid: oklch(0.616111 0.195824 259.735);
-    --stage-art-bottom: oklch(0.441553 0.232394 265.474);
-    --stage-art-highlight: oklch(0.951597 0.037289 215.482);
-    --stage-art-secondary: oklch(0.794668 0.12136 235.46);
-    --stage-art-tertiary: oklch(0.678991 0.170261 275.365);
-    --stage-art-line: oklch(0.959666 0.029238 218.179);
-    --stage-night-top: color-mix(
-      in oklch,
-      var(--stage-art-top) 38%,
-      oklch(0.283792 0.117327 297.201)
-    );
-    --stage-night-mid: color-mix(
-      in oklch,
-      var(--stage-art-mid) 38%,
-      oklch(0.227147 0.086086 277.99)
-    );
-    --stage-night-bottom: color-mix(
-      in oklch,
-      var(--stage-art-bottom) 38%,
-      oklch(0.200528 0.055699 261.216)
-    );
+    /* Vetra artwork defaults. Built-in themes override these seven pigments
+       in the components layer; Nightly derives a darker matching palette. */
+    --stage-art-top: #8de8b8;
+    --stage-art-mid: #04c161;
+    --stage-art-bottom: #075f38;
+    --stage-art-highlight: #ddf8e9;
+    --stage-art-secondary: #51d995;
+    --stage-art-tertiary: #0b3d27;
+    --stage-art-line: #e8fff3;
+    --stage-night-top: color-mix(in oklch, var(--stage-art-top) 38%, #0b3d27);
+    --stage-night-mid: color-mix(in oklch, var(--stage-art-mid) 38%, #062e1c);
+    --stage-night-bottom: color-mix(in oklch, var(--stage-art-bottom) 38%, #041f14);
     --stage-night-highlight: var(--stage-art-highlight);
     --stage-night-secondary: color-mix(
       in oklch,
@@ -305,9 +293,9 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   }
 
   .dark {
-    --stage-art-top: oklch(0.581473 0.149124 256.9);
-    --stage-art-mid: oklch(0.456509 0.159377 261.945);
-    --stage-art-bottom: oklch(0.291327 0.136578 267.649);
+    --stage-art-top: #3ebd7a;
+    --stage-art-mid: #0a7f4a;
+    --stage-art-bottom: #07331f;
   }
 
   * {
@@ -380,11 +368,35 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
     );
   }
 
+  /* The generated Vetra blueprint is selected only for the unthemed base
+     palette. Named maintainer and custom themes keep their adaptive vector
+     artwork, and therefore do not fetch this raster asset. */
+  .stage-vetra-blueprint {
+    display: none;
+  }
+
+  html:not([data-theme-id]) .stage-vetra-blueprint {
+    display: block;
+    background-color: #075f38;
+    background-image: url("/brand/vetra-sidebar-blueprint.webp");
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+
+  html:not([data-theme-id]) .stage-blueprint {
+    display: none;
+  }
+
+  html.dark:not([data-theme-id]) .stage-vetra-blueprint {
+    filter: brightness(0.56) saturate(0.92);
+  }
+
   /* Each maintainer palette gives the same line art its own material: rose
      vellum, forest drafting paper, marine cyanotype, copper, and violet ink.
      These colors stay deliberately deep at the top edge so the white stage
      wordmark and controls retain contrast in both appearance modes. */
-  html[data-theme-id="t3-chat"] {
+  html[data-theme-id="vetra-chat"] {
     --stage-art-top: oklch(0.760675 0.141361 348.019);
     --stage-art-mid: oklch(0.588093 0.188832 353.138);
     --stage-art-bottom: oklch(0.383959 0.135096 348.656);
@@ -394,7 +406,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
     --stage-art-line: oklch(0.952158 0.034194 336.179);
   }
 
-  html.dark[data-theme-id="t3-chat"] {
+  html.dark[data-theme-id="vetra-chat"] {
     --stage-art-top: oklch(0.540689 0.143665 347.587);
     --stage-art-mid: oklch(0.396586 0.126592 347.6);
     --stage-art-bottom: oklch(0.249959 0.079694 340.523);
@@ -1061,7 +1073,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 :root {
   color-scheme: light;
   --radius: 0.625rem;
-  --background: var(--color-zinc-25);
+  --background: #f6faf7;
   --app-chrome-background: var(--background);
   --toolbar-background: var(--app-chrome-background);
   --toolbar-foreground: var(--foreground);
@@ -1069,34 +1081,34 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --toolbar-control: var(--popover);
   --toolbar-control-foreground: var(--foreground);
   --toolbar-control-hover: var(--accent);
-  --surface-raised: color-mix(in srgb, var(--card) 20%, transparent);
-  --foreground: var(--color-zinc-800);
+  --surface-raised: #ffffff;
+  --foreground: #202722;
   --card: var(--color-white);
-  --card-foreground: var(--color-zinc-800);
+  --card-foreground: var(--foreground);
   --popover: var(--color-white);
-  --popover-foreground: var(--color-zinc-800);
-  --primary: oklch(0.488 0.217 264);
-  --primary-foreground: var(--color-white);
-  --secondary: var(--color-zinc-50);
-  --secondary-foreground: var(--color-zinc-800);
-  --muted: var(--color-zinc-50);
-  --muted-foreground: var(--color-zinc-500);
+  --popover-foreground: var(--foreground);
+  --primary: #04c161;
+  --primary-foreground: #062b18;
+  --secondary: #f0f5f1;
+  --secondary-foreground: var(--foreground);
+  --muted: #f0f5f1;
+  --muted-foreground: #68736c;
   --placeholder: var(--muted-foreground);
   --secondary-label: var(--muted-foreground);
   --icon-muted: var(--muted-foreground);
-  --message-surface: var(--accent);
+  --message-surface: #e2f7ea;
   --message-foreground: var(--foreground);
   --message-action: var(--primary);
   --message-action-foreground: var(--primary-foreground);
   --message-action-hover: color-mix(in srgb, var(--primary) 90%, var(--background));
-  --accent: var(--color-zinc-100);
-  --accent-foreground: var(--color-zinc-900);
+  --accent: #e9f7ee;
+  --accent-foreground: #174c2d;
   --error: var(--color-red-500);
   --error-foreground: var(--color-red-700);
   --error-surface: color-mix(in srgb, var(--error) 8%, transparent);
   --destructive: var(--error);
-  --border: var(--color-zinc-200);
-  --input: var(--color-zinc-300);
+  --border: #dde7e0;
+  --input: #cbd8d0;
   --ring: var(--primary);
   --destructive-foreground: var(--error-foreground);
   --info: var(--color-blue-500);
@@ -1107,17 +1119,17 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --warning-foreground: var(--color-amber-700);
   --warning-surface: color-mix(in srgb, var(--warning) 8%, transparent);
   --update: var(--primary);
-  --update-foreground: var(--primary);
+  --update-foreground: #047a40;
   --update-surface: color-mix(in srgb, var(--update) 12%, transparent);
   /* Keep every sidebar primitive on the same light surface hierarchy, including
      portaled mobile sheets and settings navigation outside the app sidebar. */
-  --sidebar: var(--color-zinc-50);
+  --sidebar: #f7f8fa;
   --sidebar-foreground: var(--foreground);
   --sidebar-muted-foreground: var(--muted-foreground);
-  --sidebar-control-surface: var(--color-zinc-100);
-  --sidebar-row-hover: var(--color-zinc-25);
-  --sidebar-row-active: var(--color-white);
-  --sidebar-row-selected: var(--color-white);
+  --sidebar-control-surface: #eef3f0;
+  --sidebar-row-hover: #edf8f1;
+  --sidebar-row-active: #e5f6eb;
+  --sidebar-row-selected: #dff4e7;
   --sidebar-border: var(--border);
   --sidebar-stage-fade: var(--sidebar);
   --code-background: color-mix(in srgb, var(--card) 90%, var(--background));
@@ -1131,38 +1143,38 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 
   @variant dark {
     color-scheme: dark;
-    /* Keep the workspace in the same neutral-black family as sidebar v2.
-       Surfaces lift from this base instead of starting from a milky gray. */
-    --background: var(--color-neutral-950);
+    /* The dark companion keeps the same green identity without sacrificing
+       the restrained surface hierarchy used by the workspace. */
+    --background: #0b1510;
     --app-chrome-background: var(--background);
     --surface-raised: var(--secondary);
-    --foreground: var(--color-neutral-100);
-    --card: color-mix(in srgb, var(--background) 97%, var(--color-white));
-    --card-foreground: var(--color-neutral-100);
-    --popover: color-mix(in srgb, var(--background) 94%, var(--color-white));
-    --popover-foreground: var(--color-neutral-100);
-    --primary: oklch(0.571 0.21 264);
-    --primary-foreground: var(--color-white);
-    --secondary: --alpha(var(--color-white) / 4%);
-    --secondary-foreground: var(--color-neutral-100);
-    --muted: --alpha(var(--color-white) / 4%);
-    --muted-foreground: color-mix(in srgb, var(--color-neutral-500) 90%, var(--color-white));
+    --foreground: #edf6f0;
+    --card: #111d16;
+    --card-foreground: var(--foreground);
+    --popover: #16241b;
+    --popover-foreground: var(--foreground);
+    --primary: #20d978;
+    --primary-foreground: #052615;
+    --secondary: #15231a;
+    --secondary-foreground: var(--foreground);
+    --muted: #15231a;
+    --muted-foreground: #94a99b;
     --placeholder: var(--muted-foreground);
     --secondary-label: var(--muted-foreground);
     --icon-muted: var(--muted-foreground);
-    --message-surface: var(--accent);
+    --message-surface: #173522;
     --message-foreground: var(--foreground);
     --message-action: var(--primary);
     --message-action-foreground: var(--primary-foreground);
     --message-action-hover: color-mix(in srgb, var(--primary) 90%, var(--background));
-    --accent: --alpha(var(--color-white) / 4%);
-    --accent-foreground: var(--color-neutral-100);
+    --accent: #183423;
+    --accent-foreground: var(--foreground);
     --error: color-mix(in srgb, var(--color-red-500) 90%, var(--color-white));
     --error-foreground: var(--color-red-400);
     --error-surface: color-mix(in srgb, var(--error) 16%, transparent);
     --destructive: var(--error);
-    --border: --alpha(var(--color-white) / 6%);
-    --input: --alpha(var(--color-white) / 8%);
+    --border: #25352b;
+    --input: #34483b;
     --ring: var(--primary);
     --destructive-foreground: var(--error-foreground);
     --info: var(--color-blue-500);
@@ -1173,9 +1185,9 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
     --warning-foreground: var(--color-amber-400);
     --warning-surface: color-mix(in srgb, var(--warning) 16%, transparent);
     --update: var(--primary);
-    --update-foreground: var(--color-blue-400);
+    --update-foreground: var(--primary);
     --update-surface: color-mix(in srgb, var(--update) 18%, transparent);
-    --sidebar: var(--card);
+    --sidebar: #09110d;
     --sidebar-foreground: var(--foreground);
     --sidebar-muted-foreground: var(--muted-foreground);
     --sidebar-control-surface: var(--muted);
@@ -1193,50 +1205,50 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   }
 }
 
-/* Keep both sidebar implementations (default and legacy) on the same quiet
-   zinc hierarchy: zinc-50 navigation, zinc-25 hover, and white selected/raised
-   surfaces. */
+/* Keep both sidebar implementations (default and legacy) on the same quiet,
+   neutral navigation surface while green selection states tie them to the
+   Vetra Studio workspace. */
 [data-app-sidebar] {
-  --background: var(--color-zinc-25);
-  --foreground: var(--color-zinc-800);
+  --background: #f6faf7;
+  --foreground: #202722;
   --card: var(--color-white);
-  --card-foreground: var(--color-zinc-800);
-  --accent: var(--color-zinc-100);
-  --accent-foreground: var(--color-zinc-900);
-  --muted: var(--color-zinc-50);
-  --muted-foreground: var(--color-zinc-500);
-  --border: var(--color-zinc-200);
-  --input: var(--color-zinc-300);
-  --sidebar: var(--color-zinc-50);
-  --sidebar-foreground: var(--color-zinc-800);
-  --sidebar-muted-foreground: var(--color-zinc-500);
-  --sidebar-control-surface: var(--color-zinc-100);
-  --sidebar-row-hover: var(--color-zinc-25);
-  --sidebar-row-active: var(--color-white);
-  --sidebar-row-selected: var(--color-white);
-  --sidebar-border: var(--color-zinc-200);
+  --card-foreground: var(--foreground);
+  --accent: #e9f7ee;
+  --accent-foreground: #174c2d;
+  --muted: #f0f5f1;
+  --muted-foreground: #68736c;
+  --border: #dde7e0;
+  --input: #cbd8d0;
+  --sidebar: #f7f8fa;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-muted-foreground: var(--muted-foreground);
+  --sidebar-control-surface: #eef3f0;
+  --sidebar-row-hover: #edf8f1;
+  --sidebar-row-active: #e5f6eb;
+  --sidebar-row-selected: #dff4e7;
+  --sidebar-border: var(--border);
   --sidebar-stage-fade: var(--sidebar);
   background-color: var(--sidebar);
 }
 
 .dark [data-app-sidebar] {
-  --background: #000;
-  --foreground: #f1f3f7;
-  --card: #000;
+  --background: #0b1510;
+  --foreground: #edf6f0;
+  --card: #09110d;
   --card-foreground: var(--foreground);
-  --accent: #191a1d;
-  --accent-foreground: #f7f9ff;
-  --muted: #0a0a0a;
-  --muted-foreground: #a3a3a3;
-  --border: rgb(255 255 255 / 8%);
-  --input: rgb(255 255 255 / 18%);
+  --accent: #183423;
+  --accent-foreground: var(--foreground);
+  --muted: #15231a;
+  --muted-foreground: #94a99b;
+  --border: #25352b;
+  --input: #34483b;
   --sidebar: var(--card);
   --sidebar-foreground: var(--foreground);
   --sidebar-muted-foreground: var(--muted-foreground);
   --sidebar-control-surface: var(--muted);
-  --sidebar-row-hover: color-mix(in srgb, var(--foreground) 8%, transparent);
-  --sidebar-row-active: color-mix(in srgb, var(--foreground) 11%, transparent);
-  --sidebar-row-selected: color-mix(in srgb, var(--foreground) 7%, transparent);
+  --sidebar-row-hover: #12291b;
+  --sidebar-row-active: #173522;
+  --sidebar-row-selected: #1a3d27;
   --sidebar-border: var(--border);
   /* The stage-channel header art must ramp to THIS panel's surface, not the
      global chrome background, or the fade shows a seam (same rule as the
@@ -1318,7 +1330,7 @@ html.dark[data-theme-id] {
   --terminal-scrollbar-hover: var(--app-theme-terminal-scrollbar-hover);
 }
 
-/* T3 Chat's composer is a translucent lift over --chat-background. Route its
+/* Vetra Chat's composer is a translucent lift over --chat-background. Route its
    measured flattened color through the raised-surface role instead of deriving
    another tint from the canvas, which made the dark composer too red. */
 html[data-theme-id] .chat-composer-glass-shell {
@@ -1334,8 +1346,8 @@ html.dark[data-theme-id] .chat-composer-glass-shell {
   --chat-composer-highlight: color-mix(in srgb, var(--app-theme-input) 12%, transparent);
 }
 
-html.dark[data-theme-id="t3-chat"] .chat-composer-glass-shell {
-  /* T3 Chat's visible composer edge is a dark plum, not the stock translucent
+html.dark[data-theme-id="vetra-chat"] .chat-composer-glass-shell {
+  /* Vetra Chat's visible composer edge is a dark plum, not the stock translucent
      white outline. Its highlight is derived from --chat-input-gradient. */
   --chat-composer-outline: #241e28;
   --chat-composer-highlight: color-mix(in srgb, #432d48 12%, transparent);
@@ -1493,21 +1505,21 @@ html[data-theme-id] .chat-markdown .chat-markdown-chrome-action {
   color: color-mix(in srgb, var(--code-foreground) 72%, transparent);
 }
 
-/* T3 Chat renders inline code and compact chat artifacts with its translucent
+/* Vetra Chat renders inline code and compact chat artifacts with its translucent
    secondary surface flattened over the light chat canvas. The raw muted and
    secondary tokens are substantially darker than those visible pixels. */
-html[data-theme-id="t3-chat"]:not(.dark) .chat-markdown :not(pre) > code,
-html[data-theme-id="t3-chat"]:not(.dark) [data-changed-files-state],
-html[data-theme-id="t3-chat"]:not(.dark) [data-changed-files-header] {
+html[data-theme-id="vetra-chat"]:not(.dark) .chat-markdown :not(pre) > code,
+html[data-theme-id="vetra-chat"]:not(.dark) [data-changed-files-state],
+html[data-theme-id="vetra-chat"]:not(.dark) [data-changed-files-header] {
   background-color: var(--message-surface);
 }
 
-html[data-theme-id="t3-chat"]:not(.dark) .chat-markdown :not(pre) > code,
-html[data-theme-id="t3-chat"]:not(.dark) [data-changed-files-state] {
+html[data-theme-id="vetra-chat"]:not(.dark) .chat-markdown :not(pre) > code,
+html[data-theme-id="vetra-chat"]:not(.dark) [data-changed-files-state] {
   border-color: transparent;
 }
 
-html[data-theme-id="t3-chat"]:not(.dark) .chat-markdown :not(pre) > code {
+html[data-theme-id="vetra-chat"]:not(.dark) .chat-markdown :not(pre) > code {
   color: var(--message-foreground);
 }
 
@@ -1550,9 +1562,9 @@ html.dark[data-theme-id] [data-app-sidebar] {
   border-color: color-mix(in srgb, var(--sidebar-foreground) 8%, transparent);
 }
 
-/* T3 Chat's panel divider is deliberately pink, and its resize affordance
+/* Vetra Chat's panel divider is deliberately pink, and its resize affordance
    keeps that color while hovered. Do not neutralize this branded edge. */
-html.dark[data-theme-id="t3-chat"] [data-app-sidebar] {
+html.dark[data-theme-id="vetra-chat"] [data-app-sidebar] {
   border-color: var(--sidebar-border);
 }
 
@@ -1619,10 +1631,10 @@ body {
   --surface-grain-size: 256px 256px;
 }
 
-/* The live T3 Chat texture is a 128px grayscale tile with a constant 7/255
+/* The live Vetra Chat texture is a 128px grayscale tile with a constant 7/255
    alpha. Keep our procedural texture cheap while matching that scale and
    strength for the branded preset. */
-html[data-theme-id="t3-chat"] {
+html[data-theme-id="vetra-chat"] {
   --surface-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 128 128' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02745'/%3E%3C/svg%3E");
   --surface-grain-size: 128px 128px;
 }
@@ -1707,11 +1719,11 @@ code {
   }
 }
 
-.t3-ghostty-canvas {
+.vetra-ghostty-canvas {
   cursor: text;
 }
 
-.t3-ghostty-scrollbar {
+.vetra-ghostty-scrollbar {
   position: absolute;
   z-index: 1;
   top: 4px;
@@ -1722,7 +1734,7 @@ code {
   touch-action: none;
 }
 
-.t3-ghostty-scrollbar-thumb {
+.vetra-ghostty-scrollbar-thumb {
   position: absolute;
   top: 0;
   right: 1px;
@@ -1732,8 +1744,8 @@ code {
   transition: background-color 120ms ease-out;
 }
 
-.t3-ghostty-scrollbar:hover .t3-ghostty-scrollbar-thumb,
-.t3-ghostty-scrollbar:focus-visible .t3-ghostty-scrollbar-thumb {
+.vetra-ghostty-scrollbar:hover .vetra-ghostty-scrollbar-thumb,
+.vetra-ghostty-scrollbar:focus-visible .vetra-ghostty-scrollbar-thumb {
   background: var(--app-scrollbar-thumb-hover);
 }
 

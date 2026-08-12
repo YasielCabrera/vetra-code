@@ -1,5 +1,5 @@
 {
-  "name": "t3code-relay",
+  "name": "@vetra-studio/relay",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,9 +13,9 @@
     "@effect/sql-pg": "catalog:",
     "@noble/curves": "catalog:",
     "@noble/hashes": "catalog:",
-    "@t3tools/client-runtime": "workspace:*",
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
+    "@vetra-studio/client-runtime": "workspace:*",
+    "@vetra-studio/contracts": "workspace:*",
+    "@vetra-studio/shared": "workspace:*",
     "alchemy": "2.0.0-beta.65",
     "drizzle-orm": "1.0.0-rc.4",
     "effect": "catalog:"

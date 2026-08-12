@@ -1,6 +1,6 @@
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import type { DesktopUpdateState } from "@t3tools/contracts";
+import type { DesktopUpdateState } from "@vetra-studio/contracts";
 
 const testState = vi.hoisted(() => ({
   addToast: vi.fn(),
@@ -62,6 +62,10 @@ function downloadedState(overrides: Partial<DesktopUpdateState> = {}): DesktopUp
 describe("showDesktopUpdateDownloadedToast", () => {
   beforeEach(() => {
     testState.addToast.mockReset();
+    vi.stubEnv(
+      "VITE_DESKTOP_RELEASE_TAG_URL",
+      "https://github.com/vetra-studio/releases/releases/tag",
+    );
   });
 
   it("opens the downloaded version's release notes", async () => {
@@ -72,7 +76,7 @@ describe("showDesktopUpdateDownloadedToast", () => {
     link?.props.onClick?.();
     await vi.waitFor(() => {
       expect(openExternal).toHaveBeenCalledWith(
-        "https://github.com/pingdotgg/t3code/releases/tag/v0.0.30",
+        "https://github.com/vetra-studio/releases/releases/tag/v0.0.30",
       );
     });
     expect(testState.addToast).toHaveBeenCalledTimes(1);
@@ -90,7 +94,7 @@ describe("showDesktopUpdateDownloadedToast", () => {
 
     await vi.waitFor(() => {
       expect(openExternal).toHaveBeenCalledWith(
-        "https://github.com/pingdotgg/t3code/releases/tag/v0.0.30",
+        "https://github.com/vetra-studio/releases/releases/tag/v0.0.30",
       );
     });
   });

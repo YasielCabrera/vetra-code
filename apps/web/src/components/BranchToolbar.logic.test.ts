@@ -1,4 +1,4 @@
-import { EnvironmentId, type VcsRef } from "@t3tools/contracts";
+import { EnvironmentId, type VcsRef } from "@vetra-studio/contracts";
 import { describe, expect, it } from "vite-plus/test";
 import {
   dedupeRemoteBranchesWithLocalMatches,
@@ -30,20 +30,20 @@ describe("resolvePreviousWorktreeSeed", () => {
       resolvePreviousWorktreeSeed({
         threads: [
           {
-            branch: "t3/older",
-            worktreePath: "/repo/.t3/worktrees/older",
+            branch: "vetra/older",
+            worktreePath: "/repo/.vetra/worktrees/older",
             updatedAt: "2026-07-20T00:00:00.000Z",
           },
           {
-            branch: "t3/newer",
-            worktreePath: "/repo/.t3/worktrees/newer",
+            branch: "vetra/newer",
+            worktreePath: "/repo/.vetra/worktrees/newer",
             updatedAt: "2026-07-22T00:00:00.000Z",
           },
           { branch: "main", worktreePath: null, updatedAt: "2026-07-23T00:00:00.000Z" },
         ],
         currentWorktreePath: null,
       }),
-    ).toEqual({ branch: "t3/newer", worktreePath: "/repo/.t3/worktrees/newer" });
+    ).toEqual({ branch: "vetra/newer", worktreePath: "/repo/.vetra/worktrees/newer" });
   });
 
   it("skips the worktree the composer already points at", () => {
@@ -51,12 +51,12 @@ describe("resolvePreviousWorktreeSeed", () => {
       resolvePreviousWorktreeSeed({
         threads: [
           {
-            branch: "t3/current",
-            worktreePath: "/repo/.t3/worktrees/current",
+            branch: "vetra/current",
+            worktreePath: "/repo/.vetra/worktrees/current",
             updatedAt: "2026-07-22T00:00:00.000Z",
           },
         ],
-        currentWorktreePath: "/repo/.t3/worktrees/current",
+        currentWorktreePath: "/repo/.vetra/worktrees/current",
       }),
     ).toBeNull();
   });
@@ -75,33 +75,33 @@ describe("resolvePreviousWorktreeSeed", () => {
       resolvePreviousWorktreeSeed({
         threads: [
           {
-            branch: "t3/archived",
-            worktreePath: "/repo/.t3/worktrees/archived",
+            branch: "vetra/archived",
+            worktreePath: "/repo/.vetra/worktrees/archived",
             updatedAt: "2026-07-23T00:00:00.000Z",
             archivedAt: "2026-07-23T01:00:00.000Z",
           },
           {
-            branch: "t3/garbage-timestamp",
-            worktreePath: "/repo/.t3/worktrees/garbage",
+            branch: "vetra/garbage-timestamp",
+            worktreePath: "/repo/.vetra/worktrees/garbage",
             updatedAt: "not-a-date",
           },
           {
-            branch: "t3/live",
-            worktreePath: "/repo/.t3/worktrees/live",
+            branch: "vetra/live",
+            worktreePath: "/repo/.vetra/worktrees/live",
             updatedAt: "2026-07-21T00:00:00.000Z",
             archivedAt: null,
           },
         ],
         currentWorktreePath: null,
       }),
-    ).toEqual({ branch: "t3/live", worktreePath: "/repo/.t3/worktrees/live" });
+    ).toEqual({ branch: "vetra/live", worktreePath: "/repo/.vetra/worktrees/live" });
   });
 });
 
 describe("resolvePreviousWorktreeLabel", () => {
   it("includes the branch when known", () => {
-    expect(resolvePreviousWorktreeLabel({ branch: "t3/fix-thing", worktreePath: "/wt" })).toBe(
-      "Previous worktree (t3/fix-thing)",
+    expect(resolvePreviousWorktreeLabel({ branch: "vetra/fix-thing", worktreePath: "/wt" })).toBe(
+      "Previous worktree (vetra/fix-thing)",
     );
     expect(resolvePreviousWorktreeLabel({ branch: null, worktreePath: "/wt" })).toBe(
       "Previous worktree",
@@ -114,7 +114,7 @@ describe("resolveDraftEnvModeAfterBranchChange", () => {
     expect(
       resolveDraftEnvModeAfterBranchChange({
         nextWorktreePath: null,
-        currentWorktreePath: "/repo/.t3/worktrees/feature-a",
+        currentWorktreePath: "/repo/.vetra/worktrees/feature-a",
         effectiveEnvMode: "worktree",
       }),
     ).toBe("local");
@@ -133,7 +133,7 @@ describe("resolveDraftEnvModeAfterBranchChange", () => {
   it("uses worktree mode when selecting a ref already attached to a worktree", () => {
     expect(
       resolveDraftEnvModeAfterBranchChange({
-        nextWorktreePath: "/repo/.t3/worktrees/feature-a",
+        nextWorktreePath: "/repo/.vetra/worktrees/feature-a",
         currentWorktreePath: null,
         effectiveEnvMode: "local",
       }),
@@ -330,7 +330,7 @@ describe("resolveLocalCheckoutBranchMismatch", () => {
     expect(
       resolveLocalCheckoutBranchMismatch({
         effectiveEnvMode: "worktree",
-        activeWorktreePath: "/repo/.t3/worktrees/feature-thread",
+        activeWorktreePath: "/repo/.vetra/worktrees/feature-thread",
         activeThreadBranch: "feature/thread",
         currentGitBranch: "feature/current",
       }),
@@ -458,7 +458,7 @@ describe("resolveEffectiveEnvMode", () => {
   it("treats draft threads already attached to a worktree as current-checkout mode", () => {
     expect(
       resolveEffectiveEnvMode({
-        activeWorktreePath: "/repo/.t3/worktrees/feature-a",
+        activeWorktreePath: "/repo/.vetra/worktrees/feature-a",
         hasServerThread: false,
         draftThreadEnvMode: "worktree",
       }),
@@ -489,7 +489,9 @@ describe("resolveCurrentWorkspaceLabel", () => {
   });
 
   it("describes the active checkout as a worktree when one is attached", () => {
-    expect(resolveCurrentWorkspaceLabel("/repo/.t3/worktrees/feature-a")).toBe("Current worktree");
+    expect(resolveCurrentWorkspaceLabel("/repo/.vetra/worktrees/feature-a")).toBe(
+      "Current worktree",
+    );
   });
 });
 
@@ -499,7 +501,7 @@ describe("resolveLockedWorkspaceLabel", () => {
   });
 
   it("uses a shorter label for an attached worktree", () => {
-    expect(resolveLockedWorkspaceLabel("/repo/.t3/worktrees/feature-a")).toBe("Worktree");
+    expect(resolveLockedWorkspaceLabel("/repo/.vetra/worktrees/feature-a")).toBe("Worktree");
   });
 });
 
@@ -631,15 +633,15 @@ describe("resolveBranchSelectionTarget", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
-        activeWorktreePath: "/repo/.t3/worktrees/feature-a",
+        activeWorktreePath: "/repo/.vetra/worktrees/feature-a",
         refName: {
           isDefault: false,
-          worktreePath: "/repo/.t3/worktrees/feature-b",
+          worktreePath: "/repo/.vetra/worktrees/feature-b",
         },
       }),
     ).toEqual({
-      checkoutCwd: "/repo/.t3/worktrees/feature-b",
-      nextWorktreePath: "/repo/.t3/worktrees/feature-b",
+      checkoutCwd: "/repo/.vetra/worktrees/feature-b",
+      nextWorktreePath: "/repo/.vetra/worktrees/feature-b",
       reuseExistingWorktree: true,
     });
   });
@@ -648,7 +650,7 @@ describe("resolveBranchSelectionTarget", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
-        activeWorktreePath: "/repo/.t3/worktrees/feature-a",
+        activeWorktreePath: "/repo/.vetra/worktrees/feature-a",
         refName: {
           isDefault: true,
           worktreePath: "/repo",
@@ -665,7 +667,7 @@ describe("resolveBranchSelectionTarget", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
-        activeWorktreePath: "/repo/.t3/worktrees/feature-a",
+        activeWorktreePath: "/repo/.vetra/worktrees/feature-a",
         refName: {
           isDefault: true,
           worktreePath: null,
@@ -682,15 +684,15 @@ describe("resolveBranchSelectionTarget", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
-        activeWorktreePath: "/repo/.t3/worktrees/feature-a",
+        activeWorktreePath: "/repo/.vetra/worktrees/feature-a",
         refName: {
           isDefault: false,
           worktreePath: null,
         },
       }),
     ).toEqual({
-      checkoutCwd: "/repo/.t3/worktrees/feature-a",
-      nextWorktreePath: "/repo/.t3/worktrees/feature-a",
+      checkoutCwd: "/repo/.vetra/worktrees/feature-a",
+      nextWorktreePath: "/repo/.vetra/worktrees/feature-a",
       reuseExistingWorktree: false,
     });
   });

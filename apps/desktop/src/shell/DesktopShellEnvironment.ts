@@ -65,7 +65,7 @@ export class DesktopShellEnvironment extends Context.Service<
   {
     readonly installIntoProcess: Effect.Effect<void>;
   }
->()("@t3tools/desktop/shell/DesktopShellEnvironment") {}
+>()("@vetra-studio/desktop/shell/DesktopShellEnvironment") {}
 
 const LOGIN_SHELL_ENV_NAMES = [
   "PATH",
@@ -212,8 +212,8 @@ const knownWindowsCliDirs = (env: NodeJS.ProcessEnv): ReadonlyArray<string> => [
   ),
 ];
 
-const startMarker = (name: string) => `__T3CODE_ENV_${name}_START__`;
-const endMarker = (name: string) => `__T3CODE_ENV_${name}_END__`;
+const startMarker = (name: string) => `__VETRA_ENV_${name}_START__`;
+const endMarker = (name: string) => `__VETRA_ENV_${name}_END__`;
 
 const executableName = (command: string): string => command.split(/[\\/]/u).at(-1) ?? command;
 

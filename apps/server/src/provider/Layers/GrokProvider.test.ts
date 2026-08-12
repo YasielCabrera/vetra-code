@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import { GrokSettings } from "@t3tools/contracts";
+import { GrokSettings } from "@vetra-studio/contracts";
 
 import { buildInitialGrokProviderSnapshot, checkGrokProviderStatus } from "./GrokProvider.ts";
 
@@ -59,7 +59,7 @@ it.layer(NodeServices.layer)("checkGrokProviderStatus", (it) => {
         Effect.gen(function* () {
           const fs = yield* FileSystem.FileSystem;
           const path = yield* Path.Path;
-          const dir = yield* fs.makeTempDirectoryScoped({ prefix: "t3code-grok-version-" });
+          const dir = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-studio-grok-version-" });
           const grokPath = path.join(dir, "grok");
           yield* fs.writeFileString(
             grokPath,
@@ -87,7 +87,7 @@ it.layer(NodeServices.layer)("checkGrokProviderStatus", (it) => {
         Effect.gen(function* () {
           const fs = yield* FileSystem.FileSystem;
           const path = yield* Path.Path;
-          const dir = yield* fs.makeTempDirectoryScoped({ prefix: "t3code-grok-success-" });
+          const dir = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-studio-grok-success-" });
           const grokPath = path.join(dir, "grok");
           yield* fs.writeFileString(
             grokPath,

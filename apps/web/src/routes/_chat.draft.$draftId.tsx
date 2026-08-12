@@ -1,63 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import ChatView from "../components/ChatView";
-import { threadHasStarted } from "../components/ChatView.logic";
-import {
-  DraftId,
-  markPromotedDraftThreadByRef,
-  useComposerDraftStore,
-} from "../composerDraftStore";
+import { DraftId } from "../composerDraftStore";
 import { SidebarInset } from "../components/ui/sidebar";
-import { waitForDraftHeroTransition } from "../components/chat/draftHeroTransition";
-import { buildThreadRouteParams } from "../threadRoutes";
-import { useThread, useThreadRefs } from "../state/entities";
+import { useDraftPromotionNavigation } from "../hooks/useDraftPromotionNavigation";
 
 function DraftChatThreadRouteView() {
   const navigate = useNavigate();
   const { draftId: rawDraftId } = Route.useParams();
   const draftId = DraftId.make(rawDraftId);
-  const draftSession = useComposerDraftStore((store) => store.getDraftSession(draftId));
-  const threadRefs = useThreadRefs();
-  const inferredThreadRef = draftSession
-    ? (threadRefs.find(
-        (ref) =>
-          ref.environmentId === draftSession.environmentId &&
-          ref.threadId === draftSession.threadId,
-      ) ?? null)
-    : null;
-  const serverThreadRef = draftSession?.promotedTo ?? inferredThreadRef;
-  const serverThread = useThread(serverThreadRef);
-  const serverThreadStarted = threadHasStarted(serverThread);
-  const canonicalThreadRef = serverThreadStarted ? serverThreadRef : null;
-
-  useEffect(() => {
-    if (!inferredThreadRef || draftSession?.promotedTo) {
-      return;
-    }
-    markPromotedDraftThreadByRef(inferredThreadRef);
-  }, [draftSession?.promotedTo, inferredThreadRef]);
-
-  useEffect(() => {
-    if (!canonicalThreadRef) {
-      return;
-    }
-
-    let cancelled = false;
-    void waitForDraftHeroTransition().then(() => {
-      if (cancelled) {
-        return;
-      }
-      void navigate({
-        to: "/$environmentId/$threadId",
-        params: buildThreadRouteParams(canonicalThreadRef),
-        replace: true,
-      });
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [canonicalThreadRef, navigate]);
+  const { canonicalThreadRef, draftSession } = useDraftPromotionNavigation(draftId);
 
   useEffect(() => {
     if (draftSession || canonicalThreadRef) {

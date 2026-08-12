@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type * as EffectAcpSchema from "effect-acp/schema";
+import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
 
 import {
   extractModelConfigId,
@@ -95,7 +95,7 @@ describe("AcpRuntimeModel", () => {
     } satisfies EffectAcpSchema.InitializeResponse);
 
     expect(response.models?.currentModelId).toBe("grok-build");
-    expect(response._meta).toMatchObject({ t3SessionLoadReady: "replay_idle" });
+    expect(response._meta).toMatchObject({ vetraSessionLoadReady: "replay_idle" });
   });
 
   it("accepts initialize model descriptions with null", () => {
@@ -129,7 +129,7 @@ describe("AcpRuntimeModel", () => {
 
     expect(response.models).toBeUndefined();
     expect(response.modes).toBeUndefined();
-    expect(response._meta).toMatchObject({ t3SessionLoadReady: "replay_idle" });
+    expect(response._meta).toMatchObject({ vetraSessionLoadReady: "replay_idle" });
   });
 
   it("builds a synthetic load response with initialize mode state", () => {

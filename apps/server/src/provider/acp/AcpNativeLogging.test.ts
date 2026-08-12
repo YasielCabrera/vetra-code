@@ -1,12 +1,12 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { ProviderDriverKind, ThreadId } from "@t3tools/contracts";
+import { ProviderDriverKind, ThreadId } from "@vetra-studio/contracts";
 import { assert, it } from "@effect/vitest";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Logger from "effect/Logger";
 import * as Schema from "effect/Schema";
-import * as AcpErrors from "effect-acp/errors";
+import * as AcpErrors from "@vetra-studio/effect-acp/errors";
 
 import type { EventNdjsonLogger } from "../Layers/EventNdjsonLogger.ts";
 import { makeAcpNativeLoggerFactory } from "./AcpNativeLogging.ts";

@@ -19,8 +19,8 @@ import type {
   PullRequestReviewerKind,
   PullRequestState,
   PullRequestThreadComment,
-} from "@t3tools/contracts";
-import { decodeJsonResult } from "@t3tools/shared/schemaJson";
+} from "@vetra-studio/contracts";
+import { decodeJsonResult } from "@vetra-studio/shared/schemaJson";
 
 /**
  * Enum-ish GitHub CLI fields are decoded as plain strings and normalized here: a `gh`

@@ -1,6 +1,6 @@
 # Resource telemetry architecture
 
-> For maintainers. Using T3 Code? See [docs/user](../user/).
+> For maintainers. Using Vetra Studio? See [docs/user](../user/).
 
 Status: implemented
 
@@ -225,7 +225,7 @@ The implementation is under `apps/server/src/resourceTelemetry`.
 
 Resolves an executable from:
 
-1. `T3CODE_RESOURCE_MONITOR_PATH`;
+1. `VETRA_RESOURCE_MONITOR_PATH`;
 2. desktop bootstrap configuration;
 3. bundled CLI resources;
 4. local Cargo build outputs.
@@ -338,7 +338,7 @@ longer start recurring process-table commands.
 ## Packaging
 
 Desktop artifact builds compile the Rust target, stage it as
-`resources/resource-monitor/t3-resource-monitor[.exe]`, and pass its path to the
+`resources/resource-monitor/vetra-resource-monitor[.exe]`, and pass its path to the
 backend bootstrap.
 
 CLI release jobs upload each active platform monitor artifact and copy it into:

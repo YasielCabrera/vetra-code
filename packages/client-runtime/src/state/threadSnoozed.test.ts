@@ -1,6 +1,6 @@
 // @effect-diagnostics globalDate:off -- Tests exercise local calendar snooze boundaries.
-import { ThreadId } from "@t3tools/contracts";
-import { TurnId } from "@t3tools/contracts";
+import { ThreadId } from "@vetra-studio/contracts";
+import { TurnId } from "@vetra-studio/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

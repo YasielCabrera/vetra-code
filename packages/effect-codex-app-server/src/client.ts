@@ -75,7 +75,7 @@ export class CodexAppServerClient extends Context.Service<
       ) => Effect.Effect<void, CodexError.CodexAppServerError>,
     ) => Effect.Effect<void>;
   }
->()("effect-codex-app-server/client/CodexAppServerClient") {}
+>()("@vetra-studio/effect-codex-app-server/client/CodexAppServerClient") {}
 
 type ServerRequestHandler = (
   payload: unknown,
@@ -84,171 +84,182 @@ type ServerNotificationHandler = (
   payload: unknown,
 ) => Effect.Effect<void, CodexError.CodexAppServerError>;
 
-export const make = Effect.fn("effect-codex-app-server/CodexAppServerClient.make")(function* (
-  stdio: Stdio.Stdio,
-  options: CodexAppServerClientOptions = {},
-  terminationError?: Effect.Effect<CodexError.CodexAppServerError>,
-): Effect.fn.Return<CodexAppServerClient["Service"], never, Scope.Scope> {
-  const requestHandlers = new Map<string, ServerRequestHandler>();
-  const notificationHandlers = new Map<string, Array<ServerNotificationHandler>>();
-  let unknownRequestHandler:
-    | ((method: string, params: unknown) => Effect.Effect<unknown, CodexError.CodexAppServerError>)
-    | undefined;
-  let unknownNotificationHandler:
-    | ((method: string, params: unknown) => Effect.Effect<void, CodexError.CodexAppServerError>)
-    | undefined;
+export const make = Effect.fn("@vetra-studio/effect-codex-app-server/CodexAppServerClient.make")(
+  function* (
+    stdio: Stdio.Stdio,
+    options: CodexAppServerClientOptions = {},
+    terminationError?: Effect.Effect<CodexError.CodexAppServerError>,
+  ): Effect.fn.Return<CodexAppServerClient["Service"], never, Scope.Scope> {
+    const requestHandlers = new Map<string, ServerRequestHandler>();
+    const notificationHandlers = new Map<string, Array<ServerNotificationHandler>>();
+    let unknownRequestHandler:
+      | ((
+          method: string,
+          params: unknown,
+        ) => Effect.Effect<unknown, CodexError.CodexAppServerError>)
+      | undefined;
+    let unknownNotificationHandler:
+      | ((method: string, params: unknown) => Effect.Effect<void, CodexError.CodexAppServerError>)
+      | undefined;
 
-  const getServerRequestParamSchema = <M extends CodexRpc.ServerRequestMethod>(
-    method: M,
-  ):
-    | Schema.Codec<CodexRpc.ServerRequestParamsByMethod[M], CodexRpc.ServerRequestParamsByMethod[M]>
-    | undefined => CodexRpc.SERVER_REQUEST_PARAMS[method] as never;
+    const getServerRequestParamSchema = <M extends CodexRpc.ServerRequestMethod>(
+      method: M,
+    ):
+      | Schema.Codec<
+          CodexRpc.ServerRequestParamsByMethod[M],
+          CodexRpc.ServerRequestParamsByMethod[M]
+        >
+      | undefined => CodexRpc.SERVER_REQUEST_PARAMS[method] as never;
 
-  const getServerRequestResponseSchema = <M extends CodexRpc.ServerRequestMethod>(
-    method: M,
-  ):
-    | Schema.Codec<
-        CodexRpc.ServerRequestResponsesByMethod[M],
-        CodexRpc.ServerRequestResponsesByMethod[M]
-      >
-    | undefined => CodexRpc.SERVER_REQUEST_RESPONSES[method] as never;
+    const getServerRequestResponseSchema = <M extends CodexRpc.ServerRequestMethod>(
+      method: M,
+    ):
+      | Schema.Codec<
+          CodexRpc.ServerRequestResponsesByMethod[M],
+          CodexRpc.ServerRequestResponsesByMethod[M]
+        >
+      | undefined => CodexRpc.SERVER_REQUEST_RESPONSES[method] as never;
 
-  const getClientRequestParamSchema = <M extends CodexRpc.ClientRequestMethod>(
-    method: M,
-  ):
-    | Schema.Codec<CodexRpc.ClientRequestParamsByMethod[M], CodexRpc.ClientRequestParamsByMethod[M]>
-    | undefined => CodexRpc.CLIENT_REQUEST_PARAMS[method] as never;
+    const getClientRequestParamSchema = <M extends CodexRpc.ClientRequestMethod>(
+      method: M,
+    ):
+      | Schema.Codec<
+          CodexRpc.ClientRequestParamsByMethod[M],
+          CodexRpc.ClientRequestParamsByMethod[M]
+        >
+      | undefined => CodexRpc.CLIENT_REQUEST_PARAMS[method] as never;
 
-  const getClientRequestResponseSchema = <M extends CodexRpc.ClientRequestMethod>(
-    method: M,
-  ):
-    | Schema.Codec<
-        CodexRpc.ClientRequestResponsesByMethod[M],
-        CodexRpc.ClientRequestResponsesByMethod[M]
-      >
-    | undefined => CodexRpc.CLIENT_REQUEST_RESPONSES[method] as never;
-
-  const getClientNotificationParamSchema = <M extends CodexRpc.ClientNotificationMethod>(
-    method: M,
-  ):
-    | Schema.Codec<
-        CodexRpc.ClientNotificationParamsByMethod[M],
-        CodexRpc.ClientNotificationParamsByMethod[M]
-      >
-    | undefined => CodexRpc.CLIENT_NOTIFICATION_PARAMS[method] as never;
-
-  const dispatchNotification = (
-    notification: CodexProtocol.CodexAppServerIncomingNotification,
-  ): Effect.Effect<void, never> => {
-    const schema =
-      notification.method in CodexRpc.SERVER_NOTIFICATION_PARAMS
-        ? CodexRpc.SERVER_NOTIFICATION_PARAMS[
-            notification.method as CodexRpc.ServerNotificationMethod
-          ]
-        : undefined;
-    const handlers = notificationHandlers.get(notification.method) ?? [];
-
-    if (schema) {
-      return decodeNotificationPayload(notification.method, schema, notification.params).pipe(
-        Effect.flatMap((decoded) =>
-          Effect.forEach(handlers, (handler) => handler(decoded), { discard: true }),
-        ),
-        Effect.catch(() => Effect.void),
-      );
-    }
-
-    return unknownNotificationHandler
-      ? unknownNotificationHandler(notification.method, notification.params).pipe(
-          Effect.catch(() => Effect.void),
-        )
-      : Effect.void;
-  };
-
-  const dispatchRequest = (
-    request: CodexProtocol.CodexAppServerIncomingRequest,
-  ): Effect.Effect<unknown, CodexError.CodexAppServerError> => {
-    if (request.method in CodexRpc.SERVER_REQUEST_PARAMS) {
-      const method = request.method as CodexRpc.ServerRequestMethod;
-      const payloadSchema = getServerRequestParamSchema(method);
-      const responseSchema = getServerRequestResponseSchema(method);
-      const handler = requestHandlers.get(method);
-
-      return decodeOptionalPayload(method, payloadSchema, request.params).pipe(
-        Effect.flatMap((decoded) => runHandler(handler, decoded, method)),
-        Effect.flatMap((result) => encodeOptionalPayload(method, responseSchema, result)),
-      );
-    }
-
-    return unknownRequestHandler
-      ? unknownRequestHandler(request.method, request.params)
-      : Effect.fail(CodexError.CodexAppServerRequestError.methodNotFound(request.method));
-  };
-
-  const transport = yield* CodexProtocol.makeCodexAppServerPatchedProtocol({
-    stdio,
-    ...(terminationError ? { terminationError } : {}),
-    ...(options.logIncoming !== undefined ? { logIncoming: options.logIncoming } : {}),
-    ...(options.logOutgoing !== undefined ? { logOutgoing: options.logOutgoing } : {}),
-    ...(options.logger ? { logger: options.logger } : {}),
-    onNotification: dispatchNotification,
-    onRequest: dispatchRequest,
-  });
-
-  const request = <M extends CodexRpc.ClientRequestMethod>(
-    method: M,
-    payload: CodexRpc.ClientRequestParamsByMethod[M],
-  ): Effect.Effect<CodexRpc.ClientRequestResponsesByMethod[M], CodexError.CodexAppServerError> =>
-    encodeOptionalPayload(method, getClientRequestParamSchema(method), payload).pipe(
-      Effect.flatMap((encoded) => transport.request(method, encoded)),
-      Effect.flatMap(
-        (
-          raw,
-        ): Effect.Effect<
+    const getClientRequestResponseSchema = <M extends CodexRpc.ClientRequestMethod>(
+      method: M,
+    ):
+      | Schema.Codec<
           CodexRpc.ClientRequestResponsesByMethod[M],
-          CodexError.CodexAppServerError
-        > => decodeOptionalPayload(method, getClientRequestResponseSchema(method), raw),
-      ),
-    );
+          CodexRpc.ClientRequestResponsesByMethod[M]
+        >
+      | undefined => CodexRpc.CLIENT_REQUEST_RESPONSES[method] as never;
 
-  const notify = <M extends CodexRpc.ClientNotificationMethod>(
-    method: M,
-    payload: CodexRpc.ClientNotificationParamsByMethod[M],
-  ) =>
-    encodeOptionalPayload(method, getClientNotificationParamSchema(method), payload).pipe(
-      Effect.flatMap((encoded) => transport.notify(method, encoded)),
-    );
+    const getClientNotificationParamSchema = <M extends CodexRpc.ClientNotificationMethod>(
+      method: M,
+    ):
+      | Schema.Codec<
+          CodexRpc.ClientNotificationParamsByMethod[M],
+          CodexRpc.ClientNotificationParamsByMethod[M]
+        >
+      | undefined => CodexRpc.CLIENT_NOTIFICATION_PARAMS[method] as never;
 
-  return CodexAppServerClient.of({
-    raw: {
-      notifications: transport.incomingNotifications,
-      requests: transport.incomingRequests,
-      request: transport.request,
-      notify: transport.notify,
-      respond: transport.respond,
-      respondError: transport.respondError,
-    },
-    request,
-    notify,
-    handleServerRequest: (method, handler) =>
-      Effect.sync(() => {
-        requestHandlers.set(method, handler as ServerRequestHandler);
-      }),
-    handleServerNotification: (method, handler) =>
-      Effect.sync(() => {
-        const current = notificationHandlers.get(method) ?? [];
-        current.push(handler as ServerNotificationHandler);
-        notificationHandlers.set(method, current);
-      }),
-    handleUnknownServerRequest: (handler) =>
-      Effect.sync(() => {
-        unknownRequestHandler = handler;
-      }),
-    handleUnknownServerNotification: (handler) =>
-      Effect.sync(() => {
-        unknownNotificationHandler = handler;
-      }),
-  });
-});
+    const dispatchNotification = (
+      notification: CodexProtocol.CodexAppServerIncomingNotification,
+    ): Effect.Effect<void, never> => {
+      const schema =
+        notification.method in CodexRpc.SERVER_NOTIFICATION_PARAMS
+          ? CodexRpc.SERVER_NOTIFICATION_PARAMS[
+              notification.method as CodexRpc.ServerNotificationMethod
+            ]
+          : undefined;
+      const handlers = notificationHandlers.get(notification.method) ?? [];
+
+      if (schema) {
+        return decodeNotificationPayload(notification.method, schema, notification.params).pipe(
+          Effect.flatMap((decoded) =>
+            Effect.forEach(handlers, (handler) => handler(decoded), { discard: true }),
+          ),
+          Effect.catch(() => Effect.void),
+        );
+      }
+
+      return unknownNotificationHandler
+        ? unknownNotificationHandler(notification.method, notification.params).pipe(
+            Effect.catch(() => Effect.void),
+          )
+        : Effect.void;
+    };
+
+    const dispatchRequest = (
+      request: CodexProtocol.CodexAppServerIncomingRequest,
+    ): Effect.Effect<unknown, CodexError.CodexAppServerError> => {
+      if (request.method in CodexRpc.SERVER_REQUEST_PARAMS) {
+        const method = request.method as CodexRpc.ServerRequestMethod;
+        const payloadSchema = getServerRequestParamSchema(method);
+        const responseSchema = getServerRequestResponseSchema(method);
+        const handler = requestHandlers.get(method);
+
+        return decodeOptionalPayload(method, payloadSchema, request.params).pipe(
+          Effect.flatMap((decoded) => runHandler(handler, decoded, method)),
+          Effect.flatMap((result) => encodeOptionalPayload(method, responseSchema, result)),
+        );
+      }
+
+      return unknownRequestHandler
+        ? unknownRequestHandler(request.method, request.params)
+        : Effect.fail(CodexError.CodexAppServerRequestError.methodNotFound(request.method));
+    };
+
+    const transport = yield* CodexProtocol.makeCodexAppServerPatchedProtocol({
+      stdio,
+      ...(terminationError ? { terminationError } : {}),
+      ...(options.logIncoming !== undefined ? { logIncoming: options.logIncoming } : {}),
+      ...(options.logOutgoing !== undefined ? { logOutgoing: options.logOutgoing } : {}),
+      ...(options.logger ? { logger: options.logger } : {}),
+      onNotification: dispatchNotification,
+      onRequest: dispatchRequest,
+    });
+
+    const request = <M extends CodexRpc.ClientRequestMethod>(
+      method: M,
+      payload: CodexRpc.ClientRequestParamsByMethod[M],
+    ): Effect.Effect<CodexRpc.ClientRequestResponsesByMethod[M], CodexError.CodexAppServerError> =>
+      encodeOptionalPayload(method, getClientRequestParamSchema(method), payload).pipe(
+        Effect.flatMap((encoded) => transport.request(method, encoded)),
+        Effect.flatMap(
+          (
+            raw,
+          ): Effect.Effect<
+            CodexRpc.ClientRequestResponsesByMethod[M],
+            CodexError.CodexAppServerError
+          > => decodeOptionalPayload(method, getClientRequestResponseSchema(method), raw),
+        ),
+      );
+
+    const notify = <M extends CodexRpc.ClientNotificationMethod>(
+      method: M,
+      payload: CodexRpc.ClientNotificationParamsByMethod[M],
+    ) =>
+      encodeOptionalPayload(method, getClientNotificationParamSchema(method), payload).pipe(
+        Effect.flatMap((encoded) => transport.notify(method, encoded)),
+      );
+
+    return CodexAppServerClient.of({
+      raw: {
+        notifications: transport.incomingNotifications,
+        requests: transport.incomingRequests,
+        request: transport.request,
+        notify: transport.notify,
+        respond: transport.respond,
+        respondError: transport.respondError,
+      },
+      request,
+      notify,
+      handleServerRequest: (method, handler) =>
+        Effect.sync(() => {
+          requestHandlers.set(method, handler as ServerRequestHandler);
+        }),
+      handleServerNotification: (method, handler) =>
+        Effect.sync(() => {
+          const current = notificationHandlers.get(method) ?? [];
+          current.push(handler as ServerNotificationHandler);
+          notificationHandlers.set(method, current);
+        }),
+      handleUnknownServerRequest: (handler) =>
+        Effect.sync(() => {
+          unknownRequestHandler = handler;
+        }),
+      handleUnknownServerNotification: (handler) =>
+        Effect.sync(() => {
+          unknownNotificationHandler = handler;
+        }),
+    });
+  },
+);
 
 export const layer = (
   stdio: Stdio.Stdio,
@@ -262,7 +273,7 @@ export const layerChildProcess = (
   Layer.effect(CodexAppServerClient, makeChildProcessClient(handle, options));
 
 const makeChildProcessClient = Effect.fn(
-  "effect-codex-app-server/CodexAppServerClient.makeChildProcessClient",
+  "@vetra-studio/effect-codex-app-server/CodexAppServerClient.makeChildProcessClient",
 )(function* (handle: ChildProcessSpawner.ChildProcessHandle, options: CodexAppServerClientOptions) {
   yield* Stream.runDrain(handle.stderr).pipe(Effect.ignore, Effect.forkScoped);
   return yield* make(makeChildStdio(handle), options, makeTerminationError(handle));

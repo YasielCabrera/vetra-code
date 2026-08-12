@@ -36,29 +36,29 @@ const STANDARD_THEME_PREVIEW_COLORS: Record<
   Readonly<Record<ThemePreviewRole, string>>
 > = {
   light: {
-    sidebar: "#fafafa",
-    canvas: "#fcfcfc",
+    sidebar: "#f7f8fa",
+    canvas: "#f6faf7",
     surface: "#ffffff",
-    accentSurface: "#f4f4f5",
-    accent: "#f4f4f5",
-    messageSurface: "#e4e4e7",
-    messageAction: "#4f46e5",
+    accentSurface: "#e9f7ee",
+    accent: "#04c161",
+    messageSurface: "#e2f7ea",
+    messageAction: "#04c161",
   },
   dark: {
-    sidebar: "#0f0f10",
-    canvas: "#0a0a0a",
-    surface: "#121212",
-    accentSurface: "#27272a",
-    accent: "#1c1c1f",
-    messageSurface: "#27272a",
-    messageAction: "#8b9cff",
+    sidebar: "#09110d",
+    canvas: "#0b1510",
+    surface: "#111d16",
+    accentSurface: "#183423",
+    accent: "#20d978",
+    messageSurface: "#173522",
+    messageAction: "#20d978",
   },
 };
 
 export const STANDARD_THEME_CARDS: ReadonlyArray<ThemeCardDefinition> = [
   {
     id: "default",
-    label: "T3 Code",
+    label: "Vetra Studio",
     previews: (["light", "dark"] as const).map((mode) => ({
       mode,
       colors: STANDARD_THEME_PREVIEW_COLORS[mode],

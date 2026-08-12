@@ -1,4 +1,4 @@
-import type { ProjectId } from "@t3tools/contracts";
+import type { ProjectId } from "@vetra-studio/contracts";
 import { CircleIcon } from "lucide-react";
 import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vite-plus/test";
@@ -83,7 +83,7 @@ describe("pull request filters menu", () => {
     const projectId = "project-1" as ProjectId;
     const onProject = vi.fn();
     const view = menu({
-      projects: [{ id: projectId, title: "T3 Code", workspaceRoot: "/work/t3code" }],
+      projects: [{ id: projectId, title: "Vetra Studio", workspaceRoot: "/work/vetra-studio" }],
       projectId,
       onProject,
     });

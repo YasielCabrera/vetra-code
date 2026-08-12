@@ -3,13 +3,21 @@ import type {
   DesktopAppStageLabel,
   DesktopRuntimeArch,
   DesktopRuntimeInfo,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
+import {
+  PRODUCT_DESKTOP_APP_ID,
+  PRODUCT_DESKTOP_DEV_APP_ID,
+  PRODUCT_DESKTOP_DEV_USER_DATA_DIRECTORY_NAME,
+  PRODUCT_DESKTOP_USER_DATA_DIRECTORY_NAME,
+  PRODUCT_NAME,
+  PRODUCT_SLUG,
+} from "@vetra-studio/shared/productIdentity";
 
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopConfig from "./DesktopConfig.ts";
@@ -57,7 +65,7 @@ export class DesktopEnvironment extends Context.Service<
     readonly preloadPath: string;
     readonly appUpdateYmlPath: string;
     readonly devServerUrl: Option.Option<URL>;
-    readonly devRemoteT3ServerEntryPath: Option.Option<string>;
+    readonly devRemoteServerEntryPath: Option.Option<string>;
     readonly configuredBackendPort: Option.Option<number>;
     readonly commitHashOverride: Option.Option<string>;
     readonly otlpTracesUrl: Option.Option<string>;
@@ -77,9 +85,9 @@ export class DesktopEnvironment extends Context.Service<
     readonly resolveResourcePathCandidates: (fileName: string) => readonly string[];
     readonly developmentDockIconPath: string;
   }
->()("@t3tools/desktop/app/DesktopEnvironment") {}
+>()("@vetra-studio/desktop/app/DesktopEnvironment") {}
 
-const APP_BASE_NAME = "T3 Code";
+const APP_BASE_NAME = PRODUCT_NAME;
 
 function resolveDesktopAppStageLabel(input: {
   readonly isDevelopment: boolean;
@@ -153,7 +161,7 @@ const make = Effect.fn("desktop.environment.make")(function* (
   const baseDir = resolveDesktopBaseDir({
     homeDirectory,
     joinPath: path.join,
-    t3Home: config.t3Home,
+    vetraHome: config.vetraHome,
   });
   const rootDir = path.resolve(input.dirname, "../../..");
   const appRoot = input.isPackaged ? input.appPath : rootDir;
@@ -166,10 +174,14 @@ const make = Effect.fn("desktop.environment.make")(function* (
     baseDir,
     isDevelopment,
     joinPath: path.join,
-    t3Home: config.t3Home,
+    vetraHome: config.vetraHome,
   });
-  const userDataDirName = isDevelopment ? "t3code-dev" : "t3code";
-  const legacyUserDataDirName = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
+  const userDataDirName = isDevelopment
+    ? PRODUCT_DESKTOP_DEV_USER_DATA_DIRECTORY_NAME
+    : PRODUCT_DESKTOP_USER_DATA_DIRECTORY_NAME;
+  // No Vetra release predates this identity boundary. Keeping this equal to the
+  // current directory prevents the migration path from ever reading Vetra data.
+  const legacyUserDataDirName = userDataDirName;
   const linuxApplicationsDir = path.join(
     Option.getOrElse(config.xdgDataHome, () => path.join(homeDirectory, ".local", "share")),
     "applications",
@@ -205,7 +217,7 @@ const make = Effect.fn("desktop.environment.make")(function* (
       ? path.join(resourcesPath, "app-update.yml")
       : path.join(input.appPath, "dev-app-update.yml"),
     devServerUrl,
-    devRemoteT3ServerEntryPath: config.devRemoteT3ServerEntryPath,
+    devRemoteServerEntryPath: config.devRemoteServerEntryPath,
     configuredBackendPort: config.configuredBackendPort,
     commitHashOverride: config.commitHashOverride,
     otlpTracesUrl: config.otlpTracesUrl,
@@ -213,10 +225,12 @@ const make = Effect.fn("desktop.environment.make")(function* (
     branding,
     displayName,
     appUserModelId: Option.getOrElse(config.appUserModelIdOverride, () =>
-      isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code",
+      isDevelopment ? PRODUCT_DESKTOP_DEV_APP_ID : PRODUCT_DESKTOP_APP_ID,
     ),
-    linuxDesktopEntryName: isDevelopment ? "t3code-dev.desktop" : "t3code.desktop",
-    linuxWmClass: isDevelopment ? "t3code-dev" : "t3code",
+    linuxDesktopEntryName: isDevelopment
+      ? `${PRODUCT_SLUG}-dev.desktop`
+      : `${PRODUCT_SLUG}.desktop`,
+    linuxWmClass: isDevelopment ? `${PRODUCT_SLUG}-dev` : PRODUCT_SLUG,
     linuxApplicationsDir,
     appImagePath: config.appImagePath,
     userDataDirName,

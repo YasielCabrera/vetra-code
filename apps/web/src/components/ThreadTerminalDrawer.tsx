@@ -2,8 +2,8 @@ import { useAtomValue } from "@effect/atom-react";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
-import { type TerminalSessionState } from "@t3tools/client-runtime/state/terminal";
+} from "@vetra-studio/client-runtime/state/runtime";
+import { type TerminalSessionState } from "@vetra-studio/client-runtime/state/terminal";
 import {
   Plus,
   SquareSplitHorizontal,
@@ -16,8 +16,8 @@ import {
   type ResolvedKeybindingsConfig,
   type ScopedThreadRef,
   type ThreadId,
-} from "@t3tools/contracts";
-import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
+} from "@vetra-studio/contracts";
+import { getTerminalLabel } from "@vetra-studio/shared/terminalLabels";
 import * as Schema from "effect/Schema";
 import {
   type PointerEvent as ReactPointerEvent,

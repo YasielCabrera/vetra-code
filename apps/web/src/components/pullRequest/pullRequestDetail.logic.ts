@@ -5,7 +5,7 @@ import type {
   PullRequestDetailView,
   PullRequestReviewThread,
   PullRequestState,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
 
 import { inferReviewCommentFenceLanguage, type ReviewCommentContext } from "~/reviewCommentContext";
 

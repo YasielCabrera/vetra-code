@@ -10,6 +10,7 @@ import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawne
 import * as ElectronProtocol from "../electron/ElectronProtocol.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 import { makeComponentLogger } from "./DesktopObservability.ts";
+import { PRODUCT_SLUG } from "@vetra-studio/shared/productIdentity";
 
 // Linux ships as an AppImage, so the .desktop entry users end up with is
 // created by whatever integration tool they use (AppImageLauncher names it
@@ -20,7 +21,7 @@ import { makeComponentLogger } from "./DesktopObservability.ts";
 // our own handler entry pointing at the current AppImage and claim the
 // scheme default via xdg-mime, exactly what the file manager's "set as
 // default" checkbox would record in mimeapps.list.
-export const URL_HANDLER_DESKTOP_ENTRY_NAME = "t3code-url-handler.desktop";
+export const URL_HANDLER_DESKTOP_ENTRY_NAME = `${PRODUCT_SLUG}-url-handler.desktop`;
 
 const { logInfo, logWarning } = makeComponentLogger("desktop-linux-url-handler");
 
@@ -90,7 +91,7 @@ export class DesktopLinuxUrlHandler extends Context.Service<
   {
     readonly register: Effect.Effect<void>;
   }
->()("@t3tools/desktop/app/DesktopLinuxUrlHandler") {}
+>()("@vetra-studio/desktop/app/DesktopLinuxUrlHandler") {}
 
 export const make = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;

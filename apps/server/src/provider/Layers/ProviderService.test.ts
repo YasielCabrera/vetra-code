@@ -9,7 +9,7 @@ import type {
   ProviderSendTurnInput,
   ProviderSession,
   ProviderTurnStartResult,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
 import {
   ApprovalRequestId,
   EventId,
@@ -18,8 +18,8 @@ import {
   ProviderSessionStartInput,
   ThreadId,
   TurnId,
-} from "@t3tools/contracts";
-import { createModelSelection } from "@t3tools/shared/model";
+} from "@vetra-studio/contracts";
+import { createModelSelection } from "@vetra-studio/shared/model";
 import { it, assert, vi } from "@effect/vitest";
 
 import * as Effect from "effect/Effect";
@@ -654,7 +654,7 @@ it.effect("ProviderServiceLive writes canonical events to the emitting thread se
 
 it.effect("ProviderServiceLive keeps persisted resumable sessions on startup", () =>
   Effect.gen(function* () {
-    const tempDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-provider-service-"));
+    const tempDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "vetra-provider-service-"));
     const dbPath = NodePath.join(tempDir, "orchestration.sqlite");
 
     const codex = makeFakeCodexAdapter();
@@ -726,7 +726,7 @@ it.effect(
   () =>
     Effect.gen(function* () {
       const tempDir = NodeFS.mkdtempSync(
-        NodePath.join(NodeOS.tmpdir(), "t3-provider-service-restart-"),
+        NodePath.join(NodeOS.tmpdir(), "vetra-provider-service-restart-"),
       );
       const dbPath = NodePath.join(tempDir, "orchestration.sqlite");
       const persistenceLayer = makeSqlitePersistenceLive(dbPath);
@@ -1347,7 +1347,7 @@ routing.layer("ProviderServiceLive routing", (it) => {
   it.effect("reuses persisted resume cursor when startSession is called after a restart", () =>
     Effect.gen(function* () {
       const tempDir = NodeFS.mkdtempSync(
-        NodePath.join(NodeOS.tmpdir(), "t3-provider-service-start-"),
+        NodePath.join(NodeOS.tmpdir(), "vetra-provider-service-start-"),
       );
       const dbPath = NodePath.join(tempDir, "orchestration.sqlite");
       const persistenceLayer = makeSqlitePersistenceLive(dbPath);
@@ -1455,7 +1455,7 @@ routing.layer("ProviderServiceLive routing", (it) => {
     () =>
       Effect.gen(function* () {
         const tempDir = NodeFS.mkdtempSync(
-          NodePath.join(NodeOS.tmpdir(), "t3-provider-service-cwd-"),
+          NodePath.join(NodeOS.tmpdir(), "vetra-provider-service-cwd-"),
         );
         const dbPath = NodePath.join(tempDir, "orchestration.sqlite");
         const persistenceLayer = makeSqlitePersistenceLive(dbPath);
@@ -1763,7 +1763,7 @@ fanout.layer("ProviderServiceLive fanout", (it) => {
       const snapshots = yield* Metric.snapshot;
 
       assert.equal(
-        hasMetricSnapshot(snapshots, "t3_provider_turns_total", {
+        hasMetricSnapshot(snapshots, "vetra_provider_turns_total", {
           provider: ProviderDriverKind.make("claudeAgent"),
           operation: "interrupt",
           outcome: "success",
@@ -1771,7 +1771,7 @@ fanout.layer("ProviderServiceLive fanout", (it) => {
         true,
       );
       assert.equal(
-        hasMetricSnapshot(snapshots, "t3_provider_turns_total", {
+        hasMetricSnapshot(snapshots, "vetra_provider_turns_total", {
           provider: ProviderDriverKind.make("claudeAgent"),
           operation: "approval-response",
           outcome: "success",
@@ -1779,7 +1779,7 @@ fanout.layer("ProviderServiceLive fanout", (it) => {
         true,
       );
       assert.equal(
-        hasMetricSnapshot(snapshots, "t3_provider_turns_total", {
+        hasMetricSnapshot(snapshots, "vetra_provider_turns_total", {
           provider: ProviderDriverKind.make("claudeAgent"),
           operation: "user-input-response",
           outcome: "success",
@@ -1787,7 +1787,7 @@ fanout.layer("ProviderServiceLive fanout", (it) => {
         true,
       );
       assert.equal(
-        hasMetricSnapshot(snapshots, "t3_provider_turns_total", {
+        hasMetricSnapshot(snapshots, "vetra_provider_turns_total", {
           provider: ProviderDriverKind.make("claudeAgent"),
           operation: "rollback",
           outcome: "success",
@@ -1795,7 +1795,7 @@ fanout.layer("ProviderServiceLive fanout", (it) => {
         true,
       );
       assert.equal(
-        hasMetricSnapshot(snapshots, "t3_provider_sessions_total", {
+        hasMetricSnapshot(snapshots, "vetra_provider_sessions_total", {
           provider: ProviderDriverKind.make("claudeAgent"),
           operation: "stop",
           outcome: "success",
@@ -1828,7 +1828,7 @@ fanout.layer("ProviderServiceLive fanout", (it) => {
         const snapshots = yield* Metric.snapshot;
 
         assert.equal(
-          hasMetricSnapshot(snapshots, "t3_provider_turns_total", {
+          hasMetricSnapshot(snapshots, "vetra_provider_turns_total", {
             provider: ProviderDriverKind.make("claudeAgent"),
             operation: "send",
             outcome: "success",
@@ -1836,7 +1836,7 @@ fanout.layer("ProviderServiceLive fanout", (it) => {
           true,
         );
         assert.equal(
-          hasMetricSnapshot(snapshots, "t3_provider_turn_duration", {
+          hasMetricSnapshot(snapshots, "vetra_provider_turn_duration", {
             provider: ProviderDriverKind.make("claudeAgent"),
             operation: "send",
           }),

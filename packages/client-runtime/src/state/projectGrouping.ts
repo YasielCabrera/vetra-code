@@ -3,8 +3,8 @@ import type {
   EnvironmentId,
   ScopedProjectRef,
   SidebarProjectGroupingMode,
-} from "@t3tools/contracts";
-import type { ClientSettings } from "@t3tools/contracts/settings";
+} from "@vetra-studio/contracts";
+import type { ClientSettings } from "@vetra-studio/contracts/settings";
 
 import type { EnvironmentProject } from "./models.ts";
 import { normalizeProjectPathForComparison } from "./projects.ts";

@@ -20,8 +20,8 @@ import type {
   VcsStatusRemoteResult,
   VcsStatusResult,
   VcsStatusStreamEvent,
-} from "@t3tools/contracts";
-import { GitManagerError } from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
+import { GitManagerError } from "@vetra-studio/contracts";
 
 import * as VcsStatusBroadcaster from "./VcsStatusBroadcaster.ts";
 import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
@@ -55,7 +55,7 @@ const remoteStatusWithPr: VcsStatusRemoteResult = {
   pr: {
     number: 2978,
     title: "[codex] Rewrite client connection architecture",
-    url: "https://github.com/pingdotgg/t3code/pull/2978",
+    url: "https://github.com/vetra-studio/vetra/pull/2978",
     baseRef: "main",
     headRef: "codex/connection-state-audit",
     state: "open",
@@ -359,10 +359,10 @@ describe("VcsStatusBroadcaster", () => {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const realDir = yield* fileSystem.makeTempDirectoryScoped({
-        prefix: "t3-vcs-status-real-",
+        prefix: "vetra-vcs-status-real-",
       });
       const linkParent = yield* fileSystem.makeTempDirectoryScoped({
-        prefix: "t3-vcs-status-link-",
+        prefix: "vetra-vcs-status-link-",
       });
       const linkDir = path.join(linkParent, "repo-link");
       yield* fileSystem.symlink(realDir, linkDir);

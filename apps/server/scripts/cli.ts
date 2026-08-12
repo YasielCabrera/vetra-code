@@ -16,9 +16,9 @@ import {
   resolveWebIconOverrides,
 } from "../../../scripts/lib/brand-assets.ts";
 import { resolveCatalogDependencies } from "../../../scripts/lib/resolve-catalog.ts";
-import { fromJsonStringPretty } from "@t3tools/shared/schemaJson";
-import { fromYaml } from "@t3tools/shared/schemaYaml";
-import { resolveSpawnCommand } from "@t3tools/shared/shell";
+import { fromJsonStringPretty } from "@vetra-studio/shared/schemaJson";
+import { fromYaml } from "@vetra-studio/shared/schemaYaml";
+import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
 import serverPackageJson from "../package.json" with { type: "json" };
 import {
   ServerCliBuildAssetMissingError,
@@ -31,11 +31,6 @@ import {
 
 interface PackageJson {
   name: string;
-  repository: {
-    type: string;
-    url: string;
-    directory: string;
-  };
   bin: Record<string, string>;
   type: string;
   version: string;
@@ -190,7 +185,7 @@ const createVpPmPublishArgs = (config: PublishCommandConfig): ReadonlyArray<stri
   const args = [
     "publish",
     "--filter",
-    "t3",
+    "vetra",
     "--access",
     config.access,
     "--tag",
@@ -243,7 +238,6 @@ const publishCmd = Command.make(
           const workspaceOverrides = workspaceConfig.overrides ?? {};
           const pkg: PackageJson = {
             name: serverPackageJson.name,
-            repository: serverPackageJson.repository,
             bin: serverPackageJson.bin,
             type: serverPackageJson.type,
             version,
@@ -308,7 +302,7 @@ const publishCmd = Command.make(
 // ---------------------------------------------------------------------------
 
 const cli = Command.make("cli").pipe(
-  Command.withDescription("T3 server build & publish CLI."),
+  Command.withDescription("Vetra server build & publish CLI."),
   Command.withSubcommands([buildCmd, publishCmd]),
 );
 

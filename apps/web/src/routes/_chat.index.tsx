@@ -1,20 +1,17 @@
-import { scopeProjectRef } from "@t3tools/client-runtime/environment";
+import { useAtomValue } from "@effect/atom-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { LinkIcon, PlusIcon, RotateCcwIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { openCommandPalette } from "../commandPaletteBus";
-import { sortScopedProjectsForSidebar } from "../components/Sidebar.logic";
+import ChatView from "../components/ChatView";
 import { Button } from "../components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
 import { SidebarInset } from "../components/ui/sidebar";
-import { useNewThreadHandler } from "../hooks/useHandleNewThread";
-import {
-  useAllEnvironmentShellsBootstrapped,
-  useProjects,
-  useThreadShells,
-} from "../state/entities";
-import { useEnvironments } from "../state/environments";
+import { useDraftPromotionNavigation } from "../hooks/useDraftPromotionNavigation";
+import { ensureRootProjectDraft, ROOT_PROJECT_DRAFT_ID } from "../lib/rootProjectDraft";
+import { useAllEnvironmentShellsBootstrapped } from "../state/entities";
+import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
+import { primaryServerSettingsAtom } from "../state/server";
 import { APP_DISPLAY_NAME } from "~/branding";
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
 import { cn } from "~/lib/utils";
@@ -31,66 +28,80 @@ function ChatIndexRouteView() {
   return <IndexDraftLanding />;
 }
 
-/**
- * Landing on the index route drops straight into a draft thread for the most
- * recently active project, so the first screen is a prompt instead of a dead
- * end. Falls back to an add-project hero when no project exists yet.
- */
 function IndexDraftLanding() {
-  const projects = useProjects();
-  const threads = useThreadShells();
   const bootstrapped = useAllEnvironmentShellsBootstrapped();
-  const handleNewThread = useNewThreadHandler();
-  const startingRef = useRef(false);
+  const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const primaryServerSettings = useAtomValue(primaryServerSettingsAtom);
+  const { draftSession } = useDraftPromotionNavigation(ROOT_PROJECT_DRAFT_ID);
   const [startState, setStartState] = useState({ failed: false, retryRequest: 0 });
 
-  const mostRecentProject = useMemo(
-    () =>
-      bootstrapped
-        ? (sortScopedProjectsForSidebar(projects, threads, "updated_at")[0] ?? null)
-        : null,
-    [bootstrapped, projects, threads],
-  );
-
   useEffect(() => {
-    if (mostRecentProject === null || startingRef.current) {
+    if (!bootstrapped || primaryEnvironmentId === null || draftSession) {
       return;
     }
-    startingRef.current = true;
-    void handleNewThread(scopeProjectRef(mostRecentProject.environmentId, mostRecentProject.id), {
-      replace: true,
-    }).catch(() => {
-      startingRef.current = false;
+    try {
+      ensureRootProjectDraft({
+        environmentId: primaryEnvironmentId,
+        defaultParentDirectory: primaryServerSettings.addProjectBaseDirectory,
+      });
+    } catch {
       setStartState((state) => ({ ...state, failed: true }));
-    });
-  }, [handleNewThread, mostRecentProject, startState.retryRequest]);
+    }
+  }, [
+    bootstrapped,
+    draftSession,
+    primaryEnvironmentId,
+    primaryServerSettings.addProjectBaseDirectory,
+    startState.retryRequest,
+  ]);
 
   if (!bootstrapped) {
     return null;
   }
-  if (mostRecentProject !== null) {
-    return startState.failed ? (
+  if (startState.failed || primaryEnvironmentId === null) {
+    return (
       <DraftStartError
+        title="Couldn’t start a new project"
+        description="Try opening the project draft again. Nothing has been created on disk."
         onRetry={() => {
-          setStartState((state) => ({
-            failed: false,
-            retryRequest: state.retryRequest + 1,
-          }));
+          setStartState((state) => ({ failed: false, retryRequest: state.retryRequest + 1 }));
         }}
       />
-    ) : null;
+    );
   }
-  return <NoProjectsHero />;
+  if (!draftSession) {
+    return null;
+  }
+
+  return (
+    <SidebarInset className="h-svh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground md:h-dvh">
+      <ChatView
+        draftId={ROOT_PROJECT_DRAFT_ID}
+        environmentId={draftSession.environmentId}
+        threadId={draftSession.threadId}
+        routeKind="draft"
+        forceExpandedMobileComposer
+      />
+    </SidebarInset>
+  );
 }
 
-function DraftStartError({ onRetry }: { readonly onRetry: () => void }) {
+function DraftStartError({
+  onRetry,
+  title = "Couldn’t start a new thread",
+  description = "The project is still available. Try opening the draft again.",
+}: {
+  readonly onRetry: () => void;
+  readonly title?: string;
+  readonly description?: string;
+}) {
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
       <Empty className="flex-1">
         <EmptyHeader className="max-w-md">
-          <EmptyTitle className="text-foreground text-xl">Couldn’t start a new thread</EmptyTitle>
+          <EmptyTitle className="text-foreground text-xl">{title}</EmptyTitle>
           <EmptyDescription className="mt-2 text-sm text-muted-foreground/78">
-            The project is still available. Try opening the draft again.
+            {description}
           </EmptyDescription>
           <div className="mt-5 flex justify-center">
             <Button size="sm" onClick={onRetry}>
@@ -100,35 +111,6 @@ function DraftStartError({ onRetry }: { readonly onRetry: () => void }) {
           </div>
         </EmptyHeader>
       </Empty>
-    </SidebarInset>
-  );
-}
-
-function NoProjectsHero() {
-  const openAddProject = useCallback(() => openCommandPalette({ open: "add-project" }), []);
-
-  return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
-        <Empty className="flex-1">
-          <div className="w-full max-w-lg px-8 py-12">
-            <EmptyHeader className="max-w-none">
-              <EmptyTitle className="text-foreground text-2xl sm:text-3xl">
-                What should we work on?
-              </EmptyTitle>
-              <EmptyDescription className="mt-2 text-sm text-muted-foreground/78">
-                Add a project to start your first thread.
-              </EmptyDescription>
-              <div className="mt-6 flex justify-center">
-                <Button size="sm" onClick={openAddProject}>
-                  <PlusIcon className="size-4" />
-                  Add project
-                </Button>
-              </div>
-            </EmptyHeader>
-          </div>
-        </Empty>
-      </div>
     </SidebarInset>
   );
 }
@@ -167,7 +149,7 @@ function HostedStaticOnboardingState() {
               </EmptyTitle>
               <EmptyDescription className="mt-2 text-sm leading-relaxed text-muted-foreground/78">
                 {cloudEnabled
-                  ? "Sign in to T3 Connect to connect a linked environment through its managed tunnel, or add a reachable backend manually."
+                  ? "Sign in to Vetra Connect to connect a linked environment through its managed tunnel, or add a reachable backend manually."
                   : "Add a reachable backend manually to start working from this browser."}
               </EmptyDescription>
               <div className="mt-6 flex justify-center">

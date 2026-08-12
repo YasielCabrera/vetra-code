@@ -1,20 +1,20 @@
 "use client";
 
-import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
-import { canCreateProjectInEnvironment } from "@t3tools/client-runtime/operations/projects";
-import { connectionStatusText } from "@t3tools/client-runtime/connection";
-import { threadSearchMatchKey } from "@t3tools/client-runtime/state/thread-search";
+import { scopeProjectRef, scopeThreadRef } from "@vetra-studio/client-runtime/environment";
+import { canCreateProjectInEnvironment } from "@vetra-studio/client-runtime/operations/projects";
+import { connectionStatusText } from "@vetra-studio/client-runtime/connection";
+import { threadSearchMatchKey } from "@vetra-studio/client-runtime/state/thread-search";
 import {
   canPreloadBrowsePath,
   createBrowseNavigationCoordinator,
   filterFilesystemBrowseEntries,
   getFilesystemBrowsePath,
-} from "@t3tools/client-runtime/state/filesystem";
+} from "@vetra-studio/client-runtime/state/filesystem";
 import {
   isAtomCommandInterrupted,
   settlePromise,
   squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+} from "@vetra-studio/client-runtime/state/runtime";
 import {
   type DesktopWslState,
   type EnvironmentId,
@@ -24,7 +24,7 @@ import {
   type SourceControlProviderKind,
   type SourceControlRepositoryInfo,
   PRIMARY_LOCAL_ENVIRONMENT_ID,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import * as Option from "effect/Option";
 import {

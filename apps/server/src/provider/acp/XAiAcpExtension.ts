@@ -1,9 +1,9 @@
-import type { ProviderUserInputAnswers, UserInputQuestion } from "@t3tools/contracts";
+import type { ProviderUserInputAnswers, UserInputQuestion } from "@vetra-studio/contracts";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
-import type * as EffectAcpSchema from "effect-acp/schema";
+import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
 
 import type * as AcpSessionRuntime from "./AcpSessionRuntime.ts";
 
@@ -208,7 +208,7 @@ export const makeXAiPromptCompletionRuntime = Effect.fn("makeXAiPromptCompletion
     let nextPromptFallbackId = 0;
     const allocatePromptFallbackId = Effect.sync(() => {
       nextPromptFallbackId += 1;
-      return `t3-xai-prompt-${nextPromptFallbackId}`;
+      return `vetra-xai-prompt-${nextPromptFallbackId}`;
     });
 
     yield* runtime.handleExtNotification(

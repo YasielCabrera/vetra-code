@@ -1,5 +1,5 @@
 {
-  "name": "effect-acp",
+  "name": "@vetra-studio/effect-acp",
   "private": true,
   "type": "module",
   "exports": {

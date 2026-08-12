@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId } from "@vetra-studio/contracts";
 
 export interface VcsStatusTarget {
   readonly environmentId: EnvironmentId | null;

@@ -1,9 +1,9 @@
-import type { ConnectionTarget } from "@t3tools/client-runtime/connection";
+import type { ConnectionTarget } from "@vetra-studio/client-runtime/connection";
 import {
   PRIMARY_LOCAL_ENVIRONMENT_ID,
   type DesktopBridge,
   type DesktopEnvironmentBootstrap,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
 
 /**
  * Desktop-local secondary backends (e.g. a parallel WSL backend) are registered

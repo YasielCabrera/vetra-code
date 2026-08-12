@@ -1,14 +1,10 @@
 {
-  "name": "t3",
+  "name": "@vetra-studio/server",
   "version": "0.0.33",
+  "private": true,
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/pingdotgg/t3code",
-    "directory": "apps/server"
-  },
   "bin": {
-    "t3": "./dist/bin.mjs"
+    "vetra": "./dist/bin.mjs"
   },
   "files": [
     "dist"
@@ -36,14 +32,14 @@
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
-    "@t3tools/tailscale": "workspace:*",
-    "@t3tools/web": "workspace:*",
     "@types/bun": "1.3.14",
     "@types/node": "catalog:",
-    "effect-acp": "workspace:*",
-    "effect-codex-app-server": "workspace:*",
+    "@vetra-studio/contracts": "workspace:*",
+    "@vetra-studio/effect-acp": "workspace:*",
+    "@vetra-studio/effect-codex-app-server": "workspace:*",
+    "@vetra-studio/shared": "workspace:*",
+    "@vetra-studio/tailscale": "workspace:*",
+    "@vetra-studio/web": "workspace:*",
     "vite-plus": "catalog:"
   },
   "engines": {

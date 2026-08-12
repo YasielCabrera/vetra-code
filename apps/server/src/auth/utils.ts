@@ -2,13 +2,12 @@ import type {
   AuthClientMetadata,
   AuthClientMetadataDeviceType,
   AuthClientPresentationMetadata,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
+import { PRODUCT_SESSION_COOKIE_NAME } from "@vetra-studio/shared/productIdentity";
 import type * as HttpServerRequest from "effect/unstable/http/HttpServerRequest";
 import * as NodeCrypto from "node:crypto";
 import * as Encoding from "effect/Encoding";
 import * as Result from "effect/Result";
-
-const SESSION_COOKIE_NAME = "t3_session";
 
 /**
  * Cookies are scoped by host but *not* by port, so any two servers that can be
@@ -19,7 +18,7 @@ const SESSION_COOKIE_NAME = "t3_session";
  * Two populations qualify, for the same reason but from different causes:
  *
  * - **Dev servers** (`devUrl` set), which run several at a time across worktrees.
- * - **Desktop**, which scans upward from 3773 for a free port and binds
+ * - **Desktop**, which scans upward from the Vetra server port for a free port and binds
  *   127.0.0.1, so a second instance lands on a different port and the same host.
  *
  * Hosted deployments keep the stable production name: their public port can
@@ -33,11 +32,11 @@ export function resolveSessionCookieName(input: {
   readonly development: boolean;
 }): string {
   if (input.mode === "desktop") {
-    return `${SESSION_COOKIE_NAME}_${input.port}`;
+    return `${PRODUCT_SESSION_COOKIE_NAME}_${input.port}`;
   }
 
   if (!input.development && isRemoteReachableHost(input.host)) {
-    return SESSION_COOKIE_NAME;
+    return PRODUCT_SESSION_COOKIE_NAME;
   }
 
   // Cookies are scoped by host, not port. Loopback development servers need an
@@ -47,7 +46,7 @@ export function resolveSessionCookieName(input: {
     .update(input.instanceKey)
     .digest("hex")
     .slice(0, 12);
-  return `${SESSION_COOKIE_NAME}_${input.port}_${instanceHash}`;
+  return `${PRODUCT_SESSION_COOKIE_NAME}_${input.port}_${instanceHash}`;
 }
 
 export function isRemoteReachableHost(host: string | undefined): boolean {

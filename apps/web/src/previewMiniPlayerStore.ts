@@ -1,5 +1,5 @@
-import { scopedThreadKey } from "@t3tools/client-runtime/environment";
-import type { ScopedThreadRef } from "@t3tools/contracts";
+import { scopedThreadKey } from "@vetra-studio/client-runtime/environment";
+import type { ScopedThreadRef } from "@vetra-studio/contracts";
 import { create } from "zustand";
 
 export interface PreviewMiniPlayerPosition {

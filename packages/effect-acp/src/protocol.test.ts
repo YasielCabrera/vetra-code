@@ -67,7 +67,7 @@ const makeHandle = (env?: Record<string, string>) =>
     return yield* spawner.spawn(command);
   });
 
-it.layer(NodeServices.layer)("effect-acp protocol", (it) => {
+it.layer(NodeServices.layer)("@vetra-studio/effect-acp protocol", (it) => {
   it.effect(
     "emits exact JSON-RPC notifications and decodes inbound session/update and elicitation completion",
     () =>

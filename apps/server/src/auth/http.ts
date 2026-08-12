@@ -21,10 +21,10 @@ import {
   EnvironmentScopeRequiredError,
   EnvironmentAuthenticatedAuth,
   EnvironmentAuthenticatedPrincipal,
-} from "@t3tools/contracts";
-import type { AuthEnvironmentScope } from "@t3tools/contracts";
-import { parseAllowedOAuthScope } from "@t3tools/shared/oauthScope";
-import { causeErrorTag } from "@t3tools/shared/observability";
+} from "@vetra-studio/contracts";
+import type { AuthEnvironmentScope } from "@vetra-studio/contracts";
+import { parseAllowedOAuthScope } from "@vetra-studio/shared/oauthScope";
+import { causeErrorTag } from "@vetra-studio/shared/observability";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import { identity } from "effect/Function";

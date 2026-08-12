@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vite-plus/test";
-import type { DesktopUpdateActionResult, DesktopUpdateState } from "@t3tools/contracts";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import type { DesktopUpdateActionResult, DesktopUpdateState } from "@vetra-studio/contracts";
 
 import {
   canCheckForUpdate,
@@ -32,6 +32,10 @@ const baseState: DesktopUpdateState = {
   errorContext: null,
   canRetry: false,
 };
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("desktop update button state", () => {
   it("shows a download action when an update is available", () => {
@@ -160,15 +164,27 @@ describe("getDesktopUpdateActionError", () => {
 
 describe("desktop update UI helpers", () => {
   it("builds the stable release URL for a downloaded version", () => {
+    vi.stubEnv(
+      "VITE_DESKTOP_RELEASE_TAG_URL",
+      "https://github.com/vetra-studio/releases/releases/tag/",
+    );
     expect(getDesktopUpdateReleaseUrl("0.0.30")).toBe(
-      "https://github.com/pingdotgg/t3code/releases/tag/v0.0.30",
+      "https://github.com/vetra-studio/releases/releases/tag/v0.0.30",
     );
   });
 
   it("builds the nightly release URL without dropping its version suffix", () => {
-    expect(getDesktopUpdateReleaseUrl("0.0.30-nightly.20260728.931")).toBe(
-      "https://github.com/pingdotgg/t3code/releases/tag/v0.0.30-nightly.20260728.931",
+    vi.stubEnv(
+      "VITE_DESKTOP_RELEASE_TAG_URL",
+      "https://github.com/vetra-studio/releases/releases/tag",
     );
+    expect(getDesktopUpdateReleaseUrl("0.0.30-nightly.20260728.931")).toBe(
+      "https://github.com/vetra-studio/releases/releases/tag/v0.0.30-nightly.20260728.931",
+    );
+  });
+
+  it("omits the release URL until a Vetra release repository is configured", () => {
+    expect(getDesktopUpdateReleaseUrl("0.0.30")).toBeNull();
   });
 
   it("omits the release URL when the updater does not report a version", () => {
@@ -232,7 +248,7 @@ describe("desktop update UI helpers", () => {
         availableVersion: "1.1.0",
         downloadedVersion: "1.1.1",
       }),
-    ).toContain("Install update 1.1.1 and restart T3 Code?");
+    ).toContain("Install update 1.1.1 and restart Vetra Studio?");
   });
 
   it("falls back to generic install confirmation copy when no version is available", () => {
@@ -241,7 +257,7 @@ describe("desktop update UI helpers", () => {
         availableVersion: null,
         downloadedVersion: null,
       }),
-    ).toContain("Install update and restart T3 Code?");
+    ).toContain("Install update and restart Vetra Studio?");
   });
 
   it("warns Windows users that a silent installation can take several minutes", () => {

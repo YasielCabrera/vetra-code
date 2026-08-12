@@ -5,8 +5,8 @@ import {
   selectRunningSubprocessTerminalIds,
   type KnownTerminalSession,
   type TerminalSessionState,
-} from "@t3tools/client-runtime/state/terminal";
-import { ThreadId, type EnvironmentId, type TerminalAttachInput } from "@t3tools/contracts";
+} from "@vetra-studio/client-runtime/state/terminal";
+import { ThreadId, type EnvironmentId, type TerminalAttachInput } from "@vetra-studio/contracts";
 import { useMemo } from "react";
 
 import { useEnvironmentQuery } from "./query";

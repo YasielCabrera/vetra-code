@@ -6,8 +6,9 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
-import { VcsDriverKind, type VcsDriverKind as VcsDriverKindType } from "@t3tools/contracts";
-import { fromLenientJson } from "@t3tools/shared/schemaJson";
+import { VcsDriverKind, type VcsDriverKind as VcsDriverKindType } from "@vetra-studio/contracts";
+import { fromLenientJson } from "@vetra-studio/shared/schemaJson";
+import { PRODUCT_PROJECT_CONFIG_DIRECTORY_NAME } from "@vetra-studio/shared/productIdentity";
 
 const ProjectVcsConfig = Schema.Struct({
   vcs: Schema.optional(
@@ -48,7 +49,7 @@ export class VcsProjectConfig extends Context.Service<
       input: VcsProjectConfigResolveInput,
     ) => Effect.Effect<VcsDriverKindType | "auto">;
   }
->()("t3/vcs/VcsProjectConfig") {}
+>()("@vetra-studio/server/vcs/VcsProjectConfig") {}
 
 function configuredKind(config: ProjectVcsConfigFile): VcsDriverKindType | "auto" {
   return config.vcs?.kind ?? config.vcsKind ?? "auto";
@@ -71,7 +72,7 @@ export const make = Effect.gen(function* () {
   const findConfigPath = Effect.fn("VcsProjectConfig.findConfigPath")(function* (cwd: string) {
     let current = cwd;
     while (true) {
-      const candidate = path.join(current, ".t3code", "vcs.json");
+      const candidate = path.join(current, PRODUCT_PROJECT_CONFIG_DIRECTORY_NAME, "vcs.json");
       const exists = yield* fileSystem.exists(candidate).pipe(
         Effect.mapError(
           (cause) =>

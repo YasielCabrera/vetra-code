@@ -1,6 +1,6 @@
 # Environment Authentication Profile
 
-> For maintainers. Using T3 Code? See [docs/user](../user/).
+> For maintainers. Using Vetra Studio? See [docs/user](../user/).
 
 The environment server and the relay use separate credentials, issuers, and trust
 boundaries. They intentionally use a similar OAuth-shaped model so that permission
@@ -45,7 +45,7 @@ Non-browser clients use `POST /oauth/token` with an
 ```text
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 subject_token=<bootstrap credential>
-subject_token_type=urn:t3:params:oauth:token-type:environment-bootstrap
+subject_token_type=urn:vetra:params:oauth:token-type:environment-bootstrap
 requested_token_type=urn:ietf:params:oauth:token-type:access_token
 scope=orchestration:read orchestration:operate terminal:operate review:write relay:read
 ```

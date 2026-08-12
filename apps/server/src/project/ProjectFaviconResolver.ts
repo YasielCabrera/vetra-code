@@ -16,7 +16,7 @@ import * as PlatformError from "effect/PlatformError";
 import * as Schema from "effect/Schema";
 
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
-import * as T3ProjectFileLoader from "./T3ProjectFileLoader.ts";
+import * as VetraProjectFileLoader from "./VetraProjectFileLoader.ts";
 
 // Well-known favicon paths checked in order.
 const FAVICON_CANDIDATES = [
@@ -97,7 +97,7 @@ export class ProjectFaviconResolver extends Context.Service<
       faviconPath?: string,
     ) => Effect.Effect<string | null, ProjectFaviconResolutionError>;
   }
->()("t3/project/ProjectFaviconResolver") {}
+>()("@vetra-studio/server/project/ProjectFaviconResolver") {}
 
 function extractIconHref(source: string): string | null {
   const htmlMatch = source.match(LINK_ICON_HTML_RE);
@@ -127,7 +127,7 @@ export const make = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const workspacePaths = yield* WorkspacePaths.WorkspacePaths;
-  const projectFileLoader = yield* T3ProjectFileLoader.T3ProjectFileLoader;
+  const projectFileLoader = yield* VetraProjectFileLoader.VetraProjectFileLoader;
 
   const resolveIconHref = (href: string): ReadonlyArray<string> => {
     const clean = href.replace(/^\//, "");
@@ -197,7 +197,7 @@ export const make = Effect.gen(function* () {
       }
     }
 
-    // A t3.json iconPath takes precedence over the well-known locations.
+    // A vetra.json iconPath takes precedence over the well-known locations.
     const projectFile = yield* projectFileLoader.load(projectCwd);
     if (Option.isSome(projectFile) && projectFile.value.iconPath !== undefined) {
       const existing = yield* findExistingFile(projectCwd, [projectFile.value.iconPath]);

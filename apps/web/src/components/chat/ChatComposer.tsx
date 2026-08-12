@@ -10,16 +10,16 @@ import type {
   ScopedThreadRef,
   ServerProvider,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
 import {
   ProviderDriverKind,
   ProviderInstanceId,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
-} from "@t3tools/contracts";
-import type { EnvironmentConnectionPresentation } from "@t3tools/client-runtime/connection";
-import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
-import { createModelSelection, normalizeModelSlug } from "@t3tools/shared/model";
+} from "@vetra-studio/contracts";
+import type { EnvironmentConnectionPresentation } from "@vetra-studio/client-runtime/connection";
+import { serializeComposerFileLink } from "@vetra-studio/shared/composerTrigger";
+import { createModelSelection, normalizeModelSlug } from "@vetra-studio/shared/model";
 import {
   memo,
   type ReactNode,
@@ -214,7 +214,7 @@ import {
   type ProviderInstanceEntry,
 } from "../../providerInstances";
 import { type AppModelOption, getAppModelOptionsForInstance } from "../../modelSelection";
-import type { UnifiedSettings } from "@t3tools/contracts/settings";
+import type { UnifiedSettings } from "@vetra-studio/contracts/settings";
 import type { SessionPhase, Thread } from "../../types";
 import type { PendingUserInputDraftAnswer } from "../../pendingUserInput";
 import type { PendingApproval, PendingUserInput } from "../../session-logic";
@@ -557,6 +557,7 @@ export interface ChatComposerProps {
   keybindings: ResolvedKeybindingsConfig;
   terminalOpen: boolean;
   gitCwd: string | null;
+  projectControl?: ReactNode;
 
   // Refs the parent needs kept in sync
   promptRef: React.RefObject<string>;
@@ -643,6 +644,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     keybindings,
     terminalOpen,
     gitCwd,
+    projectControl,
     promptRef,
     composerRef,
     composerImagesRef,
@@ -2255,7 +2257,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         isCommandPaletteOpen() ||
         isComposerApprovalState ||
         pendingUserInputs.length > 0 ||
-        projectSelectionRequired ||
         activePendingProgress !== null
       ) {
         return;
@@ -2270,7 +2271,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     isComposerModelPickerOpen,
     keybindings,
     pendingUserInputs.length,
-    projectSelectionRequired,
     stashCurrentPrompt,
     terminalOpen,
   ]);
@@ -2423,8 +2423,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       text.length === 0 ||
       isConnecting ||
       isComposerApprovalState ||
-      pendingUserInputs.length > 0 ||
-      projectSelectionRequired
+      pendingUserInputs.length > 0
     ) {
       return false;
     }
@@ -2632,7 +2631,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       isConnecting,
       isComposerApprovalState,
       pendingUserInputs.length,
-      projectSelectionRequired,
       applyPromptReplacement,
       isComposerModelPickerOpen,
       readComposerSnapshot,
@@ -2675,7 +2673,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           className={cn(
             "rounded-[20px] transition-[background-color] duration-200",
             isDragOverComposer ? "bg-accent/45 ring-1 ring-primary/70" : null,
-            projectSelectionRequired ? "opacity-75" : null,
             composerProviderState.composerSurfaceClassName,
           )}
           onFocusCapture={(event) => {
@@ -3046,14 +3043,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       : showPlanFollowUpPrompt && activeProposedPlan
                         ? "Add feedback to refine the plan, or leave this blank to implement it"
                         : projectSelectionRequired
-                          ? "Choose a project above to start a thread"
+                          ? "Describe your idea, then choose a project below"
                           : noProviderAvailable
                             ? "Enable a provider in Settings to send a message"
                             : phase === "disconnected"
                               ? "Ask for follow-up changes or attach images"
                               : "Ask anything, @tag files/folders, $use skills, or / for commands"
                 }
-                disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}
+                disabled={isConnecting || isComposerApprovalState}
               />
               {showMobilePendingAnswerActions ? (
                 <div
@@ -3182,6 +3179,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 }
                 className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
               >
+                {projectControl}
                 <ComposerFooterPrimaryActions
                   compact={isComposerPrimaryActionsCompact}
                   activeContextWindow={activeContextWindow}

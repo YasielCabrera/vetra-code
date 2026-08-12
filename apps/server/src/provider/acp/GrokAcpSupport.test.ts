@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
-import * as EffectAcpErrors from "effect-acp/errors";
+import * as EffectAcpErrors from "@vetra-studio/effect-acp/errors";
 
 import {
   applyGrokAcpModelSelection,
@@ -17,7 +17,7 @@ describe("resolveGrokAcpBaseModelId", () => {
 });
 
 describe("buildGrokAcpSpawnInput", () => {
-  it("passes the T3 Code referrer through Grok OAuth env", () => {
+  it("passes the Vetra Studio referrer through Grok OAuth env", () => {
     const spawn = buildGrokAcpSpawnInput({ binaryPath: "/usr/local/bin/grok" }, "/tmp/project", {
       XAI_API_KEY: "secret",
       GROK_OAUTH2_REFERRER: "other-client",
@@ -29,7 +29,7 @@ describe("buildGrokAcpSpawnInput", () => {
       cwd: "/tmp/project",
       env: {
         XAI_API_KEY: "secret",
-        GROK_OAUTH2_REFERRER: "t3code",
+        GROK_OAUTH2_REFERRER: "vetra-studio",
       },
     });
   });

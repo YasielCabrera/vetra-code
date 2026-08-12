@@ -6,27 +6,28 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
-    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="theme-color" content="#f6faf7" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <script>
       (() => {
-        const LIGHT_BACKGROUND = "#ffffff";
-        const DARK_BACKGROUND = "#0a0a0a";
-        const CUSTOM_THEMES_STORAGE_KEY = "t3code:themes:v1";
-        const THEME_FOLLOW_SYSTEM_STORAGE_KEY = "t3code:theme-follow-system";
-        const THEME_APPEARANCE_MODE_STORAGE_KEY = "t3code:theme-appearance-mode";
-        const THEME_HALVES_STORAGE_KEY = "t3code:theme-halves:v1";
+        const LIGHT_BACKGROUND = "#f6faf7";
+        const DARK_BACKGROUND = "#0b1510";
+        const CUSTOM_THEMES_STORAGE_KEY = "vetra:themes:v1";
+        const THEME_FOLLOW_SYSTEM_STORAGE_KEY = "vetra:theme-follow-system";
+        const THEME_APPEARANCE_MODE_STORAGE_KEY = "vetra:theme-appearance-mode";
+        const THEME_HALVES_STORAGE_KEY = "vetra:theme-halves:v1";
         const SPLASH_COLORS = {
           light: {
-            background: "#ffffff",
-            foreground: "#262626",
-            accent: "#4f46e5",
+            background: "#f6faf7",
+            foreground: "#202722",
+            accent: "#04c161",
           },
           dark: {
-            background: "#0a0a0a",
-            foreground: "#f5f5f5",
-            accent: "#818cf8",
+            background: "#0b1510",
+            foreground: "#edf6f0",
+            accent: "#20d978",
           },
         };
         // These are the runtime defaults used to complete a custom palette
@@ -50,7 +51,7 @@
         // Keep this small boot-time copy in sync with the built-in palettes so
         // the selected theme is visible before the app has mounted.
         const BUILT_IN_THEME_PALETTES = {
-          "t3-chat": {
+          "vetra-chat": {
             light: {
               background: "oklch(0.982446 0.010114 325.653)",
               foreground: "oklch(0.325698 0.116116 325.037)",
@@ -122,7 +123,7 @@
           },
         };
         // Keep the built-in mode list in sync with the runtime so the selected
-        // T3 Chat palette is visible before React has mounted.
+        // Vetra Chat palette is visible before React has mounted.
         const BUILT_IN_THEME_MODES = Object.fromEntries(
           Object.entries(BUILT_IN_THEME_PALETTES).map(([id, palettes]) => [
             id,
@@ -133,16 +134,16 @@
           "system",
           "light",
           "dark",
-          "t3-chat",
+          "vetra-chat",
           "grove",
           "ocean",
           "ember",
           "iris",
-          "t3-chat-dark",
-          "t3-grove",
-          "t3-ocean",
-          "t3-ember",
-          "t3-iris",
+          "vetra-chat-dark",
+          "vetra-grove",
+          "vetra-ocean",
+          "vetra-ember",
+          "vetra-iris",
         ];
         // Update every theme-color meta so any element another layer added
         // carries the resolved color too.
@@ -216,22 +217,22 @@
         };
 
         try {
-          const storedTheme = window.localStorage.getItem("t3code:theme");
+          const storedTheme = window.localStorage.getItem("vetra:theme");
           const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          // Older builds stored the dark T3 Chat palette as its own theme id
-          // and every maintainer theme under a t3- prefix; keep those
+          // Older builds stored the dark Vetra Chat palette as its own theme id
+          // and every maintainer theme under a vetra- prefix; keep those
           // preferences readable. Mirrors the runtime's legacy alias table.
           const LEGACY_THEME_IDS = {
-            "t3-chat-dark": "t3-chat",
-            "t3-grove": "grove",
-            "t3-ocean": "ocean",
-            "t3-ember": "ember",
-            "t3-iris": "iris",
+            "vetra-chat-dark": "vetra-chat",
+            "vetra-grove": "grove",
+            "vetra-ocean": "ocean",
+            "vetra-ember": "ember",
+            "vetra-iris": "iris",
           };
-          const isLegacyT3ChatDark = storedTheme === "t3-chat-dark";
+          const isLegacyVetraChatDark = storedTheme === "vetra-chat-dark";
           const themeId =
             storedTheme === null ? "" : (LEGACY_THEME_IDS[storedTheme] ?? storedTheme);
-          const legacyMode = isLegacyT3ChatDark ? "dark" : null;
+          const legacyMode = isLegacyVetraChatDark ? "dark" : null;
           const builtInModes = BUILT_IN_THEME_MODES[themeId] ?? null;
           const customTheme = builtInModes ? null : findCustomTheme(themeId);
           const themeModes =
@@ -410,14 +411,14 @@
       }
 
       body {
-        background: #ffffff;
-        color: #262626;
+        background: #f6faf7;
+        color: #202722;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
       }
 
       html.dark body {
-        background: #0a0a0a;
-        color: #f5f5f5;
+        background: #0b1510;
+        color: #edf6f0;
       }
 
       #boot-shell {
@@ -452,13 +453,13 @@
         object-fit: contain;
       }
     </style>
-    <title>T3 Code (Alpha)</title>
+    <title>Vetra Studio (Alpha)</title>
   </head>
   <body>
     <div id="root">
       <div id="boot-shell">
-        <div id="boot-shell-card" aria-label="T3 Code splash screen">
-          <img id="boot-shell-logo" src="/apple-touch-icon.png" alt="T3 Code" />
+        <div id="boot-shell-card" aria-label="Vetra Studio splash screen">
+          <img id="boot-shell-logo" src="/apple-touch-icon.png" alt="Vetra Studio" />
         </div>
       </div>
     </div>

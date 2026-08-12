@@ -4,7 +4,7 @@ import {
   type ModelSelection,
   type ServerProviderModel,
   type ServerProviderSlashCommand,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -17,9 +17,9 @@ import {
   getModelSelectionStringOptionValue,
   getProviderOptionCurrentValue,
   getProviderOptionDescriptors,
-} from "@t3tools/shared/model";
-import { resolveSpawnCommand } from "@t3tools/shared/shell";
-import { compareSemverVersions } from "@t3tools/shared/semver";
+} from "@vetra-studio/shared/model";
+import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
+import { compareSemverVersions } from "@vetra-studio/shared/semver";
 import {
   query as claudeQuery,
   type Options as ClaudeQueryOptions,
@@ -819,7 +819,7 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
         version: null,
         status: "warning",
         auth: { status: "unknown" },
-        message: "Claude is disabled in T3 Code settings.",
+        message: "Claude is disabled in Vetra Studio settings.",
       },
     });
   }
@@ -982,7 +982,7 @@ export const makePendingClaudeProvider = (
           version: null,
           status: "warning",
           auth: { status: "unknown" },
-          message: "Claude is disabled in T3 Code settings.",
+          message: "Claude is disabled in Vetra Studio settings.",
         },
       });
     }

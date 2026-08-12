@@ -1,8 +1,8 @@
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import type { ChatAttachment, ModelSelection, ProviderInstanceId } from "@t3tools/contracts";
-import { TextGenerationError } from "@t3tools/contracts";
+import type { ChatAttachment, ModelSelection, ProviderInstanceId } from "@vetra-studio/contracts";
+import { TextGenerationError } from "@vetra-studio/contracts";
 
 import * as ProviderInstanceRegistry from "../provider/Services/ProviderInstanceRegistry.ts";
 import type { ProviderInstance } from "../provider/ProviderDriver.ts";
@@ -114,7 +114,7 @@ export class TextGeneration extends Context.Service<
       input: ThreadTitleGenerationInput,
     ) => Effect.Effect<ThreadTitleGenerationResult, TextGenerationError>;
   }
->()("t3/textGeneration/TextGeneration") {}
+>()("@vetra-studio/server/textGeneration/TextGeneration") {}
 
 /** @deprecated Use `TextGeneration["Service"]`. */
 export type TextGenerationShape = TextGeneration["Service"];

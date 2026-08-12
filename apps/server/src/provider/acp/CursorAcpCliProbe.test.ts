@@ -1,17 +1,17 @@
 /**
  * Optional integration check against a real `cursor-agent acp` install.
- * Enable with: T3_CURSOR_ACP_PROBE=1 bun run test --filter CursorAcpCliProbe
+ * Enable with: VETRA_CURSOR_ACP_PROBE=1 bun run test --filter CursorAcpCliProbe
  */
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import { describe, expect } from "vite-plus/test";
-import type * as EffectAcpSchema from "effect-acp/schema";
+import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
 
 import * as AcpSessionRuntime from "./AcpSessionRuntime.ts";
 
-describe.runIf(process.env.T3_CURSOR_ACP_PROBE === "1")("Cursor ACP CLI probe", () => {
+describe.runIf(process.env.VETRA_CURSOR_ACP_PROBE === "1")("Cursor ACP CLI probe", () => {
   it.effect("initialize and authenticate against real cursor-agent acp", () =>
     Effect.gen(function* () {
       const runtime = yield* AcpSessionRuntime.AcpSessionRuntime;
@@ -31,7 +31,7 @@ describe.runIf(process.env.T3_CURSOR_ACP_PROBE === "1")("Cursor ACP CLI probe", 
               parameterizedModelPicker: true,
             },
           },
-          clientInfo: { name: "t3-probe", version: "0.0.0" },
+          clientInfo: { name: "vetra-probe", version: "0.0.0" },
           authMethodId: "cursor_login",
         }),
       ),
@@ -87,7 +87,7 @@ describe.runIf(process.env.T3_CURSOR_ACP_PROBE === "1")("Cursor ACP CLI probe", 
               parameterizedModelPicker: true,
             },
           },
-          clientInfo: { name: "t3-probe", version: "0.0.0" },
+          clientInfo: { name: "vetra-probe", version: "0.0.0" },
         }),
       ),
       Effect.scoped,
@@ -143,7 +143,7 @@ describe.runIf(process.env.T3_CURSOR_ACP_PROBE === "1")("Cursor ACP CLI probe", 
               parameterizedModelPicker: true,
             },
           },
-          clientInfo: { name: "t3-probe", version: "0.0.0" },
+          clientInfo: { name: "vetra-probe", version: "0.0.0" },
         }),
       ),
       Effect.scoped,

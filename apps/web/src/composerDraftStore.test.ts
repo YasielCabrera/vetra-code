@@ -3,7 +3,7 @@ import {
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@t3tools/client-runtime/environment";
+} from "@vetra-studio/client-runtime/environment";
 import * as Schema from "effect/Schema";
 import {
   defaultInstanceIdForDriver,
@@ -14,8 +14,8 @@ import {
   ThreadId,
   type ModelSelection,
   type ProviderOptionSelection,
-} from "@t3tools/contracts";
-import { createModelSelection } from "@t3tools/shared/model";
+} from "@vetra-studio/contracts";
+import { createModelSelection } from "@vetra-studio/shared/model";
 
 // The composer draft's `modelSelectionByProvider` and
 // `stickyModelSelectionByProvider` maps are keyed by `ProviderInstanceId`
@@ -1080,6 +1080,109 @@ describe("composerDraftStore project draft thread mapping", () => {
     store.setDraftThreadContext(draftId, { startFromOrigin: false });
 
     expect(useComposerDraftStore.getState().getDraftThread(draftId)?.startFromOrigin).toBe(false);
+  });
+
+  it("keeps pending project location state with the draft until promotion", () => {
+    const store = useComposerDraftStore.getState();
+    store.setProjectDraftThreadId(projectRef, draftId, {
+      threadId,
+      pendingProject: {
+        association: "create",
+        parentDirectory: "~/Vetra Studio Projects",
+        folderName: "customer-portal",
+        locationConfirmed: true,
+        materialized: false,
+      },
+    });
+
+    store.setDraftThreadContext(draftId, {
+      pendingProject: {
+        association: "create",
+        parentDirectory: "~/Vetra Studio Projects",
+        folderName: "customer-portal",
+        locationConfirmed: true,
+        materialized: true,
+      },
+    });
+
+    expect(useComposerDraftStore.getState().getDraftSession(draftId)?.pendingProject).toEqual({
+      association: "create",
+      parentDirectory: "~/Vetra Studio Projects",
+      folderName: "customer-portal",
+      locationConfirmed: true,
+      materialized: true,
+    });
+
+    const persistApi = useComposerDraftStore.persist as unknown as {
+      getOptions: () => {
+        partialize: (state: ReturnType<typeof useComposerDraftStore.getState>) => unknown;
+      };
+    };
+    expect(
+      (
+        persistApi.getOptions().partialize(useComposerDraftStore.getState()) as {
+          draftThreadsByThreadKey: Record<string, { pendingProject?: unknown }>;
+        }
+      ).draftThreadsByThreadKey[draftId]?.pendingProject,
+    ).toEqual({
+      association: "create",
+      parentDirectory: "~/Vetra Studio Projects",
+      folderName: "customer-portal",
+      locationConfirmed: true,
+      materialized: true,
+    });
+
+    store.setDraftThreadContext(draftId, { pendingProject: null });
+
+    expect(
+      useComposerDraftStore.getState().getDraftSession(draftId)?.pendingProject,
+    ).toBeUndefined();
+  });
+
+  it("hydrates older pending-project drafts as an explicit create flow", () => {
+    const persistApi = useComposerDraftStore.persist as unknown as {
+      getOptions: () => {
+        merge: (
+          persistedState: unknown,
+          currentState: ReturnType<typeof useComposerDraftStore.getState>,
+        ) => ReturnType<typeof useComposerDraftStore.getState>;
+      };
+    };
+    const mergedState = persistApi.getOptions().merge(
+      {
+        draftsByThreadKey: {},
+        draftThreadsByThreadKey: {
+          [draftId]: {
+            threadId,
+            environmentId: TEST_ENVIRONMENT_ID,
+            projectId,
+            logicalProjectKey: "pending-project:project-a",
+            createdAt: "2026-08-11T12:00:00.000Z",
+            runtimeMode: "full-access",
+            interactionMode: "default",
+            branch: null,
+            worktreePath: null,
+            envMode: "local",
+            startFromOrigin: false,
+            pendingProject: {
+              parentDirectory: "~/Vetra Studio Projects",
+              folderName: "customer-portal",
+              locationConfirmed: true,
+              materialized: false,
+            },
+            promotedTo: null,
+          },
+        },
+        logicalProjectDraftThreadKeyByLogicalProjectKey: {
+          "pending-project:project-a": draftId,
+        },
+      },
+      useComposerDraftStore.getInitialState(),
+    );
+
+    expect(mergedState.draftThreadsByThreadKey[draftId]?.pendingProject?.association).toBe(
+      "create",
+    );
   });
 
   it("preserves existing branch and worktree when setProjectDraftThreadId receives undefined", () => {

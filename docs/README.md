@@ -1,6 +1,6 @@
-# T3 Code docs
+# Vetra Studio docs
 
-## Using T3 Code
+## Using Vetra Studio
 
 - [Install and first run](./user/install.md)
 - [Permission modes](./user/permission-modes.md)
@@ -14,11 +14,9 @@
 - [Background service (Linux)](./user/background-service.md)
 - Providers: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md)
 
-Mobile app: [apps/mobile/README.md](../apps/mobile/README.md)
-
 ---
 
-## Working on T3 Code
+## Working on Vetra Studio
 
 Everything below is for maintainers. Setup lives in the [root README](../README.md);
 policy in [CONTRIBUTING.md](../CONTRIBUTING.md); agent rules in [AGENTS.md](../AGENTS.md).
@@ -33,7 +31,7 @@ policy in [CONTRIBUTING.md](../CONTRIBUTING.md); agent rules in [AGENTS.md](../A
 - [Server updates](./internals/server-updates.md)
 - [Resource telemetry](./internals/resource-telemetry.md)
 - [Environment auth](./internals/environment-auth.md)
-- [T3 Connect](./internals/t3-connect.md)
+- [Vetra Connect](./internals/vetra-connect.md)
 - [CI gates](./internals/ci.md)
 
 ### Runbooks
@@ -41,4 +39,3 @@ policy in [CONTRIBUTING.md](../CONTRIBUTING.md); agent rules in [AGENTS.md](../A
 - [Release](./operations/release.md)
 - [Observability](./operations/observability.md)
 - [Relay observability](./operations/relay-observability.md)
-- [Mobile app store screenshots](./operations/mobile-app-store-screenshots.md)

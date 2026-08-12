@@ -14,7 +14,7 @@ import type {
   PullRequestReviewerCandidateList,
   PullRequestReviewerKind,
   PullRequestThreadComment,
-} from "@t3tools/contracts";
+} from "@vetra-studio/contracts";
 
 import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 import {
@@ -454,7 +454,7 @@ export class GitHubPullRequestCli extends Context.Service<
       readonly resolved: boolean;
     }) => Effect.Effect<void, GitHubPullRequestCliError>;
   }
->()("t3/pullRequest/GitHubPullRequestCli") {}
+>()("@vetra-studio/server/pullRequest/GitHubPullRequestCli") {}
 
 /**
  * The GraphQL API takes owner and name as separate arguments, so `owner/repo` is split here.

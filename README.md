@@ -1,108 +1,93 @@
-# T3 Code
+# Vetra Studio
 
-T3 Code is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.t3tools.t3code)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).
+Vetra Studio is a web and desktop workspace for building full-stack applications with coding agents. It preserves the established bring-your-own-subscription runtime—Codex, Claude Code, Cursor, Grok, and OpenCode adapters; event-sourced orchestration; terminals; Git; files; previews; and checkpoints—while the product and builder experience evolve independently.
 
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, and OpenCode. If they're set up on your computer, T3 Code can control them.
+This repository is an early fork foundation. The marketing and mobile applications have been removed. Cloud execution and custom harnesses are planned, but the first runnable milestone is intentionally local web + desktop.
 
-## "Wait, what are you selling me?"
+## Safe local development
 
-Nothing. We built T3 Code because we wanted the best possible development experience with agents. We were inspired by existing solutions like the Codex desktop app, Conductor, Claude Desktop and Cursor Glass, but none met our bar.
+Vetra Studio can run alongside other coding-agent clients. Its defaults are deliberately isolated:
 
-We wanted something performant, remote-ready, and truly open. If we ever go the wrong direction, we want you to have everything you need to fork and build the editor that you want.
+| Resource              | Vetra Studio                               |
+| --------------------- | ------------------------------------------ |
+| Runtime data          | `~/.vetra-studio`                          |
+| Server port           | `4873`                                     |
+| Dev server/web ports  | start at `14873` / `6733`                  |
+| Desktop protocol      | `vetra://` (`vetra-dev://` in development) |
+| Desktop app ID        | `com.vetra.studio`                         |
+| Environment variables | `VETRA_*`                                  |
+| Git checkpoints       | `refs/vetra/checkpoints/*`                 |
 
-## Installation
+Vetra Studio runtime state is isolated under `~/.vetra-studio` by default. Never point `VETRA_HOME` at another application's data directory.
 
-> [!WARNING]
-> T3 Code currently supports Codex, Claude, Cursor, Grok Build and OpenCode. Install and authenticate at least one provider before use:
->
-> - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
-> - Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
-> - Cursor: install [Cursor CLI](https://cursor.com/cli) and run `agent login`
-> - Grok Build: install [Grok Build CLI](https://x.ai/cli) and run `grok login`
-> - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
+## Prerequisites
 
-### Try it out (install-free)
+- Node.js `24.13.1` or a compatible version from `package.json`
+- pnpm `11.10.0`
+- At least one installed and authenticated provider CLI:
+  - `codex login`
+  - `claude auth login`
+  - `agent login` for Cursor
+  - `grok login`
+  - `opencode auth login`
 
-The easiest way to test T3 Code is to run the server in your terminal (requires Node.js 22.16+, 23.11+, or 24.10+):
-
-```bash
-npx t3@latest
-```
-
-This will launch T3 Code's backend on your machine as well as the local web app to control your agents.
-
-Tip: Use `npx t3@latest --help` for the full CLI reference.
-
-### Desktop app
-
-Install the latest version of the desktop app from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), or from your favorite package registry:
-
-#### Windows (`winget`)
+Install dependencies. Vite+ is a workspace dependency, so a global `vp` installation is not
+required:
 
 ```bash
-winget install T3Tools.T3Code
+pnpm install
 ```
 
-#### macOS (Homebrew)
+No `.env` file is required for local development. The optional values in `.env.example` are only for infrastructure you own.
+
+## Run the web app
 
 ```bash
-brew install --cask t3-code
+pnpm dev
 ```
 
-#### Arch Linux (AUR)
+Read the actual URLs and ports from the `[dev-runner]` line. Open the full `pairingUrl` printed by the server, including its token; the bare origin is not enough for a first connection.
+
+To keep this checkout's data inside the repository instead of `~/.vetra-studio`, use:
 
 ```bash
-yay -S t3code-bin
+pnpm dev --home-dir .vetra-studio
 ```
 
-## Some notes
+Linked Git worktrees already default to their own gitignored `.vetra-studio` directory.
 
-We are very very early in this project. Expect bugs.
+## Run the desktop app
 
-We are (mostly) not accepting contributions yet. Small fixes may be considered. Big features will not be.
-
-## Documentation
-
-Full docs live in [docs/](./docs). There's no docs site yet.
-
-- [Install and first run](./docs/user/install.md)
-- [Permission modes](./docs/user/permission-modes.md)
-- [Keyboard shortcuts](./docs/user/keybindings.md)
-- [Customize a project icon](./docs/user/project-settings.md)
-- [Remote access from a phone or another machine](./docs/user/remote-access.md)
-- [Keeping app and server in sync](./docs/user/updating.md)
-- [Source control integrations](./docs/user/source-control.md)
-- Multiple accounts: [Codex](./docs/user/providers-codex.md) · [Claude](./docs/user/providers-claude.md)
-- Linux: [run T3 Code as a background service](./docs/user/background-service.md)
-
-Building from source? Start at [docs/internals/overview.md](./docs/internals/overview.md).
-
-## If you REALLY want to contribute still.... read this first
-
-### Install `vp`
-
-T3 Code uses Vite+ so you'll need to install the global `vp` command-line tool.
-
-#### macOS / Linux
+In a second development session, or instead of web mode:
 
 ```bash
-curl -fsSL https://vite.plus | bash
+pnpm dev:desktop
 ```
 
-#### Windows
+Desktop development uses the same isolated Vetra identity and a separate `vetra-studio-dev` Electron user-data directory.
+
+To verify the resolved state directory and ports without starting any process:
 
 ```bash
-irm https://vite.plus/ps1 | iex
+pnpm dev --dry-run
 ```
 
-Checkout their getting started guide for more information: https://viteplus.dev/guide/
+## Current boundaries
 
-### Install dependencies
+- Local web and desktop are the supported first milestone.
+- Cloud/relay configuration is disabled when Vetra-owned Clerk and relay values are absent.
+- Desktop auto-update is disabled unless `VETRA_ENABLE_AUTO_UPDATE=true` and a Vetra release repository is configured.
+- The `@vetra-studio/server` package is private during bootstrap, so registry installation, background-service installation, and package-based SSH launch are not release-ready yet.
+- Internal workspace packages use the `@vetra-studio/*` scope.
 
-```bash
-vp i
-```
+## Planning and architecture
 
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening an issue or PR.
+- [Remaking plan](./re-making-plan/README.md)
+- [Bootstrap progress and handoff](./re-making-plan/08-bootstrap-progress.md)
+- [Architecture overview](./docs/internals/overview.md)
+- [Workspace layout](./docs/internals/workspace-layout.md)
+- [Contributing](./CONTRIBUTING.md)
 
-Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
+## Origin and license
+
+Vetra Studio began as an open-source fork. The original copyright notice and MIT terms remain in [LICENSE](./LICENSE) while the product evolves independently.

@@ -1,8 +1,12 @@
 {
-  "name": "@t3tools/shared",
+  "name": "@vetra-studio/shared",
   "private": true,
   "type": "module",
   "exports": {
+    "./productIdentity": {
+      "types": "./src/productIdentity.ts",
+      "import": "./src/productIdentity.ts"
+    },
     "./projectFavicon": {
       "types": "./src/projectFavicon.ts",
       "import": "./src/projectFavicon.ts"
@@ -95,9 +99,9 @@
       "types": "./src/threadEnvMode.ts",
       "import": "./src/threadEnvMode.ts"
     },
-    "./t3ProjectFile": {
-      "types": "./src/t3ProjectFile.ts",
-      "import": "./src/t3ProjectFile.ts"
+    "./vetraProjectFile": {
+      "types": "./src/vetraProjectFile.ts",
+      "import": "./src/vetraProjectFile.ts"
     },
     "./orchestrationTiming": {
       "types": "./src/orchestrationTiming.ts",
@@ -227,7 +231,7 @@
   "dependencies": {
     "@noble/curves": "catalog:",
     "@noble/hashes": "catalog:",
-    "@t3tools/contracts": "workspace:*",
+    "@vetra-studio/contracts": "workspace:*",
     "effect": "catalog:",
     "jose": "catalog:",
     "yaml": "catalog:"

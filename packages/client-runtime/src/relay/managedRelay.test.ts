@@ -1,5 +1,5 @@
-import { EnvironmentId } from "@t3tools/contracts";
-import { RelayEnvironmentStatusScope } from "@t3tools/contracts/relay";
+import { EnvironmentId } from "@vetra-studio/contracts";
+import { RelayEnvironmentStatusScope } from "@vetra-studio/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -27,7 +27,7 @@ function managedRelayTestLayer(
   );
   return ManagedRelay.layer({
     relayUrl,
-    clientId: "t3-mobile",
+    clientId: "vetra-mobile",
     ...(accessTokenStore ? { accessTokenStore } : {}),
   }).pipe(Layer.provide(signerLayer), Layer.provide(httpClientLayer));
 }
@@ -268,7 +268,7 @@ describe("ManagedRelayClient", () => {
     let persistedTokens: ReadonlyArray<ManagedRelay.ManagedRelayAccessTokenCacheEntry> = [
       {
         accountId: "user-1",
-        clientId: "t3-mobile",
+        clientId: "vetra-mobile",
         relayUrl: "https://relay.example.test",
         thumbprint: "client-thumbprint",
         scopes: [RelayEnvironmentStatusScope],

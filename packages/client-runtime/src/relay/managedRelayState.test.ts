@@ -1,9 +1,9 @@
-import { EnvironmentId } from "@t3tools/contracts";
+import { EnvironmentId } from "@vetra-studio/contracts";
 import type {
   RelayClientDeviceRecord,
   RelayClientEnvironmentRecord,
   RelayEnvironmentStatusResponse,
-} from "@t3tools/contracts/relay";
+} from "@vetra-studio/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
