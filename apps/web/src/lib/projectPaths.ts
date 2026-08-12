@@ -14,4 +14,4 @@ export {
   normalizeProjectPathForComparison,
   normalizeProjectPathForDispatch,
   resolveProjectPathForDispatch,
-} from "@vetra-studio/client-runtime/state/projects";
+} from "@vetra-code/client-runtime/state/projects";

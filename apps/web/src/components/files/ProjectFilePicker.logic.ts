@@ -1,5 +1,5 @@
-import type { ProjectEntry } from "@vetra-studio/contracts";
-import { normalizeSearchQuery } from "@vetra-studio/shared/searchRanking";
+import type { ProjectEntry } from "@vetra-code/contracts";
+import { normalizeSearchQuery } from "@vetra-code/shared/searchRanking";
 
 export const PROJECT_FILE_PICKER_RESULT_LIMIT = 200;
 

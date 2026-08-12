@@ -1,5 +1,5 @@
-import { type ThreadId } from "@vetra-studio/contracts";
-import type { PickedElementPayload, PickedElementStackFrame } from "@vetra-studio/contracts";
+import { type ThreadId } from "@vetra-code/contracts";
+import type { PickedElementPayload, PickedElementStackFrame } from "@vetra-code/contracts";
 
 const ELEMENT_CONTEXT_HTML_PREVIEW_LIMIT = 4000;
 const ELEMENT_CONTEXT_STYLES_LIMIT = 4000;

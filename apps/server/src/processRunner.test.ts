@@ -9,8 +9,8 @@ import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import { TestClock } from "effect/testing";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { HostProcessEnvironment, HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
-import { SpawnExecutableResolution } from "@vetra-studio/shared/shell";
+import { HostProcessEnvironment, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { SpawnExecutableResolution } from "@vetra-code/shared/shell";
 
 import * as ProcessRunner from "./processRunner.ts";
 

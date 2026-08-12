@@ -25,7 +25,7 @@ import {
   ProviderApprovalDecision,
   ThreadId,
   ProviderSendTurnInput,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
 import * as Crypto from "effect/Crypto";
 import * as Exit from "effect/Exit";
@@ -36,10 +36,10 @@ import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import * as CodexErrors from "@vetra-studio/effect-codex-app-server/errors";
-import * as EffectCodexSchema from "@vetra-studio/effect-codex-app-server/schema";
+import * as CodexErrors from "@vetra-code/effect-codex-app-server/errors";
+import * as EffectCodexSchema from "@vetra-code/effect-codex-app-server/schema";
 
-import { getModelSelectionStringOptionValue } from "@vetra-studio/shared/model";
+import { getModelSelectionStringOptionValue } from "@vetra-code/shared/model";
 import { getCodexServiceTierOptionValue } from "../../codexModelOptions.ts";
 import * as McpProviderSession from "../../mcp/McpProviderSession.ts";
 
@@ -1687,9 +1687,9 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
                 },
                 appServerArgs: [
                   "-c",
-                  `mcp_servers.vetra-studio.url=${mcpSession.endpoint}`,
+                  `mcp_servers.vetra-code.url=${mcpSession.endpoint}`,
                   "-c",
-                  'mcp_servers.vetra-studio.bearer_token_env_var="VETRA_MCP_BEARER_TOKEN"',
+                  'mcp_servers.vetra-code.bearer_token_env_var="VETRA_MCP_BEARER_TOKEN"',
                 ],
               }
             : {}),

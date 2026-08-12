@@ -2,8 +2,8 @@ import type {
   AuthClientMetadata,
   AuthClientMetadataDeviceType,
   AuthClientPresentationMetadata,
-} from "@vetra-studio/contracts";
-import { PRODUCT_SESSION_COOKIE_NAME } from "@vetra-studio/shared/productIdentity";
+} from "@vetra-code/contracts";
+import { PRODUCT_SESSION_COOKIE_NAME } from "@vetra-code/shared/productIdentity";
 import type * as HttpServerRequest from "effect/unstable/http/HttpServerRequest";
 import * as NodeCrypto from "node:crypto";
 import * as Encoding from "effect/Encoding";

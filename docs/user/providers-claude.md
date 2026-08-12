@@ -1,7 +1,7 @@
 # Claude
 
-This guide is for people who want to use more than one Claude setup in Vetra Studio. For Codex, see
-[Codex](./providers-codex.md). For first-time setup, see [Install Vetra Studio](./install.md).
+This guide is for people who want to use more than one Claude setup in Vetra Code. For Codex, see
+[Codex](./providers-codex.md). For first-time setup, see [Install Vetra Code](./install.md).
 
 Common reasons:
 
@@ -20,7 +20,7 @@ Log in with Claude Code normally:
 claude auth login
 ```
 
-In Vetra Studio Settings, your Claude provider can stay like this:
+In Vetra Code Settings, your Claude provider can stay like this:
 
 ```text
 Display name: Claude
@@ -28,9 +28,9 @@ Binary path: claude
 CLAUDE_CONFIG_DIR path: empty
 ```
 
-An empty `CLAUDE_CONFIG_DIR path` means Vetra Studio uses Claude Code's normal config directory.
+An empty `CLAUDE_CONFIG_DIR path` means Vetra Code uses Claude Code's normal config directory.
 
-When you set this field, Vetra Studio points Claude Code at that directory with the
+When you set this field, Vetra Code points Claude Code at that directory with the
 `CLAUDE_CONFIG_DIR` environment variable. It does not change `HOME`, so your system keychain and
 the rest of your environment stay as they are.
 
@@ -53,7 +53,7 @@ Log in normally:
 claude auth login
 ```
 
-In Vetra Studio Settings:
+In Vetra Code Settings:
 
 ```text
 Display name: Claude Work
@@ -71,9 +71,9 @@ CLAUDE_CONFIG_DIR=~/.claude_personal_home claude auth login
 ```
 
 Use `CLAUDE_CONFIG_DIR`, not `HOME`. Setting `HOME` writes the login to
-`~/.claude_personal_home/.claude`, which is not where Vetra Studio looks.
+`~/.claude_personal_home/.claude`, which is not where Vetra Code looks.
 
-Then add another Claude provider in Vetra Studio:
+Then add another Claude provider in Vetra Code:
 
 ```text
 Display name: Claude Personal
@@ -88,11 +88,11 @@ blurred by default; click the blurred email to reveal it.
 
 Usually, no.
 
-Vetra Studio only offers Claude providers that use the same config directory for an existing thread. A
+Vetra Code only offers Claude providers that use the same config directory for an existing thread. A
 different config directory is treated as a different Claude environment.
 
 This is different from the recommended Codex setup. Claude Code keeps account and local state across
-multiple files under its config directory, so Vetra Studio keeps separate config directories isolated
+multiple files under its config directory, so Vetra Code keeps separate config directories isolated
 instead of trying to share part of the state.
 
 ## I Want To Use OpenRouter
@@ -105,7 +105,7 @@ variables.
 
 ### Configure A Claude OpenRouter Provider
 
-Add or edit a Claude provider in Vetra Studio Settings:
+Add or edit a Claude provider in Vetra Code Settings:
 
 ```text
 Display name: Claude OpenRouter
@@ -121,7 +121,7 @@ ANTHROPIC_AUTH_TOKEN sk-or-...                Sensitive
 ANTHROPIC_API_KEY                              Empty value
 ```
 
-Mark `ANTHROPIC_AUTH_TOKEN` as sensitive. Vetra Studio stores the value as a server secret and does not
+Mark `ANTHROPIC_AUTH_TOKEN` as sensitive. Vetra Code stores the value as a server secret and does not
 send it back to the app after saving.
 
 If you want this setup isolated from your normal Claude account, create that home first:
@@ -180,7 +180,7 @@ OpenRouter's setup can change over time. Use its upstream Claude Code guide for 
 Claude Code Router is useful when you want a local routing layer with more control than a direct
 OpenRouter setup.
 
-Vetra Studio does not need a special Claude Code Router provider. Treat the router as a Claude
+Vetra Code does not need a special Claude Code Router provider. Treat the router as a Claude
 environment: give a Claude provider its own `CLAUDE_CONFIG_DIR path`, and put whatever variables
 the router tells you to export into that provider's Environment variables section. Mark tokens
 and API keys as sensitive.

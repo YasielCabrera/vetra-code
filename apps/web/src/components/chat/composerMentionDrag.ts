@@ -1,11 +1,11 @@
-import { serializeComposerFileLink } from "@vetra-studio/shared/composerTrigger";
+import { serializeComposerFileLink } from "@vetra-code/shared/composerTrigger";
 
 /**
  * Drag payload type carrying a serialized composer mention. Set on drags that
  * start in the workspace file tree so the composer can tell them apart from
  * OS file drags and plain text selections.
  */
-export const COMPOSER_MENTION_DRAG_TYPE = "application/x-vetra-studio-composer-mention";
+export const COMPOSER_MENTION_DRAG_TYPE = "application/x-vetra-code-composer-mention";
 
 export function composerMentionFromTreePath(treePath: string): string | null {
   const relativePath = treePath.replace(/\/+$/, "");

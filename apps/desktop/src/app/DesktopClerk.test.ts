@@ -34,8 +34,8 @@ const makeDesktopClerkLayer = (isDevelopment = true, events: string[] = []) => {
     stateDir: "/tmp/vetra-state",
     isDevelopment,
     appDataDirectory: "/tmp/app-data",
-    userDataDirName: isDevelopment ? "vetra-studio-dev" : "vetra-studio",
-    legacyUserDataDirName: isDevelopment ? "vetra-studio-dev" : "vetra-studio",
+    userDataDirName: isDevelopment ? "vetra-code-dev" : "vetra-code",
+    legacyUserDataDirName: isDevelopment ? "vetra-code-dev" : "vetra-code",
     path: { join: (...parts: ReadonlyArray<string>) => parts.join("/") },
   } as unknown as DesktopEnvironment.DesktopEnvironment["Service"]);
 
@@ -100,7 +100,7 @@ describe("DesktopClerk", () => {
       // the lock both lives in and creates the userData directory — so the
       // real path must be set before the bridge exists.
       assert.deepEqual(events, [
-        "setPath:userData:/tmp/app-data/vetra-studio-dev",
+        "setPath:userData:/tmp/app-data/vetra-code-dev",
         "createClerkBridge",
       ]);
       storageMock.mockClear();

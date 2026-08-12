@@ -1,10 +1,10 @@
 # Source Control Integrations
 
-Vetra Studio connects to your Git hosting provider so you can create pull requests, review code, and manage repositories without leaving the app.
+Vetra Code connects to your Git hosting provider so you can create pull requests, review code, and manage repositories without leaving the app.
 
 ## Supported Providers
 
-Vetra Studio works with the platforms your team already uses:
+Vetra Code works with the platforms your team already uses:
 
 - **GitHub** – Pull requests, repository creation, and clone integration
 - **GitLab** – Merge requests, repository publishing, and hosted clones
@@ -32,7 +32,7 @@ Vetra Studio works with the platforms your team already uses:
 **Create pull requests while you work**
 
 - Push a branch and create a pull request from the Git actions controls in the toolbar
-- Vetra Studio can suggest titles and descriptions based on your commits
+- Vetra Code can suggest titles and descriptions based on your commits
 - Supports GitHub Pull Requests, GitLab Merge Requests, Bitbucket Pull Requests, and Azure DevOps Pull Requests
 
 **Stay on top of open reviews**
@@ -58,7 +58,7 @@ Run a quick **Rescan** after setting up a new machine or changing credentials.
 
 ### For GitHub (Recommended for most users)
 
-1. Install the GitHub CLI on the machine running Vetra Studio:
+1. Install the GitHub CLI on the machine running Vetra Code:
    ```bash
    brew install gh
    ```
@@ -66,7 +66,7 @@ Run a quick **Rescan** after setting up a new machine or changing credentials.
    ```bash
    gh auth login
    ```
-3. Open **Settings → Source Control** in Vetra Studio and verify GitHub shows as authenticated
+3. Open **Settings → Source Control** in Vetra Code and verify GitHub shows as authenticated
 
 You can now clone, publish, and create pull requests.
 
@@ -85,7 +85,7 @@ You can now clone, publish, and create pull requests.
 ### For Bitbucket
 
 Bitbucket uses tokens instead of a CLI tool. Two options, both set as environment variables on the
-machine running Vetra Studio.
+machine running Vetra Code.
 
 Recommended, a Bitbucket access token:
 
@@ -101,7 +101,7 @@ export VETRA_BITBUCKET_EMAIL="you@example.com"
 export VETRA_BITBUCKET_API_TOKEN="your-token"
 ```
 
-If both are set, the access token wins. Restart Vetra Studio and verify the connection in **Source
+If both are set, the access token wins. Restart Vetra Code and verify the connection in **Source
 Control settings**.
 
 ### For Azure DevOps
@@ -123,9 +123,9 @@ Control settings**.
 
 ## Requirements & Troubleshooting
 
-**Git is required** – Vetra Studio uses Git for all local operations. Ensure `git` is installed on your server.
+**Git is required** – Vetra Code uses Git for all local operations. Ensure `git` is installed on your server.
 
-**Server-side setup** – Authentication happens on the machine running Vetra Studio (the server), not your local browser. If you're using a hosted or team instance, your administrator may have already configured providers.
+**Server-side setup** – Authentication happens on the machine running Vetra Code (the server), not your local browser. If you're using a hosted or team instance, your administrator may have already configured providers.
 
 **Common issues:**
 

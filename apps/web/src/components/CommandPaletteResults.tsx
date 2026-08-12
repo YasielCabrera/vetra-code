@@ -1,4 +1,4 @@
-import { type ResolvedKeybindingsConfig } from "@vetra-studio/contracts";
+import { type ResolvedKeybindingsConfig } from "@vetra-code/contracts";
 import { ChevronRightIcon } from "lucide-react";
 import { shortcutLabelForCommand } from "../keybindings";
 import {

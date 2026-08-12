@@ -20,7 +20,7 @@ import {
   type SDKUserMessage,
   type ModelUsage,
 } from "@anthropic-ai/claude-agent-sdk";
-import { parseCliArgs } from "@vetra-studio/shared/cliArgs";
+import { parseCliArgs } from "@vetra-code/shared/cliArgs";
 import {
   ApprovalRequestId,
   type CanonicalItemType,
@@ -49,14 +49,14 @@ import {
   ThreadId,
   TurnId,
   type UserInputQuestion,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   applyClaudePromptEffortPrefix,
   getModelSelectionBooleanOptionValue,
   getModelSelectionStringOptionValue,
   getProviderOptionDescriptors,
   resolvePromptInjectedEffort,
-} from "@vetra-studio/shared/model";
+} from "@vetra-code/shared/model";
 import * as Cause from "effect/Cause";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -4126,7 +4126,7 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         ...(mcpSession
           ? {
               mcpServers: {
-                "vetra-studio": {
+                "vetra-code": {
                   type: "http",
                   url: mcpSession.endpoint,
                   headers: {

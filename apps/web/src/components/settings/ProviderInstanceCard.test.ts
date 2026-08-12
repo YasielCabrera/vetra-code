@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import type { ServerProviderModel } from "@vetra-studio/contracts";
+import type { ServerProviderModel } from "@vetra-code/contracts";
 
 import { deriveProviderModelsForDisplay } from "./ProviderInstanceCard";
 

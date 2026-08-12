@@ -6,7 +6,7 @@ import type {
   PullRequestDiffSide,
   PullRequestRef,
   PullRequestReviewThread,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   ChevronDownIcon,
   ChevronRightIcon,

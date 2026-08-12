@@ -1,4 +1,4 @@
-import { createRelayEnvironmentDiscoveryAtoms } from "@vetra-studio/client-runtime/state/relay";
+import { createRelayEnvironmentDiscoveryAtoms } from "@vetra-code/client-runtime/state/relay";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

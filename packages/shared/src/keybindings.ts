@@ -8,7 +8,7 @@ import {
   type ResolvedKeybindingRule,
   type ResolvedKeybindingsConfig,
   THREAD_JUMP_KEYBINDING_COMMANDS,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 type WhenToken =
   | { type: "identifier"; value: string }

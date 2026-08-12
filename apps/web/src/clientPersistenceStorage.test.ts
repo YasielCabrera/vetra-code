@@ -1,4 +1,4 @@
-import { DEFAULT_CLIENT_SETTINGS } from "@vetra-studio/contracts";
+import { DEFAULT_CLIENT_SETTINGS } from "@vetra-code/contracts";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 function createLocalStorageStub(): Storage {

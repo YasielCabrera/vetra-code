@@ -1,8 +1,8 @@
 # Provider architecture
 
-> For maintainers. Using Vetra Studio? See [docs/user](../user/).
+> For maintainers. Using Vetra Code? See [docs/user](../user/).
 
-A provider is the agent runtime that does the actual work. Vetra Studio supports several, and the
+A provider is the agent runtime that does the actual work. Vetra Code supports several, and the
 orchestration layer does not know which one is behind a thread.
 
 ## Built-in drivers

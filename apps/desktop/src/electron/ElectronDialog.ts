@@ -100,7 +100,7 @@ export class ElectronDialog extends Context.Service<
     ) => Effect.Effect<Electron.MessageBoxReturnValue, ElectronDialogShowMessageBoxError>;
     readonly showErrorBox: (title: string, content: string) => Effect.Effect<void>;
   }
->()("@vetra-studio/desktop/electron/ElectronDialog") {}
+>()("@vetra-code/desktop/electron/ElectronDialog") {}
 
 export const make = ElectronDialog.of({
   pickFolder: Effect.fn("desktop.electron.dialog.pickFolder")(function* (input) {

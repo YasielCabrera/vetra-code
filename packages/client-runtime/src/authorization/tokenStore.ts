@@ -1,5 +1,5 @@
-import { EnvironmentId } from "@vetra-studio/contracts";
-import { RelayManagedEndpoint } from "@vetra-studio/contracts/relay";
+import { EnvironmentId } from "@vetra-code/contracts";
+import { RelayManagedEndpoint } from "@vetra-code/contracts/relay";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -9,7 +9,7 @@ import * as Schema from "effect/Schema";
 import type { ConnectionAttemptError } from "../connection/model.ts";
 
 export class RemoteDpopAccessToken extends Schema.Class<RemoteDpopAccessToken>(
-  "@vetra-studio/client-runtime/authorization/RemoteDpopAccessToken",
+  "@vetra-code/client-runtime/authorization/RemoteDpopAccessToken",
 )({
   environmentId: EnvironmentId,
   label: Schema.String,
@@ -28,7 +28,7 @@ export class RemoteDpopAccessTokenStore extends Context.Service<
     readonly put: (token: RemoteDpopAccessToken) => Effect.Effect<void, ConnectionAttemptError>;
     readonly remove: (environmentId: EnvironmentId) => Effect.Effect<void, ConnectionAttemptError>;
   }
->()("@vetra-studio/client-runtime/authorization/tokenStore/RemoteDpopAccessTokenStore") {}
+>()("@vetra-code/client-runtime/authorization/tokenStore/RemoteDpopAccessTokenStore") {}
 
 export const make = (service: RemoteDpopAccessTokenStore["Service"]) =>
   RemoteDpopAccessTokenStore.of(service);

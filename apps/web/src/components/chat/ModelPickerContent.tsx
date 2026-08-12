@@ -2,8 +2,8 @@ import {
   type ProviderInstanceId,
   type ProviderDriverKind,
   type ResolvedKeybindingsConfig,
-} from "@vetra-studio/contracts";
-import { resolveSelectableModel } from "@vetra-studio/shared/model";
+} from "@vetra-code/contracts";
+import { resolveSelectableModel } from "@vetra-code/shared/model";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { memo, useMemo, useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { ChevronRightIcon, SearchIcon } from "lucide-react";

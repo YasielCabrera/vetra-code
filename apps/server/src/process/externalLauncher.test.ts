@@ -11,8 +11,8 @@ import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
-import { SpawnExecutableResolution } from "@vetra-studio/shared/shell";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { SpawnExecutableResolution } from "@vetra-code/shared/shell";
 import * as ExternalLauncher from "./externalLauncher.ts";
 
 function makeMockDetachedHandle(onUnref: () => void = () => undefined) {

@@ -2,8 +2,8 @@ import {
   DEFAULT_PROVIDER_HEALTH_REFRESH_INTERVAL,
   type ServerProvider,
   ServerSettingsError,
-} from "@vetra-studio/contracts";
-import { resolveServerBackgroundActivitySettings } from "@vetra-studio/shared/backgroundActivitySettings";
+} from "@vetra-code/contracts";
+import { resolveServerBackgroundActivitySettings } from "@vetra-code/shared/backgroundActivitySettings";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Equal from "effect/Equal";

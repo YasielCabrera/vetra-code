@@ -7,16 +7,16 @@ The relay is the hosted control plane for Vetra Connect. It helps clients discov
 remote environments, manages the cloud-side records needed for those connections, and delivers
 optional mobile notifications and Live Activities.
 
-The relay is intentionally not in the hot path for normal Vetra Studio traffic. After a client connects,
+The relay is intentionally not in the hot path for normal Vetra Code traffic. After a client connects,
 regular API and WebSocket traffic goes directly between that client and the selected environment.
-See the [Vetra Connect architecture overview](../../docs/internals/vetra-studio-connect-auth-flow.html) for the larger system
+See the [Vetra Connect architecture overview](../../docs/internals/vetra-code-connect-auth-flow.html) for the larger system
 design.
 
 ## Responsibilities
 
 The relay currently owns:
 
-- Linking Vetra Studio environments to a cloud account.
+- Linking Vetra Code environments to a cloud account.
 - Provisioning and tracking managed environment endpoints.
 - Issuing short-lived credentials used to connect clients to linked environments.
 - Listing linked environments and registered mobile devices for an account.
@@ -79,7 +79,7 @@ dependencies represented at their boundary rather than mocking internal behavior
 The relay deploys through Alchemy:
 
 ```sh
-vp run --filter @vetra-studio/relay deploy
+vp run --filter @vetra-code/relay deploy
 ```
 
 The stack provisions the Cloudflare Worker and queues, managed endpoint resources, database
@@ -95,8 +95,8 @@ PlanetScale branch and runtime role for local development, so deploy `prod` befo
 developer stages:
 
 ```sh
-vp run --filter @vetra-studio/relay deploy -- --stage prod
-vp run --filter @vetra-studio/relay deploy -- --env-file .env.local
+vp run --filter @vetra-code/relay deploy -- --stage prod
+vp run --filter @vetra-code/relay deploy -- --env-file .env.local
 ```
 
 Alchemy defaults personal deployments to the `dev_$USER` stage. Relay custom domains apply the same
@@ -162,5 +162,5 @@ See:
 - [Vetra Connect Clerk Setup](../../docs/internals/vetra-connect.md) for Clerk keys, JWT templates, and sign-up restrictions
   setup.
 - [Relay Observability](../../docs/operations/relay-observability.md) for deployment tracing and diagnostics.
-- [Vetra Connect Architecture Overview](../../docs/internals/vetra-studio-connect-auth-flow.html) for the full link,
+- [Vetra Connect Architecture Overview](../../docs/internals/vetra-code-connect-auth-flow.html) for the full link,
   connect, endpoint, and notification flows.

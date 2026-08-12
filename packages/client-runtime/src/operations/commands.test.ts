@@ -5,7 +5,7 @@ import {
   ProjectId,
   ThreadId,
   type ClientOrchestrationCommand,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";

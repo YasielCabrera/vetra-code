@@ -4,9 +4,9 @@ import { useParams } from "@tanstack/react-router";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
-import { safeErrorLogAttributes } from "@vetra-studio/client-runtime/errors";
-import type { ScopedThreadRef, TurnId } from "@vetra-studio/contracts";
+} from "@vetra-code/client-runtime/state/runtime";
+import { safeErrorLogAttributes } from "@vetra-code/client-runtime/errors";
+import type { ScopedThreadRef, TurnId } from "@vetra-code/contracts";
 import {
   ArrowRightIcon,
   CheckIcon,

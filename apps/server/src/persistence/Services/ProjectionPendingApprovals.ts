@@ -13,7 +13,7 @@ import {
   ProjectionPendingApprovalStatus,
   ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
@@ -91,5 +91,5 @@ export class ProjectionPendingApprovalRepository extends Context.Service<
   ProjectionPendingApprovalRepository,
   ProjectionPendingApprovalRepositoryShape
 >()(
-  "@vetra-studio/server/persistence/Services/ProjectionPendingApprovals/ProjectionPendingApprovalRepository",
+  "@vetra-code/server/persistence/Services/ProjectionPendingApprovals/ProjectionPendingApprovalRepository",
 ) {}

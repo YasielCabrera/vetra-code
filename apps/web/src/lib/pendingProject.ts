@@ -1,4 +1,4 @@
-import type { ProjectId } from "@vetra-studio/contracts";
+import type { ProjectId } from "@vetra-code/contracts";
 
 import {
   appendBrowsePathSegment,
@@ -6,7 +6,7 @@ import {
   normalizeProjectPathForDispatch,
 } from "./projectPaths";
 
-export const DEFAULT_NEW_PROJECTS_PARENT_DIRECTORY = "~/Vetra Studio Projects";
+export const DEFAULT_NEW_PROJECTS_PARENT_DIRECTORY = "~/Vetra Code Projects";
 
 const MAX_PROJECT_TITLE_LENGTH = 72;
 const MAX_PROJECT_FOLDER_STEM_LENGTH = 48;

@@ -1,7 +1,7 @@
 import * as Exit from "effect/Exit";
 import * as Schema from "effect/Schema";
 
-import { VetraProjectFile, VETRA_PROJECT_FILE_SCHEMA_URL } from "@vetra-studio/contracts";
+import { VetraProjectFile, VETRA_PROJECT_FILE_SCHEMA_URL } from "@vetra-code/contracts";
 
 import { fromLenientJson } from "./schemaJson.ts";
 

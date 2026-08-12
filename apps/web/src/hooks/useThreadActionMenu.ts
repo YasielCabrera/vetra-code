@@ -1,17 +1,17 @@
-import { scopeProjectRef, scopedThreadKey } from "@vetra-studio/client-runtime/environment";
+import { scopeProjectRef, scopedThreadKey } from "@vetra-code/client-runtime/environment";
 import {
   type AtomCommandResult,
   isAtomCommandInterrupted,
   settlePromise,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
+} from "@vetra-code/client-runtime/state/runtime";
 import {
   canSnooze,
   effectiveSettled,
   effectiveSnoozed,
   type ChangeRequestStateLike,
-} from "@vetra-studio/client-runtime/state/thread-settled";
-import type { ScopedThreadRef, ThreadId } from "@vetra-studio/contracts";
+} from "@vetra-code/client-runtime/state/thread-settled";
+import type { ScopedThreadRef, ThreadId } from "@vetra-code/contracts";
 import { useCallback } from "react";
 
 import { resolveSnoozePresets, snoozeWakeDescription } from "../components/Sidebar.snooze";

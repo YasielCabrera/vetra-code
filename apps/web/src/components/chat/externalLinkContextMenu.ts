@@ -1,4 +1,4 @@
-import type { ContextMenuItem } from "@vetra-studio/contracts";
+import type { ContextMenuItem } from "@vetra-code/contracts";
 
 export type ExternalLinkContextMenuAction = "open-in-preview" | "open-external" | "copy-link";
 

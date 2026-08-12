@@ -16,9 +16,9 @@ import {
   resolveWebIconOverrides,
 } from "../../../scripts/lib/brand-assets.ts";
 import { resolveCatalogDependencies } from "../../../scripts/lib/resolve-catalog.ts";
-import { fromJsonStringPretty } from "@vetra-studio/shared/schemaJson";
-import { fromYaml } from "@vetra-studio/shared/schemaYaml";
-import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
+import { fromJsonStringPretty } from "@vetra-code/shared/schemaJson";
+import { fromYaml } from "@vetra-code/shared/schemaYaml";
+import { resolveSpawnCommand } from "@vetra-code/shared/shell";
 import serverPackageJson from "../package.json" with { type: "json" };
 import {
   ServerCliBuildAssetMissingError,

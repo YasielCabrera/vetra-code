@@ -1,4 +1,4 @@
-import type { OrchestrationEvent, ThreadId } from "@vetra-studio/contracts";
+import type { OrchestrationEvent, ThreadId } from "@vetra-code/contracts";
 
 export interface OrchestrationBatchEffects {
   promoteDraftThreadIds: ThreadId[];

@@ -1,4 +1,4 @@
-import type { DesktopDiscoveredSshHost } from "@vetra-studio/contracts";
+import type { DesktopDiscoveredSshHost } from "@vetra-code/contracts";
 
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";

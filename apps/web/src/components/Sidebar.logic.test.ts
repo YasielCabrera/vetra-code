@@ -41,7 +41,7 @@ import {
   ProjectId,
   ProviderInstanceId,
   ThreadId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 import {
   DEFAULT_INTERACTION_MODE,

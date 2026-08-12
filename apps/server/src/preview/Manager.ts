@@ -24,12 +24,12 @@ import {
   FILL_PREVIEW_VIEWPORT,
   PreviewSessionLookupError,
   type PreviewSessionSnapshot,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   isPreviewUrlNormalizationError,
   newPreviewTabId,
   normalizePreviewUrl,
-} from "@vetra-studio/shared/preview";
+} from "@vetra-code/shared/preview";
 import * as NodeCrypto from "node:crypto";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -57,7 +57,7 @@ export class PreviewManager extends Context.Service<
     readonly events: Stream.Stream<PreviewEvent>;
     readonly subscribeEvents: Effect.Effect<PubSub.Subscription<PreviewEvent>, never, Scope.Scope>;
   }
->()("@vetra-studio/server/preview/Manager/PreviewManager") {}
+>()("@vetra-code/server/preview/Manager/PreviewManager") {}
 
 interface PreviewSessionState {
   readonly threadId: string;

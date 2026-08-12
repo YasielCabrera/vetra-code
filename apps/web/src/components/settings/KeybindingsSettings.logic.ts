@@ -4,11 +4,11 @@ import {
   type KeybindingWhenNode,
   type ResolvedKeybindingRule,
   type ResolvedKeybindingsConfig,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   DEFAULT_RESOLVED_KEYBINDINGS,
   parseKeybindingWhenExpression,
-} from "@vetra-studio/shared/keybindings";
+} from "@vetra-code/shared/keybindings";
 
 import { isMacPlatform } from "../../lib/utils";
 

@@ -1,4 +1,4 @@
-import type { DesktopUpdateReleaseNote } from "@vetra-studio/contracts";
+import type { DesktopUpdateReleaseNote } from "@vetra-code/contracts";
 
 interface ElectronReleaseNoteInfo {
   readonly version: string;

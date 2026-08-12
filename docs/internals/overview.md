@@ -1,8 +1,8 @@
 # Architecture
 
-> For maintainers. Using Vetra Studio? See [docs/user](../user/).
+> For maintainers. Using Vetra Code? See [docs/user](../user/).
 
-Vetra Studio is a server runtime that owns agent sessions, workspaces, and version control, plus web
+Vetra Code is a server runtime that owns agent sessions, workspaces, and version control, plus web
 and desktop clients that talk to it over one authenticated Effect RPC WebSocket. The server is the
 execution boundary: every provider process, terminal, git operation, and filesystem read happens
 there, never in the client.

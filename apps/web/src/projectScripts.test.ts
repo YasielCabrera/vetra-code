@@ -3,7 +3,7 @@ import {
   projectScriptCwd,
   projectScriptRuntimeEnv,
   setupProjectScript,
-} from "@vetra-studio/shared/projectScripts";
+} from "@vetra-code/shared/projectScripts";
 
 import {
   buildProjectScript,

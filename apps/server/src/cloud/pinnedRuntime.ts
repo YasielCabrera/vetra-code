@@ -7,7 +7,7 @@ import * as Option from "effect/Option";
 import * as Semaphore from "effect/Semaphore";
 
 import * as ProcessRunner from "../processRunner.ts";
-import { PRODUCT_SERVER_PACKAGE } from "@vetra-studio/shared/productIdentity";
+import { PRODUCT_SERVER_PACKAGE } from "@vetra-code/shared/productIdentity";
 
 const PINNED_PACKAGE_PATH_SEGMENTS = PRODUCT_SERVER_PACKAGE.split("/");
 

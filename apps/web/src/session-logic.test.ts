@@ -5,7 +5,7 @@ import {
   ThreadId,
   TurnId,
   type OrchestrationThreadActivity,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -968,7 +968,7 @@ describe("deriveWorkLogEntries", () => {
   it("preserves MCP server, tool, arguments, and results for expanded display", () => {
     const item = {
       type: "mcpToolCall",
-      server: "vetra-studio",
+      server: "vetra-code",
       tool: "preview_status",
       arguments: {},
       status: "completed",
@@ -978,24 +978,24 @@ describe("deriveWorkLogEntries", () => {
       makeActivity({
         id: "mcp-tool-done",
         kind: "tool.completed",
-        summary: "vetra-studio · preview_status",
+        summary: "vetra-code · preview_status",
         payload: {
           itemType: "mcp_tool_call",
-          title: "vetra-studio · preview_status",
+          title: "vetra-code · preview_status",
           data: { item },
         },
       }),
     ];
 
     const [entry] = deriveWorkLogEntries(activities);
-    expect(entry?.toolTitle).toBe("vetra-studio · preview_status");
+    expect(entry?.toolTitle).toBe("vetra-code · preview_status");
     expect(entry?.toolData).toEqual(item);
   });
 
   it("keeps MCP payloads while collapsing lifecycle updates", () => {
     const item = {
       type: "mcpToolCall",
-      server: "vetra-studio",
+      server: "vetra-code",
       tool: "preview_snapshot",
       arguments: { interactiveOnly: true },
       status: "completed",
@@ -1004,7 +1004,7 @@ describe("deriveWorkLogEntries", () => {
       makeActivity({
         id: "mcp-tool-progress",
         kind: "tool.updated",
-        summary: "vetra-studio · preview_snapshot",
+        summary: "vetra-code · preview_snapshot",
         payload: {
           itemType: "mcp_tool_call",
           toolCallId: "call-1",
@@ -1014,7 +1014,7 @@ describe("deriveWorkLogEntries", () => {
       makeActivity({
         id: "mcp-tool-complete",
         kind: "tool.completed",
-        summary: "vetra-studio · preview_snapshot",
+        summary: "vetra-code · preview_snapshot",
         payload: {
           itemType: "mcp_tool_call",
           toolCallId: "call-1",

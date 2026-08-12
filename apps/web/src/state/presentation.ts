@@ -1,7 +1,7 @@
 import { useAtomValue } from "@effect/atom-react";
-import type { EnvironmentPresentation } from "@vetra-studio/client-runtime/connection";
-import { createEnvironmentPresentationAtoms } from "@vetra-studio/client-runtime/state/presentation";
-import type { EnvironmentId } from "@vetra-studio/contracts";
+import type { EnvironmentPresentation } from "@vetra-code/client-runtime/connection";
+import { createEnvironmentPresentationAtoms } from "@vetra-code/client-runtime/state/presentation";
+import type { EnvironmentId } from "@vetra-code/contracts";
 import { Atom } from "effect/unstable/reactivity";
 
 import { environmentCatalog } from "../connection/catalog";

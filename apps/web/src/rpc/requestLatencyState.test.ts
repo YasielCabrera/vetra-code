@@ -1,4 +1,4 @@
-import { WS_METHODS } from "@vetra-studio/contracts";
+import { WS_METHODS } from "@vetra-code/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {

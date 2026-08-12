@@ -9,7 +9,7 @@ import {
   type OrchestrationReadModel,
   type OrchestrationThread,
   resolveAutomationNextRunAt,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";

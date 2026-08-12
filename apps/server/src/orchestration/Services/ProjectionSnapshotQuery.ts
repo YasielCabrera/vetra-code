@@ -23,7 +23,7 @@ import type {
   OrchestrationThreadShell,
   ProjectId,
   ThreadId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import type * as Option from "effect/Option";
 import type * as Effect from "effect/Effect";
@@ -204,4 +204,4 @@ export interface ProjectionSnapshotQueryShape {
 export class ProjectionSnapshotQuery extends Context.Service<
   ProjectionSnapshotQuery,
   ProjectionSnapshotQueryShape
->()("@vetra-studio/server/orchestration/Services/ProjectionSnapshotQuery") {}
+>()("@vetra-code/server/orchestration/Services/ProjectionSnapshotQuery") {}

@@ -1,10 +1,10 @@
-import type { EnvironmentId, VcsRef, ProjectId } from "@vetra-studio/contracts";
+import type { EnvironmentId, VcsRef, ProjectId } from "@vetra-code/contracts";
 import * as Schema from "effect/Schema";
 import { toSortableTimestamp } from "../lib/threadSort";
 export {
   dedupeRemoteBranchesWithLocalMatches,
   deriveLocalBranchNameFromRemoteRef,
-} from "@vetra-studio/shared/git";
+} from "@vetra-code/shared/git";
 
 export interface EnvironmentOption {
   environmentId: EnvironmentId;

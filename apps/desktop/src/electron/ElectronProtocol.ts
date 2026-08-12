@@ -10,7 +10,7 @@ import * as Electron from "electron";
 import {
   PRODUCT_DESKTOP_DEV_PROTOCOL,
   PRODUCT_DESKTOP_PROTOCOL,
-} from "@vetra-studio/shared/productIdentity";
+} from "@vetra-code/shared/productIdentity";
 
 export const DESKTOP_HOST = "app";
 export const DESKTOP_PRODUCTION_SCHEME = PRODUCT_DESKTOP_PROTOCOL;
@@ -66,7 +66,7 @@ export class ElectronProtocol extends Context.Service<
       input: DesktopProtocolRegistrationInput,
     ) => Effect.Effect<void, ElectronProtocolRegistrationError, Scope.Scope>;
   }
->()("@vetra-studio/desktop/electron/ElectronProtocol") {}
+>()("@vetra-code/desktop/electron/ElectronProtocol") {}
 
 export function makeDesktopContentSecurityPolicy(input: DesktopProtocolRegistrationInput): string {
   const clerkOrigin = input.clerkFrontendApiHostname

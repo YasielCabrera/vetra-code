@@ -20,8 +20,8 @@ import {
   type RuntimeMode,
   ThreadId,
   ProviderInstanceId,
-} from "@vetra-studio/contracts";
-import { createModelSelection } from "@vetra-studio/shared/model";
+} from "@vetra-code/contracts";
+import { createModelSelection } from "@vetra-code/shared/model";
 import { assert, describe, it } from "@effect/vitest";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -42,7 +42,7 @@ const decodeClaudeSettings = Schema.decodeSync(ClaudeSettings);
 
 // Test-local service tag so the rest of the file can keep using `yield* ClaudeAdapter`.
 class ClaudeAdapter extends Context.Service<ClaudeAdapter, ClaudeAdapterShape>()(
-  "@vetra-studio/server/provider/Layers/ClaudeAdapter.test/ClaudeAdapter",
+  "@vetra-code/server/provider/Layers/ClaudeAdapter.test/ClaudeAdapter",
 ) {}
 
 class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
@@ -2180,8 +2180,8 @@ describe("ClaudeAdapterLive", () => {
           type: "system",
           subtype: "code_change_published",
           provider: "github",
-          url: "https://github.com/vetra-studio/vetra/pull/1",
-          repo: "vetra-studio/vetra-studio",
+          url: "https://github.com/vetra-code/vetra/pull/1",
+          repo: "vetra-code/vetra-code",
           identifier: "1",
           session_id: "session",
           uuid: "ccp",

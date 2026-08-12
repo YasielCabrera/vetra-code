@@ -4,7 +4,7 @@ import {
   RpcClientId,
   type HostPowerSnapshot,
   type ClientActivityReportInput,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

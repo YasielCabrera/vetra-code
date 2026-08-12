@@ -4,8 +4,8 @@ import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 
-import * as NetService from "@vetra-studio/shared/Net";
-import { PRODUCT_DEFAULT_SERVER_PORT } from "@vetra-studio/shared/productIdentity";
+import * as NetService from "@vetra-code/shared/Net";
+import { PRODUCT_DEFAULT_SERVER_PORT } from "@vetra-code/shared/productIdentity";
 import * as Crypto from "effect/Crypto";
 import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as ElectronDialog from "../electron/ElectronDialog.ts";
@@ -129,7 +129,7 @@ const handleFatalStartupError = Effect.fn("desktop.startup.handleFatalStartupErr
   const wasQuitting = yield* Ref.getAndSet(state.quitting, true);
   if (!wasQuitting) {
     yield* electronDialog.showErrorBox(
-      "Vetra Studio failed to start",
+      "Vetra Code failed to start",
       `Stage: ${stage}\n${message}${detail}`,
     );
   }

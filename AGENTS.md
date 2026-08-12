@@ -1,16 +1,16 @@
-# Vetra Studio
+# Vetra Code
 
-Vetra Studio is a web and desktop workspace for coding agents. A Node WebSocket server wraps provider CLIs (Codex, Claude Code, Cursor, Grok, OpenCode) and serves web and desktop clients.
+Vetra Code is a web and desktop workspace for coding agents. A Node WebSocket server wraps provider CLIs (Codex, Claude Code, Cursor, Grok, OpenCode) and serves web and desktop clients.
 
 The project retains a proven bring-your-own-subscription agent runtime while evolving toward a Replit/Lovable-style full-stack builder.
 
 ## Product principles
 
-The existing runtime has a large and active user base. Preserve the qualities users rely on while Vetra Studio develops its own product model and interface.
+The existing runtime has a large and active user base. Preserve the qualities users rely on while Vetra Code develops its own product model and interface.
 
 ### 1. Open at the core
 
-Vetra Studio is open at its core. We share the roadmap, our reasoning, and the code. Users should be able to inspect, run, and adapt the project without relying on hidden infrastructure.
+Vetra Code is open at its core. We share the roadmap, our reasoning, and the code. Users should be able to inspect, run, and adapt the project without relying on hidden infrastructure.
 
 ### 2. Performance without compromise
 
@@ -22,7 +22,7 @@ The WebSocket architecture enables local-network, Tailscale, and Vetra Connect w
 
 ### 4. Web and desktop surfaces
 
-Vetra Studio has 2 key app surfaces: **web** and **desktop**.
+Vetra Code has 2 key app surfaces: **web** and **desktop**.
 
 **Web** supports both local development and a future hosted deployment. Do not assume a hosted Vetra origin exists until it is explicitly configured.
 
@@ -36,17 +36,17 @@ Channel both "measure twice, cut once" and "yagni". Fight scope creep. Try to ho
 
 The rest of this document is meant to help you navigate the codebase and make changes effectively. Think of these instructions less as "hard rules", more as "good defaults". The developer's preferences should be able to override anything here.
 
-Most Vetra Studio contributions are made from a running coding-agent workspace, often controlled remotely. Be careful when accessing data or stopping development servers so you do not damage the application instance the contributor is actively using.
+Most Vetra Code contributions are made from a running coding-agent workspace, often controlled remotely. Be careful when accessing data or stopping development servers so you do not damage the application instance the contributor is actively using.
 
 ## A small glossary
 
 We need to be on the same page with terminology. When communicating, use this language:
 
-- **you** means the agent reading this file and changing Vetra Studio.
-- **we, us, and maintainers** mean the people building Vetra Studio.
-- **user** means the person using Vetra Studio to direct coding agents.
-- **agent** means the coding agent a user runs inside Vetra Studio. Depending on context, that may also include you.
-- **provider** means an agent runtime or harness Vetra Studio talks to, such as Codex, Claude, Cursor, or OpenCode.
+- **you** means the agent reading this file and changing Vetra Code.
+- **we, us, and maintainers** mean the people building Vetra Code.
+- **user** means the person using Vetra Code to direct coding agents.
+- **agent** means the coding agent a user runs inside Vetra Code. Depending on context, that may also include you.
+- **provider** means an agent runtime or harness Vetra Code talks to, such as Codex, Claude, Cursor, or OpenCode.
 - **client** means the web or desktop UI.
 - **environment** means one running Vetra server and the machine, filesystem, provider credentials, and state it owns.
 - **project** means an environment-local workspace record rooted at a directory.
@@ -75,7 +75,7 @@ The most common defect in this repo is a change that works on the path you teste
 ## Dev servers
 
 - `vp i` installs. Worktrees get this from the `vetra.json` setup script; if module resolution looks broken, it probably did not run.
-- `vp run dev` starts server and web. In a worktree, state defaults to that worktree's gitignored `.vetra-studio`, which deliberately outranks an ambient `VETRA_HOME`. An explicit `--home-dir` still wins.
+- `vp run dev` starts server and web. In a worktree, state defaults to that worktree's gitignored `.vetra-code`, which deliberately outranks an ambient `VETRA_HOME`. An explicit `--home-dir` still wins.
 - Ports derive from the worktree path and are stable across restarts, but read the real ones from the `[dev-runner]` line since occupied ports shift.
 - Sharing over the tailnet is three steps: run `vp run dev --share` in the background, wait for the `pairingUrl:` line in its output, paste that full URL (token included) in your reply. Do not wire up `tailscale serve` by hand for this, and do not open the URL yourself.
 - The web app requires pairing. Hand over the pairing URL, not the bare origin. A URL without its token is useless to whoever you gave it to. If the token got consumed, mint a fresh one with `node apps/server/src/bin.ts pair` — note it carries standard scopes, while the startup URL carries admin scopes (needed for Settings → Connections management).
@@ -83,15 +83,15 @@ The most common defect in this repo is a change that works on the path you teste
 
 ## Test data
 
-An empty database is a bad test. Seed your worktree's `.vetra-studio` with a copy of real data instead of pointing at live state:
+An empty database is a bad test. Seed your worktree's `.vetra-code` with a copy of real data instead of pointing at live state:
 
-- Copy from `~/.t3/userdata` (the developer's real legacy data, the most realistic test set) or `~/.t3/dev`. Worktree state lives at `<worktree>/.vetra-studio/userdata`.
+- Copy from `~/.t3/userdata` (the developer's real legacy data, the most realistic test set) or `~/.t3/dev`. Worktree state lives at `<worktree>/.vetra-code/userdata`.
 - Snapshot the database with `VACUUM INTO`, which is safe even while a server has the source open and yields one consistent file:
 
   ```bash
-  mkdir -p .vetra-studio/userdata
-  rm -f .vetra-studio/userdata/state.sqlite*  # VACUUM INTO refuses to overwrite
-  bun -e "new (require('bun:sqlite').Database)(process.env.HOME + '/.t3/userdata/state.sqlite', { readonly: true }).run(\"VACUUM INTO '.vetra-studio/userdata/state.sqlite'\")"
+  mkdir -p .vetra-code/userdata
+  rm -f .vetra-code/userdata/state.sqlite*  # VACUUM INTO refuses to overwrite
+  bun -e "new (require('bun:sqlite').Database)(process.env.HOME + '/.t3/userdata/state.sqlite', { readonly: true }).run(\"VACUUM INTO '.vetra-code/userdata/state.sqlite'\")"
   ```
 
   A plain `cp` is only safe when no server has the source open, and must bring the `-wal` and `-shm` siblings along. A live file copy is a corrupt copy.

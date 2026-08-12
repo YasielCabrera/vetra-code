@@ -1,9 +1,9 @@
-import type { ServerProviderSkill } from "@vetra-studio/contracts";
+import type { ServerProviderSkill } from "@vetra-code/contracts";
 import {
   insertRankedSearchResult,
   normalizeSearchQuery,
   scoreQueryMatch,
-} from "@vetra-studio/shared/searchRanking";
+} from "@vetra-code/shared/searchRanking";
 
 import { formatProviderSkillDisplayName } from "./providerSkillPresentation";
 

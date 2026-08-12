@@ -2,7 +2,7 @@ import * as Clock from "effect/Clock";
 import type {
   RelayClientInstallProgressEvent,
   RelayClientInstallProgressStage,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -132,7 +132,7 @@ export interface RelayClientShape {
 }
 
 export class RelayClient extends Context.Service<RelayClient, RelayClientShape>()(
-  "@vetra-studio/shared/relayClient",
+  "@vetra-code/shared/relayClient",
 ) {}
 
 function executableFileName(platform: NodeJS.Platform): string {
@@ -368,7 +368,7 @@ export const makeCloudflaredRelayClient = Effect.fn("cloudflared.make")(function
     if (!releaseAsset) {
       return yield* new RelayClientInstallError({
         reason: "unsupported_platform",
-        message: `Vetra Studio does not provide a managed relay client binary for ${platform}-${arch}.`,
+        message: `Vetra Code does not provide a managed relay client binary for ${platform}-${arch}.`,
       });
     }
 

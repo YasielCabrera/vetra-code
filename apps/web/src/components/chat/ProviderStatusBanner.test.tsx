@@ -1,8 +1,4 @@
-import {
-  ProviderDriverKind,
-  ProviderInstanceId,
-  type ServerProvider,
-} from "@vetra-studio/contracts";
+import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@vetra-code/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vite-plus/test";
 

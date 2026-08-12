@@ -20,7 +20,7 @@ import {
   type RuntimeMode,
   type ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Crypto from "effect/Crypto";
 import * as Deferred from "effect/Deferred";
@@ -37,8 +37,8 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import * as SynchronizedRef from "effect/SynchronizedRef";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
-import * as EffectAcpErrors from "@vetra-studio/effect-acp/errors";
-import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
+import * as EffectAcpErrors from "@vetra-code/effect-acp/errors";
+import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";
@@ -256,7 +256,7 @@ function applyRequestedSessionConfiguration<E>(input: {
       }
     | undefined;
   readonly mapError: (context: {
-    readonly cause: import("@vetra-studio/effect-acp/errors").AcpError;
+    readonly cause: import("@vetra-code/effect-acp/errors").AcpError;
     readonly method: "session/set_config_option" | "session/set_mode";
   }) => E;
 }): Effect.Effect<void, E> {
@@ -538,13 +538,13 @@ export function makeCursorAdapter(
             childProcessSpawner,
             cwd,
             ...(resumeSessionId ? { resumeSessionId } : {}),
-            clientInfo: { name: "vetra-studio", version: "0.0.0" },
+            clientInfo: { name: "vetra-code", version: "0.0.0" },
             ...(mcpSession
               ? {
                   mcpServers: [
                     {
                       type: "http" as const,
-                      name: "vetra-studio",
+                      name: "vetra-code",
                       url: mcpSession.endpoint,
                       headers: [
                         {

@@ -19,7 +19,7 @@ import type {
   ThreadId,
   ProviderTurnStartResult,
   TurnId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import type * as Effect from "effect/Effect";
 import type * as Stream from "effect/Stream";
 

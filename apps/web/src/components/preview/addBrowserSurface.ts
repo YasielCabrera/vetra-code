@@ -1,8 +1,8 @@
 import {
   mapAtomCommandResult,
   type AtomCommandResult,
-} from "@vetra-studio/client-runtime/state/runtime";
-import type { ScopedThreadRef } from "@vetra-studio/contracts";
+} from "@vetra-code/client-runtime/state/runtime";
+import type { ScopedThreadRef } from "@vetra-code/contracts";
 
 import type { OpenPreviewMutation } from "~/browser/openFileInPreview";
 import { useRightPanelStore } from "~/rightPanelStore";

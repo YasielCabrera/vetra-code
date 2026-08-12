@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Terminal from "effect/Terminal";
 import { Command, GlobalFlag, Prompt } from "effect/unstable/cli";
-import { PRODUCT_CLI_NAME, PRODUCT_SERVER_PACKAGE } from "@vetra-studio/shared/productIdentity";
+import { PRODUCT_CLI_NAME, PRODUCT_SERVER_PACKAGE } from "@vetra-code/shared/productIdentity";
 
 import packageJson from "../../package.json" with { type: "json" };
 import * as BootService from "../cloud/bootService.ts";
@@ -49,13 +49,13 @@ export function formatServiceStatus(
   cliVersion: string,
 ): string {
   if (!status.supported) {
-    return "Vetra Studio service\n  Status: unavailable on this machine\n  Supported on: Linux with systemd";
+    return "Vetra Code service\n  Status: unavailable on this machine\n  Supported on: Linux with systemd";
   }
   if (!status.installed) {
-    return `Vetra Studio service\n  Status: not installed\n  Next: Run \`${PRODUCT_CLI_NAME} service install\`.`;
+    return `Vetra Code service\n  Status: not installed\n  Next: Run \`${PRODUCT_CLI_NAME} service install\`.`;
   }
   return [
-    "Vetra Studio service",
+    "Vetra Code service",
     `  Status: ${status.current ? `installed · ${PRODUCT_SERVER_PACKAGE}@${cliVersion}` : "needs an update or repair"}`,
     `  Unit: ${status.unitPath}`,
     `  Logs: ${status.logPath}`,
@@ -75,7 +75,7 @@ const runServiceCommand = Effect.fn("cli.service.run")(function* <A, E>(
 });
 
 const serviceInstallCommand = Command.make("install", projectLocationFlags).pipe(
-  Command.withDescription("Install Vetra Studio as a background service for this user."),
+  Command.withDescription("Install Vetra Code as a background service for this user."),
   Command.withHandler((flags) =>
     runServiceCommand(
       flags,
@@ -83,12 +83,12 @@ const serviceInstallCommand = Command.make("install", projectLocationFlags).pipe
         const result = yield* reconcileService();
         if (!result.changed) {
           yield* Console.log(
-            `Vetra Studio service is already installed with ${PRODUCT_SERVER_PACKAGE}@${packageJson.version}.`,
+            `Vetra Code service is already installed with ${PRODUCT_SERVER_PACKAGE}@${packageJson.version}.`,
           );
           return;
         }
         yield* Console.log(
-          `${result.previouslyInstalled ? "Updated" : "Installed"} Vetra Studio service with ${PRODUCT_SERVER_PACKAGE}@${packageJson.version}.\nLogs: ${result.plan.logPath}`,
+          `${result.previouslyInstalled ? "Updated" : "Installed"} Vetra Code service with ${PRODUCT_SERVER_PACKAGE}@${packageJson.version}.\nLogs: ${result.plan.logPath}`,
         );
       }),
     ),
@@ -106,12 +106,12 @@ const serviceUpdateCommand = Command.make("update", projectLocationFlags).pipe(
         const result = yield* reconcileService();
         if (!result.changed) {
           yield* Console.log(
-            `Vetra Studio service is already using ${PRODUCT_SERVER_PACKAGE}@${packageJson.version}.`,
+            `Vetra Code service is already using ${PRODUCT_SERVER_PACKAGE}@${packageJson.version}.`,
           );
           return;
         }
         yield* Console.log(
-          `${result.previouslyInstalled ? "Updated" : "Installed"} Vetra Studio service with ${PRODUCT_SERVER_PACKAGE}@${packageJson.version}.\nLogs: ${result.plan.logPath}`,
+          `${result.previouslyInstalled ? "Updated" : "Installed"} Vetra Code service with ${PRODUCT_SERVER_PACKAGE}@${packageJson.version}.\nLogs: ${result.plan.logPath}`,
         );
       }),
     ),
@@ -119,7 +119,7 @@ const serviceUpdateCommand = Command.make("update", projectLocationFlags).pipe(
 );
 
 const serviceUninstallCommand = Command.make("uninstall", projectLocationFlags).pipe(
-  Command.withDescription("Stop and remove the Vetra Studio background service."),
+  Command.withDescription("Stop and remove the Vetra Code background service."),
   Command.withHandler((flags) =>
     runServiceCommand(
       flags,
@@ -127,7 +127,7 @@ const serviceUninstallCommand = Command.make("uninstall", projectLocationFlags).
         const service = yield* BootService.BootService;
         const removed = yield* service.uninstall;
         yield* Console.log(
-          removed ? "Removed the Vetra Studio service." : "Vetra Studio service is not installed.",
+          removed ? "Removed the Vetra Code service." : "Vetra Code service is not installed.",
         );
       }),
     ),
@@ -135,7 +135,7 @@ const serviceUninstallCommand = Command.make("uninstall", projectLocationFlags).
 );
 
 const serviceStatusCommand = Command.make("status", projectLocationFlags).pipe(
-  Command.withDescription("Show whether the Vetra Studio background service is installed."),
+  Command.withDescription("Show whether the Vetra Code background service is installed."),
   Command.withHandler((flags) =>
     runServiceCommand(
       flags,
@@ -154,14 +154,14 @@ export const offerServiceDuringOnboarding = Effect.gen(function* () {
     return false;
   }
   if (installed && current) {
-    yield* Console.log("Vetra Studio is already set up to run in the background on this machine.");
+    yield* Console.log("Vetra Code is already set up to run in the background on this machine.");
     return true;
   }
   const wanted = yield* Prompt.run(
     Prompt.confirm({
       message: installed
-        ? "The installed Vetra Studio service needs an update or repair. Update it now?"
-        : "Run Vetra Studio in the background whenever this machine boots? " +
+        ? "The installed Vetra Code service needs an update or repair. Update it now?"
+        : "Run Vetra Code in the background whenever this machine boots? " +
           "It stays reachable through Vetra Connect even after you log out.",
       initial: true,
     }),
@@ -196,7 +196,7 @@ export const recoverServiceOnboardingOffer = <R>(
   );
 
 export const serviceCommand = Command.make("service").pipe(
-  Command.withDescription("Manage the Vetra Studio background service."),
+  Command.withDescription("Manage the Vetra Code background service."),
   Command.withSubcommands([
     serviceInstallCommand,
     serviceUninstallCommand,

@@ -1,4 +1,4 @@
-import type { VcsStatusResult } from "@vetra-studio/contracts";
+import type { VcsStatusResult } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -21,7 +21,7 @@ function status(overrides: Partial<VcsStatusResult> = {}): VcsStatusResult {
     pr: {
       number: 42,
       title: "PR branch",
-      url: "https://github.com/vetra-studio/vetra/pull/42",
+      url: "https://github.com/vetra-code/vetra/pull/42",
       baseRef: "main",
       headRef: "feature/current",
       state: "open",

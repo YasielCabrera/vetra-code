@@ -46,7 +46,7 @@ export class DesktopLifecycle extends Context.Service<
     ) => Effect.Effect<void, never, DesktopLifecycleRuntimeServices>;
     readonly register: Effect.Effect<void, never, Scope.Scope | DesktopLifecycleRuntimeServices>;
   }
->()("@vetra-studio/desktop/app/DesktopLifecycle") {}
+>()("@vetra-code/desktop/app/DesktopLifecycle") {}
 
 const { logInfo: logLifecycleInfo, logError: logLifecycleError } =
   makeComponentLogger("desktop-lifecycle");

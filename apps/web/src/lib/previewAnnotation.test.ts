@@ -1,4 +1,4 @@
-import type { PreviewAnnotationPayload } from "@vetra-studio/contracts";
+import type { PreviewAnnotationPayload } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

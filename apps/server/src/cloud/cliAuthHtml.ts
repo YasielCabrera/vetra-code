@@ -7,9 +7,9 @@ export function resolveLoopbackAuthorizationStage(): LoopbackAuthorizationStage 
 }
 
 const stageBrands = {
-  dev: "Vetra Studio (Dev)",
-  nightly: "Vetra Studio (Nightly)",
-  latest: "Vetra Studio",
+  dev: "Vetra Code (Dev)",
+  nightly: "Vetra Code (Nightly)",
+  latest: "Vetra Code",
 } as const satisfies Record<LoopbackAuthorizationStage, string>;
 
 export function renderLoopbackAuthorizationCompleteHtml(

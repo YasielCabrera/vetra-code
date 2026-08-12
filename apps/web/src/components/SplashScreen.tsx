@@ -3,9 +3,9 @@ export function SplashScreen() {
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div
         className="flex size-24 items-center justify-center"
-        aria-label="Vetra Studio splash screen"
+        aria-label="Vetra Code splash screen"
       >
-        <img alt="Vetra Studio" className="size-16 object-contain" src="/apple-touch-icon.png" />
+        <img alt="Vetra Code" className="size-16 object-contain" src="/apple-touch-icon.png" />
       </div>
     </div>
   );

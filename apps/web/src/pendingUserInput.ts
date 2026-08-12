@@ -1,4 +1,4 @@
-import type { UserInputQuestion } from "@vetra-studio/contracts";
+import type { UserInputQuestion } from "@vetra-code/contracts";
 
 export interface PendingUserInputDraftAnswer {
   selectedOptionLabels?: string[];

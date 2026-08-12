@@ -1,4 +1,4 @@
-import { HostProcessExecutablePath, HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { HostProcessExecutablePath, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -25,7 +25,7 @@ import {
   type ServiceState,
 } from "./serviceProtocol.ts";
 
-const BOOT_SERVICE_NAME = "vetra-studio";
+const BOOT_SERVICE_NAME = "vetra-code";
 export const BOOT_SERVICE_UNIT_FILE = `${BOOT_SERVICE_NAME}.service`;
 export const BOOT_SERVICE_UNIT_ENV = "VETRA_BOOT_SERVICE_UNIT";
 
@@ -54,7 +54,7 @@ export function renderBootServiceUnit(plan: BootServicePlan): string {
   // The user manager has no reliable network-online target; server networking retries itself.
   return [
     "[Unit]",
-    "Description=Vetra Studio server",
+    "Description=Vetra Code server",
     "StartLimitIntervalSec=300",
     "StartLimitBurst=5",
     "",
@@ -114,7 +114,7 @@ export class BootServiceInstallError extends Schema.TaggedErrorClass<BootService
   { cause: Schema.Defect() },
 ) {
   override get message(): string {
-    return "Could not set up the Vetra Studio background service.";
+    return "Could not set up the Vetra Code background service.";
   }
 }
 
@@ -148,7 +148,7 @@ export class BootService extends Context.Service<
     readonly uninstall: Effect.Effect<boolean, BootServiceError>;
     readonly status: Effect.Effect<BootServiceStatus, BootServiceError>;
   }
->()("@vetra-studio/server/cloud/bootService") {}
+>()("@vetra-code/server/cloud/bootService") {}
 
 export interface BootServiceHost {
   readonly execPath: string;

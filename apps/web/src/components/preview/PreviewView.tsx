@@ -1,14 +1,14 @@
 "use client";
 
-import { scopedThreadKey } from "@vetra-studio/client-runtime/environment";
-import { squashAtomCommandFailure } from "@vetra-studio/client-runtime/state/runtime";
+import { scopedThreadKey } from "@vetra-code/client-runtime/environment";
+import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
 import {
   FILL_PREVIEW_VIEWPORT,
   type PreviewAnnotationPayload,
   type PreviewViewportSetting,
   type ScopedThreadRef,
-} from "@vetra-studio/contracts";
-import { normalizePreviewUrl } from "@vetra-studio/shared/preview";
+} from "@vetra-code/contracts";
+import { normalizePreviewUrl } from "@vetra-code/shared/preview";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {

@@ -1,4 +1,4 @@
-import type { EnvironmentConnectionPhase } from "@vetra-studio/client-runtime/connection";
+import type { EnvironmentConnectionPhase } from "@vetra-code/client-runtime/connection";
 
 import { cn } from "~/lib/utils";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";

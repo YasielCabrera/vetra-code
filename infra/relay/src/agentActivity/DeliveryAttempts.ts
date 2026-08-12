@@ -65,7 +65,7 @@ export class DeliveryAttempts extends Context.Service<
       input: DeliveryAttemptCompletionInput,
     ) => Effect.Effect<void, DeliveryAttemptRecordPersistenceError>;
   }
->()("@vetra-studio/relay/agentActivity/DeliveryAttempts") {}
+>()("@vetra-code/relay/agentActivity/DeliveryAttempts") {}
 
 const SOURCE_JOB_CLAIM_LEASE_MINUTES = 10;
 

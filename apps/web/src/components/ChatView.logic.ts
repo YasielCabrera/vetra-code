@@ -9,7 +9,7 @@ import {
   type ScopedThreadRef,
   type ThreadId,
   type TurnId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { type ChatMessage, type SessionPhase, type Thread, type ThreadShell } from "../types";
 import { type ComposerImageAttachment, type DraftThreadState } from "../composerDraftStore";
 import * as Schema from "effect/Schema";

@@ -1,4 +1,4 @@
-import type { DesktopBridge, DesktopWslState } from "@vetra-studio/contracts";
+import type { DesktopBridge, DesktopWslState } from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { Atom } from "effect/unstable/reactivity";

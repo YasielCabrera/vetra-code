@@ -15,9 +15,9 @@ import {
   RuntimeMode,
   ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
-import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
-import { normalizeModelSlug } from "@vetra-studio/shared/model";
+} from "@vetra-code/contracts";
+import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+import { normalizeModelSlug } from "@vetra-code/shared/model";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
@@ -30,10 +30,10 @@ import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
-import * as CodexClient from "@vetra-studio/effect-codex-app-server/client";
-import * as CodexErrors from "@vetra-studio/effect-codex-app-server/errors";
-import * as CodexRpc from "@vetra-studio/effect-codex-app-server/rpc";
-import * as EffectCodexSchema from "@vetra-studio/effect-codex-app-server/schema";
+import * as CodexClient from "@vetra-code/effect-codex-app-server/client";
+import * as CodexErrors from "@vetra-code/effect-codex-app-server/errors";
+import * as CodexRpc from "@vetra-code/effect-codex-app-server/rpc";
+import * as EffectCodexSchema from "@vetra-code/effect-codex-app-server/schema";
 
 import { buildCodexInitializeParams } from "./CodexProvider.ts";
 import { codexSessionAppServerArgs } from "./codexLaunchArgs.ts";

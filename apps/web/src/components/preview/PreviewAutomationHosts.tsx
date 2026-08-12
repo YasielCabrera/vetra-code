@@ -1,7 +1,7 @@
 "use client";
 
 import { RegistryContext, useAtomSet, useAtomValue } from "@effect/atom-react";
-import { squashAtomCommandFailure } from "@vetra-studio/client-runtime/state/runtime";
+import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
 import {
   FILL_PREVIEW_VIEWPORT,
   PREVIEW_AUTOMATION_OPERATIONS,
@@ -18,8 +18,8 @@ import {
   type PreviewRenderedViewportSize,
   type PreviewViewportSetting,
   type ScopedThreadRef,
-} from "@vetra-studio/contracts";
-import { resolvePreviewViewport } from "@vetra-studio/shared/previewViewport";
+} from "@vetra-code/contracts";
+import { resolvePreviewViewport } from "@vetra-code/shared/previewViewport";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Atom } from "effect/unstable/reactivity";
 

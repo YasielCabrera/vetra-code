@@ -4,7 +4,7 @@ import {
   RuntimeRequestId,
   ThreadId,
   type ProviderRuntimeEvent,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { runtimeEventToActivities } from "./ProviderRuntimeIngestion.ts";

@@ -1,4 +1,4 @@
-import type { AuthSessionState, EnvironmentId, ServerConfig } from "@vetra-studio/contracts";
+import type { AuthSessionState, EnvironmentId, ServerConfig } from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";

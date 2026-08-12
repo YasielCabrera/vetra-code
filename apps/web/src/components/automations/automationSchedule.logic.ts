@@ -1,4 +1,4 @@
-import type { AutomationSchedule } from "@vetra-studio/contracts";
+import type { AutomationSchedule } from "@vetra-code/contracts";
 
 /**
  * The schedule vocabulary the form offers, and its translation to and from

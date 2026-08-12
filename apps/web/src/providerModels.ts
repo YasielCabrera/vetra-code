@@ -7,8 +7,8 @@ import {
   type ProviderInstanceId,
   type ServerProvider,
   type ServerProviderModel,
-} from "@vetra-studio/contracts";
-import { createModelCapabilities, normalizeModelSlug } from "@vetra-studio/shared/model";
+} from "@vetra-code/contracts";
+import { createModelCapabilities, normalizeModelSlug } from "@vetra-code/shared/model";
 
 const EMPTY_CAPABILITIES: ModelCapabilities = createModelCapabilities({
   optionDescriptors: [],

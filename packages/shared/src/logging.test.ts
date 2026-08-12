@@ -13,7 +13,7 @@ import {
 const tempDirectories: string[] = [];
 
 const makeTempDirectory = (): string => {
-  const directory = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "vetra-studio-logging-"));
+  const directory = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "vetra-code-logging-"));
   tempDirectories.push(directory);
   return directory;
 };

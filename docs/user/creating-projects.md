@@ -5,11 +5,11 @@ landing draft, so refreshing the page restores the same prompt instead of creati
 thread. Opening or refreshing this page does not create a directory, project, or server thread.
 
 Use the project selector in the composer before starting a thread. You can choose any existing
-project or choose **New project**. You can type the prompt first, but Vetra Studio keeps sending
+project or choose **New project**. You can type the prompt first, but Vetra Code keeps sending
 disabled until the selector points to a project.
 
 Choosing **New project** opens a separate location step. Select the environment and parent
-directory there. Vetra Studio proposes a folder name from the first prompt and adds a short project
+directory there. Vetra Code proposes a folder name from the first prompt and adds a short project
 identifier so separate projects do not collide. You can edit the folder name before continuing.
 Confirming this step creates the project and its directory, but does not start a thread or contact an
 agent.

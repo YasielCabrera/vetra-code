@@ -1,4 +1,4 @@
-import type { OrchestrationShellSnapshot } from "@vetra-studio/contracts";
+import type { OrchestrationShellSnapshot } from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -60,7 +60,7 @@ export class ShellSnapshotLoader extends Context.Service<
       prepared: PreparedConnection,
     ) => Effect.Effect<Option.Option<OrchestrationShellSnapshot>>;
   }
->()("@vetra-studio/client-runtime/state/shellSnapshotHttp/ShellSnapshotLoader") {}
+>()("@vetra-code/client-runtime/state/shellSnapshotHttp/ShellSnapshotLoader") {}
 
 export const shellSnapshotLoaderLayer: Layer.Layer<
   ShellSnapshotLoader,

@@ -1,4 +1,4 @@
-import { type TerminalSummary, WS_METHODS } from "@vetra-studio/contracts";
+import { type TerminalSummary, WS_METHODS } from "@vetra-code/contracts";
 import * as Stream from "effect/Stream";
 import { Atom } from "effect/unstable/reactivity";
 

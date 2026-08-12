@@ -26,9 +26,9 @@ import type {
   PreviewAutomationStatus,
   PreviewAutomationTypeInput,
   PreviewAutomationWaitForInput,
-} from "@vetra-studio/contracts";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
-import { normalizePreviewUrl } from "@vetra-studio/shared/preview";
+} from "@vetra-code/contracts";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { normalizePreviewUrl } from "@vetra-code/shared/preview";
 import { BrowserWindow, type Session, clipboard, nativeImage, shell, webContents } from "electron";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
@@ -3659,7 +3659,7 @@ export class PreviewManager extends Context.Service<
       listener: RecordingFrameListener,
     ) => Effect.Effect<void, never, Scope.Scope>;
   }
->()("@vetra-studio/desktop/preview/Manager/PreviewManager") {}
+>()("@vetra-code/desktop/preview/Manager/PreviewManager") {}
 
 export const make = Effect.gen(function* PreviewManagerMake() {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;

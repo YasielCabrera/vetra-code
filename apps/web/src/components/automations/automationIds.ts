@@ -1,4 +1,4 @@
-import { AutomationId } from "@vetra-studio/contracts";
+import { AutomationId } from "@vetra-code/contracts";
 
 import { randomUUID } from "../../lib/utils";
 

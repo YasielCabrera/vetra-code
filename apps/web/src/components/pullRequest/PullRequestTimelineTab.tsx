@@ -1,4 +1,4 @@
-import type { PullRequestActor, PullRequestDetailView } from "@vetra-studio/contracts";
+import type { PullRequestActor, PullRequestDetailView } from "@vetra-code/contracts";
 import {
   ChevronDownIcon,
   ExternalLinkIcon,

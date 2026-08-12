@@ -1,4 +1,4 @@
-import { AUTOMATION_CLAIM_RESUME_WINDOW_MS } from "@vetra-studio/contracts";
+import { AUTOMATION_CLAIM_RESUME_WINDOW_MS } from "@vetra-code/contracts";
 import { describe, expect, it } from "@effect/vitest";
 
 import {

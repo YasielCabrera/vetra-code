@@ -10,7 +10,7 @@ application deletion, UI redesign, and cloud infrastructure into one unreviewabl
 1. Create a dedicated product fork/branch while retaining the original repository as `upstream`.
 2. Install Vite+ and dependencies if needed.
 3. Run the web-only isolated command from `03-safe-first-run.md`.
-4. Configure one provider with an isolated provider home below `.vetra-studio/providers`; do not
+4. Configure one provider with an isolated provider home below `.vetra-code/providers`; do not
    reuse or mutate its normal CLI home for the collision test.
 5. Create a disposable project, start one thread, run one turn, inspect a diff, and open a terminal.
 6. Record the actual `[dev-runner]` ports and base directory in local notes, not committed config.
@@ -85,11 +85,11 @@ Run focused checks, not the repository-wide suite:
 
 ```bash
 pnpm install
-pnpm exec vp run --filter @vetra-studio/contracts typecheck
-pnpm exec vp run --filter @vetra-studio/client-runtime typecheck
-pnpm exec vp run --filter @vetra-studio/web typecheck
-pnpm exec vp run --filter @vetra-studio/desktop typecheck
-pnpm exec vp run --filter @vetra-studio/server typecheck
+pnpm exec vp run --filter @vetra-code/contracts typecheck
+pnpm exec vp run --filter @vetra-code/client-runtime typecheck
+pnpm exec vp run --filter @vetra-code/web typecheck
+pnpm exec vp run --filter @vetra-code/desktop typecheck
+pnpm exec vp run --filter @vetra-code/server typecheck
 ```
 
 Also run the focused tests for files changed during identity work and a web/server build that proves

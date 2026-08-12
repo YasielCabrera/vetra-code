@@ -1,5 +1,5 @@
 import { expect, it } from "@effect/vitest";
-import { HostProcessEnvironment } from "@vetra-studio/shared/hostProcess";
+import { HostProcessEnvironment } from "@vetra-code/shared/hostProcess";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 

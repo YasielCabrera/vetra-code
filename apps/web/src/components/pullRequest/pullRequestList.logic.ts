@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema";
 
-import { PullRequestListEntry, PullRequestListResult } from "@vetra-studio/contracts";
-import type { PullRequestInvolvement, PullRequestListState } from "@vetra-studio/contracts";
+import { PullRequestListEntry, PullRequestListResult } from "@vetra-code/contracts";
+import type { PullRequestInvolvement, PullRequestListState } from "@vetra-code/contracts";
 
 export type PullRequestGroupKey = "reviewRequested" | "authored" | "others";
 

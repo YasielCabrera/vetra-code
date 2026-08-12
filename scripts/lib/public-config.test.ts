@@ -148,9 +148,7 @@ describe("loadRepoEnv", () => {
 });
 
 function makeTemporaryDirectory() {
-  const directory = NodeFS.mkdtempSync(
-    NodePath.join(NodeOS.tmpdir(), "vetra-studio-public-config-"),
-  );
+  const directory = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "vetra-code-public-config-"));
   temporaryDirectories.push(directory);
   return directory;
 }

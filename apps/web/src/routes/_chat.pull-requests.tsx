@@ -1,5 +1,5 @@
-import { scopeThreadRef } from "@vetra-studio/client-runtime/environment";
-import { pullRequestHostOf, ThreadId } from "@vetra-studio/contracts";
+import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
+import { pullRequestHostOf, ThreadId } from "@vetra-code/contracts";
 import type {
   EnvironmentId,
   ProjectId,
@@ -8,7 +8,7 @@ import type {
   PullRequestListResult,
   PullRequestListState,
   SourceControlProviderKind,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
@@ -936,7 +936,7 @@ function PullRequestsRouteView() {
       ) : !pullRequestsSupported ? (
         <PullRequestsUnavailableState
           title="Pull requests unavailable"
-          error="Update this environment's Vetra Studio server to browse pull requests."
+          error="Update this environment's Vetra Code server to browse pull requests."
         />
       ) : firstLoad ? (
         <PullRequestListGhost rows={7} />

@@ -3,7 +3,7 @@ import type {
   OrchestrationGetFullThreadDiffResult,
   OrchestrationGetTurnDiffResult,
   ThreadId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 export type CheckpointDiffResult =
   | OrchestrationGetTurnDiffResult

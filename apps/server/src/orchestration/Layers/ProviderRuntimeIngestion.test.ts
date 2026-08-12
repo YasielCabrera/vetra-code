@@ -9,7 +9,7 @@ import {
   ProviderRuntimeEvent,
   ProviderSession,
   ProviderInstanceId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   ApprovalRequestId,
   CommandId,
@@ -22,7 +22,7 @@ import {
   type ServerSettings,
   ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";

@@ -14,10 +14,10 @@ import * as Option from "effect/Option";
 
 import * as Electron from "electron";
 
-import * as NetService from "@vetra-studio/shared/Net";
-import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
-import { resolveRemoteVetraCliPackageSpec } from "@vetra-studio/ssh/command";
-import type { RemoteVetraRunnerOptions } from "@vetra-studio/ssh/tunnel";
+import * as NetService from "@vetra-code/shared/Net";
+import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { resolveRemoteVetraCliPackageSpec } from "@vetra-code/ssh/command";
+import type { RemoteVetraRunnerOptions } from "@vetra-code/ssh/tunnel";
 import serverPackageJson from "../../server/package.json" with { type: "json" };
 
 import * as DesktopIpc from "./ipc/DesktopIpc.ts";

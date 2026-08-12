@@ -1,4 +1,4 @@
-import type { ScopedThreadRef, ThreadId } from "@vetra-studio/contracts";
+import type { ScopedThreadRef, ThreadId } from "@vetra-code/contracts";
 
 export function shouldHideCollapsedToastContent(
   visibleToastIndex: number,

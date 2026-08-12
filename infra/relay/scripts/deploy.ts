@@ -340,7 +340,7 @@ export function publicConfigFromOutput(output: unknown): RelayPublicConfig | nul
 const readRelayPublicConfig = Effect.fn("relay.deploy.readState")(function* (stage: string) {
   const state = yield* State.State;
   const service = yield* state;
-  const output = yield* service.getOutput({ stack: "VetraStudioRelay", stage });
+  const output = yield* service.getOutput({ stack: "VetraCodeRelay", stage });
   const publicConfig = publicConfigFromOutput(output);
   if (publicConfig === null) {
     return yield* new RelayDeployError({
@@ -490,7 +490,7 @@ export const relayDeployCommand = Command.make(
     ),
   },
   deploy,
-).pipe(Command.withDescription("Deploy the Vetra Studio relay through Alchemy."));
+).pipe(Command.withDescription("Deploy the Vetra Code relay through Alchemy."));
 
 if (import.meta.main) {
   Command.run(relayDeployCommand, { version: "0.0.0" }).pipe(

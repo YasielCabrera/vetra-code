@@ -1,4 +1,4 @@
-import type { ContextMenuItem } from "@vetra-studio/contracts";
+import type { ContextMenuItem } from "@vetra-code/contracts";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 

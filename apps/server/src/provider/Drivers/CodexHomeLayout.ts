@@ -1,6 +1,6 @@
 import * as NodeOS from "node:os";
 
-import { ProviderDriverKind, type CodexSettings } from "@vetra-studio/contracts";
+import { ProviderDriverKind, type CodexSettings } from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";

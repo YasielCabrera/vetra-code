@@ -1,4 +1,4 @@
-import { WS_METHODS } from "@vetra-studio/contracts";
+import { WS_METHODS } from "@vetra-code/contracts";
 import * as Clock from "effect/Clock";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";

@@ -1,6 +1,6 @@
-import type { LocalApi, ScopedThreadRef } from "@vetra-studio/contracts";
-import { isAtomCommandInterrupted } from "@vetra-studio/client-runtime/state/runtime";
-import { isPreviewableUrl } from "@vetra-studio/shared/preview";
+import type { LocalApi, ScopedThreadRef } from "@vetra-code/contracts";
+import { isAtomCommandInterrupted } from "@vetra-code/client-runtime/state/runtime";
+import { isPreviewableUrl } from "@vetra-code/shared/preview";
 import * as Schema from "effect/Schema";
 
 import type { OpenPreviewMutation } from "~/browser/openFileInPreview";

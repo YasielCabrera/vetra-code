@@ -1,5 +1,5 @@
-import type { OrchestrationEvent } from "@vetra-studio/contracts";
-import { makeDrainableWorker } from "@vetra-studio/shared/DrainableWorker";
+import type { OrchestrationEvent } from "@vetra-code/contracts";
+import { makeDrainableWorker } from "@vetra-code/shared/DrainableWorker";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

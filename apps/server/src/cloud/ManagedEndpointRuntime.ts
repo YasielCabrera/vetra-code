@@ -1,5 +1,5 @@
-import type { RelayManagedEndpointRuntimeConfig } from "@vetra-studio/contracts/relay";
-import * as RelayClient from "@vetra-studio/shared/relayClient";
+import type { RelayManagedEndpointRuntimeConfig } from "@vetra-code/contracts/relay";
+import * as RelayClient from "@vetra-code/shared/relayClient";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -59,7 +59,7 @@ export class CloudManagedEndpointRuntime extends Context.Service<
       config: RelayManagedEndpointRuntimeConfig | null,
     ) => Effect.Effect<CloudManagedEndpointRuntimeStatus>;
   }
->()("@vetra-studio/server/cloud/ManagedEndpointRuntime/CloudManagedEndpointRuntime") {}
+>()("@vetra-code/server/cloud/ManagedEndpointRuntime/CloudManagedEndpointRuntime") {}
 
 interface ActiveConnector {
   readonly child: ChildProcessSpawner.ChildProcessHandle;

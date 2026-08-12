@@ -1,14 +1,14 @@
-import type { UsageProviderKind } from "@vetra-studio/contracts";
+import type { UsageProviderKind } from "@vetra-code/contracts";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import type { DailyTotals, HourlyTotals } from "@vetra-studio/shared/usageMerge";
+import type { DailyTotals, HourlyTotals } from "@vetra-code/shared/usageMerge";
 import {
   formatDayShort,
   formatHourShort,
   formatRelativeHourShort,
   formatTokens,
   formatUsd,
-} from "@vetra-studio/shared/usageFormat";
+} from "@vetra-code/shared/usageFormat";
 import { PROVIDER_COLOR, PROVIDER_LABEL, PROVIDER_MARK, PROVIDER_ORDER } from "./usageProviders";
 
 const VIEW_WIDTH = 960;

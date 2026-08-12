@@ -1,7 +1,7 @@
-import { createEnvironmentProjectAtoms } from "@vetra-studio/client-runtime/state/projects";
-import { createProjectEnvironmentAtoms } from "@vetra-studio/client-runtime/state/projects";
-import { createEnvironmentRpcQueryAtomFamily } from "@vetra-studio/client-runtime/state/runtime";
-import { WS_METHODS } from "@vetra-studio/contracts";
+import { createEnvironmentProjectAtoms } from "@vetra-code/client-runtime/state/projects";
+import { createProjectEnvironmentAtoms } from "@vetra-code/client-runtime/state/projects";
+import { createEnvironmentRpcQueryAtomFamily } from "@vetra-code/client-runtime/state/runtime";
+import { WS_METHODS } from "@vetra-code/contracts";
 
 import { environmentCatalog } from "../connection/catalog";
 import { connectionAtomRuntime } from "../connection/runtime";

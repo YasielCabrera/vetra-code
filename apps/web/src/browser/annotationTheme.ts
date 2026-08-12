@@ -1,4 +1,4 @@
-import type { DesktopPreviewAnnotationTheme } from "@vetra-studio/contracts";
+import type { DesktopPreviewAnnotationTheme } from "@vetra-code/contracts";
 
 const readVariable = (styles: CSSStyleDeclaration, name: string, fallback: string): string =>
   styles.getPropertyValue(name).trim() || fallback;

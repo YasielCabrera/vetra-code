@@ -1,7 +1,7 @@
 import type {
   ResourceTelemetryHistoryInput,
   ResourceTelemetrySnapshot,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import { useCallback } from "react";
 

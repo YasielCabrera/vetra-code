@@ -1,4 +1,4 @@
-import type { ServerSelfUpdateOutcome } from "@vetra-studio/contracts";
+import type { ServerSelfUpdateOutcome } from "@vetra-code/contracts";
 
 /** Protocol 2 snapshots SQLite before trials so migrations can be rolled back safely. */
 export const SERVICE_LAUNCHER_PROTOCOL = 2 as const;

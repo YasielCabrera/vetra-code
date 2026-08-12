@@ -1,4 +1,4 @@
-import type { DiscoveredLocalServer } from "@vetra-studio/contracts";
+import type { DiscoveredLocalServer } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { mergeServers, type PreviewableServer } from "./useDiscoveredLocalServers";

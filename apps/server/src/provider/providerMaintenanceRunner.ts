@@ -6,8 +6,8 @@ import {
   type ServerProvider,
   type ServerProviderUpdatedPayload,
   type ServerProviderUpdateState,
-} from "@vetra-studio/contracts";
-import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
+} from "@vetra-code/contracts";
+import { resolveSpawnCommand } from "@vetra-code/shared/shell";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Data from "effect/Data";
@@ -54,7 +54,7 @@ export interface ProviderMaintenanceRunnerShape {
 export class ProviderMaintenanceRunner extends Context.Service<
   ProviderMaintenanceRunner,
   ProviderMaintenanceRunnerShape
->()("@vetra-studio/server/provider/providerMaintenanceRunner") {}
+>()("@vetra-code/server/provider/providerMaintenanceRunner") {}
 
 class ProviderMaintenanceCommandError extends Data.TaggedError("ProviderMaintenanceCommandError")<{
   readonly message: string;
@@ -368,9 +368,9 @@ export const make = Effect.fn("ProviderMaintenanceRunner.make")(function* () {
                 startedAt,
                 finishedAt,
                 message: couldNotVerify
-                  ? "Update command completed, but Vetra Studio could not verify the provider version."
+                  ? "Update command completed, but Vetra Code could not verify the provider version."
                   : stillOutdated
-                    ? "Update command completed, but Vetra Studio still detects an outdated provider version."
+                    ? "Update command completed, but Vetra Code still detects an outdated provider version."
                     : "Provider updated.",
                 output: commandOutput(result),
               }),

@@ -11,7 +11,7 @@ import {
   OrchestrationEventType,
   ProjectId,
   ThreadId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import * as Effect from "effect/Effect";

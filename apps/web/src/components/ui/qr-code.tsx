@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { QrCode } from "@vetra-studio/shared/qrCode";
+import { QrCode } from "@vetra-code/shared/qrCode";
 
 type QRCodeSvgProps = {
   value: string;

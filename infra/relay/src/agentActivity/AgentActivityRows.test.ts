@@ -1,4 +1,4 @@
-import type { RelayAgentActivityState } from "@vetra-studio/contracts/relay";
+import type { RelayAgentActivityState } from "@vetra-code/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

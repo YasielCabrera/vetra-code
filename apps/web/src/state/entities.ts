@@ -3,11 +3,11 @@ import type {
   EnvironmentProject,
   EnvironmentThread,
   EnvironmentThreadShell,
-} from "@vetra-studio/client-runtime/state/shell";
+} from "@vetra-code/client-runtime/state/shell";
 import {
   type EnvironmentThreadStatus,
   mergeEnvironmentThread,
-} from "@vetra-studio/client-runtime/state/threads";
+} from "@vetra-code/client-runtime/state/threads";
 import type {
   OrchestrationMessage,
   OrchestrationProposedPlan,
@@ -16,8 +16,8 @@ import type {
   ScopedProjectRef,
   ScopedThreadRef,
   ServerConfig,
-} from "@vetra-studio/contracts";
-import type { EnvironmentId, ThreadId } from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
+import type { EnvironmentId, ThreadId } from "@vetra-code/contracts";
 import { Atom } from "effect/unstable/reactivity";
 import { useMemo } from "react";
 import { appAtomRegistry } from "../rpc/atomRegistry";

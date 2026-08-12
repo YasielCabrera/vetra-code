@@ -1,4 +1,4 @@
-import { makeRelayClientTracingLayer } from "@vetra-studio/shared/relayTracing";
+import { makeRelayClientTracingLayer } from "@vetra-code/shared/relayTracing";
 
 import { resolveRelayClientTracingConfig } from "./publicConfig.ts";
 

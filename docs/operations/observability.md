@@ -1,8 +1,8 @@
 # Observability
 
-> For maintainers. Using Vetra Studio? See [docs/user](../user/).
+> For maintainers. Using Vetra Code? See [docs/user](../user/).
 
-Vetra Studio has one server-side observability model:
+Vetra Code has one server-side observability model:
 
 - pretty logs go to stdout for humans
 - completed spans go to a local NDJSON trace file
@@ -10,7 +10,7 @@ Vetra Studio has one server-side observability model:
 
 The local trace file is the persisted source of truth for normal local launches. Those launches do not
 write a separate server log file, but SSH-managed launches also persist the remote process's
-stdout/stderr at `~/.vetra-studio/ssh-launch/<state>/server.log`.
+stdout/stderr at `~/.vetra-code/ssh-launch/<state>/server.log`.
 
 ## Where To Find Things
 
@@ -21,7 +21,7 @@ Logs are human-facing:
 - destination: stdout
 - format: `Logger.consolePretty()`
 - normal local persistence: none
-- SSH-managed launch persistence: `~/.vetra-studio/ssh-launch/<state>/server.log`
+- SSH-managed launch persistence: `~/.vetra-code/ssh-launch/<state>/server.log`
 
 If you want a log message to show up in the trace file, emit it inside an active span with `Effect.log...`. `Logger.tracerLogger` will attach it as a span event.
 
@@ -29,10 +29,10 @@ If you want a log message to show up in the trace file, emit it inside an active
 
 Completed spans are written as NDJSON records to `serverTracePath`. The default depends on how the
 server starts: production and explicitly configured homes use
-`<home>/userdata/logs/server.trace.ndjson` (so `~/.vetra-studio/userdata/...` by default, or
+`<home>/userdata/logs/server.trace.ndjson` (so `~/.vetra-code/userdata/...` by default, or
 `/custom/path/userdata/...` with `--home-dir /custom/path`), a linked worktree dev run uses
-`<worktree>/.vetra-studio/userdata/logs/server.trace.ndjson`, and an implicit dev run outside a linked
-worktree uses its own `.vetra-studio/userdata/logs/server.trace.ndjson`.
+`<worktree>/.vetra-code/userdata/logs/server.trace.ndjson`, and an implicit dev run outside a linked
+worktree uses its own `.vetra-code/userdata/logs/server.trace.ndjson`.
 
 Important fields common to both record types:
 
@@ -79,7 +79,7 @@ You do not need any extra env vars. Just run the app normally and inspect `serve
 Examples:
 
 ```bash
-pnpm dev --home-dir .vetra-studio
+pnpm dev --home-dir .vetra-code
 ```
 
 ```bash
@@ -130,7 +130,7 @@ export VETRA_TRACE_TIMING_ENABLED=true
 CLI:
 
 ```bash
-pnpm dev --home-dir .vetra-studio
+pnpm dev --home-dir .vetra-code
 ```
 
 Monorepo web/server dev:
@@ -155,7 +155,7 @@ macOS app bundle example:
 VETRA_OTLP_TRACES_URL=http://localhost:4318/v1/traces \
 VETRA_OTLP_METRICS_URL=http://localhost:4318/v1/metrics \
 VETRA_OTLP_SERVICE_NAME=vetra-desktop \
-"/Applications/Vetra Studio.app/Contents/MacOS/Vetra Studio"
+"/Applications/Vetra Code.app/Contents/MacOS/Vetra Code"
 ```
 
 Direct binary example:
@@ -183,19 +183,19 @@ Resolve the path for the launch mode once. Production and explicitly configured 
 state under the base directory's `userdata` folder:
 
 ```bash
-TRACE_FILE="${VETRA_HOME:-$HOME/.vetra-studio}/userdata/logs/server.trace.ndjson"
+TRACE_FILE="${VETRA_HOME:-$HOME/.vetra-code}/userdata/logs/server.trace.ndjson"
 ```
 
 A dev server started from a linked worktree defaults to that worktree's local home:
 
 ```bash
-TRACE_FILE="$WORKTREE/.vetra-studio/userdata/logs/server.trace.ndjson"
+TRACE_FILE="$WORKTREE/.vetra-code/userdata/logs/server.trace.ndjson"
 ```
 
 Only an implicit dev run outside a linked worktree uses the shared dev directory:
 
 ```bash
-TRACE_FILE="$HOME/.vetra-studio/dev/logs/server.trace.ndjson"
+TRACE_FILE="$HOME/.vetra-code/dev/logs/server.trace.ndjson"
 ```
 
 Tail the selected file:

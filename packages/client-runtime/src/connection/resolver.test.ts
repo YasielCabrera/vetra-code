@@ -1,6 +1,6 @@
-import { EnvironmentId, type DesktopSshEnvironmentTarget } from "@vetra-studio/contracts";
-import { RelayEnvironmentConnectScope } from "@vetra-studio/contracts/relay";
-import { RelayClientTracer } from "@vetra-studio/shared/relayTracing";
+import { EnvironmentId, type DesktopSshEnvironmentTarget } from "@vetra-code/contracts";
+import { RelayEnvironmentConnectScope } from "@vetra-code/contracts/relay";
+import { RelayClientTracer } from "@vetra-code/shared/relayTracing";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

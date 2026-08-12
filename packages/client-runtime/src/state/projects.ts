@@ -5,7 +5,7 @@ import {
   isWindowsDrivePath,
   normalizeProjectPathForComparison,
   normalizeProjectPathForDispatch,
-} from "@vetra-studio/shared/path";
+} from "@vetra-code/shared/path";
 
 export { normalizeProjectPathForComparison, normalizeProjectPathForDispatch };
 

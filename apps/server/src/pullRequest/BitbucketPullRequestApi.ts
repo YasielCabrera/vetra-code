@@ -15,7 +15,7 @@ import type {
   PullRequestReviewThread,
   PullRequestReviewVerdict,
   PullRequestReviewerCandidateList,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 import * as BitbucketApi from "../sourceControl/BitbucketApi.ts";
 import {
@@ -250,7 +250,7 @@ export class BitbucketPullRequestApi extends Context.Service<
       readonly resolved: boolean;
     }) => Effect.Effect<void, BitbucketPullRequestApiError>;
   }
->()("@vetra-studio/server/pullRequest/BitbucketPullRequestApi") {}
+>()("@vetra-code/server/pullRequest/BitbucketPullRequestApi") {}
 
 /** `workspace/slug`; Bitbucket has no deeper nesting to address. */
 function repositorySegments(

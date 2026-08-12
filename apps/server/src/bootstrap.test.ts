@@ -11,7 +11,7 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as TestClock from "effect/testing/TestClock";
 import { vi } from "vite-plus/test";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 
 import {
   BootstrapEnvelopeDecodeError,

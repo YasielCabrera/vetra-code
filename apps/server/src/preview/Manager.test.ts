@@ -1,6 +1,6 @@
 import { it } from "@effect/vitest";
-import { type PreviewEvent, ThreadId } from "@vetra-studio/contracts";
-import { PreviewUrlNormalizationError } from "@vetra-studio/shared/preview";
+import { type PreviewEvent, ThreadId } from "@vetra-code/contracts";
+import { PreviewUrlNormalizationError } from "@vetra-code/shared/preview";
 import { Effect, PubSub } from "effect";
 import { expect } from "vite-plus/test";
 

@@ -13,7 +13,7 @@ import {
   OrchestrationThreadActivityTone,
   ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
@@ -82,5 +82,5 @@ export class ProjectionThreadActivityRepository extends Context.Service<
   ProjectionThreadActivityRepository,
   ProjectionThreadActivityRepositoryShape
 >()(
-  "@vetra-studio/server/persistence/Services/ProjectionThreadActivities/ProjectionThreadActivityRepository",
+  "@vetra-code/server/persistence/Services/ProjectionThreadActivities/ProjectionThreadActivityRepository",
 ) {}

@@ -1,4 +1,4 @@
-import { EnvironmentId, type ExecutionEnvironmentDescriptor } from "@vetra-studio/contracts";
+import { EnvironmentId, type ExecutionEnvironmentDescriptor } from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 

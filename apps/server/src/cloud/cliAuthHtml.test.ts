@@ -9,7 +9,7 @@ it("renders the branded loopback authorization completion page", () => {
   const html = renderLoopbackAuthorizationCompleteHtml();
 
   expect(resolveLoopbackAuthorizationStage()).toBe("dev");
-  expect(html).toContain("Vetra Studio (Dev)");
+  expect(html).toContain("Vetra Code (Dev)");
   expect(html).toContain('class="stage stage-dev"');
   expect(html).not.toContain("Secure terminal handoff");
   expect(html).toContain("You're connected");
@@ -23,9 +23,9 @@ it("renders the matching header treatment for each release channel", () => {
   const nightly = renderLoopbackAuthorizationCompleteHtml("nightly");
   const latest = renderLoopbackAuthorizationCompleteHtml("latest");
 
-  expect(nightly).toContain("Vetra Studio (Nightly)");
+  expect(nightly).toContain("Vetra Code (Nightly)");
   expect(nightly).toContain('class="stage stage-nightly"');
-  expect(latest).toContain('<p class="brand">Vetra Studio</p>');
+  expect(latest).toContain('<p class="brand">Vetra Code</p>');
   expect(latest).not.toContain("(Latest)");
   expect(latest).toContain('class="stage stage-latest"');
 });

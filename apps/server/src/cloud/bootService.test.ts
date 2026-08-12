@@ -4,7 +4,7 @@ import {
   HostProcessArguments,
   HostProcessExecutablePath,
   HostProcessPlatform,
-} from "@vetra-studio/shared/hostProcess";
+} from "@vetra-code/shared/hostProcess";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -24,14 +24,14 @@ import {
 it("keeps systemd pinned to the stable launcher rather than a versioned server", () => {
   const unit = BootService.renderBootServiceUnit({
     nodePath: "/usr/bin/node",
-    launcherPath: "/home/theo/.vetra-studio/runtime/service-launcher.mjs",
-    baseDir: "/home/theo/.vetra-studio",
-    logPath: "/home/theo/.vetra-studio/userdata/logs/boot-service.log",
-    unitPath: "/home/theo/.config/systemd/user/vetra-studio.service",
+    launcherPath: "/home/theo/.vetra-code/runtime/service-launcher.mjs",
+    baseDir: "/home/theo/.vetra-code",
+    logPath: "/home/theo/.vetra-code/userdata/logs/boot-service.log",
+    unitPath: "/home/theo/.config/systemd/user/vetra-code.service",
   });
 
   expect(unit).toContain(
-    "ExecStart=/usr/bin/node /home/theo/.vetra-studio/runtime/service-launcher.mjs",
+    "ExecStart=/usr/bin/node /home/theo/.vetra-code/runtime/service-launcher.mjs",
   );
   expect(unit).toContain("KillMode=mixed");
   expect(unit).not.toContain("versions/1.2.3");
@@ -40,10 +40,10 @@ it("keeps systemd pinned to the stable launcher rather than a versioned server",
 it("survives the kernel OOM-killing a greedy agent child", () => {
   const unit = BootService.renderBootServiceUnit({
     nodePath: "/usr/bin/node",
-    launcherPath: "/home/theo/.vetra-studio/runtime/service-launcher.mjs",
-    baseDir: "/home/theo/.vetra-studio",
-    logPath: "/home/theo/.vetra-studio/userdata/logs/boot-service.log",
-    unitPath: "/home/theo/.config/systemd/user/vetra-studio.service",
+    launcherPath: "/home/theo/.vetra-code/runtime/service-launcher.mjs",
+    baseDir: "/home/theo/.vetra-code",
+    logPath: "/home/theo/.vetra-code/userdata/logs/boot-service.log",
+    unitPath: "/home/theo/.config/systemd/user/vetra-code.service",
   });
 
   expect(unit).toContain("OOMPolicy=continue");
@@ -56,7 +56,7 @@ const makeHarness = Effect.fn("test.make_boot_service_harness")(function* (
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-boot-service-test-" });
-  const baseDir = path.join(home, ".vetra-studio");
+  const baseDir = path.join(home, ".vetra-code");
   const sourceLauncher = path.join(home, "service-launcher.mjs");
   const statePath = path.join(baseDir, "runtime", "service-state.json");
   yield* fs.writeFileString(sourceLauncher, "export {};\n");
@@ -163,9 +163,9 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
       const error = yield* service.install.pipe(Effect.flip);
       expect(error._tag).toBe("BootServiceCommandError");
       expect(commands.filter((command) => command.startsWith("systemctl "))).toEqual([
-        "systemctl --user stop vetra-studio.service",
+        "systemctl --user stop vetra-code.service",
         "systemctl --user daemon-reload",
-        "systemctl --user restart vetra-studio.service",
+        "systemctl --user restart vetra-code.service",
       ]);
     }),
   );
@@ -191,8 +191,8 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
       expect((yield* service.install.pipe(Effect.flip))._tag).toBe("BootServiceUpdatePendingError");
       expect(serviceStateHasPendingUpdate(yield* fs.readFileString(statePath))).toBe(true);
       expect(commands.filter((command) => command.startsWith("systemctl "))).toEqual([
-        "systemctl --user stop vetra-studio.service",
-        "systemctl --user restart vetra-studio.service",
+        "systemctl --user stop vetra-code.service",
+        "systemctl --user restart vetra-code.service",
       ]);
     }),
   );

@@ -1,6 +1,6 @@
 import { GitPullRequestIcon } from "lucide-react";
 import type { ElementType } from "react";
-import type { SourceControlProviderInfo, SourceControlProviderKind } from "@vetra-studio/contracts";
+import type { SourceControlProviderInfo, SourceControlProviderKind } from "@vetra-code/contracts";
 export {
   DEFAULT_CHANGE_REQUEST_TERMINOLOGY,
   formatChangeRequestAction,
@@ -9,12 +9,12 @@ export {
   resolveChangeRequestPresentation,
   type ChangeRequestPresentation,
   type ChangeRequestTerminology,
-} from "@vetra-studio/shared/sourceControl";
+} from "@vetra-code/shared/sourceControl";
 import {
   getChangeRequestTerminology,
   resolveChangeRequestPresentation,
   type ChangeRequestTerminology,
-} from "@vetra-studio/shared/sourceControl";
+} from "@vetra-code/shared/sourceControl";
 import { AzureDevOpsIcon, BitbucketIcon, GitHubIcon, GitLabIcon } from "./components/Icons";
 
 export interface SourceControlPresentation {

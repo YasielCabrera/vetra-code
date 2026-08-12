@@ -1,4 +1,4 @@
-import { type ServerConfig, WS_METHODS } from "@vetra-studio/contracts";
+import { type ServerConfig, WS_METHODS } from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -37,7 +37,7 @@ export class RpcSessionFactory extends Context.Service<
       connection: PreparedConnection,
     ) => Effect.Effect<RpcSession, ConnectionAttemptError, Scope.Scope>;
   }
->()("@vetra-studio/client-runtime/rpc/session/RpcSessionFactory") {}
+>()("@vetra-code/client-runtime/rpc/session/RpcSessionFactory") {}
 
 type InitialConfigError = Effect.Error<
   ReturnType<WsRpcProtocolClient[typeof WS_METHODS.serverGetConfig]>

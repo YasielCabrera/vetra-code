@@ -1,6 +1,6 @@
 "use client";
 
-import type { PreviewViewportSetting, PreviewViewportSize } from "@vetra-studio/contracts";
+import type { PreviewViewportSetting, PreviewViewportSize } from "@vetra-code/contracts";
 import {
   useCallback,
   useEffect,

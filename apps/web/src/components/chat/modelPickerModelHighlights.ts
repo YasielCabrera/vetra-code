@@ -1,4 +1,4 @@
-import type { ProviderDriverKind } from "@vetra-studio/contracts";
+import type { ProviderDriverKind } from "@vetra-code/contracts";
 
 /**
  * Model slugs that show a gold "NEW" chip in the model picker list.

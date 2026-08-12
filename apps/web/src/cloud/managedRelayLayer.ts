@@ -1,5 +1,5 @@
-import { ManagedRelay } from "@vetra-studio/client-runtime/relay";
-import { RelayWebClientId } from "@vetra-studio/contracts/relay";
+import { ManagedRelay } from "@vetra-code/client-runtime/relay";
+import { RelayWebClientId } from "@vetra-code/contracts/relay";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

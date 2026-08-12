@@ -1,9 +1,9 @@
-import type { RelayManagedEndpoint } from "@vetra-studio/contracts/relay";
+import type { RelayManagedEndpoint } from "@vetra-code/contracts/relay";
 import * as Schema from "effect/Schema";
 
 const DNS_LABEL_MAX_LENGTH = 63;
 const MANAGED_ENDPOINT_HASH_LENGTH = 16;
-const MANAGED_ENDPOINT_TUNNEL_PREFIX = "vetrastudiorelay-managedendpoint";
+const MANAGED_ENDPOINT_TUNNEL_PREFIX = "vetracoderelay-managedendpoint";
 export const MANAGED_ENDPOINT_ZONE_OWNER_STAGE = "prod";
 
 export class RelayPublicDomainLabelTooLongError extends Schema.TaggedErrorClass<RelayPublicDomainLabelTooLongError>()(

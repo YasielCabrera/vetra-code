@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import { scopeThreadRef } from "@vetra-studio/client-runtime/environment";
-import { ThreadId } from "@vetra-studio/contracts";
+import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
+import { ThreadId } from "@vetra-code/contracts";
 import { DraftId } from "./composerDraftStore";
 
 import {

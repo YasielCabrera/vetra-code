@@ -1,4 +1,4 @@
-import type { AdvertisedEndpoint, DesktopBridge, DesktopWslState } from "@vetra-studio/contracts";
+import type { AdvertisedEndpoint, DesktopBridge, DesktopWslState } from "@vetra-code/contracts";
 
 type WslEnableBridge = Pick<DesktopBridge, "setWslBackendEnabled" | "setWslDistro" | "setWslOnly">;
 

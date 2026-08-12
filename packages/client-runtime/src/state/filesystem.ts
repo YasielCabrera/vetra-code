@@ -1,4 +1,4 @@
-import { type FilesystemBrowseEntry, WS_METHODS } from "@vetra-studio/contracts";
+import { type FilesystemBrowseEntry, WS_METHODS } from "@vetra-code/contracts";
 import { Atom } from "effect/unstable/reactivity";
 
 import type { EnvironmentConnectionPhase } from "../connection/presentation.ts";

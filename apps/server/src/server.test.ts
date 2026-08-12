@@ -2,7 +2,7 @@ import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer";
 import * as NodeSocket from "@effect/platform-node/NodeSocket";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NodeCrypto from "node:crypto";
-import { HostProcessEnvironment, HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { HostProcessEnvironment, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 
 import {
   AuthAccessTokenType,
@@ -32,14 +32,14 @@ import {
   WS_METHODS,
   WsRpcGroup,
   EditorId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   computeDpopAccessTokenHash,
   computeDpopJwkThumbprint,
   type DpopPublicJwk,
-} from "@vetra-studio/shared/dpop";
-import { RELAY_HEALTH_REQUEST_TYP, RELAY_MINT_REQUEST_TYP } from "@vetra-studio/shared/relayJwt";
-import * as RelayClient from "@vetra-studio/shared/relayClient";
+} from "@vetra-code/shared/dpop";
+import { RELAY_HEALTH_REQUEST_TYP, RELAY_MINT_REQUEST_TYP } from "@vetra-code/shared/relayJwt";
+import * as RelayClient from "@vetra-code/shared/relayClient";
 import { assert, it } from "@effect/vitest";
 import { assertFailure, assertInclude, assertTrue } from "@effect/vitest/utils";
 import * as Clock from "effect/Clock";
@@ -1670,7 +1670,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         },
         scope: "orchestration:read orchestration:operate terminal:operate review:write",
         clientMetadata: {
-          label: "Vetra Studio Mobile",
+          label: "Vetra Code Mobile",
           deviceType: "mobile",
           os: "iOS",
         },
@@ -1697,7 +1697,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       assert.equal(response.status, 200);
       assert.equal(clientsResponse.status, 200);
       assert.deepInclude(mobileClient?.client, {
-        label: "Vetra Studio Mobile",
+        label: "Vetra Code Mobile",
         deviceType: "mobile",
         os: "iOS",
         ipAddress: "127.0.0.1",

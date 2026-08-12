@@ -1,4 +1,4 @@
-import { EnvironmentId, ThreadId } from "@vetra-studio/contracts";
+import { EnvironmentId, ThreadId } from "@vetra-code/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Layer from "effect/Layer";
 import { Atom } from "effect/unstable/reactivity";

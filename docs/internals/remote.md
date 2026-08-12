@@ -4,7 +4,7 @@
 > package-based SSH launch, and mobile are unavailable until Vetra-owned infrastructure and package
 > distribution exist. See [Remote access during bootstrap](../user/remote-access.md).
 
-Vetra Studio retains direct, bearer-paired, relay-tunneled, Tailscale, and desktop-managed SSH code paths
+Vetra Code retains direct, bearer-paired, relay-tunneled, Tailscale, and desktop-managed SSH code paths
 from its foundation. This document describes the model they share and where each piece lives. For
 the currently supported user-facing setup see
 [remote access](../user/remote-access.md).
@@ -99,7 +99,7 @@ model: core owns environments, pairing, and connection lifecycle, and providers 
 Tailscale is the first provider, and Vetra manages more than discovery. When `tailscaleServeEnabled` is
 set, the server acquires a Tailscale serve mapping for its actual listening port at startup with
 `ensureTailscaleServe` and releases it with `disableTailscaleServe` on scope close
-(`apps/server/src/server.ts`, using [`@vetra-studio/tailscale`](../../packages/tailscale/src/tailscale.ts)).
+(`apps/server/src/server.ts`, using [`@vetra-code/tailscale`](../../packages/tailscale/src/tailscale.ts)).
 Endpoint identifiers are synthesized in `apps/desktop/src/backend/tailscaleEndpointProvider.ts` with
 `private-network` reachability.
 

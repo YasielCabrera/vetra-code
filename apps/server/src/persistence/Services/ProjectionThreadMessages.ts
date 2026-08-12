@@ -13,7 +13,7 @@ import {
   ThreadId,
   TurnId,
   IsoDateTime,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
 import type * as Option from "effect/Option";
@@ -93,5 +93,5 @@ export class ProjectionThreadMessageRepository extends Context.Service<
   ProjectionThreadMessageRepository,
   ProjectionThreadMessageRepositoryShape
 >()(
-  "@vetra-studio/server/persistence/Services/ProjectionThreadMessages/ProjectionThreadMessageRepository",
+  "@vetra-code/server/persistence/Services/ProjectionThreadMessages/ProjectionThreadMessageRepository",
 ) {}

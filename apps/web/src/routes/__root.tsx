@@ -1,6 +1,6 @@
-import { type ServerLifecycleWelcomePayload } from "@vetra-studio/contracts";
-import { scopedProjectKey, scopeProjectRef } from "@vetra-studio/client-runtime/environment";
-import { squashAtomCommandFailure } from "@vetra-studio/client-runtime/state/runtime";
+import { type ServerLifecycleWelcomePayload } from "@vetra-code/contracts";
+import { scopedProjectKey, scopeProjectRef } from "@vetra-code/client-runtime/environment";
+import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
 import {
   Outlet,
   createRootRoute,

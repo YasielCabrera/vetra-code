@@ -1,4 +1,4 @@
-import type { EnvironmentId, ProviderInstanceId, ThreadId } from "@vetra-studio/contracts";
+import type { EnvironmentId, ProviderInstanceId, ThreadId } from "@vetra-code/contracts";
 
 export interface McpProviderSessionConfig {
   readonly environmentId: EnvironmentId;

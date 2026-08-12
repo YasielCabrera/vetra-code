@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { EnvironmentId } from "@vetra-studio/contracts";
+import { EnvironmentId } from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
 
 import {

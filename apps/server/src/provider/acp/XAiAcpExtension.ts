@@ -1,9 +1,9 @@
-import type { ProviderUserInputAnswers, UserInputQuestion } from "@vetra-studio/contracts";
+import type { ProviderUserInputAnswers, UserInputQuestion } from "@vetra-code/contracts";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
-import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
+import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
 
 import type * as AcpSessionRuntime from "./AcpSessionRuntime.ts";
 

@@ -8,7 +8,7 @@ import type {
   EnvironmentId,
   PullRequestRef,
   PullRequestReviewVerdict,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { CheckIcon, MessageSquareIcon, XCircleIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 

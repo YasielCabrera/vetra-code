@@ -13,11 +13,11 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
-import { type ClaudeSettings, type ModelSelection } from "@vetra-studio/contracts";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@vetra-studio/shared/git";
-import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
+import { type ClaudeSettings, type ModelSelection } from "@vetra-code/contracts";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@vetra-code/shared/git";
+import { resolveSpawnCommand } from "@vetra-code/shared/shell";
 
-import { TextGenerationError } from "@vetra-studio/contracts";
+import { TextGenerationError } from "@vetra-code/contracts";
 import * as TextGeneration from "./TextGeneration.ts";
 import {
   buildBranchNamePrompt,
@@ -35,7 +35,7 @@ import {
 import {
   getModelSelectionStringOptionValue,
   getProviderOptionDescriptors,
-} from "@vetra-studio/shared/model";
+} from "@vetra-code/shared/model";
 import {
   getClaudeModelCapabilities,
   isClaudeUltracodeEffort,

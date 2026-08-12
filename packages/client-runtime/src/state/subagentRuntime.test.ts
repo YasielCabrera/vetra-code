@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { classifyTaskAgentKind, type OrchestrationThreadActivity } from "@vetra-studio/contracts";
+import { classifyTaskAgentKind, type OrchestrationThreadActivity } from "@vetra-code/contracts";
 import {
   deriveAgentPanelModel,
   foldSubagentActivities,

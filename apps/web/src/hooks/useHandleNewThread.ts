@@ -3,12 +3,8 @@ import {
   scopedProjectKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@vetra-studio/client-runtime/environment";
-import {
-  DEFAULT_RUNTIME_MODE,
-  type ScopedProjectRef,
-  type ThreadId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/client-runtime/environment";
+import { DEFAULT_RUNTIME_MODE, type ScopedProjectRef, type ThreadId } from "@vetra-code/contracts";
 import { useParams, useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 import {
@@ -26,7 +22,7 @@ import {
   getProjectOrderKey,
   selectProjectGroupingSettings,
 } from "../logicalProject";
-import { resolveDefaultThreadEnvMode } from "@vetra-studio/shared/threadEnvMode";
+import { resolveDefaultThreadEnvMode } from "@vetra-code/shared/threadEnvMode";
 import { readThreadShell, useProjects, useThread } from "../state/entities";
 import { resolveNewDraftStartFromOrigin } from "../lib/chatThreadActions";
 import { readVetraProjectFileDefaultThreadEnvMode } from "../lib/vetraProjectFileDefaults";

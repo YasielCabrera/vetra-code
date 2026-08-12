@@ -1,4 +1,4 @@
-import { ThreadId } from "@vetra-studio/contracts";
+import { ThreadId } from "@vetra-code/contracts";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { useThreadSelectionStore } from "./threadSelectionStore";

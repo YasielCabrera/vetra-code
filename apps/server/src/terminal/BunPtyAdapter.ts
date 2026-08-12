@@ -3,7 +3,7 @@
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 
 import * as PtyAdapter from "./PtyAdapter.ts";
 
@@ -14,7 +14,7 @@ export class BunPtyUnsupportedPlatformError extends Schema.TaggedErrorClass<BunP
   },
 ) {
   override get message(): string {
-    return `Bun PTY terminal support is unavailable on ${this.platform}. Run Vetra Studio with Node.js instead.`;
+    return `Bun PTY terminal support is unavailable on ${this.platform}. Run Vetra Code with Node.js instead.`;
   }
 }
 

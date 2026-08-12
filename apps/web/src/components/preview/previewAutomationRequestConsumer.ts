@@ -3,7 +3,7 @@ import type {
   PreviewAutomationRequest,
   PreviewAutomationResponse,
   PreviewAutomationStreamEvent,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 
 import {

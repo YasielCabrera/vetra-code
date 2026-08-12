@@ -1,5 +1,5 @@
-import { scopeThreadRef } from "@vetra-studio/client-runtime/environment";
-import type { EnvironmentId, ScopedThreadRef, ThreadId } from "@vetra-studio/contracts";
+import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
+import type { EnvironmentId, ScopedThreadRef, ThreadId } from "@vetra-code/contracts";
 import type { DraftId } from "./composerDraftStore";
 
 export type ThreadRouteTarget =

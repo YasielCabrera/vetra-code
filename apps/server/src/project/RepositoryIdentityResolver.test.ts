@@ -43,7 +43,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       });
 
       yield* git(cwd, ["init"]);
-      yield* git(cwd, ["remote", "add", "origin", "git@github.com:VetraStudio/vetra-studio.git"]);
+      yield* git(cwd, ["remote", "add", "origin", "git@github.com:VetraCode/vetra-code.git"]);
 
       const resolver = yield* RepositoryIdentityResolver.RepositoryIdentityResolver;
       const identity = yield* resolver.resolve(cwd);
@@ -52,12 +52,12 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       const resolvedCwd = yield* fileSystem.realPath(cwd);
 
       expect(identity).not.toBeNull();
-      expect(identity?.canonicalKey).toBe("github.com/vetra-studio/vetra-studio");
+      expect(identity?.canonicalKey).toBe("github.com/vetra-code/vetra-code");
       expect(normalizeResolvedPath(resolvedIdentityRoot)).toBe(normalizeResolvedPath(resolvedCwd));
-      expect(identity?.displayName).toBe("vetra-studio/vetra-studio");
+      expect(identity?.displayName).toBe("vetra-code/vetra-code");
       expect(identity?.provider).toBe("github");
-      expect(identity?.owner).toBe("vetra-studio");
-      expect(identity?.name).toBe("vetra-studio");
+      expect(identity?.owner).toBe("vetra-code");
+      expect(identity?.name).toBe("vetra-code");
     }).pipe(Effect.provide(RepositoryIdentityResolver.layer)),
   );
 
@@ -72,12 +72,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
 
       yield* fileSystem.makeDirectory(nestedWorkspace, { recursive: true });
       yield* git(repoRoot, ["init"]);
-      yield* git(repoRoot, [
-        "remote",
-        "add",
-        "origin",
-        "git@github.com:VetraStudio/vetra-studio.git",
-      ]);
+      yield* git(repoRoot, ["remote", "add", "origin", "git@github.com:VetraCode/vetra-code.git"]);
 
       const resolver = yield* RepositoryIdentityResolver.RepositoryIdentityResolver;
       const identity = yield* resolver.resolve(nestedWorkspace);
@@ -86,7 +81,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       const resolvedRepoRoot = yield* fileSystem.realPath(repoRoot);
 
       expect(identity).not.toBeNull();
-      expect(identity?.canonicalKey).toBe("github.com/vetra-studio/vetra-studio");
+      expect(identity?.canonicalKey).toBe("github.com/vetra-code/vetra-code");
       expect(normalizeResolvedPath(resolvedIdentityRoot)).toBe(
         normalizeResolvedPath(resolvedRepoRoot),
       );
@@ -122,16 +117,16 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       });
 
       yield* git(cwd, ["init"]);
-      yield* git(cwd, ["remote", "add", "origin", "git@github.com:julius/vetra-studio.git"]);
-      yield* git(cwd, ["remote", "add", "upstream", "git@github.com:VetraStudio/vetra-studio.git"]);
+      yield* git(cwd, ["remote", "add", "origin", "git@github.com:julius/vetra-code.git"]);
+      yield* git(cwd, ["remote", "add", "upstream", "git@github.com:VetraCode/vetra-code.git"]);
 
       const resolver = yield* RepositoryIdentityResolver.RepositoryIdentityResolver;
       const identity = yield* resolver.resolve(cwd);
 
       expect(identity).not.toBeNull();
       expect(identity?.locator.remoteName).toBe("upstream");
-      expect(identity?.canonicalKey).toBe("github.com/vetra-studio/vetra-studio");
-      expect(identity?.displayName).toBe("vetra-studio/vetra-studio");
+      expect(identity?.canonicalKey).toBe("github.com/vetra-code/vetra-code");
+      expect(identity?.displayName).toBe("vetra-code/vetra-code");
     }).pipe(Effect.provide(RepositoryIdentityResolver.layer)),
   );
 
@@ -147,17 +142,17 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
         "remote",
         "add",
         "origin",
-        "git@gitlab.com:VetraStudio/platform/vetra-studio.git",
+        "git@gitlab.com:VetraCode/platform/vetra-code.git",
       ]);
 
       const resolver = yield* RepositoryIdentityResolver.RepositoryIdentityResolver;
       const identity = yield* resolver.resolve(cwd);
 
       expect(identity).not.toBeNull();
-      expect(identity?.canonicalKey).toBe("gitlab.com/vetra-studio/platform/vetra-studio");
-      expect(identity?.displayName).toBe("vetra-studio/platform/vetra-studio");
-      expect(identity?.owner).toBe("vetra-studio");
-      expect(identity?.name).toBe("vetra-studio");
+      expect(identity?.canonicalKey).toBe("gitlab.com/vetra-code/platform/vetra-code");
+      expect(identity?.displayName).toBe("vetra-code/platform/vetra-code");
+      expect(identity?.owner).toBe("vetra-code");
+      expect(identity?.name).toBe("vetra-code");
     }).pipe(Effect.provide(RepositoryIdentityResolver.layer)),
   );
 
@@ -176,7 +171,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
         const initialIdentity = yield* resolver.resolve(cwd);
         expect(initialIdentity).toBeNull();
 
-        yield* git(cwd, ["remote", "add", "origin", "git@github.com:VetraStudio/vetra-studio.git"]);
+        yield* git(cwd, ["remote", "add", "origin", "git@github.com:VetraCode/vetra-code.git"]);
 
         for (const _attempt of [1, 2, 3]) {
           const cachedIdentity = yield* resolver.resolve(cwd);
@@ -187,8 +182,8 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
 
         const refreshedIdentity = yield* resolver.resolve(cwd);
         expect(refreshedIdentity).not.toBeNull();
-        expect(refreshedIdentity?.canonicalKey).toBe("github.com/vetra-studio/vetra-studio");
-        expect(refreshedIdentity?.name).toBe("vetra-studio");
+        expect(refreshedIdentity?.canonicalKey).toBe("github.com/vetra-code/vetra-code");
+        expect(refreshedIdentity?.name).toBe("vetra-code");
       }).pipe(
         Effect.provide(
           Layer.merge(
@@ -210,31 +205,31 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       });
 
       yield* git(cwd, ["init"]);
-      yield* git(cwd, ["remote", "add", "origin", "git@github.com:VetraStudio/vetra-studio.git"]);
+      yield* git(cwd, ["remote", "add", "origin", "git@github.com:VetraCode/vetra-code.git"]);
 
       const resolver = yield* RepositoryIdentityResolver.RepositoryIdentityResolver;
       const initialIdentity = yield* resolver.resolve(cwd);
       expect(initialIdentity).not.toBeNull();
-      expect(initialIdentity?.canonicalKey).toBe("github.com/vetra-studio/vetra-studio");
+      expect(initialIdentity?.canonicalKey).toBe("github.com/vetra-code/vetra-code");
 
       yield* git(cwd, [
         "remote",
         "set-url",
         "origin",
-        "git@github.com:VetraStudio/vetra-studio-next.git",
+        "git@github.com:VetraCode/vetra-code-next.git",
       ]);
 
       const cachedIdentity = yield* resolver.resolve(cwd);
       expect(cachedIdentity).not.toBeNull();
-      expect(cachedIdentity?.canonicalKey).toBe("github.com/vetra-studio/vetra-studio");
+      expect(cachedIdentity?.canonicalKey).toBe("github.com/vetra-code/vetra-code");
 
       yield* TestClock.adjust(Duration.millis(180));
 
       const refreshedIdentity = yield* resolver.resolve(cwd);
       expect(refreshedIdentity).not.toBeNull();
-      expect(refreshedIdentity?.canonicalKey).toBe("github.com/vetra-studio/vetra-studio-next");
-      expect(refreshedIdentity?.displayName).toBe("vetra-studio/vetra-studio-next");
-      expect(refreshedIdentity?.name).toBe("vetra-studio-next");
+      expect(refreshedIdentity?.canonicalKey).toBe("github.com/vetra-code/vetra-code-next");
+      expect(refreshedIdentity?.displayName).toBe("vetra-code/vetra-code-next");
+      expect(refreshedIdentity?.name).toBe("vetra-code-next");
     }).pipe(
       Effect.provide(
         Layer.merge(

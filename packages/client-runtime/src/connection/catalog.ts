@@ -1,4 +1,4 @@
-import { DesktopSshEnvironmentTargetSchema, EnvironmentId } from "@vetra-studio/contracts";
+import { DesktopSshEnvironmentTargetSchema, EnvironmentId } from "@vetra-code/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 

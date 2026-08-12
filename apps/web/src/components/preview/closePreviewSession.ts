@@ -1,10 +1,10 @@
-import type { AtomCommandResult } from "@vetra-studio/client-runtime/state/runtime";
+import type { AtomCommandResult } from "@vetra-code/client-runtime/state/runtime";
 import type {
   EnvironmentId,
   PreviewCloseInput,
   PreviewSessionSnapshot,
   ScopedThreadRef,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 import { beginPreviewSessionClose, cancelPreviewSessionClose } from "~/previewStateStore";
 

@@ -1,4 +1,4 @@
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -42,7 +42,7 @@ export interface SshPasswordPromptShape {
 }
 
 export class SshPasswordPrompt extends Context.Service<SshPasswordPrompt, SshPasswordPromptShape>()(
-  "@vetra-studio/ssh/auth/SshPasswordPrompt",
+  "@vetra-code/ssh/auth/SshPasswordPrompt",
 ) {
   static readonly disabledLayer = Layer.succeed(
     SshPasswordPrompt,
@@ -60,7 +60,7 @@ export interface SshChildEnvironmentOptions {
   readonly authSecret?: string | null;
 }
 
-const SSH_ASKPASS_DIR_NAME = "vetra-studio-ssh-askpass";
+const SSH_ASKPASS_DIR_NAME = "vetra-code-ssh-askpass";
 
 function joinSshAskpassPath(
   directory: string,
@@ -72,14 +72,14 @@ function joinSshAskpassPath(
 }
 
 export const ASKPASS_POSIX_SCRIPT = `#!/bin/sh
-# Invoked by ssh via SSH_ASKPASS when Vetra Studio re-runs ssh with a cached password
+# Invoked by ssh via SSH_ASKPASS when Vetra Code re-runs ssh with a cached password
 # from the renderer's in-app prompt. We never expose a native dialog here - if
 # VETRA_SSH_AUTH_SECRET is missing, that's a caller bug and we fail loudly.
 if [ "\${VETRA_SSH_AUTH_SECRET+x}" = "x" ]; then
   printf "%s\\n" "$VETRA_SSH_AUTH_SECRET"
   exit 0
 fi
-printf 'Vetra Studio ssh-askpass invoked without VETRA_SSH_AUTH_SECRET.\\n' >&2
+printf 'Vetra Code ssh-askpass invoked without VETRA_SSH_AUTH_SECRET.\\n' >&2
 exit 1
 `;
 
@@ -87,7 +87,7 @@ export const ASKPASS_WINDOWS_LAUNCHER_SCRIPT = `@echo off\r
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ssh-askpass.ps1" %*\r
 `;
 
-export const ASKPASS_WINDOWS_SCRIPT = `# Invoked by ssh via SSH_ASKPASS (through ssh-askpass.cmd) when Vetra Studio re-runs\r
+export const ASKPASS_WINDOWS_SCRIPT = `# Invoked by ssh via SSH_ASKPASS (through ssh-askpass.cmd) when Vetra Code re-runs\r
 # ssh with a cached password from the renderer's in-app prompt. We never expose\r
 # a native dialog here - if VETRA_SSH_AUTH_SECRET is missing, that's a caller bug\r
 # and we fail loudly.\r
@@ -95,7 +95,7 @@ if ($null -ne $env:VETRA_SSH_AUTH_SECRET) {\r
   [Console]::Out.WriteLine($env:VETRA_SSH_AUTH_SECRET)\r
   exit 0\r
 }\r
-[Console]::Error.WriteLine("Vetra Studio ssh-askpass invoked without VETRA_SSH_AUTH_SECRET.")\r
+[Console]::Error.WriteLine("Vetra Code ssh-askpass invoked without VETRA_SSH_AUTH_SECRET.")\r
 exit 1\r
 `;
 
@@ -103,7 +103,7 @@ export const getDefaultSshAskpassDirectory = Effect.fn("ssh/auth.getDefaultSshAs
   function* () {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const parentDirectory = yield* fs.makeTempDirectory({ prefix: "vetra-studio-ssh-runtime-" });
+    const parentDirectory = yield* fs.makeTempDirectory({ prefix: "vetra-code-ssh-runtime-" });
     return path.join(parentDirectory, SSH_ASKPASS_DIR_NAME);
   },
 );
@@ -200,7 +200,7 @@ export const buildSshChildEnvironment = Effect.fn("ssh/auth.buildSshChildEnviron
     SSH_ASKPASS: sshAskpass,
     SSH_ASKPASS_REQUIRE: "force",
     ...(input.authSecret === undefined ? {} : { VETRA_SSH_AUTH_SECRET: input.authSecret ?? "" }),
-    ...(platform === "win32" || baseEnv.DISPLAY || hostDisplay ? {} : { DISPLAY: "vetra-studio" }),
+    ...(platform === "win32" || baseEnv.DISPLAY || hostDisplay ? {} : { DISPLAY: "vetra-code" }),
   };
 });
 

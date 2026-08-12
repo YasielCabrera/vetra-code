@@ -3,13 +3,13 @@ import {
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
   EnvironmentHttpApi,
-} from "@vetra-studio/contracts";
-import { isDevProxiedPath } from "@vetra-studio/shared/devProxy";
-import { decodeOtlpTraceRecords } from "@vetra-studio/shared/observability";
+} from "@vetra-code/contracts";
+import { isDevProxiedPath } from "@vetra-code/shared/devProxy";
+import { decodeOtlpTraceRecords } from "@vetra-code/shared/observability";
 import {
   PRODUCT_DESKTOP_DEV_PROTOCOL,
   PRODUCT_DESKTOP_PROTOCOL,
-} from "@vetra-studio/shared/productIdentity";
+} from "@vetra-code/shared/productIdentity";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";

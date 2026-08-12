@@ -17,8 +17,8 @@ import {
   type ProviderUserInputAnswers,
   ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
-import { createModelSelection } from "@vetra-studio/shared/model";
+} from "@vetra-code/contracts";
+import { createModelSelection } from "@vetra-code/shared/model";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it, vi } from "@effect/vitest";
 
@@ -32,7 +32,7 @@ import * as Queue from "effect/Queue";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
-import * as CodexErrors from "@vetra-studio/effect-codex-app-server/errors";
+import * as CodexErrors from "@vetra-code/effect-codex-app-server/errors";
 
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
@@ -50,7 +50,7 @@ const decodeCodexSettings = Schema.decodeSync(CodexSettings);
 
 // Test-local service tag so the rest of the file can keep using `yield* CodexAdapter`.
 class CodexAdapter extends Context.Service<CodexAdapter, CodexAdapterShape>()(
-  "@vetra-studio/server/provider/Layers/CodexAdapter.test/CodexAdapter",
+  "@vetra-code/server/provider/Layers/CodexAdapter.test/CodexAdapter",
 ) {}
 
 const asThreadId = (value: string): ThreadId => ThreadId.make(value);
@@ -576,7 +576,7 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
           item: {
             type: "mcpToolCall",
             id: "mcp_1",
-            server: "vetra-studio",
+            server: "vetra-code",
             tool: "preview_status",
             arguments: {},
             durationMs: 12,
@@ -593,7 +593,7 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         return;
       }
       NodeAssert.equal(firstEvent.value.payload.itemType, "mcp_tool_call");
-      NodeAssert.equal(firstEvent.value.payload.title, "vetra-studio · preview_status");
+      NodeAssert.equal(firstEvent.value.payload.title, "vetra-code · preview_status");
       NodeAssert.deepStrictEqual(firstEvent.value.payload.data, {
         completedAtMs: 1_778_000_000_000,
         threadId: "thread-1",
@@ -601,7 +601,7 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         item: {
           type: "mcpToolCall",
           id: "mcp_1",
-          server: "vetra-studio",
+          server: "vetra-code",
           tool: "preview_status",
           arguments: {},
           durationMs: 12,
@@ -1241,7 +1241,7 @@ scopedFailureLayer("CodexAdapterLive scoped startup failure", (it) => {
 it.effect("flushes managed native logs when the adapter layer shuts down", () =>
   Effect.gen(function* () {
     const tempDir = NodeFS.mkdtempSync(
-      NodePath.join(NodeOS.tmpdir(), "vetra-studiox-adapter-native-log-"),
+      NodePath.join(NodeOS.tmpdir(), "vetra-codex-adapter-native-log-"),
     );
     const basePath = NodePath.join(tempDir, "provider-native.ndjson");
     const runtimeFactory = makeRuntimeFactory();

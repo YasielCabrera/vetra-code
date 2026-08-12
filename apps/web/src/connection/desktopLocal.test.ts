@@ -1,8 +1,8 @@
 import {
   BearerConnectionTarget,
   PrimaryConnectionTarget,
-} from "@vetra-studio/client-runtime/connection";
-import { EnvironmentId, PRIMARY_LOCAL_ENVIRONMENT_ID } from "@vetra-studio/contracts";
+} from "@vetra-code/client-runtime/connection";
+import { EnvironmentId, PRIMARY_LOCAL_ENVIRONMENT_ID } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

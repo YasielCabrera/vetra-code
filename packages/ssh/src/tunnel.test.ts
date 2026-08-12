@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import * as NetService from "@vetra-studio/shared/Net";
+import * as NetService from "@vetra-code/shared/Net";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -94,9 +94,9 @@ describe("ssh tunnel scripts", () => {
 
     assert.include(script, "VETRA_NODE_SCRIPT_PATH=''");
     assert.include(script, 'exec vetra "$@"');
-    assert.include(script, "exec npx --yes '@vetra-studio/server@latest' \"$@\"");
-    assert.include(script, "exec npm exec --yes '@vetra-studio/server@latest' -- \"$@\"");
-    assert.include(script, "could not install '@vetra-studio/server@latest'");
+    assert.include(script, "exec npx --yes '@vetra-code/server@latest' \"$@\"");
+    assert.include(script, "exec npm exec --yes '@vetra-code/server@latest' -- \"$@\"");
+    assert.include(script, "could not install '@vetra-code/server@latest'");
     assert.include(script, 'prepend_path_if_dir "$HOME/.local/bin"');
     assert.include(script, `VETRA_NODE_ENGINE_RANGE='${TEST_NODE_ENGINE_RANGE}'`);
     assert.include(script, "remote_node_satisfies_engine()");
@@ -124,21 +124,18 @@ describe("ssh tunnel scripts", () => {
 
   it("shell-quotes package specs in the remote vetra runner", () => {
     const script = buildRemoteVetraRunnerScript({
-      packageSpec: "@vetra-studio/server@nightly; touch /tmp/vetra-owned",
+      packageSpec: "@vetra-code/server@nightly; touch /tmp/vetra-owned",
     });
 
     assert.include(
       script,
-      "exec npx --yes '@vetra-studio/server@nightly; touch /tmp/vetra-owned' \"$@\"",
+      "exec npx --yes '@vetra-code/server@nightly; touch /tmp/vetra-owned' \"$@\"",
     );
     assert.include(
       script,
-      "exec npm exec --yes '@vetra-studio/server@nightly; touch /tmp/vetra-owned' -- \"$@\"",
+      "exec npm exec --yes '@vetra-code/server@nightly; touch /tmp/vetra-owned' -- \"$@\"",
     );
-    assert.notInclude(
-      script,
-      "exec npx --yes @vetra-studio/server@nightly; touch /tmp/vetra-owned",
-    );
+    assert.notInclude(script, "exec npx --yes @vetra-code/server@nightly; touch /tmp/vetra-owned");
   });
 
   it("builds the remote vetra runner with a node script override", () => {
@@ -183,8 +180,8 @@ describe("ssh tunnel scripts", () => {
     assert.notInclude(buildRemoteLaunchScript(), "server-home");
     assert.include(buildRemoteLaunchScript(), "Remote Vetra server did not become ready");
     assert.include(
-      buildRemoteLaunchScript({ packageSpec: "@vetra-studio/server@nightly" }),
-      "@vetra-studio/server@nightly",
+      buildRemoteLaunchScript({ packageSpec: "@vetra-code/server@nightly" }),
+      "@vetra-code/server@nightly",
     );
     assert.include(
       buildRemotePairingScript(target),
@@ -193,8 +190,8 @@ describe("ssh tunnel scripts", () => {
     assert.include(buildRemotePairingScript(target), 'PAIRING_BASE_DIR="$DEFAULT_SERVER_HOME"');
     assert.notInclude(buildRemotePairingScript(target), "server-home");
     assert.include(
-      buildRemotePairingScript(target, { packageSpec: "@vetra-studio/server@nightly" }),
-      "@vetra-studio/server@nightly",
+      buildRemotePairingScript(target, { packageSpec: "@vetra-code/server@nightly" }),
+      "@vetra-code/server@nightly",
     );
     assert.include(
       buildRemoteStopScript(target),

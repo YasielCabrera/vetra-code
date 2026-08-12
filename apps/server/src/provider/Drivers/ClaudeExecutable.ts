@@ -2,8 +2,8 @@
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
-import { SpawnExecutableResolution } from "@vetra-studio/shared/shell";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { SpawnExecutableResolution } from "@vetra-code/shared/shell";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 

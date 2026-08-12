@@ -1,5 +1,5 @@
-import { EnvironmentId } from "@vetra-studio/contracts";
-import { RelayClientTracer } from "@vetra-studio/shared/relayTracing";
+import { EnvironmentId } from "@vetra-code/contracts";
+import { RelayClientTracer } from "@vetra-code/shared/relayTracing";
 import { describe, expect, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

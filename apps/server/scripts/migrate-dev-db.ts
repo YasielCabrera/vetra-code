@@ -2,10 +2,10 @@
 
 /**
  * Rebuild an isolated dev database from a pruned snapshot of the shared
- * Vetra Studio database, then run this checkout's migrations against it.
+ * Vetra Code database, then run this checkout's migrations against it.
  *
  * `vp run migrate-dev-db` from a worktree:
- *   1. Replaces `<worktree>/.vetra-studio/userdata/state.sqlite`.
+ *   1. Replaces `<worktree>/.vetra-code/userdata/state.sqlite`.
  *   2. Snapshots the real db (read-only VACUUM INTO) and prunes it to the
  *      most recently updated projects and, per project, the most recent
  *      threads that have fully stopped. Working, settled, and monitored
@@ -28,8 +28,8 @@
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NodeOS from "node:os";
-import { resolveWorktreeVetraHome } from "@vetra-studio/shared/devHome";
-import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-studio/shared/productIdentity";
+import { resolveWorktreeVetraHome } from "@vetra-code/shared/devHome";
+import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-code/shared/productIdentity";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -47,7 +47,7 @@ export class MigrateDevDbNotInWorktreeError extends Schema.TaggedErrorClass<Migr
   {},
 ) {
   override get message(): string {
-    return "Not inside a linked git worktree. Pass --base-dir to target an isolated .vetra-studio directory.";
+    return "Not inside a linked git worktree. Pass --base-dir to target an isolated .vetra-code directory.";
   }
 }
 
@@ -56,7 +56,7 @@ export class MigrateDevDbSharedHomeError extends Schema.TaggedErrorClass<Migrate
   {},
 ) {
   override get message(): string {
-    return "Refusing to rebuild the shared ~/.vetra-studio database. Use an isolated --base-dir.";
+    return "Refusing to rebuild the shared ~/.vetra-code database. Use an isolated --base-dir.";
   }
 }
 
@@ -143,9 +143,9 @@ export class MigrateDevDbPhaseError extends Schema.TaggedErrorClass<MigrateDevDb
 }
 
 export interface RunMigrateDevDbInput {
-  /** Isolated .vetra-studio directory. Defaults to the current worktree. */
+  /** Isolated .vetra-code directory. Defaults to the current worktree. */
   readonly baseDir?: string | undefined;
-  /** Source database. Defaults to `~/.vetra-studio/userdata/state.sqlite`. */
+  /** Source database. Defaults to `~/.vetra-code/userdata/state.sqlite`. */
   readonly source?: string | undefined;
   readonly projects: number;
   readonly threadsPerProject: number;
@@ -521,12 +521,12 @@ export const migrateDevDbCommand = Command.make(
     baseDir: Flag.string("base-dir").pipe(
       Flag.optional,
       Flag.withDescription(
-        "Isolated .vetra-studio directory. Defaults to the current worktree's .vetra-studio.",
+        "Isolated .vetra-code directory. Defaults to the current worktree's .vetra-code.",
       ),
     ),
     source: Flag.string("source").pipe(
       Flag.optional,
-      Flag.withDescription("Source database. Defaults to ~/.vetra-studio/userdata/state.sqlite."),
+      Flag.withDescription("Source database. Defaults to ~/.vetra-code/userdata/state.sqlite."),
     ),
   },
   ({ projects, threadsPerProject, baseDir, source }) =>
@@ -553,7 +553,7 @@ export const migrateDevDbCommand = Command.make(
     }),
 ).pipe(
   Command.withDescription(
-    "Rebuild the worktree dev database from a pruned snapshot of shared Vetra Studio data, then run migrations.",
+    "Rebuild the worktree dev database from a pruned snapshot of shared Vetra Code data, then run migrations.",
   ),
 );
 

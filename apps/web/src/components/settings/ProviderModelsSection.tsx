@@ -15,8 +15,8 @@ import {
   ProviderDriverKind,
   type ProviderInstanceId,
   type ServerProviderModel,
-} from "@vetra-studio/contracts";
-import { normalizeCustomModelSlug } from "@vetra-studio/shared/model";
+} from "@vetra-code/contracts";
+import { normalizeCustomModelSlug } from "@vetra-code/shared/model";
 
 import { cn } from "../../lib/utils";
 import { sortModelsForProviderInstance } from "../../modelOrdering";

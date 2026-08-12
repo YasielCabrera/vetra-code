@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { ServerProviderSkill } from "@vetra-studio/contracts";
+import type { ServerProviderSkill } from "@vetra-code/contracts";
 
 import { searchProviderSkills } from "./providerSkillSearch";
 

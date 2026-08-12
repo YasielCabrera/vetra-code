@@ -1,10 +1,10 @@
 import { useAuth } from "@clerk/react";
-import { findErrorTraceId } from "@vetra-studio/client-runtime/errors";
+import { findErrorTraceId } from "@vetra-code/client-runtime/errors";
 import {
   isAtomCommandInterrupted,
   settlePromise,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
+} from "@vetra-code/client-runtime/state/runtime";
 import { useState } from "react";
 
 import { toastManager } from "../components/ui/toast";

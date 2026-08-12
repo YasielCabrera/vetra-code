@@ -7,8 +7,8 @@ import {
   type EnvironmentRequestInvalidError,
   type EnvironmentResourceNotFoundError,
   type EnvironmentScopeRequiredError,
-} from "@vetra-studio/contracts";
-import { httpHeaderRedactionLayer } from "@vetra-studio/shared/httpObservability";
+} from "@vetra-code/contracts";
+import { httpHeaderRedactionLayer } from "@vetra-code/shared/httpObservability";
 import * as Data from "effect/Data";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";

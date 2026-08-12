@@ -1,4 +1,4 @@
-import type { DiscoveredLocalServer, EnvironmentId, ThreadId } from "@vetra-studio/contracts";
+import type { DiscoveredLocalServer, EnvironmentId, ThreadId } from "@vetra-code/contracts";
 import { useMemo } from "react";
 
 import { previewEnvironment } from "./state/preview";

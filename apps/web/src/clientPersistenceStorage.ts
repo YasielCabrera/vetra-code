@@ -1,4 +1,4 @@
-import { ClientSettingsSchema, type ClientSettings } from "@vetra-studio/contracts";
+import { ClientSettingsSchema, type ClientSettings } from "@vetra-code/contracts";
 
 import { getLocalStorageItem, setLocalStorageItem } from "./hooks/useLocalStorage";
 

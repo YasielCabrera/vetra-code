@@ -20,9 +20,9 @@ const defaultEnvironmentInput = {
   platform: "darwin",
   processArch: "arm64",
   appVersion: "1.2.3",
-  appPath: "/Applications/Vetra Studio.app/Contents/Resources/app.asar",
+  appPath: "/Applications/Vetra Code.app/Contents/Resources/app.asar",
   isPackaged: true,
-  resourcesPath: "/Applications/Vetra Studio.app/Contents/Resources",
+  resourcesPath: "/Applications/Vetra Code.app/Contents/Resources",
   runningUnderArm64Translation: false,
 } satisfies DesktopEnvironment.MakeDesktopEnvironmentInput;
 
@@ -39,7 +39,7 @@ interface ElectronAppCalls {
 const makeElectronAppLayer = (calls: ElectronAppCalls) =>
   Layer.succeed(ElectronApp.ElectronApp, {
     metadata: Effect.die("unexpected metadata read"),
-    name: Effect.succeed("Vetra Studio"),
+    name: Effect.succeed("Vetra Code"),
     whenReady: Effect.void,
     quit: Effect.void,
     exit: () => Effect.void,
@@ -127,7 +127,7 @@ const withIdentity = <A, E, R>(
             exists: (path) =>
               input.legacyPathProbeError
                 ? Effect.fail(input.legacyPathProbeError)
-                : Effect.succeed(input.legacyPathExists === true && path.includes("vetra-studio")),
+                : Effect.succeed(input.legacyPathExists === true && path.includes("vetra-code")),
             readFileString: () =>
               Effect.succeed(input.packageJson ?? '{"vetraCommitHash":"abcdef1234567890"}'),
           }),
@@ -147,14 +147,14 @@ describe("DesktopAppIdentity", () => {
         const identity = yield* DesktopAppIdentity.DesktopAppIdentity;
         const userDataPath = yield* identity.resolveUserDataPath;
 
-        assert.equal(userDataPath, "/Users/alice/Library/Application Support/vetra-studio");
+        assert.equal(userDataPath, "/Users/alice/Library/Application Support/vetra-code");
       }),
       { legacyPathExists: true },
     ),
   );
 
   it.effect("preserves failures while inspecting the legacy userData path", () => {
-    const legacyPath = "/Users/alice/Library/Application Support/vetra-studio";
+    const legacyPath = "/Users/alice/Library/Application Support/vetra-code";
     const cause = PlatformError.systemError({
       _tag: "PermissionDenied",
       module: "FileSystem",
@@ -192,8 +192,8 @@ describe("DesktopAppIdentity", () => {
         const identity = yield* DesktopAppIdentity.DesktopAppIdentity;
         yield* identity.configure;
 
-        assert.deepEqual(calls.setName, ["Vetra Studio (Alpha)"]);
-        assert.equal(calls.setAboutPanelOptions[0]?.applicationName, "Vetra Studio (Alpha)");
+        assert.deepEqual(calls.setName, ["Vetra Code (Alpha)"]);
+        assert.equal(calls.setAboutPanelOptions[0]?.applicationName, "Vetra Code (Alpha)");
         assert.equal(calls.setAboutPanelOptions[0]?.applicationVersion, "1.2.3");
         assert.equal(calls.setAboutPanelOptions[0]?.version, "0123456789ab");
         assert.deepEqual(calls.setDockIcon, ["/icon.png"]);

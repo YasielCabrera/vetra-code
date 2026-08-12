@@ -1,6 +1,6 @@
-import type { EnvironmentAutomation } from "@vetra-studio/client-runtime/state/automations";
-import type { EnvironmentThreadShell } from "@vetra-studio/client-runtime/state/models";
-import type { AutomationId, EnvironmentId, ProjectId, ThreadId } from "@vetra-studio/contracts";
+import type { EnvironmentAutomation } from "@vetra-code/client-runtime/state/automations";
+import type { EnvironmentThreadShell } from "@vetra-code/client-runtime/state/models";
+import type { AutomationId, EnvironmentId, ProjectId, ThreadId } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { describeAutomationDeletion } from "../../hooks/useAutomationActions";
@@ -221,7 +221,7 @@ describe("automation rows", () => {
     buildAutomationRowModels({
       automations,
       threads,
-      resolveProjectName: () => "vetra-studio",
+      resolveProjectName: () => "vetra-code",
       resolveModelLabel: () => "GPT-5",
       resolveEnvironmentLabel: () => null,
     });

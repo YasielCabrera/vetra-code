@@ -24,7 +24,7 @@ const successfulRunner = (fs: FileSystem.FileSystem, path: Path.Path) =>
         const entry = path.join(
           stagingDir,
           "node_modules",
-          "@vetra-studio",
+          "@vetra-code",
           "server",
           "dist",
           "bin.mjs",

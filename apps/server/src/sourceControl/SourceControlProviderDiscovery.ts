@@ -3,7 +3,7 @@ import type {
   SourceControlProviderDiscoveryItem,
   SourceControlProviderInfo,
   SourceControlProviderKind,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 

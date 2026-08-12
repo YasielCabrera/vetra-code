@@ -3,12 +3,12 @@ import type {
   RelayAgentAwarenessPreferences,
   RelayDeliveryKind,
   RelayDeliveryResult,
-} from "@vetra-studio/contracts/relay";
+} from "@vetra-code/contracts/relay";
 import {
   RelayAgentActivityAggregateState as RelayAgentActivityAggregateStateSchema,
   RelayAgentAwarenessPreferences as RelayAgentAwarenessPreferencesSchema,
   RelayDeliveryKind as RelayDeliveryKindSchema,
-} from "@vetra-studio/contracts/relay";
+} from "@vetra-code/contracts/relay";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -690,7 +690,7 @@ export class ApnsDeliveries extends Context.Service<
       readonly notification: ApnsNotificationPayload;
     }) => Effect.Effect<RelayDeliveryResult, ApnsDeliveryError>;
   }
->()("@vetra-studio/relay/agentActivity/ApnsDeliveries") {}
+>()("@vetra-code/relay/agentActivity/ApnsDeliveries") {}
 
 export const make = Effect.gen(function* () {
   const attempts = yield* DeliveryAttempts.DeliveryAttempts;

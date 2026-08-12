@@ -14,9 +14,9 @@ import type {
   PullRequestReviewThread,
   PullRequestReviewerCandidate,
   PullRequestState,
-} from "@vetra-studio/contracts";
-import { TrimmedNonEmptyString } from "@vetra-studio/contracts";
-import { decodeJsonResult } from "@vetra-studio/shared/schemaJson";
+} from "@vetra-code/contracts";
+import { TrimmedNonEmptyString } from "@vetra-code/contracts";
+import { decodeJsonResult } from "@vetra-code/shared/schemaJson";
 
 /**
  * Bitbucket's enums are decoded as plain strings and normalized here, in the same tolerant

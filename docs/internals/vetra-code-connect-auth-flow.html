@@ -353,7 +353,7 @@ flowchart LR
 
   Clerk["Clerk<br/>user identity and OAuth"]
 
-  subgraph Relay["Vetra Studio Relay on Cloudflare"]
+  subgraph Relay["Vetra Code Relay on Cloudflare"]
     Worker["Relay Worker<br/>HTTP API"]
     Queue["APNs delivery queue<br/>with dead-letter queue"]
     Hyperdrive["Hyperdrive"]
@@ -1010,7 +1010,7 @@ sequenceDiagram
           <h2>Relay Infrastructure</h2>
           <ul>
             <li>Cloudflare Worker for the hosted relay HTTP API.</li>
-            <li>PlanetScale Postgres database named <code>vetra-studiorelay</code>.</li>
+            <li>PlanetScale Postgres database named <code>vetra-coderelay</code>.</li>
             <li>
               Production uses the shared database; non-production stages use database branches.
             </li>

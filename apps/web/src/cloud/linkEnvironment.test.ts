@@ -3,8 +3,8 @@ import {
   EnvironmentId,
   type RelayClientInstallProgressEvent,
   WS_METHODS,
-} from "@vetra-studio/contracts";
-import { RelayWebClientId } from "@vetra-studio/contracts/relay";
+} from "@vetra-code/contracts";
+import { RelayWebClientId } from "@vetra-code/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -18,11 +18,11 @@ import {
   EnvironmentSupervisor,
   type PreparedConnection,
   PrimaryConnectionTarget,
-} from "@vetra-studio/client-runtime/connection";
-import { type RpcSession } from "@vetra-studio/client-runtime/rpc";
-import { EnvironmentRegistry } from "@vetra-studio/client-runtime/connection";
-import { ManagedRelay } from "@vetra-studio/client-runtime/relay";
-import { remoteHttpClientLayer } from "@vetra-studio/client-runtime/rpc";
+} from "@vetra-code/client-runtime/connection";
+import { type RpcSession } from "@vetra-code/client-runtime/rpc";
+import { EnvironmentRegistry } from "@vetra-code/client-runtime/connection";
+import { ManagedRelay } from "@vetra-code/client-runtime/relay";
+import { remoteHttpClientLayer } from "@vetra-code/client-runtime/rpc";
 import { __resetDesktopPrimaryAuthForTests } from "../environments/primary/desktopAuth";
 
 import {

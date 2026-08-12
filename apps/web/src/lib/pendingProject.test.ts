@@ -1,4 +1,4 @@
-import { ProjectId } from "@vetra-studio/contracts";
+import { ProjectId } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -28,7 +28,7 @@ describe("pendingProject", () => {
   it("joins the selected parent directory without leaking a trailing separator", () => {
     expect(
       resolvePendingProjectLocation({
-        parentDirectory: "~/Vetra Studio Projects/",
+        parentDirectory: "~/Vetra Code Projects/",
         customFolderName: "Client Portal",
         prompt: "Build a customer portal",
         projectId: PROJECT_ID,
@@ -36,7 +36,7 @@ describe("pendingProject", () => {
     ).toEqual({
       title: "Build a customer portal",
       folderName: "client-portal-a7f312",
-      workspaceRoot: "~/Vetra Studio Projects/client-portal-a7f312",
+      workspaceRoot: "~/Vetra Code Projects/client-portal-a7f312",
     });
   });
 });

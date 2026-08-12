@@ -1,4 +1,4 @@
-import { ProviderDriverKind } from "@vetra-studio/contracts";
+import { ProviderDriverKind } from "@vetra-code/contracts";
 import { ClaudeAI, CursorIcon, GrokIcon, Icon, OpenAI, OpenCodeIcon } from "../Icons";
 import { PROVIDER_OPTIONS } from "../../session-logic";
 

@@ -1,5 +1,5 @@
-import type { ProjectReadFileResult } from "@vetra-studio/contracts";
-import { EnvironmentId } from "@vetra-studio/contracts";
+import type { ProjectReadFileResult } from "@vetra-code/contracts";
+import { EnvironmentId } from "@vetra-code/contracts";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {

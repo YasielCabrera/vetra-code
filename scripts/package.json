@@ -1,5 +1,5 @@
 {
-  "name": "@vetra-studio/scripts",
+  "name": "@vetra-code/scripts",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,9 +8,9 @@
   },
   "dependencies": {
     "@effect/platform-node": "catalog:",
-    "@vetra-studio/contracts": "workspace:*",
-    "@vetra-studio/shared": "workspace:*",
-    "@vetra-studio/tailscale": "workspace:*",
+    "@vetra-code/contracts": "workspace:*",
+    "@vetra-code/shared": "workspace:*",
+    "@vetra-code/tailscale": "workspace:*",
     "effect": "catalog:",
     "pngjs": "7.0.0",
     "yaml": "catalog:"

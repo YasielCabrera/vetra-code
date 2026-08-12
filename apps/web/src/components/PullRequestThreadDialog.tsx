@@ -1,5 +1,5 @@
-import type { EnvironmentId, ThreadId } from "@vetra-studio/contracts";
-import { isAtomCommandInterrupted } from "@vetra-studio/client-runtime/state/runtime";
+import type { EnvironmentId, ThreadId } from "@vetra-code/contracts";
+import { isAtomCommandInterrupted } from "@vetra-code/client-runtime/state/runtime";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

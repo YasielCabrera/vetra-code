@@ -1,4 +1,4 @@
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";

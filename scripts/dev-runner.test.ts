@@ -3,12 +3,12 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
-import * as NetService from "@vetra-studio/shared/Net";
+import * as NetService from "@vetra-code/shared/Net";
 import {
   HostProcessEnvironment,
   HostProcessPlatform,
   HostProcessWorkingDirectory,
-} from "@vetra-studio/shared/hostProcess";
+} from "@vetra-code/shared/hostProcess";
 import { assert, describe, it } from "@effect/vitest";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
@@ -60,7 +60,7 @@ function mockProcess(exit: number | PlatformError.PlatformError) {
 
 const devServerInput = {
   mode: "dev:server",
-  vetraHome: "/tmp/vetra-studio-dev-runner",
+  vetraHome: "/tmp/vetra-code-dev-runner",
   browser: undefined,
   autoBootstrapProjectFromCwd: undefined,
   logWebSocketEvents: undefined,
@@ -78,8 +78,8 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
       Effect.sync(() => {
         assert.deepStrictEqual(getDevRunnerModeArgs("dev:desktop"), [
           "run",
-          "--filter=@vetra-studio/desktop",
-          "--filter=@vetra-studio/web",
+          "--filter=@vetra-code/desktop",
+          "--filter=@vetra-code/web",
           "dev",
         ]);
       }),
@@ -89,9 +89,9 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
       Effect.sync(() => {
         assert.deepStrictEqual(getDevRunnerModeArgs("dev"), [
           "run",
-          "--filter=@vetra-studio/contracts",
-          "--filter=@vetra-studio/web",
-          "--filter=@vetra-studio/server",
+          "--filter=@vetra-code/contracts",
+          "--filter=@vetra-code/web",
+          "--filter=@vetra-code/server",
           "--parallel",
           "dev",
         ]);
@@ -233,7 +233,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           mode: "dev",
           baseEnv: {
             VETRA_SERVICE_LAUNCHER_CONTEXT: '{"childVersion":"9.9.9"}',
-            VETRA_BOOT_SERVICE_UNIT: "vetra-studio.service",
+            VETRA_BOOT_SERVICE_UNIT: "vetra-code.service",
           },
           serverOffset: 0,
           webOffset: 0,
@@ -874,7 +874,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
 
     // `tailscale serve` config outlives the process, so a dry run that shared
     // would replace and then tear down whatever mapping the port already had.
-    // Base-dir precedence (--home-dir > worktree .vetra-studio > ambient VETRA_HOME)
+    // Base-dir precedence (--home-dir > worktree .vetra-code > ambient VETRA_HOME)
     // lives in runDevRunnerWithInput; the env builder must not consult the
     // ambient variable on its own, or it would silently outrank the worktree
     // default and land dev state on the user's real database.
@@ -882,7 +882,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
       Effect.gen(function* () {
         const env = yield* createDevRunnerEnv({
           mode: "dev",
-          baseEnv: { VETRA_HOME: "/home/user/.vetra-studio" },
+          baseEnv: { VETRA_HOME: "/home/user/.vetra-code" },
           serverOffset: 0,
           webOffset: 0,
           vetraHome: undefined,
@@ -1258,7 +1258,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           const home = yield* spawnedHome({
             vetraHome: "/tmp/explicit-home",
             cwd: root,
-            ambientHome: "/home/user/.vetra-studio",
+            ambientHome: "/home/user/.vetra-code",
           });
           assert.equal(home, path.resolve("/tmp/explicit-home"));
         }).pipe(Effect.scoped),
@@ -1271,22 +1271,22 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           const home = yield* spawnedHome({
             vetraHome: "   ",
             cwd: root,
-            ambientHome: "/home/user/.vetra-studio",
+            ambientHome: "/home/user/.vetra-code",
           });
-          assert.equal(home, path.join(path.resolve(root), ".vetra-studio"));
+          assert.equal(home, path.join(path.resolve(root), ".vetra-code"));
         }).pipe(Effect.scoped),
       );
 
-      it.effect("prefers the worktree .vetra-studio over an ambient VETRA_HOME", () =>
+      it.effect("prefers the worktree .vetra-code over an ambient VETRA_HOME", () =>
         Effect.gen(function* () {
           const path = yield* Path.Path;
           const root = yield* makeWorktree;
           const home = yield* spawnedHome({
             vetraHome: undefined,
             cwd: root,
-            ambientHome: "/home/user/.vetra-studio",
+            ambientHome: "/home/user/.vetra-code",
           });
-          assert.equal(home, path.join(path.resolve(root), ".vetra-studio"));
+          assert.equal(home, path.join(path.resolve(root), ".vetra-code"));
         }).pipe(Effect.scoped),
       );
 
@@ -1296,9 +1296,9 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           const home = yield* spawnedHome({
             vetraHome: undefined,
             cwd: NodeOS.tmpdir(),
-            ambientHome: "/home/user/.vetra-studio",
+            ambientHome: "/home/user/.vetra-code",
           });
-          assert.equal(home, path.resolve("/home/user/.vetra-studio"));
+          assert.equal(home, path.resolve("/home/user/.vetra-code"));
         }),
       );
 

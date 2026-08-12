@@ -13,7 +13,7 @@ import * as Layer from "effect/Layer";
 import * as LogLevel from "effect/LogLevel";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import { PRODUCT_DEFAULT_SERVER_PORT } from "@vetra-studio/shared/productIdentity";
+import { PRODUCT_DEFAULT_SERVER_PORT } from "@vetra-code/shared/productIdentity";
 
 export const DEFAULT_PORT = PRODUCT_DEFAULT_SERVER_PORT;
 
@@ -87,7 +87,7 @@ export class ServerConfig extends Context.Service<
     readonly tailscaleServeEnabled: boolean;
     readonly tailscaleServePort: number;
   }
->()("@vetra-studio/server/config/ServerConfig") {
+>()("@vetra-code/server/config/ServerConfig") {
   /** @deprecated Import and use `layerTest` from this module. */
   static readonly layerTest = (
     cwd: string,

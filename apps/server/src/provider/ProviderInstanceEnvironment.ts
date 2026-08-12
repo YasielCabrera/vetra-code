@@ -1,4 +1,4 @@
-import type { ProviderInstanceEnvironment } from "@vetra-studio/contracts";
+import type { ProviderInstanceEnvironment } from "@vetra-code/contracts";
 
 export function mergeProviderInstanceEnvironment(
   environment: ProviderInstanceEnvironment | undefined,

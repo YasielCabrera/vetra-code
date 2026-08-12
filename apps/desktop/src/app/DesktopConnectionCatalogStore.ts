@@ -5,13 +5,13 @@ import {
   RelayConnectionTarget,
   SshConnectionProfile,
   SshConnectionTarget,
-} from "@vetra-studio/client-runtime/connection";
+} from "@vetra-code/client-runtime/connection";
 import {
   ConnectionCatalogDocument as RuntimeConnectionCatalogDocument,
   type ConnectionCatalogDocument as RuntimeConnectionCatalogDocumentType,
-} from "@vetra-studio/client-runtime/platform";
-import type { PersistedSavedEnvironmentRecord } from "@vetra-studio/contracts";
-import { fromLenientJson } from "@vetra-studio/shared/schemaJson";
+} from "@vetra-code/client-runtime/platform";
+import type { PersistedSavedEnvironmentRecord } from "@vetra-code/contracts";
+import { fromLenientJson } from "@vetra-code/shared/schemaJson";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
@@ -165,7 +165,7 @@ export class DesktopConnectionCatalogStore extends Context.Service<
     >;
     readonly clear: Effect.Effect<void>;
   }
->()("@vetra-studio/desktop/app/DesktopConnectionCatalogStore") {}
+>()("@vetra-code/desktop/app/DesktopConnectionCatalogStore") {}
 
 function decodeSecretBytes(
   catalogPath: string,

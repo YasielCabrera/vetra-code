@@ -1,9 +1,9 @@
 import { useAtomValue } from "@effect/atom-react";
 import { useRef } from "react";
-import type { SourceControlWritingStyleMode } from "@vetra-studio/contracts";
-import { DEFAULT_UNIFIED_SETTINGS } from "@vetra-studio/contracts/settings";
-import { createModelSelection } from "@vetra-studio/shared/model";
-import { resolveSourceControlWriterModelSelection } from "@vetra-studio/shared/serverSettings";
+import type { SourceControlWritingStyleMode } from "@vetra-code/contracts";
+import { DEFAULT_UNIFIED_SETTINGS } from "@vetra-code/contracts/settings";
+import { createModelSelection } from "@vetra-code/shared/model";
+import { resolveSourceControlWriterModelSelection } from "@vetra-code/shared/serverSettings";
 
 import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
 import {

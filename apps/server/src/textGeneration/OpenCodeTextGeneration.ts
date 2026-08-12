@@ -11,10 +11,10 @@ import {
   type ChatAttachment,
   type ModelSelection,
   type OpenCodeSettings,
-} from "@vetra-studio/contracts";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@vetra-studio/shared/git";
-import { getModelSelectionStringOptionValue } from "@vetra-studio/shared/model";
-import { extractJsonObject } from "@vetra-studio/shared/schemaJson";
+} from "@vetra-code/contracts";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@vetra-code/shared/git";
+import { getModelSelectionStringOptionValue } from "@vetra-code/shared/model";
+import { extractJsonObject } from "@vetra-code/shared/schemaJson";
 
 import * as ServerConfig from "../config.ts";
 import { resolveAttachmentPath } from "../attachmentStore.ts";
@@ -392,7 +392,7 @@ export const makeOpenCodeTextGeneration = Effect.fn("makeOpenCodeTextGeneration"
         const session = yield* Effect.tryPromise({
           try: () =>
             client.session.create({
-              title: `Vetra Studio ${input.operation}`,
+              title: `Vetra Code ${input.operation}`,
               permission: [{ permission: "*", pattern: "*", action: "deny" }],
             }),
           catch: (cause) =>

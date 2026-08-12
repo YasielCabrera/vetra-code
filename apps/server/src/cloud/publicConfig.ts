@@ -1,6 +1,6 @@
-import { CONNECT_OAUTH_SCOPES, DEFAULT_HOSTED_APP_URL } from "@vetra-studio/shared/connectAuth";
-import { clerkFrontendApiUrlFromPublishableKey } from "@vetra-studio/shared/relayAuth";
-import { normalizeSecureRelayUrl } from "@vetra-studio/shared/relayUrl";
+import { CONNECT_OAUTH_SCOPES, DEFAULT_HOSTED_APP_URL } from "@vetra-code/shared/connectAuth";
+import { clerkFrontendApiUrlFromPublishableKey } from "@vetra-code/shared/relayAuth";
+import { normalizeSecureRelayUrl } from "@vetra-code/shared/relayUrl";
 import * as Config from "effect/Config";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";

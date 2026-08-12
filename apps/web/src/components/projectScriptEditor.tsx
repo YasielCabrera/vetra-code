@@ -2,12 +2,12 @@ import type {
   ProjectScript,
   ProjectScriptIcon,
   ResolvedKeybindingsConfig,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@vetra-studio/client-runtime/state/runtime";
+} from "@vetra-code/client-runtime/state/runtime";
 import {
   BugIcon,
   FlaskConicalIcon,

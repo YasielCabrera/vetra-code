@@ -5,8 +5,8 @@ import {
   ProviderInstanceId,
   ServerSettings,
   ServerSettingsPatch,
-} from "@vetra-studio/contracts";
-import { createModelSelection } from "@vetra-studio/shared/model";
+} from "@vetra-code/contracts";
+import { createModelSelection } from "@vetra-code/shared/model";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Duration from "effect/Duration";
@@ -29,7 +29,7 @@ const makeServerSettingsLayer = () =>
     Layer.provideMerge(
       Layer.fresh(
         ServerConfig.layerTest(process.cwd(), {
-          prefix: "vetra-studio-server-settings-test-",
+          prefix: "vetra-code-server-settings-test-",
         }),
       ),
     ),
@@ -62,7 +62,7 @@ it.layer(NodeServices.layer)("server settings", (it) => {
     });
     const configLayer = Layer.fresh(
       ServerConfig.layerTest(process.cwd(), {
-        prefix: "vetra-studio-server-settings-secret-failure-test-",
+        prefix: "vetra-code-server-settings-secret-failure-test-",
       }),
     );
     const settingsLayer = ServerSettingsModule.layer.pipe(

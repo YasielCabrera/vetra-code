@@ -1,5 +1,5 @@
-import { scopeThreadRef } from "@vetra-studio/client-runtime/environment";
-import { EnvironmentId, ThreadId } from "@vetra-studio/contracts";
+import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
+import { EnvironmentId, ThreadId } from "@vetra-code/contracts";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { openDiffFilePrimaryAction } from "./diffFileActions";

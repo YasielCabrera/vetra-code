@@ -11,7 +11,7 @@ import type {
   ProviderDriverKind,
   ServerProvider,
   ServerProviderUpdateState,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import type * as Stream from "effect/Stream";
@@ -77,5 +77,5 @@ export interface ProviderRegistryShape {
 }
 
 export class ProviderRegistry extends Context.Service<ProviderRegistry, ProviderRegistryShape>()(
-  "@vetra-studio/server/provider/Services/ProviderRegistry",
+  "@vetra-code/server/provider/Services/ProviderRegistry",
 ) {}

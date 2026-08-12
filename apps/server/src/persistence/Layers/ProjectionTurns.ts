@@ -1,4 +1,4 @@
-import { OrchestrationCheckpointFile } from "@vetra-studio/contracts";
+import { OrchestrationCheckpointFile } from "@vetra-code/contracts";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import * as Effect from "effect/Effect";

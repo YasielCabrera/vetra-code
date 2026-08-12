@@ -1,4 +1,4 @@
-import type { RelayClientDeviceRecord } from "@vetra-studio/contracts/relay";
+import type { RelayClientDeviceRecord } from "@vetra-code/contracts/relay";
 import { RefreshCwIcon, SmartphoneIcon } from "lucide-react";
 
 import { useManagedRelayDevices } from "../../cloud/managedRelayState";
@@ -96,7 +96,7 @@ function EmptyMobileClients() {
       <EmptyHeader>
         <EmptyTitle>No mobile clients</EmptyTitle>
         <EmptyDescription>
-          Sign in to Vetra Studio on your iPhone to register it for push notifications and Live
+          Sign in to Vetra Code on your iPhone to register it for push notifications and Live
           Activities.
         </EmptyDescription>
       </EmptyHeader>

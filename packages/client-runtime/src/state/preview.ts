@@ -1,4 +1,4 @@
-import { WS_METHODS } from "@vetra-studio/contracts";
+import { WS_METHODS } from "@vetra-code/contracts";
 import { Atom } from "effect/unstable/reactivity";
 
 import type { EnvironmentRegistry } from "../connection/registry.ts";

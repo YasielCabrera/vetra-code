@@ -1,8 +1,8 @@
-import type { DiscoveredLocalServer } from "@vetra-studio/contracts";
-import { isLoopbackHost } from "@vetra-studio/shared/preview";
+import type { DiscoveredLocalServer } from "@vetra-code/contracts";
+import { isLoopbackHost } from "@vetra-code/shared/preview";
 import { useMemo } from "react";
 
-import type { EnvironmentId } from "@vetra-studio/contracts";
+import type { EnvironmentId } from "@vetra-code/contracts";
 import { resolveDiscoveredServerUrl } from "~/browser/browserTargetResolver";
 import { useDiscoveredPorts } from "~/portDiscoveryState";
 

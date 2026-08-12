@@ -1,4 +1,4 @@
-import type { AdvertisedEndpoint, DesktopWslState } from "@vetra-studio/contracts";
+import type { AdvertisedEndpoint, DesktopWslState } from "@vetra-code/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
 import {
   applyWslEnableSelection,

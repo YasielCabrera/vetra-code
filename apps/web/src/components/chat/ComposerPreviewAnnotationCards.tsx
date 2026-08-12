@@ -1,4 +1,4 @@
-import type { PreviewAnnotationPayload } from "@vetra-studio/contracts";
+import type { PreviewAnnotationPayload } from "@vetra-code/contracts";
 import { Frame, MousePointerClick, Paintbrush, PenLine, X } from "lucide-react";
 import type { ReactNode } from "react";
 

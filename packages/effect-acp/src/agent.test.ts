@@ -40,7 +40,7 @@ const decodeRequestPermissionRequest = Schema.decodeEffect(
 const decodeInitializeResponse = Schema.decodeEffect(Schema.fromJsonString(InitializeResponse));
 
 it.effect(
-  "@vetra-studio/effect-acp agent handles core agent requests and outbound client requests",
+  "@vetra-code/effect-acp agent handles core agent requests and outbound client requests",
   () =>
     Effect.gen(function* () {
       const { stdio, input, output } = yield* makeInMemoryStdio();
@@ -132,7 +132,7 @@ it.effect(
                 terminal: false,
               },
               clientInfo: {
-                name: "@vetra-studio/effect-acp-test",
+                name: "@vetra-code/effect-acp-test",
                 version: "0.0.0",
               },
             },
@@ -182,7 +182,7 @@ it.effect(
 );
 
 it.effect(
-  "@vetra-studio/effect-acp agent uses distinct ids for RPC calls and extension requests",
+  "@vetra-code/effect-acp agent uses distinct ids for RPC calls and extension requests",
   () =>
     Effect.gen(function* () {
       const { stdio, input, output } = yield* makeInMemoryStdio();

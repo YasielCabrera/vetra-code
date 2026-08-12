@@ -5,7 +5,7 @@ import type {
   AdvertisedEndpointReachability,
   AdvertisedEndpointSource,
   AdvertisedEndpointStatus,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 export interface CreateAdvertisedEndpointInput {
   readonly id: string;

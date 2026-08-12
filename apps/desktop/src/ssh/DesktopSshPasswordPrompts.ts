@@ -1,6 +1,6 @@
-import type { DesktopSshPasswordPromptRequest } from "@vetra-studio/contracts";
-import { DesktopSshPasswordPromptResolutionInputSchema } from "@vetra-studio/contracts";
-import type { SshPasswordRequest } from "@vetra-studio/ssh/auth";
+import type { DesktopSshPasswordPromptRequest } from "@vetra-code/contracts";
+import { DesktopSshPasswordPromptResolutionInputSchema } from "@vetra-code/contracts";
+import type { SshPasswordRequest } from "@vetra-code/ssh/auth";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -63,7 +63,7 @@ export class DesktopSshPromptWindowUnavailableError extends Schema.TaggedErrorCl
 ) {
   override get message(): string {
     const request = this.requestId === null ? "before a request id was assigned" : this.requestId;
-    return `Vetra Studio window is unavailable during ${this.stage} for SSH authentication to ${this.destination} (request: ${request}).`;
+    return `Vetra Code window is unavailable during ${this.stage} for SSH authentication to ${this.destination} (request: ${request}).`;
   }
 }
 
@@ -190,7 +190,7 @@ export class DesktopSshPasswordPrompts extends Context.Service<
       input: DesktopSshPasswordPromptResolutionInput,
     ) => Effect.Effect<void, DesktopSshPasswordPromptResolveError>;
   }
->()("@vetra-studio/desktop/ssh/DesktopSshPasswordPrompts") {}
+>()("@vetra-code/desktop/ssh/DesktopSshPasswordPrompts") {}
 
 interface PendingSshPasswordPrompt {
   readonly requestId: string;

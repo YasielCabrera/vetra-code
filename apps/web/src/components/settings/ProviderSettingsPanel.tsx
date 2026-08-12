@@ -1,10 +1,10 @@
 import { useAtomValue } from "@effect/atom-react";
-import { connectionStatusText } from "@vetra-studio/client-runtime/connection";
-import { safeErrorLogAttributes } from "@vetra-studio/client-runtime/errors";
+import { connectionStatusText } from "@vetra-code/client-runtime/connection";
+import { safeErrorLogAttributes } from "@vetra-code/client-runtime/errors";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
+} from "@vetra-code/client-runtime/state/runtime";
 import {
   defaultInstanceIdForDriver,
   type EnvironmentId,
@@ -12,12 +12,12 @@ import {
   ProviderDriverKind,
   type ProviderInstanceConfig,
   type ProviderInstanceId,
-} from "@vetra-studio/contracts";
-import { DEFAULT_UNIFIED_SETTINGS } from "@vetra-studio/contracts/settings";
+} from "@vetra-code/contracts";
+import { DEFAULT_UNIFIED_SETTINGS } from "@vetra-code/contracts/settings";
 import {
   getBackgroundActivityPresetSettings,
   resolveServerBackgroundActivitySettings,
-} from "@vetra-studio/shared/backgroundActivitySettings";
+} from "@vetra-code/shared/backgroundActivitySettings";
 import * as Arr from "effect/Array";
 import * as Duration from "effect/Duration";
 import * as Equal from "effect/Equal";

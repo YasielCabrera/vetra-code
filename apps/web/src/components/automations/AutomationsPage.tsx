@@ -1,6 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
 import { useNavigate } from "@tanstack/react-router";
-import type { EnvironmentAutomation } from "@vetra-studio/client-runtime/state/automations";
+import type { EnvironmentAutomation } from "@vetra-code/client-runtime/state/automations";
 import {
   CalendarClockIcon,
   CircleAlertIcon,
@@ -267,7 +267,7 @@ export function AutomationsPage(props?: {
                   description={
                     canCreate
                       ? "Schedule a prompt and Vetra will run it for you, once or on repeat."
-                      : "Update the Vetra Studio server in this environment to schedule work."
+                      : "Update the Vetra Code server in this environment to schedule work."
                   }
                   action={
                     canCreate ? (

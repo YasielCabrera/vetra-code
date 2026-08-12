@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vite-plus/test";
-import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@vetra-studio/contracts";
+import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@vetra-code/contracts";
 import type { Thread } from "../types";
 import {
   buildBrowseGroups,
@@ -272,7 +272,7 @@ describe("buildThreadActionItems", () => {
   it("keeps message excerpts searchable without replacing thread metadata", () => {
     const [item] = buildThreadActionItems({
       threads: [makeThread({ branch: "feat/search" })],
-      projectTitleById: new Map([[PROJECT_ID, "Vetra Studio"]]),
+      projectTitleById: new Map([[PROJECT_ID, "Vetra Code"]]),
       sortOrder: "updated_at",
       icon: null,
       getContentMatch: () => ({
@@ -289,7 +289,7 @@ describe("buildThreadActionItems", () => {
       snippet: "The relay reconnect is now bounded.",
       query: "reconnect",
     });
-    expect(item?.description).toBe("Vetra Studio · #feat/search");
+    expect(item?.description).toBe("Vetra Code · #feat/search");
   });
 
   it("filters archived threads out of thread search items", () => {

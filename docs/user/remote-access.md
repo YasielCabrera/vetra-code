@@ -1,6 +1,6 @@
 # Remote access during bootstrap
 
-Vetra Studio retains the foundation's direct, Tailscale, relay, and SSH connection architecture, but only direct
+Vetra Code retains the foundation's direct, Tailscale, relay, and SSH connection architecture, but only direct
 development pairing is part of the current supported checkpoint. A Vetra-hosted web domain, relay,
 published server package, and package-based SSH launcher are not configured yet.
 
@@ -9,7 +9,7 @@ published server package, and package-based SSH launcher are not configured yet.
 Start the server with an isolated home:
 
 ```bash
-pnpm dev --home-dir .vetra-studio
+pnpm dev --home-dir .vetra-code
 ```
 
 Use the complete `pairingUrl` printed by the server. Pairing tokens are short-lived and single-use;
@@ -18,7 +18,7 @@ treat them like passwords and do not put them in screenshots, commits, or durabl
 To mint another token for that running source server:
 
 ```bash
-node apps/server/src/bin.ts pair --base-dir .vetra-studio
+node apps/server/src/bin.ts pair --base-dir .vetra-code
 ```
 
 The other device must be able to reach the advertised address. A loopback URL works only on the
@@ -30,10 +30,10 @@ development server directly to the public internet.
 - Vetra Connect and its relay stay hidden when Vetra-owned Clerk and relay settings are absent.
 - Hosted pairing is unavailable until Vetra has its own HTTPS application domain.
 - Package-based headless, SSH, and background-service launch are unavailable while
-  `@vetra-studio/server` remains private.
+  `@vetra-code/server` remains private.
 - The mobile client was removed from this fork.
 
-Do not mix pairing links, CLI packages, or URL schemes from another product with Vetra Studio. They can
+Do not mix pairing links, CLI packages, or URL schemes from another product with Vetra Code. They can
 connect to a different server and read or modify that environment's state.
 
 ## Security model retained

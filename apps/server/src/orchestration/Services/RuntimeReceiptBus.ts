@@ -20,7 +20,7 @@ import {
   NonNegativeInt,
   ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
@@ -68,5 +68,5 @@ export interface RuntimeReceiptBusShape {
 }
 
 export class RuntimeReceiptBus extends Context.Service<RuntimeReceiptBus, RuntimeReceiptBusShape>()(
-  "@vetra-studio/server/orchestration/Services/RuntimeReceiptBus",
+  "@vetra-code/server/orchestration/Services/RuntimeReceiptBus",
 ) {}

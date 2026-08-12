@@ -1,8 +1,5 @@
 import * as Effect from "effect/Effect";
-import type {
-  PullRequestCapabilities,
-  PullRequestViewerPermissions,
-} from "@vetra-studio/contracts";
+import type { PullRequestCapabilities, PullRequestViewerPermissions } from "@vetra-code/contracts";
 
 import * as GitLabPullRequestCli from "./GitLabPullRequestCli.ts";
 import {

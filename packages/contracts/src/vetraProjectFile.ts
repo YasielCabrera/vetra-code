@@ -26,10 +26,10 @@ const trimmedNonEmpty = (annotations: { readonly description: string }, maxLengt
 
 export const VetraProjectFileScript = Schema.Struct({
   name: trimmedNonEmpty({
-    description: "Display name for the script, shown in the Vetra Studio scripts menu.",
+    description: "Display name for the script, shown in the Vetra Code scripts menu.",
   }),
   command: trimmedNonEmpty({
-    description: "Shell command executed in a Vetra Studio terminal at the project root.",
+    description: "Shell command executed in a Vetra Code terminal at the project root.",
   }),
   icon: Schema.optionalKey(
     ProjectScriptIcon.annotate({
@@ -55,7 +55,7 @@ export const VetraProjectFileScript = Schema.Struct({
     }),
   ),
 }).annotate({
-  description: "A project script that team members can import into Vetra Studio.",
+  description: "A project script that team members can import into Vetra Code.",
 });
 export type VetraProjectFileScript = typeof VetraProjectFileScript.Type;
 
@@ -69,7 +69,7 @@ export const VetraProjectFile = Schema.Struct({
     trimmedNonEmpty(
       {
         description:
-          'Workspace-relative path to the project icon (e.g. "assets/logo.svg"). Checked before Vetra Studio\'s built-in icon locations.',
+          'Workspace-relative path to the project icon (e.g. "assets/logo.svg"). Checked before Vetra Code\'s built-in icon locations.',
       },
       VETRA_PROJECT_FILE_PATH_MAX_LENGTH,
     ),
@@ -77,20 +77,20 @@ export const VetraProjectFile = Schema.Struct({
   defaultThreadEnvMode: Schema.optionalKey(
     ThreadEnvMode.annotate({
       description:
-        'Where new threads start for this repository: "worktree" for a fresh git worktree, "local" for the current checkout. A per-project setting in Vetra Studio overrides this; when neither is set, the global default applies.',
+        'Where new threads start for this repository: "worktree" for a fresh git worktree, "local" for the current checkout. A per-project setting in Vetra Code overrides this; when neither is set, the global default applies.',
     }),
   ),
   scripts: Schema.optionalKey(
     Schema.Array(VetraProjectFileScript)
       .annotate({
         description:
-          "Project scripts shared with everyone who opens this repository in Vetra Studio.",
+          "Project scripts shared with everyone who opens this repository in Vetra Code.",
       })
       .check(Schema.isMaxLength(VETRA_PROJECT_FILE_MAX_SCRIPTS)),
   ),
 }).annotate({
   title: "Vetra project file",
   description:
-    "Checked-in project configuration for Vetra Studio (vetra.json at the repository root).",
+    "Checked-in project configuration for Vetra Code (vetra.json at the repository root).",
 });
 export type VetraProjectFile = typeof VetraProjectFile.Type;

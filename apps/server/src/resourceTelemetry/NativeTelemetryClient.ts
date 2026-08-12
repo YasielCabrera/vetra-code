@@ -7,12 +7,12 @@ import type {
   ResourceMonitorHelloEvent,
   ResourceMonitorSnapshotEvent,
   ResourceTelemetrySourceStatus,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   RESOURCE_MONITOR_PROTOCOL_VERSION,
   ResourceMonitorCommand as ResourceMonitorCommandSchema,
   ResourceMonitorEvent as ResourceMonitorEventSchema,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -203,7 +203,7 @@ export class NativeTelemetryClient extends Context.Service<
       Scope.Scope
     >;
   }
->()("@vetra-studio/server/resourceTelemetry/NativeTelemetryClient") {}
+>()("@vetra-code/server/resourceTelemetry/NativeTelemetryClient") {}
 
 interface ClientState {
   readonly status: ResourceTelemetrySourceStatus;

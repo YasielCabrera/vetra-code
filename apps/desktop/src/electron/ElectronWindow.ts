@@ -1,4 +1,4 @@
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -93,7 +93,7 @@ export class ElectronWindow extends Context.Service<
       sync: (window: Electron.BrowserWindow) => Effect.Effect<void, E, R>,
     ) => Effect.Effect<void, E, R>;
   }
->()("@vetra-studio/desktop/electron/ElectronWindow") {}
+>()("@vetra-code/desktop/electron/ElectronWindow") {}
 
 export const make = Effect.gen(function* () {
   const platform = yield* HostProcessPlatform;

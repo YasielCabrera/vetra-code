@@ -2,9 +2,9 @@ import {
   ProviderDriverKind,
   type ServerProvider,
   type ServerProviderVersionAdvisory,
-} from "@vetra-studio/contracts";
-import { compareSemverVersions } from "@vetra-studio/shared/semver";
-import { resolveCommandPath } from "@vetra-studio/shared/shell";
+} from "@vetra-code/contracts";
+import { compareSemverVersions } from "@vetra-code/shared/semver";
+import { resolveCommandPath } from "@vetra-code/shared/shell";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -81,7 +81,7 @@ export interface ProviderVersionCacheEntry {
 }
 
 export const ProviderVersionCache = Context.Reference<Map<string, ProviderVersionCacheEntry>>(
-  "@vetra-studio/server/providerMaintenance/ProviderVersionCache",
+  "@vetra-code/server/providerMaintenance/ProviderVersionCache",
   {
     defaultValue: () => new Map(),
   },

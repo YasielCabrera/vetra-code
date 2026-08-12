@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vetra-studio/contracts";
+import { EnvironmentId } from "@vetra-code/contracts";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { useComposerDraftStore } from "~/composerDraftStore";
@@ -20,7 +20,7 @@ describe("root project draft", () => {
 
     const first = ensureRootProjectDraft({
       environmentId,
-      defaultParentDirectory: "~/Vetra Studio Projects",
+      defaultParentDirectory: "~/Vetra Code Projects",
     });
     const second = ensureRootProjectDraft({
       environmentId,
@@ -34,7 +34,7 @@ describe("root project draft", () => {
     ]);
     expect(second?.pendingProject).toEqual({
       association: "unselected",
-      parentDirectory: "~/Vetra Studio Projects",
+      parentDirectory: "~/Vetra Code Projects",
       folderName: "",
       locationConfirmed: false,
       materialized: false,

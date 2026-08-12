@@ -1,4 +1,4 @@
 export {
   isTransportConnectionErrorMessage,
   sanitizeThreadErrorMessage,
-} from "@vetra-studio/client-runtime/errors";
+} from "@vetra-code/client-runtime/errors";

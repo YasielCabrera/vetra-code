@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { ResolvedKeybindingsConfig } from "@vetra-studio/contracts";
+import type { ResolvedKeybindingsConfig } from "@vetra-code/contracts";
 
 import {
   preventRepeatedTerminalCloseShortcut,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { ModelCapabilities } from "@vetra-studio/contracts";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
-import { createModelCapabilities } from "@vetra-studio/shared/model";
+import type { ModelCapabilities } from "@vetra-code/contracts";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { createModelCapabilities } from "@vetra-code/shared/model";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as PlatformError from "effect/PlatformError";

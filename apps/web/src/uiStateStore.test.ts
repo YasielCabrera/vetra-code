@@ -1,4 +1,4 @@
-import { ProjectId, ThreadId } from "@vetra-studio/contracts";
+import { ProjectId, ThreadId } from "@vetra-code/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {

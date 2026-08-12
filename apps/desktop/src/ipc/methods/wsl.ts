@@ -1,4 +1,4 @@
-import { DesktopWslStateSchema, type DesktopWslState } from "@vetra-studio/contracts";
+import { DesktopWslStateSchema, type DesktopWslState } from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";

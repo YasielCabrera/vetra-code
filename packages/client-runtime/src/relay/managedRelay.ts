@@ -28,11 +28,11 @@ import {
   RelayProtectedError,
   type RelayProtectedError as RelayProtectedErrorType,
   RelayUnregisterDeviceEndpoint,
-} from "@vetra-studio/contracts/relay";
-import { encodeOAuthScope, oauthScopeSetEquals } from "@vetra-studio/shared/oauthScope";
-import { decodeRelayJwt } from "@vetra-studio/shared/relayJwt";
-import { withRelayClientTracing } from "@vetra-studio/shared/relayTracing";
-import { normalizeSecureRelayUrl } from "@vetra-studio/shared/relayUrl";
+} from "@vetra-code/contracts/relay";
+import { encodeOAuthScope, oauthScopeSetEquals } from "@vetra-code/shared/oauthScope";
+import { decodeRelayJwt } from "@vetra-code/shared/relayJwt";
+import { withRelayClientTracing } from "@vetra-code/shared/relayTracing";
+import { normalizeSecureRelayUrl } from "@vetra-code/shared/relayUrl";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
@@ -217,7 +217,7 @@ export class ManagedRelayDpopSigner extends Context.Service<
       input: ManagedRelayDpopProofInput,
     ) => Effect.Effect<string, ManagedRelayDpopProofCreationError>;
   }
->()("@vetra-studio/client-runtime/relay/managedRelay/ManagedRelayDpopSigner") {}
+>()("@vetra-code/client-runtime/relay/managedRelay/ManagedRelayDpopSigner") {}
 
 export const MANAGED_RELAY_REQUEST_TIMEOUT_MS = 10_000;
 
@@ -299,7 +299,7 @@ export class ManagedRelayClient extends Context.Service<
     }) => Effect.Effect<RelayAgentActivitySnapshotResponse, ManagedRelayClientError>;
     readonly resetTokenCache: Effect.Effect<void>;
   }
->()("@vetra-studio/client-runtime/relay/managedRelay/ManagedRelayClient") {}
+>()("@vetra-code/client-runtime/relay/managedRelay/ManagedRelayClient") {}
 
 const isRelayProtectedError = Schema.is(RelayProtectedError);
 

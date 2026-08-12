@@ -1,5 +1,5 @@
-import type { ContextMenuItem } from "@vetra-studio/contracts";
-import type { SnoozePreset } from "@vetra-studio/client-runtime/state/thread-settled";
+import type { ContextMenuItem } from "@vetra-code/contracts";
+import type { SnoozePreset } from "@vetra-code/client-runtime/state/thread-settled";
 
 /**
  * Ids for the per-thread action menu. Snooze presets are dispatched as

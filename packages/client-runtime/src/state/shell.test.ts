@@ -1,5 +1,5 @@
-import type { ServerConfig } from "@vetra-studio/contracts";
-import { EnvironmentId } from "@vetra-studio/contracts";
+import type { ServerConfig } from "@vetra-code/contracts";
+import { EnvironmentId } from "@vetra-code/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Option from "effect/Option";
 import { Atom, AtomRegistry } from "effect/unstable/reactivity";

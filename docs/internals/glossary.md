@@ -1,8 +1,8 @@
 # Glossary
 
-> For maintainers. Using Vetra Studio? See [docs/user](../user/).
+> For maintainers. Using Vetra Code? See [docs/user](../user/).
 
-This is a living glossary for Vetra Studio. It explains what common terms mean in this codebase.
+This is a living glossary for Vetra Code. It explains what common terms mean in this codebase.
 
 ## Table of contents
 

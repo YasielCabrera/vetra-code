@@ -1,4 +1,4 @@
-import type { PreviewViewportSetting } from "@vetra-studio/contracts";
+import type { PreviewViewportSetting } from "@vetra-code/contracts";
 
 type BrowserViewportHandler = (setting: PreviewViewportSetting) => Promise<void>;
 

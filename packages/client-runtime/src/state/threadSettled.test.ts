@@ -4,7 +4,7 @@ import {
   ThreadId,
   TurnId,
   type OrchestrationThreadShell,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

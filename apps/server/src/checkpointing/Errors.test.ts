@@ -1,5 +1,5 @@
 import { expect, it } from "@effect/vitest";
-import { ThreadId } from "@vetra-studio/contracts";
+import { ThreadId } from "@vetra-code/contracts";
 
 import {
   CheckpointRefUnavailableError,

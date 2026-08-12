@@ -1,5 +1,5 @@
-import type { RelayAgentActivityState } from "@vetra-studio/contracts/relay";
-import { RelayAgentActivityState as RelayAgentActivityStateSchema } from "@vetra-studio/contracts/relay";
+import type { RelayAgentActivityState } from "@vetra-code/contracts/relay";
+import { RelayAgentActivityState as RelayAgentActivityStateSchema } from "@vetra-code/contracts/relay";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -89,7 +89,7 @@ export class AgentActivityRows extends Context.Service<
       readonly threadId: string;
     }) => Effect.Effect<RelayAgentActivityState | null, AgentActivityRowListPersistenceError>;
   }
->()("@vetra-studio/relay/agentActivity/AgentActivityRows") {}
+>()("@vetra-code/relay/agentActivity/AgentActivityRows") {}
 
 const decodeJsonString = Schema.decodeEffect(Schema.fromJsonString(Schema.Unknown));
 const encodeJsonValue = Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown));

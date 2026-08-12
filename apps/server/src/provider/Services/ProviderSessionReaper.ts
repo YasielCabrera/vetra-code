@@ -12,4 +12,4 @@ export interface ProviderSessionReaperShape {
 export class ProviderSessionReaper extends Context.Service<
   ProviderSessionReaper,
   ProviderSessionReaperShape
->()("@vetra-studio/server/provider/Services/ProviderSessionReaper") {}
+>()("@vetra-code/server/provider/Services/ProviderSessionReaper") {}

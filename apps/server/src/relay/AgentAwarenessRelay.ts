@@ -4,20 +4,20 @@ import type {
   OrchestrationProjectShell,
   OrchestrationThreadShell,
   ThreadId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   RelayApi,
   type RelayAgentActivityPublishProofPayload,
   type RelayAgentActivityState,
-} from "@vetra-studio/contracts/relay";
-import { projectThreadAwareness } from "@vetra-studio/shared/agentAwareness";
-import { makeDrainableWorker } from "@vetra-studio/shared/DrainableWorker";
-import { withRelayClientTracing } from "@vetra-studio/shared/relayTracing";
+} from "@vetra-code/contracts/relay";
+import { projectThreadAwareness } from "@vetra-code/shared/agentAwareness";
+import { makeDrainableWorker } from "@vetra-code/shared/DrainableWorker";
+import { withRelayClientTracing } from "@vetra-code/shared/relayTracing";
 import {
   normalizeRelayIssuer,
   RELAY_ACTIVITY_PUBLISH_TYP,
   signRelayJwt,
-} from "@vetra-studio/shared/relayJwt";
+} from "@vetra-code/shared/relayJwt";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -52,7 +52,7 @@ export class AgentAwarenessRelay extends Context.Service<
     readonly publishThread: (threadId: ThreadId) => Effect.Effect<void>;
     readonly start: () => Effect.Effect<void, never, Scope.Scope>;
   }
->()("@vetra-studio/server/relay/AgentAwarenessRelay") {}
+>()("@vetra-code/server/relay/AgentAwarenessRelay") {}
 
 export function eventThreadId(event: OrchestrationEvent): ThreadId | null {
   const payload = event.payload as { readonly threadId?: unknown };

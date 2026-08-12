@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@vetra-studio/contracts";
+import type { EnvironmentId } from "@vetra-code/contracts";
 import { CloudIcon, MonitorIcon } from "lucide-react";
 import { memo, useMemo } from "react";
 

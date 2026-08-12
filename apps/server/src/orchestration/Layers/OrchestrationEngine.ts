@@ -4,8 +4,8 @@ import type {
   OrchestrationReadModel,
   ProjectId,
   ThreadId,
-} from "@vetra-studio/contracts";
-import { OrchestrationCommand } from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
+import { OrchestrationCommand } from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Crypto from "effect/Crypto";

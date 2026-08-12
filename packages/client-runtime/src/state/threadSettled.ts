@@ -1,5 +1,5 @@
 // @effect-diagnostics globalDate:off -- UI snooze presets use local calendar boundaries and Intl labels.
-import type { OrchestrationThreadShell } from "@vetra-studio/contracts";
+import type { OrchestrationThreadShell } from "@vetra-code/contracts";
 
 export type ChangeRequestStateLike = "open" | "closed" | "merged";
 

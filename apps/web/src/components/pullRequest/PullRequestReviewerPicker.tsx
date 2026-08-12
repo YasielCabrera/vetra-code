@@ -9,14 +9,14 @@ import type {
   EnvironmentId,
   PullRequestRef,
   PullRequestReviewerCandidate,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { CheckIcon, UserPlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { pullRequestEnvironment } from "~/state/pullRequests";
 import { useEnvironmentQuery } from "~/state/query";
 import { useAtomCommand } from "~/state/use-atom-command";
-import { squashAtomCommandFailure } from "@vetra-studio/client-runtime/state/runtime";
+import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
 
 import { Button } from "../ui/button";
 import { Menu, MenuPopup, MenuTrigger } from "../ui/menu";

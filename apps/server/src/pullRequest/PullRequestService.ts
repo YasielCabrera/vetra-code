@@ -38,8 +38,8 @@ import {
   type PullRequestThreadResolutionInput,
   type SourceControlProviderInfo,
   type SourceControlProviderKind,
-} from "@vetra-studio/contracts";
-import { detectSourceControlProviderFromRemoteUrl } from "@vetra-studio/shared/sourceControl";
+} from "@vetra-code/contracts";
+import { detectSourceControlProviderFromRemoteUrl } from "@vetra-code/shared/sourceControl";
 
 import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
@@ -152,7 +152,7 @@ export class PullRequestService extends Context.Service<
     ) => Effect.Effect<void, PullRequestError>;
     readonly invalidate: (input: PullRequestInvalidateInput) => Effect.Effect<void>;
   }
->()("@vetra-studio/server/pullRequest/PullRequestService") {}
+>()("@vetra-code/server/pullRequest/PullRequestService") {}
 
 /** What a verdict is called when refusing it, so the sentence reads as an action. */
 const VERDICT_LABELS: Record<PullRequestReviewVerdict, string> = {

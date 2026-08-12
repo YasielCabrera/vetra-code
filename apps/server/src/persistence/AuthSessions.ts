@@ -11,7 +11,7 @@ import {
   AuthEnvironmentScopes,
   AuthSessionId,
   ServerAuthSessionMethod,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 import {
   type AuthSessionRepositoryError,
@@ -104,7 +104,7 @@ export class AuthSessionRepository extends Context.Service<
       input: SetAuthSessionLastConnectedAtInput,
     ) => Effect.Effect<void, AuthSessionRepositoryError>;
   }
->()("@vetra-studio/server/persistence/AuthSessions/AuthSessionRepository") {}
+>()("@vetra-code/server/persistence/AuthSessions/AuthSessionRepository") {}
 
 const AuthSessionDbRow = Schema.Struct({
   sessionId: AuthSessionId,

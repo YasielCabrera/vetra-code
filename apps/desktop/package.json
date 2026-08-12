@@ -1,5 +1,5 @@
 {
-  "name": "@vetra-studio/desktop",
+  "name": "@vetra-code/desktop",
   "version": "0.0.33",
   "private": true,
   "type": "module",
@@ -15,11 +15,11 @@
     "@clerk/electron": "catalog:",
     "@clerk/electron-passkeys": "catalog:",
     "@effect/platform-node": "catalog:",
-    "@vetra-studio/client-runtime": "workspace:*",
-    "@vetra-studio/contracts": "workspace:*",
-    "@vetra-studio/shared": "workspace:*",
-    "@vetra-studio/ssh": "workspace:*",
-    "@vetra-studio/tailscale": "workspace:*",
+    "@vetra-code/client-runtime": "workspace:*",
+    "@vetra-code/contracts": "workspace:*",
+    "@vetra-code/shared": "workspace:*",
+    "@vetra-code/ssh": "workspace:*",
+    "@vetra-code/tailscale": "workspace:*",
     "effect": "catalog:",
     "electron": "41.5.0",
     "electron-store": "^8.2.0",
@@ -35,5 +35,5 @@
     "tailwindcss": "^4.0.0",
     "vite-plus": "catalog:"
   },
-  "productName": "Vetra Studio (Alpha)"
+  "productName": "Vetra Code (Alpha)"
 }

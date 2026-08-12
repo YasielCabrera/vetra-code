@@ -2,13 +2,13 @@ import { useAtomValue } from "@effect/atom-react";
 import {
   type CheckpointDiffTarget,
   type ComposerPathSearchTarget,
-} from "@vetra-studio/client-runtime/state/threads";
+} from "@vetra-code/client-runtime/state/threads";
 import {
   createThreadSearchResultsAtomFamily,
   makeThreadSearchKey,
   type EnvironmentThreadSearchMatch,
-} from "@vetra-studio/client-runtime/state/thread-search";
-import { type VcsRefTarget } from "@vetra-studio/client-runtime/state/vcs";
+} from "@vetra-code/client-runtime/state/thread-search";
+import { type VcsRefTarget } from "@vetra-code/client-runtime/state/vcs";
 import type {
   EnvironmentId,
   OrchestrationThread,
@@ -17,7 +17,7 @@ import type {
   ThreadId,
   VcsListRefsResult,
   VcsRef,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";

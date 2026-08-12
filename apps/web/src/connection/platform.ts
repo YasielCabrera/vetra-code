@@ -6,7 +6,7 @@ import {
   PrimaryEnvironmentAuth,
   RelayDeviceIdentity,
   SshEnvironmentGateway,
-} from "@vetra-studio/client-runtime/platform";
+} from "@vetra-code/client-runtime/platform";
 import {
   BearerConnectionCredential,
   BearerConnectionProfile,
@@ -20,21 +20,21 @@ import {
   PrimaryConnectionRegistration,
   PrimaryConnectionTarget,
   Wakeups,
-} from "@vetra-studio/client-runtime/connection";
-import { bootstrapRemoteBearerSession } from "@vetra-studio/client-runtime/authorization";
-import { fetchRemoteEnvironmentDescriptor } from "@vetra-studio/client-runtime/environment";
+} from "@vetra-code/client-runtime/connection";
+import { bootstrapRemoteBearerSession } from "@vetra-code/client-runtime/authorization";
+import { fetchRemoteEnvironmentDescriptor } from "@vetra-code/client-runtime/environment";
 import {
   managedRelayAccountChanges,
   managedRelaySessionAtom,
-} from "@vetra-studio/client-runtime/relay";
-import { EnvironmentRpcRequestObserver } from "@vetra-studio/client-runtime/rpc";
+} from "@vetra-code/client-runtime/relay";
+import { EnvironmentRpcRequestObserver } from "@vetra-code/client-runtime/rpc";
 import {
   AuthStandardClientScopes,
   type DesktopBridge,
   type DesktopEnvironmentBootstrap,
   type DesktopSshEnvironmentTarget,
   PRIMARY_LOCAL_ENVIRONMENT_ID,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -120,7 +120,7 @@ function clientMetadata() {
   const desktop = window.desktopBridge !== undefined;
   const platform = navigator.platform.trim();
   return {
-    label: desktop ? "Vetra Studio Desktop" : "Vetra Studio Web",
+    label: desktop ? "Vetra Code Desktop" : "Vetra Code Web",
     deviceType: "desktop" as const,
     ...(platform === "" ? {} : { os: platform }),
   };

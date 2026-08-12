@@ -22,8 +22,8 @@ import type {
   ProjectSearchContentsInput,
   ProjectSearchContentsResult,
   ProjectSearchEntriesResult,
-} from "@vetra-studio/contracts";
-import { isWorkspaceImagePreviewPath } from "@vetra-studio/shared/filePreview";
+} from "@vetra-code/contracts";
+import { isWorkspaceImagePreviewPath } from "@vetra-code/shared/filePreview";
 
 const WORKSPACE_INDEX_MAX_ENTRIES = 25_000;
 const WORKSPACE_INDEX_PAGE_SIZE = WORKSPACE_INDEX_MAX_ENTRIES + 2;
@@ -122,7 +122,7 @@ export class WorkspaceSearchIndex extends Context.Service<
       WorkspaceSearchIndexRefreshFailed | WorkspaceSearchIndexScanTimedOut
     >;
   }
->()("@vetra-studio/server/workspace/WorkspaceSearchIndex") {}
+>()("@vetra-code/server/workspace/WorkspaceSearchIndex") {}
 
 function toPosixPath(input: string): string {
   return input.replaceAll("\\", "/");
@@ -558,7 +558,7 @@ export const layer = (key: string) => {
 };
 
 export class WorkspaceSearchIndexMap extends LayerMap.Service<WorkspaceSearchIndexMap>()(
-  "@vetra-studio/server/workspace/WorkspaceSearchIndexMap",
+  "@vetra-code/server/workspace/WorkspaceSearchIndexMap",
   {
     lookup: layer,
     idleTimeToLive: WORKSPACE_INDEX_IDLE_TTL,

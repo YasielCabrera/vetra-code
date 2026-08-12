@@ -1,4 +1,4 @@
-import { WS_METHODS, type PullRequestDiffInput } from "@vetra-studio/contracts";
+import { WS_METHODS, type PullRequestDiffInput } from "@vetra-code/contracts";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";

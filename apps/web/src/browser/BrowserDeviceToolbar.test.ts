@@ -1,4 +1,4 @@
-import type { PreviewViewportSetting } from "@vetra-studio/contracts";
+import type { PreviewViewportSetting } from "@vetra-code/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import {

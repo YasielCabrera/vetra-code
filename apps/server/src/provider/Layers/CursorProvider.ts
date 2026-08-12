@@ -7,9 +7,9 @@ import type {
   ServerProviderAuth,
   ServerProviderModel,
   ServerProviderState,
-} from "@vetra-studio/contracts";
-import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
-import { causeErrorTag } from "@vetra-studio/shared/observability";
+} from "@vetra-code/contracts";
+import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
+import { causeErrorTag } from "@vetra-code/shared/observability";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -27,8 +27,8 @@ import {
   createModelCapabilities,
   getProviderOptionBooleanSelectionValue,
   getProviderOptionStringSelectionValue,
-} from "@vetra-studio/shared/model";
-import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
+} from "@vetra-code/shared/model";
+import { resolveSpawnCommand } from "@vetra-code/shared/shell";
 
 import {
   buildBooleanOptionDescriptor,
@@ -64,7 +64,7 @@ const CURSOR_PARAMETERIZED_MODEL_PICKER_MIN_VERSION_DATE = 2026_04_08;
 const CURSOR_CLI_INSTALLATION_DOCS_URL = "https://cursor.com/docs/cli/installation";
 const CURSOR_ACP_MODEL_DISCOVERY_FAILED_MESSAGE = [
   "Cursor ACP model discovery failed.",
-  "Cursor CLI setup may be incomplete; install or enable the Cursor CLI, restart Vetra Studio, and try again.",
+  "Cursor CLI setup may be incomplete; install or enable the Cursor CLI, restart Vetra Code, and try again.",
   `See ${CURSOR_CLI_INSTALLATION_DOCS_URL}.`,
   "Check server logs for ACP details.",
 ].join(" ");
@@ -92,7 +92,7 @@ export function buildInitialCursorProviderSnapshot(
           version: null,
           status: "warning",
           auth: { status: "unknown" },
-          message: "Cursor is disabled in Vetra Studio settings.",
+          message: "Cursor is disabled in Vetra Code settings.",
         },
       });
     }
@@ -418,7 +418,7 @@ const makeCursorAcpProbeRuntime = (
           ...(environment ? { env: environment } : {}),
         },
         cwd: process.cwd(),
-        clientInfo: { name: "vetra-studio-provider-probe", version: "0.0.0" },
+        clientInfo: { name: "vetra-code-provider-probe", version: "0.0.0" },
         authMethodId: "cursor_login",
         clientCapabilities: CURSOR_PARAMETERIZED_MODEL_PICKER_CAPABILITIES,
       }).pipe(Layer.provide(Layer.succeed(ChildProcessSpawner.ChildProcessSpawner, spawner))),
@@ -617,7 +617,7 @@ function joinProviderMessages(...messages: ReadonlyArray<string | undefined>): s
 function buildCursorCliCommandMissingMessage(binaryPath: string): string {
   return [
     `Cursor CLI command \`${binaryPath}\` was not found.`,
-    `Install or enable the Cursor CLI, make sure \`${binaryPath}\` is on PATH, then restart Vetra Studio.`,
+    `Install or enable the Cursor CLI, make sure \`${binaryPath}\` is on PATH, then restart Vetra Code.`,
     `See ${CURSOR_CLI_INSTALLATION_DOCS_URL}.`,
   ].join(" ");
 }
@@ -1006,7 +1006,7 @@ export const checkCursorProviderStatus = Effect.fn("checkCursorProviderStatus")(
         version: null,
         status: "warning",
         auth: { status: "unknown" },
-        message: "Cursor is disabled in Vetra Studio settings.",
+        message: "Cursor is disabled in Vetra Code settings.",
       },
     });
   }

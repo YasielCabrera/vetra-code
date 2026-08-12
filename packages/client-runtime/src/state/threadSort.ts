@@ -1,8 +1,8 @@
-import type { ProjectId } from "@vetra-studio/contracts";
+import type { ProjectId } from "@vetra-code/contracts";
 import type {
   SidebarProjectSortOrder,
   SidebarThreadSortOrder,
-} from "@vetra-studio/contracts/settings";
+} from "@vetra-code/contracts/settings";
 import * as Arr from "effect/Array";
 import * as Order from "effect/Order";
 

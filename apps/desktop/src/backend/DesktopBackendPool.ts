@@ -168,7 +168,7 @@ export class DesktopBackendPool extends Context.Service<
       id: BackendInstanceId,
     ) => Effect.Effect<void, DesktopBackendPoolCannotUnregisterPrimaryError>;
   }
->()("@vetra-studio/desktop/backend/DesktopBackendPool") {}
+>()("@vetra-code/desktop/backend/DesktopBackendPool") {}
 
 // Services required by makeBackendInstance — exported so caller
 // orchestrators that build their own specs can confirm the layer graph
@@ -241,7 +241,7 @@ export const layer = Layer.effect(
           );
           yield* electronDialog.showErrorBox(
             "WSL backend is still unavailable",
-            `${reason}\n\nVetra Studio will use the Windows backend for this launch and retry WSL the next time the app starts.`,
+            `${reason}\n\nVetra Code will use the Windows backend for this launch and retry WSL the next time the app starts.`,
           );
           yield* appSettings.applyWslWindowsFallbackInMemory;
           return true;
@@ -252,7 +252,7 @@ export const layer = Layer.effect(
         });
         yield* electronDialog.showErrorBox(
           "WSL backend couldn't start",
-          `${reason}\n\nFalling back to the Windows backend so Vetra Studio can open. Re-enable the WSL backend from Settings > Connections once the WSL distro is fixed.`,
+          `${reason}\n\nFalling back to the Windows backend so Vetra Code can open. Re-enable the WSL backend from Settings > Connections once the WSL distro is fixed.`,
         );
         // Fully disable the WSL backend — both flags, matching the "Switch to
         // Windows" recovery path — so the manager's next restart re-resolves the

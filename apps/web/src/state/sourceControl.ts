@@ -1,4 +1,4 @@
-import { createSourceControlEnvironmentAtoms } from "@vetra-studio/client-runtime/state/source-control";
+import { createSourceControlEnvironmentAtoms } from "@vetra-code/client-runtime/state/source-control";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

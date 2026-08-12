@@ -1,4 +1,4 @@
-import type { DesktopBridge, DesktopUpdateState } from "@vetra-studio/contracts";
+import type { DesktopBridge, DesktopUpdateState } from "@vetra-code/contracts";
 import { ArrowRightIcon } from "lucide-react";
 
 import {

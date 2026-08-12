@@ -3,7 +3,7 @@ import {
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@vetra-studio/client-runtime/environment";
+} from "@vetra-code/client-runtime/environment";
 import * as Schema from "effect/Schema";
 import {
   defaultInstanceIdForDriver,
@@ -14,8 +14,8 @@ import {
   ThreadId,
   type ModelSelection,
   type ProviderOptionSelection,
-} from "@vetra-studio/contracts";
-import { createModelSelection } from "@vetra-studio/shared/model";
+} from "@vetra-code/contracts";
+import { createModelSelection } from "@vetra-code/shared/model";
 
 // The composer draft's `modelSelectionByProvider` and
 // `stickyModelSelectionByProvider` maps are keyed by `ProviderInstanceId`
@@ -1088,7 +1088,7 @@ describe("composerDraftStore project draft thread mapping", () => {
       threadId,
       pendingProject: {
         association: "create",
-        parentDirectory: "~/Vetra Studio Projects",
+        parentDirectory: "~/Vetra Code Projects",
         folderName: "customer-portal",
         locationConfirmed: true,
         materialized: false,
@@ -1098,7 +1098,7 @@ describe("composerDraftStore project draft thread mapping", () => {
     store.setDraftThreadContext(draftId, {
       pendingProject: {
         association: "create",
-        parentDirectory: "~/Vetra Studio Projects",
+        parentDirectory: "~/Vetra Code Projects",
         folderName: "customer-portal",
         locationConfirmed: true,
         materialized: true,
@@ -1107,7 +1107,7 @@ describe("composerDraftStore project draft thread mapping", () => {
 
     expect(useComposerDraftStore.getState().getDraftSession(draftId)?.pendingProject).toEqual({
       association: "create",
-      parentDirectory: "~/Vetra Studio Projects",
+      parentDirectory: "~/Vetra Code Projects",
       folderName: "customer-portal",
       locationConfirmed: true,
       materialized: true,
@@ -1126,7 +1126,7 @@ describe("composerDraftStore project draft thread mapping", () => {
       ).draftThreadsByThreadKey[draftId]?.pendingProject,
     ).toEqual({
       association: "create",
-      parentDirectory: "~/Vetra Studio Projects",
+      parentDirectory: "~/Vetra Code Projects",
       folderName: "customer-portal",
       locationConfirmed: true,
       materialized: true,
@@ -1165,7 +1165,7 @@ describe("composerDraftStore project draft thread mapping", () => {
             envMode: "local",
             startFromOrigin: false,
             pendingProject: {
-              parentDirectory: "~/Vetra Studio Projects",
+              parentDirectory: "~/Vetra Code Projects",
               folderName: "customer-portal",
               locationConfirmed: true,
               materialized: false,

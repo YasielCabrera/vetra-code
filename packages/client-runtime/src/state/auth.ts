@@ -2,8 +2,8 @@ import type {
   AuthAccessSnapshot,
   AuthAccessStreamEvent,
   AuthAccessStreamSnapshotEvent,
-} from "@vetra-studio/contracts";
-import { WS_METHODS } from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
+import { WS_METHODS } from "@vetra-code/contracts";
 import * as Stream from "effect/Stream";
 import { Atom } from "effect/unstable/reactivity";
 

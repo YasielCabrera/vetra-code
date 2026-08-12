@@ -5,7 +5,7 @@ import * as Fiber from "effect/Fiber";
 import * as Schema from "effect/Schema";
 import * as TestClock from "effect/testing/TestClock";
 
-import { EnvironmentAuthInvalidError } from "@vetra-studio/contracts";
+import { EnvironmentAuthInvalidError } from "@vetra-code/contracts";
 import {
   bootstrapRemoteBearerSession,
   exchangeRemoteDpopAccessToken,
@@ -147,7 +147,7 @@ describe("remote environment authorization", () => {
         credential: "one-time-credential",
         dpopProof: "token-proof",
         clientMetadata: {
-          label: "Vetra Studio Mobile",
+          label: "Vetra Code Mobile",
           deviceType: "mobile",
           os: "iOS",
         },
@@ -195,7 +195,7 @@ describe("remote environment authorization", () => {
         httpBaseUrl: "https://remote.example.com/",
         credential: "pairing-token",
         clientMetadata: {
-          label: "Vetra Studio Mobile",
+          label: "Vetra Code Mobile",
           deviceType: "mobile",
           os: "iOS",
         },

@@ -26,7 +26,7 @@ export class ElectronShell extends Context.Service<
     readonly openExternal: (rawUrl: unknown) => Effect.Effect<boolean>;
     readonly copyText: (text: string) => Effect.Effect<void>;
   }
->()("@vetra-studio/desktop/electron/ElectronShell") {}
+>()("@vetra-code/desktop/electron/ElectronShell") {}
 
 export const make = ElectronShell.of({
   openExternal: (rawUrl) =>

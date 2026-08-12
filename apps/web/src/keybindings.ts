@@ -7,7 +7,7 @@ import {
   THREAD_JUMP_KEYBINDING_COMMANDS,
   type ModelPickerJumpKeybindingCommand,
   type ThreadJumpKeybindingCommand,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { isMacPlatform } from "./lib/utils";
 
 export interface ShortcutEventLike {

@@ -1,12 +1,12 @@
-import { scopeProjectRef } from "@vetra-studio/client-runtime/environment";
-import { squashAtomCommandFailure } from "@vetra-studio/client-runtime/state/runtime";
+import { scopeProjectRef } from "@vetra-code/client-runtime/environment";
+import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
 import type {
   EnvironmentId,
   PullRequestAction,
   PullRequestMergeMethod,
   PullRequestRef,
   PullRequestState,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   ArrowDownUpIcon,
   ArrowLeftIcon,

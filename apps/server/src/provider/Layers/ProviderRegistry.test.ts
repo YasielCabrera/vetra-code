@@ -12,7 +12,7 @@ import * as Scope from "effect/Scope";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
-import * as CodexErrors from "@vetra-studio/effect-codex-app-server/errors";
+import * as CodexErrors from "@vetra-code/effect-codex-app-server/errors";
 import {
   ClaudeSettings,
   CodexSettings,
@@ -23,13 +23,13 @@ import {
   type ServerProvider,
   type ServerProviderSlashCommand,
   type ServerSettings as ContractServerSettings,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as PlatformError from "effect/PlatformError";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { deepMerge } from "@vetra-studio/shared/Struct";
-import { createModelCapabilities } from "@vetra-studio/shared/model";
-import { applyServerSettingsPatch } from "@vetra-studio/shared/serverSettings";
+import { deepMerge } from "@vetra-code/shared/Struct";
+import { createModelCapabilities } from "@vetra-code/shared/model";
+import { applyServerSettingsPatch } from "@vetra-code/shared/serverSettings";
 
 import { checkCodexProviderStatus, type CodexAppServerProviderSnapshot } from "./CodexProvider.ts";
 import { checkClaudeProviderStatus } from "./ClaudeProvider.ts";
@@ -1428,7 +1428,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsModule.layerTest(), Te
       // assertions below fail.
       it.effect("propagates real Codex probe failures to the aggregator at boot", () =>
         Effect.gen(function* () {
-          const missingBinary = `vetra-studio_codex_missing_`;
+          const missingBinary = `vetra-code_codex_missing_`;
           const serverSettings = yield* makeMutableServerSettingsService(
             decodeServerSettings(
               deepMerge(encodedDefaultServerSettings, {
@@ -1543,8 +1543,8 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsModule.layerTest(), Te
       //
       it.effect("re-probes when settings change the codex binaryPath", () =>
         Effect.gen(function* () {
-          const firstMissing = `vetra-studio_codex_first_`;
-          const secondMissing = `vetra-studio_codex_second_`;
+          const firstMissing = `vetra-code_codex_first_`;
+          const secondMissing = `vetra-code_codex_second_`;
           const spawnedCommands: Array<string> = [];
           const serverSettings = yield* makeMutableServerSettingsService(
             decodeServerSettings(
@@ -1813,7 +1813,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsModule.layerTest(), Te
               assert.strictEqual(cursorProvider?.status, "disabled");
               assert.strictEqual(
                 cursorProvider?.message,
-                "Cursor is disabled in Vetra Studio settings.",
+                "Cursor is disabled in Vetra Code settings.",
               );
               assert.strictEqual(cursorSpawned, false);
             }).pipe(Effect.provide(runtimeServices));
@@ -1828,7 +1828,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsModule.layerTest(), Te
           assert.strictEqual(status.enabled, false);
           assert.strictEqual(status.status, "disabled");
           assert.strictEqual(status.installed, false);
-          assert.strictEqual(status.message, "Codex is disabled in Vetra Studio settings.");
+          assert.strictEqual(status.message, "Codex is disabled in Vetra Code settings.");
         }),
       );
     });
@@ -2170,7 +2170,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsModule.layerTest(), Te
       );
 
       it.effect("runs Claude status probes with the configured CLAUDE_CONFIG_DIR", () => {
-        const claudeConfigDir = "/tmp/vetra-studio-claude-home";
+        const claudeConfigDir = "/tmp/vetra-code-claude-home";
         const recorded = recordingMockSpawnerLayer((args) => {
           const joined = args.join(" ");
           if (joined === "--version") return { stdout: "1.0.0\n", stderr: "", code: 0 };

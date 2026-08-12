@@ -1,6 +1,6 @@
-# Vetra Studio docs
+# Vetra Code docs
 
-## Using Vetra Studio
+## Using Vetra Code
 
 - [Install and first run](./user/install.md)
 - [Permission modes](./user/permission-modes.md)
@@ -18,7 +18,7 @@
 
 ---
 
-## Working on Vetra Studio
+## Working on Vetra Code
 
 Everything below is for maintainers. Setup lives in the [root README](../README.md);
 policy in [CONTRIBUTING.md](../CONTRIBUTING.md); agent rules in [AGENTS.md](../AGENTS.md).

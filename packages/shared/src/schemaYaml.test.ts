@@ -14,14 +14,14 @@ describe("schemaYaml helpers", () => {
     const decodeConfig = Schema.decodeUnknownSync(fromYaml(ProjectConfig));
 
     expect(
-      decodeConfig(`name: vetra-studio
+      decodeConfig(`name: vetra-code
 enabled: true
 tags:
   - codex
   - effect
 `),
     ).toEqual({
-      name: "vetra-studio",
+      name: "vetra-code",
       enabled: true,
       tags: ["codex", "effect"],
     });
@@ -32,11 +32,11 @@ tags:
 
     expect(
       encodeConfig({
-        name: "vetra-studio",
+        name: "vetra-code",
         enabled: true,
         tags: ["codex"],
       }),
-    ).toBe(`name: vetra-studio
+    ).toBe(`name: vetra-code
 enabled: true
 tags:
   - codex

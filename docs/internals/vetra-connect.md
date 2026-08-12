@@ -7,7 +7,7 @@ checkout may safely deploy or enable.
 ## Default behavior
 
 Cloud UI is omitted when any required public setting is absent. A normal local checkout needs no
-cloud environment variables and must not copy Vetra Studio production identifiers.
+cloud environment variables and must not copy Vetra Code production identifiers.
 
 Future Vetra-owned public configuration uses:
 

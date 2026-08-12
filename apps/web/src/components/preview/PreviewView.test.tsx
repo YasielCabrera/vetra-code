@@ -1,4 +1,4 @@
-import { EnvironmentId, ThreadId } from "@vetra-studio/contracts";
+import { EnvironmentId, ThreadId } from "@vetra-code/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 

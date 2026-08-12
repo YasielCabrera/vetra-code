@@ -14,7 +14,7 @@
  *
  * @module usageScanCache
  */
-import type { UsageProviderKind } from "@vetra-studio/contracts";
+import type { UsageProviderKind } from "@vetra-code/contracts";
 
 import type { UsageRecord } from "./usageTranscripts.ts";
 

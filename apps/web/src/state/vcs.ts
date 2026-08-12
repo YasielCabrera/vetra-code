@@ -1,7 +1,7 @@
 import {
   createVcsActionManager,
   createVcsEnvironmentAtoms,
-} from "@vetra-studio/client-runtime/state/vcs";
+} from "@vetra-code/client-runtime/state/vcs";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

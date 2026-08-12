@@ -1,4 +1,4 @@
-import { createEnvironmentCatalogAtoms } from "@vetra-studio/client-runtime/state/connections";
+import { createEnvironmentCatalogAtoms } from "@vetra-code/client-runtime/state/connections";
 
 import { connectionAtomRuntime } from "./runtime";
 

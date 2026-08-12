@@ -1,4 +1,4 @@
-import { createAuthEnvironmentAtoms } from "@vetra-studio/client-runtime/state/auth";
+import { createAuthEnvironmentAtoms } from "@vetra-code/client-runtime/state/auth";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

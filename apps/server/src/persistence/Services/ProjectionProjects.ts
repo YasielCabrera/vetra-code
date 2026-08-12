@@ -13,7 +13,7 @@ import {
   ProjectId,
   ProjectScript,
   ThreadEnvMode,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
@@ -88,4 +88,4 @@ export interface ProjectionProjectRepositoryShape {
 export class ProjectionProjectRepository extends Context.Service<
   ProjectionProjectRepository,
   ProjectionProjectRepositoryShape
->()("@vetra-studio/server/persistence/Services/ProjectionProjects/ProjectionProjectRepository") {}
+>()("@vetra-code/server/persistence/Services/ProjectionProjects/ProjectionProjectRepository") {}

@@ -14,4 +14,4 @@ export {
   type ProjectGroupingSettings,
   type ProjectGroup,
   type ProjectGroupMember,
-} from "@vetra-studio/client-runtime/state/project-grouping";
+} from "@vetra-code/client-runtime/state/project-grouping";

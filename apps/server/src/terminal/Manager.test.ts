@@ -7,8 +7,8 @@ import {
   type TerminalMetadataStreamEvent,
   type TerminalOpenInput,
   type TerminalRestartInput,
-} from "@vetra-studio/contracts";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+} from "@vetra-code/contracts";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 import * as Data from "effect/Data";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -234,7 +234,7 @@ const createManager = (
   Effect.flatMap(Effect.service(FileSystem.FileSystem), (fs) =>
     Effect.gen(function* () {
       const { join } = yield* Path.Path;
-      const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-studio-terminal-" });
+      const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-code-terminal-" });
       const logsDir = join(baseDir, "userdata", "logs", "terminals");
       const ptyAdapter = options.ptyAdapter ?? new FakePtyAdapter();
 
@@ -1391,12 +1391,12 @@ it.layer(
 
   it.effect("strips AppImage runtime env from terminal sessions", () =>
     Effect.gen(function* () {
-      const appDir = "/tmp/.mount_VetraStudioabc123";
+      const appDir = "/tmp/.mount_VetraCodeabc123";
       const { manager, ptyAdapter } = yield* createManager(5, {
         env: {
-          APPIMAGE: "/home/user/Vetra-Studio.AppImage",
+          APPIMAGE: "/home/user/Vetra-Code.AppImage",
           APPDIR: appDir,
-          ARGV0: "/home/user/Vetra-Studio.AppImage",
+          ARGV0: "/home/user/Vetra-Code.AppImage",
           OWD: "/home/user/project",
           PATH: `${appDir}/usr/bin:${appDir}:/usr/local/bin:/usr/bin:/bin`,
           LD_LIBRARY_PATH: `${appDir}/usr/lib:/home/user/.local/lib`,

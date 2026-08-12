@@ -9,13 +9,13 @@ import {
   ProviderDriverKind,
   type ScopedThreadRef,
   type SidebarProjectGroupingMode,
-} from "@vetra-studio/contracts";
-import { scopeThreadRef } from "@vetra-studio/client-runtime/environment";
+} from "@vetra-code/contracts";
+import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
 import {
   isAtomCommandInterrupted,
   settlePromise,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
+} from "@vetra-code/client-runtime/state/runtime";
 import {
   DEFAULT_ENVIRONMENT_IDENTIFICATION_MODE,
   DEFAULT_UNIFIED_SETTINGS,
@@ -32,9 +32,9 @@ import {
   MIN_PROMPT_FONT_SIZE,
   MIN_SIDEBAR_AUTO_SETTLE_AFTER_DAYS,
   MIN_TERMINAL_FONT_SIZE,
-} from "@vetra-studio/contracts/settings";
-import { resolveServerBackgroundActivitySettings } from "@vetra-studio/shared/backgroundActivitySettings";
-import { createModelSelection } from "@vetra-studio/shared/model";
+} from "@vetra-code/contracts/settings";
+import { resolveServerBackgroundActivitySettings } from "@vetra-code/shared/backgroundActivitySettings";
+import { createModelSelection } from "@vetra-code/shared/model";
 import * as Duration from "effect/Duration";
 import * as Equal from "effect/Equal";
 import * as Schema from "effect/Schema";

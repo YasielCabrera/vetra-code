@@ -1,5 +1,5 @@
 import { useAtomValue } from "@effect/atom-react";
-import type { EnvironmentCloudLinkStateResult } from "@vetra-studio/contracts";
+import type { EnvironmentCloudLinkStateResult } from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";

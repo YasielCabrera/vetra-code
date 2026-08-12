@@ -376,7 +376,7 @@ function legacyThemeMode(theme: ThemePreference): ThemeAppearance | null {
 // Foreground pairs deviate where necessary to keep normal text at WCAG AA.
 const VETRA_CHAT_LIGHT_COLORS: ThemeColors = {
   canvas: "#fdf7fd",
-  // Vetra Studio's workspace header belongs to the chat panel, so keep it seamless
+  // Vetra Code's workspace header belongs to the chat panel, so keep it seamless
   // with the light chat canvas rather than mapping it to Vetra Chat's outer shell.
   chrome: "#fdf7fd",
   toolbar: "#fdf7fd",
@@ -421,7 +421,7 @@ const VETRA_CHAT_LIGHT_COLORS: ThemeColors = {
   messageActionForeground: "#ffffff",
   messageActionHover: "#c12269",
   // Vetra Chat uses a light lavender code surface in light mode. Keeping the
-  // dark plum pair here also leaked the dark palette into Vetra Studio's diffs.
+  // dark plum pair here also leaked the dark palette into Vetra Code's diffs.
   codeBackground: "#f5ecf9",
   codeForeground: "#673c8b",
   // The live sidebar is transparent over Vetra Chat's outer shell. Use that
@@ -444,7 +444,7 @@ const VETRA_CHAT_LIGHT_COLORS: ThemeColors = {
 
 const VETRA_CHAT_DARK_COLORS: ThemeColors = {
   canvas: "#1f1a24",
-  // Vetra Studio's workspace header belongs to the chat panel, so keep it seamless
+  // Vetra Code's workspace header belongs to the chat panel, so keep it seamless
   // with the canvas rather than mapping it to Vetra Chat's outer shell.
   chrome: "#1f1a24",
   toolbar: "#1f1a24",
@@ -490,7 +490,7 @@ const VETRA_CHAT_DARK_COLORS: ThemeColors = {
   messageAction: "#a3004c",
   messageActionForeground: "#fbd0e8",
   messageActionHover: "#a2004c",
-  // Diffs and file previews are full workspace surfaces in Vetra Studio. Keep them
+  // Diffs and file previews are full workspace surfaces in Vetra Code. Keep them
   // continuous with the themed canvas instead of dropping to near-black.
   codeBackground: "#1f1a24",
   codeForeground: "#d8c3ef",
@@ -516,7 +516,7 @@ const VETRA_CHAT_DARK_COLORS: ThemeColors = {
 };
 
 /**
- * The palette Vetra Studio wears with no theme installed, captured from the app's
+ * The palette Vetra Code wears with no theme installed, captured from the app's
  * stock tokens (index.css) so a draft seeded from the default look paints the
  * pixels the user is already seeing. Alpha-bearing tokens are flattened over
  * their real backdrops (canvas, or the sidebar for its rows) because theme
@@ -643,7 +643,7 @@ const VETRA_CODE_DARK_THEME_COLORS: ThemeColors = {
 };
 
 /**
- * The standard Vetra Studio look as a theme palette, for seeding a new theme when
+ * The standard Vetra Code look as a theme palette, for seeding a new theme when
  * no theme is installed. Distinct from {@link getDefaultThemeColors}, which
  * carries the flagship Vetra Chat palette used to fill roles omitted by theme
  * files.
@@ -952,7 +952,7 @@ function solveOklchLightness(
 }
 
 /**
- * The status colors Vetra Studio shows without a theme, read from the app's own
+ * The status colors Vetra Code shows without a theme, read from the app's own
  * tokens (red-500 / amber-500 families). Generated palettes fall back to
  * these instead of the flagship theme's, so an imported or created theme
  * never inherits a brand tint on destructive buttons and warnings.

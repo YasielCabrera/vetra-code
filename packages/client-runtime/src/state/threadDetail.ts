@@ -7,7 +7,7 @@ import type {
   OrchestrationThread,
   OrchestrationThreadActivity,
   ScopedThreadRef,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 

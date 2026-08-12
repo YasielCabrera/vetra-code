@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vetra-studio/contracts";
+import { EnvironmentId } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { areProjectPathSearchTargetsEqual } from "./queries";

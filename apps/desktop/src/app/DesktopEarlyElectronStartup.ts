@@ -1,8 +1,8 @@
-import { fromLenientJson } from "@vetra-studio/shared/schemaJson";
+import { fromLenientJson } from "@vetra-code/shared/schemaJson";
 import {
   PRODUCT_DESKTOP_DEV_USER_DATA_DIRECTORY_NAME,
   PRODUCT_DESKTOP_USER_DATA_DIRECTORY_NAME,
-} from "@vetra-studio/shared/productIdentity";
+} from "@vetra-code/shared/productIdentity";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 

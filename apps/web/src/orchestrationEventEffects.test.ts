@@ -7,7 +7,7 @@ import {
   ThreadId,
   TurnId,
   type OrchestrationEvent,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { deriveOrchestrationBatchEffects } from "./orchestrationEventEffects";

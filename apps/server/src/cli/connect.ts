@@ -3,10 +3,10 @@ import {
   EnvironmentHttpApi,
   type RelayClientInstallProgressEvent,
   type RelayClientInstallProgressStage,
-} from "@vetra-studio/contracts";
-import { RelayOkResponse } from "@vetra-studio/contracts/relay";
-import * as RelayClient from "@vetra-studio/shared/relayClient";
-import { withRelayClientTracing } from "@vetra-studio/shared/relayTracing";
+} from "@vetra-code/contracts";
+import { RelayOkResponse } from "@vetra-code/contracts/relay";
+import * as RelayClient from "@vetra-code/shared/relayClient";
+import { withRelayClientTracing } from "@vetra-code/shared/relayTracing";
 import * as Cause from "effect/Cause";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
@@ -695,7 +695,7 @@ export const connectCommand = Command.make("connect", {
         const background = yield* recoverServiceOnboardingOffer(offerServiceDuringOnboarding);
         if (background) {
           yield* Console.log(
-            "\n✓ Background service ready\n\nVetra Studio will stay reachable after you log out.",
+            "\n✓ Background service ready\n\nVetra Code will stay reachable after you log out.",
           );
           return;
         }

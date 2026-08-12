@@ -1,4 +1,4 @@
-import type { EnvironmentId, ScopedProjectRef } from "@vetra-studio/contracts";
+import type { EnvironmentId, ScopedProjectRef } from "@vetra-code/contracts";
 import { buildProjectGroups, type ProjectGroupingSettings } from "./logicalProject";
 import type { Project } from "./types";
 

@@ -1,5 +1,5 @@
-import type { DesktopBridge } from "@vetra-studio/contracts";
-import { safeErrorLogAttributes } from "@vetra-studio/client-runtime/errors";
+import type { DesktopBridge } from "@vetra-code/contracts";
+import { safeErrorLogAttributes } from "@vetra-code/client-runtime/errors";
 import * as Schema from "effect/Schema";
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import {

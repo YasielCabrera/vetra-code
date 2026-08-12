@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { AutomationId, ProjectId, ProviderInstanceId, ThreadId } from "@vetra-studio/contracts";
+import { AutomationId, ProjectId, ProviderInstanceId, ThreadId } from "@vetra-code/contracts";
 import type {
   OrchestrationShellSnapshot,
   OrchestrationShellStreamEvent,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 import { applyShellStreamEvent } from "./shellReducer.ts";
 

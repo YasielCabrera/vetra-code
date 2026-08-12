@@ -1,6 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
-import { createEnvironmentSessionAtoms } from "@vetra-studio/client-runtime/state/session";
-import type { EnvironmentId } from "@vetra-studio/contracts";
+import { createEnvironmentSessionAtoms } from "@vetra-code/client-runtime/state/session";
+import type { EnvironmentId } from "@vetra-code/contracts";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 

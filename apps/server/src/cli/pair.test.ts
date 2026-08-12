@@ -5,7 +5,7 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import * as NetService from "@vetra-studio/shared/Net";
+import * as NetService from "@vetra-code/shared/Net";
 import { assert, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -205,7 +205,7 @@ describe("vetra pair", () => {
       const rendered = String(
         typeof error === "object" && error !== null && "cause" in error ? error.cause : error,
       );
-      assert.include(rendered, "No running Vetra Studio server found.");
+      assert.include(rendered, "No running Vetra Code server found.");
       assert.include(rendered, "pnpm dev");
       assert.include(rendered, "pnpm dev:server");
     }).pipe(Effect.provide(NodeServices.layer)),
@@ -236,7 +236,7 @@ describe("vetra pair", () => {
         const rendered = String(
           typeof error === "object" && error !== null && "cause" in error ? error.cause : error,
         );
-        assert.include(rendered, "No running Vetra Studio server found.");
+        assert.include(rendered, "No running Vetra Code server found.");
       }),
     ).pipe(Effect.provide(NodeServices.layer)),
   );
@@ -262,7 +262,7 @@ describe("vetra pair", () => {
       const rendered = String(
         typeof error === "object" && error !== null && "cause" in error ? error.cause : error,
       );
-      assert.include(rendered, "No running Vetra Studio server found.");
+      assert.include(rendered, "No running Vetra Code server found.");
     }).pipe(Effect.provide(NodeServices.layer)),
   );
 });

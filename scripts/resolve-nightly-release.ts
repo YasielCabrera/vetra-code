@@ -108,7 +108,7 @@ export const resolveNightlyReleaseMetadata = (
     baseVersion,
     version,
     tag: `v${version}`,
-    name: `Vetra Studio Nightly ${version} (${shortSha})`,
+    name: `Vetra Code Nightly ${version} (${shortSha})`,
     shortSha,
   };
 };

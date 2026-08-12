@@ -2,7 +2,7 @@ import {
   EnvironmentId,
   WS_METHODS,
   type SourceControlPublishRepositoryResult,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -35,12 +35,12 @@ const TARGET = new PrimaryConnectionTarget({
 const PUBLISH_RESULT: SourceControlPublishRepositoryResult = {
   repository: {
     provider: "github",
-    nameWithOwner: "vetra-studio/vetra-studio",
-    url: "https://github.com/vetra-studio/vetra-studio",
-    sshUrl: "git@github.com:vetra-studio/vetra-studio.git",
+    nameWithOwner: "vetra-code/vetra-code",
+    url: "https://github.com/vetra-code/vetra-code",
+    sshUrl: "git@github.com:vetra-code/vetra-code.git",
   },
   remoteName: "origin",
-  remoteUrl: "git@github.com:vetra-studio/vetra-studio.git",
+  remoteUrl: "git@github.com:vetra-code/vetra-code.git",
   branch: "main",
   upstreamBranch: "origin/main",
   status: "pushed",
@@ -138,7 +138,7 @@ describe("source control environment atoms", () => {
             input: {
               cwd: "/repo",
               provider: "github",
-              repository: "vetra-studio/vetra-studio",
+              repository: "vetra-code/vetra-code",
               visibility: "private",
             },
           }),
@@ -154,7 +154,7 @@ describe("source control environment atoms", () => {
             input: {
               cwd: "/repo",
               provider: "github",
-              repository: "vetra-studio/vetra-studio",
+              repository: "vetra-code/vetra-code",
               visibility: "private",
             },
           }),

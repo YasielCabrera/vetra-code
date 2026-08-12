@@ -1,4 +1,4 @@
-import type { EnvironmentThreadShell } from "@vetra-studio/client-runtime/state/models";
+import type { EnvironmentThreadShell } from "@vetra-code/client-runtime/state/models";
 
 import type { SidebarProjectSnapshot } from "../../sidebarProjectGrouping";
 

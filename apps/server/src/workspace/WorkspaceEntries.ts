@@ -18,10 +18,10 @@ import type {
   ProjectSearchContentsResult,
   ProjectSearchEntriesInput,
   ProjectSearchEntriesResult,
-} from "@vetra-studio/contracts";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
-import { isExplicitRelativePath, isWindowsAbsolutePath } from "@vetra-studio/shared/path";
-import { normalizeSearchQuery } from "@vetra-studio/shared/searchRanking";
+} from "@vetra-code/contracts";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { isExplicitRelativePath, isWindowsAbsolutePath } from "@vetra-code/shared/path";
+import { normalizeSearchQuery } from "@vetra-code/shared/searchRanking";
 
 import * as WorkspacePaths from "./WorkspacePaths.ts";
 import * as WorkspaceSearchIndex from "./WorkspaceSearchIndex.ts";
@@ -101,7 +101,7 @@ export class WorkspaceEntries extends Context.Service<
     ) => Effect.Effect<ProjectSearchContentsResult, WorkspaceEntriesError>;
     readonly refresh: (cwd: string) => Effect.Effect<void>;
   }
->()("@vetra-studio/server/workspace/WorkspaceEntries") {}
+>()("@vetra-code/server/workspace/WorkspaceEntries") {}
 
 function expandHomePath(input: string, path: Path.Path): string {
   if (input === "~") {

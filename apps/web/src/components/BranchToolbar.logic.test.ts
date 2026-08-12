@@ -1,4 +1,4 @@
-import { EnvironmentId, type VcsRef } from "@vetra-studio/contracts";
+import { EnvironmentId, type VcsRef } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 import {
   dedupeRemoteBranchesWithLocalMatches,

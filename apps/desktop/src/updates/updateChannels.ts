@@ -1,4 +1,4 @@
-import type { DesktopUpdateChannel } from "@vetra-studio/contracts";
+import type { DesktopUpdateChannel } from "@vetra-code/contracts";
 
 const NIGHTLY_VERSION_PATTERN = /-nightly\.\d{8}\.\d+$/;
 

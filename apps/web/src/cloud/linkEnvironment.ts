@@ -14,18 +14,18 @@ import {
   EnvironmentHttpUnauthorizedError,
   EnvironmentId,
   WS_METHODS,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   type RelayClientDeviceRecord,
   type RelayClientEnvironmentRecord,
   type RelayEnvironmentLinkResponse,
   type RelayProtectedError as RelayProtectedErrorType,
   type RelayManagedEndpointProviderKind,
-} from "@vetra-studio/contracts/relay";
-import { EnvironmentRegistry } from "@vetra-studio/client-runtime/connection";
-import { request, runStream } from "@vetra-studio/client-runtime/rpc";
-import { makeEnvironmentHttpApiClient } from "@vetra-studio/client-runtime/rpc";
-import { ManagedRelay } from "@vetra-studio/client-runtime/relay";
+} from "@vetra-code/contracts/relay";
+import { EnvironmentRegistry } from "@vetra-code/client-runtime/connection";
+import { request, runStream } from "@vetra-code/client-runtime/rpc";
+import { makeEnvironmentHttpApiClient } from "@vetra-code/client-runtime/rpc";
+import { ManagedRelay } from "@vetra-code/client-runtime/relay";
 
 import {
   readPrimaryEnvironmentDescriptor,
@@ -74,7 +74,7 @@ function ensureRelayClientAvailable(
     if (status.status === "available") return;
     if (status.status === "unsupported") {
       return yield* new CloudEnvironmentLinkError({
-        message: `Vetra Studio cannot install the relay client automatically on ${status.platform}-${status.arch}.`,
+        message: `Vetra Code cannot install the relay client automatically on ${status.platform}-${status.arch}.`,
       });
     }
 
@@ -110,7 +110,7 @@ function ensureRelayClientAvailable(
       return yield* new CloudEnvironmentLinkError({
         message:
           installedStatus.status === "unsupported"
-            ? `Vetra Studio cannot install the relay client automatically on ${installedStatus.platform}-${installedStatus.arch}.`
+            ? `Vetra Code cannot install the relay client automatically on ${installedStatus.platform}-${installedStatus.arch}.`
             : "The relay client is still unavailable after installation.",
       });
     }

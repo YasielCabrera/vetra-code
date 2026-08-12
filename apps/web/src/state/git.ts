@@ -1,4 +1,4 @@
-import { createGitEnvironmentAtoms } from "@vetra-studio/client-runtime/state/git";
+import { createGitEnvironmentAtoms } from "@vetra-code/client-runtime/state/git";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

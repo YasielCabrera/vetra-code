@@ -1,5 +1,5 @@
 {
-  "name": "@vetra-studio/oxlint-plugin-vetra",
+  "name": "@vetra-code/oxlint-plugin-vetra",
   "private": true,
   "type": "module",
   "scripts": {

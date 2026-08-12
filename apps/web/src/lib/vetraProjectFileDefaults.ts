@@ -2,9 +2,9 @@ import {
   VETRA_PROJECT_FILE_NAME,
   type EnvironmentId,
   type ThreadEnvMode,
-} from "@vetra-studio/contracts";
-import { parseVetraProjectFile } from "@vetra-studio/shared/vetraProjectFile";
-import { executeAtomQuery } from "@vetra-studio/client-runtime/state/runtime";
+} from "@vetra-code/contracts";
+import { parseVetraProjectFile } from "@vetra-code/shared/vetraProjectFile";
+import { executeAtomQuery } from "@vetra-code/client-runtime/state/runtime";
 
 import {
   getProjectFileQueryAtom,

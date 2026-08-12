@@ -1,4 +1,4 @@
-import type { ServerLifecycleStreamEvent } from "@vetra-studio/contracts";
+import type { ServerLifecycleStreamEvent } from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -22,7 +22,7 @@ export class ServerLifecycleEvents extends Context.Service<
     readonly snapshot: Effect.Effect<SnapshotState>;
     readonly stream: Stream.Stream<ServerLifecycleStreamEvent>;
   }
->()("@vetra-studio/server/serverLifecycleEvents") {}
+>()("@vetra-code/server/serverLifecycleEvents") {}
 
 const make = Effect.gen(function* () {
   const pubsub = yield* PubSub.unbounded<ServerLifecycleStreamEvent>();

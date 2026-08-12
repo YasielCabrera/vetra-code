@@ -1,4 +1,4 @@
-import type { ServerProvider, ServerProviderVersionAdvisory } from "@vetra-studio/contracts";
+import type { ServerProvider, ServerProviderVersionAdvisory } from "@vetra-code/contracts";
 
 /**
  * Visual treatment for each server-reported provider status. Centralized so
@@ -40,7 +40,7 @@ export function getProviderSummary(provider: ServerProvider | undefined) {
       headline: "Disabled",
       detail:
         provider.message ??
-        "This provider is installed but disabled for new sessions in Vetra Studio.",
+        "This provider is installed but disabled for new sessions in Vetra Code.",
     };
   }
   if (!provider.installed) {

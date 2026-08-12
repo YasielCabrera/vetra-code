@@ -11,7 +11,7 @@ struct LabThread: Identifiable, Hashable {
 }
 
 private let threads: [LabThread] = [
-    .init(title: "Markdown rendering test", subtitle: "vetra-studio · Julius’s Mac mini", time: "14h", initials: "MD", tint: .blue, preview: "Renderer stress test, terminal snippets, code blocks, and a very long markdown transcript."),
+    .init(title: "Markdown rendering test", subtitle: "vetra-code · Julius’s Mac mini", time: "14h", initials: "MD", tint: .blue, preview: "Renderer stress test, terminal snippets, code blocks, and a very long markdown transcript."),
     .init(title: "iPad rectly text correction", subtitle: "Julius’s Mac mini · main", time: "16h", initials: "IP", tint: .purple, preview: "Fix iPad layout, search behavior, hardware keyboard, and trackpad scrolling."),
     .init(title: "Preview Webview Persists Off Panel", subtitle: "codething-mvp · Julius’s MacBook Pro", time: "22m", initials: "PW", tint: .teal, preview: "The browser preview should not leak outside the active panel when switching threads."),
     .init(title: "Add file preview action buttons", subtitle: "codex/connection-preview", time: "10d", initials: "FP", tint: .orange, preview: "Open files at exact lines and expose copy/open actions in the renderer."),

@@ -15,7 +15,7 @@ import {
   OrchestrationCheckpointStatus,
   ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Option from "effect/Option";
 import * as Context from "effect/Context";
 import * as Schema from "effect/Schema";
@@ -93,5 +93,5 @@ export class ProjectionCheckpointRepository extends Context.Service<
   ProjectionCheckpointRepository,
   ProjectionCheckpointRepositoryShape
 >()(
-  "@vetra-studio/server/persistence/Services/ProjectionCheckpoints/ProjectionCheckpointRepository",
+  "@vetra-code/server/persistence/Services/ProjectionCheckpoints/ProjectionCheckpointRepository",
 ) {}

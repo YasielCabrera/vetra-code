@@ -3,7 +3,7 @@ import type {
   OrchestrationProjectShell,
   OrchestrationThreadShell,
   ThreadId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 export type AgentAwarenessPhase =
   | "starting"

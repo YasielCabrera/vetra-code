@@ -4,9 +4,9 @@ import type {
   RelayAgentActivityPublishProofPayload,
   RelayAgentActivityPublishRequest,
   RelayAgentActivityState,
-} from "@vetra-studio/contracts/relay";
-import { RELAY_ACTIVITY_PUBLISH_TYP } from "@vetra-studio/shared/relayJwt";
-import { stableStringify } from "@vetra-studio/shared/relaySigning";
+} from "@vetra-code/contracts/relay";
+import { RELAY_ACTIVITY_PUBLISH_TYP } from "@vetra-code/shared/relayJwt";
+import { stableStringify } from "@vetra-code/shared/relaySigning";
 import { describe, expect, it } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -30,12 +30,12 @@ const config = RelayConfiguration.RelayConfiguration.of({
     teamId: "team-id",
     keyId: "key-id",
     privateKey: Redacted.make("private-key"),
-    bundleId: "com.vetra.studio.dev",
+    bundleId: "com.vetra.code.dev",
   },
   apnsDeliveryJobSigningSecret: Redacted.make("job-secret"),
   clerkSecretKey: Redacted.make("clerk-secret"),
   clerkPublishableKey: "pk_test_test",
-  clerkJwtAudience: "vetra-studio-relay",
+  clerkJwtAudience: "vetra-code-relay",
   cloudMintPrivateKey: Redacted.make(keyPair.privateKey),
   cloudMintPublicKey: keyPair.publicKey,
   managedEndpointBaseDomain: undefined,

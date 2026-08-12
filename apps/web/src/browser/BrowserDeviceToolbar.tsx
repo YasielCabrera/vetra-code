@@ -5,11 +5,11 @@ import {
   PREVIEW_VIEWPORT_MAX_DIMENSION,
   PREVIEW_VIEWPORT_MIN_DIMENSION,
   type PreviewViewportSetting,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   PREVIEW_VIEWPORT_PRESETS,
   resolvePreviewViewport,
-} from "@vetra-studio/shared/previewViewport";
+} from "@vetra-code/shared/previewViewport";
 import { Link2, X } from "lucide-react";
 import { useState } from "react";
 

@@ -11,7 +11,7 @@ import {
   EnvironmentHttpConflictError,
   EnvironmentHttpInternalServerError,
   EnvironmentHttpUnauthorizedError,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   RelayCloudEnvironmentHealthProofPayload,
   RelayCloudEnvironmentHealthRequest,
@@ -29,8 +29,8 @@ import {
   RelayLinkProofRequest,
   RelayManagedEndpointOrigin,
   RelayOkResponse,
-} from "@vetra-studio/contracts/relay";
-import { withRelayClientTracing } from "@vetra-studio/shared/relayTracing";
+} from "@vetra-code/contracts/relay";
+import { withRelayClientTracing } from "@vetra-code/shared/relayTracing";
 import {
   normalizeRelayIssuer,
   RELAY_HEALTH_REQUEST_TYP,
@@ -40,8 +40,8 @@ import {
   RELAY_MINT_RESPONSE_TYP,
   signRelayJwt,
   verifyRelayJwt,
-} from "@vetra-studio/shared/relayJwt";
-import { isSecureRelayUrl } from "@vetra-studio/shared/relayUrl";
+} from "@vetra-code/shared/relayJwt";
+import { isSecureRelayUrl } from "@vetra-code/shared/relayUrl";
 import * as DateTime from "effect/DateTime";
 import * as Crypto from "effect/Crypto";
 import * as Duration from "effect/Duration";

@@ -1,6 +1,6 @@
-import { PRIMARY_LOCAL_ENVIRONMENT_ID } from "@vetra-studio/contracts";
-import { makeLocalFileTracer, makeTraceSink } from "@vetra-studio/shared/observability";
-import { parsePersistedServerObservabilitySettings } from "@vetra-studio/shared/serverSettings";
+import { PRIMARY_LOCAL_ENVIRONMENT_ID } from "@vetra-code/contracts";
+import { makeLocalFileTracer, makeTraceSink } from "@vetra-code/shared/observability";
+import { parsePersistedServerObservabilitySettings } from "@vetra-code/shared/serverSettings";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -58,7 +58,7 @@ export class DesktopBackendOutputLogFactory extends Context.Service<
   {
     readonly forInstance: (id: string) => Effect.Effect<DesktopBackendOutputLogShape>;
   }
->()("@vetra-studio/desktop/app/DesktopObservability/DesktopBackendOutputLogFactory") {}
+>()("@vetra-code/desktop/app/DesktopObservability/DesktopBackendOutputLogFactory") {}
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();

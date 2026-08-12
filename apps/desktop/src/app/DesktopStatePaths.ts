@@ -1,5 +1,5 @@
 import * as Option from "effect/Option";
-import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-studio/shared/productIdentity";
+import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-code/shared/productIdentity";
 
 export type JoinPath = (first: string, ...segments: string[]) => string;
 

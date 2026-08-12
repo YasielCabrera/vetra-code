@@ -1,9 +1,5 @@
-import {
-  ProviderDriverKind,
-  ProviderInstanceId,
-  type ServerProvider,
-} from "@vetra-studio/contracts";
-import { DEFAULT_UNIFIED_SETTINGS, type UnifiedSettings } from "@vetra-studio/contracts/settings";
+import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@vetra-code/contracts";
+import { DEFAULT_UNIFIED_SETTINGS, type UnifiedSettings } from "@vetra-code/contracts/settings";
 import { describe, expect, it } from "vite-plus/test";
 import { deriveProviderInstanceEntries } from "./providerInstances";
 import {

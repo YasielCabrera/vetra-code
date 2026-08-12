@@ -3,8 +3,8 @@ import type {
   PreviewOpenInput,
   PreviewSessionSnapshot,
   ScopedThreadRef,
-} from "@vetra-studio/contracts";
-import type { AtomCommandResult } from "@vetra-studio/client-runtime/state/runtime";
+} from "@vetra-code/contracts";
+import type { AtomCommandResult } from "@vetra-code/client-runtime/state/runtime";
 
 import { applyPreviewServerSnapshot, rememberPreviewUrl } from "~/previewStateStore";
 

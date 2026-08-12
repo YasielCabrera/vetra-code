@@ -1,6 +1,6 @@
 import { DownloadIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
-import type { RelayClientInstallProgressStage } from "@vetra-studio/contracts";
+import type { RelayClientInstallProgressStage } from "@vetra-code/contracts";
 
 import {
   completeRelayClientInstallDialogClose,
@@ -69,8 +69,8 @@ export function RelayClientInstallDialog() {
           </DialogTitle>
           <DialogDescription>
             {isInstalling
-              ? "Vetra Studio is preparing this environment for secure access through Vetra Connect."
-              : "Vetra Studio needs the relay client to make this environment available through Vetra Connect."}
+              ? "Vetra Code is preparing this environment for secure access through Vetra Connect."
+              : "Vetra Code needs the relay client to make this environment available through Vetra Connect."}
           </DialogDescription>
         </DialogHeader>
         <DialogPanel scrollFade={false}>
@@ -91,14 +91,14 @@ export function RelayClientInstallDialog() {
                 value={activeStepIndex + 1}
               />
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Keep Vetra Studio open while the relay client is installed.
+                Keep Vetra Code open while the relay client is installed.
               </p>
             </div>
           ) : (
             <div className="rounded-xl border border-border/70 bg-muted/35 p-3">
               <p className="text-sm font-medium text-foreground">Managed relay client</p>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Vetra Studio will download and install version{" "}
+                Vetra Code will download and install version{" "}
                 {view.status === "confirming" ? view.version : ""} locally.
               </p>
             </div>

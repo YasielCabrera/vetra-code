@@ -8,7 +8,7 @@ describe("vetra/no-global-process-runtime", () => {
   rule.valid(
     "allows injected host process references",
     `
-      import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+      import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
       import * as Effect from "effect/Effect";
 
       export const isWindows = Effect.map(HostProcessPlatform, (platform) => platform === "win32");

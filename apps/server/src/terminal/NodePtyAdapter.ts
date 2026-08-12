@@ -5,7 +5,7 @@ import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 
 import * as PtyAdapter from "./PtyAdapter.ts";
 

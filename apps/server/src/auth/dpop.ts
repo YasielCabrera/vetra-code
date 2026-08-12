@@ -1,4 +1,4 @@
-import { verifyDpopProof } from "@vetra-studio/shared/dpop";
+import { verifyDpopProof } from "@vetra-code/shared/dpop";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";

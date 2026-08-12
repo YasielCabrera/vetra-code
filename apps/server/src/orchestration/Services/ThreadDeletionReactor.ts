@@ -35,4 +35,4 @@ export interface ThreadDeletionReactorShape {
 export class ThreadDeletionReactor extends Context.Service<
   ThreadDeletionReactor,
   ThreadDeletionReactorShape
->()("@vetra-studio/server/orchestration/Services/ThreadDeletionReactor") {}
+>()("@vetra-code/server/orchestration/Services/ThreadDeletionReactor") {}

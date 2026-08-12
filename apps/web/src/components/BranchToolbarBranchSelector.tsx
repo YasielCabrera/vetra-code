@@ -1,9 +1,9 @@
-import { scopeProjectRef, scopeThreadRef } from "@vetra-studio/client-runtime/environment";
+import { scopeProjectRef, scopeThreadRef } from "@vetra-code/client-runtime/environment";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
-import type { ContextMenuItem, EnvironmentId, VcsRef, ThreadId } from "@vetra-studio/contracts";
+} from "@vetra-code/client-runtime/state/runtime";
+import type { ContextMenuItem, EnvironmentId, VcsRef, ThreadId } from "@vetra-code/contracts";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { ChevronDownIcon, GitBranchIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 import {

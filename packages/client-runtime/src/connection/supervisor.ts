@@ -1,4 +1,4 @@
-import { withRelayClientTracing } from "@vetra-studio/shared/relayTracing";
+import { withRelayClientTracing } from "@vetra-code/shared/relayTracing";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
@@ -206,7 +206,7 @@ export class EnvironmentSupervisor extends Context.Service<
     readonly disconnect: Effect.Effect<void>;
     readonly retryNow: Effect.Effect<void>;
   }
->()("@vetra-studio/client-runtime/connection/supervisor/EnvironmentSupervisor") {}
+>()("@vetra-code/client-runtime/connection/supervisor/EnvironmentSupervisor") {}
 
 export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
   entry: ConnectionCatalogEntry,

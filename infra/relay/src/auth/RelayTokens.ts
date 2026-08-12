@@ -7,14 +7,14 @@ import {
   RelayWebClientId,
   type RelayPublicClientId,
   type RelayEnvironmentLinkChallengeRequest,
-} from "@vetra-studio/contracts/relay";
-import { encodeOAuthScope, parseAllowedOAuthScope } from "@vetra-studio/shared/oauthScope";
+} from "@vetra-code/contracts/relay";
+import { encodeOAuthScope, parseAllowedOAuthScope } from "@vetra-code/shared/oauthScope";
 import {
   normalizeRelayIssuer,
   RelayJwtError,
   signRelayJwt,
   verifyRelayJwt,
-} from "@vetra-studio/shared/relayJwt";
+} from "@vetra-code/shared/relayJwt";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -113,7 +113,7 @@ export class RelayTokens extends Context.Service<
       readonly nowEpochSeconds: number;
     }) => Effect.Effect<RelayDpopAccessTokenClaims | null>;
   }
->()("@vetra-studio/relay/auth/RelayTokens") {}
+>()("@vetra-code/relay/auth/RelayTokens") {}
 
 const make = Effect.gen(function* () {
   const config = yield* RelayConfiguration.RelayConfiguration;

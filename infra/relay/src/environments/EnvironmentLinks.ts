@@ -3,7 +3,7 @@ import type {
   RelayEnvironmentLinkProofPayload,
   RelayEnvironmentLinkRequest,
   RelayManagedEndpoint,
-} from "@vetra-studio/contracts/relay";
+} from "@vetra-code/contracts/relay";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -138,7 +138,7 @@ export class EnvironmentLinks extends Context.Service<
       readonly environmentId: string;
     }) => Effect.Effect<boolean, EnvironmentLinkRevokePersistenceError>;
   }
->()("@vetra-studio/relay/environments/EnvironmentLinks") {}
+>()("@vetra-code/relay/environments/EnvironmentLinks") {}
 
 function agentAwarenessDeliveryUserCondition(environmentId: string) {
   return and(

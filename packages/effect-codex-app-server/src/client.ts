@@ -75,7 +75,7 @@ export class CodexAppServerClient extends Context.Service<
       ) => Effect.Effect<void, CodexError.CodexAppServerError>,
     ) => Effect.Effect<void>;
   }
->()("@vetra-studio/effect-codex-app-server/client/CodexAppServerClient") {}
+>()("@vetra-code/effect-codex-app-server/client/CodexAppServerClient") {}
 
 type ServerRequestHandler = (
   payload: unknown,
@@ -84,7 +84,7 @@ type ServerNotificationHandler = (
   payload: unknown,
 ) => Effect.Effect<void, CodexError.CodexAppServerError>;
 
-export const make = Effect.fn("@vetra-studio/effect-codex-app-server/CodexAppServerClient.make")(
+export const make = Effect.fn("@vetra-code/effect-codex-app-server/CodexAppServerClient.make")(
   function* (
     stdio: Stdio.Stdio,
     options: CodexAppServerClientOptions = {},
@@ -273,7 +273,7 @@ export const layerChildProcess = (
   Layer.effect(CodexAppServerClient, makeChildProcessClient(handle, options));
 
 const makeChildProcessClient = Effect.fn(
-  "@vetra-studio/effect-codex-app-server/CodexAppServerClient.makeChildProcessClient",
+  "@vetra-code/effect-codex-app-server/CodexAppServerClient.makeChildProcessClient",
 )(function* (handle: ChildProcessSpawner.ChildProcessHandle, options: CodexAppServerClientOptions) {
   yield* Stream.runDrain(handle.stderr).pipe(Effect.ignore, Effect.forkScoped);
   return yield* make(makeChildStdio(handle), options, makeTerminationError(handle));

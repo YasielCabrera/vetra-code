@@ -1,5 +1,5 @@
-import type { EnvironmentAutomation } from "@vetra-studio/client-runtime/state/automations";
-import type { EnvironmentThreadShell } from "@vetra-studio/client-runtime/state/models";
+import type { EnvironmentAutomation } from "@vetra-code/client-runtime/state/automations";
+import type { EnvironmentThreadShell } from "@vetra-code/client-runtime/state/models";
 
 import { describeAutomationSchedule } from "./automationSchedule.logic";
 

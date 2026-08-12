@@ -4,8 +4,8 @@ import * as Exit from "effect/Exit";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import { PositiveInt, TrimmedNonEmptyString } from "@vetra-studio/contracts";
-import { decodeJsonResult, formatSchemaError } from "@vetra-studio/shared/schemaJson";
+import { PositiveInt, TrimmedNonEmptyString } from "@vetra-code/contracts";
+import { decodeJsonResult, formatSchemaError } from "@vetra-code/shared/schemaJson";
 
 export interface NormalizedGitHubPullRequestRecord {
   readonly number: number;

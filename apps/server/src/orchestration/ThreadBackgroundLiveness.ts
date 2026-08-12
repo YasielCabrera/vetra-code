@@ -15,7 +15,7 @@
  *
  * @module ThreadBackgroundLivenessService
  */
-import { INERT_TASK_TYPES, MONITOR_TASK_TYPES } from "@vetra-studio/contracts";
+import { INERT_TASK_TYPES, MONITOR_TASK_TYPES } from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -70,9 +70,7 @@ export class ThreadBackgroundLivenessService extends Context.Service<
      */
     readonly getThreadBackgroundLiveness: (threadId: string) => ThreadBackgroundLiveness;
   }
->()(
-  "@vetra-studio/server/orchestration/ThreadBackgroundLiveness/ThreadBackgroundLivenessService",
-) {}
+>()("@vetra-code/server/orchestration/ThreadBackgroundLiveness/ThreadBackgroundLivenessService") {}
 
 export function make(): ThreadBackgroundLivenessService["Service"] {
   const stateByThreadId = new Map<string, ThreadLivenessState>();

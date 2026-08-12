@@ -107,5 +107,5 @@ Pruning should follow proven product behavior, not precede it.
 - wire protocol naming solely for cosmetic rebranding;
 - historical database event names without an explicit compatibility migration.
 
-Internal packages and runtime environment variables use the Vetra-owned `@vetra-studio/*` and
+Internal packages and runtime environment variables use the Vetra-owned `@vetra-code/*` and
 `VETRA_*` namespaces.

@@ -95,11 +95,11 @@ describe("resolveGitWorktreePath", () => {
 });
 
 describe("resolveWorktreeVetraHome", () => {
-  it.effect("answers with .vetra-studio before the dev runner creates it", () =>
+  it.effect("answers with .vetra-code before the dev runner creates it", () =>
     Effect.gen(function* () {
       const { root, nested } = yield* makeRepo("worktree");
       const home = yield* resolveWorktreeVetraHome(nested);
-      assert.equal(home, NodePath.join(NodePath.resolve(root), ".vetra-studio"));
+      assert.equal(home, NodePath.join(NodePath.resolve(root), ".vetra-code"));
       assert.isFalse(NodeFS.existsSync(home ?? ""));
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );

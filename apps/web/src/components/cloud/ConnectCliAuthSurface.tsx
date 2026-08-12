@@ -1,8 +1,5 @@
 import { useAuth, useClerk, useUser } from "@clerk/react";
-import {
-  encodeConnectAuthCode,
-  readConnectAuthorizeRequest,
-} from "@vetra-studio/shared/connectAuth";
+import { encodeConnectAuthCode, readConnectAuthorizeRequest } from "@vetra-code/shared/connectAuth";
 import { useEffect, useRef, useState } from "react";
 
 import {

@@ -3,8 +3,8 @@ import type * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Socket from "effect/unstable/socket/Socket";
 
-import { remoteHttpClientLayer } from "@vetra-studio/client-runtime/rpc";
-import { makeRelayClientTracingLayer } from "@vetra-studio/shared/relayTracing";
+import { remoteHttpClientLayer } from "@vetra-code/client-runtime/rpc";
+import { makeRelayClientTracingLayer } from "@vetra-code/shared/relayTracing";
 import * as PrimaryEnvironmentHttpClient from "../environments/primary/httpClient";
 import { primaryEnvironmentHttpLayer } from "../environments/primary/httpLayer";
 

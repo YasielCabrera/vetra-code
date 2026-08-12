@@ -1,4 +1,4 @@
-import { EnvironmentId, ThreadId } from "@vetra-studio/contracts";
+import { EnvironmentId, ThreadId } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { isCurrentPreviewRuntimeTab, previewRuntimeTabId } from "./previewRuntimeTabId";

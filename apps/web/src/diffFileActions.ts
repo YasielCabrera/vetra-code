@@ -1,4 +1,4 @@
-import type { ScopedThreadRef } from "@vetra-studio/contracts";
+import type { ScopedThreadRef } from "@vetra-code/contracts";
 
 import { useRightPanelStore } from "./rightPanelStore";
 import { resolvePathLinkTarget } from "./terminal-links";

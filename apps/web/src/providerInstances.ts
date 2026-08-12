@@ -23,7 +23,7 @@ import {
   type ServerProviderModel,
   type ServerSettings,
   type ServerProviderState,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 import { formatProviderDriverKindLabel } from "./providerModels";
 

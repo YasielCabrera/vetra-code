@@ -1,5 +1,5 @@
-import { bootstrapRemoteBearerSession } from "@vetra-studio/client-runtime/authorization";
-import { PRIMARY_LOCAL_ENVIRONMENT_ID } from "@vetra-studio/contracts";
+import { bootstrapRemoteBearerSession } from "@vetra-code/client-runtime/authorization";
+import { PRIMARY_LOCAL_ENVIRONMENT_ID } from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -40,7 +40,7 @@ export class DesktopLocalEnvironmentAuth extends Context.Service<
   {
     readonly getBearerToken: Effect.Effect<string, DesktopLocalEnvironmentAuthError>;
   }
->()("@vetra-studio/desktop/backend/DesktopLocalEnvironmentAuth") {}
+>()("@vetra-code/desktop/backend/DesktopLocalEnvironmentAuth") {}
 
 export const make = Effect.gen(function* () {
   const pool = yield* DesktopBackendPool.DesktopBackendPool;
@@ -71,7 +71,7 @@ export const make = Effect.gen(function* () {
           httpBaseUrl: config.httpBaseUrl.href,
           credential,
           clientMetadata: {
-            label: "Vetra Studio Desktop",
+            label: "Vetra Code Desktop",
             deviceType: "desktop",
           },
         }).pipe(

@@ -2,8 +2,8 @@ import {
   type FilesystemBrowseEntry,
   type KeybindingCommand,
   THREAD_JUMP_KEYBINDING_COMMANDS,
-} from "@vetra-studio/contracts";
-import type { SidebarThreadSortOrder } from "@vetra-studio/contracts/settings";
+} from "@vetra-code/contracts";
+import type { SidebarThreadSortOrder } from "@vetra-code/contracts/settings";
 import * as Arr from "effect/Array";
 import * as Result from "effect/Result";
 import { type ReactNode } from "react";

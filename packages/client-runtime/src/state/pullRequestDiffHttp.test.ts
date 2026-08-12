@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId } from "@vetra-studio/contracts";
+import { EnvironmentId, ProjectId } from "@vetra-code/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";

@@ -1,4 +1,4 @@
-import type { EnvironmentId, ExecutionEnvironmentDescriptor } from "@vetra-studio/contracts";
+import type { EnvironmentId, ExecutionEnvironmentDescriptor } from "@vetra-code/contracts";
 
 export interface KnownEnvironmentConnectionTarget {
   readonly httpBaseUrl: string;

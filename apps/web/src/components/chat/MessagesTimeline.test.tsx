@@ -1,4 +1,4 @@
-import { CheckpointRef, EnvironmentId, MessageId, TurnId } from "@vetra-studio/contracts";
+import { CheckpointRef, EnvironmentId, MessageId, TurnId } from "@vetra-code/contracts";
 import { createRef, type ReactNode, type Ref } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it, vi } from "vite-plus/test";
@@ -572,7 +572,7 @@ describe("MessagesTimeline", () => {
             },
           },
         ]}
-        workspaceRoot="C:/Users/mike/dev-stuff/vetra-studio"
+        workspaceRoot="C:/Users/mike/dev-stuff/vetra-code"
       />,
     );
 

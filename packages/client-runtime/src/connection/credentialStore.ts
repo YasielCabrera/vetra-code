@@ -18,7 +18,7 @@ export class ConnectionCredentialStore extends Context.Service<
     ) => Effect.Effect<void, ConnectionAttemptError>;
     readonly remove: (connectionId: string) => Effect.Effect<void, ConnectionAttemptError>;
   }
->()("@vetra-studio/client-runtime/connection/credentialStore/ConnectionCredentialStore") {}
+>()("@vetra-code/client-runtime/connection/credentialStore/ConnectionCredentialStore") {}
 
 export const make = (service: ConnectionCredentialStore["Service"]) =>
   ConnectionCredentialStore.of(service);

@@ -1,4 +1,4 @@
-import { ProviderDriverKind, RuntimeRequestId, TurnId } from "@vetra-studio/contracts";
+import { ProviderDriverKind, RuntimeRequestId, TurnId } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

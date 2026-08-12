@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@vetra-studio/contracts";
+import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE, type Thread } from "./types";
@@ -88,19 +88,19 @@ describe("getOrphanedWorktreePathForThread", () => {
 describe("formatWorktreePathForDisplay", () => {
   it("shows only the last path segment for unix-like paths", () => {
     const result = formatWorktreePathForDisplay(
-      "/Users/julius/.vetra/worktrees/vetra-studio-mvp/vetra-studio-4e609bb8",
+      "/Users/julius/.vetra/worktrees/vetra-code-mvp/vetra-code-4e609bb8",
     );
-    expect(result).toBe("vetra-studio-4e609bb8");
+    expect(result).toBe("vetra-code-4e609bb8");
   });
 
   it("normalizes windows separators before selecting the final segment", () => {
     const result = formatWorktreePathForDisplay(
-      "C:\\Users\\julius\\.vetra\\worktrees\\vetra-studio-mvp\\vetra-studio-4e609bb8",
+      "C:\\Users\\julius\\.vetra\\worktrees\\vetra-code-mvp\\vetra-code-4e609bb8",
     );
-    expect(result).toBe("vetra-studio-4e609bb8");
+    expect(result).toBe("vetra-code-4e609bb8");
   });
 
-  it("uses the final segment even when outside ~/.vetra-studio/worktrees", () => {
+  it("uses the final segment even when outside ~/.vetra-code/worktrees", () => {
     const result = formatWorktreePathForDisplay("/tmp/custom-worktrees/my-worktree");
     expect(result).toBe("my-worktree");
   });

@@ -1,5 +1,5 @@
-import { scopeThreadRef, scopedThreadKey } from "@vetra-studio/client-runtime/environment";
-import { ThreadId } from "@vetra-studio/contracts";
+import { scopeThreadRef, scopedThreadKey } from "@vetra-code/client-runtime/environment";
+import { ThreadId } from "@vetra-code/contracts";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import {

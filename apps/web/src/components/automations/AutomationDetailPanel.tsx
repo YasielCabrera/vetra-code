@@ -1,12 +1,12 @@
 import { useAtomValue } from "@effect/atom-react";
 import { useNavigate } from "@tanstack/react-router";
-import { scopeThreadRef } from "@vetra-studio/client-runtime/environment";
-import type { EnvironmentAutomation } from "@vetra-studio/client-runtime/state/automations";
+import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
+import type { EnvironmentAutomation } from "@vetra-code/client-runtime/state/automations";
 import {
   type AtomCommandResult,
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
+} from "@vetra-code/client-runtime/state/runtime";
 import {
   AUTOMATION_PROMPT_MAX_CHARS,
   AUTOMATION_TITLE_MAX_CHARS,
@@ -17,8 +17,8 @@ import {
   type RuntimeMode,
   type ThreadEnvMode,
   type ThreadId,
-} from "@vetra-studio/contracts";
-import { createModelSelection } from "@vetra-studio/shared/model";
+} from "@vetra-code/contracts";
+import { createModelSelection } from "@vetra-code/shared/model";
 import {
   BotIcon,
   CalendarClockIcon,

@@ -1,4 +1,4 @@
-import type { ProjectContentMatch } from "@vetra-studio/contracts";
+import type { ProjectContentMatch } from "@vetra-code/contracts";
 import { LoaderCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 

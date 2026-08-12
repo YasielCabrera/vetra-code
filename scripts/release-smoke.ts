@@ -53,13 +53,13 @@ function writeMacManifestFixtures(targetRoot: string): { arm64Path: string; x64P
     arm64Path,
     `version: 9.9.9-smoke.0
 files:
-  - url: Vetra-Studio-9.9.9-smoke.0-arm64.zip
+  - url: Vetra-Code-9.9.9-smoke.0-arm64.zip
     sha512: arm64zip
     size: 125621344
-  - url: Vetra-Studio-9.9.9-smoke.0-arm64.dmg
+  - url: Vetra-Code-9.9.9-smoke.0-arm64.dmg
     sha512: arm64dmg
     size: 131754935
-path: Vetra-Studio-9.9.9-smoke.0-arm64.zip
+path: Vetra-Code-9.9.9-smoke.0-arm64.zip
 sha512: arm64zip
 releaseDate: '2026-03-08T10:32:14.587Z'
 `,
@@ -69,13 +69,13 @@ releaseDate: '2026-03-08T10:32:14.587Z'
     x64Path,
     `version: 9.9.9-smoke.0
 files:
-  - url: Vetra-Studio-9.9.9-smoke.0-x64.zip
+  - url: Vetra-Code-9.9.9-smoke.0-x64.zip
     sha512: x64zip
     size: 132000112
-  - url: Vetra-Studio-9.9.9-smoke.0-x64.dmg
+  - url: Vetra-Code-9.9.9-smoke.0-x64.dmg
     sha512: x64dmg
     size: 138148807
-path: Vetra-Studio-9.9.9-smoke.0-x64.zip
+path: Vetra-Code-9.9.9-smoke.0-x64.zip
 sha512: x64zip
 releaseDate: '2026-03-08T10:36:07.540Z'
 `,
@@ -98,13 +98,13 @@ function writeWindowsManifestFixtures(
     arm64Path,
     `version: 9.9.9-smoke.0
 files:
-  - url: Vetra-Studio-9.9.9-smoke.0-arm64.exe
+  - url: Vetra-Code-9.9.9-smoke.0-arm64.exe
     sha512: arm64exe
     size: 126621344
-  - url: Vetra-Studio-9.9.9-smoke.0-arm64.exe.blockmap
+  - url: Vetra-Code-9.9.9-smoke.0-arm64.exe.blockmap
     sha512: arm64blockmap
     size: 152344
-path: Vetra-Studio-9.9.9-smoke.0-arm64.exe
+path: Vetra-Code-9.9.9-smoke.0-arm64.exe
 sha512: arm64exe
 releaseDate: '2026-03-08T10:32:14.587Z'
 `,
@@ -114,13 +114,13 @@ releaseDate: '2026-03-08T10:32:14.587Z'
     x64Path,
     `version: 9.9.9-smoke.0
 files:
-  - url: Vetra-Studio-9.9.9-smoke.0-x64.exe
+  - url: Vetra-Code-9.9.9-smoke.0-x64.exe
     sha512: x64exe
     size: 132000112
-  - url: Vetra-Studio-9.9.9-smoke.0-x64.exe.blockmap
+  - url: Vetra-Code-9.9.9-smoke.0-x64.exe.blockmap
     sha512: x64blockmap
     size: 160112
-path: Vetra-Studio-9.9.9-smoke.0-x64.exe
+path: Vetra-Code-9.9.9-smoke.0-x64.exe
 sha512: x64exe
 releaseDate: '2026-03-08T10:36:07.540Z'
 `,
@@ -247,7 +247,7 @@ try {
   );
   assertContains(
     nightlyReleaseMetadata,
-    "name=Vetra Studio Nightly 9.9.10-nightly.20260413.321 (abcdef123456)",
+    "name=Vetra Code Nightly 9.9.10-nightly.20260413.321 (abcdef123456)",
     "Expected nightly metadata to include the short commit SHA in the release name.",
   );
 
@@ -270,12 +270,12 @@ try {
   const mergedManifest = NodeFS.readFileSync(arm64Path, "utf8");
   assertContains(
     mergedManifest,
-    "Vetra-Studio-9.9.9-smoke.0-arm64.zip",
+    "Vetra-Code-9.9.9-smoke.0-arm64.zip",
     "Merged manifest is missing the arm64 asset.",
   );
   assertContains(
     mergedManifest,
-    "Vetra-Studio-9.9.9-smoke.0-x64.zip",
+    "Vetra-Code-9.9.9-smoke.0-x64.zip",
     "Merged manifest is missing the x64 asset.",
   );
 
@@ -335,12 +335,12 @@ try {
   const mergedWindowsManifest = NodeFS.readFileSync(mergedWindowsManifestPath, "utf8");
   assertContains(
     mergedWindowsManifest,
-    "Vetra-Studio-9.9.9-smoke.0-arm64.exe",
+    "Vetra-Code-9.9.9-smoke.0-arm64.exe",
     "Merged Windows manifest is missing the arm64 asset.",
   );
   assertContains(
     mergedWindowsManifest,
-    "Vetra-Studio-9.9.9-smoke.0-x64.exe",
+    "Vetra-Code-9.9.9-smoke.0-x64.exe",
     "Merged Windows manifest is missing the x64 asset.",
   );
   const mergedNightlyWindowsManifest = NodeFS.readFileSync(
@@ -349,12 +349,12 @@ try {
   );
   assertContains(
     mergedNightlyWindowsManifest,
-    "Vetra-Studio-9.9.9-smoke.0-arm64.exe",
+    "Vetra-Code-9.9.9-smoke.0-arm64.exe",
     "Merged nightly Windows manifest is missing the arm64 asset.",
   );
   assertContains(
     mergedNightlyWindowsManifest,
-    "Vetra-Studio-9.9.9-smoke.0-x64.exe",
+    "Vetra-Code-9.9.9-smoke.0-x64.exe",
     "Merged nightly Windows manifest is missing the x64 asset.",
   );
   const mergedPreviewWindowsManifest = NodeFS.readFileSync(
@@ -363,12 +363,12 @@ try {
   );
   assertContains(
     mergedPreviewWindowsManifest,
-    "Vetra-Studio-9.9.9-smoke.0-arm64.exe",
+    "Vetra-Code-9.9.9-smoke.0-arm64.exe",
     "Merged preview Windows manifest is missing the arm64 asset.",
   );
   assertContains(
     mergedPreviewWindowsManifest,
-    "Vetra-Studio-9.9.9-smoke.0-x64.exe",
+    "Vetra-Code-9.9.9-smoke.0-x64.exe",
     "Merged preview Windows manifest is missing the x64 asset.",
   );
   assertMissing(

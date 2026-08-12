@@ -1,7 +1,7 @@
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import { PositiveInt, TrimmedNonEmptyString } from "@vetra-studio/contracts";
+import { PositiveInt, TrimmedNonEmptyString } from "@vetra-code/contracts";
 
 export interface NormalizedBitbucketPullRequestRecord {
   readonly number: number;

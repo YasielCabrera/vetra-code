@@ -4,13 +4,13 @@ import {
   type ProjectScript,
   type ResolvedKeybindingsConfig,
   type ThreadId,
-} from "@vetra-studio/contracts";
-import { scopeThreadRef } from "@vetra-studio/client-runtime/environment";
+} from "@vetra-code/contracts";
+import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
-import type { ChangeRequestStateLike } from "@vetra-studio/client-runtime/state/thread-settled";
+} from "@vetra-code/client-runtime/state/runtime";
+import type { ChangeRequestStateLike } from "@vetra-code/client-runtime/state/thread-settled";
 import { ChevronDownIcon } from "lucide-react";
 import {
   memo,

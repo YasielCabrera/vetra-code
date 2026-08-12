@@ -1,5 +1,5 @@
-import { scopedThreadKey, scopeThreadRef } from "@vetra-studio/client-runtime/environment";
-import { ThreadId } from "@vetra-studio/contracts";
+import { scopedThreadKey, scopeThreadRef } from "@vetra-code/client-runtime/environment";
+import { ThreadId } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { collectActiveTerminalUiThreadKeys } from "./terminalUiStateCleanup";

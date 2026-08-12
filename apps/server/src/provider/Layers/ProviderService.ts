@@ -23,8 +23,8 @@ import {
   type ProviderDriverKind,
   type ProviderRuntimeEvent,
   type ProviderSession,
-} from "@vetra-studio/contracts";
-import { causeErrorTag } from "@vetra-studio/shared/observability";
+} from "@vetra-code/contracts";
+import { causeErrorTag } from "@vetra-code/shared/observability";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -562,7 +562,7 @@ const makeProviderService = Effect.fn("makeProviderService")(function* (
         if (!instanceInfo.enabled) {
           return yield* toValidationError(
             "ProviderService.startSession",
-            `Provider instance '${resolvedInstanceId}' is disabled in Vetra Studio settings.`,
+            `Provider instance '${resolvedInstanceId}' is disabled in Vetra Code settings.`,
           );
         }
         const persistedBinding = Option.getOrUndefined(yield* directory.getBinding(threadId));

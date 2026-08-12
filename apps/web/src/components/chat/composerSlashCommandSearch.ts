@@ -2,7 +2,7 @@ import {
   insertRankedSearchResult,
   normalizeSearchQuery,
   scoreQueryMatch,
-} from "@vetra-studio/shared/searchRanking";
+} from "@vetra-code/shared/searchRanking";
 
 import type { ComposerCommandItem } from "./ComposerCommandMenu";
 

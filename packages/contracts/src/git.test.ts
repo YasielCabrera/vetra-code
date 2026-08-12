@@ -61,7 +61,7 @@ describe("GitResolvePullRequestResult", () => {
       pullRequest: {
         number: 42,
         title: "PR threads",
-        url: "https://github.com/vetra-studio/codething-mvp/pull/42",
+        url: "https://github.com/vetra-code/codething-mvp/pull/42",
         baseBranch: "main",
         headBranch: "feature/pr-threads",
         state: "open",

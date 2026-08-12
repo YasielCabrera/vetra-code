@@ -1,4 +1,4 @@
-import { withRelayClientTracing } from "@vetra-studio/shared/relayTracing";
+import { withRelayClientTracing } from "@vetra-code/shared/relayTracing";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { HttpServerRequest, HttpTraceContext } from "effect/unstable/http";

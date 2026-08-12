@@ -11,7 +11,7 @@ export class Connectivity extends Context.Service<
     readonly status: Effect.Effect<NetworkStatus>;
     readonly changes: Stream.Stream<NetworkStatus>;
   }
->()("@vetra-studio/client-runtime/connection/connectivity") {}
+>()("@vetra-code/client-runtime/connection/connectivity") {}
 
 export const make = (service: Connectivity["Service"]) => Connectivity.of(service);
 

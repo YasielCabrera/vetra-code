@@ -3,15 +3,15 @@ import type {
   EnvironmentId,
   ResolvedKeybindingsConfig,
   ScopedThreadRef,
-} from "@vetra-studio/contracts";
-import { isWorkspaceImagePreviewPath } from "@vetra-studio/shared/filePreview";
+} from "@vetra-code/contracts";
+import { isWorkspaceImagePreviewPath } from "@vetra-code/shared/filePreview";
 import { VirtualizedFile, type SelectedLineRange } from "@pierre/diffs";
 import { Editor } from "@pierre/diffs/editor";
 import { EditProvider, File, type FileOptions, Virtualizer } from "@pierre/diffs/react";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
+} from "@vetra-code/client-runtime/state/runtime";
 import {
   ArrowLeftRight,
   ChevronRight,

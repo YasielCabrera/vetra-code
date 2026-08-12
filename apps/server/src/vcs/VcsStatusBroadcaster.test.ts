@@ -20,8 +20,8 @@ import type {
   VcsStatusRemoteResult,
   VcsStatusResult,
   VcsStatusStreamEvent,
-} from "@vetra-studio/contracts";
-import { GitManagerError } from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
+import { GitManagerError } from "@vetra-code/contracts";
 
 import * as VcsStatusBroadcaster from "./VcsStatusBroadcaster.ts";
 import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
@@ -55,7 +55,7 @@ const remoteStatusWithPr: VcsStatusRemoteResult = {
   pr: {
     number: 2978,
     title: "[codex] Rewrite client connection architecture",
-    url: "https://github.com/vetra-studio/vetra/pull/2978",
+    url: "https://github.com/vetra-code/vetra/pull/2978",
     baseRef: "main",
     headRef: "codex/connection-state-audit",
     state: "open",

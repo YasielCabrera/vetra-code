@@ -4,7 +4,7 @@ import {
   type ProviderOptionDescriptor,
   type ProviderOptionSelection,
   type ServerProviderModel,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   getComposerPromptInjectionState,
   getComposerProviderState,

@@ -1,4 +1,4 @@
-import type { OrchestrationThreadDetailSnapshot, ThreadId } from "@vetra-studio/contracts";
+import type { OrchestrationThreadDetailSnapshot, ThreadId } from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -92,7 +92,7 @@ export class ThreadSnapshotLoader extends Context.Service<
       window?: ThreadSnapshotWindow,
     ) => Effect.Effect<Option.Option<OrchestrationThreadDetailSnapshot>>;
   }
->()("@vetra-studio/client-runtime/state/threadSnapshotHttp/ThreadSnapshotLoader") {}
+>()("@vetra-code/client-runtime/state/threadSnapshotHttp/ThreadSnapshotLoader") {}
 
 export const threadSnapshotLoaderLayer: Layer.Layer<
   ThreadSnapshotLoader,

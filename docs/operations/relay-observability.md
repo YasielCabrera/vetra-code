@@ -5,15 +5,15 @@
 
 The relay Alchemy stack owns a shared Axiom trace setup:
 
-- `vetra-studio-relay-traces-prod`, the OpenTelemetry trace dataset shared by the Worker, mobile app, and
+- `vetra-code-relay-traces-prod`, the OpenTelemetry trace dataset shared by the Worker, mobile app, and
   first-party relay clients
-- `vetra-studio-relay-otel-ingest-prod`, the dataset-scoped Worker ingest token
-- `vetra-studio-mobile-otel-ingest-prod`, the dataset-scoped mobile ingest token
-- `vetra-studio-relay-client-otel-ingest-prod`, the dataset-scoped first-party relay-client ingest token
-- `vetra-studio-relay-recent-spans-prod`, a view of recent request and endpoint spans
+- `vetra-code-relay-otel-ingest-prod`, the dataset-scoped Worker ingest token
+- `vetra-code-mobile-otel-ingest-prod`, the dataset-scoped mobile ingest token
+- `vetra-code-relay-client-otel-ingest-prod`, the dataset-scoped first-party relay-client ingest token
+- `vetra-code-relay-recent-spans-prod`, a view of recent request and endpoint spans
 
 Alchemy stages append their sanitized stage name to isolate resources, for example
-`vetra-studio-relay-traces-dev-julius` for a personal stage.
+`vetra-code-relay-traces-dev-julius` for a personal stage.
 
 Deploy from `infra/relay` with the normal Alchemy workflow:
 
@@ -30,7 +30,7 @@ Effect's OpenTelemetry exporter stores semantic HTTP attributes below the `attri
 For example:
 
 ```apl
-['vetra-studio-relay-traces-prod']
+['vetra-code-relay-traces-prod']
 | where name startswith 'http.server'
 | extend endpoint = column_ifexists('attributes.http.route', ''),
     customAttributes = column_ifexists('attributes.custom', dynamic({}))

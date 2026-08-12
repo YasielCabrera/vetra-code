@@ -4,8 +4,8 @@ import {
   AuthEnvironmentBootstrapTokenType,
   AuthTokenExchangeGrantType,
   type AuthEnvironmentScope,
-} from "@vetra-studio/contracts";
-import { encodeOAuthScope } from "@vetra-studio/shared/oauthScope";
+} from "@vetra-code/contracts";
+import { encodeOAuthScope } from "@vetra-code/shared/oauthScope";
 import * as Effect from "effect/Effect";
 import { environmentEndpointUrl } from "../environment/endpoint.ts";
 import {

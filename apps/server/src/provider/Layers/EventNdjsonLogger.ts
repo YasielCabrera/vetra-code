@@ -8,9 +8,9 @@
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
-import type { ThreadId } from "@vetra-studio/contracts";
-import { RotatingFileSink } from "@vetra-studio/shared/logging";
-import { errorTag } from "@vetra-studio/shared/observability";
+import type { ThreadId } from "@vetra-code/contracts";
+import { RotatingFileSink } from "@vetra-code/shared/logging";
+import { errorTag } from "@vetra-code/shared/observability";
 import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";

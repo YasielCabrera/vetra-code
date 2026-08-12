@@ -1,4 +1,4 @@
-import type { ServerConfigStreamEvent } from "@vetra-studio/contracts";
+import type { ServerConfigStreamEvent } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

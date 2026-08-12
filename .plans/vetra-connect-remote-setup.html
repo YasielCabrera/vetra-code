@@ -95,8 +95,8 @@ To set up Vetra Connect, open this URL and sign in:<br>
 &nbsp;&nbsp;<span class="b">https://app.vetra.codes/connect#B64URL_STATE_AND_CHALLENGE</span><br><br>
 Enter your authentication code: <span class="dim">[code]</span><br><br>
 <span class="g">Connected as theo@vetra.gg!</span><br><br>
-Run Vetra Studio in the background whenever this machine boots? (y/n): y<br><br>
-<span class="g">Vetra Studio is set up and ready to go.</span>
+Run Vetra Code in the background whenever this machine boots? (y/n): y<br><br>
+<span class="g">Vetra Code is set up and ready to go.</span>
 </div>
 
 <h2>Why this is a small change</h2>
@@ -219,7 +219,7 @@ Run Vetra Studio in the background whenever this machine boots? (y/n): y<br><br>
 ├── versions/0.0.27/        &larr; npm install --prefix (gets native deps right: node-pty etc.)
 └── current -> versions/0.0.27
 
-~/.config/systemd/user/vetra-studio.service   &larr; ExecStart=/abs/path/node .../current/.../vetra serve
+~/.config/systemd/user/vetra-code.service   &larr; ExecStart=/abs/path/node .../current/.../vetra serve
 loginctl enable-linger $USER            &larr; survives SSH logout / reboot</code></pre>
 <p class="kv">Why a real <code>npm install</code> and not "reuse the npx binary": the npx cache is ephemeral and <code>vetra</code> ships native deps (<code>node-pty</code>, <code>@ff-labs/fff-node</code>) that need per-platform prebuilds. Why pinned and not <code>npx vetra@latest</code> in the unit: a boot-time registry fetch means the box may simply not come up (network down, PATH-less systemd env, nvm). Deterministic boot; updates happen out-of-band (phase 4 follow-up) or by re-running <code>npx vetra connect</code>.</p>
 

@@ -79,7 +79,7 @@ export class EnvironmentCredentials extends Context.Service<
       readonly environmentPublicKey: string;
     }) => Effect.Effect<boolean, EnvironmentCredentialRevokePersistenceError>;
   }
->()("@vetra-studio/relay/environments/EnvironmentCredentials") {}
+>()("@vetra-code/relay/environments/EnvironmentCredentials") {}
 
 const make = Effect.gen(function* () {
   const db = yield* RelayDb.RelayDb;

@@ -17,7 +17,7 @@ import {
   RuntimeMode,
   ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
@@ -112,4 +112,4 @@ export interface ProjectionThreadRepositoryShape {
 export class ProjectionThreadRepository extends Context.Service<
   ProjectionThreadRepository,
   ProjectionThreadRepositoryShape
->()("@vetra-studio/server/persistence/Services/ProjectionThreads/ProjectionThreadRepository") {}
+>()("@vetra-code/server/persistence/Services/ProjectionThreads/ProjectionThreadRepository") {}

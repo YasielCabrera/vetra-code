@@ -1,4 +1,4 @@
-import { verifyDpopProof } from "@vetra-studio/shared/dpop";
+import { verifyDpopProof } from "@vetra-code/shared/dpop";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import { decodeJwt } from "jose";

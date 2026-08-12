@@ -2,8 +2,8 @@ import type {
   GitRunStackedActionResult,
   GitStackedAction,
   VcsStatusResult,
-} from "@vetra-studio/contracts";
-import { isTemporaryWorktreeBranch } from "@vetra-studio/shared/git";
+} from "@vetra-code/contracts";
+import { isTemporaryWorktreeBranch } from "@vetra-code/shared/git";
 import {
   DEFAULT_CHANGE_REQUEST_TERMINOLOGY,
   getChangeRequestTerminology,
@@ -414,4 +414,4 @@ export function resolveLiveThreadBranchUpdate(input: {
 }
 
 // Re-export from shared for backwards compatibility in this module's exports
-export { resolveAutoFeatureBranchName } from "@vetra-studio/shared/git";
+export { resolveAutoFeatureBranchName } from "@vetra-code/shared/git";

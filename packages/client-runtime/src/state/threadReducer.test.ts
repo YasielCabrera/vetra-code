@@ -9,8 +9,8 @@ import {
   ProviderInstanceId,
   ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
-import type { OrchestrationThread } from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
+import type { OrchestrationThread } from "@vetra-code/contracts";
 
 import { applyThreadDetailEvent } from "./threadReducer.ts";
 
@@ -57,7 +57,7 @@ describe("applyThreadDetailEvent", () => {
         type: "project.created",
         payload: {
           projectId: ProjectId.make("project-1"),
-          title: "Vetra Studio",
+          title: "Vetra Code",
           workspaceRoot: "/repo",
           repositoryIdentity: null,
           defaultModelSelection: null,

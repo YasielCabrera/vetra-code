@@ -2,8 +2,8 @@ import type {
   PreviewAutomationResizeInput,
   PreviewViewportPresetId,
   PreviewViewportSetting,
-} from "@vetra-studio/contracts";
-import { PREVIEW_VIEWPORT_PRESET_IDS } from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
+import { PREVIEW_VIEWPORT_PRESET_IDS } from "@vetra-code/contracts";
 
 export interface PreviewViewportPreset {
   readonly id: PreviewViewportPresetId;

@@ -16,8 +16,8 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
-import { VETRA_PROJECT_FILE_NAME, type VetraProjectFile } from "@vetra-studio/contracts";
-import { VetraProjectFileFromJson } from "@vetra-studio/shared/vetraProjectFile";
+import { VETRA_PROJECT_FILE_NAME, type VetraProjectFile } from "@vetra-code/contracts";
+import { VetraProjectFileFromJson } from "@vetra-code/shared/vetraProjectFile";
 
 const decodeVetraProjectFileJson = Schema.decodeEffect(VetraProjectFileFromJson);
 
@@ -47,7 +47,7 @@ export class VetraProjectFileLoader extends Context.Service<
      */
     readonly load: (workspaceRoot: string) => Effect.Effect<Option.Option<VetraProjectFile>>;
   }
->()("@vetra-studio/server/project/VetraProjectFileLoader") {}
+>()("@vetra-code/server/project/VetraProjectFileLoader") {}
 
 const logVetraProjectFileLoadError = (error: VetraProjectFileLoadError) =>
   Effect.logWarning(error).pipe(

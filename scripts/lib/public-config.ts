@@ -4,7 +4,7 @@ import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 import * as NodeUtil from "node:util";
 
-export interface VetraStudioPublicConfig {
+export interface VetraCodePublicConfig {
   readonly clerkPublishableKey: string | undefined;
   readonly clerkJwtTemplate: string | undefined;
   readonly clerkCliOAuthClientId: string | undefined;
@@ -103,7 +103,7 @@ export function loadRepoEnv({
   };
 }
 
-export function resolvePublicConfig(...sources: readonly Environment[]): VetraStudioPublicConfig {
+export function resolvePublicConfig(...sources: readonly Environment[]): VetraCodePublicConfig {
   return {
     clerkPublishableKey: firstNonEmpty(
       sources,

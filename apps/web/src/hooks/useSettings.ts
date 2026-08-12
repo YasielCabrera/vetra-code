@@ -16,15 +16,15 @@ import {
   type EnvironmentId,
   ServerSettings,
   type ServerSettingsPatch,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   type ClientSettingsPatch,
   type ClientSettings,
   DEFAULT_CLIENT_SETTINGS,
   type EnvironmentIdentificationMode,
   type UnifiedSettings,
-} from "@vetra-studio/contracts/settings";
-import { safeErrorLogAttributes } from "@vetra-studio/client-runtime/errors";
+} from "@vetra-code/contracts/settings";
+import { safeErrorLogAttributes } from "@vetra-code/client-runtime/errors";
 import { ensureLocalApi } from "~/localApi";
 import {
   getThemeDefinition,

@@ -4,8 +4,8 @@
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NodeOS from "node:os";
-import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-studio/shared/productIdentity";
-import { fromJsonStringPretty } from "@vetra-studio/shared/schemaJson";
+import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-code/shared/productIdentity";
+import { fromJsonStringPretty } from "@vetra-code/shared/schemaJson";
 import * as Console from "effect/Console";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -55,7 +55,7 @@ export class SqliteStateDatabaseMissingError extends Schema.TaggedErrorClass<Sql
   },
 ) {
   override get message(): string {
-    return `Database does not exist at '${this.databasePath}'. Start Vetra Studio once to run migrations.`;
+    return `Database does not exist at '${this.databasePath}'. Start Vetra Code once to run migrations.`;
   }
 }
 
@@ -64,7 +64,7 @@ export class SqliteStateSharedHomeMutationError extends Schema.TaggedErrorClass<
   {},
 ) {
   override get message(): string {
-    return "Refusing to mutate the shared ~/.vetra-studio database. Use an isolated --base-dir.";
+    return "Refusing to mutate the shared ~/.vetra-code database. Use an isolated --base-dir.";
   }
 }
 

@@ -1,4 +1,4 @@
-import { MessageId, ThreadId } from "@vetra-studio/contracts";
+import { MessageId, ThreadId } from "@vetra-code/contracts";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

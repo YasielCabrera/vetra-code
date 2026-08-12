@@ -1,16 +1,16 @@
-import { HostProcessEnvironment, HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { HostProcessEnvironment, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 import {
   listLoginShellCandidates,
   mergePathEntries,
   readPathFromLoginShell,
   readPathFromLaunchctl,
   resolveWindowsEnvironment,
-} from "@vetra-studio/shared/shell";
+} from "@vetra-code/shared/shell";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as NodeOS from "node:os";
-import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-studio/shared/productIdentity";
+import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-code/shared/productIdentity";
 
 function logPathHydrationWarning(message: string, error?: unknown): void {
   process.stderr.write(

@@ -1,4 +1,4 @@
-import { OpenCodeSettings, ProviderInstanceId, TextGenerationError } from "@vetra-studio/contracts";
+import { OpenCodeSettings, ProviderInstanceId, TextGenerationError } from "@vetra-code/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import * as Duration from "effect/Duration";
@@ -6,7 +6,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as TestClock from "effect/testing/TestClock";
-import * as NetService from "@vetra-studio/shared/Net";
+import * as NetService from "@vetra-code/shared/Net";
 import { beforeEach, expect } from "vite-plus/test";
 
 import * as ServerConfig from "../config.ts";
@@ -137,7 +137,7 @@ const OpenCodeTextGenerationTestLayer = Layer.succeed(
 ).pipe(
   Layer.provideMerge(
     ServerConfig.ServerConfig.layerTest(process.cwd(), {
-      prefix: "vetra-studio-opencode-text-generation-test-",
+      prefix: "vetra-code-opencode-text-generation-test-",
     }),
   ),
   Layer.provideMerge(NetService.layer),
@@ -150,7 +150,7 @@ const OpenCodeTextGenerationExistingServerTestLayer = Layer.succeed(
 ).pipe(
   Layer.provideMerge(
     ServerConfig.ServerConfig.layerTest(process.cwd(), {
-      prefix: "vetra-studio-opencode-text-generation-existing-server-test-",
+      prefix: "vetra-code-opencode-text-generation-existing-server-test-",
     }),
   ),
   Layer.provideMerge(NetService.layer),

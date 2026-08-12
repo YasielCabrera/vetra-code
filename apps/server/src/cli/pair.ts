@@ -5,7 +5,7 @@
  * Discovery reads the `server-runtime.json` a live server persists next to its
  * database, then confirms the process is actually answering by fetching its
  * public environment descriptor. Inside a linked git worktree the worktree's
- * own `.vetra-studio` is checked first (matching dev-runner precedence); otherwise the
+ * own `.vetra-code` is checked first (matching dev-runner precedence); otherwise the
  * shared Vetra home. `--tailscale` publishes the server over Tailscale Serve
  * HTTPS and pairs through the tailnet URL instead.
  */
@@ -13,14 +13,14 @@ import {
   AuthStandardClientScopes,
   ExecutionEnvironmentDescriptor,
   PortSchema,
-} from "@vetra-studio/contracts";
-import { resolveWorktreeVetraHome } from "@vetra-studio/shared/devHome";
+} from "@vetra-code/contracts";
+import { resolveWorktreeVetraHome } from "@vetra-code/shared/devHome";
 import {
   buildTailscaleHttpsBaseUrl,
   DEFAULT_TAILSCALE_SERVE_PORT,
   ensureTailscaleServe,
   readTailscaleStatus,
-} from "@vetra-studio/tailscale";
+} from "@vetra-code/tailscale";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
 import * as DateTime from "effect/DateTime";
@@ -76,7 +76,7 @@ export class NoRunningServerError extends Schema.TaggedErrorClass<NoRunningServe
 ) {
   override get message(): string {
     return [
-      "No running Vetra Studio server found.",
+      "No running Vetra Code server found.",
       ...this.checkedStatePaths.map((statePath) => `  checked ${statePath}`),
       "Start this checkout with `pnpm dev`, or run only the backend with `pnpm dev:server`.",
     ].join("\n");
@@ -108,7 +108,7 @@ export class ServesOtherEnvironmentError extends Schema.TaggedErrorClass<ServesO
   { servePort: Schema.Number },
 ) {
   override get message(): string {
-    return `Tailscale Serve on HTTPS port ${String(this.servePort)} already fronts a different Vetra Studio server. Pass --tailscale-serve-port to publish this one on another port.`;
+    return `Tailscale Serve on HTTPS port ${String(this.servePort)} already fronts a different Vetra Code server. Pass --tailscale-serve-port to publish this one on another port.`;
   }
 }
 
@@ -126,7 +126,7 @@ export class ServePortOccupiedError extends Schema.TaggedErrorClass<ServePortOcc
   { servePort: Schema.Number },
 ) {
   override get message(): string {
-    return `HTTPS port ${String(this.servePort)} on the tailnet already serves something that is not a Vetra Studio server. Pass --tailscale-serve-port to publish this one on another port.`;
+    return `HTTPS port ${String(this.servePort)} on the tailnet already serves something that is not a Vetra Code server. Pass --tailscale-serve-port to publish this one on another port.`;
   }
 }
 
@@ -254,7 +254,7 @@ const discoverPairTarget = Effect.fn("pair.discoverPairTarget")(function* (
   if (explicitBaseDir !== undefined && explicitBaseDir.trim().length > 0) {
     bases.push(yield* resolveBaseDir(explicitBaseDir));
   } else {
-    // Same precedence as dev-runner: inside a linked worktree its own `.vetra-studio`
+    // Same precedence as dev-runner: inside a linked worktree its own `.vetra-code`
     // outranks the shared home, so `vetra pair` in a worktree pairs with the dev
     // server under test rather than the daily-driver install.
     const worktreeHome = yield* resolveWorktreeVetraHome(process.cwd());
@@ -489,7 +489,7 @@ export const pairCommand = Command.make("pair", {
   tailscaleServePort: tailscaleServePortFlag,
 }).pipe(
   Command.withDescription(
-    "Mint a pairing token for a running Vetra Studio server and print it as a QR code.",
+    "Mint a pairing token for a running Vetra Code server and print it as a QR code.",
   ),
   Command.withHandler((flags) =>
     Effect.gen(function* () {

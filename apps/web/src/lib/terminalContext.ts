@@ -1,4 +1,4 @@
-import { type ThreadId } from "@vetra-studio/contracts";
+import { type ThreadId } from "@vetra-code/contracts";
 
 import { extractTrailingElementContexts, type ParsedElementContextEntry } from "./elementContext";
 

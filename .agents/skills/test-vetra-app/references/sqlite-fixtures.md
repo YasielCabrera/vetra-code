@@ -1,6 +1,6 @@
 # SQLite fixtures
 
-Load this reference only when inspecting or seeding local Vetra Studio state directly.
+Load this reference only when inspecting or seeding local Vetra Code state directly.
 
 ## Select the correct database
 

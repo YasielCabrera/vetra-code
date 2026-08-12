@@ -9,8 +9,8 @@ import { OtlpExporter, OtlpSerialization, OtlpTracer } from "effect/unstable/obs
 import {
   settleAsyncResult,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
-import { safeErrorLogAttributes } from "@vetra-studio/client-runtime/errors";
+} from "@vetra-code/client-runtime/state/runtime";
+import { safeErrorLogAttributes } from "@vetra-code/client-runtime/errors";
 import { resolvePrimaryEnvironmentHttpUrl } from "../environments/primary";
 import { primaryEnvironmentHttpLayer } from "../environments/primary/httpLayer";
 import { isElectron } from "../env";

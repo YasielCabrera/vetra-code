@@ -1,12 +1,9 @@
-import type { EnvironmentId, ServerSelfUpdateCapability } from "@vetra-studio/contracts";
-import type {
-  ServerUpdateStage,
-  ServerUpdateState,
-} from "@vetra-studio/client-runtime/state/server";
+import type { EnvironmentId, ServerSelfUpdateCapability } from "@vetra-code/contracts";
+import type { ServerUpdateStage, ServerUpdateState } from "@vetra-code/client-runtime/state/server";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
+} from "@vetra-code/client-runtime/state/runtime";
 
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { serverEnvironment } from "~/state/server";

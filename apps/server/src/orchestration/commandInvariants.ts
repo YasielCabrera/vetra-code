@@ -7,8 +7,8 @@ import type {
   OrchestrationThread,
   ProjectId,
   ThreadId,
-} from "@vetra-studio/contracts";
-import { normalizeProjectPathForComparison } from "@vetra-studio/shared/path";
+} from "@vetra-code/contracts";
+import { normalizeProjectPathForComparison } from "@vetra-code/shared/path";
 import * as Effect from "effect/Effect";
 
 import { OrchestrationCommandInvariantError } from "./Errors.ts";

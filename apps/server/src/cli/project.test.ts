@@ -1,6 +1,6 @@
 import { assert, it } from "@effect/vitest";
 
-import { EnvironmentInternalError } from "@vetra-studio/contracts";
+import { EnvironmentInternalError } from "@vetra-code/contracts";
 
 import {
   ProjectLiveServerDeclaredResponseError,

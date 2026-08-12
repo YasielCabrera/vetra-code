@@ -45,7 +45,7 @@ import {
   WINDOWS_ASAR_UNPACK,
 } from "./build-desktop-artifact.ts";
 import { BRAND_ASSET_PATHS } from "./lib/brand-assets.ts";
-import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 
 function mockProcess(exitCode: number) {
   return ChildProcessSpawner.makeHandle({
@@ -91,8 +91,8 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
   });
 
   it("switches desktop packaging product names to nightly for nightly builds", () => {
-    assert.equal(resolveDesktopProductName("0.0.17"), "Vetra Studio (Alpha)");
-    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "Vetra Studio (Nightly)");
+    assert.equal(resolveDesktopProductName("0.0.17"), "Vetra Code (Alpha)");
+    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "Vetra Code (Nightly)");
   });
 
   it("switches desktop packaging icons to the nightly artwork for nightly versions", () => {
@@ -121,7 +121,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           ConfigProvider.layer(
             ConfigProvider.fromEnv({
               env: {
-                VETRA_DESKTOP_UPDATE_REPOSITORY: "vetra-studio/desktop",
+                VETRA_DESKTOP_UPDATE_REPOSITORY: "vetra-code/desktop",
               },
             }),
           ),
@@ -132,7 +132,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           ConfigProvider.layer(
             ConfigProvider.fromEnv({
               env: {
-                VETRA_DESKTOP_UPDATE_REPOSITORY: "vetra-studio/desktop",
+                VETRA_DESKTOP_UPDATE_REPOSITORY: "vetra-code/desktop",
               },
             }),
           ),
@@ -141,13 +141,13 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
       assert.deepStrictEqual(latestConfig, {
         provider: "github",
-        owner: "vetra-studio",
+        owner: "vetra-code",
         repo: "desktop",
         releaseType: "release",
       });
       assert.deepStrictEqual(nightlyConfig, {
         provider: "github",
-        owner: "vetra-studio",
+        owner: "vetra-code",
         repo: "desktop",
         releaseType: "prerelease",
         channel: "nightly",
@@ -160,10 +160,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       resolveDesktopRuntimeDependencies(
         {
           "@effect/platform-node": "catalog:",
-          "@vetra-studio/contracts": "workspace:*",
-          "@vetra-studio/shared": "workspace:*",
-          "@vetra-studio/ssh": "workspace:*",
-          "@vetra-studio/tailscale": "workspace:*",
+          "@vetra-code/contracts": "workspace:*",
+          "@vetra-code/shared": "workspace:*",
+          "@vetra-code/ssh": "workspace:*",
+          "@vetra-code/tailscale": "workspace:*",
           effect: "catalog:",
           electron: "41.5.0",
         },
@@ -352,7 +352,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       // Linux must register the renderer schemes so the generated .desktop
       // entry advertises MimeType=x-scheme-handler/vetra; for OAuth deep links.
       assert.deepStrictEqual((linux.linux as Record<string, unknown>).protocols, [
-        { name: "Vetra Studio", schemes: ["vetra", "vetra-dev"] },
+        { name: "Vetra Code", schemes: ["vetra", "vetra-dev"] },
       ]);
       for (const config of [mac, linux, win]) {
         assert.deepStrictEqual(config.electronLanguages, DESKTOP_ELECTRON_LANGUAGES);
@@ -404,22 +404,22 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
   it("derives macOS passkey signing configuration from the Clerk publishable key", () => {
     const configuration = resolveMacPasskeySigningConfiguration({
       VETRA_APPLE_TEAM_ID: "abc1234567",
-      VETRA_MACOS_PROVISIONING_PROFILE: "/tmp/vetra-studio.provisionprofile",
+      VETRA_MACOS_PROVISIONING_PROFILE: "/tmp/vetra-code.provisionprofile",
       VETRA_CLERK_PUBLISHABLE_KEY: `pk_test_${btoa("example.clerk.accounts.dev$")}`,
     });
 
     assert.deepStrictEqual(configuration, {
-      appId: "com.vetra.studio",
+      appId: "com.vetra.code",
       teamId: "ABC1234567",
       rpDomains: ["example.clerk.accounts.dev"],
-      provisioningProfilePath: "/tmp/vetra-studio.provisionprofile",
+      provisioningProfilePath: "/tmp/vetra-code.provisionprofile",
     });
   });
 
   it("normalizes explicit macOS passkey RP domains and renders required entitlements", () => {
     const configuration = resolveMacPasskeySigningConfiguration({
       VETRA_APPLE_TEAM_ID: "ABC1234567",
-      VETRA_MACOS_PROVISIONING_PROFILE: "/tmp/vetra-studio.provisionprofile",
+      VETRA_MACOS_PROVISIONING_PROFILE: "/tmp/vetra-code.provisionprofile",
       VETRA_CLERK_PASSKEY_RP_DOMAINS:
         " Clerk.Example.com,example.clerk.accounts.dev,clerk.example.com ",
     });
@@ -429,7 +429,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       "clerk.example.com",
       "example.clerk.accounts.dev",
     ]);
-    assert.include(entitlements, "<string>ABC1234567.com.vetra.studio</string>");
+    assert.include(entitlements, "<string>ABC1234567.com.vetra.code</string>");
     assert.include(entitlements, "<string>webcredentials:clerk.example.com</string>");
     assert.include(entitlements, "<string>webcredentials:example.clerk.accounts.dev</string>");
     assert.include(entitlements, "<key>com.apple.security.cs.allow-jit</key>");
@@ -459,7 +459,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       "https://domain-user:domain-secret@example.clerk.accounts.dev/path?token=query-secret";
     const invalidDomainError = captureError({
       VETRA_APPLE_TEAM_ID: "ABC1234567",
-      VETRA_MACOS_PROVISIONING_PROFILE: "/tmp/vetra-studio.provisionprofile",
+      VETRA_MACOS_PROVISIONING_PROFILE: "/tmp/vetra-code.provisionprofile",
       VETRA_CLERK_PASSKEY_RP_DOMAINS: unsafeDomain,
     });
     assert.instanceOf(invalidDomainError, InvalidMacPasskeyRpDomainError);
@@ -477,14 +477,14 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       () =>
         resolveMacPasskeySigningConfiguration({
           VETRA_APPLE_TEAM_ID: "ABC1234567",
-          VETRA_MACOS_PROVISIONING_PROFILE: "/tmp/vetra-studio.provisionprofile",
+          VETRA_MACOS_PROVISIONING_PROFILE: "/tmp/vetra-code.provisionprofile",
           VETRA_CLERK_PASSKEY_RP_DOMAINS: "example.clerk.accounts.dev:8443",
         }),
       /Invalid passkey RP domain/u,
     );
     const invalidPublishableKeyError = captureError({
       VETRA_APPLE_TEAM_ID: "ABC1234567",
-      VETRA_MACOS_PROVISIONING_PROFILE: "/tmp/vetra-studio.provisionprofile",
+      VETRA_MACOS_PROVISIONING_PROFILE: "/tmp/vetra-code.provisionprofile",
       VETRA_CLERK_PUBLISHABLE_KEY: "pk_test_%",
     });
     assert.instanceOf(invalidPublishableKeyError, InvalidMacPasskeyPublishableKeyError);
@@ -520,15 +520,15 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     Effect.gen(function* () {
       const config = yield* createBuildConfig("mac", "dmg", "1.2.3", true, false, undefined, {
         entitlementsPath: "/tmp/entitlements.mac.plist",
-        provisioningProfilePath: "/tmp/vetra-studio.provisionprofile",
+        provisioningProfilePath: "/tmp/vetra-code.provisionprofile",
       });
 
       const mac = config.mac as Record<string, unknown>;
-      assert.equal(config.appId, "com.vetra.studio");
+      assert.equal(config.appId, "com.vetra.code");
       assert.equal(mac.entitlements, "/tmp/entitlements.mac.plist");
-      assert.equal(mac.provisioningProfile, "/tmp/vetra-studio.provisionprofile");
+      assert.equal(mac.provisioningProfile, "/tmp/vetra-code.provisionprofile");
       assert.deepStrictEqual(mac.protocols, [
-        { name: "Vetra Studio", schemes: ["vetra", "vetra-dev"] },
+        { name: "Vetra Code", schemes: ["vetra", "vetra-dev"] },
       ]);
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );

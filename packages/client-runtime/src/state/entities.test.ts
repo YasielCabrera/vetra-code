@@ -5,7 +5,7 @@ import {
   ThreadId,
   type OrchestrationShellSnapshot,
   type OrchestrationThread,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom, AtomRegistry } from "effect/unstable/reactivity";

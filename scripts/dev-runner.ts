@@ -4,19 +4,19 @@ import * as NodeOS from "node:os";
 
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import * as NetService from "@vetra-studio/shared/Net";
-import { resolveGitWorktreePath, resolveWorktreeVetraHome } from "@vetra-studio/shared/devHome";
+import * as NetService from "@vetra-code/shared/Net";
+import { resolveGitWorktreePath, resolveWorktreeVetraHome } from "@vetra-code/shared/devHome";
 import {
   HostProcessEnvironment,
   HostProcessWorkingDirectory,
-} from "@vetra-studio/shared/hostProcess";
-import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
+} from "@vetra-code/shared/hostProcess";
+import { resolveSpawnCommand } from "@vetra-code/shared/shell";
 import {
   PRODUCT_DEV_SERVER_PORT,
   PRODUCT_DEV_WEB_PORT,
   PRODUCT_HOME_DIRECTORY_NAME,
   PRODUCT_SERVER_PACKAGE,
-} from "@vetra-studio/shared/productIdentity";
+} from "@vetra-code/shared/productIdentity";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 import * as Hash from "effect/Hash";
@@ -83,15 +83,15 @@ export const DEFAULT_VETRA_HOME = Effect.map(Effect.service(Path.Path), (path) =
 const MODE_ARGS = {
   dev: [
     "run",
-    "--filter=@vetra-studio/contracts",
-    "--filter=@vetra-studio/web",
+    "--filter=@vetra-code/contracts",
+    "--filter=@vetra-code/web",
     `--filter=${PRODUCT_SERVER_PACKAGE}`,
     "--parallel",
     "dev",
   ],
   "dev:server": ["run", `--filter=${PRODUCT_SERVER_PACKAGE}`, "dev"],
-  "dev:web": ["run", "--filter=@vetra-studio/web", "dev"],
-  "dev:desktop": ["run", "--filter=@vetra-studio/desktop", "--filter=@vetra-studio/web", "dev"],
+  "dev:web": ["run", "--filter=@vetra-code/web", "dev"],
+  "dev:desktop": ["run", "--filter=@vetra-code/desktop", "--filter=@vetra-code/web", "dev"],
 } as const satisfies Record<string, ReadonlyArray<string>>;
 
 type DevMode = keyof typeof MODE_ARGS;
@@ -329,7 +329,7 @@ export function createDevRunnerEnv({
   return Effect.gen(function* () {
     const serverPort = port ?? BASE_SERVER_PORT + serverOffset;
     const webPort = BASE_WEB_PORT + webOffset;
-    // Precedence (--home-dir > worktree .vetra-studio > ambient VETRA_HOME) is resolved
+    // Precedence (--home-dir > worktree .vetra-code > ambient VETRA_HOME) is resolved
     // by the caller; an unset vetraHome here genuinely means "use the default".
     const configuredBaseDir = vetraHome?.trim() || undefined;
     const resolvedBaseDir = yield* resolveBaseDir(configuredBaseDir);
@@ -351,7 +351,7 @@ export function createDevRunnerEnv({
 
     // A dev-runner server is never launcher-managed. When the shell that runs
     // this script was itself spawned by the machine's managed vetra service (an
-    // agent working inside Vetra Studio), these leak through and the child server
+    // agent working inside Vetra Code), these leak through and the child server
     // fails startup with "The service launcher started a different vetra version"
     // (serviceLauncherClient.ts resolveStartup).
     delete output.VETRA_SERVICE_LAUNCHER_CONTEXT;
@@ -684,7 +684,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
 
     const hostEnvironment = yield* HostProcessEnvironment;
     // A dev server started inside a worktree defaults to that worktree's own
-    // (gitignored) `.vetra-studio` — see @vetra-studio/shared/devHome for why this must
+    // (gitignored) `.vetra-code` — see @vetra-code/shared/devHome for why this must
     // outrank an ambient VETRA_HOME. `--home-dir` still wins.
     const worktreeHome = yield* resolveWorktreeVetraHome(yield* HostProcessWorkingDirectory);
     // Trim before choosing: `--home-dir ""` is not a selection, and treating it
@@ -869,7 +869,7 @@ const devRunnerCli = Command.make("dev-runner", {
   ),
   vetraHome: Flag.string("home-dir").pipe(
     Flag.withDescription(
-      "Explicit Vetra Studio data directory; runtime state is stored under userdata (equivalent to VETRA_HOME). Inside a git worktree this defaults to that worktree's own .vetra-studio so dev state stays off the shared home.",
+      "Explicit Vetra Code data directory; runtime state is stored under userdata (equivalent to VETRA_HOME). Inside a git worktree this defaults to that worktree's own .vetra-code so dev state stays off the shared home.",
     ),
     Flag.optional,
     Flag.map(Option.getOrUndefined),

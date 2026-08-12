@@ -1,4 +1,4 @@
-import type { TerminalSummary } from "@vetra-studio/contracts";
+import type { TerminalSummary } from "@vetra-code/contracts";
 
 /** Human-readable label for a terminal tab; matches mobile and web sidebars. */
 export function getTerminalLabel(terminalId: string): string {

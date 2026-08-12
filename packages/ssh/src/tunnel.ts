@@ -1,20 +1,20 @@
 import type {
   DesktopSshEnvironmentBootstrap,
   DesktopSshEnvironmentTarget,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   describeReadinessCause,
   waitForHttpReady as waitForHttpReadyShared,
-} from "@vetra-studio/shared/httpReadiness";
-import * as NetService from "@vetra-studio/shared/Net";
-import { extractJsonObject, fromLenientJson } from "@vetra-studio/shared/schemaJson";
-import { satisfiesSemverRange } from "@vetra-studio/shared/semver";
+} from "@vetra-code/shared/httpReadiness";
+import * as NetService from "@vetra-code/shared/Net";
+import { extractJsonObject, fromLenientJson } from "@vetra-code/shared/schemaJson";
+import { satisfiesSemverRange } from "@vetra-code/shared/semver";
 import {
   PRODUCT_CLI_NAME,
   PRODUCT_DEFAULT_SERVER_PORT,
   PRODUCT_HOME_DIRECTORY_NAME,
   PRODUCT_SERVER_PACKAGE,
-} from "@vetra-studio/shared/productIdentity";
+} from "@vetra-code/shared/productIdentity";
 import * as Context from "effect/Context";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -1608,7 +1608,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
 export class SshEnvironmentManager extends Context.Service<
   SshEnvironmentManager,
   SshEnvironmentManagerShape
->()("@vetra-studio/ssh/tunnel/SshEnvironmentManager") {
+>()("@vetra-code/ssh/tunnel/SshEnvironmentManager") {
   static readonly layer = (options: SshEnvironmentManagerOptions = {}) =>
     Layer.effect(SshEnvironmentManager, makeSshEnvironmentManager(options));
 }

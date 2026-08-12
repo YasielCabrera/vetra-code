@@ -1,8 +1,8 @@
 import * as NodeNet from "node:net";
 
 import { it as effectIt } from "@effect/vitest";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
-import * as Net from "@vetra-studio/shared/Net";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import * as Net from "@vetra-code/shared/Net";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";

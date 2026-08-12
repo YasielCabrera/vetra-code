@@ -11,11 +11,11 @@ import {
   type SourceControlProviderAuth,
   type SourceControlRepositoryCloneUrls,
   type SourceControlRepositoryVisibility,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
-import { sanitizeBranchFragment } from "@vetra-studio/shared/git";
-import { PRODUCT_WORKTREE_BRANCH_PREFIX } from "@vetra-studio/shared/productIdentity";
-import { detectSourceControlProviderFromRemoteUrl } from "@vetra-studio/shared/sourceControl";
+import { sanitizeBranchFragment } from "@vetra-code/shared/git";
+import { PRODUCT_WORKTREE_BRANCH_PREFIX } from "@vetra-code/shared/productIdentity";
+import { detectSourceControlProviderFromRemoteUrl } from "@vetra-code/shared/sourceControl";
 
 import {
   BitbucketPullRequestListSchema,
@@ -379,7 +379,7 @@ export class BitbucketApi extends Context.Service<
       readonly force?: boolean;
     }) => Effect.Effect<void, BitbucketApiError>;
   }
->()("@vetra-studio/server/sourceControl/BitbucketApi") {}
+>()("@vetra-code/server/sourceControl/BitbucketApi") {}
 
 function nonEmpty(value: string | undefined): Option.Option<string> {
   const trimmed = value?.trim();

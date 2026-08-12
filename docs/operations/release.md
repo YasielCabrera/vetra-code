@@ -1,6 +1,6 @@
 # Release bootstrap status
 
-> For maintainers. Vetra Studio has no production release pipeline yet.
+> For maintainers. Vetra Code has no production release pipeline yet.
 
 The legacy upstream release and relay-deployment workflows were removed during fork isolation.
 That is deliberate: running them before Vetra owns every target could publish packages, desktop
@@ -10,7 +10,7 @@ artifacts, hosted web builds, or infrastructure under the wrong product identity
 
 - `.github/workflows/release.yml` is absent;
 - `.github/workflows/deploy-relay.yml` is absent;
-- `@vetra-studio/server` is private and cannot be installed through `npx`;
+- `@vetra-code/server` is private and cannot be installed through `npx`;
 - hosted web deployment has no production route or domain;
 - desktop auto-update does not start unless `VETRA_ENABLE_AUTO_UPDATE=true`;
 - cloud UI stays hidden when Vetra Clerk and relay public configuration is absent.
@@ -24,8 +24,8 @@ These commands build the artifacts without publishing anything:
 
 ```bash
 pnpm install
-pnpm exec vp run --filter @vetra-studio/server build
-pnpm exec vp run --filter @vetra-studio/desktop build
+pnpm exec vp run --filter @vetra-code/server build
+pnpm exec vp run --filter @vetra-code/desktop build
 pnpm release:smoke
 ```
 

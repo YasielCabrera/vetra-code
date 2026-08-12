@@ -10,16 +10,16 @@ import type {
   ScopedThreadRef,
   ServerProvider,
   ThreadId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   ProviderDriverKind,
   ProviderInstanceId,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
-} from "@vetra-studio/contracts";
-import type { EnvironmentConnectionPresentation } from "@vetra-studio/client-runtime/connection";
-import { serializeComposerFileLink } from "@vetra-studio/shared/composerTrigger";
-import { createModelSelection, normalizeModelSlug } from "@vetra-studio/shared/model";
+} from "@vetra-code/contracts";
+import type { EnvironmentConnectionPresentation } from "@vetra-code/client-runtime/connection";
+import { serializeComposerFileLink } from "@vetra-code/shared/composerTrigger";
+import { createModelSelection, normalizeModelSlug } from "@vetra-code/shared/model";
 import {
   memo,
   type ReactNode,
@@ -214,7 +214,7 @@ import {
   type ProviderInstanceEntry,
 } from "../../providerInstances";
 import { type AppModelOption, getAppModelOptionsForInstance } from "../../modelSelection";
-import type { UnifiedSettings } from "@vetra-studio/contracts/settings";
+import type { UnifiedSettings } from "@vetra-code/contracts/settings";
 import type { SessionPhase, Thread } from "../../types";
 import type { PendingUserInputDraftAnswer } from "../../pendingUserInput";
 import type { PendingApproval, PendingUserInput } from "../../session-logic";

@@ -1,4 +1,4 @@
-import type { ThreadEnvMode } from "@vetra-studio/contracts";
+import type { ThreadEnvMode } from "@vetra-code/contracts";
 
 /**
  * Canonical priority order for a project's default thread env mode:

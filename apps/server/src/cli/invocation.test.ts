@@ -4,89 +4,87 @@ import { detectCliRunner, formatCliCommand, suggestedPackageSpec } from "./invoc
 
 it("detects package runners from their cache entry paths", () => {
   assert.equal(
-    detectCliRunner("/home/theo/.npm/_npx/abc123/node_modules/@vetra-studio/server/dist/bin.mjs"),
+    detectCliRunner("/home/theo/.npm/_npx/abc123/node_modules/@vetra-code/server/dist/bin.mjs"),
     "npx",
   );
   assert.equal(
     detectCliRunner(
-      "C:\\Users\\theo\\AppData\\Local\\npm-cache\\_npx\\abc\\node_modules\\@vetra-studio\\server\\dist\\bin.mjs",
+      "C:\\Users\\theo\\AppData\\Local\\npm-cache\\_npx\\abc\\node_modules\\@vetra-code\\server\\dist\\bin.mjs",
     ),
     "npx",
   );
   assert.equal(
+    detectCliRunner("/home/theo/.cache/pnpm/dlx/abc/node_modules/@vetra-code/server/dist/bin.mjs"),
+    "pnpm dlx",
+  );
+  assert.equal(
     detectCliRunner(
-      "/home/theo/.cache/pnpm/dlx/abc/node_modules/@vetra-studio/server/dist/bin.mjs",
+      "/home/theo/.local/share/pnpm/.pnpm/dlx/abc/node_modules/@vetra-code/server/dist/bin.mjs",
     ),
     "pnpm dlx",
   );
   assert.equal(
     detectCliRunner(
-      "/home/theo/.local/share/pnpm/.pnpm/dlx/abc/node_modules/@vetra-studio/server/dist/bin.mjs",
+      "C:\\Users\\theo\\AppData\\Local\\pnpm-cache\\dlx\\abc\\node_modules\\@vetra-code\\server\\dist\\bin.mjs",
     ),
     "pnpm dlx",
   );
   assert.equal(
-    detectCliRunner(
-      "C:\\Users\\theo\\AppData\\Local\\pnpm-cache\\dlx\\abc\\node_modules\\@vetra-studio\\server\\dist\\bin.mjs",
-    ),
-    "pnpm dlx",
-  );
-  assert.equal(
-    detectCliRunner("/home/theo/.bun/install/cache/@vetra-studio/server@0.0.31/dist/bin.mjs"),
+    detectCliRunner("/home/theo/.bun/install/cache/@vetra-code/server@0.0.31/dist/bin.mjs"),
     "bunx",
   );
   assert.equal(
     detectCliRunner(
-      "/tmp/bunx-1000-@vetra-studio/server@latest/node_modules/@vetra-studio/server/dist/bin.mjs",
+      "/tmp/bunx-1000-@vetra-code/server@latest/node_modules/@vetra-code/server/dist/bin.mjs",
     ),
     "bunx",
   );
   assert.equal(
     detectCliRunner(
-      "C:\\Users\\theo\\AppData\\Local\\Temp\\bunx-0-@vetra-studio/server@latest\\node_modules\\@vetra-studio\\server\\dist\\bin.mjs",
+      "C:\\Users\\theo\\AppData\\Local\\Temp\\bunx-0-@vetra-code/server@latest\\node_modules\\@vetra-code\\server\\dist\\bin.mjs",
     ),
     "bunx",
   );
 });
 
 it("treats stable installs as direct invocations", () => {
-  assert.isNull(detectCliRunner("/usr/local/lib/node_modules/@vetra-studio/server/dist/bin.mjs"));
-  assert.isNull(detectCliRunner("/home/theo/Code/work/vetra-studio/apps/server/dist/bin.mjs"));
+  assert.isNull(detectCliRunner("/usr/local/lib/node_modules/@vetra-code/server/dist/bin.mjs"));
+  assert.isNull(detectCliRunner("/home/theo/Code/work/vetra-code/apps/server/dist/bin.mjs"));
   assert.isNull(
     detectCliRunner(
-      "/home/theo/.vetra-studio/runtime/0.0.31/node_modules/@vetra-studio/server/dist/bin.mjs",
+      "/home/theo/.vetra-code/runtime/0.0.31/node_modules/@vetra-code/server/dist/bin.mjs",
     ),
   );
   assert.isNull(detectCliRunner(""));
 });
 
 it("re-suggests the nightly channel only for nightly builds", () => {
-  assert.equal(suggestedPackageSpec("0.0.31-nightly.20260729"), "@vetra-studio/server@nightly");
-  assert.equal(suggestedPackageSpec("0.0.31"), "@vetra-studio/server");
+  assert.equal(suggestedPackageSpec("0.0.31-nightly.20260729"), "@vetra-code/server@nightly");
+  assert.equal(suggestedPackageSpec("0.0.31"), "@vetra-code/server");
 });
 
 it("formats serve suggestions to match the launching command", () => {
   assert.equal(
     formatCliCommand({
       subcommand: "serve",
-      entryPath: "/home/theo/.npm/_npx/abc/node_modules/@vetra-studio/server/dist/bin.mjs",
+      entryPath: "/home/theo/.npm/_npx/abc/node_modules/@vetra-code/server/dist/bin.mjs",
       version: "0.0.31-nightly.20260729",
     }),
-    "npx @vetra-studio/server@nightly serve",
+    "npx @vetra-code/server@nightly serve",
   );
   assert.equal(
     formatCliCommand({
       subcommand: "serve",
       entryPath:
-        "/tmp/bunx-1000-@vetra-studio/server@latest/node_modules/@vetra-studio/server/dist/bin.mjs",
+        "/tmp/bunx-1000-@vetra-code/server@latest/node_modules/@vetra-code/server/dist/bin.mjs",
       version: "0.0.31",
     }),
-    "bunx @vetra-studio/server serve",
+    "bunx @vetra-code/server serve",
   );
   assert.equal(
     formatCliCommand({
       subcommand: "serve",
-      entryPath: "/usr/local/lib/node_modules/@vetra-studio/server/dist/bin.mjs",
+      entryPath: "/usr/local/lib/node_modules/@vetra-code/server/dist/bin.mjs",
       version: "0.0.31-nightly.20260729",
     }),
     "vetra serve",

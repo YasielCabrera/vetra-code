@@ -1,6 +1,6 @@
 /**
  * Where development state lives, and how to keep it away from the installed
- * Vetra Studio data directory.
+ * Vetra Code data directory.
  *
  * A linked git worktree gets its own gitignored Vetra home: feature work in a
  * throwaway branch must not share a database with the real app, and an ambient

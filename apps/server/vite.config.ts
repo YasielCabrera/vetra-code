@@ -7,9 +7,9 @@ import packageJson from "./package.json" with { type: "json" };
 
 const bundledPackagePrefixes = [
   "@pierre/diffs",
-  "@vetra-studio/",
-  "@vetra-studio/effect-acp",
-  "@vetra-studio/effect-codex-app-server",
+  "@vetra-code/",
+  "@vetra-code/effect-acp",
+  "@vetra-code/effect-codex-app-server",
 ];
 
 export function shouldBundleCliDependency(id: string): boolean {
@@ -26,7 +26,7 @@ export default mergeConfig(
       tasks: {
         build: {
           command: "node scripts/cli.ts build",
-          dependsOn: ["@vetra-studio/web#build"],
+          dependsOn: ["@vetra-code/web#build"],
           cache: false,
         },
       },

@@ -1,4 +1,4 @@
-import { WsRpcGroup } from "@vetra-studio/contracts";
+import { WsRpcGroup } from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
 import { RpcClient } from "effect/unstable/rpc";
 

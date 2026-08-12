@@ -1,7 +1,7 @@
 import { assert, it } from "@effect/vitest";
 
-import { ProviderInstanceId } from "@vetra-studio/contracts";
-import { createModelSelection } from "@vetra-studio/shared/model";
+import { ProviderInstanceId } from "@vetra-code/contracts";
+import { createModelSelection } from "@vetra-code/shared/model";
 
 import { getCodexServiceTierOptionValue } from "./codexModelOptions.ts";
 

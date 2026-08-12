@@ -33,7 +33,7 @@ const TestLayer = Layer.empty.pipe(
 const makeTempDir = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   return yield* fileSystem.makeTempDirectoryScoped({
-    prefix: "vetra-studio-workspace-files-",
+    prefix: "vetra-code-workspace-files-",
   });
 });
 

@@ -1,6 +1,6 @@
 import { it as effectIt } from "@effect/vitest";
-import type { DesktopPreviewRecordingFrame } from "@vetra-studio/contracts";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import type { DesktopPreviewRecordingFrame } from "@vetra-code/contracts";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -103,8 +103,8 @@ vi.mock("electron", () => ({
 const browserSessionLayer = Layer.succeed(
   BrowserSession.BrowserSession,
   BrowserSession.BrowserSession.of({
-    getPartition: () => Effect.succeed("persist:vetra-studio-preview-test"),
-    isPartition: (partition) => partition.startsWith("persist:vetra-studio-preview-"),
+    getPartition: () => Effect.succeed("persist:vetra-code-preview-test"),
+    isPartition: (partition) => partition.startsWith("persist:vetra-code-preview-"),
     getSession: () => Effect.die("unexpected getSession"),
     clearCookies: () => Effect.void,
     clearCache: () => Effect.void,

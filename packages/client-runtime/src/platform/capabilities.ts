@@ -4,7 +4,7 @@ import {
   type DesktopSshEnvironmentBootstrap,
   type DesktopSshEnvironmentTarget,
   EnvironmentId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import type * as Option from "effect/Option";
@@ -26,14 +26,14 @@ export class CloudSession extends Context.Service<
   {
     readonly clerkToken: Effect.Effect<string, ConnectionAttemptError>;
   }
->()("@vetra-studio/client-runtime/platform/capabilities/CloudSession") {}
+>()("@vetra-code/client-runtime/platform/capabilities/CloudSession") {}
 
 export class RelayDeviceIdentity extends Context.Service<
   RelayDeviceIdentity,
   {
     readonly deviceId: Effect.Effect<Option.Option<string>, ConnectionAttemptError>;
   }
->()("@vetra-studio/client-runtime/platform/capabilities/RelayDeviceIdentity") {}
+>()("@vetra-code/client-runtime/platform/capabilities/RelayDeviceIdentity") {}
 
 export class ClientPresentation extends Context.Service<
   ClientPresentation,
@@ -41,14 +41,14 @@ export class ClientPresentation extends Context.Service<
     readonly metadata: AuthClientPresentationMetadata;
     readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
   }
->()("@vetra-studio/client-runtime/platform/capabilities/ClientPresentation") {}
+>()("@vetra-code/client-runtime/platform/capabilities/ClientPresentation") {}
 
 export class PrimaryEnvironmentAuth extends Context.Service<
   PrimaryEnvironmentAuth,
   {
     readonly bearerToken: Effect.Effect<Option.Option<string>, ConnectionAttemptError>;
   }
->()("@vetra-studio/client-runtime/platform/capabilities/PrimaryEnvironmentAuth") {}
+>()("@vetra-code/client-runtime/platform/capabilities/PrimaryEnvironmentAuth") {}
 
 export class SshEnvironmentGateway extends Context.Service<
   SshEnvironmentGateway,
@@ -65,4 +65,4 @@ export class SshEnvironmentGateway extends Context.Service<
       target: DesktopSshEnvironmentTarget,
     ) => Effect.Effect<void, ConnectionAttemptError>;
   }
->()("@vetra-studio/client-runtime/platform/capabilities/SshEnvironmentGateway") {}
+>()("@vetra-code/client-runtime/platform/capabilities/SshEnvironmentGateway") {}

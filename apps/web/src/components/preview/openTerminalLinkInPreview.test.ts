@@ -1,4 +1,4 @@
-import type { LocalApi, PreviewSessionSnapshot, ScopedThreadRef } from "@vetra-studio/contracts";
+import type { LocalApi, PreviewSessionSnapshot, ScopedThreadRef } from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";

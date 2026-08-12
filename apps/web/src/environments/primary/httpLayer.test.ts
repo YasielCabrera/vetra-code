@@ -1,4 +1,4 @@
-import type { DesktopBridge } from "@vetra-studio/contracts";
+import type { DesktopBridge } from "@vetra-code/contracts";
 import { afterEach, describe, expect, it, vi } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import { HttpClient } from "effect/unstable/http";

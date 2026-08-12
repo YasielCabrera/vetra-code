@@ -1,6 +1,6 @@
 # Resource telemetry architecture
 
-> For maintainers. Using Vetra Studio? See [docs/user](../user/).
+> For maintainers. Using Vetra Code? See [docs/user](../user/).
 
 Status: implemented
 

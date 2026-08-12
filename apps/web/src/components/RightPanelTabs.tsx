@@ -2,8 +2,8 @@ import type {
   ContextMenuItem,
   PreviewSessionSnapshot,
   PullRequestState,
-} from "@vetra-studio/contracts";
-import { getTerminalLabel } from "@vetra-studio/shared/terminalLabels";
+} from "@vetra-code/contracts";
+import { getTerminalLabel } from "@vetra-code/shared/terminalLabels";
 import {
   Bot,
   FileDiff,
@@ -84,7 +84,7 @@ export interface PullRequestTabStatus {
 }
 
 const SURFACE_DISABLED_REASONS = {
-  browser: "Browser previews are only available in the Vetra Studio desktop app.",
+  browser: "Browser previews are only available in the Vetra Code desktop app.",
   terminal: "Terminal surfaces are only available from a project thread.",
   files: "Files are only available when a project is open.",
   diff: "Diff is only available for server threads in Git repositories.",

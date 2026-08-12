@@ -1,10 +1,10 @@
 # Scripts
 
-> For maintainers. Using Vetra Studio? See [docs/user](../user/).
+> For maintainers. Using Vetra Code? See [docs/user](../user/).
 
 ## First checkout
 
-Vetra Studio uses [Vite+](https://viteplus.dev/guide/) as a workspace dependency. Install
+Vetra Code uses [Vite+](https://viteplus.dev/guide/) as a workspace dependency. Install
 dependencies, then start the dev stack without requiring a global `vp` command:
 
 ```bash
@@ -34,16 +34,16 @@ authenticated.
 - `pnpm dev:web`: Starts just the Vite dev server for the web app.
 - `pnpm dev:desktop`: Starts the Electron shell against the dev server.
 - Pass dev-runner flags directly after the root task name, for example:
-  `pnpm dev --home-dir /tmp/vetra-studio-dev`
+  `pnpm dev --home-dir /tmp/vetra-code-dev`
 
 ### Dev state directories
 
-- Dev commands run from a linked **git worktree** default to that worktree's gitignored `.vetra-studio`, even
-  when `VETRA_HOME` is set, storing state in `<worktree>/.vetra-studio/userdata`. Pass `--home-dir <path>` to
+- Dev commands run from a linked **git worktree** default to that worktree's gitignored `.vetra-code`, even
+  when `VETRA_HOME` is set, storing state in `<worktree>/.vetra-code/userdata`. Pass `--home-dir <path>` to
   choose another isolated directory explicitly. Submodules are not worktrees and keep the normal
   precedence.
-- From the **main checkout**, dev commands implicitly use `~/.vetra-studio/dev`, keeping development state
-  separate from `~/.vetra-studio/userdata`. An explicit `--home-dir <path>` stores state under
+- From the **main checkout**, dev commands implicitly use `~/.vetra-code/dev`, keeping development state
+  separate from `~/.vetra-code/userdata`. An explicit `--home-dir <path>` stores state under
   `<path>/userdata`; the base directory remains available for caches, worktrees, and other shared
   data.
 

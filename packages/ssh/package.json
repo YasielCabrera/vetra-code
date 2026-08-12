@@ -1,5 +1,5 @@
 {
-  "name": "@vetra-studio/ssh",
+  "name": "@vetra-code/ssh",
   "private": true,
   "type": "module",
   "exports": {
@@ -29,8 +29,8 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@vetra-studio/contracts": "workspace:*",
-    "@vetra-studio/shared": "workspace:*",
+    "@vetra-code/contracts": "workspace:*",
+    "@vetra-code/shared": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

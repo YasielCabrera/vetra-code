@@ -2,7 +2,7 @@ import type {
   RelayAgentActivityAggregateState,
   RelayAgentActivityState,
   RelayAgentAwarenessPreferences,
-} from "@vetra-studio/contracts/relay";
+} from "@vetra-code/contracts/relay";
 import {
   boolean,
   index,

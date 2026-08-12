@@ -1,4 +1,4 @@
-import type { ServerAuthDescriptor } from "@vetra-studio/contracts";
+import type { ServerAuthDescriptor } from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -11,7 +11,7 @@ export class EnvironmentAuthPolicy extends Context.Service<
   {
     readonly getDescriptor: () => Effect.Effect<ServerAuthDescriptor>;
   }
->()("@vetra-studio/server/auth/EnvironmentAuthPolicy") {}
+>()("@vetra-code/server/auth/EnvironmentAuthPolicy") {}
 
 export const make = Effect.gen(function* () {
   const config = yield* ServerConfig.ServerConfig;

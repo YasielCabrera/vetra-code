@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 
 import {
   buildSshAskpassHelperDescriptor,
@@ -46,7 +46,7 @@ describe("ssh auth", () => {
       assert.equal(env.SSH_ASKPASS, askpassPath);
       assert.equal(env.SSH_ASKPASS_REQUIRE, "force");
       assert.equal(env.VETRA_SSH_AUTH_SECRET, "super-secret");
-      assert.equal(env.DISPLAY, "vetra-studio");
+      assert.equal(env.DISPLAY, "vetra-code");
       assert.equal(yield* fs.exists(askpassPath), true);
       assert.include(
         yield* fs.readFileString(askpassPath),
@@ -61,14 +61,14 @@ describe("ssh auth", () => {
   it.effect("builds a windows askpass launcher pair", () =>
     Effect.gen(function* () {
       const descriptor = yield* buildSshAskpassHelperDescriptor({
-        directory: "C:\\temp\\vetra-studio-ssh-askpass",
+        directory: "C:\\temp\\vetra-code-ssh-askpass",
       }).pipe(
         Effect.provide(
           Layer.merge(NodeServices.layer, Layer.succeed(HostProcessPlatform, "win32")),
         ),
       );
 
-      assert.equal(descriptor.launcherPath, "C:\\temp\\vetra-studio-ssh-askpass\\ssh-askpass.cmd");
+      assert.equal(descriptor.launcherPath, "C:\\temp\\vetra-code-ssh-askpass\\ssh-askpass.cmd");
       assert.deepEqual(
         descriptor.files.map((file) => file.path.split("\\").at(-1)),
         ["ssh-askpass.cmd", "ssh-askpass.ps1"],

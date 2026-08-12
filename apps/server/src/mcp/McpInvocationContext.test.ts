@@ -4,7 +4,7 @@ import {
   PreviewAutomationUnavailableError,
   ProviderInstanceId,
   ThreadId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
 
 import * as McpInvocationContext from "./McpInvocationContext.ts";

@@ -13,7 +13,7 @@ import * as HttpRouter from "effect/unstable/http/HttpRouter";
 import * as HttpApiBuilder from "effect/unstable/httpapi/HttpApiBuilder";
 import * as HttpApiScalar from "effect/unstable/httpapi/HttpApiScalar";
 
-import { RelayApi } from "@vetra-studio/contracts/relay";
+import { RelayApi } from "@vetra-code/contracts/relay";
 
 import {
   clientApi,

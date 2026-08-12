@@ -1,5 +1,5 @@
-import { EnvironmentId, type ExecutionEnvironmentDescriptor } from "@vetra-studio/contracts";
-import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { EnvironmentId, type ExecutionEnvironmentDescriptor } from "@vetra-code/contracts";
+import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
@@ -34,7 +34,7 @@ export class ServerEnvironment extends Context.Service<
     readonly getEnvironmentId: Effect.Effect<EnvironmentId>;
     readonly getDescriptor: Effect.Effect<ExecutionEnvironmentDescriptor>;
   }
->()("@vetra-studio/server/environment/ServerEnvironment") {}
+>()("@vetra-code/server/environment/ServerEnvironment") {}
 
 function platformOs(platform: NodeJS.Platform): ExecutionEnvironmentDescriptor["platform"]["os"] {
   switch (platform) {

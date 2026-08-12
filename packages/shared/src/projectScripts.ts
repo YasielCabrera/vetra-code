@@ -1,4 +1,4 @@
-import type { ProjectScript } from "@vetra-studio/contracts";
+import type { ProjectScript } from "@vetra-code/contracts";
 
 interface ProjectScriptRuntimeEnvInput {
   project: {

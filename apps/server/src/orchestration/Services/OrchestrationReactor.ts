@@ -29,4 +29,4 @@ export interface OrchestrationReactorShape {
 export class OrchestrationReactor extends Context.Service<
   OrchestrationReactor,
   OrchestrationReactorShape
->()("@vetra-studio/server/orchestration/Services/OrchestrationReactor") {}
+>()("@vetra-code/server/orchestration/Services/OrchestrationReactor") {}

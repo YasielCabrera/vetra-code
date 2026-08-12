@@ -1,5 +1,5 @@
-import { EnvironmentId, type ExecutionEnvironmentDescriptor } from "@vetra-studio/contracts";
-import type { RelayManagedEndpoint } from "@vetra-studio/contracts/relay";
+import { EnvironmentId, type ExecutionEnvironmentDescriptor } from "@vetra-code/contracts";
+import type { RelayManagedEndpoint } from "@vetra-code/contracts/relay";
 import {
   exchangeRemoteDpopAccessToken,
   type RemoteEnvironmentAuthError,
@@ -55,7 +55,7 @@ export class RemoteEnvironmentAuthorization extends Context.Service<
       >;
     }) => Effect.Effect<AuthorizedRemoteEnvironment, ConnectionAttemptError>;
   }
->()("@vetra-studio/client-runtime/authorization/service/RemoteEnvironmentAuthorization") {}
+>()("@vetra-code/client-runtime/authorization/service/RemoteEnvironmentAuthorization") {}
 
 const TOKEN_EXPIRY_SAFETY_MARGIN_MS = 60_000;
 const CACHED_ENDPOINT_SOCKET_TIMEOUT_MS = 3_000;

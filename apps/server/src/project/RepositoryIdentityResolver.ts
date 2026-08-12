@@ -1,8 +1,8 @@
-import type { RepositoryIdentity } from "@vetra-studio/contracts";
+import type { RepositoryIdentity } from "@vetra-code/contracts";
 import {
   detectSourceControlProviderFromGitRemoteUrl,
   normalizeGitRemoteUrl,
-} from "@vetra-studio/shared/git";
+} from "@vetra-code/shared/git";
 import * as Cache from "effect/Cache";
 import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
@@ -27,7 +27,7 @@ export class RepositoryIdentityResolver extends Context.Service<
   {
     readonly resolve: (cwd: string) => Effect.Effect<RepositoryIdentity | null>;
   }
->()("@vetra-studio/server/project/RepositoryIdentityResolver") {}
+>()("@vetra-code/server/project/RepositoryIdentityResolver") {}
 
 function parseRemoteFetchUrls(stdout: string): Map<string, string> {
   const remotes = new Map<string, string>();

@@ -1,4 +1,4 @@
-import { normalizeSearchQuery, scoreQueryMatch } from "@vetra-studio/shared/searchRanking";
+import { normalizeSearchQuery, scoreQueryMatch } from "@vetra-code/shared/searchRanking";
 
 type ModelPickerSearchableModel = {
   /** Driver kind — indexed so "codex" still matches a Codex Personal instance. */

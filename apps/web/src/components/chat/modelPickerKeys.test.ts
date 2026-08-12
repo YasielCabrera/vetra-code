@@ -1,4 +1,4 @@
-import { ProviderInstanceId } from "@vetra-studio/contracts";
+import { ProviderInstanceId } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 import {
   modelPickerLegacySectionKey,

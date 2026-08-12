@@ -1,4 +1,4 @@
-import type { EnvironmentId, PullRequestDetailView, PullRequestRef } from "@vetra-studio/contracts";
+import type { EnvironmentId, PullRequestDetailView, PullRequestRef } from "@vetra-code/contracts";
 import {
   ArrowDownUpIcon,
   ChevronRightIcon,

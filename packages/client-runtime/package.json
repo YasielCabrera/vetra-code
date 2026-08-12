@@ -1,5 +1,5 @@
 {
-  "name": "@vetra-studio/client-runtime",
+  "name": "@vetra-code/client-runtime",
   "private": true,
   "type": "module",
   "exports": {
@@ -157,8 +157,8 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@vetra-studio/contracts": "workspace:*",
-    "@vetra-studio/shared": "workspace:*",
+    "@vetra-code/contracts": "workspace:*",
+    "@vetra-code/shared": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

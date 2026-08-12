@@ -3,7 +3,7 @@ import type {
   DesktopAppStageLabel,
   DesktopRuntimeArch,
   DesktopRuntimeInfo,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -17,7 +17,7 @@ import {
   PRODUCT_DESKTOP_USER_DATA_DIRECTORY_NAME,
   PRODUCT_NAME,
   PRODUCT_SLUG,
-} from "@vetra-studio/shared/productIdentity";
+} from "@vetra-code/shared/productIdentity";
 
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopConfig from "./DesktopConfig.ts";
@@ -85,7 +85,7 @@ export class DesktopEnvironment extends Context.Service<
     readonly resolveResourcePathCandidates: (fileName: string) => readonly string[];
     readonly developmentDockIconPath: string;
   }
->()("@vetra-studio/desktop/app/DesktopEnvironment") {}
+>()("@vetra-code/desktop/app/DesktopEnvironment") {}
 
 const APP_BASE_NAME = PRODUCT_NAME;
 

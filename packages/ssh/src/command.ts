@@ -1,8 +1,8 @@
 import * as NodeCrypto from "node:crypto";
 
-import type { DesktopSshEnvironmentTarget, DesktopUpdateChannel } from "@vetra-studio/contracts";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
-import { PRODUCT_SERVER_PACKAGE } from "@vetra-studio/shared/productIdentity";
+import type { DesktopSshEnvironmentTarget, DesktopUpdateChannel } from "@vetra-code/contracts";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { PRODUCT_SERVER_PACKAGE } from "@vetra-code/shared/productIdentity";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";

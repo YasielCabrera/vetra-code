@@ -1,4 +1,4 @@
-import type { PullRequestDiffInput, PullRequestDiffResult } from "@vetra-studio/contracts";
+import type { PullRequestDiffInput, PullRequestDiffResult } from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -53,7 +53,7 @@ export class PullRequestDiffLoader extends Context.Service<
       input: PullRequestDiffInput,
     ) => Effect.Effect<PullRequestDiffResult, RemoteEnvironmentRequestError>;
   }
->()("@vetra-studio/client-runtime/state/pullRequestDiffHttp/PullRequestDiffLoader") {}
+>()("@vetra-code/client-runtime/state/pullRequestDiffHttp/PullRequestDiffLoader") {}
 
 export const pullRequestDiffLoaderLayer: Layer.Layer<
   PullRequestDiffLoader,

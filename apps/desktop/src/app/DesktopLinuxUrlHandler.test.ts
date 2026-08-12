@@ -22,10 +22,10 @@ const makeEnvironment = (overrides: Record<string, unknown> = {}) =>
     platform: "linux",
     isPackaged: true,
     isDevelopment: false,
-    displayName: "Vetra Studio (Alpha)",
-    linuxWmClass: "vetra-studio",
+    displayName: "Vetra Code (Alpha)",
+    linuxWmClass: "vetra-code",
     linuxApplicationsDir: "/home/alice/.local/share/applications",
-    appImagePath: Option.some("/home/alice/Applications/Vetra-Studio.AppImage"),
+    appImagePath: Option.some("/home/alice/Applications/Vetra-Code.AppImage"),
     path: { join: (...parts: ReadonlyArray<string>) => parts.join("/") },
     ...overrides,
   } as unknown as DesktopEnvironment.DesktopEnvironment["Service"]);
@@ -105,13 +105,13 @@ const emptyRecording = (): RecordedRegistration => ({
 describe("DesktopLinuxUrlHandler", () => {
   it("renders a scheme-handler desktop entry with freedesktop Exec quoting", () => {
     const entry = DesktopLinuxUrlHandler.renderUrlHandlerDesktopEntry({
-      displayName: "Vetra Studio (Nightly)",
+      displayName: "Vetra Code (Nightly)",
       execTarget: '/home/al ice/Apps/Vetra "100%" $HOME\\x.AppImage',
       scheme: "vetra",
     });
 
     assert.include(entry, "[Desktop Entry]");
-    assert.include(entry, "Name=Vetra Studio (Nightly)");
+    assert.include(entry, "Name=Vetra Code (Nightly)");
     // Exec composes both escaping layers: a literal backslash becomes four
     // backslashes in the file, a quote three characters, a dollar sign two
     // backslashes plus the sign.
@@ -128,7 +128,7 @@ describe("DesktopLinuxUrlHandler", () => {
     const writeError = new DesktopLinuxUrlHandler.DesktopLinuxUrlHandlerRegistrationError({
       step: "write-desktop-entry",
       scheme: "vetra",
-      desktopEntryPath: "/home/alice/.local/share/applications/vetra-studio-url-handler.desktop",
+      desktopEntryPath: "/home/alice/.local/share/applications/vetra-code-url-handler.desktop",
       cause: new Error("boom"),
     });
     assert.equal(
@@ -137,7 +137,7 @@ describe("DesktopLinuxUrlHandler", () => {
     );
     assert.equal(
       writeError.desktopEntryPath,
-      "/home/alice/.local/share/applications/vetra-studio-url-handler.desktop",
+      "/home/alice/.local/share/applications/vetra-code-url-handler.desktop",
     );
 
     const exitError = new DesktopLinuxUrlHandler.DesktopLinuxUrlHandlerRegistrationError({
@@ -161,17 +161,17 @@ describe("DesktopLinuxUrlHandler", () => {
       assert.equal(recorded.files.length, 1);
       assert.equal(
         recorded.files[0]?.path,
-        "/home/alice/.local/share/applications/vetra-studio-url-handler.desktop",
+        "/home/alice/.local/share/applications/vetra-code-url-handler.desktop",
       );
       assert.include(
         recorded.files[0]?.content,
-        'Exec="/home/alice/Applications/Vetra-Studio.AppImage" %U',
+        'Exec="/home/alice/Applications/Vetra-Code.AppImage" %U',
       );
       assert.include(recorded.files[0]?.content, "MimeType=x-scheme-handler/vetra;");
       assert.deepEqual(recorded.commands, [
         {
           command: "xdg-mime",
-          args: ["default", "vetra-studio-url-handler.desktop", "x-scheme-handler/vetra"],
+          args: ["default", "vetra-code-url-handler.desktop", "x-scheme-handler/vetra"],
         },
       ]);
     });
@@ -218,8 +218,7 @@ describe("DesktopLinuxUrlHandler", () => {
           module: "FileSystem",
           method: "writeFileString",
           description: "read-only filesystem",
-          pathOrDescriptor:
-            "/home/alice/.local/share/applications/vetra-studio-url-handler.desktop",
+          pathOrDescriptor: "/home/alice/.local/share/applications/vetra-code-url-handler.desktop",
         }),
       });
 

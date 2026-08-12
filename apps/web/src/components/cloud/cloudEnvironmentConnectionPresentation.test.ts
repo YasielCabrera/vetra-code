@@ -1,4 +1,4 @@
-import type { EnvironmentConnectionPresentation } from "@vetra-studio/client-runtime/connection";
+import type { EnvironmentConnectionPresentation } from "@vetra-code/client-runtime/connection";
 import { describe, expect, it } from "vite-plus/test";
 
 import { presentSavedCloudEnvironmentConnection } from "./cloudEnvironmentConnectionPresentation";

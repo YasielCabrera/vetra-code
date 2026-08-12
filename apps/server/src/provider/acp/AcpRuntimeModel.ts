@@ -3,9 +3,9 @@ import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
-import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
-import { deriveToolActivityPresentation } from "@vetra-studio/shared/toolActivity";
-import type { ToolLifecycleItemType } from "@vetra-studio/contracts";
+import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
+import { deriveToolActivityPresentation } from "@vetra-code/shared/toolActivity";
+import type { ToolLifecycleItemType } from "@vetra-code/contracts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

@@ -1,6 +1,6 @@
 # Install and first run
 
-Vetra Studio is currently available as a source checkout. Packaged desktop releases and a published
+Vetra Code is currently available as a source checkout. Packaged desktop releases and a published
 CLI package are intentionally disabled until Vetra owns its release repository, signing, hosted
 domains, and update infrastructure.
 
@@ -29,7 +29,7 @@ From the repository root:
 ```bash
 pnpm install
 pnpm dev --dry-run
-pnpm dev --home-dir .vetra-studio
+pnpm dev --home-dir .vetra-code
 ```
 
 The dry run should report Vetra ports and a Vetra state directory. The live server prints a

@@ -1,5 +1,5 @@
-import { EnvironmentId, type PersistedSavedEnvironmentRecord } from "@vetra-studio/contracts";
-import { fromLenientJson } from "@vetra-studio/shared/schemaJson";
+import { EnvironmentId, type PersistedSavedEnvironmentRecord } from "@vetra-code/contracts";
+import { fromLenientJson } from "@vetra-code/shared/schemaJson";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
@@ -190,7 +190,7 @@ export class DesktopSavedEnvironments extends Context.Service<
       environmentId: string,
     ) => Effect.Effect<void, DesktopSavedEnvironmentsMutationError>;
   }
->()("@vetra-studio/desktop/settings/DesktopSavedEnvironments") {}
+>()("@vetra-code/desktop/settings/DesktopSavedEnvironments") {}
 
 function toPersistedSavedEnvironmentRecord(
   record: PersistedSavedEnvironmentStorageRecord,

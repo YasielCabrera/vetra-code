@@ -2,8 +2,8 @@ import {
   attachEnvironmentDescriptor,
   createKnownEnvironment,
   type KnownEnvironment,
-} from "@vetra-studio/client-runtime/environment";
-import type { ExecutionEnvironmentDescriptor } from "@vetra-studio/contracts";
+} from "@vetra-code/client-runtime/environment";
+import type { ExecutionEnvironmentDescriptor } from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
 
 import { PrimaryEnvironmentRequestError, retryTransientBootstrap } from "./auth";

@@ -1,7 +1,7 @@
 # Codex
 
-This guide is for people who want to use more than one Codex account in Vetra Studio. For Claude, see
-[Claude](./providers-claude.md). For first-time setup, see [Install Vetra Studio](./install.md).
+This guide is for people who want to use more than one Codex account in Vetra Code. For Claude, see
+[Claude](./providers-claude.md). For first-time setup, see [Install Vetra Code](./install.md).
 
 Common reasons:
 
@@ -55,7 +55,7 @@ codex login
 
 This is the account used by `~/.codex`.
 
-In Vetra Studio Settings, name it something obvious:
+In Vetra Code Settings, name it something obvious:
 
 ```text
 Display name: Codex Work
@@ -72,7 +72,7 @@ mkdir -p ~/.codex_p
 CODEX_HOME=~/.codex_p codex login
 ```
 
-In Vetra Studio Settings, add another Codex provider:
+In Vetra Code Settings, add another Codex provider:
 
 ```text
 Display name: Codex Personal
@@ -87,7 +87,7 @@ has a `Shadow home path`.
 
 Open Settings and look at the provider row.
 
-Vetra Studio shows the authenticated email for providers that report one. Emails are blurred by default;
+Vetra Code shows the authenticated email for providers that report one. Emails are blurred by default;
 click the blurred email to reveal it.
 
 Use display names and accent colors to make accounts easy to tell apart in the model picker.
@@ -114,7 +114,7 @@ Codex Personal  CODEX_HOME path: ~/.codex, Shadow home path: ~/.codex_p
 Those two providers are considered compatible for continuation, so the locked model picker can show
 both.
 
-If you add a third Codex provider with a completely different `CODEX_HOME path`, Vetra Studio treats it
+If you add a third Codex provider with a completely different `CODEX_HOME path`, Vetra Code treats it
 as a different workspace. It will not be offered for existing threads created under `~/.codex`.
 
 ## If Both Accounts Look The Same

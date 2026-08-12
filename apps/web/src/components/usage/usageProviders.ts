@@ -1,4 +1,4 @@
-import type { UsageProviderKind } from "@vetra-studio/contracts";
+import type { UsageProviderKind } from "@vetra-code/contracts";
 
 import { ClaudeAI, type Icon, OpenAI } from "../Icons";
 

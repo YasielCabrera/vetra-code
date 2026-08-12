@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useParams } from "@tanstack/react-router";
-import { type ScopedThreadRef, type ThreadId } from "@vetra-studio/contracts";
+import { type ScopedThreadRef, type ThreadId } from "@vetra-code/contracts";
 import {
   CheckIcon,
   ChevronDownIcon,

@@ -1,5 +1,5 @@
-import type { ServerSelfUpdateOutcome } from "@vetra-studio/contracts";
-import { HostProcessEnvironment } from "@vetra-studio/shared/hostProcess";
+import type { ServerSelfUpdateOutcome } from "@vetra-code/contracts";
+import { HostProcessEnvironment } from "@vetra-code/shared/hostProcess";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -78,7 +78,7 @@ interface ServiceLauncherProcess {
 }
 
 export const ServiceLauncherHostProcess = Context.Reference<ServiceLauncherProcess>(
-  "@vetra-studio/server/cloud/serviceLauncherHostProcess",
+  "@vetra-code/server/cloud/serviceLauncherHostProcess",
   {
     defaultValue: () => ({
       connected: process.connected && process.send !== undefined,
@@ -109,7 +109,7 @@ export class ServiceLauncherClient extends Context.Service<
       ServiceLauncherClientError
     >;
   }
->()("@vetra-studio/server/cloud/serviceLauncherClient") {}
+>()("@vetra-code/server/cloud/serviceLauncherClient") {}
 
 const resolveStartup = Effect.fn("cloud.service_launcher_client.resolve_startup")(
   function* (options?: { readonly currentVersion?: string }) {

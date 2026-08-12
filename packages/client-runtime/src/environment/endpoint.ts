@@ -1,4 +1,4 @@
-export * from "@vetra-studio/shared/advertisedEndpoint";
+export * from "@vetra-code/shared/advertisedEndpoint";
 
 export const environmentEndpointUrl = (httpBaseUrl: string, pathname: string): string => {
   const url = new URL(httpBaseUrl);

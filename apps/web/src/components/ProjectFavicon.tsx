@@ -1,8 +1,8 @@
-import type { EnvironmentId } from "@vetra-studio/contracts";
+import type { EnvironmentId } from "@vetra-code/contracts";
 import {
   getProjectFaviconCacheKey,
   isProjectFaviconFallbackUrl,
-} from "@vetra-studio/shared/projectFavicon";
+} from "@vetra-code/shared/projectFavicon";
 import { FolderIcon } from "lucide-react";
 import type { ComponentType } from "react";
 import { useState } from "react";

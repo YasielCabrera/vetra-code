@@ -12,7 +12,7 @@ const decodeNestedNumberPayload = Schema.decodeUnknownEffect(
 );
 const encodeUnknownJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 
-describe("@vetra-studio/effect-acp errors", () => {
+describe("@vetra-code/effect-acp errors", () => {
   it.effect("retains RPC method and cause without deriving the message from the cause", () => {
     const rootCause = new Error("connection details that must not become the public message");
     const failure = new RpcClientError.RpcClientError({

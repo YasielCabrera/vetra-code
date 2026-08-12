@@ -5,29 +5,29 @@ Studio builder UI, not a claim that managed cloud execution or publishing is com
 
 ## Completed
 
-| Area                  | Vetra Studio identity or result                                                |
+| Area                  | Vetra Code identity or result                                                  |
 | --------------------- | ------------------------------------------------------------------------------ |
-| Product and CLI       | `Vetra Studio`, `vetra`, `@vetra-studio/server`                                |
-| Runtime data          | `~/.vetra-studio`; optional repository-local `.vetra-studio`                   |
+| Product and CLI       | `Vetra Code`, `vetra`, `@vetra-code/server`                                    |
+| Runtime data          | `~/.vetra-code`; optional repository-local `.vetra-code`                       |
 | Ports                 | production server `4873`; development starts at server `14873`, web `6733`     |
-| Desktop               | `com.vetra.studio`, `com.vetra.studio.dev`, `vetra://`, `vetra-dev://`         |
+| Desktop               | `com.vetra.code`, `com.vetra.code.dev`, `vetra://`, `vetra-dev://`             |
 | Browser state         | Vetra-specific local storage, IndexedDB, events, and preview partitions        |
 | Environment           | Vetra-owned runtime settings use `VETRA_*`                                     |
-| Package namespace     | all 14 workspace packages use `@vetra-studio/*`                                |
+| Package namespace     | all 14 workspace packages use `@vetra-code/*`                                  |
 | Git state             | checkpoints and support refs live below `refs/vetra/*`                         |
 | Project config        | `vetra.json` and `.vetra/vcs.json`                                             |
 | Removed surfaces      | `apps/mobile`, `apps/marketing`, their workflows, scripts, patches, and skills |
 | Production automation | inherited release and relay-deploy workflows removed                           |
-| Source control        | local branch `vetra-studio`; original repository retained as `upstream`        |
+| Source control        | local branch `vetra-code`; original repository retained as `upstream`          |
 
-The root `vetra.json` configures Vetra Studio's worktree setup and shared project scripts.
+The root `vetra.json` configures Vetra Code's worktree setup and shared project scripts.
 
 ## Safe first run
 
 ```bash
 pnpm install
 pnpm dev --dry-run
-pnpm dev --home-dir .vetra-studio
+pnpm dev --home-dir .vetra-code
 ```
 
 The dry run must report a Vetra directory and Vetra ports before a live process is started. The live
@@ -46,7 +46,7 @@ at another application's data directory or copy provider credentials into a mana
 
 - dependency installation and lockfile regeneration completed for 14 workspace projects;
 - development dry run resolved `serverPort=14873`, `webPort=6733`, and
-  `baseDir=~/.vetra-studio` without starting a server;
+  `baseDir=~/.vetra-code` without starting a server;
 - focused typechecks passed for all 13 packages with a typecheck task, including both provider
   protocol packages and the custom lint plugin;
 - server/web and desktop production builds passed;

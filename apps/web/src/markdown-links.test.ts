@@ -80,7 +80,7 @@ describe("resolveMarkdownFileLinkTarget", () => {
     expect(
       resolveMarkdownFileLinkMeta(
         "file:///C:/Users/mike/dev-stuff/vetra/apps/web/src/session-logic.ts#L501",
-        "C:/Users/mike/dev-stuff/vetra-studio",
+        "C:/Users/mike/dev-stuff/vetra-code",
       ),
     ).toMatchObject({
       displayPath: "vetra/apps/web/src/session-logic.ts:501",
@@ -92,7 +92,7 @@ describe("resolveMarkdownFileLinkTarget", () => {
     expect(
       resolveMarkdownFileLinkMeta(
         "/C:/Users/mike/dev-stuff/vetra/apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
-        "C:/Users/mike/dev-stuff/vetra-studio",
+        "C:/Users/mike/dev-stuff/vetra-code",
       ),
     ).toMatchObject({
       displayPath: "vetra/apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",

@@ -1,15 +1,15 @@
-import { findErrorTraceId } from "@vetra-studio/client-runtime/errors";
+import { findErrorTraceId } from "@vetra-code/client-runtime/errors";
 import {
   type EnvironmentConnectionPresentation,
   RelayConnectionRegistration,
   RelayConnectionTarget,
-} from "@vetra-studio/client-runtime/connection";
+} from "@vetra-code/client-runtime/connection";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
-import type { EnvironmentId } from "@vetra-studio/contracts";
-import type { RelayClientEnvironmentRecord } from "@vetra-studio/contracts/relay";
+} from "@vetra-code/client-runtime/state/runtime";
+import type { EnvironmentId } from "@vetra-code/contracts";
+import type { RelayClientEnvironmentRecord } from "@vetra-code/contracts/relay";
 import * as Option from "effect/Option";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 

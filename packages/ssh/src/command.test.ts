@@ -106,14 +106,14 @@ describe("ssh command", () => {
           appVersion: "0.0.17",
           updateChannel: "latest",
         }),
-        "@vetra-studio/server@0.0.17",
+        "@vetra-code/server@0.0.17",
       );
       assert.equal(
         resolveRemoteVetraCliPackageSpec({
           appVersion: "0.0.17-nightly.20260415.44",
           updateChannel: "nightly",
         }),
-        "@vetra-studio/server@0.0.17-nightly.20260415.44",
+        "@vetra-code/server@0.0.17-nightly.20260415.44",
       );
       assert.equal(
         resolveRemoteVetraCliPackageSpec({
@@ -121,7 +121,7 @@ describe("ssh command", () => {
           updateChannel: "nightly",
           isDevelopment: true,
         }),
-        "@vetra-studio/server@nightly",
+        "@vetra-code/server@nightly",
       );
       assert.equal(
         resolveRemoteVetraCliPackageSpec({
@@ -129,7 +129,7 @@ describe("ssh command", () => {
           updateChannel: "latest",
           isDevelopment: true,
         }),
-        "@vetra-studio/server@nightly",
+        "@vetra-code/server@nightly",
       );
     }),
   );

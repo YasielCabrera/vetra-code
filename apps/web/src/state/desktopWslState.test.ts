@@ -1,4 +1,4 @@
-import type { DesktopWslState } from "@vetra-studio/contracts";
+import type { DesktopWslState } from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import { AtomRegistry } from "effect/unstable/reactivity";

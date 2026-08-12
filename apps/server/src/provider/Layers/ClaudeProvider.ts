@@ -4,7 +4,7 @@ import {
   type ModelSelection,
   type ServerProviderModel,
   type ServerProviderSlashCommand,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -17,9 +17,9 @@ import {
   getModelSelectionStringOptionValue,
   getProviderOptionCurrentValue,
   getProviderOptionDescriptors,
-} from "@vetra-studio/shared/model";
-import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
-import { compareSemverVersions } from "@vetra-studio/shared/semver";
+} from "@vetra-code/shared/model";
+import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+import { compareSemverVersions } from "@vetra-code/shared/semver";
 import {
   query as claudeQuery,
   type Options as ClaudeQueryOptions,
@@ -819,7 +819,7 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
         version: null,
         status: "warning",
         auth: { status: "unknown" },
-        message: "Claude is disabled in Vetra Studio settings.",
+        message: "Claude is disabled in Vetra Code settings.",
       },
     });
   }
@@ -982,7 +982,7 @@ export const makePendingClaudeProvider = (
           version: null,
           status: "warning",
           auth: { status: "unknown" },
-          message: "Claude is disabled in Vetra Studio settings.",
+          message: "Claude is disabled in Vetra Code settings.",
         },
       });
     }

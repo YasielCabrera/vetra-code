@@ -1,4 +1,4 @@
-import { ThreadId } from "@vetra-studio/contracts";
+import { ThreadId } from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";

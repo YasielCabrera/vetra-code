@@ -1,4 +1,4 @@
-import type { ConfirmDialogOptions, ConfirmDialogVariant } from "@vetra-studio/contracts";
+import type { ConfirmDialogOptions, ConfirmDialogVariant } from "@vetra-code/contracts";
 
 export type ConfirmDialogState =
   | { readonly status: "idle" }

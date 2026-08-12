@@ -10,7 +10,7 @@ import * as Schema from "effect/Schema";
 import {
   RelayDeliveryKind as RelayDeliveryKindSchema,
   type RelayDeliveryResult,
-} from "@vetra-studio/contracts/relay";
+} from "@vetra-code/contracts/relay";
 
 import {
   sanitizeAgentActivityAggregateState,
@@ -50,7 +50,7 @@ export class ApnsDeliveryQueueSender extends Context.Service<
       body: SignedApnsDeliveryJob,
     ) => Effect.Effect<void, Cloudflare.Queues.SendError>;
   }
->()("@vetra-studio/relay/agentActivity/ApnsDeliveryQueue/ApnsDeliveryQueueSender") {}
+>()("@vetra-code/relay/agentActivity/ApnsDeliveryQueue/ApnsDeliveryQueueSender") {}
 
 export class ApnsDeliveryQueue extends Context.Service<
   ApnsDeliveryQueue,
@@ -74,7 +74,7 @@ export class ApnsDeliveryQueue extends Context.Service<
       readonly notification: NonNullable<ApnsDeliveryJobPayload["notification"]>;
     }) => Effect.Effect<RelayDeliveryResult, ApnsDeliveryQueueError>;
   }
->()("@vetra-studio/relay/agentActivity/ApnsDeliveryQueue") {}
+>()("@vetra-code/relay/agentActivity/ApnsDeliveryQueue") {}
 
 export const make = Effect.gen(function* () {
   const sender = yield* ApnsDeliveryQueueSender;

@@ -1,4 +1,4 @@
-import type { PreviewAnnotationPayload } from "@vetra-studio/contracts";
+import type { PreviewAnnotationPayload } from "@vetra-code/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vite-plus/test";
 

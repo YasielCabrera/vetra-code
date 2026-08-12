@@ -2,8 +2,8 @@ import type {
   BrowserNavigationTarget,
   EnvironmentId,
   PreviewUrlResolution,
-} from "@vetra-studio/contracts";
-import { isLoopbackHost, normalizePreviewUrl } from "@vetra-studio/shared/preview";
+} from "@vetra-code/contracts";
+import { isLoopbackHost, normalizePreviewUrl } from "@vetra-code/shared/preview";
 
 import { readPreparedConnection } from "~/state/session";
 

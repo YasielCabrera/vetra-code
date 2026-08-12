@@ -4,7 +4,7 @@ import type {
   PullRequestCheckStatus,
   PullRequestMergeability,
   PullRequestState,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   CircleCheckIcon,
   CircleDashedIcon,

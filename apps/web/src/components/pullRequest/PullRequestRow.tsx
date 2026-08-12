@@ -1,4 +1,4 @@
-import type { PullRequestListEntry } from "@vetra-studio/contracts";
+import type { PullRequestListEntry } from "@vetra-code/contracts";
 
 import { memo } from "react";
 

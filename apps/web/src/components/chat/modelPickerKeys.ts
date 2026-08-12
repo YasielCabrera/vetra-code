@@ -1,4 +1,4 @@
-import type { ProviderInstanceId } from "@vetra-studio/contracts";
+import type { ProviderInstanceId } from "@vetra-code/contracts";
 
 const MODEL_KEY_PREFIX = "model:";
 const LEGACY_SECTION_KEY_PREFIX = "legacy-models:";

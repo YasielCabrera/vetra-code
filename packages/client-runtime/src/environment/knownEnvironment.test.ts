@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId, ThreadId } from "@vetra-studio/contracts";
+import { EnvironmentId, ProjectId, ThreadId } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createKnownEnvironment } from "./knownEnvironment.ts";

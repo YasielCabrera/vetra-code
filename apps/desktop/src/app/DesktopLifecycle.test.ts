@@ -20,7 +20,7 @@ describe("DesktopLifecycle", () => {
 
       const electronAppLayer = Layer.succeed(ElectronApp.ElectronApp, {
         metadata: Effect.die("unexpected metadata read"),
-        name: Effect.succeed("Vetra Studio"),
+        name: Effect.succeed("Vetra Code"),
         whenReady: Effect.void,
         quit: Effect.void,
         exit: () => Effect.void,

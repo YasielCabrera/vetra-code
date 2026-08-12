@@ -6,14 +6,14 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerProvider,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   createModelSelection,
   normalizeCustomModelSlug,
   resolveSelectableModel,
-} from "@vetra-studio/shared/model";
+} from "@vetra-code/shared/model";
 import { getComposerProviderState } from "./components/chat/composerProviderState";
-import { UnifiedSettings } from "@vetra-studio/contracts/settings";
+import { UnifiedSettings } from "@vetra-code/contracts/settings";
 import * as Arr from "effect/Array";
 import * as Result from "effect/Result";
 import {

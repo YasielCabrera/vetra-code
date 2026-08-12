@@ -1,4 +1,4 @@
-import { type ProviderDriverKind, type ProviderInstanceId } from "@vetra-studio/contracts";
+import { type ProviderDriverKind, type ProviderInstanceId } from "@vetra-code/contracts";
 import { memo } from "react";
 import { StarIcon } from "lucide-react";
 import {

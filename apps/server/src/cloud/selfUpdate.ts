@@ -4,9 +4,9 @@ import {
   type ServerSelfUpdateInput,
   type ServerSelfUpdateProgressStage,
   type ServerSelfUpdateResult,
-} from "@vetra-studio/contracts";
-import { HostProcessExecutablePath } from "@vetra-studio/shared/hostProcess";
-import { PRODUCT_CLI_NAME, PRODUCT_SERVER_PACKAGE } from "@vetra-studio/shared/productIdentity";
+} from "@vetra-code/contracts";
+import { HostProcessExecutablePath } from "@vetra-code/shared/hostProcess";
+import { PRODUCT_CLI_NAME, PRODUCT_SERVER_PACKAGE } from "@vetra-code/shared/productIdentity";
 import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -44,7 +44,7 @@ export class ServerSelfUpdate extends Context.Service<
       reportProgress?: (stage: ServerSelfUpdateProgressStage) => Effect.Effect<void>,
     ) => Effect.Effect<ServerSelfUpdateResult, ServerSelfUpdateError>;
   }
->()("@vetra-studio/server/cloud/selfUpdate/ServerSelfUpdate") {}
+>()("@vetra-code/server/cloud/selfUpdate/ServerSelfUpdate") {}
 
 export const make = Effect.fn("cloud.server_self_update.make")(function* () {
   const serverConfig = yield* ServerConfig.ServerConfig;
@@ -67,12 +67,12 @@ export const make = Effect.fn("cloud.server_self_update.make")(function* () {
   )(function* (input, reportProgress = () => Effect.void) {
     if (capability === "desktop-managed") {
       return yield* failWith(
-        "This server is managed by the Vetra Studio desktop app on its machine; update the desktop app to update it.",
+        "This server is managed by the Vetra Code desktop app on its machine; update the desktop app to update it.",
       );
     }
     if (capability === null) {
       return yield* failWith(
-        `Remote updates require the Vetra Studio background service. Run \`${PRODUCT_CLI_NAME} service install\` on the server machine.`,
+        `Remote updates require the Vetra Code background service. Run \`${PRODUCT_CLI_NAME} service install\` on the server machine.`,
       );
     }
 

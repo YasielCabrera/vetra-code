@@ -1,7 +1,7 @@
 import type {
   ResourceTelemetryProcess,
   ResourceTelemetrySourceStatus,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 function processIdentityKey(process: ResourceTelemetryProcess): string {
   return `${process.identity.pid}:${process.identity.startTimeMs}`;

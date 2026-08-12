@@ -31,7 +31,7 @@ import {
 const HANDOFF_DELAY_MS = 2_000;
 const PREPARED_TIMEOUT_MS = 120_000;
 const TERMINATE_GRACE_MS = 5_000;
-const PINNED_PACKAGE_PATH_SEGMENTS = ["@vetra-studio", "server"] as const;
+const PINNED_PACKAGE_PATH_SEGMENTS = ["@vetra-code", "server"] as const;
 
 type TerminalStatus = "committed" | "rolled-back" | "failed";
 type ChildRole = "active" | "trial";
@@ -609,7 +609,7 @@ export class Launcher {
 async function main(): Promise<void> {
   const baseDir = process.env.VETRA_HOME?.trim();
   if (baseDir === undefined || baseDir === "") {
-    throw new Error("VETRA_HOME is required by the Vetra Studio service launcher.");
+    throw new Error("VETRA_HOME is required by the Vetra Code service launcher.");
   }
   const statePath = NodePath.join(baseDir, "runtime", SERVICE_STATE_FILE);
   const state = await readServiceState(statePath);

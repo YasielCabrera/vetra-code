@@ -1,6 +1,6 @@
-import type { ProviderRuntimeEvent } from "@vetra-studio/contracts";
-import { ProviderDriverKind, ProviderInstanceId, ThreadId } from "@vetra-studio/contracts";
-import { DEFAULT_SERVER_SETTINGS } from "@vetra-studio/contracts/settings";
+import type { ProviderRuntimeEvent } from "@vetra-code/contracts";
+import { ProviderDriverKind, ProviderInstanceId, ThreadId } from "@vetra-code/contracts";
+import { DEFAULT_SERVER_SETTINGS } from "@vetra-code/contracts/settings";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it, assert } from "@effect/vitest";
 import * as Effect from "effect/Effect";

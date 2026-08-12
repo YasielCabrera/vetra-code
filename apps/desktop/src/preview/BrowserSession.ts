@@ -8,7 +8,7 @@ import * as Layer from "effect/Layer";
 import * as PlatformError from "effect/PlatformError";
 import * as Schema from "effect/Schema";
 import * as SynchronizedRef from "effect/SynchronizedRef";
-import { PRODUCT_SLUG } from "@vetra-studio/shared/productIdentity";
+import { PRODUCT_SLUG } from "@vetra-code/shared/productIdentity";
 
 const PREVIEW_PARTITION_PREFIX = `persist:${PRODUCT_SLUG}-preview-`;
 
@@ -106,7 +106,7 @@ export class BrowserSession extends Context.Service<
     readonly clearCookies: () => Effect.Effect<void, BrowserSessionStorageClearError>;
     readonly clearCache: () => Effect.Effect<void, BrowserSessionCacheClearError>;
   }
->()("@vetra-studio/desktop/preview/BrowserSession") {}
+>()("@vetra-code/desktop/preview/BrowserSession") {}
 
 export const make = Effect.gen(function* BrowserSessionMake() {
   const crypto = yield* Crypto.Crypto;
@@ -136,7 +136,7 @@ export const make = Effect.gen(function* BrowserSessionMake() {
           const userAgent = browserSession
             .getUserAgent()
             .replace(/Electron\/[\d.]+ /, "")
-            .replace(/\s*(?:vetra-studio|vetra-studio)\/[\d.]+/, "");
+            .replace(/\s*(?:vetra-code|vetra-code)\/[\d.]+/, "");
           browserSession.setUserAgent(userAgent);
           browserSession.setPermissionRequestHandler((_webContents, permission, callback) => {
             callback(ALLOWED_PREVIEW_PERMISSIONS.has(permission));

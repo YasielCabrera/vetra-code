@@ -4,7 +4,7 @@ import {
   ProjectId,
   CommandId,
   SourceControlDiscoveryResult,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Option from "effect/Option";
 
 import {

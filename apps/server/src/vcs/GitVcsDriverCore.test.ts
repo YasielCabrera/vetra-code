@@ -14,7 +14,7 @@ import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
-import { GitCommandError, type ReviewDiffFileContentsInput } from "@vetra-studio/contracts";
+import { GitCommandError, type ReviewDiffFileContentsInput } from "@vetra-code/contracts";
 import { ServerConfig } from "../config.ts";
 import { makeGitVcsDriverCore, splitNullSeparatedGitStdoutPaths } from "./GitVcsDriverCore.ts";
 import * as GitVcsDriver from "./GitVcsDriver.ts";
@@ -1393,48 +1393,48 @@ it.layer(TestLayer)("GitVcsDriver core integration", (it) => {
           "remote",
           "add",
           "origin",
-          "https://github.com/vetra-studio/vetra-studio.git",
+          "https://github.com/vetra-code/vetra-code.git",
         ]);
 
         const reusedForSsh = yield* driver.ensureRemote({
           cwd,
-          preferredName: "vetra-studio",
-          url: "git@github.com:vetra-studio/vetra-studio.git",
+          preferredName: "vetra-code",
+          url: "git@github.com:vetra-code/vetra-code.git",
         });
         assert.equal(reusedForSsh, "origin");
 
         const reusedForSshScheme = yield* driver.ensureRemote({
           cwd,
-          preferredName: "vetra-studio",
-          url: "ssh://git@github.com/vetra-studio/vetra-studio",
+          preferredName: "vetra-code",
+          url: "ssh://git@github.com/vetra-code/vetra-code",
         });
         assert.equal(reusedForSshScheme, "origin");
 
         const reusedForBareSshScheme = yield* driver.ensureRemote({
           cwd,
-          preferredName: "vetra-studio",
-          url: "ssh://github.com/vetra-studio/vetra-studio",
+          preferredName: "vetra-code",
+          url: "ssh://github.com/vetra-code/vetra-code",
         });
         assert.equal(reusedForBareSshScheme, "origin");
 
         const reusedForSshPort = yield* driver.ensureRemote({
           cwd,
-          preferredName: "vetra-studio",
-          url: "ssh://git@github.com:22/vetra-studio/vetra-studio",
+          preferredName: "vetra-code",
+          url: "ssh://git@github.com:22/vetra-code/vetra-code",
         });
         assert.equal(reusedForSshPort, "origin");
 
         const reusedForSshWithPort = yield* driver.ensureRemote({
           cwd,
-          preferredName: "vetra-studio",
-          url: "ssh://git@github.com:22/vetra-studio/vetra-studio.git",
+          preferredName: "vetra-code",
+          url: "ssh://git@github.com:22/vetra-code/vetra-code.git",
         });
         assert.equal(reusedForSshWithPort, "origin");
 
         const addedForFork = yield* driver.ensureRemote({
           cwd,
           preferredName: "octocat",
-          url: "git@github.com:octocat/vetra-studio.git",
+          url: "git@github.com:octocat/vetra-code.git",
         });
         assert.equal(addedForFork, "octocat");
         assert.equal(yield* git(cwd, ["remote"]), "octocat\norigin");

@@ -7,14 +7,14 @@ import type {
   ServerSettings,
   SidebarProjectGroupingMode,
   UnifiedSettings,
-} from "@vetra-studio/contracts";
-import { DEFAULT_UNIFIED_SETTINGS } from "@vetra-studio/contracts/settings";
+} from "@vetra-code/contracts";
+import { DEFAULT_UNIFIED_SETTINGS } from "@vetra-code/contracts/settings";
 import {
   getBackgroundActivityBaseProfile,
   normalizeBackgroundActivitySettings,
   normalizeServerBackgroundActivitySettings,
   resolveServerBackgroundActivitySettings,
-} from "@vetra-studio/shared/backgroundActivitySettings";
+} from "@vetra-code/shared/backgroundActivitySettings";
 import * as Duration from "effect/Duration";
 import * as Equal from "effect/Equal";
 

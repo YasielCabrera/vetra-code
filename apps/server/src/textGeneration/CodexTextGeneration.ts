@@ -12,9 +12,9 @@ import {
   DEFAULT_TEXT_GENERATION_REASONING_EFFORT,
   type ModelSelection,
   TextGenerationError,
-} from "@vetra-studio/contracts";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@vetra-studio/shared/git";
-import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
+} from "@vetra-code/contracts";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@vetra-code/shared/git";
+import { resolveSpawnCommand } from "@vetra-code/shared/shell";
 
 import { resolveAttachmentPath } from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
@@ -34,7 +34,7 @@ import {
   sanitizeThreadTitle,
   toJsonSchemaObject,
 } from "./TextGenerationUtils.ts";
-import { getModelSelectionStringOptionValue } from "@vetra-studio/shared/model";
+import { getModelSelectionStringOptionValue } from "@vetra-code/shared/model";
 import { getCodexServiceTierOptionValue } from "../codexModelOptions.ts";
 
 const CODEX_TIMEOUT_MS = 180_000;

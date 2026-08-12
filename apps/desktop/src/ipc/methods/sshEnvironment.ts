@@ -4,8 +4,8 @@ import {
   issueRemoteWebSocketTicket,
   RemoteEnvironmentAuthUndeclaredStatusError,
   type RemoteEnvironmentAuthError,
-} from "@vetra-studio/client-runtime/authorization";
-import { fetchRemoteEnvironmentDescriptor } from "@vetra-studio/client-runtime/environment";
+} from "@vetra-code/client-runtime/authorization";
+import { fetchRemoteEnvironmentDescriptor } from "@vetra-code/client-runtime/environment";
 import {
   EnvironmentAuthInvalidError,
   DesktopDiscoveredSshHostSchema,
@@ -25,9 +25,9 @@ import {
   AuthAccessTokenResult,
   AuthSessionState,
   AuthWebSocketTicketResult,
-} from "@vetra-studio/contracts";
-import { SshHttpBridgeError } from "@vetra-studio/ssh/errors";
-import { resolveLoopbackSshHttpBaseUrl } from "@vetra-studio/ssh/tunnel";
+} from "@vetra-code/contracts";
+import { SshHttpBridgeError } from "@vetra-code/ssh/errors";
+import { resolveLoopbackSshHttpBaseUrl } from "@vetra-code/ssh/tunnel";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";

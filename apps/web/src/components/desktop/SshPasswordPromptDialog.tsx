@@ -1,4 +1,4 @@
-import type { DesktopSshPasswordPromptRequest } from "@vetra-studio/contracts";
+import type { DesktopSshPasswordPromptRequest } from "@vetra-code/contracts";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "../ui/button";

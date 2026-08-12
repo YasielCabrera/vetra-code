@@ -7,7 +7,7 @@
  *
  * @module usagePricing
  */
-import type { UsageCostSource, UsageTokenTotals } from "@vetra-studio/contracts";
+import type { UsageCostSource, UsageTokenTotals } from "@vetra-code/contracts";
 
 /**
  * The subset of a LiteLLM entry we price against. All values are USD per token.

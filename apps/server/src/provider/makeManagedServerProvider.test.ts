@@ -4,8 +4,8 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerProvider,
-} from "@vetra-studio/contracts";
-import { createModelCapabilities } from "@vetra-studio/shared/model";
+} from "@vetra-code/contracts";
+import { createModelCapabilities } from "@vetra-code/shared/model";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";

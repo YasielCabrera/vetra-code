@@ -3,9 +3,9 @@ import {
   type ModelCapabilities,
   type ServerProvider,
   type ServerProviderModel,
-} from "@vetra-studio/contracts";
-import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
-import { causeErrorTag } from "@vetra-studio/shared/observability";
+} from "@vetra-code/contracts";
+import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
+import { causeErrorTag } from "@vetra-code/shared/observability";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -14,8 +14,8 @@ import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import { HttpClient } from "effect/unstable/http";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
-import { createModelCapabilities } from "@vetra-studio/shared/model";
-import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
+import { createModelCapabilities } from "@vetra-code/shared/model";
+import { resolveSpawnCommand } from "@vetra-code/shared/shell";
 
 import {
   buildServerProvider,
@@ -71,7 +71,7 @@ export function buildInitialGrokProviderSnapshot(
           version: null,
           status: "warning",
           auth: { status: "unknown" },
-          message: "Grok is disabled in Vetra Studio settings.",
+          message: "Grok is disabled in Vetra Code settings.",
         },
       });
     }
@@ -134,7 +134,7 @@ const discoverGrokModelsViaAcp = (
       environment,
       childProcessSpawner,
       cwd: process.cwd(),
-      clientInfo: { name: "vetra-studio-provider-probe", version: "0.0.0" },
+      clientInfo: { name: "vetra-code-provider-probe", version: "0.0.0" },
     });
     const started = yield* acp.start();
     return buildGrokDiscoveredModelsFromSessionModelState(started.sessionSetupResult.models);
@@ -180,7 +180,7 @@ export const checkGrokProviderStatus = Effect.fn("checkGrokProviderStatus")(func
         version: null,
         status: "warning",
         auth: { status: "unknown" },
-        message: "Grok is disabled in Vetra Studio settings.",
+        message: "Grok is disabled in Vetra Code settings.",
       },
     });
   }

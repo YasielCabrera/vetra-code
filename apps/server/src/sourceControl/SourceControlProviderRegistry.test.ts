@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { VcsRepositoryDetectionError } from "@vetra-studio/contracts";
+import { VcsRepositoryDetectionError } from "@vetra-code/contracts";
 
 import * as ServerConfig from "../config.ts";
 import type * as VcsDriver from "../vcs/VcsDriver.ts";
@@ -103,7 +103,7 @@ function makeRegistry(input: {
 it.effect("routes GitHub remotes to the GitHub provider", () =>
   Effect.gen(function* () {
     const registry = yield* makeRegistry({
-      remotes: [{ name: "origin", url: "git@github.com:vetra-studio/vetra-studio.git" }],
+      remotes: [{ name: "origin", url: "git@github.com:vetra-code/vetra-code.git" }],
     });
 
     const provider = yield* registry.resolve({ cwd: "/repo" });
@@ -261,7 +261,7 @@ it.effect("routes authenticated self-hosted GitLab remotes on non-standard ports
 it.effect("routes Bitbucket remotes to the Bitbucket provider", () =>
   Effect.gen(function* () {
     const registry = yield* makeRegistry({
-      remotes: [{ name: "origin", url: "git@bitbucket.org:vetra-studio/vetra-studio.git" }],
+      remotes: [{ name: "origin", url: "git@bitbucket.org:vetra-code/vetra-code.git" }],
     });
 
     const provider = yield* registry.resolve({ cwd: "/repo" });

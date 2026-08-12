@@ -1,19 +1,19 @@
-import { type GrokSettings, ProviderDriverKind } from "@vetra-studio/contracts";
+import { type GrokSettings, ProviderDriverKind } from "@vetra-code/contracts";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Scope from "effect/Scope";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
-import * as EffectAcpErrors from "@vetra-studio/effect-acp/errors";
-import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
-import { normalizeModelSlug } from "@vetra-studio/shared/model";
+import * as EffectAcpErrors from "@vetra-code/effect-acp/errors";
+import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
+import { normalizeModelSlug } from "@vetra-code/shared/model";
 
 import * as AcpSessionRuntime from "./AcpSessionRuntime.ts";
 import { makeXAiPromptCompletionRuntime } from "./XAiAcpExtension.ts";
 
 const GROK_API_KEY_ENV = "XAI_API_KEY";
 const GROK_OAUTH2_REFERRER_ENV = "GROK_OAUTH2_REFERRER";
-const VETRA_CODE_OAUTH_REFERRER = "vetra-studio";
+const VETRA_CODE_OAUTH_REFERRER = "vetra-code";
 const GROK_AUTH_METHOD_API_KEY = "xai.api_key";
 const GROK_AUTH_METHOD_CACHED_TOKEN = "cached_token";
 const GROK_DRIVER_KIND = ProviderDriverKind.make("grok");

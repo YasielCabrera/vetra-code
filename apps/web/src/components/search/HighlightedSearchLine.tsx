@@ -1,5 +1,5 @@
 import { getFiletypeFromFileName } from "@pierre/diffs";
-import type { ProjectContentMatch } from "@vetra-studio/contracts";
+import type { ProjectContentMatch } from "@vetra-code/contracts";
 import { memo, Suspense, use, useMemo, type CSSProperties } from "react";
 
 import { resolveDiffThemeName } from "~/lib/diffRendering";

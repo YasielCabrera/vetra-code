@@ -1,6 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { AssetPreviewTypeValidationError, ThreadId } from "@vetra-studio/contracts";
-import { PROJECT_FAVICON_FALLBACK_MARKER } from "@vetra-studio/shared/projectFavicon";
+import { AssetPreviewTypeValidationError, ThreadId } from "@vetra-code/contracts";
+import { PROJECT_FAVICON_FALLBACK_MARKER } from "@vetra-code/shared/projectFavicon";
 import { describe, expect, it } from "@effect/vitest";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";

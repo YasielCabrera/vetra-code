@@ -1,6 +1,6 @@
 "use client";
 
-import type { ScopedThreadRef } from "@vetra-studio/contracts";
+import type { ScopedThreadRef } from "@vetra-code/contracts";
 import { PanelRightIcon, PictureInPicture2, XIcon } from "lucide-react";
 import { type PointerEvent as ReactPointerEvent, useLayoutEffect, useRef } from "react";
 

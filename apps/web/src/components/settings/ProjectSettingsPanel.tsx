@@ -5,8 +5,8 @@ import {
   settlePromise,
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@vetra-studio/client-runtime/state/runtime";
-import { scopeProjectRef } from "@vetra-studio/client-runtime/environment";
+} from "@vetra-code/client-runtime/state/runtime";
+import { scopeProjectRef } from "@vetra-code/client-runtime/environment";
 import { AsyncResult } from "effect/unstable/reactivity";
 import {
   deriveProjectGroupingOverrideKey,
@@ -19,10 +19,10 @@ import type {
   SidebarProjectGroupingMode,
   VetraProjectFileScript,
   ThreadEnvMode,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { resolveEnvModeLabel } from "../BranchToolbar.logic";
-import { createModelSelection } from "@vetra-studio/shared/model";
-import { DEFAULT_RESOLVED_KEYBINDINGS } from "@vetra-studio/shared/keybindings";
+import { createModelSelection } from "@vetra-code/shared/model";
+import { DEFAULT_RESOLVED_KEYBINDINGS } from "@vetra-code/shared/keybindings";
 import { Link, useCanGoBack, useNavigate } from "@tanstack/react-router";
 import * as Cause from "effect/Cause";
 import { ChevronDownIcon, CopyIcon, PlusIcon, SettingsIcon, Trash2Icon } from "lucide-react";

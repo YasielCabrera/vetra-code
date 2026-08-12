@@ -37,7 +37,7 @@ jobs:
           components: rustfmt
 
       - name: Ensure Electron runtime is installed
-        run: vp run --filter @vetra-studio/desktop ensure:electron
+        run: vp run --filter @vetra-code/desktop ensure:electron
 
       - name: Check
         run: vp check
@@ -81,7 +81,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Ensure Electron runtime is installed
-        run: vp run --filter @vetra-studio/desktop ensure:electron
+        run: vp run --filter @vetra-code/desktop ensure:electron
 
       - name: Test
         env:
@@ -130,7 +130,7 @@ jobs:
           cache: true
           run-install: |
             args:
-              - --filter=@vetra-studio/scripts...
+              - --filter=@vetra-code/scripts...
 
       - name: Exercise release-only workflow steps
         run: node scripts/release-smoke.ts

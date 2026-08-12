@@ -4,7 +4,7 @@
 
 ### P0 — Safe baseline
 
-- [x] P0.1 Create the local `vetra-studio` branch and retain the original repository as `upstream`.
+- [x] P0.1 Create the local `vetra-code` branch and retain the original repository as `upstream`.
       Add a Vetra-owned `origin` only after its repository exists.
 - [x] P0.2 Install dependencies without launching desktop.
 - [x] P0.3 Resolve web/server configuration with `pnpm dev --dry-run`.
@@ -25,9 +25,9 @@ Exit condition: the existing foundation works in an isolated web-only developmen
 - [x] P1.6 Disable upstream updater, cloud configuration, and telemetry defaults.
 - [x] P1.7 Add/update focused identity and path tests.
 - [ ] P1.8 Run desktop beside another installed coding-agent client and verify isolation.
-- [x] P1.9 Move every internal workspace package to the `@vetra-studio/*` scope.
+- [x] P1.9 Move every internal workspace package to the `@vetra-code/*` scope.
 
-Exit condition: Vetra Studio cannot be mistaken for or share mutable runtime identity with another product.
+Exit condition: Vetra Code cannot be mistaken for or share mutable runtime identity with another product.
 
 ### P2 — Remove unused surfaces
 

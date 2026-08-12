@@ -19,8 +19,8 @@ import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse";
 import * as HttpTraceContext from "effect/unstable/http/HttpTraceContext";
 import * as HttpApiBuilder from "effect/unstable/httpapi/HttpApiBuilder";
 import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
-import { encodeOAuthScope } from "@vetra-studio/shared/oauthScope";
-import { httpHeaderRedactionLayer } from "@vetra-studio/shared/httpObservability";
+import { encodeOAuthScope } from "@vetra-code/shared/oauthScope";
+import { httpHeaderRedactionLayer } from "@vetra-code/shared/httpObservability";
 
 import {
   RelayApi,
@@ -48,8 +48,8 @@ import {
   type RelayEnvironmentConnectRequest,
   type RelayDpopAccessTokenScope,
   RelayInternalError,
-} from "@vetra-studio/contracts/relay";
-import { normalizeRelayIssuer } from "@vetra-studio/shared/relayJwt";
+} from "@vetra-code/contracts/relay";
+import { normalizeRelayIssuer } from "@vetra-code/shared/relayJwt";
 
 import * as DeliveryAttempts from "../agentActivity/DeliveryAttempts.ts";
 import * as AgentActivityRows from "../agentActivity/AgentActivityRows.ts";

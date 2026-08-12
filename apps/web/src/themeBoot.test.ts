@@ -257,7 +257,7 @@ describe("index.html boot script", () => {
     expect(boot.isDark).toBe(runtimeResolvedAppearance(storage, prefersDark) === "dark");
   });
 
-  it("uses the Vetra Studio green surfaces for a fresh install", () => {
+  it("uses the Vetra Code green surfaces for a fresh install", () => {
     const light = runBootScript({ storage: {}, prefersDark: false });
     expect(light.backgroundColor).toBe("#f6faf7");
     expect(light.metaContent).toBe("#f6faf7");

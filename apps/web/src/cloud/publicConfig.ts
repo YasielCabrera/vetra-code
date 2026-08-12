@@ -1,5 +1,5 @@
-import { relayClerkTokenOptions } from "@vetra-studio/shared/relayAuth";
-import { normalizeSecureRelayUrl } from "@vetra-studio/shared/relayUrl";
+import { relayClerkTokenOptions } from "@vetra-code/shared/relayAuth";
+import { normalizeSecureRelayUrl } from "@vetra-code/shared/relayUrl";
 import * as Schema from "effect/Schema";
 
 export class CloudPublicConfigMissingError extends Schema.TaggedErrorClass<CloudPublicConfigMissingError>()(

@@ -15,13 +15,13 @@ export default defineConfig({
     tasks: {
       build: {
         command: "node scripts/build-preview-annotation-css.mjs && vp pack",
-        dependsOn: ["@vetra-studio/server#build"],
+        dependsOn: ["@vetra-code/server#build"],
         cache: false,
       },
       dev: {
         command:
           "node scripts/build-preview-annotation-css.mjs && cross-env VETRA_DESKTOP_DEV=1 vp pack --watch",
-        dependsOn: ["@vetra-studio/server#build"],
+        dependsOn: ["@vetra-code/server#build"],
         cache: false,
       },
       "dev:bundle": {
@@ -30,7 +30,7 @@ export default defineConfig({
       },
       "dev:electron": {
         command: "node scripts/dev-electron.mjs",
-        dependsOn: ["@vetra-studio/server#build"],
+        dependsOn: ["@vetra-code/server#build"],
         cache: false,
       },
     },
@@ -45,7 +45,7 @@ export default defineConfig({
       entry: ["src/main.ts"],
       clean: true,
       deps: {
-        alwaysBundle: (id) => id.startsWith("@vetra-studio/"),
+        alwaysBundle: (id) => id.startsWith("@vetra-code/"),
       },
       ...(shouldLaunchElectronAfterPack ? { onSuccess: "node scripts/dev-electron.mjs" } : {}),
     },

@@ -1,8 +1,8 @@
 "use client";
 
 import { useAtomValue } from "@effect/atom-react";
-import { parseScopedThreadKey, scopedThreadKey } from "@vetra-studio/client-runtime/environment";
-import type { ScopedThreadRef } from "@vetra-studio/contracts";
+import { parseScopedThreadKey, scopedThreadKey } from "@vetra-code/client-runtime/environment";
+import type { ScopedThreadRef } from "@vetra-code/contracts";
 import * as Schema from "effect/Schema";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 

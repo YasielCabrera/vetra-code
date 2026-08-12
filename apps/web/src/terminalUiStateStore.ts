@@ -5,8 +5,8 @@
  * API constrained to store actions/selectors.
  */
 
-import { parseScopedThreadKey, scopedThreadKey } from "@vetra-studio/client-runtime/environment";
-import { type ScopedThreadRef } from "@vetra-studio/contracts";
+import { parseScopedThreadKey, scopedThreadKey } from "@vetra-code/client-runtime/environment";
+import { type ScopedThreadRef } from "@vetra-code/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { resolveStorage } from "./lib/storage";

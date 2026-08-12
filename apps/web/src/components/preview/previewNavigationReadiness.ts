@@ -2,7 +2,7 @@ import {
   type PreviewAutomationNavigateInput,
   type PreviewAutomationRequest,
   type ScopedThreadRef,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 import { isCurrentPreviewRuntimeTab } from "~/browser/previewRuntimeTabId";
 import { readThreadPreviewState } from "~/previewStateStore";

@@ -1,4 +1,4 @@
-import { ClaudeSettings, ProviderInstanceId } from "@vetra-studio/contracts";
+import { ClaudeSettings, ProviderInstanceId } from "@vetra-code/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
@@ -6,7 +6,7 @@ import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import { createModelSelection } from "@vetra-studio/shared/model";
+import { createModelSelection } from "@vetra-code/shared/model";
 import { expect } from "vite-plus/test";
 
 import * as ServerConfig from "../config.ts";
@@ -16,7 +16,7 @@ import { makeClaudeTextGeneration } from "./ClaudeTextGeneration.ts";
 const decodeClaudeSettings = Schema.decodeSync(ClaudeSettings);
 
 const ClaudeTextGenerationTestLayer = ServerConfig.ServerConfig.layerTest(process.cwd(), {
-  prefix: "vetra-studio-claude-text-generation-test-",
+  prefix: "vetra-code-claude-text-generation-test-",
 }).pipe(Layer.provideMerge(NodeServices.layer));
 
 function makeFakeClaudeBinary(dir: string) {
@@ -83,7 +83,7 @@ function withFakeClaudeEnv<A, E, R>(
 ) {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
-    const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-studio-claude-text-" });
+    const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-code-claude-text-" });
     const binDir = yield* makeFakeClaudeBinary(tempDir);
     const previousPath = process.env.PATH;
     const previousOutput = process.env.VETRA_FAKE_CLAUDE_OUTPUT;

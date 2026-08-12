@@ -1,4 +1,4 @@
-// This file mostly exists because we want dev mode to say "Vetra Studio (Dev)" instead of "electron"
+// This file mostly exists because we want dev mode to say "Vetra Code (Dev)" instead of "electron"
 
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
@@ -15,10 +15,10 @@ const repoRoot = NodePath.resolve(desktopDir, "..", "..");
 const devBundleIdSuffix = NodePath.basename(repoRoot)
   .toLowerCase()
   .replaceAll(/[^a-z0-9]+/g, "");
-export const APP_DISPLAY_NAME = isDevelopment ? "Vetra Studio (Dev)" : "Vetra Studio (Alpha)";
+export const APP_DISPLAY_NAME = isDevelopment ? "Vetra Code (Dev)" : "Vetra Code (Alpha)";
 export const APP_BUNDLE_ID = isDevelopment
-  ? `com.vetra.studio.dev.${devBundleIdSuffix || "local"}`
-  : "com.vetra.studio";
+  ? `com.vetra.code.dev.${devBundleIdSuffix || "local"}`
+  : "com.vetra.code";
 const APP_PROTOCOL_SCHEMES = isDevelopment ? ["vetra-dev"] : ["vetra"];
 const LAUNCHER_VERSION = 14;
 const defaultIconPath = NodePath.join(desktopDir, "resources", "icon.icns");
@@ -346,7 +346,7 @@ function buildMacLauncher(electronBinaryPath) {
   if (isDevelopment) {
     // Keep Electron's native executable inside the branded bundle. Launching the
     // node_modules copy makes macOS associate the process (and Dock label) with
-    // Electron.app even though this bundle's Info.plist has the Vetra Studio name.
+    // Electron.app even though this bundle's Info.plist has the Vetra Code name.
     // Its conventional executable name also keeps Electron's default-app runtime
     // in development mode instead of making app.isPackaged report true.
     writeDevelopmentLauncherScript(launcherBinaryPath, runtimeElectronBinaryPath);

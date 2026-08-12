@@ -1,5 +1,5 @@
-import type { ConnectionCatalogEntry } from "@vetra-studio/client-runtime/connection";
-import type { ServerConfig } from "@vetra-studio/contracts";
+import type { ConnectionCatalogEntry } from "@vetra-code/client-runtime/connection";
+import type { ServerConfig } from "@vetra-code/contracts";
 import { useMemo } from "react";
 
 import { useEnvironments, usePrimaryEnvironmentId } from "~/state/environments";

@@ -36,11 +36,11 @@ const LIST_RESULT: PullRequestListResult = {
       provider: "github",
       host: "github.com",
       projectId: "project-1" as PullRequestListResult["entries"][number]["projectId"],
-      projectTitle: "vetra-studio",
-      repository: "vetra-studio/vetra-studio",
+      projectTitle: "vetra-code",
+      repository: "vetra-code/vetra-code",
       number: 1,
       title: "Add a pull requests page",
-      url: "https://github.com/vetra-studio/vetra/pull/1",
+      url: "https://github.com/vetra-code/vetra/pull/1",
       author: { login: "octocat", name: null, avatarUrl: null },
       headBranch: "feat/page",
       baseBranch: "main",
@@ -57,7 +57,7 @@ const LIST_RESULT: PullRequestListResult = {
   ],
   errors: [],
   truncated: false,
-  nextCursors: { "github.com vetra-studio/vetra-studio": "2026-07-02T00:00:00Z|1|1" },
+  nextCursors: { "github.com vetra-code/vetra-code": "2026-07-02T00:00:00Z|1|1" },
 };
 
 describe("PullRequestListResult", () => {
@@ -100,7 +100,7 @@ describe("PullRequestListInput", () => {
   });
 
   it("takes back the continuation a result handed out, keyed the way it arrived", () => {
-    const cursors = { "github.com vetra-studio/vetra-studio": "2026-07-02T00:00:00Z|99|1,2" };
+    const cursors = { "github.com vetra-code/vetra-code": "2026-07-02T00:00:00Z|99|1,2" };
 
     expect(decodeListInput({ state: "open", cursors }).cursors).toStrictEqual(cursors);
   });

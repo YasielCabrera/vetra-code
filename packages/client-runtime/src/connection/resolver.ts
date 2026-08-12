@@ -1,5 +1,5 @@
-import { RelayEnvironmentConnectScope } from "@vetra-studio/contracts/relay";
-import { withRelayClientTracing } from "@vetra-studio/shared/relayTracing";
+import { RelayEnvironmentConnectScope } from "@vetra-code/contracts/relay";
+import { withRelayClientTracing } from "@vetra-code/shared/relayTracing";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -40,7 +40,7 @@ export class ConnectionResolver extends Context.Service<
       entry: ConnectionCatalogEntry,
     ) => Effect.Effect<PreparedConnection, ConnectionAttemptError>;
   }
->()("@vetra-studio/client-runtime/connection/resolver/ConnectionResolver") {}
+>()("@vetra-code/client-runtime/connection/resolver/ConnectionResolver") {}
 
 const isBearerProfile = Schema.is(BearerConnectionProfile);
 const isSshProfile = Schema.is(SshConnectionProfile);

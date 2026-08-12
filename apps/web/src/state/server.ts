@@ -6,10 +6,10 @@ import {
   type ServerLifecycleWelcomePayload,
   type ServerProvider,
   type ServerSettings,
-} from "@vetra-studio/contracts";
-import { createServerEnvironmentAtoms } from "@vetra-studio/client-runtime/state/server";
-import { createEnvironmentServerConfigsAtom } from "@vetra-studio/client-runtime/state/shell";
-import { DEFAULT_RESOLVED_KEYBINDINGS } from "@vetra-studio/shared/keybindings";
+} from "@vetra-code/contracts";
+import { createServerEnvironmentAtoms } from "@vetra-code/client-runtime/state/server";
+import { createEnvironmentServerConfigsAtom } from "@vetra-code/client-runtime/state/shell";
+import { DEFAULT_RESOLVED_KEYBINDINGS } from "@vetra-code/shared/keybindings";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 

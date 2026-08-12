@@ -1,4 +1,4 @@
-import type { VcsStatusResult } from "@vetra-studio/contracts";
+import type { VcsStatusResult } from "@vetra-code/contracts";
 import { assert, describe, it } from "vite-plus/test";
 import {
   buildGitActionProgressStages,

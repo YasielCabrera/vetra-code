@@ -5,7 +5,7 @@ import {
 import {
   collectComposerInlineTokens,
   type ComposerInlineToken,
-} from "@vetra-studio/shared/composerInlineTokens";
+} from "@vetra-code/shared/composerInlineTokens";
 
 export type ComposerPromptSegment =
   | {

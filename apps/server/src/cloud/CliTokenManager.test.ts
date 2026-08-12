@@ -1,4 +1,4 @@
-import { readConnectAuthorizeRequest } from "@vetra-studio/shared/connectAuth";
+import { readConnectAuthorizeRequest } from "@vetra-code/shared/connectAuth";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import * as ConfigProvider from "effect/ConfigProvider";

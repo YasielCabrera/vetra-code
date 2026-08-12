@@ -1,5 +1,5 @@
-import { scopeProjectRef } from "@vetra-studio/client-runtime/environment";
-import { EnvironmentId, ProjectId } from "@vetra-studio/contracts";
+import { scopeProjectRef } from "@vetra-code/client-runtime/environment";
+import { EnvironmentId, ProjectId } from "@vetra-code/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
 import {
   resolveThreadActionProjectRef,

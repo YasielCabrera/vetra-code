@@ -12,7 +12,7 @@ import {
   DEFAULT_NEW_PROJECTS_PARENT_DIRECTORY,
   resolvePendingProjectLocation,
 } from "~/lib/pendingProject";
-import type { EnvironmentId, ProjectId } from "@vetra-studio/contracts";
+import type { EnvironmentId, ProjectId } from "@vetra-code/contracts";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import {

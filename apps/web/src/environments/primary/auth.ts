@@ -6,9 +6,9 @@ import type {
   ServerAuthSessionMethod,
   AuthSessionId,
   AuthSessionState,
-} from "@vetra-studio/contracts";
-import { EnvironmentHttpCommonError, PRIMARY_LOCAL_ENVIRONMENT_ID } from "@vetra-studio/contracts";
-import type { EnvironmentHttpCommonError as EnvironmentHttpCommonErrorType } from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
+import { EnvironmentHttpCommonError, PRIMARY_LOCAL_ENVIRONMENT_ID } from "@vetra-code/contracts";
+import type { EnvironmentHttpCommonError as EnvironmentHttpCommonErrorType } from "@vetra-code/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";

@@ -1,4 +1,4 @@
-import type { ProviderInstanceId } from "@vetra-studio/contracts";
+import type { ProviderInstanceId } from "@vetra-code/contracts";
 import * as Arr from "effect/Array";
 import * as Order from "effect/Order";
 

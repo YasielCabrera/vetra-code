@@ -1,6 +1,6 @@
 "use client";
 
-import type { DesktopPreviewPointerEvent } from "@vetra-studio/contracts";
+import type { DesktopPreviewPointerEvent } from "@vetra-code/contracts";
 import { MousePointer2 } from "lucide-react";
 import { useEffect, useState } from "react";
 

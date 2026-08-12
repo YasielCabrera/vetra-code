@@ -1,4 +1,4 @@
-import { TurnId } from "@vetra-studio/contracts";
+import { TurnId } from "@vetra-code/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vite-plus/test";
 

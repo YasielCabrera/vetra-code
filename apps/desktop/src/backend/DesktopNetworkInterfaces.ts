@@ -1,6 +1,6 @@
 import * as NodeOS from "node:os";
 
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -37,7 +37,7 @@ export class DesktopNetworkInterfaces extends Context.Service<
   {
     readonly read: Effect.Effect<NetworkInterfaces>;
   }
->()("@vetra-studio/desktop/backend/DesktopNetworkInterfaces") {}
+>()("@vetra-code/desktop/backend/DesktopNetworkInterfaces") {}
 
 export const make = Effect.gen(function* () {
   const platform = yield* HostProcessPlatform;

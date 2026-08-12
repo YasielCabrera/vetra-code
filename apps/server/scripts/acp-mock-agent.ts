@@ -7,9 +7,9 @@ import * as Effect from "effect/Effect";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 
-import * as EffectAcpAgent from "@vetra-studio/effect-acp/agent";
-import * as AcpError from "@vetra-studio/effect-acp/errors";
-import type * as AcpSchema from "@vetra-studio/effect-acp/schema";
+import * as EffectAcpAgent from "@vetra-code/effect-acp/agent";
+import * as AcpError from "@vetra-code/effect-acp/errors";
+import type * as AcpSchema from "@vetra-code/effect-acp/schema";
 
 const requestLogPath = process.env.VETRA_ACP_REQUEST_LOG_PATH;
 const exitLogPath = process.env.VETRA_ACP_EXIT_LOG_PATH;

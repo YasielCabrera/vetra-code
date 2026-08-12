@@ -29,7 +29,7 @@ import {
   VcsStatusResult,
   ModelSelection,
   type SourceControlWritingStyleSettings,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   detectSourceControlProviderFromGitRemoteUrl,
   mergeGitStatusParts,
@@ -37,14 +37,14 @@ import {
   resolveAutoFeatureBranchName,
   sanitizeBranchFragment,
   sanitizeFeatureBranchName,
-} from "@vetra-studio/shared/git";
-import { PRODUCT_SLUG, PRODUCT_WORKTREE_BRANCH_PREFIX } from "@vetra-studio/shared/productIdentity";
+} from "@vetra-code/shared/git";
+import { PRODUCT_SLUG, PRODUCT_WORKTREE_BRANCH_PREFIX } from "@vetra-code/shared/productIdentity";
 import {
   getChangeRequestTerminologyForKind,
   type ChangeRequestTerminology,
-} from "@vetra-studio/shared/sourceControl";
+} from "@vetra-code/shared/sourceControl";
 
-import { GitManagerError, GitPullRequestMaterializationError } from "@vetra-studio/contracts";
+import { GitManagerError, GitPullRequestMaterializationError } from "@vetra-code/contracts";
 import * as TextGeneration from "../textGeneration/TextGeneration.ts";
 import {
   conventionalCommitsTextGenerationPolicy,
@@ -55,11 +55,11 @@ import * as ProjectSetupScriptRunner from "../project/ProjectSetupScriptRunner.t
 import * as ProviderRegistry from "../provider/Services/ProviderRegistry.ts";
 import { extractBranchNameFromRemoteRef } from "./remoteRefs.ts";
 import * as ServerSettings from "../serverSettings.ts";
-import type { GitManagerServiceError } from "@vetra-studio/contracts";
+import type { GitManagerServiceError } from "@vetra-code/contracts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
 import { detectPrTemplate } from "../sourceControl/PrTemplateDetection.ts";
-import type { ChangeRequest } from "@vetra-studio/contracts";
+import type { ChangeRequest } from "@vetra-code/contracts";
 
 export interface GitActionProgressReporter {
   readonly publish: (event: GitActionProgressEvent) => Effect.Effect<void, never>;
@@ -102,7 +102,7 @@ export class GitManager extends Context.Service<
       options?: GitRunStackedActionOptions,
     ) => Effect.Effect<GitRunStackedActionResult, GitManagerServiceError>;
   }
->()("@vetra-studio/server/git/GitManager") {}
+>()("@vetra-code/server/git/GitManager") {}
 
 const COMMIT_TIMEOUT_MS = 10 * 60_000;
 const MAX_PROGRESS_TEXT_LENGTH = 500;

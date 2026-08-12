@@ -1,5 +1,5 @@
-import type { EnvironmentId } from "@vetra-studio/contracts";
-import type { RelayProtectedError } from "@vetra-studio/contracts/relay";
+import type { EnvironmentId } from "@vetra-code/contracts";
+import type { RelayProtectedError } from "@vetra-code/contracts/relay";
 import type { ManagedRelayClientError } from "../relay/managedRelay.ts";
 import type { RemoteEnvironmentAuthError } from "../authorization/remote.ts";
 import {

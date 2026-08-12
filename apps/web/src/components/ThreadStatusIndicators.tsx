@@ -2,8 +2,8 @@ import {
   scopeProjectRef,
   scopedThreadKey,
   scopeThreadRef,
-} from "@vetra-studio/client-runtime/environment";
-import type { VcsStatusResult } from "@vetra-studio/contracts";
+} from "@vetra-code/client-runtime/environment";
+import type { VcsStatusResult } from "@vetra-code/contracts";
 import { CloudIcon, FolderGit2Icon, GitPullRequestIcon, TerminalIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useEnvironment, usePrimaryEnvironmentId } from "../state/environments";

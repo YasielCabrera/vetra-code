@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/react";
-import { AuthAdministrativeScopes, AuthRelayWriteScope } from "@vetra-studio/contracts";
+import { AuthAdministrativeScopes, AuthRelayWriteScope } from "@vetra-code/contracts";
 import { CheckIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 

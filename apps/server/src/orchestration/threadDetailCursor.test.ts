@@ -1,4 +1,4 @@
-import { ThreadId } from "@vetra-studio/contracts";
+import { ThreadId } from "@vetra-code/contracts";
 import { describe, expect, it } from "@effect/vitest";
 
 import {

@@ -3,8 +3,8 @@ import {
   type ProviderInstanceId,
   type ServerProvider,
   ServerProvider as ServerProviderSchema,
-} from "@vetra-studio/contracts";
-import { causeErrorTag } from "@vetra-studio/shared/observability";
+} from "@vetra-code/contracts";
+import { causeErrorTag } from "@vetra-code/shared/observability";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";

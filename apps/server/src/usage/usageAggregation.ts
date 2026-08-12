@@ -17,7 +17,7 @@ import type {
   UsageDay,
   UsageResolution,
   UsageTokenTotals,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 import { addTotals, EMPTY_TOTALS, type UsageRecord } from "./usageTranscripts.ts";
 import { cacheSavingsUsd, priceUsage, type RateTable } from "./usagePricing.ts";

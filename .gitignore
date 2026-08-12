@@ -15,7 +15,7 @@ build/
 release/
 release-mock/
 .t3
-.vetra-studio
+.vetra-code
 .idea/
 apps/web/.playwright
 apps/web/playwright-report

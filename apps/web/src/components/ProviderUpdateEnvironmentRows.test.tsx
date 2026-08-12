@@ -5,7 +5,7 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerProvider,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { AsyncResult } from "effect/unstable/reactivity";
 
 import type {

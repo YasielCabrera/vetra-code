@@ -2,10 +2,10 @@ import type {
   DesktopDiscoveredSshHost,
   DesktopSshEnvironmentBootstrap,
   DesktopSshEnvironmentTarget,
-} from "@vetra-studio/contracts";
-import * as NetService from "@vetra-studio/shared/Net";
-import * as SshAuth from "@vetra-studio/ssh/auth";
-import { discoverSshHosts } from "@vetra-studio/ssh/config";
+} from "@vetra-code/contracts";
+import * as NetService from "@vetra-code/shared/Net";
+import * as SshAuth from "@vetra-code/ssh/auth";
+import { discoverSshHosts } from "@vetra-code/ssh/config";
 import {
   SshCommandError,
   SshHostDiscoveryError,
@@ -14,8 +14,8 @@ import {
   SshPairingError,
   SshPasswordPromptError,
   SshReadinessError,
-} from "@vetra-studio/ssh/errors";
-import * as SshTunnel from "@vetra-studio/ssh/tunnel";
+} from "@vetra-code/ssh/errors";
+import * as SshTunnel from "@vetra-code/ssh/tunnel";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -62,7 +62,7 @@ export class DesktopSshEnvironment extends Context.Service<
       target: DesktopSshEnvironmentTarget,
     ) => Effect.Effect<void, DesktopSshEnvironmentOperationError>;
   }
->()("@vetra-studio/desktop/ssh/DesktopSshEnvironment") {}
+>()("@vetra-code/desktop/ssh/DesktopSshEnvironment") {}
 
 export interface DesktopSshEnvironmentLayerOptions {
   readonly resolveCliPackageSpec?: () => string;
@@ -96,7 +96,7 @@ export function toSshPasswordPromptError(
       break;
     case "DesktopSshPromptWindowUnavailableError":
     case "DesktopSshPromptPresentationError":
-      message = "Vetra Studio window is not available for SSH authentication.";
+      message = "Vetra Code window is not available for SSH authentication.";
       break;
     case "DesktopSshPromptTimedOutError":
       message = `SSH authentication timed out for ${cause.destination}.`;

@@ -1,4 +1,4 @@
-import type { PickedElementPayload } from "@vetra-studio/contracts";
+import type { PickedElementPayload } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

@@ -9,9 +9,9 @@ import * as Scope from "effect/Scope";
 import * as Types from "effect/Types";
 import * as ChildProcess from "effect/unstable/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
-import * as CodexClient from "@vetra-studio/effect-codex-app-server/client";
-import * as CodexSchema from "@vetra-studio/effect-codex-app-server/schema";
-import * as CodexErrors from "@vetra-studio/effect-codex-app-server/errors";
+import * as CodexClient from "@vetra-code/effect-codex-app-server/client";
+import * as CodexSchema from "@vetra-code/effect-codex-app-server/schema";
+import * as CodexErrors from "@vetra-code/effect-codex-app-server/errors";
 
 import type {
   CodexSettings,
@@ -21,11 +21,11 @@ import type {
   ProviderOptionDescriptor,
   ServerProviderModel,
   ServerProviderSkill,
-} from "@vetra-studio/contracts";
-import { PREFERRED_DEFAULT_CODEX_MODELS, ServerSettingsError } from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
+import { PREFERRED_DEFAULT_CODEX_MODELS, ServerSettingsError } from "@vetra-code/contracts";
 
-import { createModelCapabilities } from "@vetra-studio/shared/model";
-import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
+import { createModelCapabilities } from "@vetra-code/shared/model";
+import { resolveSpawnCommand } from "@vetra-code/shared/shell";
 import { codexAppServerArgs, resolveCodexLaunchArgs } from "./codexLaunchArgs.ts";
 import {
   AUTH_PROBE_TIMEOUT_MS,
@@ -309,8 +309,8 @@ const requestAllCodexModels = Effect.fn("requestAllCodexModels")(function* (
 export function buildCodexInitializeParams(): CodexSchema.V1InitializeParams {
   return {
     clientInfo: {
-      name: "vetra_studio",
-      title: "Vetra Studio Desktop",
+      name: "vetra_code",
+      title: "Vetra Code Desktop",
       version: packageJson.version,
     },
     capabilities: {
@@ -371,8 +371,8 @@ const probeCodexAppServerProvider = Effect.fn("probeCodexAppServerProvider")(fun
 
   const initialize = yield* client.request("initialize", {
     clientInfo: {
-      name: "vetra_studio",
-      title: "Vetra Studio Desktop",
+      name: "vetra_code",
+      title: "Vetra Code Desktop",
       version: "0.1.0",
     },
     capabilities: {
@@ -450,7 +450,7 @@ const makePendingCodexProvider = (
           version: null,
           status: "warning",
           auth: { status: "unknown" },
-          message: "Codex is disabled in Vetra Studio settings.",
+          message: "Codex is disabled in Vetra Code settings.",
         },
       });
     }
@@ -536,7 +536,7 @@ export const checkCodexProviderStatus = Effect.fn("checkCodexProviderStatus")(fu
         version: null,
         status: "warning",
         auth: { status: "unknown" },
-        message: "Codex is disabled in Vetra Studio settings.",
+        message: "Codex is disabled in Vetra Code settings.",
       },
     });
   }

@@ -15,7 +15,7 @@ import type {
   PullRequestReviewThread,
   PullRequestReviewVerdict,
   PullRequestReviewerCandidateList,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 import * as GitLabCli from "../sourceControl/GitLabCli.ts";
 import {
@@ -344,7 +344,7 @@ export class GitLabPullRequestCli extends Context.Service<
       readonly resolved: boolean;
     }) => Effect.Effect<void, GitLabPullRequestCliError>;
   }
->()("@vetra-studio/server/pullRequest/GitLabPullRequestCli") {}
+>()("@vetra-code/server/pullRequest/GitLabPullRequestCli") {}
 
 /** The REST API addresses a project by its URL-encoded full path. */
 function projectPath(repository: string): string {

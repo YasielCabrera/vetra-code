@@ -1,4 +1,4 @@
-import { NonNegativeInt, ThreadId, type VcsError } from "@vetra-studio/contracts";
+import { NonNegativeInt, ThreadId, type VcsError } from "@vetra-code/contracts";
 import * as Schema from "effect/Schema";
 
 import type { ProjectionRepositoryError } from "../persistence/Errors.ts";

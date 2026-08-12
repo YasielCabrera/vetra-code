@@ -1,4 +1,4 @@
-import type { AssetResource } from "@vetra-studio/contracts";
+import type { AssetResource } from "@vetra-code/contracts";
 import {
   AssetAttachmentNotFoundError,
   AssetPreviewTypeValidationError,
@@ -12,14 +12,14 @@ import {
   AssetWorkspacePathValidationError,
   AssetWorkspaceResolutionError,
   AssetWorkspaceRootNormalizationError,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   isWorkspaceImagePreviewPath,
   isWorkspacePreviewEntryPath,
   WORKSPACE_BROWSER_PREVIEW_EXTENSIONS,
   WORKSPACE_IMAGE_PREVIEW_EXTENSIONS,
-} from "@vetra-studio/shared/filePreview";
-import { PROJECT_FAVICON_FALLBACK_MARKER } from "@vetra-studio/shared/projectFavicon";
+} from "@vetra-code/shared/filePreview";
+import { PROJECT_FAVICON_FALLBACK_MARKER } from "@vetra-code/shared/projectFavicon";
 import * as Clock from "effect/Clock";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";

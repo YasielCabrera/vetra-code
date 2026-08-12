@@ -10,7 +10,7 @@
  *
  * @module OrchestrationEngineService
  */
-import type { OrchestrationCommand, OrchestrationEvent } from "@vetra-studio/contracts";
+import type { OrchestrationCommand, OrchestrationEvent } from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import type * as Stream from "effect/Stream";
@@ -79,4 +79,4 @@ export interface OrchestrationEngineShape {
 export class OrchestrationEngineService extends Context.Service<
   OrchestrationEngineService,
   OrchestrationEngineShape
->()("@vetra-studio/server/orchestration/Services/OrchestrationEngine/OrchestrationEngineService") {}
+>()("@vetra-code/server/orchestration/Services/OrchestrationEngine/OrchestrationEngineService") {}

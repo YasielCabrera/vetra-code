@@ -1,4 +1,4 @@
-import type { TraceRecord, TraceSink } from "@vetra-studio/shared/observability";
+import type { TraceRecord, TraceSink } from "@vetra-code/shared/observability";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -8,7 +8,7 @@ export class BrowserTraceCollector extends Context.Service<
   {
     readonly record: (records: ReadonlyArray<TraceRecord>) => Effect.Effect<void>;
   }
->()("@vetra-studio/server/observability/BrowserTraceCollector") {}
+>()("@vetra-code/server/observability/BrowserTraceCollector") {}
 
 export const make = (sink: TraceSink): BrowserTraceCollector["Service"] =>
   BrowserTraceCollector.of({

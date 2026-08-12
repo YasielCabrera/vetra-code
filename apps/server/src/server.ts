@@ -1,4 +1,4 @@
-import { EnvironmentHttpApi } from "@vetra-studio/contracts";
+import { EnvironmentHttpApi } from "@vetra-code/contracts";
 import * as Duration from "effect/Duration";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -114,9 +114,9 @@ import {
   persistServerRuntimeState,
 } from "./serverRuntimeState.ts";
 import { orchestrationHttpApiLayer } from "./orchestration/http.ts";
-import * as NetService from "@vetra-studio/shared/Net";
-import * as RelayClient from "@vetra-studio/shared/relayClient";
-import { disableTailscaleServe, ensureTailscaleServe } from "@vetra-studio/tailscale";
+import * as NetService from "@vetra-code/shared/Net";
+import * as RelayClient from "@vetra-code/shared/relayClient";
+import { disableTailscaleServe, ensureTailscaleServe } from "@vetra-code/tailscale";
 import { forkParked, ServerActivation } from "./serverActivation.ts";
 
 // Effect's default preemptive shutdown waits 20s before finalizing request scopes.

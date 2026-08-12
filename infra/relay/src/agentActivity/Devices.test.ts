@@ -1,4 +1,4 @@
-import type { RelayDeviceRegistrationRequest } from "@vetra-studio/contracts/relay";
+import type { RelayDeviceRegistrationRequest } from "@vetra-code/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
@@ -15,7 +15,7 @@ const registration: RelayDeviceRegistrationRequest = {
   platform: "ios",
   iosMajorVersion: 18,
   appVersion: "1.0.0" as RelayDeviceRegistrationRequest["appVersion"],
-  bundleId: "com.vetra.studio.preview" as RelayDeviceRegistrationRequest["bundleId"],
+  bundleId: "com.vetra.code.preview" as RelayDeviceRegistrationRequest["bundleId"],
   apsEnvironment: "production",
   pushToken: "apns-device-token" as RelayDeviceRegistrationRequest["pushToken"],
   pushToStartToken: "push-to-start-token" as RelayDeviceRegistrationRequest["pushToStartToken"],
@@ -108,7 +108,7 @@ describe("Devices", () => {
         expect.objectContaining({
           userId: "user-2",
           deviceId: "device-1",
-          bundleId: "com.vetra.studio.preview",
+          bundleId: "com.vetra.code.preview",
           apsEnvironment: "production",
           pushToken: "apns-device-token",
           pushToStartToken: "push-to-start-token",

@@ -1,5 +1,5 @@
-import { EnvironmentId } from "@vetra-studio/contracts";
-import { RelayEnvironmentStatusScope } from "@vetra-studio/contracts/relay";
+import { EnvironmentId } from "@vetra-code/contracts";
+import { RelayEnvironmentStatusScope } from "@vetra-code/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";

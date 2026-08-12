@@ -1,4 +1,4 @@
-import type { VcsStatusRemoteResult, VcsStatusResult } from "@vetra-studio/contracts";
+import type { VcsStatusRemoteResult, VcsStatusResult } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -12,23 +12,23 @@ import {
 
 describe("normalizeGitRemoteUrl", () => {
   it("canonicalizes equivalent GitHub remotes across protocol variants", () => {
-    expect(normalizeGitRemoteUrl("git@github.com:VetraStudio/VetraStudio.git")).toBe(
-      "github.com/vetra-studio/vetra-studio",
+    expect(normalizeGitRemoteUrl("git@github.com:VetraCode/VetraCode.git")).toBe(
+      "github.com/vetra-code/vetra-code",
     );
-    expect(normalizeGitRemoteUrl("https://github.com/VetraStudio/VetraStudio.git")).toBe(
-      "github.com/vetra-studio/vetra-studio",
+    expect(normalizeGitRemoteUrl("https://github.com/VetraCode/VetraCode.git")).toBe(
+      "github.com/vetra-code/vetra-code",
     );
-    expect(normalizeGitRemoteUrl("ssh://git@github.com/VetraStudio/VetraStudio")).toBe(
-      "github.com/vetra-studio/vetra-studio",
+    expect(normalizeGitRemoteUrl("ssh://git@github.com/VetraCode/VetraCode")).toBe(
+      "github.com/vetra-code/vetra-code",
     );
   });
 
   it("preserves nested group paths for providers like GitLab", () => {
-    expect(normalizeGitRemoteUrl("git@gitlab.com:VetraStudio/platform/VetraStudio.git")).toBe(
-      "gitlab.com/vetra-studio/platform/vetra-studio",
+    expect(normalizeGitRemoteUrl("git@gitlab.com:VetraCode/platform/VetraCode.git")).toBe(
+      "gitlab.com/vetra-code/platform/vetra-code",
     );
-    expect(normalizeGitRemoteUrl("https://gitlab.com/VetraStudio/platform/VetraStudio.git")).toBe(
-      "gitlab.com/vetra-studio/platform/vetra-studio",
+    expect(normalizeGitRemoteUrl("https://gitlab.com/VetraCode/platform/VetraCode.git")).toBe(
+      "gitlab.com/vetra-code/platform/vetra-code",
     );
   });
 
@@ -45,13 +45,11 @@ describe("normalizeGitRemoteUrl", () => {
 describe("parseGitHubRepositoryNameWithOwnerFromRemoteUrl", () => {
   it("extracts the owner and repository from common GitHub remote shapes", () => {
     expect(
-      parseGitHubRepositoryNameWithOwnerFromRemoteUrl("git@github.com:VetraStudio/VetraStudio.git"),
-    ).toBe("VetraStudio/VetraStudio");
+      parseGitHubRepositoryNameWithOwnerFromRemoteUrl("git@github.com:VetraCode/VetraCode.git"),
+    ).toBe("VetraCode/VetraCode");
     expect(
-      parseGitHubRepositoryNameWithOwnerFromRemoteUrl(
-        "https://github.com/VetraStudio/VetraStudio.git",
-      ),
-    ).toBe("VetraStudio/VetraStudio");
+      parseGitHubRepositoryNameWithOwnerFromRemoteUrl("https://github.com/VetraCode/VetraCode.git"),
+    ).toBe("VetraCode/VetraCode");
   });
 });
 

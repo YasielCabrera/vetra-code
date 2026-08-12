@@ -1,8 +1,4 @@
-import {
-  type EnvironmentId,
-  type ProjectReadFileResult,
-  WS_METHODS,
-} from "@vetra-studio/contracts";
+import { type EnvironmentId, type ProjectReadFileResult, WS_METHODS } from "@vetra-code/contracts";
 import * as Crypto from "effect/Crypto";
 import { Atom } from "effect/unstable/reactivity";
 

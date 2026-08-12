@@ -1,6 +1,6 @@
-import * as NetService from "@vetra-studio/shared/Net";
-import { parsePersistedServerObservabilitySettings } from "@vetra-studio/shared/serverSettings";
-import { DesktopBackendBootstrap, PortSchema } from "@vetra-studio/contracts";
+import * as NetService from "@vetra-code/shared/Net";
+import { parsePersistedServerObservabilitySettings } from "@vetra-code/shared/serverSettings";
+import { DesktopBackendBootstrap, PortSchema } from "@vetra-code/contracts";
 import * as Config from "effect/Config";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -32,7 +32,7 @@ export const hostFlag = Flag.string("host").pipe(
 );
 export const baseDirFlag = Flag.string("base-dir").pipe(
   Flag.withDescription(
-    "Explicit Vetra Studio data directory; runtime state is stored under userdata (equivalent to VETRA_HOME).",
+    "Explicit Vetra Code data directory; runtime state is stored under userdata (equivalent to VETRA_HOME).",
   ),
   Flag.optional,
 );

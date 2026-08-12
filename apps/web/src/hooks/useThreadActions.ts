@@ -3,17 +3,14 @@ import {
   scopeProjectRef,
   scopeThreadRef,
   scopedThreadKey,
-} from "@vetra-studio/client-runtime/environment";
-import {
-  settlePromise,
-  squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
+} from "@vetra-code/client-runtime/environment";
+import { settlePromise, squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
 import {
   canSettle,
   canSnooze,
   threadWokeAt,
-} from "@vetra-studio/client-runtime/state/thread-settled";
-import { EnvironmentId, type ScopedThreadRef, ThreadId } from "@vetra-studio/contracts";
+} from "@vetra-code/client-runtime/state/thread-settled";
+import { EnvironmentId, type ScopedThreadRef, ThreadId } from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import * as Schema from "effect/Schema";
 import { AsyncResult } from "effect/unstable/reactivity";

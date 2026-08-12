@@ -1,5 +1,5 @@
-import { scopedThreadKey } from "@vetra-studio/client-runtime/environment";
-import type { ScopedThreadRef, TurnId } from "@vetra-studio/contracts";
+import { scopedThreadKey } from "@vetra-code/client-runtime/environment";
+import type { ScopedThreadRef, TurnId } from "@vetra-code/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

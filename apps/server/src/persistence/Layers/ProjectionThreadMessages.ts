@@ -5,7 +5,7 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Struct from "effect/Struct";
-import { ChatAttachment } from "@vetra-studio/contracts";
+import { ChatAttachment } from "@vetra-code/contracts";
 
 import { toPersistenceSqlError } from "../Errors.ts";
 import {

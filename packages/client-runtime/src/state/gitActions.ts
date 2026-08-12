@@ -3,8 +3,8 @@ import type {
   GitRunStackedActionResult,
   GitStackedAction,
   VcsStatusResult,
-} from "@vetra-studio/contracts";
-import { isTemporaryWorktreeBranch } from "@vetra-studio/shared/git";
+} from "@vetra-code/contracts";
+import { isTemporaryWorktreeBranch } from "@vetra-code/shared/git";
 
 export type GitActionIconName = "commit" | "push" | "pr";
 

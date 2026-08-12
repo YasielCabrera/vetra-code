@@ -4,7 +4,7 @@
  *
  * @module usageFormat
  */
-import { UsageDay, type UsageResolution, type UsageSummaryInput } from "@vetra-studio/contracts";
+import { UsageDay, type UsageResolution, type UsageSummaryInput } from "@vetra-code/contracts";
 
 const CURRENCY = new Intl.NumberFormat("en-US", {
   style: "currency",

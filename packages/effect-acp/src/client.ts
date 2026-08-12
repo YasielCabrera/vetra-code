@@ -264,7 +264,7 @@ export class AcpClient extends Context.Service<
       handler: (payload: A) => Effect.Effect<void, AcpError.AcpError>,
     ) => Effect.Effect<void>;
   }
->()("@vetra-studio/effect-acp/client/AcpClient") {}
+>()("@vetra-code/effect-acp/client/AcpClient") {}
 
 interface AcpCoreRequestHandlers {
   requestPermission?: (
@@ -306,7 +306,7 @@ interface BufferedNotificationHandler<A> {
   readonly pending: Array<A>;
 }
 
-export const make = Effect.fn("@vetra-studio/effect-acp/AcpClient.make")(function* (
+export const make = Effect.fn("@vetra-code/effect-acp/AcpClient.make")(function* (
   stdio: Stdio.Stdio,
   options: AcpClientOptions = {},
   terminationError?: Effect.Effect<AcpError.AcpError>,

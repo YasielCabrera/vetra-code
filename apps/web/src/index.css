@@ -1220,7 +1220,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(vetra-mo
 
 /* Keep both sidebar implementations (default and legacy) on the same quiet,
    neutral navigation surface while green selection states tie them to the
-   Vetra Studio workspace. */
+   Vetra Code workspace. */
 [data-app-sidebar] {
   --background: #f6faf7;
   --foreground: #202722;

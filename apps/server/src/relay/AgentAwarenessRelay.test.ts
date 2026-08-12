@@ -11,14 +11,14 @@ import type {
   ProjectId,
   ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import type {
   RelayAgentActivityPublishProofPayload,
   RelayAgentActivityState,
-} from "@vetra-studio/contracts/relay";
-import { CommandId, ProviderInstanceId } from "@vetra-studio/contracts";
-import { RelayClientTracer } from "@vetra-studio/shared/relayTracing";
-import { RELAY_ACTIVITY_PUBLISH_TYP, verifyRelayJwt } from "@vetra-studio/shared/relayJwt";
+} from "@vetra-code/contracts/relay";
+import { CommandId, ProviderInstanceId } from "@vetra-code/contracts";
+import { RelayClientTracer } from "@vetra-code/shared/relayTracing";
+import { RELAY_ACTIVITY_PUBLISH_TYP, verifyRelayJwt } from "@vetra-code/shared/relayJwt";
 import { describe, expect, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -320,7 +320,7 @@ describe.sequential("signRelayAgentActivityPublishProof", () => {
         projects: [
           {
             id: projectId,
-            title: "Vetra Studio",
+            title: "Vetra Code",
           },
         ],
         threads: [
@@ -424,7 +424,7 @@ describe.sequential("signRelayAgentActivityPublishProof", () => {
 
         const project = {
           id: projectId,
-          title: "Vetra Studio",
+          title: "Vetra Code",
           workspaceRoot: "/workspace",
           repositoryIdentity: null,
           defaultModelSelection: null,
@@ -584,7 +584,7 @@ describe.sequential("signRelayAgentActivityPublishProof", () => {
 
         const project = {
           id: projectId,
-          title: "Vetra Studio",
+          title: "Vetra Code",
           workspaceRoot: "/workspace",
           repositoryIdentity: null,
           defaultModelSelection: null,

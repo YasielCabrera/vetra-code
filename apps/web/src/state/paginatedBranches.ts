@@ -1,4 +1,4 @@
-import type { VcsListRefsResult } from "@vetra-studio/contracts";
+import type { VcsListRefsResult } from "@vetra-code/contracts";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/unstable/reactivity";
 

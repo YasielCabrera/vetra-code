@@ -2,14 +2,14 @@ import {
   type ModelCapabilities,
   type OpenCodeSettings,
   type ServerProviderModel,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import * as Data from "effect/Data";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 
-import { createModelCapabilities } from "@vetra-studio/shared/model";
-import { compareSemverVersions } from "@vetra-studio/shared/semver";
+import { createModelCapabilities } from "@vetra-code/shared/model";
+import { compareSemverVersions } from "@vetra-code/shared/semver";
 import {
   buildServerProvider,
   nonEmptyTrimmed,
@@ -274,8 +274,8 @@ export const makePendingOpenCodeProvider = (
           auth: { status: "unknown" },
           message:
             openCodeSettings.serverUrl.trim().length > 0
-              ? "OpenCode is disabled in Vetra Studio settings. A server URL is configured."
-              : "OpenCode is disabled in Vetra Studio settings.",
+              ? "OpenCode is disabled in Vetra Code settings. A server URL is configured."
+              : "OpenCode is disabled in Vetra Code settings.",
         },
       });
     }
@@ -339,8 +339,8 @@ export const checkOpenCodeProviderStatus = Effect.fn("checkOpenCodeProviderStatu
         status: "warning",
         auth: { status: "unknown" },
         message: isExternalServer
-          ? "OpenCode is disabled in Vetra Studio settings. A server URL is configured."
-          : "OpenCode is disabled in Vetra Studio settings.",
+          ? "OpenCode is disabled in Vetra Code settings. A server URL is configured."
+          : "OpenCode is disabled in Vetra Code settings.",
       },
     });
   }
@@ -368,7 +368,7 @@ export const checkOpenCodeProviderStatus = Effect.fn("checkOpenCodeProviderStatu
     if (!version) {
       return fallback(
         new Error(
-          `Unable to determine OpenCode version from \`opencode --version\` output. Vetra Studio requires OpenCode v${MINIMUM_OPENCODE_VERSION} or newer.`,
+          `Unable to determine OpenCode version from \`opencode --version\` output. Vetra Code requires OpenCode v${MINIMUM_OPENCODE_VERSION} or newer.`,
         ),
         null,
       );

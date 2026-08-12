@@ -12,10 +12,10 @@ import {
 const latestAnnouncement = {
   target: "latest",
   roleId: "222222222222222222",
-  releaseName: "Vetra Studio v1.2.3",
+  releaseName: "Vetra Code v1.2.3",
   version: "1.2.3",
   tag: "v1.2.3",
-  releaseUrl: new URL("https://github.com/vetra-studio/vetra-studio/releases/tag/v1.2.3"),
+  releaseUrl: new URL("https://github.com/vetra-code/vetra-code/releases/tag/v1.2.3"),
   timestamp: "2026-05-01T01:41:00.000Z",
 } as const;
 
@@ -26,25 +26,25 @@ it("builds a prerelease Discord announcement for nightly subscribers", () => {
     buildDiscordReleaseAnnouncement({
       target: "prerelease",
       roleId: "111111111111111111",
-      releaseName: "Vetra Studio Nightly 1.2.4-nightly.20260501.17 (abcdef123456)",
+      releaseName: "Vetra Code Nightly 1.2.4-nightly.20260501.17 (abcdef123456)",
       version: "1.2.4-nightly.20260501.17",
       tag: "v1.2.4-nightly.20260501.17",
       releaseUrl: new URL(
-        "https://github.com/vetra-studio/vetra-studio/releases/tag/v1.2.4-nightly.20260501.17",
+        "https://github.com/vetra-code/vetra-code/releases/tag/v1.2.4-nightly.20260501.17",
       ),
       timestamp: "2026-05-01T01:41:00.000Z",
     }),
     {
       content:
-        "<@&111111111111111111> Prerelease published: Vetra Studio Nightly 1.2.4-nightly.20260501.17 (abcdef123456)",
+        "<@&111111111111111111> Prerelease published: Vetra Code Nightly 1.2.4-nightly.20260501.17 (abcdef123456)",
       allowed_mentions: {
         roles: ["111111111111111111"],
       },
       embeds: [
         {
-          title: "Vetra Studio Nightly 1.2.4-nightly.20260501.17 (abcdef123456)",
-          url: "https://github.com/vetra-studio/vetra-studio/releases/tag/v1.2.4-nightly.20260501.17",
-          description: "A new Vetra Studio prerelease is available for nightly testers.",
+          title: "Vetra Code Nightly 1.2.4-nightly.20260501.17 (abcdef123456)",
+          url: "https://github.com/vetra-code/vetra-code/releases/tag/v1.2.4-nightly.20260501.17",
+          description: "A new Vetra Code prerelease is available for nightly testers.",
           color: 0x5865f2,
           fields: [
             {
@@ -67,15 +67,15 @@ it("builds a prerelease Discord announcement for nightly subscribers", () => {
 
 it("builds a latest Discord announcement for stable subscribers", () => {
   assert.deepStrictEqual(buildDiscordReleaseAnnouncement(latestAnnouncement), {
-    content: "<@&222222222222222222> Latest published: Vetra Studio v1.2.3",
+    content: "<@&222222222222222222> Latest published: Vetra Code v1.2.3",
     allowed_mentions: {
       roles: ["222222222222222222"],
     },
     embeds: [
       {
-        title: "Vetra Studio v1.2.3",
-        url: "https://github.com/vetra-studio/vetra-studio/releases/tag/v1.2.3",
-        description: "A new Vetra Studio latest release is available.",
+        title: "Vetra Code v1.2.3",
+        url: "https://github.com/vetra-code/vetra-code/releases/tag/v1.2.3",
+        description: "A new Vetra Code latest release is available.",
         color: 0x2ecc71,
         fields: [
           {

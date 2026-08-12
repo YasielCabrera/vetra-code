@@ -3,7 +3,7 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ModelCapabilities,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 import {
   buildProviderOptionSelectionsFromDescriptors,

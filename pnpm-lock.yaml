@@ -104,19 +104,19 @@ importers:
       '@effect/platform-node':
         specifier: 4.0.0-beta.103
         version: 4.0.0-beta.103(bufferutil@4.1.0)(effect@4.0.0-beta.103(patch_hash=af36b7948b6f9c56623074662b51dade5699880c1a7c71245de73e13c3185fb6))(ioredis@5.11.0)(utf-8-validate@6.0.6)
-      '@vetra-studio/client-runtime':
+      '@vetra-code/client-runtime':
         specifier: workspace:*
         version: link:../../packages/client-runtime
-      '@vetra-studio/contracts':
+      '@vetra-code/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@vetra-studio/shared':
+      '@vetra-code/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@vetra-studio/ssh':
+      '@vetra-code/ssh':
         specifier: workspace:*
         version: link:../../packages/ssh
-      '@vetra-studio/tailscale':
+      '@vetra-code/tailscale':
         specifier: workspace:*
         version: link:../../packages/tailscale
       effect:
@@ -202,22 +202,22 @@ importers:
       '@types/node':
         specifier: 24.12.4
         version: 24.12.4
-      '@vetra-studio/contracts':
+      '@vetra-code/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@vetra-studio/effect-acp':
+      '@vetra-code/effect-acp':
         specifier: workspace:*
         version: link:../../packages/effect-acp
-      '@vetra-studio/effect-codex-app-server':
+      '@vetra-code/effect-codex-app-server':
         specifier: workspace:*
         version: link:../../packages/effect-codex-app-server
-      '@vetra-studio/shared':
+      '@vetra-code/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@vetra-studio/tailscale':
+      '@vetra-code/tailscale':
         specifier: workspace:*
         version: link:../../packages/tailscale
-      '@vetra-studio/web':
+      '@vetra-code/web':
         specifier: workspace:*
         version: link:../web
       vite-plus:
@@ -274,13 +274,13 @@ importers:
       '@tanstack/react-router':
         specifier: ^1.160.2
         version: 1.170.10(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      '@vetra-studio/client-runtime':
+      '@vetra-code/client-runtime':
         specifier: workspace:*
         version: link:../../packages/client-runtime
-      '@vetra-studio/contracts':
+      '@vetra-code/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@vetra-studio/shared':
+      '@vetra-code/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       class-variance-authority:
@@ -404,13 +404,13 @@ importers:
       '@noble/hashes':
         specifier: 'catalog:'
         version: 1.8.0
-      '@vetra-studio/client-runtime':
+      '@vetra-code/client-runtime':
         specifier: workspace:*
         version: link:../../packages/client-runtime
-      '@vetra-studio/contracts':
+      '@vetra-code/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@vetra-studio/shared':
+      '@vetra-code/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       alchemy:
@@ -466,10 +466,10 @@ importers:
 
   packages/client-runtime:
     dependencies:
-      '@vetra-studio/contracts':
+      '@vetra-code/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@vetra-studio/shared':
+      '@vetra-code/shared':
         specifier: workspace:*
         version: link:../shared
       effect:
@@ -548,7 +548,7 @@ importers:
       '@noble/hashes':
         specifier: 'catalog:'
         version: 1.8.0
-      '@vetra-studio/contracts':
+      '@vetra-code/contracts':
         specifier: workspace:*
         version: link:../contracts
       effect:
@@ -576,10 +576,10 @@ importers:
 
   packages/ssh:
     dependencies:
-      '@vetra-studio/contracts':
+      '@vetra-code/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@vetra-studio/shared':
+      '@vetra-code/shared':
         specifier: workspace:*
         version: link:../shared
       effect:
@@ -604,7 +604,7 @@ importers:
       '@effect/platform-node':
         specifier: 4.0.0-beta.103
         version: 4.0.0-beta.103(bufferutil@4.1.0)(effect@4.0.0-beta.103(patch_hash=af36b7948b6f9c56623074662b51dade5699880c1a7c71245de73e13c3185fb6))(ioredis@5.11.0)(utf-8-validate@6.0.6)
-      '@vetra-studio/shared':
+      '@vetra-code/shared':
         specifier: workspace:*
         version: link:../shared
       effect:
@@ -626,13 +626,13 @@ importers:
       '@effect/platform-node':
         specifier: 4.0.0-beta.103
         version: 4.0.0-beta.103(bufferutil@4.1.0)(effect@4.0.0-beta.103(patch_hash=af36b7948b6f9c56623074662b51dade5699880c1a7c71245de73e13c3185fb6))(ioredis@5.11.0)(utf-8-validate@6.0.6)
-      '@vetra-studio/contracts':
+      '@vetra-code/contracts':
         specifier: workspace:*
         version: link:../packages/contracts
-      '@vetra-studio/shared':
+      '@vetra-code/shared':
         specifier: workspace:*
         version: link:../packages/shared
-      '@vetra-studio/tailscale':
+      '@vetra-code/tailscale':
         specifier: workspace:*
         version: link:../packages/tailscale
       effect:

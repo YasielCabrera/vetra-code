@@ -9,7 +9,7 @@
  *
  * @module OrchestrationEventStore
  */
-import { OrchestrationEvent } from "@vetra-studio/contracts";
+import { OrchestrationEvent } from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import type * as Stream from "effect/Stream";
@@ -68,4 +68,4 @@ export interface OrchestrationEventStoreShape {
 export class OrchestrationEventStore extends Context.Service<
   OrchestrationEventStore,
   OrchestrationEventStoreShape
->()("@vetra-studio/server/persistence/Services/OrchestrationEventStore") {}
+>()("@vetra-code/server/persistence/Services/OrchestrationEventStore") {}

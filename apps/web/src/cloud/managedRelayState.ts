@@ -4,11 +4,11 @@ import {
   ManagedRelay,
   managedRelaySessionAtom,
   readManagedRelaySnapshotState,
-} from "@vetra-studio/client-runtime/relay";
+} from "@vetra-code/client-runtime/relay";
 import type {
   RelayClientDeviceRecord,
   RelayClientEnvironmentRecord,
-} from "@vetra-studio/contracts/relay";
+} from "@vetra-code/contracts/relay";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

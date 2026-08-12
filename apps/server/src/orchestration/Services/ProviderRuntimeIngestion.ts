@@ -39,5 +39,5 @@ export class ProviderRuntimeIngestionService extends Context.Service<
   ProviderRuntimeIngestionService,
   ProviderRuntimeIngestionShape
 >()(
-  "@vetra-studio/server/orchestration/Services/ProviderRuntimeIngestion/ProviderRuntimeIngestionService",
+  "@vetra-code/server/orchestration/Services/ProviderRuntimeIngestion/ProviderRuntimeIngestionService",
 ) {}

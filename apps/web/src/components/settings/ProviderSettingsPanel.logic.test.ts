@@ -1,4 +1,4 @@
-import { AuthOrchestrationOperateScope, EnvironmentId } from "@vetra-studio/contracts";
+import { AuthOrchestrationOperateScope, EnvironmentId } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

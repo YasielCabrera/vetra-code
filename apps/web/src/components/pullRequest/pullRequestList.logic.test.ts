@@ -1,4 +1,4 @@
-import type { PullRequestListEntry } from "@vetra-studio/contracts";
+import type { PullRequestListEntry } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -24,10 +24,10 @@ function entry(overrides: Partial<PullRequestListEntry> & Pick<PullRequestListEn
     provider: "github",
     host: "github.com",
     projectId: "project-1",
-    projectTitle: "vetra-studio",
-    repository: "vetra-studio/vetra-studio",
+    projectTitle: "vetra-code",
+    repository: "vetra-code/vetra-code",
     title: "Add the pull requests page",
-    url: `https://github.com/vetra-studio/vetra/pull/${overrides.number}`,
+    url: `https://github.com/vetra-code/vetra/pull/${overrides.number}`,
     author: { login: "octocat", name: null, avatarUrl: null },
     headBranch: `feat/branch-${overrides.number}`,
     baseBranch: "main",
@@ -397,7 +397,7 @@ describe("the list snapshot across a reload", () => {
     providers: [],
     errors: [{ projectId: "project-1", message: "boom" }],
     truncated: true,
-    nextCursors: { "vetra-studio/vetra-studio": "cursor-1" },
+    nextCursors: { "vetra-code/vetra-code": "cursor-1" },
   } as never;
 
   it("hydrates the retained rows so ghosts never replace them", () => {

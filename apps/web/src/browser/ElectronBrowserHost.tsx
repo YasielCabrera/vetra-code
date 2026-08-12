@@ -1,7 +1,7 @@
 "use client";
 
-import { parseScopedThreadKey } from "@vetra-studio/client-runtime/environment";
-import { FILL_PREVIEW_VIEWPORT } from "@vetra-studio/contracts";
+import { parseScopedThreadKey } from "@vetra-code/client-runtime/environment";
+import { FILL_PREVIEW_VIEWPORT } from "@vetra-code/contracts";
 import { useEffect, useMemo } from "react";
 
 import { isElectron } from "~/env";

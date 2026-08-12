@@ -63,7 +63,7 @@ vi.mock("electron", () => ({
     getVersion: getVersionMock,
     isDefaultProtocolClient: isDefaultProtocolClientMock,
     isPackaged: true,
-    name: "Vetra Studio",
+    name: "Vetra Code",
     on: onMock,
     quit: quitMock,
     relaunch: relaunchMock,

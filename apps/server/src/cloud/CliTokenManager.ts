@@ -29,7 +29,7 @@ import {
   buildConnectClerkAuthorizeUrl,
   checkConnectAuthCode,
   connectCallbackUrl,
-} from "@vetra-studio/shared/connectAuth";
+} from "@vetra-code/shared/connectAuth";
 
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as ExternalLauncher from "../process/externalLauncher.ts";
@@ -231,7 +231,7 @@ export class CloudCliTokenManager extends Context.Service<
     readonly store: (token: PersistedToken) => Effect.Effect<void, CloudCliTokenManagerError>;
     readonly clear: Effect.Effect<void, CloudCliTokenManagerError>;
   }
->()("@vetra-studio/server/cloud/CliTokenManager/CloudCliTokenManager") {}
+>()("@vetra-code/server/cloud/CliTokenManager/CloudCliTokenManager") {}
 
 function stringToBytes(value: string): Uint8Array {
   return new TextEncoder().encode(value);

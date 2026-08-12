@@ -1,9 +1,9 @@
 import * as React from "react";
-import type { ContextMenuItem } from "@vetra-studio/contracts";
+import type { ContextMenuItem } from "@vetra-code/contracts";
 import type {
   SidebarProjectSortOrder,
   SidebarThreadSortOrder,
-} from "@vetra-studio/contracts/settings";
+} from "@vetra-code/contracts/settings";
 import {
   getThreadSortTimestamp,
   sortThreads,
@@ -536,8 +536,8 @@ export {
   generateSpreadPinOrderKeys,
   pinOrderKeyBetween,
   planPinnedReorder,
-} from "@vetra-studio/client-runtime/state/thread-sort";
-export { sortPinnedThreadsByOrderKey as sortPinnedThreadsForSidebar } from "@vetra-studio/client-runtime/state/thread-sort";
+} from "@vetra-code/client-runtime/state/thread-sort";
+export { sortPinnedThreadsByOrderKey as sortPinnedThreadsForSidebar } from "@vetra-code/client-runtime/state/thread-sort";
 
 /**
  * Search the already-ordered sidebar thread collection by title only.

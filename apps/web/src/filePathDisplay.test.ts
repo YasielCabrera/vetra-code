@@ -7,7 +7,7 @@ describe("formatWorkspaceRelativePath", () => {
     expect(
       formatWorkspaceRelativePath(
         "C:/Users/mike/dev-stuff/vetra/apps/web/src/session-logic.ts:501",
-        "C:/Users/mike/dev-stuff/vetra-studio",
+        "C:/Users/mike/dev-stuff/vetra-code",
       ),
     ).toBe("vetra/apps/web/src/session-logic.ts:501");
   });
@@ -16,7 +16,7 @@ describe("formatWorkspaceRelativePath", () => {
     expect(
       formatWorkspaceRelativePath(
         "apps/web/src/session-logic.ts:501",
-        "C:/Users/mike/dev-stuff/vetra-studio",
+        "C:/Users/mike/dev-stuff/vetra-code",
       ),
     ).toBe("vetra/apps/web/src/session-logic.ts:501");
   });
@@ -25,7 +25,7 @@ describe("formatWorkspaceRelativePath", () => {
     expect(
       formatWorkspaceRelativePath(
         "vetra/apps/web/src/session-logic.ts:501",
-        "C:/Users/mike/dev-stuff/vetra-studio",
+        "C:/Users/mike/dev-stuff/vetra-code",
       ),
     ).toBe("vetra/apps/web/src/session-logic.ts:501");
   });
@@ -34,7 +34,7 @@ describe("formatWorkspaceRelativePath", () => {
     expect(
       formatWorkspaceRelativePath(
         "/C:/Users/mike/dev-stuff/vetra/apps/web/src/session-logic.ts:501:9",
-        "C:/Users/mike/dev-stuff/vetra-studio",
+        "C:/Users/mike/dev-stuff/vetra-code",
       ),
     ).toBe("vetra/apps/web/src/session-logic.ts:501:9");
   });

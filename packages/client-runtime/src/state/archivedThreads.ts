@@ -1,4 +1,4 @@
-import { EnvironmentId, type OrchestrationShellSnapshot } from "@vetra-studio/contracts";
+import { EnvironmentId, type OrchestrationShellSnapshot } from "@vetra-code/contracts";
 import * as Arr from "effect/Array";
 import { pipe } from "effect/Function";
 import * as Option from "effect/Option";

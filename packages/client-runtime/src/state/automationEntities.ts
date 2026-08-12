@@ -3,7 +3,7 @@ import type {
   EnvironmentId,
   OrchestrationAutomation,
   OrchestrationShellSnapshot,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import { Atom } from "effect/unstable/reactivity";
 
 import type { EnvironmentCatalogState } from "./connections.ts";

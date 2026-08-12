@@ -1,4 +1,4 @@
-import { ProviderInteractionMode, RuntimeMode } from "@vetra-studio/contracts";
+import { ProviderInteractionMode, RuntimeMode } from "@vetra-code/contracts";
 import { memo, type ReactNode } from "react";
 import { EllipsisIcon } from "lucide-react";
 import { Button } from "../ui/button";

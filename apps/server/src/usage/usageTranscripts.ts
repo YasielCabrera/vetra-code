@@ -6,7 +6,7 @@
  *
  * @module usageTranscripts
  */
-import type { UsageProviderKind, UsageTokenTotals } from "@vetra-studio/contracts";
+import type { UsageProviderKind, UsageTokenTotals } from "@vetra-code/contracts";
 
 export interface UsageRecord {
   readonly provider: UsageProviderKind;
@@ -78,7 +78,7 @@ export function mightCarryUsage(line: string, provider: UsageProviderKind): bool
 /**
  * Parses one line of a Claude Code transcript.
  *
- * Vetra Studio writes one record per assistant *content block*, and every one of
+ * Vetra Code writes one record per assistant *content block*, and every one of
  * those records repeats the same complete `usage` object for the parent
  * message. Summing them overcounts by roughly 2.4x on a real workload, so the
  * caller must drop repeats by `dedupeKey` and keep the first.

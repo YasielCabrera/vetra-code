@@ -21,8 +21,8 @@ import type {
   PullRequestState,
   PullRequestViewerPermissions,
   SourceControlProviderKind,
-} from "@vetra-studio/contracts";
-import { SourceControlProviderKind as SourceControlProviderKindSchema } from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
+import { SourceControlProviderKind as SourceControlProviderKindSchema } from "@vetra-code/contracts";
 
 /**
  * The one failure shape every provider reports, so the service can decide what a failure means

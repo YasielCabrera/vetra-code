@@ -29,7 +29,7 @@ Every write uses same-directory replacement plus file and directory fsync.
 
 ## Remote Update
 
-1. The active server installs `@vetra-studio/server@<target>` into a unique staging directory.
+1. The active server installs `@vetra-code/server@<target>` into a unique staging directory.
 2. The target runs `__service-preflight` and verifies that the stable launcher supports its update
    protocol.
 3. The staging directory is renamed to its immutable version path only after preflight succeeds.
@@ -65,7 +65,7 @@ The protocol version is part of the safety boundary. A target that requires data
 blocked when the installed launcher is too old. Upgrade the launcher once with:
 
 ```sh
-npx @vetra-studio/server@<version> service update
+npx @vetra-code/server@<version> service update
 ```
 
 This command is documentation for the future published package. It cannot be used while the package

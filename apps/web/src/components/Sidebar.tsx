@@ -22,15 +22,15 @@ import {
   effectiveSettled,
   effectiveSnoozed,
   threadWokeAt,
-} from "@vetra-studio/client-runtime/state/thread-settled";
-import type { EnvironmentThreadShell } from "@vetra-studio/client-runtime/state/models";
+} from "@vetra-code/client-runtime/state/thread-settled";
+import type { EnvironmentThreadShell } from "@vetra-code/client-runtime/state/models";
 import {
   scopeProjectRef,
   scopeThreadRef,
   scopedThreadKey,
-} from "@vetra-studio/client-runtime/environment";
-import type { ScopedThreadRef, ThreadId } from "@vetra-studio/contracts";
-import type { TimestampFormat } from "@vetra-studio/contracts/settings";
+} from "@vetra-code/client-runtime/environment";
+import type { ScopedThreadRef, ThreadId } from "@vetra-code/contracts";
+import type { TimestampFormat } from "@vetra-code/contracts/settings";
 import {
   AlarmClockIcon,
   AlarmClockOffIcon,
@@ -73,7 +73,7 @@ import {
   isAtomCommandInterrupted,
   settlePromise,
   squashAtomCommandFailure,
-} from "@vetra-studio/client-runtime/state/runtime";
+} from "@vetra-code/client-runtime/state/runtime";
 import { isElectron } from "../env";
 import {
   resolveShortcutCommand,

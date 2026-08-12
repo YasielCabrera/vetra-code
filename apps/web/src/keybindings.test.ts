@@ -5,7 +5,7 @@ import {
   type KeybindingShortcut,
   type KeybindingWhenNode,
   type ResolvedKeybindingsConfig,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   formatShortcutLabel,
   isChatNewShortcut,

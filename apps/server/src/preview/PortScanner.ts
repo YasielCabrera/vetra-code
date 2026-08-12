@@ -11,10 +11,10 @@
  * Polling is reference-counted via scoped `retain`. A single layer-scoped fiber
  * polls forever, but each tick is a no-op when the retain count is zero.
  */
-import { ThreadId, type DiscoveredLocalServer } from "@vetra-studio/contracts";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
-import * as Net from "@vetra-studio/shared/Net";
-import { LSOF_LOCAL_HOST_TOKENS } from "@vetra-studio/shared/preview";
+import { ThreadId, type DiscoveredLocalServer } from "@vetra-code/contracts";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import * as Net from "@vetra-code/shared/Net";
+import { LSOF_LOCAL_HOST_TOKENS } from "@vetra-code/shared/preview";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
@@ -44,7 +44,7 @@ export class PortDiscovery extends Context.Service<
       readonly terminalId: string;
     }) => Effect.Effect<void>;
   }
->()("@vetra-studio/server/preview/PortScanner/PortDiscovery") {}
+>()("@vetra-code/server/preview/PortScanner/PortDiscovery") {}
 
 export const COMMON_DEV_PORTS: ReadonlyArray<number> = Object.freeze([
   3000, 3001, 3333, 4173, 4200, 4321, 5000, 5173, 5174, 5175, 5500, 8000, 8080, 8081, 8888, 9000,

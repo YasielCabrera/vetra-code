@@ -1,4 +1,4 @@
-# Building Vetra Studio from an established agent-runtime foundation
+# Building Vetra Code from an established agent-runtime foundation
 
 This folder is the implementation plan for turning the existing agent-runtime foundation into a web and desktop
 application builder. The intended product lets a user create and operate a full-stack application
@@ -86,7 +86,7 @@ The first milestone is intentionally smaller than the whole product:
 
 The milestone is complete when all of the following are true:
 
-1. Another installed coding-agent client can stay open while Vetra Studio runs.
+1. Another installed coding-agent client can stay open while Vetra Code runs.
 2. Neither process reads or writes the other's SQLite database, settings, credentials, logs,
    desktop profile, URL protocol, or ports.
 3. The same React renderer provides the builder UI in the browser and Electron.

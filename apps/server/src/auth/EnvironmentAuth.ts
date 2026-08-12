@@ -16,8 +16,8 @@ import {
   type ServerAuthDescriptor,
   type ServerAuthSessionMethod,
   type AuthWebSocketTicketResult,
-} from "@vetra-studio/contracts";
-import { encodeOAuthScope } from "@vetra-studio/shared/oauthScope";
+} from "@vetra-code/contracts";
+import { encodeOAuthScope } from "@vetra-code/shared/oauthScope";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -490,7 +490,7 @@ export class EnvironmentAuth extends Context.Service<
       baseUrl: string,
     ) => Effect.Effect<string, ServerAuthInternalError>;
   }
->()("@vetra-studio/server/auth/EnvironmentAuth") {}
+>()("@vetra-code/server/auth/EnvironmentAuth") {}
 
 type BootstrapExchangeResult = {
   readonly response: AuthBrowserSessionResult;

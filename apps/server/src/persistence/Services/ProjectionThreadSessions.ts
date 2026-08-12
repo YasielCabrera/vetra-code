@@ -13,7 +13,7 @@ import {
   ProviderInstanceId,
   ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
@@ -76,5 +76,5 @@ export class ProjectionThreadSessionRepository extends Context.Service<
   ProjectionThreadSessionRepository,
   ProjectionThreadSessionRepositoryShape
 >()(
-  "@vetra-studio/server/persistence/Services/ProjectionThreadSessions/ProjectionThreadSessionRepository",
+  "@vetra-code/server/persistence/Services/ProjectionThreadSessions/ProjectionThreadSessionRepository",
 ) {}

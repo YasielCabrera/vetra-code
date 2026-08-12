@@ -1,5 +1,5 @@
 {
-  "name": "@vetra-studio/tailscale",
+  "name": "@vetra-code/tailscale",
   "private": true,
   "type": "module",
   "exports": {
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@effect/platform-node": "catalog:",
-    "@vetra-studio/shared": "workspace:*",
+    "@vetra-code/shared": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

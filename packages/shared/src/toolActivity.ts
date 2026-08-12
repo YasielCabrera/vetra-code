@@ -1,4 +1,4 @@
-import type { ToolLifecycleItemType } from "@vetra-studio/contracts";
+import type { ToolLifecycleItemType } from "@vetra-code/contracts";
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === "object" && !Array.isArray(value)

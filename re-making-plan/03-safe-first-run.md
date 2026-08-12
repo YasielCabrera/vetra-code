@@ -1,6 +1,6 @@
 # 03 — Safe first run and collision prevention
 
-This phase exists so Vetra Studio can be developed while another installed coding-agent client remains in use.
+This phase exists so Vetra Code can be developed while another installed coding-agent client remains in use.
 
 ## Source-control isolation
 
@@ -41,19 +41,19 @@ pnpm dev --dry-run
 For the first live web run, keep state explicitly inside this repository:
 
 ```bash
-pnpm dev --home-dir .vetra-studio
+pnpm dev --home-dir .vetra-code
 ```
 
-`.vetra-studio` is ignored by Git. The command stores runtime state below
-`<repo>/.vetra-studio/userdata`, derives Vetra-specific ports, and prints the actual ports.
+`.vetra-code` is ignored by Git. The command stores runtime state below
+`<repo>/.vetra-code/userdata`, derives Vetra-specific ports, and prints the actual ports.
 
 Before opening the pairing URL, verify that the `[dev-runner]` line contains:
 
 ```text
-baseDir=<repo>/.vetra-studio
+baseDir=<repo>/.vetra-code
 ```
 
-Stop immediately if it prints a path outside this checkout's `.vetra-studio` directory or any path used by another installed app.
+Stop immediately if it prints a path outside this checkout's `.vetra-code` directory or any path used by another installed app.
 
 Open the full pairing URL printed by the isolated server. Do not open another application's origin or
 reuse a pairing token from another server.
@@ -69,13 +69,13 @@ For a fully isolated development provider, create a provider-specific home below
 directory and authenticate that home explicitly. For example, choose one of:
 
 ```bash
-mkdir -p "$PWD/.vetra-studio/providers/codex"
-CODEX_HOME="$PWD/.vetra-studio/providers/codex" codex login
+mkdir -p "$PWD/.vetra-code/providers/codex"
+CODEX_HOME="$PWD/.vetra-code/providers/codex" codex login
 ```
 
 ```bash
-mkdir -p "$PWD/.vetra-studio/providers/claude"
-CLAUDE_CONFIG_DIR="$PWD/.vetra-studio/providers/claude" claude auth login
+mkdir -p "$PWD/.vetra-code/providers/claude"
+CLAUDE_CONFIG_DIR="$PWD/.vetra-code/providers/claude" claude auth login
 ```
 
 Then configure the isolated server's provider instance to use that exact `CODEX_HOME` or
@@ -85,7 +85,7 @@ collision test. Do not commit, copy, print, or inspect the resulting credential 
 ## Rules during the isolation phase
 
 - Never point a development server at another application's data directory.
-- Never copy, move, symlink, migrate, or vacuum another application's database into Vetra Studio unless a
+- Never copy, move, symlink, migrate, or vacuum another application's database into Vetra Code unless a
   later test plan explicitly requires a read-only-derived fixture.
 - Do not copy the installed app's secrets directory.
 - Do not run provider login/logout against the normal Codex, Claude, Cursor, or OpenCode home while

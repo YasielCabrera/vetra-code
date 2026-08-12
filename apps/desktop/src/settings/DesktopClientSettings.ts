@@ -1,5 +1,5 @@
-import { ClientSettingsSchema, type ClientSettings } from "@vetra-studio/contracts";
-import { fromLenientJson } from "@vetra-studio/shared/schemaJson";
+import { ClientSettingsSchema, type ClientSettings } from "@vetra-code/contracts";
+import { fromLenientJson } from "@vetra-code/shared/schemaJson";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
@@ -60,7 +60,7 @@ export class DesktopClientSettings extends Context.Service<
       settings: ClientSettings,
     ) => Effect.Effect<void, DesktopClientSettingsWriteError>;
   }
->()("@vetra-studio/desktop/settings/DesktopClientSettings") {}
+>()("@vetra-code/desktop/settings/DesktopClientSettings") {}
 
 const readClientSettings = (
   fileSystem: FileSystem.FileSystem,

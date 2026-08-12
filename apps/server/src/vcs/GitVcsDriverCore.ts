@@ -25,14 +25,14 @@ import {
   type ReviewDiffPreviewInput,
   type ReviewDiffPreviewSource,
   type VcsRef,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import {
   dedupeRemoteBranchesWithLocalMatches,
   normalizeGitRemoteUrl,
-} from "@vetra-studio/shared/git";
-import { compactTraceAttributes } from "@vetra-studio/shared/observability";
-import { PRODUCT_PRE_REFRESH_REF_PREFIX, PRODUCT_SLUG } from "@vetra-studio/shared/productIdentity";
-import { decodeJsonResult } from "@vetra-studio/shared/schemaJson";
+} from "@vetra-code/shared/git";
+import { compactTraceAttributes } from "@vetra-code/shared/observability";
+import { PRODUCT_PRE_REFRESH_REF_PREFIX, PRODUCT_SLUG } from "@vetra-code/shared/productIdentity";
+import { decodeJsonResult } from "@vetra-code/shared/schemaJson";
 import { gitCommandDuration, gitCommandsTotal, withMetrics } from "../observability/Metrics.ts";
 import * as GitVcsDriver from "./GitVcsDriver.ts";
 import {

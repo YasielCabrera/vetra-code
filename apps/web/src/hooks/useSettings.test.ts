@@ -2,8 +2,8 @@ import {
   DEFAULT_SERVER_SETTINGS,
   ProviderDriverKind,
   ProviderInstanceId,
-} from "@vetra-studio/contracts";
-import { DEFAULT_CLIENT_SETTINGS } from "@vetra-studio/contracts/settings";
+} from "@vetra-code/contracts";
+import { DEFAULT_CLIENT_SETTINGS } from "@vetra-code/contracts/settings";
 import { describe, expect, it } from "vite-plus/test";
 
 import { mergeEnvironmentSettings, resolveEnvironmentIdentificationMode } from "./useSettings";

@@ -1,5 +1,5 @@
 import type { FileDiffMetadata } from "@pierre/diffs";
-import type { PullRequestDiffSide } from "@vetra-studio/contracts";
+import type { PullRequestDiffSide } from "@vetra-code/contracts";
 
 /**
  * Whether a conversation's line is really in this file's hunks.

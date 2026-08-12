@@ -7,9 +7,9 @@ import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import type * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
 import { describe, expect, it } from "vite-plus/test";
-import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
-import type { CursorSettings } from "@vetra-studio/contracts";
-import { createModelCapabilities } from "@vetra-studio/shared/model";
+import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
+import type { CursorSettings } from "@vetra-code/contracts";
+import { createModelCapabilities } from "@vetra-code/shared/model";
 
 import {
   buildCursorProviderSnapshot,
@@ -301,14 +301,14 @@ const baseCursorSettings: CursorSettings = {
 };
 const cursorAcpDiscoveryFailedMessage = [
   "Cursor ACP model discovery failed.",
-  "Cursor CLI setup may be incomplete; install or enable the Cursor CLI, restart Vetra Studio, and try again.",
+  "Cursor CLI setup may be incomplete; install or enable the Cursor CLI, restart Vetra Code, and try again.",
   "See https://cursor.com/docs/cli/installation.",
   "Check server logs for ACP details.",
 ].join(" ");
 const missingCursorBinaryPath = "/definitely/not/installed/vetra-cursor-agent";
 const cursorCliCommandMissingMessage = [
   `Cursor CLI command \`${missingCursorBinaryPath}\` was not found.`,
-  `Install or enable the Cursor CLI, make sure \`${missingCursorBinaryPath}\` is on PATH, then restart Vetra Studio.`,
+  `Install or enable the Cursor CLI, make sure \`${missingCursorBinaryPath}\` is on PATH, then restart Vetra Code.`,
   "See https://cursor.com/docs/cli/installation.",
 ].join(" ");
 

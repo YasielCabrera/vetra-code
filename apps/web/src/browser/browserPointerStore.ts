@@ -1,4 +1,4 @@
-import type { DesktopPreviewPointerEvent } from "@vetra-studio/contracts";
+import type { DesktopPreviewPointerEvent } from "@vetra-code/contracts";
 import { create } from "zustand";
 
 interface BrowserPointerStoreState {

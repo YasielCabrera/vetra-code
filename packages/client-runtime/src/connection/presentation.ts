@@ -1,4 +1,4 @@
-import type { ServerConfig } from "@vetra-studio/contracts";
+import type { ServerConfig } from "@vetra-code/contracts";
 import * as Option from "effect/Option";
 
 import type { ConnectionCatalogEntry } from "./catalog.ts";

@@ -1,6 +1,6 @@
 import * as Encoding from "effect/Encoding";
-import { CheckpointRef, ProjectId, type ThreadId } from "@vetra-studio/contracts";
-import { PRODUCT_CHECKPOINT_REFS_PREFIX } from "@vetra-studio/shared/productIdentity";
+import { CheckpointRef, ProjectId, type ThreadId } from "@vetra-code/contracts";
+import { PRODUCT_CHECKPOINT_REFS_PREFIX } from "@vetra-code/shared/productIdentity";
 
 export const CHECKPOINT_REFS_PREFIX = PRODUCT_CHECKPOINT_REFS_PREFIX;
 

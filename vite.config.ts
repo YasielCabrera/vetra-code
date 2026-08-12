@@ -99,9 +99,9 @@ export default defineConfig({
         {
           paths: [
             {
-              name: "@vetra-studio/client-runtime",
+              name: "@vetra-code/client-runtime",
               message:
-                "Import from an explicit @vetra-studio/client-runtime/* subpath. The package has no root export.",
+                "Import from an explicit @vetra-code/client-runtime/* subpath. The package has no root export.",
             },
             {
               name: "@pierre/diffs/react",

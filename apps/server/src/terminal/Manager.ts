@@ -31,10 +31,10 @@ import {
   type TerminalSessionStatus,
   type TerminalSummary,
   type TerminalWriteInput,
-} from "@vetra-studio/contracts";
-import { makeKeyedCoalescingWorker } from "@vetra-studio/shared/KeyedCoalescingWorker";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
-import { getTerminalLabel } from "@vetra-studio/shared/terminalLabels";
+} from "@vetra-code/contracts";
+import { makeKeyedCoalescingWorker } from "@vetra-code/shared/KeyedCoalescingWorker";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { getTerminalLabel } from "@vetra-code/shared/terminalLabels";
 import * as DateTime from "effect/DateTime";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -186,7 +186,7 @@ export class TerminalManager extends Context.Service<
       listener: (event: TerminalMetadataStreamEvent) => Effect.Effect<void>,
     ) => Effect.Effect<() => void>;
   }
->()("@vetra-studio/server/terminal/Manager/TerminalManager") {}
+>()("@vetra-code/server/terminal/Manager/TerminalManager") {}
 
 interface TerminalSubprocessInspectResult {
   readonly hasRunningSubprocess: boolean;

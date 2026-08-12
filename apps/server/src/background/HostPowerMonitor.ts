@@ -1,4 +1,4 @@
-import type { HostPowerSnapshot } from "@vetra-studio/contracts";
+import type { HostPowerSnapshot } from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -17,7 +17,7 @@ export class HostPowerMonitor extends Context.Service<
     readonly report: (snapshot: HostPowerSnapshot) => Effect.Effect<void>;
     readonly streamChanges: Stream.Stream<HostPowerSnapshot>;
   }
->()("@vetra-studio/server/background/HostPowerMonitor") {}
+>()("@vetra-code/server/background/HostPowerMonitor") {}
 
 export const makeUnknownSnapshot = (
   source: HostPowerSnapshot["source"],

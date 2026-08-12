@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@vetra-studio/contracts";
+import type { EnvironmentId } from "@vetra-code/contracts";
 
 export interface ComposerPathSearchEntry {
   readonly path: string;

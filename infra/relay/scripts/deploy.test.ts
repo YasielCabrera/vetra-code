@@ -110,10 +110,10 @@ describe("reconcileRootEnvPublicConfig", () => {
   const config = {
     relayUrl: "https://relay.example.test",
     mobileTracingUrl: "https://api.axiom.co/v1/traces",
-    mobileTracingDataset: "vetra-studio-mobile-traces-dev",
+    mobileTracingDataset: "vetra-code-mobile-traces-dev",
     mobileTracingToken: "xaat-public-ingest",
     clientTracingUrl: "https://api.axiom.co/v1/traces",
-    clientTracingDataset: "vetra-studio-relay-client-traces-dev",
+    clientTracingDataset: "vetra-code-relay-client-traces-dev",
     clientTracingToken: "xaat-relay-client-ingest",
   } as const;
 
@@ -122,10 +122,10 @@ describe("reconcileRootEnvPublicConfig", () => {
       [
         "VETRA_RELAY_URL=https://relay.example.test",
         "VETRA_MOBILE_OTLP_TRACES_URL=https://api.axiom.co/v1/traces",
-        "VETRA_MOBILE_OTLP_TRACES_DATASET=vetra-studio-mobile-traces-dev",
+        "VETRA_MOBILE_OTLP_TRACES_DATASET=vetra-code-mobile-traces-dev",
         "VETRA_MOBILE_OTLP_TRACES_TOKEN=xaat-public-ingest",
         "VETRA_RELAY_CLIENT_OTLP_TRACES_URL=https://api.axiom.co/v1/traces",
-        "VETRA_RELAY_CLIENT_OTLP_TRACES_DATASET=vetra-studio-relay-client-traces-dev",
+        "VETRA_RELAY_CLIENT_OTLP_TRACES_DATASET=vetra-code-relay-client-traces-dev",
         "VETRA_RELAY_CLIENT_OTLP_TRACES_TOKEN=xaat-relay-client-ingest",
         "",
       ].join("\n"),
@@ -153,10 +153,10 @@ describe("reconcileRootEnvPublicConfig", () => {
         "VETRA_CLERK_PUBLISHABLE_KEY=pk_test_example",
         "VETRA_RELAY_URL=https://relay.example.test",
         "VETRA_MOBILE_OTLP_TRACES_URL=https://api.axiom.co/v1/traces",
-        "VETRA_MOBILE_OTLP_TRACES_DATASET=vetra-studio-mobile-traces-dev",
+        "VETRA_MOBILE_OTLP_TRACES_DATASET=vetra-code-mobile-traces-dev",
         "VETRA_MOBILE_OTLP_TRACES_TOKEN=xaat-public-ingest",
         "VETRA_RELAY_CLIENT_OTLP_TRACES_URL=https://api.axiom.co/v1/traces",
-        "VETRA_RELAY_CLIENT_OTLP_TRACES_DATASET=vetra-studio-relay-client-traces-dev",
+        "VETRA_RELAY_CLIENT_OTLP_TRACES_DATASET=vetra-code-relay-client-traces-dev",
         "VETRA_RELAY_CLIENT_OTLP_TRACES_TOKEN=xaat-relay-client-ingest",
         "",
       ].join("\n"),

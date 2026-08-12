@@ -41,7 +41,7 @@ const program = Effect.gen(function* () {
 
     const initialized = yield* client.request("initialize", {
       clientInfo: {
-        name: "@vetra-studio/effect-codex-app-server-probe",
+        name: "@vetra-code/effect-codex-app-server-probe",
         title: "Effect Codex App Server Probe",
         version: "0.0.0",
       },

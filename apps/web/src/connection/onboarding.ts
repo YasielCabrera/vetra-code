@@ -1,9 +1,9 @@
-import { ConnectionOnboarding } from "@vetra-studio/client-runtime/connection";
+import { ConnectionOnboarding } from "@vetra-code/client-runtime/connection";
 import {
   createAtomCommandScheduler,
   createRuntimeCommand,
-} from "@vetra-studio/client-runtime/state/runtime";
-import type { DesktopSshEnvironmentTarget } from "@vetra-studio/contracts";
+} from "@vetra-code/client-runtime/state/runtime";
+import type { DesktopSshEnvironmentTarget } from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
 
 import { connectionAtomRuntime } from "./runtime";

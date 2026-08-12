@@ -6,9 +6,9 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
-import { VcsDriverKind, type VcsDriverKind as VcsDriverKindType } from "@vetra-studio/contracts";
-import { fromLenientJson } from "@vetra-studio/shared/schemaJson";
-import { PRODUCT_PROJECT_CONFIG_DIRECTORY_NAME } from "@vetra-studio/shared/productIdentity";
+import { VcsDriverKind, type VcsDriverKind as VcsDriverKindType } from "@vetra-code/contracts";
+import { fromLenientJson } from "@vetra-code/shared/schemaJson";
+import { PRODUCT_PROJECT_CONFIG_DIRECTORY_NAME } from "@vetra-code/shared/productIdentity";
 
 const ProjectVcsConfig = Schema.Struct({
   vcs: Schema.optional(
@@ -49,7 +49,7 @@ export class VcsProjectConfig extends Context.Service<
       input: VcsProjectConfigResolveInput,
     ) => Effect.Effect<VcsDriverKindType | "auto">;
   }
->()("@vetra-studio/server/vcs/VcsProjectConfig") {}
+>()("@vetra-code/server/vcs/VcsProjectConfig") {}
 
 function configuredKind(config: ProjectVcsConfigFile): VcsDriverKindType | "auto" {
   return config.vcs?.kind ?? config.vcsKind ?? "auto";

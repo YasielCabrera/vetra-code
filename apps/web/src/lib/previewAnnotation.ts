@@ -1,4 +1,4 @@
-import type { PreviewAnnotationPayload } from "@vetra-studio/contracts";
+import type { PreviewAnnotationPayload } from "@vetra-code/contracts";
 import { buildElementContextBlock, normalizeElementContextSelection } from "./elementContext";
 
 const TRAILING_PREVIEW_ANNOTATION_BLOCK_PATTERN =

@@ -4,8 +4,8 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ProviderInstanceConfig,
-} from "@vetra-studio/contracts";
-import { getBackgroundActivityPresetSettings } from "@vetra-studio/shared/backgroundActivitySettings";
+} from "@vetra-code/contracts";
+import { getBackgroundActivityPresetSettings } from "@vetra-code/shared/backgroundActivitySettings";
 import * as Duration from "effect/Duration";
 import { describe, expect, it } from "vite-plus/test";
 import {

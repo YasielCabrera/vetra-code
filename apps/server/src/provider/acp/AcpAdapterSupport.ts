@@ -2,9 +2,9 @@ import {
   type ProviderApprovalDecision,
   type ProviderDriverKind,
   type ThreadId,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Schema from "effect/Schema";
-import * as EffectAcpErrors from "@vetra-studio/effect-acp/errors";
+import * as EffectAcpErrors from "@vetra-code/effect-acp/errors";
 
 import {
   ProviderAdapterRequestError,

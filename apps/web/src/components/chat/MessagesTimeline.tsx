@@ -4,17 +4,17 @@ import {
   type ScopedThreadRef,
   type ServerProviderSkill,
   type TurnId,
-} from "@vetra-studio/contracts";
-import { parseScopedThreadKey } from "@vetra-studio/client-runtime/environment";
-import type { AgentPanelModel } from "@vetra-studio/client-runtime/state/subagentRuntime";
+} from "@vetra-code/contracts";
+import { parseScopedThreadKey } from "@vetra-code/client-runtime/environment";
+import type { AgentPanelModel } from "@vetra-code/client-runtime/state/subagentRuntime";
 import {
   emptyAgentPanelModel,
   formatSubagentTokenCount,
-} from "@vetra-studio/client-runtime/state/subagentRuntime";
+} from "@vetra-code/client-runtime/state/subagentRuntime";
 
 const EMPTY_AGENT_PANEL_MODEL = emptyAgentPanelModel();
 const NOOP_OPEN_AGENTS = () => {};
-import { resolveChatListAnchoredEndSpace } from "@vetra-studio/shared/chatList";
+import { resolveChatListAnchoredEndSpace } from "@vetra-code/shared/chatList";
 import {
   createContext,
   Fragment,
@@ -104,7 +104,7 @@ import {
 } from "~/lib/previewAnnotation";
 import { cn } from "~/lib/utils";
 import { useUiStateStore } from "~/uiStateStore";
-import { type TimestampFormat } from "@vetra-studio/contracts/settings";
+import { type TimestampFormat } from "@vetra-code/contracts/settings";
 import { formatChatTimestampTooltip, formatShortTimestamp } from "../../timestampFormat";
 
 import {

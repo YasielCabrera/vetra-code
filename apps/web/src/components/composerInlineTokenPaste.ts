@@ -1,4 +1,4 @@
-import { collectComposerInlineTokens } from "@vetra-studio/shared/composerInlineTokens";
+import { collectComposerInlineTokens } from "@vetra-code/shared/composerInlineTokens";
 import {
   $createLineBreakNode,
   $createTextNode,

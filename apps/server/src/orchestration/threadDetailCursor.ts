@@ -1,4 +1,4 @@
-import type { ThreadId } from "@vetra-studio/contracts";
+import type { ThreadId } from "@vetra-code/contracts";
 
 /**
  * Opaque, exclusive cursor for windowed thread detail reads. Encodes the thread

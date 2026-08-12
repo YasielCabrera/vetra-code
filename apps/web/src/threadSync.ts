@@ -1,4 +1,4 @@
-import type { EnvironmentThreadStatus } from "@vetra-studio/client-runtime/state/threads";
+import type { EnvironmentThreadStatus } from "@vetra-code/client-runtime/state/threads";
 
 export type ThreadSyncPhase = "loading" | "syncing";
 

@@ -12,7 +12,7 @@ import type {
   UsageProviderKind,
   UsageSourceFingerprint,
   UsageSummary,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 
 export interface EnvironmentUsage {
   readonly environmentId: EnvironmentId;

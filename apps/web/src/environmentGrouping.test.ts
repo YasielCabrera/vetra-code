@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId, ProviderInstanceId } from "@vetra-studio/contracts";
+import { EnvironmentId, ProjectId, ProviderInstanceId } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

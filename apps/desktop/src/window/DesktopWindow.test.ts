@@ -262,8 +262,8 @@ function makeTestLayer(input: {
         Layer.mock(PreviewManager.PreviewManager)({
           getBrowserSession: () => Effect.succeed({} as Electron.Session),
           setMainWindow: () => Effect.void,
-          isBrowserPartition: (partition) => partition.startsWith("persist:vetra-studio-preview-"),
-          getBrowserPartition: () => Effect.succeed("persist:vetra-studio-preview-test"),
+          isBrowserPartition: (partition) => partition.startsWith("persist:vetra-code-preview-"),
+          getBrowserPartition: () => Effect.succeed("persist:vetra-code-preview-test"),
         }),
       ),
     ),
@@ -356,9 +356,8 @@ const makeSplashScenario = (createOutcomes: readonly (Electron.BrowserWindow | n
           Layer.mock(PreviewManager.PreviewManager)({
             getBrowserSession: () => Effect.succeed({} as Electron.Session),
             setMainWindow: () => Effect.void,
-            isBrowserPartition: (partition) =>
-              partition.startsWith("persist:vetra-studio-preview-"),
-            getBrowserPartition: () => Effect.succeed("persist:vetra-studio-preview-test"),
+            isBrowserPartition: (partition) => partition.startsWith("persist:vetra-code-preview-"),
+            getBrowserPartition: () => Effect.succeed("persist:vetra-code-preview-test"),
           }),
         ),
       ),

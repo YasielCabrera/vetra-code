@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as PlatformError from "effect/PlatformError";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { VcsProcessExitError, VcsProcessSpawnError } from "@vetra-studio/contracts";
+import { VcsProcessExitError, VcsProcessSpawnError } from "@vetra-code/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitHubCli from "./GitHubCli.ts";
@@ -61,7 +61,7 @@ describe("GitHubCli.layer", () => {
             JSON.stringify({
               number: 42,
               title: "Add PR thread creation",
-              url: "https://github.com/vetra-studio/codething-mvp/pull/42",
+              url: "https://github.com/vetra-code/codething-mvp/pull/42",
               baseRefName: "main",
               headRefName: "feature/pr-threads",
               state: "OPEN",
@@ -87,7 +87,7 @@ describe("GitHubCli.layer", () => {
       assert.deepStrictEqual(result, {
         number: 42,
         title: "Add PR thread creation",
-        url: "https://github.com/vetra-studio/codething-mvp/pull/42",
+        url: "https://github.com/vetra-code/codething-mvp/pull/42",
         baseRefName: "main",
         headRefName: "feature/pr-threads",
         state: "open",
@@ -120,7 +120,7 @@ describe("GitHubCli.layer", () => {
             JSON.stringify({
               number: 42,
               title: "  Add PR thread creation  \n",
-              url: " https://github.com/vetra-studio/codething-mvp/pull/42 ",
+              url: " https://github.com/vetra-code/codething-mvp/pull/42 ",
               baseRefName: " main ",
               headRefName: "\tfeature/pr-threads\t",
               state: "OPEN",
@@ -146,7 +146,7 @@ describe("GitHubCli.layer", () => {
       assert.deepStrictEqual(result, {
         number: 42,
         title: "Add PR thread creation",
-        url: "https://github.com/vetra-studio/codething-mvp/pull/42",
+        url: "https://github.com/vetra-code/codething-mvp/pull/42",
         baseRefName: "main",
         headRefName: "feature/pr-threads",
         state: "open",
@@ -167,14 +167,14 @@ describe("GitHubCli.layer", () => {
               {
                 number: 0,
                 title: "invalid",
-                url: "https://github.com/vetra-studio/codething-mvp/pull/0",
+                url: "https://github.com/vetra-code/codething-mvp/pull/0",
                 baseRefName: "main",
                 headRefName: "feature/invalid",
               },
               {
                 number: 43,
                 title: "  Valid PR  ",
-                url: " https://github.com/vetra-studio/codething-mvp/pull/43 ",
+                url: " https://github.com/vetra-code/codething-mvp/pull/43 ",
                 baseRefName: " main ",
                 headRefName: " feature/pr-list ",
                 headRepository: {
@@ -199,7 +199,7 @@ describe("GitHubCli.layer", () => {
         {
           number: 43,
           title: "Valid PR",
-          url: "https://github.com/vetra-studio/codething-mvp/pull/43",
+          url: "https://github.com/vetra-code/codething-mvp/pull/43",
           baseRefName: "main",
           headRefName: "feature/pr-list",
           state: "open",
@@ -221,7 +221,7 @@ describe("GitHubCli.layer", () => {
               {
                 number: 2829,
                 title: "Codex turn mapping",
-                url: "https://github.com/vetra-studio/codething-mvp/pull/2829",
+                url: "https://github.com/vetra-code/codething-mvp/pull/2829",
                 baseRefName: "main",
                 headRefName: "vetra/codex-turn-mapping",
                 state: "OPEN",
@@ -233,7 +233,7 @@ describe("GitHubCli.layer", () => {
                 },
                 headRepositoryOwner: {
                   id: "MDEyOk9yZ2FuaXphdGlvbjg5MTkxNzI3",
-                  login: "vetra-studio",
+                  login: "vetra-code",
                 },
               },
             ]),
@@ -251,13 +251,13 @@ describe("GitHubCli.layer", () => {
         {
           number: 2829,
           title: "Codex turn mapping",
-          url: "https://github.com/vetra-studio/codething-mvp/pull/2829",
+          url: "https://github.com/vetra-code/codething-mvp/pull/2829",
           baseRefName: "main",
           headRefName: "vetra/codex-turn-mapping",
           state: "open",
           isCrossRepository: false,
-          headRepositoryNameWithOwner: "vetra-studio/codething-mvp",
-          headRepositoryOwnerLogin: "vetra-studio",
+          headRepositoryNameWithOwner: "vetra-code/codething-mvp",
+          headRepositoryOwnerLogin: "vetra-code",
         },
       ]);
     }).pipe(Effect.provide(layer)),

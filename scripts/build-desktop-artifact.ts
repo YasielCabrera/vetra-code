@@ -2,17 +2,17 @@
 
 import * as NodeModule from "node:module";
 
-import { fromYaml } from "@vetra-studio/shared/schemaYaml";
-import { HostProcessPlatform } from "@vetra-studio/shared/hostProcess";
-import { clerkFrontendApiHostnameFromPublishableKey } from "@vetra-studio/shared/relayAuth";
-import { resolveSpawnCommand } from "@vetra-studio/shared/shell";
+import { fromYaml } from "@vetra-code/shared/schemaYaml";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { clerkFrontendApiHostnameFromPublishableKey } from "@vetra-code/shared/relayAuth";
+import { resolveSpawnCommand } from "@vetra-code/shared/shell";
 import {
   PRODUCT_DESKTOP_APP_ID,
   PRODUCT_DESKTOP_DEV_PROTOCOL,
   PRODUCT_DESKTOP_PROTOCOL,
   PRODUCT_NAME,
   PRODUCT_SLUG,
-} from "@vetra-studio/shared/productIdentity";
+} from "@vetra-code/shared/productIdentity";
 import rootPackageJson from "../package.json" with { type: "json" };
 import desktopPackageJson from "../apps/desktop/package.json" with { type: "json" };
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
@@ -635,7 +635,7 @@ interface StagePackageJson {
 export const STAGE_INSTALL_ARGS = ["install", "--prod"] as const;
 export const DESKTOP_ELECTRON_LANGUAGES = ["en-US"] as const;
 export const DESKTOP_FILE_EXCLUSIONS = [
-  // Vetra Studio always passes the user's installed Claude executable to the SDK,
+  // Vetra Code always passes the user's installed Claude executable to the SDK,
   // so the SDK's optional platform packages (each a ~200MB bundled executable)
   // are dead weight. The trailing dash keeps the SDK's own JS package.
   "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**/*",
@@ -1519,8 +1519,8 @@ export function resolvePackageManagerUserAgent(packageManager: string): string {
 
 export function resolveDesktopProductName(version: string): string {
   return resolveDesktopUpdateChannel(version) === "nightly"
-    ? "Vetra Studio (Nightly)"
-    : (desktopPackageJson.productName ?? "Vetra Studio");
+    ? "Vetra Code (Nightly)"
+    : (desktopPackageJson.productName ?? "Vetra Code");
 }
 
 export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
@@ -1540,7 +1540,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   const buildConfig: Record<string, unknown> = {
     appId: DESKTOP_APP_ID,
     productName: resolveDesktopProductName(version),
-    artifactName: "Vetra-Studio-${version}-${arch}.${ext}",
+    artifactName: "Vetra-Code-${version}-${arch}.${ext}",
     electronLanguages: [...DESKTOP_ELECTRON_LANGUAGES],
     files: [...DESKTOP_FILE_EXCLUSIONS],
     directories: {
@@ -1652,7 +1652,7 @@ const assertPlatformBuildResources = Effect.fn("assertPlatformBuildResources")(f
 // backend never compiles on the user's machine. node-pty publishes no Linux
 // prebuilt and the WSL Linux Node can't load the Windows/Electron binary, so the
 // Linux CI job builds pty.node and hands it here. We drop it into the staged
-// node-pty's prebuilds/linux-<arch>/ with a vetra-studio marker the WSL preflight
+// node-pty's prebuilds/linux-<arch>/ with a vetra-code marker the WSL preflight
 // checks (arch + node-pty version; the binary is N-API, hence ABI-stable across
 // Node versions). A missing prebuild is a warning, not an error, so local and
 // non-Windows builds still succeed — they just won't ship a working WSL backend.
@@ -1920,8 +1920,8 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     vetraCommitHash: commitHash,
     private: true,
     packageManager: rootPackageJson.packageManager,
-    description: "Vetra Studio desktop build",
-    author: "Vetra Studio",
+    description: "Vetra Code desktop build",
+    author: "Vetra Code",
     main: "apps/desktop/dist-electron/main.cjs",
     build: yield* createBuildConfig(
       options.platform,
@@ -2026,7 +2026,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   const builderArgs = [
     "exec",
     "--filter",
-    "@vetra-studio/desktop",
+    "@vetra-code/desktop",
     "--",
     "electron-builder",
     "--projectDir",
@@ -2044,7 +2044,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
       shell: builderCommand.shell,
     }),
     {
-      label: `vp exec --filter @vetra-studio/desktop -- electron-builder --projectDir ${stageAppDir} ${platformConfig.cliFlag} --${options.arch} --publish never`,
+      label: `vp exec --filter @vetra-code/desktop -- electron-builder --projectDir ${stageAppDir} ${platformConfig.cliFlag} --${options.arch} --publish never`,
       verbose: options.verbose,
     },
   );
@@ -2144,7 +2144,7 @@ const buildDesktopArtifactCli = Command.make("build-desktop-artifact", {
     Flag.optional,
   ),
 }).pipe(
-  Command.withDescription("Build a desktop artifact for Vetra Studio."),
+  Command.withDescription("Build a desktop artifact for Vetra Code."),
   Command.withHandler((input) => Effect.flatMap(resolveBuildOptions(input), buildDesktopArtifact)),
 );
 

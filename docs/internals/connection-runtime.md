@@ -1,6 +1,6 @@
 # Connection Runtime
 
-> For maintainers. Using Vetra Studio? See [docs/user](../user/).
+> For maintainers. Using Vetra Code? See [docs/user](../user/).
 
 The connection runtime is used by the web renderer and desktop shell. It owns connectivity,
 authentication, retries, transport lifetime, cached environment data, and

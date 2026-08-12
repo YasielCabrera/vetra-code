@@ -1,4 +1,4 @@
-import { CheckpointRef, ProjectId, ThreadId, TurnId } from "@vetra-studio/contracts";
+import { CheckpointRef, ProjectId, ThreadId, TurnId } from "@vetra-code/contracts";
 import { it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

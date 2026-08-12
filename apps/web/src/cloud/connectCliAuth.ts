@@ -3,8 +3,8 @@ import {
   connectCallbackUrl,
   CONNECT_OAUTH_SCOPES,
   type ConnectAuthorizeRequest,
-} from "@vetra-studio/shared/connectAuth";
-import { clerkFrontendApiUrlFromPublishableKey } from "@vetra-studio/shared/relayAuth";
+} from "@vetra-code/shared/connectAuth";
+import { clerkFrontendApiUrlFromPublishableKey } from "@vetra-code/shared/relayAuth";
 
 import { configuredHostedAppUrl, isHostedStaticApp } from "../hostedPairing";
 import { hasCloudPublicConfig, resolveCloudPublicConfig, trimNonEmpty } from "./publicConfig";

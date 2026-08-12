@@ -6,7 +6,7 @@
  *
  * @module OrchestrationProjectionPipeline
  */
-import type { OrchestrationEvent } from "@vetra-studio/contracts";
+import type { OrchestrationEvent } from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 
@@ -40,5 +40,5 @@ export class OrchestrationProjectionPipeline extends Context.Service<
   OrchestrationProjectionPipeline,
   OrchestrationProjectionPipelineShape
 >()(
-  "@vetra-studio/server/orchestration/Services/ProjectionPipeline/OrchestrationProjectionPipeline",
+  "@vetra-code/server/orchestration/Services/ProjectionPipeline/OrchestrationProjectionPipeline",
 ) {}

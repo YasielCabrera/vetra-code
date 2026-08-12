@@ -1,4 +1,4 @@
-import { type ProviderInstanceId } from "@vetra-studio/contracts";
+import { type ProviderInstanceId } from "@vetra-code/contracts";
 import { memo, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SparklesIcon, StarIcon } from "lucide-react";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";

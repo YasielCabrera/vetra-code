@@ -10,13 +10,13 @@ import {
   removeCatalogValue,
   removeConnectionFromCatalog,
   replaceCatalogValue,
-} from "@vetra-studio/client-runtime/platform";
-import { TokenStore } from "@vetra-studio/client-runtime/authorization";
+} from "@vetra-code/client-runtime/platform";
+import { TokenStore } from "@vetra-code/client-runtime/authorization";
 import {
   ConnectionTransientError,
   CredentialStore,
   ProfileStore,
-} from "@vetra-studio/client-runtime/connection";
+} from "@vetra-code/client-runtime/connection";
 import {
   EnvironmentId,
   OrchestrationShellSnapshot,
@@ -24,7 +24,7 @@ import {
   ServerConfig,
   ThreadId,
   VcsListRefsResult,
-} from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

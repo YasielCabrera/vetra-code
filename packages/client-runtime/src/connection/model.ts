@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vetra-studio/contracts";
+import { EnvironmentId } from "@vetra-code/contracts";
 import * as Schema from "effect/Schema";
 
 const ConnectionTargetBase = {

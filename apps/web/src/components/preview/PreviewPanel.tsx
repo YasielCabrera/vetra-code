@@ -1,6 +1,6 @@
 "use client";
 
-import type { PreviewAnnotationPayload, ScopedThreadRef } from "@vetra-studio/contracts";
+import type { PreviewAnnotationPayload, ScopedThreadRef } from "@vetra-code/contracts";
 
 import type { ComposerImageAttachment } from "~/composerDraftStore";
 import { isPreviewSupportedInRuntime } from "~/previewStateStore";
@@ -33,7 +33,7 @@ export function PreviewPanel({
       <PreviewPanelShell mode={mode}>
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
           <p className="max-w-sm text-sm text-muted-foreground">
-            Preview is only available in the Vetra Studio desktop app.
+            Preview is only available in the Vetra Code desktop app.
           </p>
         </div>
       </PreviewPanelShell>

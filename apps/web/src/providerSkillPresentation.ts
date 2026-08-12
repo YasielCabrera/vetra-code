@@ -1,4 +1,4 @@
-import type { ServerProviderSkill } from "@vetra-studio/contracts";
+import type { ServerProviderSkill } from "@vetra-code/contracts";
 
 function titleCaseWords(value: string): string {
   const words: string[] = [];

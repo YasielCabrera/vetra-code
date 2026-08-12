@@ -1,4 +1,4 @@
-import { createFilesystemEnvironmentAtoms } from "@vetra-studio/client-runtime/state/filesystem";
+import { createFilesystemEnvironmentAtoms } from "@vetra-code/client-runtime/state/filesystem";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

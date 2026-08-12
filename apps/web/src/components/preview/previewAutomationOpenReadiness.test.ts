@@ -1,4 +1,4 @@
-import type { PreviewAutomationOpenInput, PreviewSessionSnapshot } from "@vetra-studio/contracts";
+import type { PreviewAutomationOpenInput, PreviewSessionSnapshot } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

@@ -1,7 +1,4 @@
-import {
-  managedRelaySessionAtom,
-  setManagedRelaySession,
-} from "@vetra-studio/client-runtime/relay";
+import { managedRelaySessionAtom, setManagedRelaySession } from "@vetra-code/client-runtime/relay";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { appAtomRegistry } from "../rpc/atomRegistry";

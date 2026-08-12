@@ -1,4 +1,4 @@
-import type { ScopedThreadRef } from "@vetra-studio/contracts";
+import type { ScopedThreadRef } from "@vetra-code/contracts";
 
 /**
  * The server only guarantees preview tab ids are unique within one process.

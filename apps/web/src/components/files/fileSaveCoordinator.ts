@@ -1,4 +1,4 @@
-import type { AtomCommandResult } from "@vetra-studio/client-runtime/state/runtime";
+import type { AtomCommandResult } from "@vetra-code/client-runtime/state/runtime";
 
 export interface FileSaveCoordinatorOptions<A, E> {
   readonly debounceMs: number;

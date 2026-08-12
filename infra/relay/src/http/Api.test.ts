@@ -14,8 +14,8 @@ import * as Tracer from "effect/Tracer";
 import * as HttpRouter from "effect/unstable/http/HttpRouter";
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest";
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse";
-import { EnvironmentId } from "@vetra-studio/contracts";
-import { RelayEnvironmentAuth } from "@vetra-studio/contracts/relay";
+import { EnvironmentId } from "@vetra-code/contracts";
+import { RelayEnvironmentAuth } from "@vetra-code/contracts/relay";
 
 import {
   RELAY_REQUEST_DEADLINE_MS,
@@ -51,7 +51,7 @@ const relaySettings: RelayConfiguration.RelayConfiguration["Service"] = {
   },
   clerkSecretKey: Redacted.make("clerk-secret-key"),
   clerkPublishableKey: "pk_test_test",
-  clerkJwtAudience: "vetra-studio-relay",
+  clerkJwtAudience: "vetra-code-relay",
   apnsDeliveryJobSigningSecret: Redacted.make("apns-delivery-secret"),
   cloudMintPrivateKey: Redacted.make("cloud-mint-private-key"),
   cloudMintPublicKey: "cloud-mint-public-key",

@@ -1,4 +1,4 @@
-import { createAssetEnvironmentAtoms } from "@vetra-studio/client-runtime/state/assets";
+import { createAssetEnvironmentAtoms } from "@vetra-code/client-runtime/state/assets";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

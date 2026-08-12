@@ -6,15 +6,15 @@ import type {
   OrchestrationThreadShell,
   ThreadId,
   TurnId,
-} from "@vetra-studio/contracts";
-import { ProviderInstanceId } from "@vetra-studio/contracts";
+} from "@vetra-code/contracts";
+import { ProviderInstanceId } from "@vetra-code/contracts";
 
 import { projectThreadAwareness } from "./agentAwareness.ts";
 
 const NOW = "2026-05-22T12:00:00.000Z";
 
 const project = {
-  title: "vetra-studio",
+  title: "vetra-code",
 } satisfies Pick<OrchestrationProjectShell, "title">;
 
 function thread(

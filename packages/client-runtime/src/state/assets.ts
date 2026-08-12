@@ -1,4 +1,4 @@
-import { AssetResource, EnvironmentId, WS_METHODS } from "@vetra-studio/contracts";
+import { AssetResource, EnvironmentId, WS_METHODS } from "@vetra-code/contracts";
 import * as Schema from "effect/Schema";
 import { Atom } from "effect/unstable/reactivity";
 

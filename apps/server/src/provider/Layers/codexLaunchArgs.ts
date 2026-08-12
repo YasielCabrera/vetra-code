@@ -1,4 +1,4 @@
-import { tokenizeCliArgs } from "@vetra-studio/shared/cliArgs";
+import { tokenizeCliArgs } from "@vetra-code/shared/cliArgs";
 
 export const VETRA_CODEX_LAUNCH_ARGS_ENV = "VETRA_CODEX_LAUNCH_ARGS";
 

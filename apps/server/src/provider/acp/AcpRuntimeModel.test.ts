@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type * as EffectAcpSchema from "@vetra-studio/effect-acp/schema";
+import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
 
 import {
   extractModelConfigId,

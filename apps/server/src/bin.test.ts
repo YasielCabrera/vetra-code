@@ -11,8 +11,8 @@ import {
   EnvironmentOrchestrationHttpApi,
   ProviderInstanceId,
   ThreadId,
-} from "@vetra-studio/contracts";
-import * as NetService from "@vetra-studio/shared/Net";
+} from "@vetra-code/contracts";
+import * as NetService from "@vetra-code/shared/Net";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as DateTime from "effect/DateTime";
@@ -207,7 +207,7 @@ it.layer(NodeServices.layer)("bin cli parsing", (it) => {
     Effect.gen(function* () {
       const { output } = yield* captureStdout(runCli(["service", "--help"], noConnectCli));
 
-      assert.include(output, "Manage the Vetra Studio background service.");
+      assert.include(output, "Manage the Vetra Code background service.");
       assert.include(output, "install");
       assert.include(output, "uninstall");
       assert.include(output, "update");

@@ -38,4 +38,4 @@ export interface ProviderCommandReactorShape {
 export class ProviderCommandReactor extends Context.Service<
   ProviderCommandReactor,
   ProviderCommandReactorShape
->()("@vetra-studio/server/orchestration/Services/ProviderCommandReactor") {}
+>()("@vetra-code/server/orchestration/Services/ProviderCommandReactor") {}

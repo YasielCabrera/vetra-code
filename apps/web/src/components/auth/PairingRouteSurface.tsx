@@ -1,5 +1,5 @@
-import type { AuthSessionState } from "@vetra-studio/contracts";
-import { squashAtomCommandFailure } from "@vetra-studio/client-runtime/state/runtime";
+import type { AuthSessionState } from "@vetra-code/contracts";
+import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
 import React, { startTransition, useEffect, useRef, useState, useCallback } from "react";
 
 import { APP_DISPLAY_NAME } from "../../branding";
