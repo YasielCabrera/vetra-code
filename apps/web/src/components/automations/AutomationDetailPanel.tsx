@@ -27,13 +27,23 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 
 import { onCommandPaletteProjectSelected, openCommandPalette } from "../../commandPaletteBus";
+import { isElectron } from "../../env";
 import { useAutomationActions } from "../../hooks/useAutomationActions";
 import { useProjectGroups } from "../../hooks/useProjectGroups";
+import { useResizableWidth } from "../../hooks/useResizableWidth";
 import { useClientSettings, usePrimarySettings } from "../../hooks/useSettings";
-import { newProjectId } from "../../lib/utils";
+import { useViewportWidth } from "../../hooks/useViewportWidth";
+import { cn, newProjectId } from "../../lib/utils";
 import { getCustomModelOptionsByInstance } from "../../modelSelection";
 import {
   applyProviderInstanceSettings,
@@ -44,6 +54,7 @@ import { automationEnvironment, useAutomation } from "../../state/automations";
 import { primaryServerProvidersAtom } from "../../state/server";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { TraitsPicker } from "../chat/TraitsPicker";
+import { RightPanelResizeHandle } from "../preview/RightPanelResizeHandle";
 import { useProjects, useThreadShells } from "../../state/entities";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useAtomCommand } from "../../state/use-atom-command";
@@ -78,6 +89,16 @@ import {
   type SchedulePresetKind,
 } from "./automationSchedule.logic";
 import { findAutomationTemplate } from "./automationTemplates";
+
+const AUTOMATION_PANEL_WIDTH_STORAGE_KEY = "vetra:automation-panel-width";
+const AUTOMATION_PANEL_MIN_WIDTH = 420;
+/** Wide enough for the schedule and agent cards to sit side by side. */
+const AUTOMATION_PANEL_DEFAULT_WIDTH = 880;
+/**
+ * Held back from the panel for the workspace sidebar and a list rail that can
+ * still be read. The panel is free to take everything else.
+ */
+const AUTOMATION_PANEL_VIEWPORT_RESERVE = 620;
 
 const RUNTIME_MODE_OPTIONS: ReadonlyArray<{ value: RuntimeMode; label: string }> = [
   { value: "full-access", label: "Full access" },
@@ -454,7 +475,7 @@ export function AutomationDetailPanel(props: {
       title={isNew ? "New automation" : (automation?.title ?? "Automation")}
       onClose={props.onClose}
     >
-      <div className="@container/panel flex w-full flex-col gap-6 px-5 pt-1 pb-12">
+      <div className="@container/panel flex w-full flex-col gap-6 px-5 pt-4 pb-12">
         <section className="flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-muted-foreground">Name</span>
@@ -850,16 +871,49 @@ export function AutomationDetailPanel(props: {
  * The panel's chrome: a title row over a scrolling body. Slides in from the
  * right once, on mount — a one-shot keyframe rather than a transition, so
  * nothing keeps repainting after it lands.
+ *
+ * Sized by a drag handle on its own edge, the way a thread's right panel is:
+ * the list beside it takes whatever is left. Below lg the list is hidden and
+ * the panel is the whole page, so there is no split to move and the width
+ * gives way to the viewport.
  */
 function AutomationPanelFrame(props: {
   readonly title: string;
   readonly onClose: () => void;
   readonly children: ReactNode;
 }) {
+  const viewportWidth = useViewportWidth();
+  const { width, handlers } = useResizableWidth({
+    storageKey: AUTOMATION_PANEL_WIDTH_STORAGE_KEY,
+    defaultWidth: AUTOMATION_PANEL_DEFAULT_WIDTH,
+    minWidth: AUTOMATION_PANEL_MIN_WIDTH,
+    maxWidth: Math.max(
+      AUTOMATION_PANEL_MIN_WIDTH,
+      viewportWidth - AUTOMATION_PANEL_VIEWPORT_RESERVE,
+    ),
+    edge: "left",
+  });
+
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 animate-panel-in flex-col border-s border-border/70 bg-background motion-reduce:animate-none">
-      <header className="flex w-full shrink-0 items-center gap-2 px-5 pt-4 pb-3">
-        <h1 className="min-w-0 flex-1 truncate text-lg font-medium text-foreground">
+    <div
+      className="relative flex min-h-0 w-full min-w-0 animate-panel-in flex-col border-s border-border/70 bg-background motion-reduce:animate-none lg:w-(--automation-panel-width) lg:shrink-0"
+      style={{ "--automation-panel-width": `${width}px` } as CSSProperties}
+    >
+      <RightPanelResizeHandle handlers={handlers} className="max-lg:hidden" />
+      {/* The page's own top strip, on this side of the rule: title and close
+          sit level with the breadcrumb beside them rather than below an empty
+          band. Sized and typed like the rest of the workspace chrome, and on
+          desktop it is the drag region for its half of the titlebar. */}
+      <header
+        className={cn(
+          "workspace-topbar w-full gap-2 px-5",
+          isElectron && "drag-region wco:pr-[var(--workspace-native-controls-inset)]",
+          // Below lg the list column is gone and the panel starts at the
+          // window's left edge, where the titlebar controls are.
+          "max-lg:[[data-sidebar-state=collapsed]_&]:ps-[var(--workspace-titlebar-content-left)]",
+        )}
+      >
+        <h1 className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
           {props.title}
         </h1>
         <Button size="icon-xs" variant="ghost" aria-label="Close" onClick={props.onClose}>

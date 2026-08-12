@@ -1,7 +1,8 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode } from "react";
 
 import { isElectron } from "~/env";
 import { useResizableWidth } from "~/hooks/useResizableWidth";
+import { useViewportWidth } from "~/hooks/useViewportWidth";
 import { cn } from "~/lib/utils";
 
 import { RightPanelResizeHandle } from "./RightPanelResizeHandle";
@@ -75,23 +76,5 @@ export function PreviewPanelShell(props: {
  * width on the next render (the hook's clamp picks this up automatically).
  */
 function useViewportClampedMaxWidth(): number {
-  const [vw, setVw] = useState(() => (typeof window === "undefined" ? 1280 : window.innerWidth));
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    let frame = 0;
-    const onResize = () => {
-      // Coalesce rapid resize events into one rAF tick.
-      if (frame !== 0) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = 0;
-        setVw(window.innerWidth);
-      });
-    };
-    window.addEventListener("resize", onResize);
-    return () => {
-      window.removeEventListener("resize", onResize);
-      if (frame !== 0) window.cancelAnimationFrame(frame);
-    };
-  }, []);
-  return getPreviewPanelMaxWidth(vw);
+  return getPreviewPanelMaxWidth(useViewportWidth());
 }

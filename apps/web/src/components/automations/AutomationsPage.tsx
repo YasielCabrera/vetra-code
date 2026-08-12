@@ -168,10 +168,26 @@ export function AutomationsPage(props?: {
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground isolate">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground">
-        {/* Full width, above both columns: on desktop this strip is the window
-            drag region, so it cannot live inside one of them. */}
-        <>
+      {/* The two columns sit side by side all the way up, rather than under a
+          strip that spans both: the panel's rule and its title then start at
+          the top of the window instead of below a band that belongs to the
+          list. Each column carries its own share of the desktop drag region. */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-row bg-background text-foreground">
+        {/* A query container, so the list reacts to its own width rather
+            than the viewport's: the same column is full-bleed on its own and
+            a narrow rail beside an open panel, and its rows and template grid
+            need to read well in both. */}
+        <div
+          className={cn(
+            // Takes whatever the panel leaves, so the drag handle on the
+            // panel's edge moves the split between them.
+            "@container/list flex min-h-0 min-w-0 flex-1 flex-col",
+            // The list yields to the panel rather than being replaced by it,
+            // so the automation you opened stays visible beside its detail.
+            // Below lg there is not room for both, and the panel wins.
+            panelOpen && "hidden lg:flex",
+          )}
+        >
           {!isElectron && (
             <header
               className={cn(
@@ -185,157 +201,142 @@ export function AutomationsPage(props?: {
           {isElectron && (
             <div
               className={cn(
-                "drag-region flex h-[52px] shrink-0 items-center px-5 transition-[padding-left] duration-200 ease-linear motion-reduce:transition-none wco:h-[env(titlebar-area-height)] wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]",
+                "drag-region flex h-[52px] shrink-0 items-center px-5 transition-[padding-left] duration-200 ease-linear motion-reduce:transition-none wco:h-[env(titlebar-area-height)]",
+                // Only this column reaches the right edge, and only while the
+                // panel is closed; otherwise the panel clears the native
+                // window controls itself.
+                !panelOpen &&
+                  "wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]",
                 COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
               )}
             >
               {breadcrumb}
             </div>
           )}
-        </>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-row">
-          {/* A query container, so the list reacts to its own width rather
-              than the viewport's: the same column is full-bleed on its own and
-              a narrow rail beside an open panel, and its rows and template grid
-              need to read well in both. */}
-          <div
-            className={cn(
-              "@container/list flex min-h-0 min-w-0 flex-col",
-              // The list yields to the panel rather than being replaced by it,
-              // so the automation you opened stays visible beside its detail.
-              // Below lg there is not room for both, and the panel wins.
-              panelOpen ? "hidden w-full max-w-md shrink-0 lg:flex" : "flex-1",
-            )}
-          >
-            <ScrollArea className="min-h-0 flex-1">
-              <div
-                className={cn(
-                  "flex w-full flex-col gap-4 px-5 pt-6 pb-12",
-                  panelOpen ? "max-w-none" : "mx-auto max-w-4xl",
-                )}
-              >
-                {/* Onboarding copy is the first thing to go when the column is
-                    a rail beside an open panel. */}
-                <p className="hidden text-sm text-muted-foreground @min-[34rem]/list:block">
-                  Run a prompt on a schedule. Each run opens its own thread, kept out of the sidebar
-                  until you move it there.
-                </p>
+          <ScrollArea className="min-h-0 flex-1">
+            {/* Centred once the column outgrows a comfortable measure, which
+                it can now do at either width the split is dragged to. */}
+            <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-5 pt-6 pb-12">
+              {/* Onboarding copy is the first thing to go when the column is
+                  a rail beside an open panel. */}
+              <p className="hidden text-sm text-muted-foreground @min-[34rem]/list:block">
+                Run a prompt on a schedule. Each run opens its own thread, kept out of the sidebar
+                until you move it there.
+              </p>
 
-                <div className="flex items-center gap-2">
-                  <div className="relative min-w-0 flex-1">
-                    <SearchIcon
-                      aria-hidden
-                      className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                    />
-                    <input
-                      type="text"
-                      value={query}
-                      onChange={(event) => setQuery(event.target.value)}
-                      placeholder="Search automations"
-                      aria-label="Search automations"
-                      className="h-9 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground/72 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 sm:h-8"
-                    />
-                  </div>
-                  {/* Sheds its label before the search field starves. */}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0"
-                    disabled={!canCreate}
-                    aria-label="New automation"
-                    title={
-                      canCreate
-                        ? "New automation"
-                        : "Update this environment's server to create automations."
-                    }
-                    onClick={() => newAutomation()}
-                  >
-                    <PlusIcon />
-                    <span className="hidden @min-[34rem]/list:inline">New automation</span>
-                  </Button>
+              <div className="flex items-center gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <SearchIcon
+                    aria-hidden
+                    className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search automations"
+                    aria-label="Search automations"
+                    className="h-9 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground/72 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 sm:h-8"
+                  />
                 </div>
+                {/* Sheds its label before the search field starves. */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  disabled={!canCreate}
+                  aria-label="New automation"
+                  title={
+                    canCreate
+                      ? "New automation"
+                      : "Update this environment's server to create automations."
+                  }
+                  onClick={() => newAutomation()}
+                >
+                  <PlusIcon />
+                  <span className="hidden @min-[34rem]/list:inline">New automation</span>
+                </Button>
+              </div>
 
-                {rows.length === 0 && !automationsKnown ? (
-                  <AutomationsListGhost rows={3} />
-                ) : rows.length === 0 ? (
-                  <AutomationsEmptyState
-                    title={canCreate ? "No automations yet" : "Automations need a newer server"}
-                    description={
-                      canCreate
-                        ? "Schedule a prompt and Vetra will run it for you, once or on repeat."
-                        : "Update the Vetra Studio server in this environment to schedule work."
-                    }
-                    action={
-                      canCreate ? (
-                        <Button size="sm" onClick={() => newAutomation()}>
-                          <PlusIcon />
-                          New automation
-                        </Button>
-                      ) : null
-                    }
-                  />
-                ) : visibleRows.length === 0 ? (
-                  <AutomationsEmptyState
-                    title="No automations match this search"
-                    description={`Nothing in this workspace matches “${query.trim()}”.`}
-                    action={
-                      <Button size="sm" variant="outline" onClick={() => setQuery("")}>
-                        Clear search
+              {rows.length === 0 && !automationsKnown ? (
+                <AutomationsListGhost rows={3} />
+              ) : rows.length === 0 ? (
+                <AutomationsEmptyState
+                  title={canCreate ? "No automations yet" : "Automations need a newer server"}
+                  description={
+                    canCreate
+                      ? "Schedule a prompt and Vetra will run it for you, once or on repeat."
+                      : "Update the Vetra Studio server in this environment to schedule work."
+                  }
+                  action={
+                    canCreate ? (
+                      <Button size="sm" onClick={() => newAutomation()}>
+                        <PlusIcon />
+                        New automation
                       </Button>
-                    }
+                    ) : null
+                  }
+                />
+              ) : visibleRows.length === 0 ? (
+                <AutomationsEmptyState
+                  title="No automations match this search"
+                  description={`Nothing in this workspace matches “${query.trim()}”.`}
+                  action={
+                    <Button size="sm" variant="outline" onClick={() => setQuery("")}>
+                      Clear search
+                    </Button>
+                  }
+                />
+              ) : (
+                <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+                  {visibleRows.map((row) => (
+                    <AutomationRow
+                      key={`${row.automation.environmentId}:${row.automation.id}`}
+                      row={row}
+                      onOpen={openAutomation}
+                    />
+                  ))}
+                </ul>
+              )}
+
+              {/* Suggestions outlive the empty state: they are the fastest way
+                  to a second automation, not just a first. They step aside
+                  during a search, where the only thing on screen should be
+                  matches. */}
+              {automationsKnown && query.trim().length === 0 ? (
+                <>
+                  <div
+                    aria-hidden
+                    className="mt-2 h-px bg-[repeating-linear-gradient(to_right,var(--color-border)_0,var(--color-border)_4px,transparent_4px,transparent_8px)]"
                   />
-                ) : (
-                  <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-                    {visibleRows.map((row) => (
-                      <AutomationRow
-                        key={`${row.automation.environmentId}:${row.automation.id}`}
-                        row={row}
-                        onOpen={openAutomation}
+                  {rows.length > 0 ? (
+                    <p className="px-2 text-xs font-medium text-muted-foreground">
+                      Start from a template
+                    </p>
+                  ) : null}
+                  <ul className="m-0 grid list-none grid-cols-1 gap-x-8 gap-y-5 p-0 @min-[42rem]/list:grid-cols-2">
+                    {AUTOMATION_TEMPLATES.map((template) => (
+                      <AutomationTemplateRow
+                        key={template.id}
+                        template={template}
+                        onSelect={newAutomation}
                       />
                     ))}
                   </ul>
-                )}
-
-                {/* Suggestions outlive the empty state: they are the fastest way to
-                a second automation, not just a first. They step aside during a
-                search, where the only thing on screen should be matches. */}
-                {automationsKnown && query.trim().length === 0 ? (
-                  <>
-                    <div
-                      aria-hidden
-                      className="mt-2 h-px bg-[repeating-linear-gradient(to_right,var(--color-border)_0,var(--color-border)_4px,transparent_4px,transparent_8px)]"
-                    />
-                    {rows.length > 0 ? (
-                      <p className="px-2 text-xs font-medium text-muted-foreground">
-                        Start from a template
-                      </p>
-                    ) : null}
-                    <ul className="m-0 grid list-none grid-cols-1 gap-x-8 gap-y-5 p-0 @min-[42rem]/list:grid-cols-2">
-                      {AUTOMATION_TEMPLATES.map((template) => (
-                        <AutomationTemplateRow
-                          key={template.id}
-                          template={template}
-                          onSelect={newAutomation}
-                        />
-                      ))}
-                    </ul>
-                  </>
-                ) : null}
-              </div>
-            </ScrollArea>
-          </div>
-          {panelOpen ? (
-            <AutomationDetailPanel
-              key={props?.automationKey ?? "new"}
-              {...(props?.automationKey !== undefined
-                ? { automationKey: props.automationKey }
-                : {})}
-              {...(props?.templateId !== undefined ? { templateId: props.templateId } : {})}
-              onClose={() => void navigate({ to: "/automations" })}
-            />
-          ) : null}
+                </>
+              ) : null}
+            </div>
+          </ScrollArea>
         </div>
+        {panelOpen ? (
+          <AutomationDetailPanel
+            key={props?.automationKey ?? "new"}
+            {...(props?.automationKey !== undefined ? { automationKey: props.automationKey } : {})}
+            {...(props?.templateId !== undefined ? { templateId: props.templateId } : {})}
+            onClose={() => void navigate({ to: "/automations" })}
+          />
+        ) : null}
       </div>
     </SidebarInset>
   );
