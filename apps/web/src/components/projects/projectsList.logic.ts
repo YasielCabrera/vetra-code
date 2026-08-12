@@ -33,10 +33,15 @@ export function repositoryLabelOf(group: SidebarProjectSnapshot): string | null 
  */
 export function buildProjectRowModels(
   groups: ReadonlyArray<SidebarProjectSnapshot>,
-  threads: ReadonlyArray<Pick<EnvironmentThreadShell, "environmentId" | "projectId" | "updatedAt">>,
+  threads: ReadonlyArray<
+    Pick<EnvironmentThreadShell, "environmentId" | "projectId" | "updatedAt" | "hiddenAt">
+  >,
 ): ReadonlyArray<ProjectRowModel> {
   const perProject = new Map<string, { count: number; lastActiveAt: string }>();
   for (const thread of threads) {
+    // Hidden threads are not in the sidebar, so counting them here would
+    // promise threads the project page cannot show.
+    if (thread.hiddenAt != null) continue;
     const key = `${thread.environmentId}:${thread.projectId}`;
     const held = perProject.get(key);
     perProject.set(key, {

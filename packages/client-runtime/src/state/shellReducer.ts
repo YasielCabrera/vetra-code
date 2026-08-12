@@ -43,6 +43,20 @@ export function applyShellStreamEvent(
         threads: Arr.filter(snapshot.threads, (t) => t.id !== event.threadId),
         snapshotSequence: event.sequence,
       };
+    case "automation-upserted": {
+      const automations = snapshot.automations.some((a) => a.id === event.automation.id)
+        ? Arr.map(snapshot.automations, (a) =>
+            a.id === event.automation.id ? event.automation : a,
+          )
+        : Arr.append(snapshot.automations, event.automation);
+      return { ...snapshot, automations, snapshotSequence: event.sequence };
+    }
+    case "automation-removed":
+      return {
+        ...snapshot,
+        automations: Arr.filter(snapshot.automations, (a) => a.id !== event.automationId),
+        snapshotSequence: event.sequence,
+      };
     default:
       return snapshot;
   }

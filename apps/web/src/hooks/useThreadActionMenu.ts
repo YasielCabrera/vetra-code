@@ -22,6 +22,7 @@ import {
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
 import { threadEnvironment } from "../state/threads";
 import { useAtomCommand } from "../state/use-atom-command";
+import { readEnvironmentSupportsAutomations } from "../state/automations";
 import {
   readEnvironmentSupportsPinning,
   readEnvironmentSupportsSettlement,
@@ -72,6 +73,7 @@ export function useThreadActionMenu(input: {
     unsnoozeThread,
     pinThread,
     unpinThread,
+    hideThread,
     deleteThread,
   } = useThreadActions();
   const updateThreadMetadata = useAtomCommand(threadEnvironment.updateMetadata, {
@@ -118,6 +120,7 @@ export function useThreadActionMenu(input: {
           snooze: readEnvironmentSupportsSnooze(threadRef.environmentId),
           pinning: readEnvironmentSupportsPinning(threadRef.environmentId),
           titleRegeneration: readEnvironmentSupportsTitleRegeneration(threadRef.environmentId),
+          automations: readEnvironmentSupportsAutomations(threadRef.environmentId),
         };
         const isRegeneratingTitle = thread.titleRegeneration != null;
         const snoozePresets = resolveSnoozePresets(now, timestampFormat);
@@ -136,6 +139,7 @@ export function useThreadActionMenu(input: {
             }),
           isSnoozed: supports.snooze && effectiveSnoozed(thread, { now: now.toISOString() }),
           canSnoozeNow: canSnooze(thread, { now: now.toISOString() }),
+          isAutomationRun: thread.automationId != null,
           isRegeneratingTitle,
           supports,
           snoozePresets,
@@ -212,6 +216,9 @@ export function useThreadActionMenu(input: {
             return;
           case "unpin":
             await reportFailure("Failed to unpin thread", () => unpinThread(threadRef));
+            return;
+          case "hide":
+            await reportFailure("Failed to hide thread", () => hideThread(threadRef));
             return;
           case "rename":
             onStartRename();
@@ -300,6 +307,7 @@ export function useThreadActionMenu(input: {
       threadRef,
       timestampFormat,
       unpinThread,
+      hideThread,
       unsettleThread,
       unsnoozeThread,
       updateThreadMetadata,

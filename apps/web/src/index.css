@@ -147,6 +147,9 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(vetra-mo
   --animate-status-pulse: status-pulse 2s infinite;
   --animate-ghost-pulse: ghost-pulse 2.4s infinite;
   --animate-status-ping: status-ping 2s infinite;
+  /* One-shot, so it settles instead of repainting forever: a detail panel
+     arriving beside the list it was opened from. */
+  --animate-panel-in: panel-in 200ms cubic-bezier(0.32, 0.72, 0, 1);
   --color-warning-foreground: var(--warning-foreground);
   --color-warning: var(--warning);
   --color-warning-surface: var(--warning-surface);
@@ -203,6 +206,16 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(vetra-mo
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+      translate: 1.5rem 0;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
   @keyframes skeleton {
     /* Transform-only so the highlight sweep stays on the compositor, then a
        long hold with the band parked off-screen instead of a constant shimmer. */

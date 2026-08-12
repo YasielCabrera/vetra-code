@@ -483,6 +483,7 @@ describe.sequential("signRelayAgentActivityPublishProof", () => {
               snapshotSequence: 1,
               projects: [project],
               threads: [thread],
+              automations: [],
               updatedAt: now,
             } satisfies OrchestrationShellSnapshot),
           getThreadShellById: () =>
@@ -491,6 +492,7 @@ describe.sequential("signRelayAgentActivityPublishProof", () => {
               Effect.as(Option.some(thread)),
             ),
           getProjectShellById: () => Effect.succeed(Option.some(project)),
+          getAutomationById: () => Effect.succeed(Option.none()),
         } as unknown as ProjectionSnapshotQueryShape;
 
         const descriptor = {
@@ -674,10 +676,12 @@ describe.sequential("signRelayAgentActivityPublishProof", () => {
                 snapshotSequence: 1,
                 projects: [project],
                 threads: [thread],
+                automations: [],
                 updatedAt: now,
               } satisfies OrchestrationShellSnapshot),
             getThreadShellById: () => Effect.succeed(Option.some(thread)),
             getProjectShellById: () => Effect.succeed(Option.some(project)),
+            getAutomationById: () => Effect.succeed(Option.none()),
           } as unknown as ProjectionSnapshotQueryShape),
         );
 

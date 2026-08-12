@@ -48,7 +48,19 @@ Orchestration is the server-side domain layer that turns runtime activity into s
 
 #### Aggregate
 
-The domain object a command or event belongs to. In [the contracts][1], that is usually `project` or `thread`. See [decider.ts][8].
+The domain object a command or event belongs to. In [the contracts][1], that is `project`, `thread`, or `automation`. See [decider.ts][8].
+
+#### Automation
+
+A prompt paired with a schedule, environment-local like a project. In [the contracts][1] an automation holds its prompt, an `AutomationSchedule` (a one-time instant, or cron plus an IANA time zone), the project its runs happen in, the provider settings a run starts with, and a `nextRunAt` the decider recomputes on every schedule change and every claim. `AutomationScheduler` fires them; see [AutomationScheduler.ts][25].
+
+#### Run
+
+One firing of an automation, which _is_ a thread — created hidden and attributed to the automation, so the automation record needs no second source of truth for how the work went. A run is claimed before it starts (`automation.run-claimed`) with a command id derived from the automation and the scheduled instant, which is what makes firing exactly-once across a restart.
+
+#### Hidden thread
+
+A thread that exists but is not in the sidebar (`hiddenAt` in [the contracts][1]). Automation runs are born hidden; `thread.reveal` clears the flag and the thread joins the inbox like any other. Deliberately generic — automations are its first user, not its only possible one.
 
 #### Command
 
@@ -179,3 +191,4 @@ The file patch and changed-file summary for one turn. It is usually computed in 
 [22]: ../../apps/server/src/checkpointing/Utils.ts
 [23]: ../../apps/server/src/checkpointing/Diffs.ts
 [24]: ./overview.md
+[25]: ../../apps/server/src/automation/Layers/AutomationScheduler.ts

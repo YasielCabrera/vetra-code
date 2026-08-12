@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { ProjectId, ProviderInstanceId, ThreadId } from "@vetra-studio/contracts";
+import { AutomationId, ProjectId, ProviderInstanceId, ThreadId } from "@vetra-studio/contracts";
 import type {
   OrchestrationShellSnapshot,
   OrchestrationShellStreamEvent,
@@ -12,6 +12,7 @@ const baseSnapshot: OrchestrationShellSnapshot = {
   snapshotSequence: 0,
   projects: [],
   threads: [],
+  automations: [],
   updatedAt: "2026-04-01T00:00:00.000Z",
 };
 
@@ -144,6 +145,7 @@ describe("applyShellStreamEvent", () => {
       const snapshotWithThread: OrchestrationShellSnapshot = {
         ...baseSnapshot,
         threads: [stubThread],
+        automations: [],
       };
 
       const updatedThread = { ...stubThread, title: "Updated Thread" };
@@ -165,6 +167,7 @@ describe("applyShellStreamEvent", () => {
       const snapshotWithThread: OrchestrationShellSnapshot = {
         ...baseSnapshot,
         threads: [stubThread],
+        automations: [],
       };
 
       const event: OrchestrationShellStreamEvent = {
@@ -177,6 +180,82 @@ describe("applyShellStreamEvent", () => {
 
       expect(next.threads).toHaveLength(0);
       expect(next.snapshotSequence).toBe(6);
+    });
+  });
+
+  describe("automation events", () => {
+    const stubAutomation = {
+      id: AutomationId.make("automation-1"),
+      title: "Daily briefing",
+      prompt: "Summarize what changed.",
+      schedule: { kind: "recurring" as const, cron: "0 8 * * 1-5", timeZone: "UTC" },
+      projectId: ProjectId.make("project-1"),
+      ownsProject: false,
+      modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.4" },
+      runtimeMode: "full-access" as const,
+      envMode: "local" as const,
+      baseBranch: null,
+      startFromOrigin: false,
+      enabled: true,
+      nextRunAt: "2026-04-02T08:00:00.000Z",
+      lastRun: null,
+      createdAt: "2026-04-01T00:00:00.000Z",
+      updatedAt: "2026-04-01T00:00:00.000Z",
+      deletedAt: null,
+    };
+
+    it("adds an automation it has not seen", () => {
+      const next = applyShellStreamEvent(baseSnapshot, {
+        kind: "automation-upserted",
+        sequence: 1,
+        automation: stubAutomation,
+      });
+      expect(next.automations).toHaveLength(1);
+      expect(next.snapshotSequence).toBe(1);
+    });
+
+    it("replaces an automation in place rather than duplicating it", () => {
+      const withAutomation = applyShellStreamEvent(baseSnapshot, {
+        kind: "automation-upserted",
+        sequence: 1,
+        automation: stubAutomation,
+      });
+      const next = applyShellStreamEvent(withAutomation, {
+        kind: "automation-upserted",
+        sequence: 2,
+        automation: { ...stubAutomation, enabled: false },
+      });
+      expect(next.automations).toHaveLength(1);
+      expect(next.automations[0]?.enabled).toBe(false);
+    });
+
+    it("drops a removed automation", () => {
+      const withAutomation = applyShellStreamEvent(baseSnapshot, {
+        kind: "automation-upserted",
+        sequence: 1,
+        automation: stubAutomation,
+      });
+      const next = applyShellStreamEvent(withAutomation, {
+        kind: "automation-removed",
+        sequence: 2,
+        automationId: AutomationId.make("automation-1"),
+      });
+      expect(next.automations).toHaveLength(0);
+      expect(next.snapshotSequence).toBe(2);
+    });
+
+    it("ignores an event at or behind the snapshot it already holds", () => {
+      const withAutomation = applyShellStreamEvent(baseSnapshot, {
+        kind: "automation-upserted",
+        sequence: 5,
+        automation: stubAutomation,
+      });
+      const next = applyShellStreamEvent(withAutomation, {
+        kind: "automation-removed",
+        sequence: 5,
+        automationId: AutomationId.make("automation-1"),
+      });
+      expect(next).toBe(withAutomation);
     });
   });
 

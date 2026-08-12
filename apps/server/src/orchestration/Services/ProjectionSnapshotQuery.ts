@@ -7,7 +7,9 @@
  * @module ProjectionSnapshotQuery
  */
 import type {
+  AutomationId,
   CheckpointRef,
+  OrchestrationAutomation,
   OrchestrationCheckpointSummary,
   OrchestrationProject,
   OrchestrationProjectShell,
@@ -132,6 +134,14 @@ export interface ProjectionSnapshotQueryShape {
   readonly getProjectShellById: (
     projectId: ProjectId,
   ) => Effect.Effect<Option.Option<OrchestrationProjectShell>, ProjectionRepositoryError>;
+
+  /**
+   * Read a single active automation by id. None once it is deleted, which is
+   * what the shell stream turns into an `automation-removed`.
+   */
+  readonly getAutomationById: (
+    automationId: AutomationId,
+  ) => Effect.Effect<Option.Option<OrchestrationAutomation>, ProjectionRepositoryError>;
 
   /**
    * Read the earliest active thread for a project.

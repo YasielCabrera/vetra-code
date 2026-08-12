@@ -8,8 +8,15 @@ const baseState: ThreadActionMenuState = {
   isSettled: false,
   isSnoozed: false,
   canSnoozeNow: true,
+  isAutomationRun: false,
   isRegeneratingTitle: false,
-  supports: { settlement: true, snooze: true, pinning: true, titleRegeneration: true },
+  supports: {
+    settlement: true,
+    snooze: true,
+    pinning: true,
+    titleRegeneration: true,
+    automations: true,
+  },
   snoozePresets: [
     { id: "hour", label: "In 1 hour", whenLabel: "3:00 PM", snoozedUntil: "2026-08-07T15:00:00Z" },
   ],
@@ -24,7 +31,13 @@ describe("buildThreadActionMenuItems", () => {
     expect(
       ids({
         ...baseState,
-        supports: { settlement: false, snooze: false, pinning: false, titleRegeneration: false },
+        supports: {
+          settlement: false,
+          snooze: false,
+          pinning: false,
+          titleRegeneration: false,
+          automations: false,
+        },
       }),
     ).toEqual(["rename", "mark-unread", "copy-path", "copy-thread-id", "delete"]);
   });
@@ -62,5 +75,19 @@ describe("buildThreadActionMenuItems", () => {
   it("marks delete as destructive and keeps it last", () => {
     const items = buildThreadActionMenuItems({ ...baseState, branch: "main" });
     expect(items.at(-1)).toMatchObject({ id: "delete", destructive: true });
+  });
+
+  it("offers the way back out of the sidebar only for an automation's run", () => {
+    // A thread the user started themselves has no automation page to return
+    // to, so hiding it would put it out of reach.
+    expect(ids(baseState)).not.toContain("hide");
+    expect(ids({ ...baseState, isAutomationRun: true })).toContain("hide");
+    expect(
+      ids({
+        ...baseState,
+        isAutomationRun: true,
+        supports: { ...baseState.supports, automations: false },
+      }),
+    ).not.toContain("hide");
   });
 });

@@ -29,6 +29,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import * as Option from "effect/Option";
 import {
   ArrowLeftIcon,
+  CalendarClockIcon,
   CornerLeftUpIcon,
   FileSearchIcon,
   FolderIcon,
@@ -83,7 +84,7 @@ import {
   isUnsupportedWindowsProjectPath,
   resolveProjectPathForDispatch,
 } from "../lib/projectPaths";
-import { onOpenCommandPalette } from "../commandPaletteBus";
+import { onOpenCommandPalette, publishCommandPaletteProjectSelected } from "../commandPaletteBus";
 import { isPreviewFocused } from "../lib/previewFocus";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
@@ -105,6 +106,7 @@ import {
   buildThreadActionItems,
   enumerateCommandPaletteItems,
   type CommandPaletteActionItem,
+  type CommandPaletteAddProjectCompletion,
   type CommandPaletteOpenIntent,
   type CommandPaletteSubmenuItem,
   type CommandPaletteView,
@@ -387,7 +389,14 @@ export function CommandPalette({ children }: { children: ReactNode }) {
     (mode: SearchOverlayMode) => dispatch({ _tag: "ToggleMode", mode }),
     [],
   );
-  const openAddProject = useCallback(() => dispatch({ _tag: "OpenAddProject" }), []);
+  const openAddProject = useCallback(
+    (completion?: CommandPaletteAddProjectCompletion) =>
+      dispatch({
+        _tag: "OpenAddProject",
+        ...(completion !== undefined ? { completion } : {}),
+      }),
+    [],
+  );
   const openNewThreadIn = useCallback(() => dispatch({ _tag: "OpenNewThreadIn" }), []);
   const clearOpenIntent = useCallback(() => dispatch({ _tag: "ClearOpenIntent" }), []);
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
@@ -462,7 +471,7 @@ export function CommandPalette({ children }: { children: ReactNode }) {
         if (detail.open === "new-thread-in") {
           openNewThreadIn();
         } else if (detail.open === "add-project") {
-          openAddProject();
+          openAddProject(detail.completion);
         } else {
           setOpen(true);
         }
@@ -911,6 +920,9 @@ function OpenCommandPaletteDialog(props: {
             threads.filter(
               (thread) =>
                 thread.archivedAt === null &&
+                // Automation runs are not the thread you meant by "open this
+                // project" — they are not in the sidebar either.
+                thread.hiddenAt == null &&
                 groupedProjectKeys.has(`${thread.environmentId}:${thread.projectId}`),
             ),
             clientSettings.sidebarThreadSortOrder,
@@ -1518,6 +1530,28 @@ function OpenCommandPaletteDialog(props: {
     },
   });
 
+  actionItems.push({
+    kind: "action",
+    value: "action:automations",
+    searchTerms: ["automations", "scheduled", "schedule", "cron", "recurring", "tasks"],
+    title: "Open automations",
+    icon: <CalendarClockIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/automations" });
+    },
+  });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:automations:new",
+    searchTerms: ["new automation", "schedule a prompt", "cron", "recurring task"],
+    title: "New automation",
+    icon: <CalendarClockIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/automations/new", search: { template: undefined } });
+    },
+  });
+
   // Project settings is the one project, not the listing: it targets the
   // contextual project (active thread/draft, falling back to the first
   // sidebar group) rather than asking which one.
@@ -1614,11 +1648,21 @@ function OpenCommandPaletteDialog(props: {
       const cwd = resolveProjectPathForDispatch(rawCwd, input.currentProjectCwd);
       if (cwd.length === 0) return;
 
+      const completion = openIntent?.completion ?? "open-thread";
       const existing = findProjectByPath(
         projects.filter((project) => project.environmentId === input.environmentId),
         cwd,
       );
       if (existing) {
+        // Asked for a project, not a thread: hand back the one already there.
+        if (completion === "select") {
+          publishCommandPaletteProjectSelected({
+            environmentId: existing.environmentId,
+            projectId: existing.id,
+          });
+          setOpen(false);
+          return;
+        }
         const latestThread = getLatestThreadForProject(
           threads.filter((thread) => thread.environmentId === existing.environmentId),
           existing.id,
@@ -1683,6 +1727,15 @@ function OpenCommandPaletteDialog(props: {
         return;
       }
 
+      if (completion === "select") {
+        publishCommandPaletteProjectSelected({
+          environmentId: input.environmentId,
+          projectId,
+        });
+        setOpen(false);
+        return;
+      }
+
       const navigationResult = await settlePromise(() =>
         handleNewThread(scopeProjectRef(input.environmentId, projectId)),
       );
@@ -1707,6 +1760,7 @@ function OpenCommandPaletteDialog(props: {
       primaryEnvironmentId,
       projects,
       providers,
+      openIntent?.completion,
       setOpen,
       clientSettings.sidebarThreadSortOrder,
       threads,

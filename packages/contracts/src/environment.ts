@@ -67,6 +67,11 @@ export const ExecutionEnvironmentCapabilities = Schema.Struct({
   /** Server understands regenerateTitle on thread.meta.update. Absent on
       older servers, so clients hide the action instead of sending it. */
   threadTitleRegeneration: Schema.optionalKey(Schema.Boolean),
+  /** Server understands the automation.* commands, thread.hide/thread.reveal,
+      and carries automations on the shell snapshot. Same version-skew
+      contract as threadSettlement: absent means this environment cannot hold
+      automations, so clients offer none for it. */
+  automations: Schema.optionalKey(Schema.Boolean),
   /** The update path clients should offer for this server. Absent on
       servers that must be relaunched manually (dev checkouts, Windows
       foreground runs, pre-update servers). */

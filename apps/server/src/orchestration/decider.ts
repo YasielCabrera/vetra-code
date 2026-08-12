@@ -1,8 +1,14 @@
 import {
+  AUTOMATION_LATE_RUN_TOLERANCE_MS,
+  AUTOMATION_MISSED_ONCE_GRACE_MS,
+  type AutomationId,
+  type AutomationSchedule,
   EventId,
   type OrchestrationCommand,
   type OrchestrationEvent,
   type OrchestrationReadModel,
+  type OrchestrationThread,
+  resolveAutomationNextRunAt,
 } from "@vetra-studio/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Crypto from "effect/Crypto";
@@ -11,8 +17,12 @@ import type * as PlatformError from "effect/PlatformError";
 
 import { OrchestrationCommandInvariantError } from "./Errors.ts";
 import {
+  listActiveAutomationsByProjectId,
+  listActiveThreadsByAutomationId,
   listThreadsByProjectId,
   requireActiveProjectWorkspaceRootAbsent,
+  requireAutomation,
+  requireAutomationAbsent,
   requireProject,
   requireProjectAbsent,
   requireThread,
@@ -142,6 +152,54 @@ function threadHasQueuedTurnStart(
   );
 }
 
+/**
+ * Whether a run thread is still working. Covers the window right after a
+ * claim, where the thread holds a user message and no session yet.
+ */
+function automationRunIsActive(thread: OrchestrationThread, occurredAt: string): boolean {
+  const status = thread.session?.status;
+  if (status === "starting" || status === "running") return true;
+  if (thread.latestTurn?.state === "running") return true;
+  return threadHasQueuedTurnStart(thread, occurredAt);
+}
+
+/**
+ * Whether any run of this automation is still working, so the next occurrence
+ * must not start a second agent beside it. Asked of every run thread rather
+ * than of `lastRun`, because a skip overwrites `lastRun` with no thread id —
+ * the second consecutive occurrence during one long run would otherwise have
+ * nothing left to look at and would claim.
+ */
+function automationHasActiveRun(
+  readModel: OrchestrationReadModel,
+  automationId: AutomationId,
+  occurredAt: string,
+): boolean {
+  return listActiveThreadsByAutomationId(readModel, automationId).some((thread) =>
+    automationRunIsActive(thread, occurredAt),
+  );
+}
+
+/**
+ * Whether a scheduled occurrence has gone stale. Recurring schedules get a
+ * short tolerance for ordinary scheduler latency and otherwise skip to their
+ * next occurrence — a briefing is for the morning, not for whenever the lid
+ * happened to open. One-time schedules are the opposite: the user asked for a
+ * specific thing once, so they still fire late, within a day.
+ */
+function isLateAutomationRun(
+  schedule: AutomationSchedule,
+  command: { readonly scheduledFor: string; readonly createdAt: string },
+): boolean {
+  const scheduledForMs = Date.parse(command.scheduledFor);
+  const nowMs = Date.parse(command.createdAt);
+  if (Number.isNaN(scheduledForMs) || Number.isNaN(nowMs)) return false;
+  const latenessMs = nowMs - scheduledForMs;
+  return schedule.kind === "once"
+    ? latenessMs > AUTOMATION_MISSED_ONCE_GRACE_MS
+    : latenessMs > AUTOMATION_LATE_RUN_TOLERANCE_MS;
+}
+
 function withEventBase(
   input: Pick<OrchestrationCommand, "commandId"> & {
     readonly aggregateKind: OrchestrationEvent["aggregateKind"];
@@ -252,6 +310,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
           defaultModelSelection: command.defaultModelSelection ?? null,
           faviconPath: null,
           scripts: [],
+          ...(command.automationId !== undefined ? { automationId: command.automationId } : {}),
           createdAt: command.createdAt,
           updatedAt: command.createdAt,
         },
@@ -307,34 +366,51 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
       const activeThreads = listThreadsByProjectId(readModel, command.projectId).filter(
         (thread) => thread.deletedAt === null,
       );
-      if (activeThreads.length > 0 && command.force !== true) {
+      // An automation outlives nothing: without its project it can neither run
+      // nor be reached, so deleting the project deletes it too. Emitted as
+      // events rather than dispatched as automation.delete commands, because
+      // that command deletes an owned project — and would come straight back
+      // here.
+      const attachedAutomations = listActiveAutomationsByProjectId(readModel, command.projectId);
+      if ((activeThreads.length > 0 || attachedAutomations.length > 0) && command.force !== true) {
         return yield* new OrchestrationCommandInvariantError({
           commandType: command.type,
           detail: `Project '${command.projectId}' is not empty and cannot be deleted without force=true.`,
         });
       }
+
+      const occurredAt = yield* nowIso;
+      const events: PlannedOrchestrationEvent[] = [];
+      for (const automation of attachedAutomations) {
+        events.push({
+          ...(yield* withEventBase({
+            aggregateKind: "automation",
+            aggregateId: automation.id,
+            occurredAt,
+            commandId: command.commandId,
+          })),
+          type: "automation.deleted" as const,
+          payload: {
+            automationId: automation.id,
+            deletedAt: occurredAt,
+          },
+        });
+      }
       if (activeThreads.length > 0) {
-        return yield* decideCommandSequence({
-          readModel,
-          commands: [
-            ...activeThreads.map(
+        events.push(
+          ...(yield* decideCommandSequence({
+            readModel,
+            commands: activeThreads.map(
               (thread): Extract<OrchestrationCommand, { type: "thread.delete" }> => ({
                 type: "thread.delete",
                 commandId: command.commandId,
                 threadId: thread.id,
               }),
             ),
-            {
-              type: "project.delete",
-              commandId: command.commandId,
-              projectId: command.projectId,
-            },
-          ],
-        });
+          })),
+        );
       }
-
-      const occurredAt = yield* nowIso;
-      return {
+      events.push({
         ...(yield* withEventBase({
           aggregateKind: "project",
           aggregateId: command.projectId,
@@ -345,6 +421,312 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         payload: {
           projectId: command.projectId,
           deletedAt: occurredAt,
+        },
+      });
+      return events.length === 1 ? events[0]! : events;
+    }
+
+    case "automation.create": {
+      yield* requireAutomationAbsent({
+        readModel,
+        command,
+        automationId: command.automationId,
+      });
+      const events: PlannedOrchestrationEvent[] = [];
+      if (command.project.kind === "owned") {
+        // The automation's own project is created in the same decision, so the
+        // two commit together: an automation pointing at a project that does
+        // not exist could never run.
+        events.push(
+          ...(yield* decideCommandSequence({
+            readModel,
+            commands: [
+              {
+                type: "project.create",
+                commandId: command.commandId,
+                projectId: command.project.projectId,
+                title: command.title,
+                workspaceRoot: command.project.workspaceRoot,
+                defaultModelSelection: command.modelSelection,
+                automationId: command.automationId,
+                createdAt: command.createdAt,
+              },
+            ],
+          })),
+        );
+      } else {
+        yield* requireProject({
+          readModel,
+          command,
+          projectId: command.project.projectId,
+        });
+      }
+
+      events.push({
+        ...(yield* withEventBase({
+          aggregateKind: "automation",
+          aggregateId: command.automationId,
+          occurredAt: command.createdAt,
+          commandId: command.commandId,
+        })),
+        type: "automation.created",
+        payload: {
+          automationId: command.automationId,
+          title: command.title,
+          prompt: command.prompt,
+          schedule: command.schedule,
+          projectId: command.project.projectId,
+          ownsProject: command.project.kind === "owned",
+          modelSelection: command.modelSelection,
+          runtimeMode: command.runtimeMode,
+          envMode: command.envMode,
+          baseBranch: command.baseBranch,
+          startFromOrigin: command.startFromOrigin,
+          enabled: command.enabled,
+          nextRunAt: resolveAutomationNextRunAt(command.schedule, command.createdAt),
+          createdAt: command.createdAt,
+          updatedAt: command.createdAt,
+        },
+      });
+      return events;
+    }
+
+    case "automation.meta.update": {
+      const automation = yield* requireAutomation({
+        readModel,
+        command,
+        automationId: command.automationId,
+      });
+      const occurredAt = yield* nowIso;
+      // A schedule edit re-anchors the next run to now. Leaving the old
+      // nextRunAt standing would fire the new prompt on the old timetable.
+      const nextRunAt =
+        command.schedule !== undefined
+          ? resolveAutomationNextRunAt(command.schedule, occurredAt)
+          : automation.nextRunAt;
+      return {
+        ...(yield* withEventBase({
+          aggregateKind: "automation",
+          aggregateId: command.automationId,
+          occurredAt,
+          commandId: command.commandId,
+        })),
+        type: "automation.meta-updated",
+        payload: {
+          automationId: command.automationId,
+          ...(command.title !== undefined ? { title: command.title } : {}),
+          ...(command.prompt !== undefined ? { prompt: command.prompt } : {}),
+          ...(command.schedule !== undefined ? { schedule: command.schedule } : {}),
+          ...(command.modelSelection !== undefined
+            ? { modelSelection: command.modelSelection }
+            : {}),
+          ...(command.runtimeMode !== undefined ? { runtimeMode: command.runtimeMode } : {}),
+          ...(command.envMode !== undefined ? { envMode: command.envMode } : {}),
+          ...(command.baseBranch !== undefined ? { baseBranch: command.baseBranch } : {}),
+          ...(command.startFromOrigin !== undefined
+            ? { startFromOrigin: command.startFromOrigin }
+            : {}),
+          nextRunAt,
+          updatedAt: occurredAt,
+        },
+      };
+    }
+
+    case "automation.enable": {
+      const automation = yield* requireAutomation({
+        readModel,
+        command,
+        automationId: command.automationId,
+      });
+      const occurredAt = yield* nowIso;
+      return {
+        ...(yield* withEventBase({
+          aggregateKind: "automation",
+          aggregateId: command.automationId,
+          occurredAt,
+          commandId: command.commandId,
+        })),
+        type: "automation.enabled",
+        payload: {
+          automationId: command.automationId,
+          // Recomputed from now: a schedule that went stale while paused must
+          // not fire the moment it is resumed.
+          nextRunAt: resolveAutomationNextRunAt(automation.schedule, occurredAt),
+          updatedAt: occurredAt,
+        },
+      };
+    }
+
+    case "automation.disable": {
+      yield* requireAutomation({
+        readModel,
+        command,
+        automationId: command.automationId,
+      });
+      const occurredAt = yield* nowIso;
+      return {
+        ...(yield* withEventBase({
+          aggregateKind: "automation",
+          aggregateId: command.automationId,
+          occurredAt,
+          commandId: command.commandId,
+        })),
+        type: "automation.disabled",
+        payload: {
+          automationId: command.automationId,
+          updatedAt: occurredAt,
+        },
+      };
+    }
+
+    case "automation.delete": {
+      const automation = yield* requireAutomation({
+        readModel,
+        command,
+        automationId: command.automationId,
+      });
+      const runThreads = listActiveThreadsByAutomationId(readModel, command.automationId);
+      const revealedRunThreads = runThreads.filter((thread) => thread.hiddenAt == null);
+      // Deleting an owned project takes every thread in it, revealed runs
+      // included. Runs the user promoted to the sidebar are not collateral, so
+      // that needs saying out loud.
+      if (automation.ownsProject && revealedRunThreads.length > 0 && command.force !== true) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: `Automation '${command.automationId}' has ${revealedRunThreads.length} run(s) in the sidebar that would be deleted with its project. Pass force=true to delete them.`,
+        });
+      }
+
+      // Deleting an automation that owns its project IS deleting that project:
+      // project.delete's cascade emits this automation's own deletion along
+      // with every thread in it, so there is nothing to add here.
+      if (automation.ownsProject) {
+        return yield* decideCommandSequence({
+          readModel,
+          commands: [
+            {
+              type: "project.delete",
+              commandId: command.commandId,
+              projectId: automation.projectId,
+              force: true,
+            },
+          ],
+        });
+      }
+
+      const occurredAt = yield* nowIso;
+      const deletedEvent = {
+        ...(yield* withEventBase({
+          aggregateKind: "automation" as const,
+          aggregateId: command.automationId,
+          occurredAt,
+          commandId: command.commandId,
+        })),
+        type: "automation.deleted" as const,
+        payload: {
+          automationId: command.automationId,
+          deletedAt: occurredAt,
+        },
+      };
+
+      // In a project of the user's own, hidden runs are reachable only through
+      // this automation, so they go with it. Revealed runs are in the sidebar
+      // and stay.
+      const hiddenRunThreads = runThreads.filter((thread) => thread.hiddenAt != null);
+      if (hiddenRunThreads.length === 0) {
+        return deletedEvent;
+      }
+      return [
+        deletedEvent,
+        ...(yield* decideCommandSequence({
+          readModel,
+          commands: hiddenRunThreads.map(
+            (thread): Extract<OrchestrationCommand, { type: "thread.delete" }> => ({
+              type: "thread.delete",
+              commandId: command.commandId,
+              threadId: thread.id,
+            }),
+          ),
+        })),
+      ];
+    }
+
+    case "automation.run.claim": {
+      const automation = yield* requireAutomation({
+        readModel,
+        command,
+        automationId: command.automationId,
+      });
+      const occurredAt = command.createdAt;
+      const nextRunAt = resolveAutomationNextRunAt(automation.schedule, occurredAt);
+      const skipped = (outcome: "skipped-overlap" | "skipped-disabled" | "missed") =>
+        withEventBase({
+          aggregateKind: "automation" as const,
+          aggregateId: command.automationId,
+          occurredAt,
+          commandId: command.commandId,
+        }).pipe(
+          Effect.map((base) => ({
+            ...base,
+            type: "automation.run-skipped" as const,
+            payload: {
+              automationId: command.automationId,
+              scheduledFor: command.scheduledFor,
+              reason: command.reason,
+              outcome,
+              occurredAt,
+              nextRunAt,
+              updatedAt: occurredAt,
+            },
+          })),
+        );
+
+      // Run now works on a paused automation — that is how a schedule gets
+      // tested before it is turned loose.
+      if (!automation.enabled && command.reason === "schedule") {
+        return yield* skipped("skipped-disabled");
+      }
+
+      if (automationHasActiveRun(readModel, command.automationId, occurredAt)) {
+        if (command.reason === "manual") {
+          return yield* new OrchestrationCommandInvariantError({
+            commandType: command.type,
+            detail: `Automation '${command.automationId}' is already running.`,
+          });
+        }
+        return yield* skipped("skipped-overlap");
+      }
+
+      if (command.reason === "schedule" && isLateAutomationRun(automation.schedule, command)) {
+        return yield* skipped("missed");
+      }
+
+      yield* requireProject({
+        readModel,
+        command,
+        projectId: automation.projectId,
+      });
+      yield* requireThreadAbsent({
+        readModel,
+        command,
+        threadId: command.threadId,
+      });
+      return {
+        ...(yield* withEventBase({
+          aggregateKind: "automation",
+          aggregateId: command.automationId,
+          occurredAt,
+          commandId: command.commandId,
+        })),
+        type: "automation.run-claimed",
+        payload: {
+          automationId: command.automationId,
+          scheduledFor: command.scheduledFor,
+          threadId: command.threadId,
+          reason: command.reason,
+          occurredAt,
+          nextRunAt,
+          updatedAt: occurredAt,
         },
       };
     }
@@ -377,6 +759,8 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
           interactionMode: command.interactionMode,
           branch: command.branch,
           worktreePath: command.worktreePath,
+          ...(command.hidden === true ? { hiddenAt: command.createdAt } : {}),
+          ...(command.automationId !== undefined ? { automationId: command.automationId } : {}),
           createdAt: command.createdAt,
           updatedAt: command.createdAt,
         },
@@ -654,6 +1038,55 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
           threadId: command.threadId,
           reason: command.reason,
           updatedAt: alreadyAwake ? thread.updatedAt : occurredAt,
+        },
+      };
+    }
+
+    case "thread.hide": {
+      const thread = yield* requireThreadNotArchived({
+        readModel,
+        command,
+        threadId: command.threadId,
+      });
+      // Idempotent by re-emission (see thread.settle): hiding an already
+      // hidden thread keeps its original hiddenAt and leaves updatedAt alone.
+      const existingHiddenAt = thread.hiddenAt ?? null;
+      const occurredAt = yield* nowIso;
+      return {
+        ...(yield* withEventBase({
+          aggregateKind: "thread",
+          aggregateId: command.threadId,
+          occurredAt,
+          commandId: command.commandId,
+        })),
+        type: "thread.hidden",
+        payload: {
+          threadId: command.threadId,
+          hiddenAt: existingHiddenAt ?? occurredAt,
+          updatedAt: existingHiddenAt !== null ? thread.updatedAt : occurredAt,
+        },
+      };
+    }
+
+    case "thread.reveal": {
+      const thread = yield* requireThreadNotArchived({
+        readModel,
+        command,
+        threadId: command.threadId,
+      });
+      const alreadyVisible = thread.hiddenAt == null;
+      const occurredAt = yield* nowIso;
+      return {
+        ...(yield* withEventBase({
+          aggregateKind: "thread",
+          aggregateId: command.threadId,
+          occurredAt,
+          commandId: command.commandId,
+        })),
+        type: "thread.revealed",
+        payload: {
+          threadId: command.threadId,
+          updatedAt: alreadyVisible ? thread.updatedAt : occurredAt,
         },
       };
     }

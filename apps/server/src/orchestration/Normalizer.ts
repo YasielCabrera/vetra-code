@@ -90,6 +90,25 @@ export const normalizeDispatchCommand = (command: ClientOrchestrationCommand) =>
       } satisfies OrchestrationCommand;
     }
 
+    // An automation asking for a project of its own gets one under Vetra home,
+    // in a directory named after it. Resolving that here — where project roots
+    // are already normalized and created — keeps the decider pure and spares
+    // every client from having to know the server's layout.
+    if (canonicalCommand.type === "automation.create") {
+      const project = canonicalCommand.project;
+      if (project.kind === "existing") {
+        return { ...canonicalCommand, project } satisfies OrchestrationCommand;
+      }
+      const workspaceRoot = yield* normalizeProjectWorkspaceRootForCreate(
+        path.join(serverConfig.automationsDir, canonicalCommand.automationId),
+        true,
+      );
+      return {
+        ...canonicalCommand,
+        project: { ...project, workspaceRoot },
+      } satisfies OrchestrationCommand;
+    }
+
     if (
       canonicalCommand.type === "project.meta.update" &&
       canonicalCommand.workspaceRoot !== undefined

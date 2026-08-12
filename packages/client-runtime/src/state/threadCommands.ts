@@ -22,6 +22,8 @@ import {
   type UnpinThreadInput,
   type UnsettleThreadInput,
   type UnsnoozeThreadInput,
+  type HideThreadInput,
+  type RevealThreadInput,
   type UpdateThreadMetadataInput,
   archiveThread,
   createThread,
@@ -42,6 +44,8 @@ import {
   unpinThread,
   unsettleThread,
   unsnoozeThread,
+  hideThread,
+  revealThread,
   updateThreadMetadata,
 } from "../operations/commands.ts";
 import type { EnvironmentRegistry } from "../connection/registry.ts";
@@ -66,6 +70,8 @@ export type {
   UnpinThreadInput,
   UnsettleThreadInput,
   UnsnoozeThreadInput,
+  HideThreadInput,
+  RevealThreadInput,
   UpdateThreadMetadataInput,
 } from "../operations/commands.ts";
 
@@ -124,6 +130,18 @@ export function createThreadEnvironmentAtoms<R, E>(
     unsnooze: createEnvironmentCommand(runtime, {
       label: "environment-data:commands:thread:unsnooze",
       execute: (input: UnsnoozeThreadInput) => unsnoozeThread(input),
+      scheduler,
+      concurrency,
+    }),
+    hide: createEnvironmentCommand(runtime, {
+      label: "environment-data:commands:thread:hide",
+      execute: (input: HideThreadInput) => hideThread(input),
+      scheduler,
+      concurrency,
+    }),
+    reveal: createEnvironmentCommand(runtime, {
+      label: "environment-data:commands:thread:reveal",
+      execute: (input: RevealThreadInput) => revealThread(input),
       scheduler,
       concurrency,
     }),

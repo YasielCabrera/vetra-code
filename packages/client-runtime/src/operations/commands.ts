@@ -42,6 +42,14 @@ export type UnsnoozeThreadInput = CommandInput<"thread.unsnooze">;
 export type PinThreadInput = CommandInput<"thread.pin">;
 export type UnpinThreadInput = CommandInput<"thread.unpin">;
 export type ReorderPinnedThreadInput = CommandInput<"thread.pin.reorder">;
+export type HideThreadInput = CommandInput<"thread.hide">;
+export type RevealThreadInput = CommandInput<"thread.reveal">;
+export type CreateAutomationInput = CommandInput<"automation.create">;
+export type UpdateAutomationInput = CommandInput<"automation.meta.update">;
+export type EnableAutomationInput = CommandInput<"automation.enable">;
+export type DisableAutomationInput = CommandInput<"automation.disable">;
+export type DeleteAutomationInput = CommandInput<"automation.delete">;
+export type ClaimAutomationRunInput = CommandInput<"automation.run.claim">;
 export type UpdateThreadMetadataInput = CommandInput<"thread.meta.update">;
 export type SetThreadRuntimeModeInput = CommandInput<"thread.runtime-mode.set">;
 export type SetThreadInteractionModeInput = CommandInput<"thread.interaction-mode.set">;
@@ -167,6 +175,94 @@ export const settleThread: (input: SettleThreadInput) => CommandEffect = Effect.
     ...input,
     type: "thread.settle",
     commandId: yield* commandId(input),
+  });
+});
+
+export const hideThread: (input: HideThreadInput) => CommandEffect = Effect.fn(
+  "EnvironmentCommands.hideThread",
+)(function* (input) {
+  return yield* dispatch({
+    ...input,
+    type: "thread.hide",
+    commandId: yield* commandId(input),
+  });
+});
+
+export const revealThread: (input: RevealThreadInput) => CommandEffect = Effect.fn(
+  "EnvironmentCommands.revealThread",
+)(function* (input) {
+  return yield* dispatch({
+    ...input,
+    type: "thread.reveal",
+    commandId: yield* commandId(input),
+  });
+});
+
+export const createAutomation: (input: CreateAutomationInput) => CommandEffect = Effect.fn(
+  "EnvironmentCommands.createAutomation",
+)(function* (input) {
+  const metadata = yield* timestampedCommandMetadata(input);
+  return yield* dispatch({
+    ...input,
+    type: "automation.create",
+    commandId: metadata.commandId,
+    createdAt: metadata.createdAt,
+  });
+});
+
+export const updateAutomation: (input: UpdateAutomationInput) => CommandEffect = Effect.fn(
+  "EnvironmentCommands.updateAutomation",
+)(function* (input) {
+  return yield* dispatch({
+    ...input,
+    type: "automation.meta.update",
+    commandId: yield* commandId(input),
+  });
+});
+
+export const enableAutomation: (input: EnableAutomationInput) => CommandEffect = Effect.fn(
+  "EnvironmentCommands.enableAutomation",
+)(function* (input) {
+  return yield* dispatch({
+    ...input,
+    type: "automation.enable",
+    commandId: yield* commandId(input),
+  });
+});
+
+export const disableAutomation: (input: DisableAutomationInput) => CommandEffect = Effect.fn(
+  "EnvironmentCommands.disableAutomation",
+)(function* (input) {
+  return yield* dispatch({
+    ...input,
+    type: "automation.disable",
+    commandId: yield* commandId(input),
+  });
+});
+
+export const deleteAutomation: (input: DeleteAutomationInput) => CommandEffect = Effect.fn(
+  "EnvironmentCommands.deleteAutomation",
+)(function* (input) {
+  return yield* dispatch({
+    ...input,
+    type: "automation.delete",
+    commandId: yield* commandId(input),
+  });
+});
+
+/**
+ * Run now. The scheduler's own claims travel the same command, so the run
+ * starts through exactly the path a scheduled one does.
+ */
+export const claimAutomationRun: (input: ClaimAutomationRunInput) => CommandEffect = Effect.fn(
+  "EnvironmentCommands.claimAutomationRun",
+)(function* (input) {
+  const metadata = yield* timestampedCommandMetadata(input);
+  return yield* dispatch({
+    ...input,
+    type: "automation.run.claim",
+    commandId: metadata.commandId,
+    createdAt: metadata.createdAt,
   });
 });
 

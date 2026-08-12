@@ -2,7 +2,16 @@ import {
   ProjectCreatedPayload as ContractsProjectCreatedPayloadSchema,
   ProjectMetaUpdatedPayload as ContractsProjectMetaUpdatedPayloadSchema,
   ProjectDeletedPayload as ContractsProjectDeletedPayloadSchema,
+  AutomationCreatedPayload as ContractsAutomationCreatedPayloadSchema,
+  AutomationMetaUpdatedPayload as ContractsAutomationMetaUpdatedPayloadSchema,
+  AutomationEnabledPayload as ContractsAutomationEnabledPayloadSchema,
+  AutomationDisabledPayload as ContractsAutomationDisabledPayloadSchema,
+  AutomationDeletedPayload as ContractsAutomationDeletedPayloadSchema,
+  AutomationRunClaimedPayload as ContractsAutomationRunClaimedPayloadSchema,
+  AutomationRunSkippedPayload as ContractsAutomationRunSkippedPayloadSchema,
   ThreadCreatedPayload as ContractsThreadCreatedPayloadSchema,
+  ThreadHiddenPayload as ContractsThreadHiddenPayloadSchema,
+  ThreadRevealedPayload as ContractsThreadRevealedPayloadSchema,
   ThreadArchivedPayload as ContractsThreadArchivedPayloadSchema,
   ThreadSettledPayload as ContractsThreadSettledPayloadSchema,
   ThreadMetaUpdatedPayload as ContractsThreadMetaUpdatedPayloadSchema,
@@ -34,7 +43,17 @@ export const ProjectCreatedPayload = ContractsProjectCreatedPayloadSchema;
 export const ProjectMetaUpdatedPayload = ContractsProjectMetaUpdatedPayloadSchema;
 export const ProjectDeletedPayload = ContractsProjectDeletedPayloadSchema;
 
+export const AutomationCreatedPayload = ContractsAutomationCreatedPayloadSchema;
+export const AutomationMetaUpdatedPayload = ContractsAutomationMetaUpdatedPayloadSchema;
+export const AutomationEnabledPayload = ContractsAutomationEnabledPayloadSchema;
+export const AutomationDisabledPayload = ContractsAutomationDisabledPayloadSchema;
+export const AutomationDeletedPayload = ContractsAutomationDeletedPayloadSchema;
+export const AutomationRunClaimedPayload = ContractsAutomationRunClaimedPayloadSchema;
+export const AutomationRunSkippedPayload = ContractsAutomationRunSkippedPayloadSchema;
+
 export const ThreadCreatedPayload = ContractsThreadCreatedPayloadSchema;
+export const ThreadHiddenPayload = ContractsThreadHiddenPayloadSchema;
+export const ThreadRevealedPayload = ContractsThreadRevealedPayloadSchema;
 export const ThreadArchivedPayload = ContractsThreadArchivedPayloadSchema;
 export const ThreadSettledPayload = ContractsThreadSettledPayloadSchema;
 export const ThreadMetaUpdatedPayload = ContractsThreadMetaUpdatedPayloadSchema;

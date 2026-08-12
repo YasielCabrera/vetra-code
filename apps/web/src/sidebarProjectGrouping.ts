@@ -31,6 +31,16 @@ export interface SidebarProjectPickerEntry {
   isPreferred: boolean;
 }
 
+/**
+ * A project an automation created for itself, rooted under Vetra home. These
+ * are navigation noise: the automation's own page is where its runs and its
+ * folder belong, so project listings and pickers leave them out. Reachable
+ * still — a run thread in one names it, and the automation page links to it.
+ */
+export function isAutomationOwnedProject(project: Pick<Project, "automationId">): boolean {
+  return project.automationId != null;
+}
+
 export function buildPhysicalToLogicalProjectKeyMap(input: {
   projects: ReadonlyArray<Project>;
   settings: ProjectGroupingSettings;
@@ -38,7 +48,7 @@ export function buildPhysicalToLogicalProjectKeyMap(input: {
 }): Map<string, string> {
   const mapping = new Map<string, string>();
   const groups = buildProjectGroups({
-    projects: input.projects,
+    projects: input.projects.filter((project) => !isAutomationOwnedProject(project)),
     settings: input.settings,
     preferredEnvironmentId: input.primaryEnvironmentId,
   });
@@ -62,7 +72,7 @@ export function buildSidebarProjectSnapshots(input: {
   isDesktopLocalEnvironment?: (environmentId: EnvironmentId) => boolean;
 }): SidebarProjectSnapshot[] {
   return buildProjectGroups({
-    projects: input.projects,
+    projects: input.projects.filter((project) => !isAutomationOwnedProject(project)),
     settings: input.settings,
     preferredEnvironmentId: input.primaryEnvironmentId,
   }).map((group): SidebarProjectSnapshot => {

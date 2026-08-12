@@ -15,6 +15,7 @@ export type ThreadActionMenuId =
   | "snooze"
   | `snooze:${string}`
   | "unsnooze"
+  | "hide"
   | "rename"
   | "regenerate-title"
   | "mark-unread"
@@ -29,12 +30,15 @@ export interface ThreadActionMenuState {
   readonly isSettled: boolean;
   readonly isSnoozed: boolean;
   readonly canSnoozeNow: boolean;
+  /** True for a thread an automation produced, whatever its visibility. */
+  readonly isAutomationRun: boolean;
   readonly isRegeneratingTitle: boolean;
   readonly supports: {
     readonly settlement: boolean;
     readonly snooze: boolean;
     readonly pinning: boolean;
     readonly titleRegeneration: boolean;
+    readonly automations: boolean;
   };
   readonly snoozePresets: ReadonlyArray<SnoozePreset>;
 }
@@ -87,6 +91,12 @@ export function buildThreadActionMenuItems(
                 })),
               },
         ]
+      : []),
+    // The way back out for a run the user moved here: the automation page
+    // offers "Show in sidebar", and this is its reverse. Offered only on
+    // automation runs, because nothing else can be reached once hidden.
+    ...(state.supports.automations && state.isAutomationRun
+      ? [{ id: "hide" as const, label: "Hide from sidebar" }]
       : []),
     { id: "rename", label: "Rename thread" },
     ...(state.supports.titleRegeneration

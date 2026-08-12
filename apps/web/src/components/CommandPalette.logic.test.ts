@@ -62,6 +62,34 @@ describe("reduceCommandPaletteUiState", () => {
     });
   });
 
+  it("carries the add-project completion so a caller can borrow the flow", () => {
+    // Without one, adding a project ends the way it always has: in a thread.
+    expect(reduceCommandPaletteUiState(closedState, { _tag: "OpenAddProject" })).toEqual({
+      open: true,
+      mode: "command",
+      openIntent: { kind: "add-project" },
+    });
+    expect(
+      reduceCommandPaletteUiState(closedState, { _tag: "OpenAddProject", completion: "select" }),
+    ).toEqual({
+      open: true,
+      mode: "command",
+      openIntent: { kind: "add-project", completion: "select" },
+    });
+  });
+
+  it("drops the intent when the palette closes, completion and all", () => {
+    const selecting = reduceCommandPaletteUiState(closedState, {
+      _tag: "OpenAddProject",
+      completion: "select",
+    });
+    expect(reduceCommandPaletteUiState(selecting, { _tag: "SetOpen", open: false })).toEqual({
+      open: false,
+      mode: "command",
+      openIntent: null,
+    });
+  });
+
   it("resets to command mode for dialog-driven opens and closes", () => {
     const filesOpen = reduceCommandPaletteUiState(closedState, {
       _tag: "ToggleMode",

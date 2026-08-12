@@ -49,8 +49,9 @@ function makeThread(input: {
   environmentId: EnvironmentId;
   projectId: ProjectId;
   updatedAt: string;
+  hiddenAt?: string | null;
 }) {
-  return input;
+  return { hiddenAt: null, ...input };
 }
 
 describe("repositoryLabelOf", () => {
@@ -138,6 +139,26 @@ describe("buildProjectRowModels", () => {
     expect(row?.threadCount).toBe(3);
     // The latest activity anywhere in the group, not the latest per checkout.
     expect(row?.lastActiveAt).toBe("2026-02-03T00:00:00.000Z");
+  });
+
+  it("leaves an automation's hidden runs out of the count", () => {
+    const project = makeProject();
+    const [row] = buildProjectRowModels(makeSnapshots([project]), [
+      makeThread({
+        environmentId: primaryEnvironmentId,
+        projectId: project.id,
+        updatedAt: "2026-02-01T00:00:00.000Z",
+      }),
+      // A run the sidebar does not show must not be promised by the count.
+      makeThread({
+        environmentId: primaryEnvironmentId,
+        projectId: project.id,
+        updatedAt: "2026-02-05T00:00:00.000Z",
+        hiddenAt: "2026-02-05T00:00:00.000Z",
+      }),
+    ]);
+    expect(row?.threadCount).toBe(1);
+    expect(row?.lastActiveAt).toBe("2026-02-01T00:00:00.000Z");
   });
 
   it("reports no threads and no activity for a project nothing has run in", () => {

@@ -6,7 +6,15 @@ import * as Struct from "effect/Struct";
 import { ProviderOptionSelections } from "./model.ts";
 import { RepositoryIdentity, ThreadEnvMode } from "./environment.ts";
 import {
+  AutomationLastRun,
+  AutomationPrompt,
+  AutomationRunReason,
+  AutomationSchedule,
+  AutomationTitle,
+} from "./automation.ts";
+import {
   ApprovalRequestId,
+  AutomationId,
   CheckpointRef,
   CommandId,
   EventId,
@@ -229,6 +237,10 @@ export const OrchestrationProject = Schema.Struct({
   // Optional on the wire so cached snapshots from older servers still decode.
   faviconPath: Schema.optional(Schema.NullOr(ProjectFaviconPath)),
   scripts: Schema.Array(ProjectScript),
+  // Set when this project exists to hold one automation's runs, rooted under
+  // Vetra home rather than at a checkout the user chose. Project listings and
+  // pickers filter these out; the automation's own page is where it belongs.
+  automationId: Schema.optional(Schema.NullOr(AutomationId)),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
   deletedAt: Schema.NullOr(IsoDateTime),
@@ -397,6 +409,14 @@ export const OrchestrationThread = Schema.Struct({
   pinOrderKey: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   // Pending-only state. Optional so older servers remain compatible.
   titleRegeneration: Schema.optional(Schema.NullOr(ThreadTitleRegeneration)),
+  // Out of the sidebar while set. Automation runs are born hidden so a
+  // schedule firing overnight does not fill the inbox; thread.reveal clears
+  // it and the thread joins the sidebar like any other.
+  hiddenAt: Schema.optional(Schema.NullOr(IsoDateTime)),
+  // Which automation produced this thread. Immutable provenance: revealing a
+  // run promotes it to the sidebar without disowning it from its automation,
+  // so the automation's run history stays complete.
+  automationId: Schema.optional(Schema.NullOr(AutomationId)),
   deletedAt: Schema.NullOr(IsoDateTime),
   messages: Schema.Array(OrchestrationMessage),
   proposedPlans: Schema.Array(OrchestrationProposedPlan).pipe(
@@ -408,10 +428,54 @@ export const OrchestrationThread = Schema.Struct({
 });
 export type OrchestrationThread = typeof OrchestrationThread.Type;
 
+/**
+ * A prompt plus a schedule. Each firing produces its own thread in
+ * `projectId`, so a run is a thread and the automation holds only what the
+ * next one needs.
+ */
+export const OrchestrationAutomation = Schema.Struct({
+  id: AutomationId,
+  title: AutomationTitle,
+  prompt: AutomationPrompt,
+  schedule: AutomationSchedule,
+  projectId: ProjectId,
+  /** True when `projectId` is the automation's own project under Vetra home. */
+  ownsProject: Schema.Boolean,
+  modelSelection: ModelSelection,
+  /**
+   * Unattended work parks forever on the first approval request, so
+   * automations default to full access and the form says so.
+   */
+  runtimeMode: RuntimeMode,
+  /** Where a run works: the project's checkout, or a worktree per run. */
+  envMode: ThreadEnvMode,
+  /** Null means "whatever the checkout is on when the run starts". */
+  baseBranch: Schema.NullOr(TrimmedNonEmptyString),
+  startFromOrigin: Schema.Boolean,
+  /** Paused automations keep their schedule and stop firing. */
+  enabled: Schema.Boolean,
+  /**
+   * The next instant this should fire, or null when nothing is scheduled: a
+   * one-time run that already happened, or a cron matching no real date. The
+   * decider recomputes it on every schedule change and every claim, and the
+   * scheduler treats it as its queue key.
+   */
+  nextRunAt: Schema.NullOr(IsoDateTime),
+  lastRun: Schema.NullOr(AutomationLastRun),
+  createdAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+  deletedAt: Schema.NullOr(IsoDateTime),
+});
+export type OrchestrationAutomation = typeof OrchestrationAutomation.Type;
+
 export const OrchestrationReadModel = Schema.Struct({
   snapshotSequence: NonNegativeInt,
   projects: Schema.Array(OrchestrationProject),
   threads: Schema.Array(OrchestrationThread),
+  // Optional so snapshots persisted by pre-automation servers still decode.
+  automations: Schema.Array(OrchestrationAutomation).pipe(
+    Schema.withDecodingDefault(Effect.succeed([])),
+  ),
   updatedAt: IsoDateTime,
 });
 export type OrchestrationReadModel = typeof OrchestrationReadModel.Type;
@@ -426,6 +490,7 @@ export const OrchestrationProjectShell = Schema.Struct({
   // Optional on the wire so cached snapshots from older servers still decode.
   faviconPath: Schema.optional(Schema.NullOr(ProjectFaviconPath)),
   scripts: Schema.Array(ProjectScript),
+  automationId: Schema.optional(Schema.NullOr(AutomationId)),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });
@@ -455,6 +520,8 @@ export const OrchestrationThreadShell = Schema.Struct({
   pinnedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
   pinOrderKey: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   titleRegeneration: Schema.optional(Schema.NullOr(ThreadTitleRegeneration)),
+  hiddenAt: Schema.optional(Schema.NullOr(IsoDateTime)),
+  automationId: Schema.optional(Schema.NullOr(AutomationId)),
   session: Schema.NullOr(OrchestrationSession),
   latestUserMessageAt: Schema.NullOr(IsoDateTime),
   hasPendingApprovals: Schema.Boolean,
@@ -487,6 +554,16 @@ export const OrchestrationShellSnapshot = Schema.Struct({
   snapshotSequence: NonNegativeInt,
   projects: Schema.Array(OrchestrationProjectShell),
   threads: Schema.Array(OrchestrationThreadShell),
+  /**
+   * Automations ride the shell rather than a query of their own: they are few
+   * and tiny, and the shell already gives them the offline cache, the
+   * resume-by-sequence catch-up, and the cross-environment merge the
+   * automations page would otherwise have to reimplement. Optional on decode
+   * so a cached snapshot written by a pre-automation build still loads.
+   */
+  automations: Schema.Array(OrchestrationAutomation).pipe(
+    Schema.withDecodingDefault(Effect.succeed([])),
+  ),
   updatedAt: IsoDateTime,
 });
 export type OrchestrationShellSnapshot = typeof OrchestrationShellSnapshot.Type;
@@ -511,6 +588,16 @@ export const OrchestrationShellStreamEvent = Schema.Union([
     kind: Schema.Literal("thread-removed"),
     sequence: NonNegativeInt,
     threadId: ThreadId,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("automation-upserted"),
+    sequence: NonNegativeInt,
+    automation: OrchestrationAutomation,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("automation-removed"),
+    sequence: NonNegativeInt,
+    automationId: AutomationId,
   }),
 ]);
 export type OrchestrationShellStreamEvent = typeof OrchestrationShellStreamEvent.Type;
@@ -627,6 +714,9 @@ export const ProjectCreateCommand = Schema.Struct({
   workspaceRoot: TrimmedNonEmptyString,
   createWorkspaceRootIfMissing: Schema.optional(Schema.Boolean),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
+  // Only set by the decider's automation.create cascade, which creates an
+  // automation's own project in the same transaction as the automation.
+  automationId: Schema.optional(AutomationId),
   createdAt: IsoDateTime,
 });
 
@@ -663,6 +753,11 @@ const ThreadCreateCommand = Schema.Struct({
   ),
   branch: Schema.NullOr(TrimmedNonEmptyString),
   worktreePath: Schema.NullOr(TrimmedNonEmptyString),
+  // Born hidden and attributed to an automation. Both travel on create rather
+  // than as a follow-up thread.hide, or the row would flash into every
+  // connected sidebar for the frame between the two events.
+  hidden: Schema.optional(Schema.Boolean),
+  automationId: Schema.optional(AutomationId),
   createdAt: IsoDateTime,
 });
 
@@ -719,6 +814,18 @@ const ThreadUnsnoozeCommand = Schema.Struct({
   // wakes need no event at all — clients derive visibility from snoozedUntil,
   // so a passed wake time simply stops classifying as snoozed.
   reason: Schema.Literal("user"),
+});
+
+const ThreadHideCommand = Schema.Struct({
+  type: Schema.Literal("thread.hide"),
+  commandId: CommandId,
+  threadId: ThreadId,
+});
+
+const ThreadRevealCommand = Schema.Struct({
+  type: Schema.Literal("thread.reveal"),
+  commandId: CommandId,
+  threadId: ThreadId,
 });
 
 const ThreadPinCommand = Schema.Struct({
@@ -790,6 +897,8 @@ const ThreadTurnStartBootstrapCreateThread = Schema.Struct({
   interactionMode: ProviderInteractionMode,
   branch: Schema.NullOr(TrimmedNonEmptyString),
   worktreePath: Schema.NullOr(TrimmedNonEmptyString),
+  hidden: Schema.optional(Schema.Boolean),
+  automationId: Schema.optional(AutomationId),
   createdAt: IsoDateTime,
 });
 
@@ -895,10 +1004,135 @@ const ThreadSessionStopCommand = Schema.Struct({
   onlyIfSettled: Schema.optional(Schema.Boolean),
 });
 
+const AutomationExistingProjectTarget = Schema.Struct({
+  kind: Schema.Literal("existing"),
+  projectId: ProjectId,
+});
+
+/**
+ * An automation with no project of the user's choosing gets one of its own,
+ * rooted under Vetra home. Only the server knows where that is, so the client
+ * asks for "owned" and the Normalizer fills the resolved root in — the same
+ * client-shape/canonical-shape split thread.turn.start uses for attachments.
+ */
+const ClientAutomationOwnedProjectTarget = Schema.Struct({
+  kind: Schema.Literal("owned"),
+  projectId: ProjectId,
+});
+
+const AutomationOwnedProjectTarget = Schema.Struct({
+  kind: Schema.Literal("owned"),
+  projectId: ProjectId,
+  workspaceRoot: TrimmedNonEmptyString,
+});
+
+export const AutomationProjectTarget = Schema.Union([
+  AutomationExistingProjectTarget,
+  AutomationOwnedProjectTarget,
+]);
+export type AutomationProjectTarget = typeof AutomationProjectTarget.Type;
+
+const ClientAutomationProjectTarget = Schema.Union([
+  AutomationExistingProjectTarget,
+  ClientAutomationOwnedProjectTarget,
+]);
+
+const AutomationCreateFields = {
+  type: Schema.Literal("automation.create"),
+  commandId: CommandId,
+  automationId: AutomationId,
+  title: AutomationTitle,
+  prompt: AutomationPrompt,
+  schedule: AutomationSchedule,
+  modelSelection: ModelSelection,
+  runtimeMode: RuntimeMode,
+  envMode: ThreadEnvMode,
+  baseBranch: Schema.NullOr(TrimmedNonEmptyString),
+  startFromOrigin: Schema.Boolean,
+  enabled: Schema.Boolean,
+  createdAt: IsoDateTime,
+} as const;
+
+export const AutomationCreateCommand = Schema.Struct({
+  ...AutomationCreateFields,
+  project: AutomationProjectTarget,
+});
+
+const ClientAutomationCreateCommand = Schema.Struct({
+  ...AutomationCreateFields,
+  project: ClientAutomationProjectTarget,
+});
+
+/** Absent fields are left unchanged. Which project an automation runs in is
+    deliberately not editable: an owned project would be orphaned by the move. */
+const AutomationMetaUpdateCommand = Schema.Struct({
+  type: Schema.Literal("automation.meta.update"),
+  commandId: CommandId,
+  automationId: AutomationId,
+  title: Schema.optional(AutomationTitle),
+  prompt: Schema.optional(AutomationPrompt),
+  schedule: Schema.optional(AutomationSchedule),
+  modelSelection: Schema.optional(ModelSelection),
+  runtimeMode: Schema.optional(RuntimeMode),
+  envMode: Schema.optional(ThreadEnvMode),
+  baseBranch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  startFromOrigin: Schema.optional(Schema.Boolean),
+});
+
+const AutomationEnableCommand = Schema.Struct({
+  type: Schema.Literal("automation.enable"),
+  commandId: CommandId,
+  automationId: AutomationId,
+});
+
+const AutomationDisableCommand = Schema.Struct({
+  type: Schema.Literal("automation.disable"),
+  commandId: CommandId,
+  automationId: AutomationId,
+});
+
+const AutomationDeleteCommand = Schema.Struct({
+  type: Schema.Literal("automation.delete"),
+  commandId: CommandId,
+  automationId: AutomationId,
+  /**
+   * Required only when deleting would take revealed run threads with it —
+   * which happens when the automation owns its project, since the project goes
+   * too. Hidden runs are reachable only through the automation, so they are
+   * always cleaned up.
+   */
+  force: Schema.optional(Schema.Boolean),
+});
+
+/**
+ * One attempt at a run. The decider turns this into either a claim (the run
+ * owns `threadId`) or a skip, and either way advances `nextRunAt` — so a
+ * backlog of missed occurrences collapses into one step instead of firing in
+ * a burst. Dispatched with a command id derived from the automation and the
+ * scheduled instant, which is what makes firing exactly-once across a crash.
+ */
+export const AutomationRunClaimCommand = Schema.Struct({
+  type: Schema.Literal("automation.run.claim"),
+  commandId: CommandId,
+  automationId: AutomationId,
+  scheduledFor: IsoDateTime,
+  reason: AutomationRunReason,
+  /** The thread a claim will use. Callers must read the claimed thread id back
+      off the automation afterwards: a deduplicated retry keeps the first. */
+  threadId: ThreadId,
+  createdAt: IsoDateTime,
+});
+
 const DispatchableClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
   ProjectDeleteCommand,
+  AutomationCreateCommand,
+  AutomationMetaUpdateCommand,
+  AutomationEnableCommand,
+  AutomationDisableCommand,
+  AutomationDeleteCommand,
+  AutomationRunClaimCommand,
   ThreadCreateCommand,
   ThreadDeleteCommand,
   ThreadArchiveCommand,
@@ -907,6 +1141,8 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ThreadUnsettleCommand,
   ThreadSnoozeCommand,
   ThreadUnsnoozeCommand,
+  ThreadHideCommand,
+  ThreadRevealCommand,
   ThreadPinCommand,
   ThreadUnpinCommand,
   ThreadPinReorderCommand,
@@ -927,6 +1163,12 @@ export const ClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
   ProjectDeleteCommand,
+  ClientAutomationCreateCommand,
+  AutomationMetaUpdateCommand,
+  AutomationEnableCommand,
+  AutomationDisableCommand,
+  AutomationDeleteCommand,
+  AutomationRunClaimCommand,
   ThreadCreateCommand,
   ThreadDeleteCommand,
   ThreadArchiveCommand,
@@ -935,6 +1177,8 @@ export const ClientOrchestrationCommand = Schema.Union([
   ThreadUnsettleCommand,
   ThreadSnoozeCommand,
   ThreadUnsnoozeCommand,
+  ThreadHideCommand,
+  ThreadRevealCommand,
   ThreadPinCommand,
   ThreadUnpinCommand,
   ThreadPinReorderCommand,
@@ -1045,6 +1289,13 @@ export const OrchestrationEventType = Schema.Literals([
   "project.created",
   "project.meta-updated",
   "project.deleted",
+  "automation.created",
+  "automation.meta-updated",
+  "automation.enabled",
+  "automation.disabled",
+  "automation.deleted",
+  "automation.run-claimed",
+  "automation.run-skipped",
   "thread.created",
   "thread.deleted",
   "thread.archived",
@@ -1053,6 +1304,8 @@ export const OrchestrationEventType = Schema.Literals([
   "thread.unsettled",
   "thread.snoozed",
   "thread.unsnoozed",
+  "thread.hidden",
+  "thread.revealed",
   "thread.pinned",
   "thread.unpinned",
   "thread.pin-reordered",
@@ -1074,7 +1327,7 @@ export const OrchestrationEventType = Schema.Literals([
 ]);
 export type OrchestrationEventType = typeof OrchestrationEventType.Type;
 
-export const OrchestrationAggregateKind = Schema.Literals(["project", "thread"]);
+export const OrchestrationAggregateKind = Schema.Literals(["project", "thread", "automation"]);
 export type OrchestrationAggregateKind = typeof OrchestrationAggregateKind.Type;
 export const OrchestrationActorKind = Schema.Literals(["client", "server", "provider"]);
 
@@ -1087,8 +1340,78 @@ export const ProjectCreatedPayload = Schema.Struct({
   // Optional so persisted events from older servers still decode.
   faviconPath: Schema.optional(Schema.NullOr(ProjectFaviconPath)),
   scripts: Schema.Array(ProjectScript),
+  automationId: Schema.optional(Schema.NullOr(AutomationId)),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
+});
+
+const AutomationScheduleStateFields = {
+  /** Recomputed by the decider whenever the schedule or the run state moves. */
+  nextRunAt: Schema.NullOr(IsoDateTime),
+  updatedAt: IsoDateTime,
+} as const;
+
+export const AutomationCreatedPayload = Schema.Struct({
+  automationId: AutomationId,
+  title: AutomationTitle,
+  prompt: AutomationPrompt,
+  schedule: AutomationSchedule,
+  projectId: ProjectId,
+  ownsProject: Schema.Boolean,
+  modelSelection: ModelSelection,
+  runtimeMode: RuntimeMode,
+  envMode: ThreadEnvMode,
+  baseBranch: Schema.NullOr(TrimmedNonEmptyString),
+  startFromOrigin: Schema.Boolean,
+  enabled: Schema.Boolean,
+  createdAt: IsoDateTime,
+  ...AutomationScheduleStateFields,
+});
+
+export const AutomationMetaUpdatedPayload = Schema.Struct({
+  automationId: AutomationId,
+  title: Schema.optional(AutomationTitle),
+  prompt: Schema.optional(AutomationPrompt),
+  schedule: Schema.optional(AutomationSchedule),
+  modelSelection: Schema.optional(ModelSelection),
+  runtimeMode: Schema.optional(RuntimeMode),
+  envMode: Schema.optional(ThreadEnvMode),
+  baseBranch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  startFromOrigin: Schema.optional(Schema.Boolean),
+  ...AutomationScheduleStateFields,
+});
+
+export const AutomationEnabledPayload = Schema.Struct({
+  automationId: AutomationId,
+  ...AutomationScheduleStateFields,
+});
+
+export const AutomationDisabledPayload = Schema.Struct({
+  automationId: AutomationId,
+  updatedAt: IsoDateTime,
+});
+
+export const AutomationDeletedPayload = Schema.Struct({
+  automationId: AutomationId,
+  deletedAt: IsoDateTime,
+});
+
+export const AutomationRunClaimedPayload = Schema.Struct({
+  automationId: AutomationId,
+  scheduledFor: IsoDateTime,
+  threadId: ThreadId,
+  reason: AutomationRunReason,
+  occurredAt: IsoDateTime,
+  ...AutomationScheduleStateFields,
+});
+
+export const AutomationRunSkippedPayload = Schema.Struct({
+  automationId: AutomationId,
+  scheduledFor: IsoDateTime,
+  reason: AutomationRunReason,
+  outcome: Schema.Literals(["skipped-overlap", "skipped-disabled", "missed"]),
+  occurredAt: IsoDateTime,
+  ...AutomationScheduleStateFields,
 });
 
 export const ProjectMetaUpdatedPayload = Schema.Struct({
@@ -1119,6 +1442,8 @@ export const ThreadCreatedPayload = Schema.Struct({
   ),
   branch: Schema.NullOr(TrimmedNonEmptyString),
   worktreePath: Schema.NullOr(TrimmedNonEmptyString),
+  hiddenAt: Schema.optional(Schema.NullOr(IsoDateTime)),
+  automationId: Schema.optional(Schema.NullOr(AutomationId)),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });
@@ -1165,6 +1490,17 @@ export const ThreadUnsnoozedPayload = Schema.Struct({
   // thread.unsettled's activity resets. Timer wakes emit no event: clients
   // derive them from snoozedUntil passing.
   reason: Schema.Literals(["user", "activity"]),
+  updatedAt: IsoDateTime,
+});
+
+export const ThreadHiddenPayload = Schema.Struct({
+  threadId: ThreadId,
+  hiddenAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+});
+
+export const ThreadRevealedPayload = Schema.Struct({
+  threadId: ThreadId,
   updatedAt: IsoDateTime,
 });
 
@@ -1318,7 +1654,7 @@ const EventBaseFields = {
   sequence: NonNegativeInt,
   eventId: EventId,
   aggregateKind: OrchestrationAggregateKind,
-  aggregateId: Schema.Union([ProjectId, ThreadId]),
+  aggregateId: Schema.Union([ProjectId, ThreadId, AutomationId]),
   occurredAt: IsoDateTime,
   commandId: Schema.NullOr(CommandId),
   causationEventId: Schema.NullOr(EventId),
@@ -1341,6 +1677,41 @@ export const OrchestrationEvent = Schema.Union([
     ...EventBaseFields,
     type: Schema.Literal("project.deleted"),
     payload: ProjectDeletedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("automation.created"),
+    payload: AutomationCreatedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("automation.meta-updated"),
+    payload: AutomationMetaUpdatedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("automation.enabled"),
+    payload: AutomationEnabledPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("automation.disabled"),
+    payload: AutomationDisabledPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("automation.deleted"),
+    payload: AutomationDeletedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("automation.run-claimed"),
+    payload: AutomationRunClaimedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("automation.run-skipped"),
+    payload: AutomationRunSkippedPayload,
   }),
   Schema.Struct({
     ...EventBaseFields,
@@ -1381,6 +1752,16 @@ export const OrchestrationEvent = Schema.Union([
     ...EventBaseFields,
     type: Schema.Literal("thread.unsnoozed"),
     payload: ThreadUnsnoozedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.hidden"),
+    payload: ThreadHiddenPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.revealed"),
+    payload: ThreadRevealedPayload,
   }),
   Schema.Struct({
     ...EventBaseFields,

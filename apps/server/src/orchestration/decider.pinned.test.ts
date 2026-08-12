@@ -54,6 +54,7 @@ function makeReadModel(input: {
         session: null,
       },
     ],
+    automations: [],
     updatedAt: NOW,
   };
 }

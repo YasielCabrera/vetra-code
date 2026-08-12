@@ -1,4 +1,6 @@
 import type {
+  AutomationId,
+  OrchestrationAutomation,
   OrchestrationCommand,
   OrchestrationProject,
   OrchestrationReadModel,
@@ -37,6 +39,66 @@ export function listThreadsByProjectId(
   projectId: ProjectId,
 ): ReadonlyArray<OrchestrationThread> {
   return readModel.threads.filter((thread) => thread.projectId === projectId);
+}
+
+export function findAutomationById(
+  readModel: OrchestrationReadModel,
+  automationId: AutomationId,
+): OrchestrationAutomation | undefined {
+  return readModel.automations.find((automation) => automation.id === automationId);
+}
+
+/** Undeleted automations attached to a project, owned or otherwise. */
+export function listActiveAutomationsByProjectId(
+  readModel: OrchestrationReadModel,
+  projectId: ProjectId,
+): ReadonlyArray<OrchestrationAutomation> {
+  return readModel.automations.filter(
+    (automation) => automation.projectId === projectId && automation.deletedAt === null,
+  );
+}
+
+/** Undeleted threads an automation produced, in run order. */
+export function listActiveThreadsByAutomationId(
+  readModel: OrchestrationReadModel,
+  automationId: AutomationId,
+): ReadonlyArray<OrchestrationThread> {
+  return readModel.threads.filter(
+    (thread) => thread.automationId === automationId && thread.deletedAt === null,
+  );
+}
+
+export function requireAutomation(input: {
+  readonly readModel: OrchestrationReadModel;
+  readonly command: OrchestrationCommand;
+  readonly automationId: AutomationId;
+}): Effect.Effect<OrchestrationAutomation, OrchestrationCommandInvariantError> {
+  const automation = findAutomationById(input.readModel, input.automationId);
+  if (automation && automation.deletedAt === null) {
+    return Effect.succeed(automation);
+  }
+  return Effect.fail(
+    invariantError(
+      input.command.type,
+      `Automation '${input.automationId}' does not exist for command '${input.command.type}'.`,
+    ),
+  );
+}
+
+export function requireAutomationAbsent(input: {
+  readonly readModel: OrchestrationReadModel;
+  readonly command: OrchestrationCommand;
+  readonly automationId: AutomationId;
+}): Effect.Effect<void, OrchestrationCommandInvariantError> {
+  if (!findAutomationById(input.readModel, input.automationId)) {
+    return Effect.void;
+  }
+  return Effect.fail(
+    invariantError(
+      input.command.type,
+      `Automation '${input.automationId}' already exists and cannot be created twice.`,
+    ),
+  );
 }
 
 export function requireProject(input: {

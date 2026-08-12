@@ -21,6 +21,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef } from "react";
 
 import { getFallbackThreadIdAfterDelete, pinOrderKeyBetween } from "../components/Sidebar.logic";
+import { readEnvironmentSupportsAutomations } from "../state/automations";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { terminalEnvironment } from "../state/terminal";
 import { threadEnvironment } from "../state/threads";
@@ -118,6 +119,18 @@ function topOfPinnedRunOrderKey(): string | undefined {
   return pinOrderKeyBetween(null, firstKey) ?? undefined;
 }
 
+export class ThreadVisibilityUnsupportedError extends Schema.TaggedErrorClass<ThreadVisibilityUnsupportedError>()(
+  "ThreadVisibilityUnsupportedError",
+  {
+    environmentId: EnvironmentId,
+    threadId: ThreadId,
+  },
+) {
+  override get message(): string {
+    return "This environment's server does not support hiding threads yet. Update the server to use it.";
+  }
+}
+
 export class ThreadPinningUnsupportedError extends Schema.TaggedErrorClass<ThreadPinningUnsupportedError>()(
   "ThreadPinningUnsupportedError",
   {
@@ -163,6 +176,9 @@ export function useThreadActions() {
     reportFailure: false,
   });
   const unpinThreadMutation = useAtomCommand(threadEnvironment.unpin, {
+    reportFailure: false,
+  });
+  const hideThreadMutation = useAtomCommand(threadEnvironment.hide, {
     reportFailure: false,
   });
   const reorderPinnedThreadMutation = useAtomCommand(threadEnvironment.reorderPin, {
@@ -595,6 +611,26 @@ export function useThreadActions() {
     [unpinThreadMutation],
   );
 
+  const hideThread = useCallback(
+    async (target: ScopedThreadRef) => {
+      if (!readEnvironmentSupportsAutomations(target.environmentId)) {
+        return AsyncResult.failure(
+          Cause.fail(
+            new ThreadVisibilityUnsupportedError({
+              environmentId: target.environmentId,
+              threadId: target.threadId,
+            }),
+          ),
+        );
+      }
+      return hideThreadMutation({
+        environmentId: target.environmentId,
+        input: { threadId: target.threadId },
+      });
+    },
+    [hideThreadMutation],
+  );
+
   const reorderPinnedThread = useCallback(
     async (target: ScopedThreadRef, orderKey: string) => {
       // Callers (the sidebar drag handler) only enable dragging on
@@ -714,12 +750,14 @@ export function useThreadActions() {
       unsnoozeThread,
       pinThread,
       unpinThread,
+      hideThread,
       reorderPinnedThread,
     }),
     [
       archiveThread,
       confirmAndDeleteThread,
       deleteThread,
+      hideThread,
       pinThread,
       reorderPinnedThread,
       settleThread,

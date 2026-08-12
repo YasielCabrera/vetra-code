@@ -104,6 +104,7 @@ const readModel: OrchestrationReadModel = {
       deletedAt: null,
     },
   ],
+  automations: [],
 };
 
 const messageSendCommand: OrchestrationCommand = {

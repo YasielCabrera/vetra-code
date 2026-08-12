@@ -139,6 +139,7 @@ const SNAPSHOT: OrchestrationShellSnapshot = {
       title: "Other thread",
     },
   ],
+  automations: [],
 };
 
 function shellState(snapshot: OrchestrationShellSnapshot): EnvironmentShellState {

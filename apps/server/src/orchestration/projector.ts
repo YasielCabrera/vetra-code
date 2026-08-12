@@ -1,4 +1,11 @@
-import type { OrchestrationEvent, OrchestrationReadModel, ThreadId } from "@vetra-studio/contracts";
+import type {
+  AutomationId,
+  AutomationLastRun,
+  OrchestrationAutomation,
+  OrchestrationEvent,
+  OrchestrationReadModel,
+  ThreadId,
+} from "@vetra-studio/contracts";
 import {
   OrchestrationCheckpointSummary,
   OrchestrationMessage,
@@ -10,6 +17,13 @@ import * as Schema from "effect/Schema";
 
 import { toProjectorDecodeError, type OrchestrationProjectorDecodeError } from "./Errors.ts";
 import {
+  AutomationCreatedPayload,
+  AutomationDeletedPayload,
+  AutomationDisabledPayload,
+  AutomationEnabledPayload,
+  AutomationMetaUpdatedPayload,
+  AutomationRunClaimedPayload,
+  AutomationRunSkippedPayload,
   MessageSentPayloadSchema,
   ProjectCreatedPayload,
   ProjectDeletedPayload,
@@ -18,6 +32,8 @@ import {
   ThreadArchivedPayload,
   ThreadCreatedPayload,
   ThreadDeletedPayload,
+  ThreadHiddenPayload,
+  ThreadRevealedPayload,
   ThreadInteractionModeSetPayload,
   ThreadMetaUpdatedPayload,
   ThreadProposedPlanUpsertedPayload,
@@ -190,7 +206,44 @@ export function createEmptyReadModel(nowIso: string): OrchestrationReadModel {
     snapshotSequence: 0,
     projects: [],
     threads: [],
+    automations: [],
     updatedAt: nowIso,
+  };
+}
+
+function updateAutomation(
+  automations: ReadonlyArray<OrchestrationAutomation>,
+  automationId: AutomationId,
+  patch: Partial<Omit<OrchestrationAutomation, "id">>,
+): OrchestrationAutomation[] {
+  return automations.map((automation) =>
+    automation.id === automationId ? { ...automation, ...patch } : automation,
+  );
+}
+
+/**
+ * Every run outcome carries the same three consequences: the run becomes the
+ * automation's last, the schedule advances, and the record's updatedAt moves.
+ */
+function automationRunPatch(payload: {
+  readonly scheduledFor: string;
+  readonly occurredAt: string;
+  readonly reason: AutomationLastRun["reason"];
+  readonly outcome: AutomationLastRun["outcome"];
+  readonly threadId: AutomationLastRun["threadId"];
+  readonly nextRunAt: string | null;
+  readonly updatedAt: string;
+}): Partial<Omit<OrchestrationAutomation, "id">> {
+  return {
+    lastRun: {
+      scheduledFor: payload.scheduledFor,
+      occurredAt: payload.occurredAt,
+      outcome: payload.outcome,
+      reason: payload.reason,
+      threadId: payload.threadId,
+    },
+    nextRunAt: payload.nextRunAt,
+    updatedAt: payload.updatedAt,
   };
 }
 
@@ -217,6 +270,7 @@ export function projectEvent(
             defaultThreadEnvMode: null,
             faviconPath: payload.faviconPath ?? null,
             scripts: payload.scripts,
+            automationId: payload.automationId ?? null,
             createdAt: payload.createdAt,
             updatedAt: payload.updatedAt,
             deletedAt: null,
@@ -278,6 +332,128 @@ export function projectEvent(
         })),
       );
 
+    case "automation.created":
+      return decodeForEvent(AutomationCreatedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => {
+          const nextAutomation: OrchestrationAutomation = {
+            id: payload.automationId,
+            title: payload.title,
+            prompt: payload.prompt,
+            schedule: payload.schedule,
+            projectId: payload.projectId,
+            ownsProject: payload.ownsProject,
+            modelSelection: payload.modelSelection,
+            runtimeMode: payload.runtimeMode,
+            envMode: payload.envMode,
+            baseBranch: payload.baseBranch,
+            startFromOrigin: payload.startFromOrigin,
+            enabled: payload.enabled,
+            nextRunAt: payload.nextRunAt,
+            lastRun: null,
+            createdAt: payload.createdAt,
+            updatedAt: payload.updatedAt,
+            deletedAt: null,
+          };
+          const existing = nextBase.automations.find((entry) => entry.id === payload.automationId);
+          return {
+            ...nextBase,
+            automations: existing
+              ? nextBase.automations.map((entry) =>
+                  entry.id === payload.automationId ? nextAutomation : entry,
+                )
+              : [...nextBase.automations, nextAutomation],
+          };
+        }),
+      );
+
+    case "automation.meta-updated":
+      return decodeForEvent(
+        AutomationMetaUpdatedPayload,
+        event.payload,
+        event.type,
+        "payload",
+      ).pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          automations: updateAutomation(nextBase.automations, payload.automationId, {
+            ...(payload.title !== undefined ? { title: payload.title } : {}),
+            ...(payload.prompt !== undefined ? { prompt: payload.prompt } : {}),
+            ...(payload.schedule !== undefined ? { schedule: payload.schedule } : {}),
+            ...(payload.modelSelection !== undefined
+              ? { modelSelection: payload.modelSelection }
+              : {}),
+            ...(payload.runtimeMode !== undefined ? { runtimeMode: payload.runtimeMode } : {}),
+            ...(payload.envMode !== undefined ? { envMode: payload.envMode } : {}),
+            ...(payload.baseBranch !== undefined ? { baseBranch: payload.baseBranch } : {}),
+            ...(payload.startFromOrigin !== undefined
+              ? { startFromOrigin: payload.startFromOrigin }
+              : {}),
+            nextRunAt: payload.nextRunAt,
+            updatedAt: payload.updatedAt,
+          }),
+        })),
+      );
+
+    case "automation.enabled":
+      return decodeForEvent(AutomationEnabledPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          automations: updateAutomation(nextBase.automations, payload.automationId, {
+            enabled: true,
+            nextRunAt: payload.nextRunAt,
+            updatedAt: payload.updatedAt,
+          }),
+        })),
+      );
+
+    case "automation.disabled":
+      return decodeForEvent(AutomationDisabledPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          // nextRunAt is left standing so a paused automation can still say
+          // when it would have run; the scheduler filters on `enabled`.
+          automations: updateAutomation(nextBase.automations, payload.automationId, {
+            enabled: false,
+            updatedAt: payload.updatedAt,
+          }),
+        })),
+      );
+
+    case "automation.deleted":
+      return decodeForEvent(AutomationDeletedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          automations: updateAutomation(nextBase.automations, payload.automationId, {
+            deletedAt: payload.deletedAt,
+            updatedAt: payload.deletedAt,
+          }),
+        })),
+      );
+
+    case "automation.run-claimed":
+      return decodeForEvent(AutomationRunClaimedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          automations: updateAutomation(
+            nextBase.automations,
+            payload.automationId,
+            automationRunPatch({ ...payload, outcome: "claimed", threadId: payload.threadId }),
+          ),
+        })),
+      );
+
+    case "automation.run-skipped":
+      return decodeForEvent(AutomationRunSkippedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          automations: updateAutomation(
+            nextBase.automations,
+            payload.automationId,
+            automationRunPatch({ ...payload, threadId: null }),
+          ),
+        })),
+      );
+
     case "thread.created":
       return Effect.gen(function* () {
         const payload = yield* decodeForEvent(
@@ -305,6 +481,8 @@ export function projectEvent(
             settledAt: null,
             snoozedUntil: null,
             snoozedAt: null,
+            hiddenAt: payload.hiddenAt ?? null,
+            automationId: payload.automationId ?? null,
             deletedAt: null,
             messages: [],
             activities: [],
@@ -400,6 +578,28 @@ export function projectEvent(
           threads: updateThread(nextBase.threads, payload.threadId, {
             snoozedUntil: null,
             snoozedAt: null,
+            updatedAt: payload.updatedAt,
+          }),
+        })),
+      );
+
+    case "thread.hidden":
+      return decodeForEvent(ThreadHiddenPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          threads: updateThread(nextBase.threads, payload.threadId, {
+            hiddenAt: payload.hiddenAt,
+            updatedAt: payload.updatedAt,
+          }),
+        })),
+      );
+
+    case "thread.revealed":
+      return decodeForEvent(ThreadRevealedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          threads: updateThread(nextBase.threads, payload.threadId, {
+            hiddenAt: null,
             updatedAt: payload.updatedAt,
           }),
         })),

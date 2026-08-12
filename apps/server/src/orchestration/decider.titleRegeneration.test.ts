@@ -42,6 +42,7 @@ const readModel: OrchestrationReadModel = {
       session: null,
     },
   ],
+  automations: [],
   updatedAt: UPDATED_AT,
 };
 

@@ -23,8 +23,17 @@ export const ADDON_ICON_CLASS = "size-4";
  */
 export type SearchOverlayMode = "command" | "files" | "content";
 
+/**
+ * What the palette was opened *for*, and what should happen when that flow
+ * finishes. `open-thread` is the historical behavior — adding a project starts
+ * a thread in it. `select` hands the project back to whoever asked instead,
+ * which is how a form can borrow the whole import-source flow.
+ */
+export type CommandPaletteAddProjectCompletion = "open-thread" | "select";
+
 export interface CommandPaletteOpenIntent {
   readonly kind: "add-project" | "new-thread-in";
+  readonly completion?: CommandPaletteAddProjectCompletion;
 }
 
 export interface CommandPaletteUiState {
@@ -36,7 +45,10 @@ export interface CommandPaletteUiState {
 export type CommandPaletteUiAction =
   | { readonly _tag: "SetOpen"; readonly open: boolean }
   | { readonly _tag: "ToggleMode"; readonly mode: SearchOverlayMode }
-  | { readonly _tag: "OpenAddProject" }
+  | {
+      readonly _tag: "OpenAddProject";
+      readonly completion?: CommandPaletteAddProjectCompletion;
+    }
   | { readonly _tag: "OpenNewThreadIn" }
   | { readonly _tag: "ClearOpenIntent" };
 
@@ -56,7 +68,14 @@ export function reduceCommandPaletteUiState(
         ? { open: false, mode: "command", openIntent: null }
         : { open: true, mode: action.mode, openIntent: null };
     case "OpenAddProject":
-      return { open: true, mode: "command", openIntent: { kind: "add-project" } };
+      return {
+        open: true,
+        mode: "command",
+        openIntent: {
+          kind: "add-project",
+          ...(action.completion !== undefined ? { completion: action.completion } : {}),
+        },
+      };
     case "OpenNewThreadIn":
       return { open: true, mode: "command", openIntent: { kind: "new-thread-in" } };
     case "ClearOpenIntent":

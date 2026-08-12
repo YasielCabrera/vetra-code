@@ -34,6 +34,7 @@ import type { TimestampFormat } from "@vetra-studio/contracts/settings";
 import {
   AlarmClockIcon,
   AlarmClockOffIcon,
+  CalendarClockIcon,
   CheckIcon,
   ChevronDownIcon,
   CircleAlertIcon,
@@ -1597,6 +1598,10 @@ export default function Sidebar() {
     select: (location) =>
       location.pathname === "/projects" || location.pathname.startsWith("/projects/"),
   });
+  const isOnAutomationsPage = useLocation({
+    select: (location) =>
+      location.pathname === "/automations" || location.pathname.startsWith("/automations/"),
+  });
   const { isMobile, setOpenMobile } = useSidebar();
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const autoSettleAfterDays = useClientSettings((s) => s.sidebarAutoSettleAfterDays);
@@ -1611,6 +1616,7 @@ export default function Sidebar() {
     unsnoozeThread,
     pinThread,
     unpinThread,
+    hideThread,
     reorderPinnedThread,
     deleteThread,
   } = useThreadActions();
@@ -1920,6 +1926,10 @@ export default function Sidebar() {
     const visible = threads.filter(
       (thread) =>
         thread.archivedAt === null &&
+        // Hidden threads exist but are not in the inbox: automation runs live
+        // on the automations page until the user promotes one with
+        // "Show in sidebar", which clears hiddenAt.
+        thread.hiddenAt == null &&
         (scopedProjectKeys === null ||
           scopedProjectKeys.has(`${thread.environmentId}:${thread.projectId}`)),
     );
@@ -2510,6 +2520,33 @@ export default function Sidebar() {
       setOptimisticPinnedOrder(null);
     }
   }, [optimisticPinnedOrder, pinnedThreads, reorderablePinnedKeys]);
+  // Sends a promoted automation run back to its automation's page. The row
+  // vanishes from the sidebar, so the toast carries the way back.
+  const attemptHide = useCallback(
+    (threadRef: ScopedThreadRef) => {
+      void (async () => {
+        const result = await hideThread(threadRef);
+        if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
+          const error = squashAtomCommandFailure(result);
+          toastManager.add(
+            stackedThreadToast({
+              type: "error",
+              title: "Failed to hide thread",
+              description: error instanceof Error ? error.message : "An error occurred.",
+            }),
+          );
+          return;
+        }
+        toastManager.add({
+          type: "success",
+          title: "Hidden from the sidebar",
+          description: "Find it again under Automations.",
+        });
+      })();
+    },
+    [hideThread],
+  );
+
   const attemptPin = useCallback(
     (threadRef: ScopedThreadRef) => {
       void (async () => {
@@ -2947,6 +2984,8 @@ export default function Sidebar() {
         const supportsTitleRegeneration =
           serverConfigs.get(thread.environmentId)?.environment.capabilities
             .threadTitleRegeneration === true;
+        const supportsAutomations =
+          serverConfigs.get(thread.environmentId)?.environment.capabilities.automations === true;
         const isRegeneratingTitle = thread.titleRegeneration != null;
         const isSettled = settledThreadKeysRef.current.has(threadKey);
         const isSnoozed = snoozedThreadKeysRef.current.has(threadKey);
@@ -2961,12 +3000,14 @@ export default function Sidebar() {
               isSettled,
               isSnoozed,
               canSnoozeNow: canSnooze(thread, { now: new Date().toISOString() }),
+              isAutomationRun: thread.automationId != null,
               isRegeneratingTitle,
               supports: {
                 settlement: supportsSettlement,
                 snooze: supportsSnooze,
                 pinning: supportsPinning,
                 titleRegeneration: supportsTitleRegeneration,
+                automations: supportsAutomations,
               },
               snoozePresets,
             }),
@@ -3019,6 +3060,9 @@ export default function Sidebar() {
             return;
           case "unpin":
             attemptUnpin(threadRef);
+            return;
+          case "hide":
+            attemptHide(threadRef);
             return;
           case "rename":
             startThreadRename(threadRef, thread.title);
@@ -3220,6 +3264,11 @@ export default function Sidebar() {
     void router.navigate({ to: "/projects" });
   }, [isMobile, router, setOpenMobile]);
 
+  const handleAutomationsPageClick = useCallback(() => {
+    if (isMobile) setOpenMobile(false);
+    void router.navigate({ to: "/automations" });
+  }, [isMobile, router, setOpenMobile]);
+
   // The button mirrors chat.new: in multi-project setups both route through
   // the command palette's "New thread in..." picker, and in single-project
   // setups both create immediately. In multi-project setups the label is only
@@ -3332,6 +3381,17 @@ export default function Sidebar() {
                 </Tooltip>
               </div>
             </div>
+            {/* Scheduled work, above projects: its runs are deliberately absent
+                from the thread list below, so the page is the only way in. */}
+            <SidebarMenuButton
+              type="button"
+              isActive={isOnAutomationsPage}
+              className="ps-[calc(var(--sidebar-row-content-inset)-1px)] focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+              onClick={handleAutomationsPageClick}
+            >
+              <CalendarClockIcon className="size-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">Automations</span>
+            </SidebarMenuButton>
             {/* The workspace's projects as a page of their own, above the scope
                 menu that only ever narrows the thread list below it. */}
             <SidebarMenuButton

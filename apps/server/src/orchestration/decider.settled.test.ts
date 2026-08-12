@@ -52,6 +52,7 @@ function makeReadModel(
         session,
       },
     ],
+    automations: [],
     updatedAt: NOW,
   };
 }
