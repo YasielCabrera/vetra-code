@@ -33,6 +33,7 @@ import {
   FileSearchIcon,
   FolderIcon,
   FolderPlusIcon,
+  FolderTreeIcon,
   LinkIcon,
   MessageSquareIcon,
   PaletteIcon,
@@ -1506,8 +1507,20 @@ function OpenCommandPaletteDialog(props: {
     },
   });
 
-  // There is no projects listing page; the action targets the contextual
-  // project (active thread/draft, falling back to the first sidebar group).
+  actionItems.push({
+    kind: "action",
+    value: "action:projects",
+    searchTerms: ["projects", "list", "all projects", "workspaces", "repositories"],
+    title: "Open projects",
+    icon: <FolderTreeIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/projects" });
+    },
+  });
+
+  // Project settings is the one project, not the listing: it targets the
+  // contextual project (active thread/draft, falling back to the first
+  // sidebar group) rather than asking which one.
   const contextualProjectGroup =
     (contextualProjectRef
       ? projectGroupByTargetKey.get(

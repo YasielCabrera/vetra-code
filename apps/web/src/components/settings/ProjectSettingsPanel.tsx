@@ -23,7 +23,7 @@ import type {
 import { resolveEnvModeLabel } from "../BranchToolbar.logic";
 import { createModelSelection } from "@vetra-studio/shared/model";
 import { DEFAULT_RESOLVED_KEYBINDINGS } from "@vetra-studio/shared/keybindings";
-import { useCanGoBack, useNavigate } from "@tanstack/react-router";
+import { Link, useCanGoBack, useNavigate } from "@tanstack/react-router";
 import * as Cause from "effect/Cause";
 import { ChevronDownIcon, CopyIcon, PlusIcon, SettingsIcon, Trash2Icon } from "lucide-react";
 import {
@@ -43,6 +43,7 @@ import {
   usePrimarySettings,
 } from "../../hooks/useSettings";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
+import { useProjectGroups } from "../../hooks/useProjectGroups";
 import { useVetraProjectFileState } from "../../hooks/useVetraProjectFileScripts";
 import { shortcutLabelForCommand } from "../../keybindings";
 import { keybindingValueForCommand } from "../../lib/projectScriptKeybindings";
@@ -61,12 +62,10 @@ import {
 } from "../../providerInstances";
 import { getCustomModelOptionsByInstance } from "../../modelSelection";
 import {
-  buildSidebarProjectSnapshots,
   type SidebarProjectGroupMember,
   type SidebarProjectSnapshot,
 } from "../../sidebarProjectGrouping";
-import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
-import { useProjects, useThreadShells } from "../../state/entities";
+import { useThreadShells } from "../../state/entities";
 import { projectEnvironment } from "../../state/projects";
 import { primaryServerProvidersAtom, serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
@@ -115,31 +114,6 @@ export const PROJECT_GROUPING_MODE_LABELS: Record<SidebarProjectGroupingMode, st
   repository_path: "Group by repository path",
   separate: "Keep separate",
 };
-
-/** Logical project groups for the settings page, sorted by display name. */
-export function useSettingsProjectGroups(): SidebarProjectSnapshot[] {
-  const projects = useProjects();
-  const projectGroupingSettings = useClientSettings(selectProjectGroupingSettings);
-  const primaryEnvironmentId = usePrimaryEnvironmentId();
-  const { environments } = useEnvironments();
-  const environmentLabelById = useMemo(
-    () =>
-      new Map(
-        environments.map((environment) => [environment.environmentId, environment.label] as const),
-      ),
-    [environments],
-  );
-  return useMemo(
-    () =>
-      buildSidebarProjectSnapshots({
-        projects,
-        settings: projectGroupingSettings,
-        primaryEnvironmentId,
-        resolveEnvironmentLabel: (environmentId) => environmentLabelById.get(environmentId) ?? null,
-      }).sort((a, b) => a.displayName.localeCompare(b.displayName)),
-    [environmentLabelById, primaryEnvironmentId, projectGroupingSettings, projects],
-  );
-}
 
 function memberKey(member: { environmentId: string; id: string }): string {
   return `${member.environmentId}:${member.id}`;
@@ -201,7 +175,7 @@ export function ProjectSettingsPage({ projectKey }: { projectKey: string }) {
 }
 
 function ProjectSettingsBreadcrumb({ projectKey }: { projectKey: string }) {
-  const groups = useSettingsProjectGroups();
+  const groups = useProjectGroups();
   const navigate = useNavigate();
   const selected = groups.find((group) => group.projectKey === projectKey) ?? null;
   const openProjectMenu = (event: ReactMouseEvent<HTMLButtonElement>) => {
@@ -228,7 +202,15 @@ function ProjectSettingsBreadcrumb({ projectKey }: { projectKey: string }) {
 
   return (
     <WorkspaceBreadcrumb ariaLabel="Project settings breadcrumb">
-      <WorkspaceBreadcrumbItem>Projects</WorkspaceBreadcrumbItem>
+      <WorkspaceBreadcrumbItem>
+        {/* The crumb is the listing it came from, so the trail walks back. */}
+        <Link
+          className="rounded-sm hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          to="/projects"
+        >
+          Projects
+        </Link>
+      </WorkspaceBreadcrumbItem>
       <WorkspaceBreadcrumbSeparator />
       <WorkspaceBreadcrumbItem current>
         {selected ? (
@@ -254,7 +236,7 @@ function ProjectSettingsBreadcrumb({ projectKey }: { projectKey: string }) {
 }
 
 export function ProjectSettingsPanel({ projectKey }: { projectKey: string }) {
-  const groups = useSettingsProjectGroups();
+  const groups = useProjectGroups();
   const navigate = useNavigate();
 
   const selected = groups.find((group) => group.projectKey === projectKey) ?? null;
@@ -734,10 +716,10 @@ function ProjectDetail({ group }: { group: SidebarProjectSnapshot }) {
         draftStore.clearProjectDraftThreadId(projectRef);
       }
 
-      // The project's settings page just deleted itself; there is no projects
-      // listing to fall back to, so leave settings entirely.
+      // The project's own page just deleted itself, so fall back to the
+      // listing it was opened from rather than stranding the reader on it.
       if (isWholeGroup) {
-        void navigate({ to: "/", replace: true });
+        void navigate({ to: "/projects", replace: true });
       }
     },
     [
