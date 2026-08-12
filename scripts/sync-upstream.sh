@@ -37,6 +37,11 @@ PRUNE_GLOBS=(
 RENAMES=(
   '@t3tools/=@vetra-code/'
   'T3CODE_=VETRA_'
+  # Upstream's SCREAMING_SNAKE constants and test env vars (T3_CHAT_THEME,
+  # T3_PROJECT_FILE_NAME, T3_ACP_*, ...). The fork maps every one of these to
+  # VETRA_*. Note the leftover grep below cannot see these: `T3[A-Z][a-z]`
+  # does not match an underscore, so only typecheck catches a miss.
+  'T3_=VETRA_'
   't3tools=vetra-code'
   'T3 Code=Vetra Code'
   'T3-Code=Vetra-Code'
@@ -91,6 +96,13 @@ done
 
 say "Re-applying the vetra rename to merged files"
 # Only touch files this merge actually changed, and only text files.
+#
+# A rewrite of a cleanly merged file has to be staged, or it lives only in the
+# worktree and `git commit` drops it -- the merge then records upstream's
+# original names while the worktree looks correct. Conflicted files are
+# deliberately left unstaged: staging one would mark it resolved with the
+# conflict markers still inside.
+unmerged=$'\n'"$(git diff --name-only --diff-filter=U)"$'\n'
 rewritten=0
 while IFS= read -r file; do
   [[ -f "$file" ]] || continue
@@ -108,6 +120,7 @@ while IFS= read -r file; do
   done
   if [[ "$(shasum "$file" | cut -d' ' -f1)" != "$before" ]]; then
     rewritten=$((rewritten + 1))
+    [[ "$unmerged" == *$'\n'"$file"$'\n'* ]] || git add -- "$file"
   fi
 done < <(git diff --name-only --diff-filter=ACMR HEAD -- . | sort -u)
 echo "rewrote $rewritten file(s)"
@@ -121,7 +134,10 @@ else
 fi
 
 say "Leftover t3 references (review each -- upstream URLs and t3.codes domains are expected)"
-git grep -nIE 't3tools|t3code|T3 Code|T3CODE|T3[A-Z][a-z]' -- . | grep -v 'pingdotgg/' | head -40 || echo "none"
+# Excluded, all pure noise: vendored reference checkouts and lockfiles match on
+# base64 `sha512-` integrity hashes, and this script matches on its own table.
+git grep -nIE 't3tools|t3code|T3 Code|T3CODE|T3_|T3[A-Z][a-z]' -- . \
+  ':!.repos' ':!*lock*' ":!${BASH_SOURCE[0]#./}" | grep -v 'pingdotgg/' | head -40 || echo "none"
 
 cat <<'EOF'
 
