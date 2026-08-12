@@ -5,6 +5,7 @@ export type SettingsPath =
   | "/settings/providers"
   | "/settings/source-control"
   | "/settings/connections"
+  | "/settings/web3"
   | "/settings/archived";
 
 export interface SettingsSearchItem {
@@ -25,6 +26,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/providers": "Providers",
   "/settings/source-control": "Source Control",
   "/settings/connections": "Connections",
+  "/settings/web3": "Web3",
   "/settings/archived": "Archive",
 };
 
@@ -193,6 +195,36 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "archive",
     title: "Archived threads",
     to: "/settings/archived",
+  },
+  {
+    id: "web3-wallet-enabled",
+    title: "Preview wallet",
+    to: "/settings/web3",
+    targetId: "web3-wallet",
+  },
+  {
+    id: "web3-wallet-approval-mode",
+    title: "Wallet approvals",
+    to: "/settings/web3",
+    targetId: "web3-wallet",
+  },
+  {
+    id: "web3-wallet-accounts",
+    title: "Wallet accounts",
+    to: "/settings/web3",
+    targetId: "web3-accounts",
+  },
+  {
+    id: "web3-wallet-chain",
+    title: "Wallet network",
+    to: "/settings/web3",
+    targetId: "web3-network",
+  },
+  {
+    id: "web3-wallet-auto-connect",
+    title: "Auto-connect localhost",
+    to: "/settings/web3",
+    targetId: "web3-wallet",
   },
 ] as const satisfies ReadonlyArray<SettingsSearchItem>;
 

@@ -11,24 +11,44 @@ import {
 } from "./CommandPalette.logic";
 
 describe("reduceCommandPaletteUiState", () => {
-  const closedState = { open: false, mode: "command", openIntent: null } as const;
+  const closedState = {
+    open: false,
+    mode: "command",
+    openIntent: null,
+    addProjectCompletion: "open-thread",
+  } as const;
 
   it("toggles each overlay mode open and closed", () => {
     const filesOpen = reduceCommandPaletteUiState(closedState, {
       _tag: "ToggleMode",
       mode: "files",
     });
-    expect(filesOpen).toEqual({ open: true, mode: "files", openIntent: null });
+    expect(filesOpen).toEqual({
+      open: true,
+      mode: "files",
+      openIntent: null,
+      addProjectCompletion: "open-thread",
+    });
 
     const contentOpen = reduceCommandPaletteUiState(filesOpen, {
       _tag: "ToggleMode",
       mode: "content",
     });
-    expect(contentOpen).toEqual({ open: true, mode: "content", openIntent: null });
+    expect(contentOpen).toEqual({
+      open: true,
+      mode: "content",
+      openIntent: null,
+      addProjectCompletion: "open-thread",
+    });
 
     expect(
       reduceCommandPaletteUiState(contentOpen, { _tag: "ToggleMode", mode: "content" }),
-    ).toEqual({ open: false, mode: "command", openIntent: null });
+    ).toEqual({
+      open: false,
+      mode: "command",
+      openIntent: null,
+      addProjectCompletion: "open-thread",
+    });
   });
 
   it("switches between open modes without closing", () => {
@@ -41,6 +61,7 @@ describe("reduceCommandPaletteUiState", () => {
         open: true,
         mode: "command",
         openIntent: null,
+        addProjectCompletion: "open-thread",
       },
     );
   });
@@ -54,11 +75,13 @@ describe("reduceCommandPaletteUiState", () => {
       open: true,
       mode: "command",
       openIntent: { kind: "add-project" },
+      addProjectCompletion: "open-thread",
     });
     expect(reduceCommandPaletteUiState(filesOpen, { _tag: "OpenNewThreadIn" })).toEqual({
       open: true,
       mode: "command",
       openIntent: { kind: "new-thread-in" },
+      addProjectCompletion: "open-thread",
     });
   });
 
@@ -68,13 +91,30 @@ describe("reduceCommandPaletteUiState", () => {
       open: true,
       mode: "command",
       openIntent: { kind: "add-project" },
+      addProjectCompletion: "open-thread",
     });
     expect(
       reduceCommandPaletteUiState(closedState, { _tag: "OpenAddProject", completion: "select" }),
     ).toEqual({
       open: true,
       mode: "command",
-      openIntent: { kind: "add-project", completion: "select" },
+      openIntent: { kind: "add-project" },
+      addProjectCompletion: "select",
+    });
+  });
+
+  it("keeps the completion after the flow consumes the open intent", () => {
+    // The intent is cleared as soon as the flow opens, but the project is not
+    // created until several steps later — the completion has to outlive it.
+    const selecting = reduceCommandPaletteUiState(closedState, {
+      _tag: "OpenAddProject",
+      completion: "select",
+    });
+    expect(reduceCommandPaletteUiState(selecting, { _tag: "ClearOpenIntent" })).toEqual({
+      open: true,
+      mode: "command",
+      openIntent: null,
+      addProjectCompletion: "select",
     });
   });
 
@@ -87,6 +127,20 @@ describe("reduceCommandPaletteUiState", () => {
       open: false,
       mode: "command",
       openIntent: null,
+      addProjectCompletion: "open-thread",
+    });
+  });
+
+  it("abandons a borrowed flow when another overlay surface takes over", () => {
+    const selecting = reduceCommandPaletteUiState(closedState, {
+      _tag: "OpenAddProject",
+      completion: "select",
+    });
+    expect(reduceCommandPaletteUiState(selecting, { _tag: "ToggleMode", mode: "files" })).toEqual({
+      open: true,
+      mode: "files",
+      openIntent: null,
+      addProjectCompletion: "open-thread",
     });
   });
 
@@ -100,11 +154,13 @@ describe("reduceCommandPaletteUiState", () => {
       open: false,
       mode: "command",
       openIntent: null,
+      addProjectCompletion: "open-thread",
     });
     expect(reduceCommandPaletteUiState(filesOpen, { _tag: "SetOpen", open: true })).toEqual({
       open: true,
       mode: "command",
       openIntent: null,
+      addProjectCompletion: "open-thread",
     });
   });
 });

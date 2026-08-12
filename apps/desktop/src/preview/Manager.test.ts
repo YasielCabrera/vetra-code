@@ -19,6 +19,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as BrowserSession from "./BrowserSession.ts";
+import * as PreviewWallet from "./Wallet.ts";
 import * as PreviewManager from "./Manager.ts";
 
 describe("fitPictureInPictureContentSize", () => {
@@ -133,7 +134,11 @@ const fileSystemLayer = FileSystem.layerNoop({
     }),
 });
 
+/** Records the webContents ids the manager reports agent activity for. */
+const agentActivity: Array<number> = [];
+
 const layer = PreviewManager.layer.pipe(
+  Layer.provideMerge(PreviewWallet.layerTest(agentActivity)),
   Layer.provideMerge(browserSessionLayer),
   Layer.provideMerge(environmentLayer),
   Layer.provideMerge(fileSystemLayer),
@@ -1059,6 +1064,10 @@ describe("PreviewManager", () => {
         yield* manager.createTab("tab_screencast_guard");
         yield* manager.registerWebview("tab_screencast_guard", 42);
         yield* manager.automationEvaluate("tab_screencast_guard", { expression: "null" });
+
+        // The wallet's `auto-for-agents` gate keys off this signal, and
+        // `PreviewTabState.controller` decays too fast to serve as one.
+        expect(agentActivity).toContain(42);
 
         debuggerMessage?.({}, "Page.screencastFrame", {
           sessionId: 1,

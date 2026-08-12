@@ -11,6 +11,9 @@ import {
   type PreviewAutomationResizeInput,
   type PreviewAutomationResizeResult,
   type PreviewAutomationSetColorSchemeInput,
+  type PreviewAutomationWalletApproveInput,
+  type PreviewAutomationWalletConfigureInput,
+  type PreviewAutomationWalletRejectInput,
   type PreviewAutomationSetColorSchemeResult,
   type PreviewAutomationHost as PreviewAutomationHostState,
   type PreviewAutomationRequest,
@@ -330,6 +333,15 @@ function PreviewAutomationHost(props: { readonly environmentId: EnvironmentId })
           threadId: request.threadId,
           tabId,
           bridgeAvailable: Boolean(previewBridge),
+        };
+        // The wallet lives in the main process, so unlike the tab operations
+        // this only needs the desktop bridge, not an attached webview.
+        const requireWalletBridge = () => {
+          const bridge = previewBridge;
+          if (!bridge) {
+            throw new PreviewAutomationTargetUnavailableError(unavailableTarget);
+          }
+          return bridge.wallet;
         };
         const requireReadyTab = async () => {
           const bridge = previewBridge;
@@ -660,6 +672,39 @@ function PreviewAutomationHost(props: { readonly environmentId: EnvironmentId })
               );
             }
             return { ...artifact, tabId: stopTabId };
+          }
+          // Wallet operations are host-scoped, not tab-scoped: there is one
+          // wallet per desktop runtime. They still take a tabId so the broker's
+          // sticky host lease keeps an agent pinned to the runtime it has been
+          // driving, but they do not need a *ready* webview to answer.
+          case "walletStatus": {
+            const bridge = requireWalletBridge();
+            return await bridge.status();
+          }
+          case "walletRequests": {
+            const bridge = requireWalletBridge();
+            return await bridge.requests();
+          }
+          case "walletConfigure": {
+            const bridge = requireWalletBridge();
+            return await bridge.configure(
+              tabId ?? "",
+              request.input as PreviewAutomationWalletConfigureInput,
+            );
+          }
+          case "walletApprove": {
+            const bridge = requireWalletBridge();
+            return await bridge.approve(
+              tabId ?? "",
+              request.input as PreviewAutomationWalletApproveInput,
+            );
+          }
+          case "walletReject": {
+            const bridge = requireWalletBridge();
+            return await bridge.reject(
+              tabId ?? "",
+              request.input as PreviewAutomationWalletRejectInput,
+            );
           }
         }
       } catch (cause) {

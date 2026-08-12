@@ -1,4 +1,13 @@
 import { Schema } from "effect";
+import {
+  Web3Address,
+  Web3ApprovalMode,
+  Web3ChainId,
+  Web3PendingRequest,
+  Web3RejectCode,
+  Web3RequestId,
+  Web3RpcUrl,
+} from "@vetra-code/web3/schema";
 
 import { EnvironmentId, ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import {
@@ -43,6 +52,11 @@ export const PREVIEW_AUTOMATION_OPERATIONS = [
   ...PREVIEW_AUTOMATION_V1_OPERATIONS,
   "resize",
   "setColorScheme",
+  "walletStatus",
+  "walletConfigure",
+  "walletRequests",
+  "walletApprove",
+  "walletReject",
 ] as const;
 
 export const PreviewAutomationOperation = Schema.Literals(PREVIEW_AUTOMATION_OPERATIONS);
@@ -562,6 +576,95 @@ export const PreviewAutomationRecordingArtifact = Schema.Struct({
   createdAt: Schema.String,
 });
 export type PreviewAutomationRecordingArtifact = typeof PreviewAutomationRecordingArtifact.Type;
+
+// ── Preview wallet ───────────────────────────────────────────────────
+
+/**
+ * Configure the preview wallet.
+ *
+ * Importing a private key is deliberately not exposed here. Generating a fresh
+ * throwaway account is all an automated test needs, and routing real key
+ * material through a tool call would put it in provider transcripts. Imports
+ * stay in Settings > Web3, where a human is looking at the warning.
+ */
+export const PreviewAutomationWalletConfigureInput = Schema.Struct({
+  ...PreviewAutomationTabTargetFields,
+  approvalMode: Schema.optional(
+    Web3ApprovalMode.annotate({
+      description:
+        "auto-for-agents approves silently while a tab is agent-driven; always-ask parks every request for preview_wallet_approve; always-auto approves everything.",
+    }),
+  ).annotate({
+    description:
+      "How signing requests are gated. Switch to always-ask to test rejection paths deterministically.",
+  }),
+  selectedAddress: Schema.optional(
+    Web3Address.annotate({
+      description: "Account to report first from eth_accounts. Must already exist in the wallet.",
+    }),
+  ).annotate({ description: "Account to make active." }),
+  chainId: Schema.optional(
+    Schema.NullOr(Web3ChainId).annotate({
+      description: "Decimal chain id to report to pages. Null clears the override.",
+    }),
+  ).annotate({ description: "Chain id override." }),
+  rpcUrl: Schema.optional(
+    Schema.NullOr(Web3RpcUrl).annotate({
+      description: "HTTP JSON-RPC endpoint for reads and broadcasts. Null clears the override.",
+    }),
+  ).annotate({ description: "JSON-RPC endpoint override." }),
+  generateAccount: Schema.optional(
+    Schema.Boolean.annotate({
+      description: "Derive one more throwaway account from the wallet mnemonic and make it active.",
+    }),
+  ).annotate({ description: "Add a generated test account." }),
+  clearConnectedOrigins: Schema.optional(
+    Schema.Boolean.annotate({
+      description:
+        "Forget every origin's account grant so the next eth_requestAccounts prompts again.",
+    }),
+  ).annotate({ description: "Reset per-origin connect grants." }),
+});
+export type PreviewAutomationWalletConfigureInput =
+  typeof PreviewAutomationWalletConfigureInput.Type;
+
+export const PreviewAutomationWalletApproveInput = Schema.Struct({
+  ...PreviewAutomationTabTargetFields,
+  requestId: Web3RequestId.annotate({
+    description: "Request id from preview_wallet_requests or preview_wallet_status.",
+  }),
+});
+export type PreviewAutomationWalletApproveInput = typeof PreviewAutomationWalletApproveInput.Type;
+
+export const PreviewAutomationWalletRejectInput = Schema.Struct({
+  ...PreviewAutomationTabTargetFields,
+  requestId: Web3RequestId.annotate({
+    description: "Request id from preview_wallet_requests or preview_wallet_status.",
+  }),
+  code: Schema.optional(
+    Web3RejectCode.annotate({
+      description:
+        "EIP-1193 error code the page receives. 4001 user rejected, 4100 unauthorized, 4900 disconnected, 4902 unrecognised chain.",
+    }),
+  ).annotate({ description: "Rejection code. Defaults to 4001 (user rejected)." }),
+});
+export type PreviewAutomationWalletRejectInput = typeof PreviewAutomationWalletRejectInput.Type;
+
+export const PreviewAutomationWalletRequestList = Schema.Struct({
+  requests: Schema.Array(Web3PendingRequest),
+});
+export type PreviewAutomationWalletRequestList = typeof PreviewAutomationWalletRequestList.Type;
+
+export const PreviewAutomationWalletResolution = Schema.Struct({
+  requestId: Web3RequestId,
+  method: Schema.String,
+  outcome: Schema.Literals(["approved", "rejected"]),
+  /** Whatever the page received on approval — a signature, a tx hash, or null. */
+  result: Schema.Unknown,
+  /** Set when an approved request then failed, for example a reverted send. */
+  failure: Schema.NullOr(Schema.String),
+});
+export type PreviewAutomationWalletResolution = typeof PreviewAutomationWalletResolution.Type;
 
 export const PreviewAutomationClientId = TrimmedNonEmptyString.check(Schema.isMaxLength(128));
 export type PreviewAutomationClientId = typeof PreviewAutomationClientId.Type;

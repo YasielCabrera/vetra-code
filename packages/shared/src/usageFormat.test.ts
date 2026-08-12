@@ -6,6 +6,7 @@ import {
   formatDateTimeShort,
   formatHourShort,
   formatRelativeHourShort,
+  formatThreadCostUsd,
   makeWindow,
 } from "./usageFormat.ts";
 
@@ -53,5 +54,12 @@ describe("hourly usage formatting", () => {
     expect(window.resolution).toBe("hour");
     expect(window.sinceTime).toBe("2026-08-10T12:37:00.000Z");
     expect(window.untilTime).toBe("2026-08-11T12:37:00.000Z");
+  });
+});
+
+describe("thread cost formatting", () => {
+  it("keeps extra precision below one cent", () => {
+    expect(formatThreadCostUsd(0.004)).toBe("$0.004");
+    expect(formatThreadCostUsd(1.5)).toBe("$1.50");
   });
 });

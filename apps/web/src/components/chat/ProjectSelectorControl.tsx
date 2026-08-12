@@ -1,7 +1,7 @@
 import { scopedProjectKey } from "@vetra-code/client-runtime/environment";
 import type { EnvironmentProject } from "@vetra-code/client-runtime/state/shell";
 import type { ScopedProjectRef } from "@vetra-code/contracts";
-import { ChevronDownIcon, FolderIcon, FolderPlusIcon, LoaderCircleIcon } from "lucide-react";
+import { ChevronDownIcon, FolderIcon, FolderPlusIcon } from "lucide-react";
 import { useMemo } from "react";
 
 import { sortLogicalProjectsForSidebar } from "~/components/Sidebar.logic";
@@ -26,8 +26,6 @@ import {
 interface ProjectSelectorControlProps {
   selectedProjectRef: ScopedProjectRef | null;
   selectedProjectTitle: string | null;
-  pendingNewProject: boolean;
-  creatingProject: boolean;
   onSelectProject: (project: EnvironmentProject) => void;
   onCreateProject: () => void;
 }
@@ -90,26 +88,17 @@ export function ProjectSelectorControl(props: ProjectSelectorControlProps) {
           ),
         ) ?? null);
   const selectedProjectKey = selectedGroup?.projectKey ?? "";
-  const label = props.creatingProject
-    ? "Creating project…"
-    : props.pendingNewProject
-      ? "New project"
-      : (selectedGroup?.displayName ?? props.selectedProjectTitle ?? "Select project");
+  const label = selectedGroup?.displayName ?? props.selectedProjectTitle ?? "Select project";
 
   return (
     <Menu>
       <MenuTrigger
         type="button"
-        disabled={props.creatingProject}
         aria-label={props.selectedProjectRef ? "Change project" : "Select project"}
         title={label}
-        className="flex h-8 max-w-52 min-w-32 items-center gap-1.5 rounded-lg border border-border/70 bg-background/55 px-2.5 text-sm text-secondary-label outline-hidden transition-colors hover:border-primary/35 hover:bg-accent/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70"
+        className="flex h-8 max-w-52 min-w-32 items-center gap-1.5 rounded-lg border border-border/70 bg-background/55 px-2.5 text-sm text-secondary-label outline-hidden transition-colors hover:border-primary/35 hover:bg-accent/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
-        {props.creatingProject ? (
-          <LoaderCircleIcon className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none" />
-        ) : (
-          <FolderIcon className="size-3.5 shrink-0 text-primary" />
-        )}
+        <FolderIcon className="size-3.5 shrink-0 text-primary" />
         <span className="min-w-0 flex-1 truncate text-left">{label}</span>
         <ChevronDownIcon className="size-3.5 shrink-0 opacity-60" />
       </MenuTrigger>

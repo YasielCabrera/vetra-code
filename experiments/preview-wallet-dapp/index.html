@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Preview wallet fixture</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 46rem;
+        padding: 1.5rem;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 1.1rem;
+        margin: 0 0 0.25rem;
+      }
+      p.lede {
+        margin: 0 0 1.25rem;
+        opacity: 0.7;
+        font-size: 0.85rem;
+      }
+      section {
+        border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+      }
+      h2 {
+        font-size: 0.8rem;
+        margin: 0 0 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        opacity: 0.6;
+      }
+      button {
+        font: inherit;
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.375rem;
+        border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      output {
+        display: block;
+        margin-top: 0.5rem;
+        font-family: ui-monospace, monospace;
+        font-size: 0.75rem;
+        white-space: pre-wrap;
+        word-break: break-all;
+        min-height: 1.2em;
+      }
+      .ok {
+        color: #15803d;
+      }
+      .err {
+        color: #b91c1c;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Preview wallet fixture</h1>
+    <p class="lede">
+      Exercises the flows the preview wallet implements. Every result is written to the page so
+      <code>preview_snapshot</code> can assert on it.
+    </p>
+
+    <section>
+      <h2>Discovery</h2>
+      <button id="discover">Run EIP-6963 discovery</button>
+      <output id="discover-out" data-testid="discovery"></output>
+    </section>
+
+    <section>
+      <h2>Connect</h2>
+      <button id="connect">eth_requestAccounts</button>
+      <output id="connect-out" data-testid="accounts"></output>
+    </section>
+
+    <section>
+      <h2>Sign message</h2>
+      <button id="sign" disabled>personal_sign</button>
+      <output id="sign-out" data-testid="signature"></output>
+    </section>
+
+    <section>
+      <h2>Sign typed data</h2>
+      <button id="typed" disabled>eth_signTypedData_v4</button>
+      <output id="typed-out" data-testid="typed-signature"></output>
+    </section>
+
+    <section>
+      <h2>Send transaction</h2>
+      <button id="send" disabled>eth_sendTransaction</button>
+      <output id="send-out" data-testid="tx-hash"></output>
+    </section>
+
+    <section>
+      <h2>Switch chain</h2>
+      <button id="switch">wallet_switchEthereumChain → 31337</button>
+      <output id="switch-out" data-testid="chain"></output>
+    </section>
+
+    <section>
+      <h2>Events</h2>
+      <output id="events-out" data-testid="events"></output>
+    </section>
+
+    <script type="module">
+      const el = (id) => document.getElementById(id);
+      const announced = [];
+      let provider = null;
+      let account = null;
+
+      const write = (id, text, kind) => {
+        const node = el(id);
+        node.textContent = text;
+        node.className = kind ?? "";
+      };
+
+      const logEvent = (text) => {
+        const node = el("events-out");
+        node.textContent = `${node.textContent}${node.textContent ? "\n" : ""}${text}`;
+      };
+
+      window.addEventListener("eip6963:announceProvider", (event) => {
+        announced.push(event.detail);
+      });
+
+      const attachEvents = () => {
+        if (!provider?.on) return;
+        provider.on("accountsChanged", (accounts) =>
+          logEvent(`accountsChanged ${accounts.join(",")}`),
+        );
+        provider.on("chainChanged", (chainId) => logEvent(`chainChanged ${chainId}`));
+        provider.on("disconnect", () => logEvent("disconnect"));
+      };
+
+      el("discover").addEventListener("click", () => {
+        announced.length = 0;
+        window.dispatchEvent(new Event("eip6963:requestProvider"));
+        // Announcement is synchronous in this provider, but give a task anyway.
+        setTimeout(() => {
+          if (announced.length === 0) {
+            provider = window.ethereum ?? null;
+            write(
+              "discover-out",
+              provider ? "no EIP-6963 announcement; fell back to window.ethereum" : "NO PROVIDER",
+              provider ? "ok" : "err",
+            );
+          } else {
+            const detail = announced[0];
+            provider = detail.provider;
+            write(
+              "discover-out",
+              `${detail.info.name} · rdns=${detail.info.rdns} · isMetaMask=${provider.isMetaMask === true}`,
+              "ok",
+            );
+          }
+          attachEvents();
+        }, 0);
+      });
+
+      el("connect").addEventListener("click", async () => {
+        provider ??= window.ethereum ?? null;
+        if (!provider) return write("connect-out", "NO PROVIDER", "err");
+        attachEvents();
+        try {
+          const accounts = await provider.request({ method: "eth_requestAccounts" });
+          account = accounts[0] ?? null;
+          write("connect-out", accounts.join("\n"), "ok");
+          for (const id of ["sign", "typed", "send"]) el(id).disabled = account === null;
+        } catch (error) {
+          write("connect-out", `code=${error.code} ${error.message}`, "err");
+        }
+      });
+
+      el("sign").addEventListener("click", async () => {
+        const hex = `0x${[...new TextEncoder().encode("Sign in to the fixture")]
+          .map((byte) => byte.toString(16).padStart(2, "0"))
+          .join("")}`;
+        try {
+          const signature = await provider.request({
+            method: "personal_sign",
+            params: [hex, account],
+          });
+          write("sign-out", signature, "ok");
+        } catch (error) {
+          // The rejection branch: dapps key off code 4001.
+          write("sign-out", `REJECTED code=${error.code} ${error.message}`, "err");
+        }
+      });
+
+      el("typed").addEventListener("click", async () => {
+        const chainId = Number.parseInt(await provider.request({ method: "eth_chainId" }), 16);
+        const typedData = {
+          domain: { name: "Fixture", version: "1", chainId },
+          types: {
+            EIP712Domain: [
+              { name: "name", type: "string" },
+              { name: "version", type: "string" },
+              { name: "chainId", type: "uint256" },
+            ],
+            Message: [
+              { name: "from", type: "address" },
+              { name: "contents", type: "string" },
+            ],
+          },
+          primaryType: "Message",
+          message: { from: account, contents: "hello from the fixture" },
+        };
+        try {
+          const signature = await provider.request({
+            method: "eth_signTypedData_v4",
+            params: [account, JSON.stringify(typedData)],
+          });
+          write("typed-out", signature, "ok");
+        } catch (error) {
+          write("typed-out", `REJECTED code=${error.code} ${error.message}`, "err");
+        }
+      });
+
+      el("send").addEventListener("click", async () => {
+        try {
+          const hash = await provider.request({
+            method: "eth_sendTransaction",
+            params: [
+              {
+                from: account,
+                to: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+                value: "0x38d7ea4c68000",
+              },
+            ],
+          });
+          write("send-out", hash, "ok");
+        } catch (error) {
+          write("send-out", `FAILED code=${error.code} ${error.message}`, "err");
+        }
+      });
+
+      el("switch").addEventListener("click", async () => {
+        provider ??= window.ethereum ?? null;
+        if (!provider) return write("switch-out", "NO PROVIDER", "err");
+        try {
+          await provider.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x7a69" }],
+          });
+          const chainId = await provider.request({ method: "eth_chainId" });
+          write("switch-out", `now on ${chainId} (${Number.parseInt(chainId, 16)})`, "ok");
+        } catch (error) {
+          write("switch-out", `code=${error.code} ${error.message}`, "err");
+        }
+      });
+
+      // Report what discovery found without a click, so a snapshot right after
+      // navigation already says whether the wallet is present.
+      window.dispatchEvent(new Event("eip6963:requestProvider"));
+      setTimeout(() => {
+        if (announced.length > 0) {
+          provider = announced[0].provider;
+          write("discover-out", `auto: ${announced[0].info.rdns}`, "ok");
+          attachEvents();
+        } else if (window.ethereum) {
+          provider = window.ethereum;
+          write("discover-out", "auto: window.ethereum (no EIP-6963)", "ok");
+          attachEvents();
+        } else {
+          write("discover-out", "auto: NO PROVIDER", "err");
+        }
+      }, 0);
+    </script>
+  </body>
+</html>

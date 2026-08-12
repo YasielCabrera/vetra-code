@@ -91,4 +91,11 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   for (const previewMethod of PreviewIpc.methods) {
     yield* ipc.handle(previewMethod);
   }
+
+  yield* ipc.handle(PreviewIpc.walletMethods.walletStatus);
+  yield* ipc.handle(PreviewIpc.walletMethods.walletConfigure);
+  yield* ipc.handle(PreviewIpc.walletMethods.walletRequests);
+  yield* ipc.handle(PreviewIpc.walletMethods.walletApprove);
+  yield* ipc.handle(PreviewIpc.walletMethods.walletReject);
+  yield* ipc.handle(PreviewIpc.walletMethods.walletApplySettings);
 });

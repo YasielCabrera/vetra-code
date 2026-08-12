@@ -8,6 +8,7 @@ import * as Stream from "effect/Stream";
 import { McpProtocol, McpSchema, McpServer } from "effect/unstable/ai";
 import { HttpBody, HttpClient, HttpRouter, HttpServerResponse } from "effect/unstable/http";
 
+import * as ServerSettings from "../serverSettings.ts";
 import * as McpHttpServer from "./McpHttpServer.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 import * as PreviewAutomationBroker from "./PreviewAutomationBroker.ts";
@@ -34,10 +35,27 @@ const client = McpSchema.McpServerClient.of({
   },
   getClient: Effect.die("unused"),
 });
-const TestLayer = McpHttpServer.PreviewToolkitRegistrationLive.pipe(
-  Layer.provideMerge(McpServer.McpServer.layer),
-  Layer.provideMerge(PreviewAutomationBroker.layer.pipe(Layer.provide(NodeServices.layer))),
-);
+const makeTestLayer = (walletEnabled = false) =>
+  McpHttpServer.PreviewToolkitRegistrationLive.pipe(
+    Layer.provideMerge(McpServer.McpServer.layer),
+    Layer.provideMerge(PreviewAutomationBroker.layer.pipe(Layer.provide(NodeServices.layer))),
+    Layer.provideMerge(ServerSettings.layerTest({ web3Wallet: { enabled: walletEnabled } })),
+  );
+
+const TestLayer = makeTestLayer();
+
+const WALLET_TOOL_NAMES = [
+  "preview_wallet_status",
+  "preview_wallet_configure",
+  "preview_wallet_requests",
+  "preview_wallet_approve",
+  "preview_wallet_reject",
+] as const;
+
+const listToolNames = Effect.fn("McpHttpServer.test.listToolNames")(function* () {
+  const server = yield* McpServer.McpServer;
+  return server.tools.map((entry) => entry.tool.name);
+});
 
 it("normalizes empty successful notification responses to accepted", () => {
   const notificationResponse = McpHttpServer.normalizeMcpHttpResponse(
@@ -271,4 +289,34 @@ it.effect("registers annotated tools and preserves authenticated request context
       expect(press.content).toEqual([{ type: "text", text: "null" }]);
     }),
   ).pipe(Effect.provide(TestLayer)),
+);
+
+it.effect("does not advertise the wallet tools when the web3 wallet is disabled", () =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const names = yield* listToolNames();
+
+      // The preview tools are still there; only the wallet ones are withheld.
+      expect(names).toContain("preview_snapshot");
+      for (const walletTool of WALLET_TOOL_NAMES) {
+        expect(names, `${walletTool} must not be advertised while the wallet is off`).not.toContain(
+          walletTool,
+        );
+      }
+    }),
+  ).pipe(Effect.provide(makeTestLayer(false))),
+);
+
+it.effect("advertises all five wallet tools once the web3 wallet is enabled", () =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const names = yield* listToolNames();
+
+      for (const walletTool of WALLET_TOOL_NAMES) {
+        expect(names, `${walletTool} must be advertised while the wallet is on`).toContain(
+          walletTool,
+        );
+      }
+    }),
+  ).pipe(Effect.provide(makeTestLayer(true))),
 );

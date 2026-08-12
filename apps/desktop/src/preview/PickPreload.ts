@@ -15,6 +15,7 @@ import type {
 } from "@vetra-code/contracts";
 
 import { resolveAnnotationSubmission } from "./AnnotationKeyboard.ts";
+import { installPreviewWallet } from "./WalletPreload.ts";
 import { previewAnnotationStyles } from "./AnnotationStyles.generated.ts";
 import {
   ANNOTATION_CAPTURED_CHANNEL,
@@ -101,6 +102,10 @@ const reportHumanKeyInput = (event: KeyboardEvent): void => {
 
 window.addEventListener("pointerdown", reportHumanPointerInput, true);
 window.addEventListener("keydown", reportHumanKeyInput, true);
+
+// Before the page's first script runs, so `window.ethereum` is there when a
+// dapp looks for it synchronously. No-ops when the wallet is disabled.
+installPreviewWallet();
 
 const nextId = (prefix: string): string => {
   idSequence += 1;

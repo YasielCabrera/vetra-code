@@ -1,0 +1,45 @@
+{
+  "name": "@vetra-code/web3",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./chain": {
+      "types": "./src/chain.ts",
+      "import": "./src/chain.ts"
+    },
+    "./inpage": {
+      "types": "./src/inpage.ts",
+      "import": "./src/inpage.ts"
+    },
+    "./keystore": {
+      "types": "./src/keystore.ts",
+      "import": "./src/keystore.ts"
+    },
+    "./rpc": {
+      "types": "./src/rpc.ts",
+      "import": "./src/rpc.ts"
+    },
+    "./schema": {
+      "types": "./src/schema.ts",
+      "import": "./src/schema.ts"
+    },
+    "./signer": {
+      "types": "./src/signer.ts",
+      "import": "./src/signer.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "effect": "catalog:",
+    "viem": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/platform-node": "catalog:",
+    "@effect/vitest": "catalog:",
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

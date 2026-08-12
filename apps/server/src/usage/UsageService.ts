@@ -19,6 +19,7 @@ import {
   type UsageSource,
   type UsageSummary,
   type UsageSummaryInput,
+  type UsageTokenTotals,
   UsageReadError,
 } from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
@@ -38,7 +39,7 @@ import * as ServerSettings from "../serverSettings.ts";
 import { resolveClaudeHomePath } from "../provider/Drivers/ClaudeHome.ts";
 import { resolveCodexHomeLayout } from "../provider/Drivers/CodexHomeLayout.ts";
 import { UsageAggregator } from "./usageAggregation.ts";
-import { parseRateTable, type RateTable } from "./usagePricing.ts";
+import { parseRateTable, priceUsage, type PricedUsage, type RateTable } from "./usagePricing.ts";
 import {
   listTranscriptFiles,
   readDirectoryVolumeId,
@@ -90,6 +91,16 @@ export class UsageService extends Context.Service<
   UsageService,
   {
     readonly readSummary: (input: UsageSummaryInput) => Effect.Effect<UsageSummary, UsageReadError>;
+    /**
+     * Prices one billable token bundle with the same LiteLLM table and
+     * `priceUsage` arithmetic the Usage page uses. Adapters must not keep a
+     * second rate catalog.
+     */
+    readonly price: (
+      model: string,
+      totals: UsageTokenTotals,
+      reportedCostUsd: number | null,
+    ) => Effect.Effect<PricedUsage>;
   }
 >()("@vetra-code/server/usage/UsageService") {}
 
@@ -114,6 +125,8 @@ export const layerTest = Layer.succeed(
         },
         scanDurationMs: 0,
       }),
+    price: (model, totals, reportedCostUsd) =>
+      Effect.succeed(priceUsage(new Map(), model, totals, reportedCostUsd)),
   }),
 );
 
@@ -442,7 +455,16 @@ export const make = Effect.gen(function* () {
     } satisfies UsageSummary;
   });
 
-  return { readSummary } as const;
+  const price = Effect.fn("UsageService.price")(function* (
+    model: string,
+    totals: UsageTokenTotals,
+    reportedCostUsd: number | null,
+  ) {
+    yield* ensureRates();
+    return priceUsage(rates, model, totals, reportedCostUsd);
+  });
+
+  return { readSummary, price } as const;
 });
 
 export const layer = Layer.effect(UsageService, make);

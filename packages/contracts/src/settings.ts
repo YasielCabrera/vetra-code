@@ -11,6 +11,12 @@ import {
 } from "./model.ts";
 import { ModelSelection } from "./orchestration.ts";
 import { ProviderInstanceConfig, ProviderInstanceId } from "./providerInstance.ts";
+import {
+  DEFAULT_WEB3_APPROVAL_MODE,
+  Web3ApprovalMode,
+  Web3ChainId,
+  Web3RpcUrl,
+} from "@vetra-code/web3/schema";
 
 // ── Client Settings (local-only) ───────────────────────────────
 
@@ -495,6 +501,31 @@ export const SourceControlWritingStyleSettings = Schema.Struct({
 });
 export type SourceControlWritingStyleSettings = typeof SourceControlWritingStyleSettings.Type;
 
+/**
+ * Preview wallet configuration.
+ *
+ * Server-authoritative rather than client-local for two reasons: the MCP layer
+ * has to read `enabled` to decide whether to advertise the `preview_wallet_*`
+ * tools at all, and chain/RPC targeting is a property of the environment being
+ * developed against, not of the machine looking at it.
+ *
+ * Keys and mnemonics are deliberately absent — they live in a mode-0600
+ * keystore beside the state directory, never in settings that get read by
+ * clients and redacted by hand.
+ */
+export const Web3WalletSettings = Schema.Struct({
+  enabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  approvalMode: Web3ApprovalMode.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_WEB3_APPROVAL_MODE)),
+  ),
+  /** Null means "follow the dapp": adopt a local node or whatever the page adds. */
+  chainId: Schema.NullOr(Web3ChainId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  rpcUrl: Schema.NullOr(Web3RpcUrl).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  /** Skip the per-origin connect prompt for loopback origins. */
+  autoConnectLoopback: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+}).pipe(Schema.withDecodingDefault(Effect.succeed({})));
+export type Web3WalletSettings = typeof Web3WalletSettings.Type;
+
 export const DEFAULT_AUTOMATIC_GIT_FETCH_INTERVAL = Duration.seconds(30);
 export const DEFAULT_PROVIDER_HEALTH_REFRESH_INTERVAL = Duration.minutes(5);
 
@@ -611,6 +642,7 @@ export const ServerSettings = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed({})),
   ),
   observability: ObservabilitySettings.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
+  web3Wallet: Web3WalletSettings,
 });
 export type ServerSettings = typeof ServerSettings.Type;
 
@@ -735,6 +767,15 @@ export const ServerSettingsPatch = Schema.Struct({
     Schema.Struct({
       otlpTracesUrl: Schema.optionalKey(TrimmedString),
       otlpMetricsUrl: Schema.optionalKey(TrimmedString),
+    }),
+  ),
+  web3Wallet: Schema.optionalKey(
+    Schema.Struct({
+      enabled: Schema.optionalKey(Schema.Boolean),
+      approvalMode: Schema.optionalKey(Web3ApprovalMode),
+      chainId: Schema.optionalKey(Schema.NullOr(Web3ChainId)),
+      rpcUrl: Schema.optionalKey(Schema.NullOr(Web3RpcUrl)),
+      autoConnectLoopback: Schema.optionalKey(Schema.Boolean),
     }),
   ),
   providers: Schema.optionalKey(

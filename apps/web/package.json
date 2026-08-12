@@ -31,6 +31,7 @@
     "@vetra-code/client-runtime": "workspace:*",
     "@vetra-code/contracts": "workspace:*",
     "@vetra-code/shared": "workspace:*",
+    "@vetra-code/web3": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "culori": "^4.0.2",
     "effect": "catalog:",

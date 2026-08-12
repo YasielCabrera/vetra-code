@@ -19,6 +19,24 @@ export function formatUsd(value: number): string {
   return CURRENCY.format(value);
 }
 
+const THREAD_COST_SMALL = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 3,
+  maximumFractionDigits: 4,
+});
+
+/** Composer popover: extra precision below a cent so $0.004 does not read as $0.00. */
+export function formatThreadCostUsd(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return CURRENCY.format(0);
+  }
+  if (value < 0.01) {
+    return THREAD_COST_SMALL.format(value);
+  }
+  return CURRENCY.format(value);
+}
+
 export function formatCount(value: number): string {
   return INTEGER.format(Math.round(value));
 }

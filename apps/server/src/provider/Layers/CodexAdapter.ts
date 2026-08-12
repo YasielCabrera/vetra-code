@@ -22,6 +22,8 @@ import {
   RuntimeRequestId,
   RuntimeTaskId,
   type RuntimeTaskUsage,
+  type UsageTokenTotals,
+  EventId,
   ProviderApprovalDecision,
   ThreadId,
   ProviderSendTurnInput,
@@ -64,6 +66,15 @@ import {
 } from "./CodexSessionRuntime.ts";
 import { type EventNdjsonLogger, makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
 import { resolveCodexLaunchArgs } from "./codexLaunchArgs.ts";
+import {
+  applyPricedDelta,
+  createCodexThreadCostState,
+  nextChildBillableTotals,
+  nextParentBillableTotals,
+  type CodexThreadCostState,
+  type CodexUsageBreakdown,
+} from "../../usage/codexThreadCost.ts";
+import type { PricedUsage } from "../../usage/usagePricing.ts";
 const isCodexAppServerProcessExitedError = Schema.is(CodexErrors.CodexAppServerProcessExitedError);
 const isCodexAppServerTransportError = Schema.is(CodexErrors.CodexAppServerTransportError);
 const isCodexSessionRuntimeThreadIdMissingError = Schema.is(
@@ -85,6 +96,15 @@ export interface CodexAdapterLiveOptions {
   >;
   readonly nativeEventLogPath?: string;
   readonly nativeEventLogger?: EventNdjsonLogger;
+  /**
+   * Same `UsageService.price` the Usage page uses. Omitted in unit tests that
+   * do not care about thread cost; the snapshot then carries occupancy only.
+   */
+  readonly priceUsage?: (
+    model: string,
+    totals: UsageTokenTotals,
+    reportedCostUsd: number | null,
+  ) => Effect.Effect<PricedUsage>;
 }
 
 interface CodexAdapterSessionContext {
@@ -92,6 +112,11 @@ interface CodexAdapterSessionContext {
   readonly scope: Scope.Closeable;
   readonly runtime: CodexSessionRuntimeShape;
   readonly eventFiber: Fiber.Fiber<void, never>;
+  readonly costSession: {
+    readonly costState: CodexThreadCostState;
+    currentModel: string | undefined;
+    lastPricedUsage: ThreadTokenUsageSnapshot | undefined;
+  };
   stopped: boolean;
 }
 
@@ -147,6 +172,73 @@ function readPayload<A>(
 function trimText(value: string | undefined | null): string | undefined {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
+}
+
+function readCodexUsageBreakdown(value: unknown): CodexUsageBreakdown | undefined {
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const count = (key: keyof CodexUsageBreakdown): number | undefined => {
+    const raw = record[key];
+    return typeof raw === "number" && Number.isFinite(raw) && raw >= 0 ? raw : undefined;
+  };
+  const inputTokens = count("inputTokens");
+  const cachedInputTokens = count("cachedInputTokens");
+  const cacheWriteInputTokens = count("cacheWriteInputTokens");
+  const outputTokens = count("outputTokens");
+  const reasoningOutputTokens = count("reasoningOutputTokens");
+  const breakdown: CodexUsageBreakdown = {
+    ...(inputTokens !== undefined ? { inputTokens } : {}),
+    ...(cachedInputTokens !== undefined ? { cachedInputTokens } : {}),
+    ...(cacheWriteInputTokens !== undefined ? { cacheWriteInputTokens } : {}),
+    ...(outputTokens !== undefined ? { outputTokens } : {}),
+    ...(reasoningOutputTokens !== undefined ? { reasoningOutputTokens } : {}),
+  };
+  return Object.keys(breakdown).length > 0 ? breakdown : undefined;
+}
+
+function withCodexRunningCost(
+  usage: ThreadTokenUsageSnapshot,
+  costState: CodexThreadCostState,
+): ThreadTokenUsageSnapshot {
+  if (costState.costSource === undefined || !(costState.runningCostUsd > 0)) {
+    return usage;
+  }
+  return {
+    ...usage,
+    costUsd: costState.runningCostUsd,
+    costSource: costState.costSource,
+  };
+}
+
+function readCodexResumeCostUsd(resumeCursor: unknown): number | undefined {
+  if (!isCodexResumeCursorSchema(resumeCursor)) {
+    return undefined;
+  }
+  const costUsd = resumeCursor.costUsd;
+  if (typeof costUsd !== "number" || !Number.isFinite(costUsd) || costUsd <= 0) {
+    return undefined;
+  }
+  return costUsd;
+}
+
+function stampCodexResumeCost(resumeCursor: unknown, costUsd: number): unknown {
+  if (!isCodexResumeCursorSchema(resumeCursor) || !(costUsd > 0)) {
+    return resumeCursor;
+  }
+  return { threadId: resumeCursor.threadId, costUsd };
+}
+
+function withPersistedCodexCost<T extends { readonly resumeCursor?: unknown }>(
+  result: T,
+  costUsd: number,
+): T {
+  const stamped = stampCodexResumeCost(result.resumeCursor, costUsd);
+  if (stamped === result.resumeCursor) {
+    return result;
+  }
+  return { ...result, resumeCursor: stamped };
 }
 
 const FATAL_CODEX_STDERR_SNIPPETS = ["failed to connect to websocket"];
@@ -1641,6 +1733,108 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
     options?.nativeEventLogger === undefined ? nativeEventLogger : undefined;
   const runtimeEventQueue = yield* Queue.unbounded<ProviderRuntimeEvent>();
   const sessions = new Map<ThreadId, CodexAdapterSessionContext>();
+  const priceUsage = options?.priceUsage;
+
+  const priceCodexDelta = Effect.fn("priceCodexDelta")(function* (
+    model: string | undefined,
+    totals: UsageTokenTotals | null,
+    costState: CodexThreadCostState,
+  ) {
+    if (!priceUsage || totals === null || model === undefined || model.length === 0) {
+      return;
+    }
+    const priced = yield* priceUsage(model, totals, null);
+    if (priced.costSource === "unpriced") {
+      return;
+    }
+    applyPricedDelta(costState, priced.costUsd);
+  });
+
+  const attachCodexThreadCost = Effect.fn("attachCodexThreadCost")(function* (
+    event: ProviderEvent,
+    runtimeEvents: ReadonlyArray<ProviderRuntimeEvent>,
+    costSession: {
+      readonly costState: CodexThreadCostState;
+      currentModel: string | undefined;
+      lastPricedUsage: ThreadTokenUsageSnapshot | undefined;
+    },
+  ) {
+    const payload =
+      typeof event.payload === "object" && event.payload !== null
+        ? (event.payload as Record<string, unknown>)
+        : undefined;
+
+    if (event.method === "thread/tokenUsage/updated") {
+      const tokenUsage =
+        payload !== undefined &&
+        typeof payload.tokenUsage === "object" &&
+        payload.tokenUsage !== null
+          ? (payload.tokenUsage as Record<string, unknown>)
+          : undefined;
+      const last = readCodexUsageBreakdown(tokenUsage?.last);
+      const total = readCodexUsageBreakdown(tokenUsage?.total);
+      if (last !== undefined && total !== undefined) {
+        const providerThreadId =
+          typeof payload?.threadId === "string" ? payload.threadId : undefined;
+        const delta = nextParentBillableTotals(
+          costSession.costState,
+          last,
+          total,
+          providerThreadId,
+        );
+        yield* priceCodexDelta(costSession.currentModel, delta, costSession.costState);
+      }
+    } else if (event.method === "collabAgent/tokenUsage") {
+      const agentThreadId = typeof payload?.agentThreadId === "string" ? payload.agentThreadId : "";
+      const tokenUsage =
+        payload !== undefined &&
+        typeof payload.tokenUsage === "object" &&
+        payload.tokenUsage !== null
+          ? (payload.tokenUsage as Record<string, unknown>)
+          : undefined;
+      const total = readCodexUsageBreakdown(tokenUsage?.total);
+      if (agentThreadId.length > 0 && total !== undefined) {
+        const delta = nextChildBillableTotals(costSession.costState, agentThreadId, total);
+        yield* priceCodexDelta(costSession.currentModel, delta, costSession.costState);
+      }
+    }
+
+    const pricedEvents = runtimeEvents.map((runtimeEvent) => {
+      if (runtimeEvent.type !== "thread.token-usage.updated") {
+        return runtimeEvent;
+      }
+      const usage = withCodexRunningCost(runtimeEvent.payload.usage, costSession.costState);
+      costSession.lastPricedUsage = usage;
+      return {
+        ...runtimeEvent,
+        payload: { usage },
+      };
+    });
+
+    if (
+      event.method === "collabAgent/tokenUsage" &&
+      costSession.lastPricedUsage !== undefined &&
+      costSession.costState.costSource !== undefined &&
+      costSession.costState.runningCostUsd > 0 &&
+      !pricedEvents.some((runtimeEvent) => runtimeEvent.type === "thread.token-usage.updated")
+    ) {
+      const parentUsage = withCodexRunningCost(costSession.lastPricedUsage, costSession.costState);
+      costSession.lastPricedUsage = parentUsage;
+      const extraEventId = yield* crypto.randomUUIDv4.pipe(
+        Effect.map((id) => EventId.make(id)),
+        Effect.orElseSucceed(() => event.id),
+      );
+      const extraEvent: ProviderRuntimeEvent = {
+        ...runtimeEventBase(event, event.threadId),
+        eventId: extraEventId,
+        type: "thread.token-usage.updated",
+        payload: { usage: parentUsage },
+      };
+      return [...pricedEvents, extraEvent];
+    }
+
+    return pricedEvents;
+  });
 
   const startSession: CodexAdapterShape["startSession"] = (input) =>
     Effect.scoped(
@@ -1715,11 +1909,29 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
           ),
         );
 
+        const resumeCursor = isCodexResumeCursorSchema(input.resumeCursor)
+          ? input.resumeCursor
+          : undefined;
+        const pendingBaselineUsd = readCodexResumeCostUsd(resumeCursor);
+        const costState = createCodexThreadCostState({
+          ...(pendingBaselineUsd !== undefined ? { pendingBaselineUsd } : {}),
+          ...(resumeCursor !== undefined ? { resumeThreadId: resumeCursor.threadId } : {}),
+        });
+        const costSession = {
+          costState,
+          currentModel:
+            input.modelSelection?.instanceId === boundInstanceId
+              ? input.modelSelection.model
+              : undefined,
+          lastPricedUsage: undefined as ThreadTokenUsageSnapshot | undefined,
+        };
+
         const eventFiber = yield* Stream.runForEach(runtime.events, (event) =>
           Effect.gen(function* () {
             yield* writeNativeEvent(event);
             const runtimeEvents = mapToRuntimeEvents(event, event.threadId);
-            if (runtimeEvents.length === 0) {
+            const pricedEvents = yield* attachCodexThreadCost(event, runtimeEvents, costSession);
+            if (pricedEvents.length === 0) {
               yield* Effect.logDebug("ignoring unhandled Codex provider event", {
                 method: event.method,
                 threadId: event.threadId,
@@ -1728,7 +1940,7 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
               });
               return;
             }
-            yield* Queue.offerAll(runtimeEventQueue, runtimeEvents);
+            yield* Queue.offerAll(runtimeEventQueue, pricedEvents);
           }),
         ).pipe(Effect.forkChild);
 
@@ -1756,11 +1968,15 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
           scope: sessionScope,
           runtime,
           eventFiber,
+          costSession,
           stopped: false,
         });
         sessionScopeTransferred = true;
 
-        return started;
+        return withPersistedCodexCost(
+          started,
+          Math.max(costState.runningCostUsd, costState.pendingBaselineUsd),
+        );
       }),
     );
 
@@ -1804,6 +2020,9 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
     );
 
     const session = yield* requireSession(input.threadId);
+    if (input.modelSelection?.instanceId === boundInstanceId) {
+      session.costSession.currentModel = input.modelSelection.model;
+    }
     const reasoningEffort =
       input.modelSelection?.instanceId === boundInstanceId
         ? getModelSelectionStringOptionValue(input.modelSelection, "reasoningEffort")
@@ -1827,7 +2046,12 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
         ...(input.interactionMode !== undefined ? { interactionMode: input.interactionMode } : {}),
         ...(codexAttachments.length > 0 ? { attachments: codexAttachments } : {}),
       })
-      .pipe(Effect.mapError((cause) => mapCodexRuntimeError(input.threadId, "turn/start", cause)));
+      .pipe(
+        Effect.map((result) =>
+          withPersistedCodexCost(result, session.costSession.costState.runningCostUsd),
+        ),
+        Effect.mapError((cause) => mapCodexRuntimeError(input.threadId, "turn/start", cause)),
+      );
   });
 
   const requireSession = Effect.fn("requireSession")(function* (threadId: ThreadId) {

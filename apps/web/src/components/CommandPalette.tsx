@@ -383,6 +383,7 @@ export function CommandPalette({ children }: { children: ReactNode }) {
     open: false,
     mode: "command",
     openIntent: null,
+    addProjectCompletion: "open-thread",
   });
   const setOpen = useCallback((open: boolean) => dispatch({ _tag: "SetOpen", open }), []);
   const toggleMode = useCallback(
@@ -497,6 +498,7 @@ export function CommandPalette({ children }: { children: ReactNode }) {
           open={state.open}
           mode={state.mode}
           openIntent={state.openIntent}
+          addProjectCompletion={state.addProjectCompletion}
           setOpen={setOpen}
           openOverlayMode={toggleMode}
           clearOpenIntent={clearOpenIntent}
@@ -510,6 +512,7 @@ function CommandPaletteDialog(props: {
   readonly open: boolean;
   readonly mode: SearchOverlayMode;
   readonly openIntent: CommandPaletteOpenIntent | null;
+  readonly addProjectCompletion: CommandPaletteAddProjectCompletion;
   readonly setOpen: (open: boolean) => void;
   readonly openOverlayMode: (mode: SearchOverlayMode) => void;
   readonly clearOpenIntent: () => void;
@@ -548,6 +551,7 @@ function CommandPaletteDialog(props: {
       ) : (
         <OpenCommandPaletteDialog
           openIntent={props.openIntent}
+          addProjectCompletion={props.addProjectCompletion}
           setOpen={props.setOpen}
           openOverlayMode={props.openOverlayMode}
           clearOpenIntent={props.clearOpenIntent}
@@ -559,12 +563,13 @@ function CommandPaletteDialog(props: {
 
 function OpenCommandPaletteDialog(props: {
   readonly openIntent: CommandPaletteOpenIntent | null;
+  readonly addProjectCompletion: CommandPaletteAddProjectCompletion;
   readonly setOpen: (open: boolean) => void;
   readonly openOverlayMode: (mode: SearchOverlayMode) => void;
   readonly clearOpenIntent: () => void;
 }) {
   const navigate = useNavigate();
-  const { clearOpenIntent, openIntent, openOverlayMode, setOpen } = props;
+  const { addProjectCompletion, clearOpenIntent, openIntent, openOverlayMode, setOpen } = props;
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const isActionsOnly = deferredQuery.startsWith(">");
@@ -1648,7 +1653,7 @@ function OpenCommandPaletteDialog(props: {
       const cwd = resolveProjectPathForDispatch(rawCwd, input.currentProjectCwd);
       if (cwd.length === 0) return;
 
-      const completion = openIntent?.completion ?? "open-thread";
+      const completion = addProjectCompletion;
       const existing = findProjectByPath(
         projects.filter((project) => project.environmentId === input.environmentId),
         cwd,
@@ -1760,7 +1765,7 @@ function OpenCommandPaletteDialog(props: {
       primaryEnvironmentId,
       projects,
       providers,
-      openIntent?.completion,
+      addProjectCompletion,
       setOpen,
       clientSettings.sidebarThreadSortOrder,
       threads,

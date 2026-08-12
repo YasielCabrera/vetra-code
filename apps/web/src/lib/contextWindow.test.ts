@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 import { EventId, type OrchestrationThreadActivity, TurnId } from "@vetra-code/contracts";
 
-import { deriveLatestContextWindowSnapshot, formatContextWindowTokens } from "./contextWindow";
+import {
+  deriveLatestContextWindowSnapshot,
+  formatContextWindowTokens,
+  canPriceThreadCost,
+} from "./contextWindow";
 
 function makeActivity(id: string, kind: string, payload: unknown): OrchestrationThreadActivity {
   return {
@@ -68,6 +72,13 @@ describe("contextWindow", () => {
     expect(formatContextWindowTokens(258_000)).toBe("258k");
   });
 
+  it("only prices Claude and Codex thread cost", () => {
+    expect(canPriceThreadCost("claudeAgent")).toBe(true);
+    expect(canPriceThreadCost("codex")).toBe(true);
+    expect(canPriceThreadCost("cursor")).toBe(false);
+    expect(canPriceThreadCost("opencode")).toBe(false);
+  });
+
   it("includes total processed tokens when available", () => {
     const snapshot = deriveLatestContextWindowSnapshot([
       makeActivity("activity-1", "context-window.updated", {
@@ -80,5 +91,42 @@ describe("contextWindow", () => {
 
     expect(snapshot?.usedTokens).toBe(81_659);
     expect(snapshot?.totalProcessedTokens).toBe(748_126);
+  });
+
+  it("reads thread cost from the latest snapshot that still has it", () => {
+    const snapshot = deriveLatestContextWindowSnapshot([
+      makeActivity("activity-1", "context-window.updated", {
+        usedTokens: 10_000,
+        costUsd: 1.25,
+        costSource: "providerReported",
+      }),
+      makeActivity("activity-2", "context-window.updated", {
+        usedTokens: 4_000,
+        maxTokens: 200_000,
+      }),
+    ]);
+
+    expect(snapshot?.usedTokens).toBe(4_000);
+    expect(snapshot?.costUsd).toBe(1.25);
+    expect(snapshot?.costSource).toBe("providerReported");
+  });
+
+  it("prefers the latest cost when occupancy and cost arrive together", () => {
+    const snapshot = deriveLatestContextWindowSnapshot([
+      makeActivity("activity-1", "context-window.updated", {
+        usedTokens: 10_000,
+        costUsd: 1.25,
+        costSource: "providerReported",
+      }),
+      makeActivity("activity-2", "context-window.updated", {
+        usedTokens: 12_000,
+        costUsd: 2.5,
+        costSource: "modelPriced",
+      }),
+    ]);
+
+    expect(snapshot?.usedTokens).toBe(12_000);
+    expect(snapshot?.costUsd).toBe(2.5);
+    expect(snapshot?.costSource).toBe("modelPriced");
   });
 });

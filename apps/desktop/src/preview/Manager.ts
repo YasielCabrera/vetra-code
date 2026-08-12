@@ -51,6 +51,7 @@ import * as SynchronizedRef from "effect/SynchronizedRef";
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import { PREVIEW_PICTURE_IN_PICTURE_FRAME_CHANNEL } from "../ipc/channels.ts";
 import * as BrowserSession from "./BrowserSession.ts";
+import * as PreviewWallet from "./Wallet.ts";
 import {
   ANNOTATION_CAPTURED_CHANNEL,
   ANNOTATION_THEME_CHANNEL,
@@ -463,6 +464,7 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
   const context = yield* Effect.context<never>();
   const runFork = Effect.runForkWith(context);
   const resolvedArtifactDirectory = path.resolve(artifactDirectory);
+  const wallet = yield* PreviewWallet.PreviewWallet;
   const playwrightInstallExpression = yield* Effect.cached(
     playwrightInjectedRuntimeInstallExpression(),
   );
@@ -1036,6 +1038,11 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
     const control = yield* ensureControlSession(wc);
     const execute = Effect.fn("PreviewManager.executeControlAction")(function* () {
       yield* update(tabId, { controller: "agent" });
+      // Feeds the wallet's `auto-for-agents` gate. `controller` decays 750 ms
+      // after the last action, which is far too short for a wallet request that
+      // a dapp raises seconds after the click that triggered it, so the wallet
+      // keeps its own longer-lived grace window off this signal.
+      yield* wallet.noteAgentActivity(wc.id);
       const send: SendCommand = Effect.fn("PreviewManager.sendCommand")(
         function* (method, commandParams) {
           const before = (yield* Ref.get(controlEpochRef)).get(tabId) ?? 0;

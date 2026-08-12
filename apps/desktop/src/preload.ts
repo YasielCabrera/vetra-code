@@ -3,6 +3,7 @@ import type {
   DesktopPreviewPointerEvent,
   DesktopPreviewRecordingFrame,
   DesktopPreviewTabState,
+  DesktopPreviewWalletState,
 } from "@vetra-code/contracts";
 import { exposeClerkBridge } from "@clerk/electron/preload";
 import { contextBridge, ipcRenderer } from "electron";
@@ -223,6 +224,27 @@ contextBridge.exposeInMainWorld("desktopBridge", {
         ipcRenderer.invoke(IpcChannels.PREVIEW_AUTOMATION_EVALUATE_CHANNEL, { tabId, input }),
       waitFor: (tabId, input) =>
         ipcRenderer.invoke(IpcChannels.PREVIEW_AUTOMATION_WAIT_FOR_CHANNEL, { tabId, input }),
+    },
+    wallet: {
+      status: () => ipcRenderer.invoke(IpcChannels.PREVIEW_WALLET_STATUS_CHANNEL, {}),
+      configure: (tabId, input) =>
+        ipcRenderer.invoke(IpcChannels.PREVIEW_WALLET_CONFIGURE_CHANNEL, { tabId, input }),
+      requests: () => ipcRenderer.invoke(IpcChannels.PREVIEW_WALLET_REQUESTS_CHANNEL, {}),
+      approve: (tabId, input) =>
+        ipcRenderer.invoke(IpcChannels.PREVIEW_WALLET_APPROVE_CHANNEL, { tabId, input }),
+      reject: (tabId, input) =>
+        ipcRenderer.invoke(IpcChannels.PREVIEW_WALLET_REJECT_CHANNEL, { tabId, input }),
+      applySettings: (settings) =>
+        ipcRenderer.invoke(IpcChannels.PREVIEW_WALLET_APPLY_SETTINGS_CHANNEL, settings),
+      onStateChange: (listener) => {
+        const wrappedListener = (_event: Electron.IpcRendererEvent, state: unknown) => {
+          if (typeof state !== "object" || state === null) return;
+          listener(state as DesktopPreviewWalletState);
+        };
+        ipcRenderer.on(IpcChannels.PREVIEW_WALLET_STATE_CHANNEL, wrappedListener);
+        return () =>
+          ipcRenderer.removeListener(IpcChannels.PREVIEW_WALLET_STATE_CHANNEL, wrappedListener);
+      },
     },
     onStateChange: (listener) => {
       const wrappedListener = (

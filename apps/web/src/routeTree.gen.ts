@@ -17,6 +17,7 @@ import { Route as ChatRouteImport } from './routes/_chat'
 import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
 import { Route as AutomationsIndexRouteImport } from './routes/automations.index'
 import { Route as ChatIndexRouteImport } from './routes/_chat.index'
+import { Route as SettingsWeb3RouteImport } from './routes/settings.web3'
 import { Route as SettingsSourceControlRouteImport } from './routes/settings.source-control'
 import { Route as SettingsProvidersRouteImport } from './routes/settings.providers'
 import { Route as SettingsKeybindingsRouteImport } from './routes/settings.keybindings'
@@ -71,6 +72,11 @@ const ChatIndexRoute = ChatIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ChatRoute,
+} as any)
+const SettingsWeb3Route = SettingsWeb3RouteImport.update({
+  id: '/web3',
+  path: '/web3',
+  getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsSourceControlRoute = SettingsSourceControlRouteImport.update({
   id: '/source-control',
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/settings/keybindings': typeof SettingsKeybindingsRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
+  '/settings/web3': typeof SettingsWeb3Route
   '/automations/': typeof AutomationsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/settings/keybindings': typeof SettingsKeybindingsRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
+  '/settings/web3': typeof SettingsWeb3Route
   '/': typeof ChatIndexRoute
   '/automations': typeof AutomationsIndexRoute
   '/projects': typeof ProjectsIndexRoute
@@ -218,6 +226,7 @@ export interface FileRoutesById {
   '/settings/keybindings': typeof SettingsKeybindingsRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
+  '/settings/web3': typeof SettingsWeb3Route
   '/_chat/': typeof ChatIndexRoute
   '/automations/': typeof AutomationsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
@@ -245,6 +254,7 @@ export interface FileRouteTypes {
     | '/settings/keybindings'
     | '/settings/providers'
     | '/settings/source-control'
+    | '/settings/web3'
     | '/automations/'
     | '/projects/'
     | '/$environmentId/$threadId'
@@ -268,6 +278,7 @@ export interface FileRouteTypes {
     | '/settings/keybindings'
     | '/settings/providers'
     | '/settings/source-control'
+    | '/settings/web3'
     | '/'
     | '/automations'
     | '/projects'
@@ -293,6 +304,7 @@ export interface FileRouteTypes {
     | '/settings/keybindings'
     | '/settings/providers'
     | '/settings/source-control'
+    | '/settings/web3'
     | '/_chat/'
     | '/automations/'
     | '/projects/'
@@ -371,6 +383,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof ChatIndexRouteImport
       parentRoute: typeof ChatRoute
+    }
+    '/settings/web3': {
+      id: '/settings/web3'
+      path: '/web3'
+      fullPath: '/settings/web3'
+      preLoaderRoute: typeof SettingsWeb3RouteImport
+      parentRoute: typeof SettingsRoute
     }
     '/settings/source-control': {
       id: '/settings/source-control'
@@ -505,6 +524,7 @@ interface SettingsRouteChildren {
   SettingsKeybindingsRoute: typeof SettingsKeybindingsRoute
   SettingsProvidersRoute: typeof SettingsProvidersRoute
   SettingsSourceControlRoute: typeof SettingsSourceControlRoute
+  SettingsWeb3Route: typeof SettingsWeb3Route
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
@@ -516,6 +536,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsKeybindingsRoute: SettingsKeybindingsRoute,
   SettingsProvidersRoute: SettingsProvidersRoute,
   SettingsSourceControlRoute: SettingsSourceControlRoute,
+  SettingsWeb3Route: SettingsWeb3Route,
 }
 
 const SettingsRouteWithChildren = SettingsRoute._addFileChildren(

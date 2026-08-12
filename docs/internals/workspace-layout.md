@@ -29,6 +29,10 @@ the task commands.
   tunnel/environment manager behind desktop-managed SSH environments.
 - `packages/tailscale` (`@vetra-code/tailscale`): Tailscale CLI wrapper, including the
   `ensureTailscaleServe` / `disableTailscaleServe` serve lifecycle the server drives.
+- `packages/web3` (`@vetra-code/web3`): the preview wallet's domain logic — EIP-1193 provider,
+  method routing, chain resolution, signing, keystore. A leaf package (`@vetra-code/contracts`
+  depends on it), and its `./inpage` and `./rpc` subpaths are dependency-free so they can be
+  bundled into a sandboxed Electron preload. See [preview-wallet.md](./preview-wallet.md).
 - `packages/effect-acp` (`effect-acp`): Effect client and agent implementation of the Agent Client
   Protocol, used by ACP-speaking provider drivers.
 - `packages/effect-codex-app-server` (`effect-codex-app-server`): Effect client for the

@@ -15,17 +15,25 @@ import {
   DesktopPreviewScreenshotArtifactSchema,
   DesktopPreviewSetColorSchemeInputSchema,
   DesktopPreviewTabInputSchema,
+  DesktopPreviewWalletApproveInputSchema,
+  DesktopPreviewWalletConfigureInputSchema,
+  DesktopPreviewWalletRejectInputSchema,
+  DesktopPreviewWalletSettingsSchema,
   DesktopPreviewWebviewConfigSchema,
+  PreviewAutomationWalletRequestList,
+  PreviewAutomationWalletResolution,
   PreviewAnnotationSubmissionResultSchema,
   PreviewAutomationSnapshot,
   PreviewAutomationStatus,
 } from "@vetra-code/contracts";
+import { Web3ApprovalMode, Web3WalletStatus } from "@vetra-code/web3/schema";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as NodeURL from "node:url";
 
 import * as ElectronWindow from "../../electron/ElectronWindow.ts";
 import * as PreviewManager from "../../preview/Manager.ts";
+import * as PreviewWallet from "../../preview/Wallet.ts";
 import { PREVIEW_WEBVIEW_PREFERENCES } from "../../preview/WebviewPreferences.ts";
 import * as IpcChannels from "../channels.ts";
 import * as DesktopIpc from "../DesktopIpc.ts";
@@ -44,6 +52,12 @@ export const installPreviewEventForwarding = Effect.fn(
   yield* manager.subscribePointerEvents((event) =>
     electronWindow.sendAll(IpcChannels.PREVIEW_POINTER_EVENT_CHANNEL, event),
   );
+
+  const wallet = yield* PreviewWallet.PreviewWallet;
+  yield* wallet.subscribeStateChanges((status) =>
+    electronWindow.sendAll(IpcChannels.PREVIEW_WALLET_STATE_CHANNEL, { status }),
+  );
+  yield* wallet.installGuestBridge;
 });
 
 export const createTab = DesktopIpc.makeIpcMethod({
@@ -344,6 +358,80 @@ export const automationWaitFor = DesktopIpc.makeIpcMethod({
   }),
 });
 
+export const walletStatus = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.PREVIEW_WALLET_STATUS_CHANNEL,
+  payload: Schema.Struct({}),
+  result: Web3WalletStatus,
+  handler: Effect.fn("desktop.ipc.preview.walletStatus")(function* () {
+    const wallet = yield* PreviewWallet.PreviewWallet;
+    return yield* wallet.status;
+  }),
+});
+
+export const walletConfigure = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.PREVIEW_WALLET_CONFIGURE_CHANNEL,
+  payload: DesktopPreviewWalletConfigureInputSchema,
+  result: Web3WalletStatus,
+  handler: Effect.fn("desktop.ipc.preview.walletConfigure")(function* ({ input }) {
+    const wallet = yield* PreviewWallet.PreviewWallet;
+    return yield* wallet.configure(input);
+  }),
+});
+
+export const walletRequests = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.PREVIEW_WALLET_REQUESTS_CHANNEL,
+  payload: Schema.Struct({}),
+  result: PreviewAutomationWalletRequestList,
+  handler: Effect.fn("desktop.ipc.preview.walletRequests")(function* () {
+    const wallet = yield* PreviewWallet.PreviewWallet;
+    return yield* wallet.pendingRequests;
+  }),
+});
+
+export const walletApprove = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.PREVIEW_WALLET_APPROVE_CHANNEL,
+  payload: DesktopPreviewWalletApproveInputSchema,
+  result: PreviewAutomationWalletResolution,
+  handler: Effect.fn("desktop.ipc.preview.walletApprove")(function* ({ input }) {
+    const wallet = yield* PreviewWallet.PreviewWallet;
+    return yield* wallet.approve(input.requestId);
+  }),
+});
+
+export const walletReject = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.PREVIEW_WALLET_REJECT_CHANNEL,
+  payload: DesktopPreviewWalletRejectInputSchema,
+  result: PreviewAutomationWalletResolution,
+  handler: Effect.fn("desktop.ipc.preview.walletReject")(function* ({ input }) {
+    const wallet = yield* PreviewWallet.PreviewWallet;
+    return yield* wallet.reject(input.requestId, input.code);
+  }),
+});
+
+/**
+ * The renderer pushes server settings down as they change so the wallet reacts
+ * immediately. Main also reads `settings.json` itself, so this is a fast path
+ * rather than the source of truth.
+ */
+const decodeApprovalMode = Schema.decodeUnknownOption(Web3ApprovalMode);
+
+export const walletApplySettings = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.PREVIEW_WALLET_APPLY_SETTINGS_CHANNEL,
+  payload: DesktopPreviewWalletSettingsSchema,
+  result: Schema.Void,
+  handler: Effect.fn("desktop.ipc.preview.walletApplySettings")(function* (settings) {
+    const wallet = yield* PreviewWallet.PreviewWallet;
+    const approvalMode = decodeApprovalMode(settings.approvalMode);
+    yield* wallet.applySettings({
+      enabled: settings.enabled,
+      approvalMode: approvalMode._tag === "Some" ? approvalMode.value : "auto-for-agents",
+      chainId: settings.chainId,
+      rpcUrl: settings.rpcUrl,
+      autoConnectLoopback: settings.autoConnectLoopback,
+    });
+  }),
+});
+
 export const saveRecording = DesktopIpc.makeIpcMethod({
   channel: IpcChannels.PREVIEW_RECORDING_SAVE_CHANNEL,
   payload: DesktopPreviewRecordingSaveInputSchema,
@@ -391,3 +479,16 @@ export const methods = [
   stopRecording,
   saveRecording,
 ] as const;
+
+/**
+ * Registered separately from `methods`: these carry the wallet error union, and
+ * `ipc.handle` can only infer a single error type from a heterogeneous array.
+ */
+export const walletMethods = {
+  walletStatus,
+  walletConfigure,
+  walletRequests,
+  walletApprove,
+  walletReject,
+  walletApplySettings,
+} as const;

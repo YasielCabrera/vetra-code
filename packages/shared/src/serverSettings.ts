@@ -1,4 +1,5 @@
 import {
+  DEFAULT_SERVER_SETTINGS,
   isProviderDriverKind,
   isProviderAvailable,
   type ModelSelection,
@@ -6,6 +7,7 @@ import {
   type ServerProvider,
   ServerSettings,
   type ServerSettingsPatch,
+  type Web3WalletSettings,
 } from "@vetra-code/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -95,6 +97,19 @@ export function parsePersistedServerObservabilitySettings(
     return extractPersistedServerObservabilitySettings(decoded.value);
   }
   return { otlpTracesUrl: undefined, otlpMetricsUrl: undefined };
+}
+
+/**
+ * Read the preview wallet block straight out of `settings.json`.
+ *
+ * The Electron main process has no RPC client of its own, so it reads the
+ * server's settings file the same way it already reads observability config.
+ * An unreadable or undecodable file yields a disabled wallet — failing closed
+ * is the only safe default for something that can sign.
+ */
+export function parsePersistedWeb3WalletSettings(raw: string): Web3WalletSettings {
+  const decoded = decodeServerSettingsJson(raw);
+  return Option.isSome(decoded) ? decoded.value.web3Wallet : DEFAULT_SERVER_SETTINGS.web3Wallet;
 }
 
 function shouldReplaceTextGenerationModelSelection(

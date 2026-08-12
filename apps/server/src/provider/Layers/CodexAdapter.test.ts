@@ -46,6 +46,7 @@ import {
   type CodexThreadSnapshot,
 } from "./CodexSessionRuntime.ts";
 import { makeCodexAdapter } from "./CodexAdapter.ts";
+import { priceUsage } from "../../usage/usagePricing.ts";
 const decodeCodexSettings = Schema.decodeSync(CodexSettings);
 
 // Test-local service tag so the rest of the file can keep using `yield* CodexAdapter`.
@@ -1148,6 +1149,307 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         lastReasoningOutputTokens: 0,
         compactsAutomatically: true,
       });
+    }),
+  );
+});
+
+const threadCostRuntimeFactory = makeRuntimeFactory();
+const threadCostLayer = it.layer(
+  Layer.effect(
+    CodexAdapter,
+    Effect.gen(function* () {
+      const rates = new Map([
+        [
+          "gpt-5.3-codex",
+          {
+            inputCostPerToken: 0.01,
+            outputCostPerToken: 0.02,
+            cacheReadCostPerToken: 0.001,
+            cacheCreationCostPerToken: 0.0125,
+          },
+        ],
+      ]);
+      const codexConfig = decodeCodexSettings({});
+      return yield* makeCodexAdapter(codexConfig, {
+        makeRuntime: threadCostRuntimeFactory.factory,
+        priceUsage: (model, totals, reportedCostUsd) =>
+          Effect.succeed(priceUsage(rates, model, totals, reportedCostUsd)),
+      });
+    }),
+  ).pipe(
+    Layer.provideMerge(ServerConfig.layerTest(process.cwd(), process.cwd())),
+    Layer.provideMerge(ServerSettingsService.layerTest()),
+    Layer.provideMerge(providerSessionDirectoryTestLayer),
+    Layer.provideMerge(NodeServices.layer),
+  ),
+);
+
+threadCostLayer("CodexAdapterLive thread cost", (it) => {
+  it.effect("prices Codex last-request totals through UsageService arithmetic", () =>
+    Effect.gen(function* () {
+      const adapter = yield* CodexAdapter;
+      yield* adapter.startSession({
+        provider: ProviderDriverKind.make("codex"),
+        threadId: asThreadId("thread-cost"),
+        modelSelection: createModelSelection(ProviderInstanceId.make("codex"), "gpt-5.3-codex"),
+        runtimeMode: "full-access",
+      });
+      const runtime = threadCostRuntimeFactory.lastRuntime;
+      NodeAssert.ok(runtime);
+
+      const firstEventFiber = yield* Stream.runHead(adapter.streamEvents).pipe(Effect.forkChild);
+      yield* runtime.emit({
+        id: asEventId("evt-codex-thread-cost"),
+        kind: "notification",
+        provider: ProviderDriverKind.make("codex"),
+        threadId: asThreadId("thread-cost"),
+        turnId: asTurnId("turn-1"),
+        createdAt: "2026-01-01T00:00:00.000Z",
+        method: "thread/tokenUsage/updated",
+        payload: {
+          threadId: "thread-cost",
+          turnId: "turn-1",
+          tokenUsage: {
+            total: {
+              inputTokens: 100,
+              cachedInputTokens: 20,
+              cacheWriteInputTokens: 10,
+              outputTokens: 5,
+              reasoningOutputTokens: 0,
+              totalTokens: 105,
+            },
+            last: {
+              inputTokens: 100,
+              cachedInputTokens: 20,
+              cacheWriteInputTokens: 10,
+              outputTokens: 5,
+              reasoningOutputTokens: 0,
+              totalTokens: 105,
+            },
+            modelContextWindow: 258_400,
+          },
+        },
+      } satisfies ProviderEvent);
+
+      const firstEvent = yield* Fiber.join(firstEventFiber);
+      NodeAssert.equal(firstEvent._tag, "Some");
+      if (firstEvent._tag !== "Some" || firstEvent.value.type !== "thread.token-usage.updated") {
+        return;
+      }
+      // uncached = 100 - 20 - 10 = 70
+      // 70*0.01 + 20*0.001 + 10*0.0125 + 5*0.02 = 0.7 + 0.02 + 0.125 + 0.1 = 0.945
+      NodeAssert.ok(Math.abs((firstEvent.value.payload.usage.costUsd ?? 0) - 0.945) < 1e-10);
+      NodeAssert.equal(firstEvent.value.payload.usage.costSource, "modelPriced");
+    }),
+  );
+
+  it.effect("skips duplicate Codex last payloads and adds subagent deltas", () =>
+    Effect.gen(function* () {
+      const adapter = yield* CodexAdapter;
+      yield* adapter.startSession({
+        provider: ProviderDriverKind.make("codex"),
+        threadId: asThreadId("thread-cost-subagent"),
+        modelSelection: createModelSelection(ProviderInstanceId.make("codex"), "gpt-5.3-codex"),
+        runtimeMode: "full-access",
+      });
+      const runtime = threadCostRuntimeFactory.lastRuntime;
+      NodeAssert.ok(runtime);
+
+      const eventsFiber = yield* Stream.take(adapter.streamEvents, 4).pipe(
+        Stream.runCollect,
+        Effect.forkChild,
+      );
+
+      const parentUsage = {
+        threadId: "thread-cost-subagent",
+        turnId: "turn-1",
+        tokenUsage: {
+          total: {
+            inputTokens: 10,
+            cachedInputTokens: 0,
+            outputTokens: 1,
+            reasoningOutputTokens: 0,
+            totalTokens: 11,
+          },
+          last: {
+            inputTokens: 10,
+            cachedInputTokens: 0,
+            outputTokens: 1,
+            reasoningOutputTokens: 0,
+            totalTokens: 11,
+          },
+          modelContextWindow: 258_400,
+        },
+      };
+
+      yield* runtime.emit({
+        id: asEventId("evt-codex-parent-1"),
+        kind: "notification",
+        provider: ProviderDriverKind.make("codex"),
+        threadId: asThreadId("thread-cost-subagent"),
+        turnId: asTurnId("turn-1"),
+        createdAt: "2026-01-01T00:00:00.000Z",
+        method: "thread/tokenUsage/updated",
+        payload: parentUsage,
+      } satisfies ProviderEvent);
+
+      yield* runtime.emit({
+        id: asEventId("evt-codex-parent-dup"),
+        kind: "notification",
+        provider: ProviderDriverKind.make("codex"),
+        threadId: asThreadId("thread-cost-subagent"),
+        turnId: asTurnId("turn-1"),
+        createdAt: "2026-01-01T00:00:01.000Z",
+        method: "thread/tokenUsage/updated",
+        payload: parentUsage,
+      } satisfies ProviderEvent);
+
+      yield* runtime.emit({
+        id: asEventId("evt-codex-child-usage"),
+        kind: "notification",
+        provider: ProviderDriverKind.make("codex"),
+        threadId: asThreadId("thread-cost-subagent"),
+        turnId: asTurnId("turn-1"),
+        createdAt: "2026-01-01T00:00:02.000Z",
+        method: "collabAgent/tokenUsage",
+        payload: {
+          agentThreadId: "child-1",
+          tokenUsage: {
+            total: {
+              inputTokens: 20,
+              cachedInputTokens: 0,
+              outputTokens: 2,
+              reasoningOutputTokens: 0,
+              totalTokens: 22,
+            },
+          },
+        },
+      } satisfies ProviderEvent);
+
+      const events = Array.from(yield* Fiber.join(eventsFiber));
+      const usageEvents = events.filter((event) => event.type === "thread.token-usage.updated");
+      const lastUsage = usageEvents.at(-1);
+      NodeAssert.equal(lastUsage?.type, "thread.token-usage.updated");
+      if (lastUsage?.type !== "thread.token-usage.updated") {
+        return;
+      }
+      // parent first: 10*0.01 + 1*0.02 = 0.12
+      // duplicate last skipped
+      // child: 20*0.01 + 2*0.02 = 0.24
+      NodeAssert.ok(Math.abs((lastUsage.payload.usage.costUsd ?? 0) - 0.36) < 1e-10);
+      NodeAssert.equal(lastUsage.payload.usage.costSource, "modelPriced");
+    }),
+  );
+
+  it.effect("seeds persisted cost when Codex falls back to a fresh thread", () =>
+    Effect.gen(function* () {
+      const adapter = yield* CodexAdapter;
+      yield* adapter.startSession({
+        provider: ProviderDriverKind.make("codex"),
+        threadId: asThreadId("thread-cost-failed-resume"),
+        modelSelection: createModelSelection(ProviderInstanceId.make("codex"), "gpt-5.3-codex"),
+        runtimeMode: "full-access",
+        resumeCursor: { threadId: "old-codex-thread", costUsd: 1 },
+      });
+      const runtime = threadCostRuntimeFactory.lastRuntime;
+      NodeAssert.ok(runtime);
+
+      const firstEventFiber = yield* Stream.runHead(adapter.streamEvents).pipe(Effect.forkChild);
+      yield* runtime.emit({
+        id: asEventId("evt-codex-failed-resume"),
+        kind: "notification",
+        provider: ProviderDriverKind.make("codex"),
+        threadId: asThreadId("thread-cost-failed-resume"),
+        turnId: asTurnId("turn-1"),
+        createdAt: "2026-01-01T00:00:00.000Z",
+        method: "thread/tokenUsage/updated",
+        payload: {
+          threadId: "new-codex-thread",
+          turnId: "turn-1",
+          tokenUsage: {
+            total: {
+              inputTokens: 1000,
+              cachedInputTokens: 0,
+              outputTokens: 1,
+              reasoningOutputTokens: 0,
+              totalTokens: 1001,
+            },
+            last: {
+              inputTokens: 10,
+              cachedInputTokens: 0,
+              outputTokens: 1,
+              reasoningOutputTokens: 0,
+              totalTokens: 11,
+            },
+            modelContextWindow: 258_400,
+          },
+        },
+      } satisfies ProviderEvent);
+
+      const firstEvent = yield* Fiber.join(firstEventFiber);
+      NodeAssert.equal(firstEvent._tag, "Some");
+      if (firstEvent._tag !== "Some" || firstEvent.value.type !== "thread.token-usage.updated") {
+        return;
+      }
+      // baseline 1 + last 10*0.01 + 1*0.02 = 1.12 (must not price total)
+      NodeAssert.ok(Math.abs((firstEvent.value.payload.usage.costUsd ?? 0) - 1.12) < 1e-10);
+      NodeAssert.equal(firstEvent.value.payload.usage.costSource, "modelPriced");
+    }),
+  );
+
+  it.effect("does not add persisted cost on top of a resumed Codex thread total", () =>
+    Effect.gen(function* () {
+      const adapter = yield* CodexAdapter;
+      yield* adapter.startSession({
+        provider: ProviderDriverKind.make("codex"),
+        threadId: asThreadId("thread-cost-same-resume"),
+        modelSelection: createModelSelection(ProviderInstanceId.make("codex"), "gpt-5.3-codex"),
+        runtimeMode: "full-access",
+        resumeCursor: { threadId: "codex-thread", costUsd: 1 },
+      });
+      const runtime = threadCostRuntimeFactory.lastRuntime;
+      NodeAssert.ok(runtime);
+
+      const firstEventFiber = yield* Stream.runHead(adapter.streamEvents).pipe(Effect.forkChild);
+      yield* runtime.emit({
+        id: asEventId("evt-codex-same-resume"),
+        kind: "notification",
+        provider: ProviderDriverKind.make("codex"),
+        threadId: asThreadId("thread-cost-same-resume"),
+        turnId: asTurnId("turn-1"),
+        createdAt: "2026-01-01T00:00:00.000Z",
+        method: "thread/tokenUsage/updated",
+        payload: {
+          threadId: "codex-thread",
+          turnId: "turn-1",
+          tokenUsage: {
+            total: {
+              inputTokens: 1000,
+              cachedInputTokens: 0,
+              outputTokens: 1,
+              reasoningOutputTokens: 0,
+              totalTokens: 1001,
+            },
+            last: {
+              inputTokens: 10,
+              cachedInputTokens: 0,
+              outputTokens: 1,
+              reasoningOutputTokens: 0,
+              totalTokens: 11,
+            },
+            modelContextWindow: 258_400,
+          },
+        },
+      } satisfies ProviderEvent);
+
+      const firstEvent = yield* Fiber.join(firstEventFiber);
+      NodeAssert.equal(firstEvent._tag, "Some");
+      if (firstEvent._tag !== "Some" || firstEvent.value.type !== "thread.token-usage.updated") {
+        return;
+      }
+      // same Codex thread: price total only (1000*0.01 + 1*0.02 = 10.02)
+      NodeAssert.ok(Math.abs((firstEvent.value.payload.usage.costUsd ?? 0) - 10.02) < 1e-10);
+      NodeAssert.equal(firstEvent.value.payload.usage.costSource, "modelPriced");
     }),
   );
 });

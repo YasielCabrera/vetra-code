@@ -70,7 +70,11 @@ export default defineConfig({
       outExtensions: () => ({ js: ".cjs" }),
       entry: ["src/preview-pick-preload.ts"],
       deps: {
-        alwaysBundle: (id) => id === "react-grab" || id.startsWith("react-grab/"),
+        // Sandboxed preloads cannot resolve package imports from inside the
+        // packaged ASAR, so the wallet provider (@vetra-code/web3/inpage) has to
+        // be inlined here rather than left as a runtime require().
+        alwaysBundle: (id) =>
+          id === "react-grab" || id.startsWith("react-grab/") || id.startsWith("@vetra-code/"),
       },
     },
     {

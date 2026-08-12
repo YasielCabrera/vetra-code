@@ -47,9 +47,59 @@ export function formatProviderDisplayName(provider: string | null | undefined): 
   }
 }
 
+function readContextWindowOccupancy(
+  activity: OrchestrationThreadActivity,
+  payload: Record<string, unknown> | null,
+  usedTokens: number,
+): ContextWindowSnapshot {
+  const maxTokens = asFiniteNumber(payload?.maxTokens);
+  const usedPercentage =
+    maxTokens !== null && maxTokens > 0 ? Math.min(100, (usedTokens / maxTokens) * 100) : null;
+  const remainingTokens =
+    maxTokens !== null ? Math.max(0, Math.round(maxTokens - usedTokens)) : null;
+  const remainingPercentage = usedPercentage !== null ? Math.max(0, 100 - usedPercentage) : null;
+
+  return {
+    usedTokens,
+    totalProcessedTokens: asFiniteNumber(payload?.totalProcessedTokens),
+    maxTokens,
+    remainingTokens,
+    usedPercentage,
+    remainingPercentage,
+    inputTokens: asFiniteNumber(payload?.inputTokens),
+    cachedInputTokens: asFiniteNumber(payload?.cachedInputTokens),
+    outputTokens: asFiniteNumber(payload?.outputTokens),
+    reasoningOutputTokens: asFiniteNumber(payload?.reasoningOutputTokens),
+    lastUsedTokens: asFiniteNumber(payload?.lastUsedTokens),
+    lastInputTokens: asFiniteNumber(payload?.lastInputTokens),
+    lastCachedInputTokens: asFiniteNumber(payload?.lastCachedInputTokens),
+    lastOutputTokens: asFiniteNumber(payload?.lastOutputTokens),
+    lastReasoningOutputTokens: asFiniteNumber(payload?.lastReasoningOutputTokens),
+    toolUses: asFiniteNumber(payload?.toolUses),
+    durationMs: asFiniteNumber(payload?.durationMs),
+    compactsAutomatically: asBoolean(payload?.compactsAutomatically) ?? false,
+    costUsd: null,
+    costSource: null,
+    updatedAt: activity.createdAt,
+  };
+}
+
+function asCostSource(value: unknown): "providerReported" | "modelPriced" | null {
+  return value === "providerReported" || value === "modelPriced" ? value : null;
+}
+
+/**
+ * Occupancy comes from the latest resolvable context-window row. Cost is
+ * copied forward from the latest row that still has it, so a mid-turn
+ * occupancy update cannot blank the dollar line.
+ */
 export function deriveLatestContextWindowSnapshot(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): ContextWindowSnapshot | null {
+  let occupancy: ContextWindowSnapshot | null = null;
+  let costUsd: number | null = null;
+  let costSource: "providerReported" | "modelPriced" | null = null;
+
   for (let index = activities.length - 1; index >= 0; index -= 1) {
     const activity = activities[index];
     if (!activity || activity.kind !== "context-window.updated") {
@@ -62,37 +112,45 @@ export function deriveLatestContextWindowSnapshot(
       continue;
     }
 
-    const maxTokens = asFiniteNumber(payload?.maxTokens);
-    const usedPercentage =
-      maxTokens !== null && maxTokens > 0 ? Math.min(100, (usedTokens / maxTokens) * 100) : null;
-    const remainingTokens =
-      maxTokens !== null ? Math.max(0, Math.round(maxTokens - usedTokens)) : null;
-    const remainingPercentage = usedPercentage !== null ? Math.max(0, 100 - usedPercentage) : null;
+    if (occupancy === null) {
+      occupancy = readContextWindowOccupancy(activity, payload, usedTokens);
+    }
 
-    return {
-      usedTokens,
-      totalProcessedTokens: asFiniteNumber(payload?.totalProcessedTokens),
-      maxTokens,
-      remainingTokens,
-      usedPercentage,
-      remainingPercentage,
-      inputTokens: asFiniteNumber(payload?.inputTokens),
-      cachedInputTokens: asFiniteNumber(payload?.cachedInputTokens),
-      outputTokens: asFiniteNumber(payload?.outputTokens),
-      reasoningOutputTokens: asFiniteNumber(payload?.reasoningOutputTokens),
-      lastUsedTokens: asFiniteNumber(payload?.lastUsedTokens),
-      lastInputTokens: asFiniteNumber(payload?.lastInputTokens),
-      lastCachedInputTokens: asFiniteNumber(payload?.lastCachedInputTokens),
-      lastOutputTokens: asFiniteNumber(payload?.lastOutputTokens),
-      lastReasoningOutputTokens: asFiniteNumber(payload?.lastReasoningOutputTokens),
-      toolUses: asFiniteNumber(payload?.toolUses),
-      durationMs: asFiniteNumber(payload?.durationMs),
-      compactsAutomatically: asBoolean(payload?.compactsAutomatically) ?? false,
-      updatedAt: activity.createdAt,
-    };
+    if (costUsd === null) {
+      const parsedCost = asFiniteNumber(payload?.costUsd);
+      const parsedSource = asCostSource(payload?.costSource);
+      if (parsedCost !== null && parsedCost > 0 && parsedSource !== null) {
+        costUsd = parsedCost;
+        costSource = parsedSource;
+      }
+    }
+
+    if (occupancy !== null && costUsd !== null) {
+      break;
+    }
   }
 
-  return null;
+  if (occupancy === null) {
+    return null;
+  }
+
+  return {
+    ...occupancy,
+    costUsd,
+    costSource,
+  };
+}
+
+/** Providers whose live usage we can turn into API-equivalent dollars. */
+export function canPriceThreadCost(provider: string | null | undefined): boolean {
+  switch (provider) {
+    case "claudeAgent":
+    case "claude":
+    case "codex":
+      return true;
+    default:
+      return false;
+  }
 }
 
 export function formatContextWindowTokens(value: number | null): string {

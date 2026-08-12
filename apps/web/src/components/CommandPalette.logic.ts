@@ -33,13 +33,19 @@ export type CommandPaletteAddProjectCompletion = "open-thread" | "select";
 
 export interface CommandPaletteOpenIntent {
   readonly kind: "add-project" | "new-thread-in";
-  readonly completion?: CommandPaletteAddProjectCompletion;
 }
 
 export interface CommandPaletteUiState {
   readonly open: boolean;
   readonly mode: SearchOverlayMode;
   readonly openIntent: CommandPaletteOpenIntent | null;
+  /**
+   * How the add-project flow should end. This deliberately outlives
+   * `openIntent` — that intent is consumed the instant the flow opens, while
+   * the completion still has to survive every step up to the moment the
+   * project is finally created.
+   */
+  readonly addProjectCompletion: CommandPaletteAddProjectCompletion;
 }
 
 export type CommandPaletteUiAction =
@@ -62,22 +68,31 @@ export function reduceCommandPaletteUiState(
         open: action.open,
         mode: "command",
         openIntent: action.open ? state.openIntent : null,
+        addProjectCompletion: action.open ? state.addProjectCompletion : "open-thread",
       };
     case "ToggleMode":
       return state.open && state.mode === action.mode
-        ? { open: false, mode: "command", openIntent: null }
-        : { open: true, mode: action.mode, openIntent: null };
+        ? { open: false, mode: "command", openIntent: null, addProjectCompletion: "open-thread" }
+        : {
+            open: true,
+            mode: action.mode,
+            openIntent: null,
+            addProjectCompletion: "open-thread",
+          };
     case "OpenAddProject":
       return {
         open: true,
         mode: "command",
-        openIntent: {
-          kind: "add-project",
-          ...(action.completion !== undefined ? { completion: action.completion } : {}),
-        },
+        openIntent: { kind: "add-project" },
+        addProjectCompletion: action.completion ?? "open-thread",
       };
     case "OpenNewThreadIn":
-      return { open: true, mode: "command", openIntent: { kind: "new-thread-in" } };
+      return {
+        open: true,
+        mode: "command",
+        openIntent: { kind: "new-thread-in" },
+        addProjectCompletion: "open-thread",
+      };
     case "ClearOpenIntent":
       return state.openIntent ? { ...state, openIntent: null } : state;
   }

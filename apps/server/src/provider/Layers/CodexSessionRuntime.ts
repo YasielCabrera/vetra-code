@@ -66,6 +66,12 @@ export function hasConfiguredMcpServer(appServerArgs: ReadonlyArray<string> | un
 
 export const CodexResumeCursorSchema = Schema.Struct({
   threadId: Schema.String,
+  /**
+   * Cumulative API-equivalent USD for this Vetra thread. Used to seed a
+   * fresh Codex thread after a failed resume; ignored when `threadId`
+   * resumes successfully because `usage.total` already includes history.
+   */
+  costUsd: Schema.optional(Schema.Number),
 });
 const CodexUserInputAnswerObject = Schema.Struct({
   answers: Schema.Array(Schema.String),

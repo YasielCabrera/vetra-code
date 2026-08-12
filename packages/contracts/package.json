@@ -25,6 +25,7 @@
     "test": "vp test run"
   },
   "dependencies": {
+    "@vetra-code/web3": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

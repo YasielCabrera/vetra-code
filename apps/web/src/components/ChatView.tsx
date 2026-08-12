@@ -119,7 +119,11 @@ import {
 } from "../types";
 import { useTheme } from "../hooks/useTheme";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
-import { isCommandPaletteOpen } from "../commandPaletteBus";
+import {
+  isCommandPaletteOpen,
+  onCommandPaletteProjectSelected,
+  openCommandPalette,
+} from "../commandPaletteBus";
 import { buildTemporaryWorktreeBranchName } from "@vetra-code/shared/git";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY } from "../rightPanelLayout";
@@ -176,7 +180,7 @@ import {
   nextProjectScriptId,
   projectScriptIdFromCommand,
 } from "~/projectScripts";
-import { newDraftId, newMessageId, newProjectId, newThreadId } from "~/lib/utils";
+import { newDraftId, newMessageId, newThreadId } from "~/lib/utils";
 import { useBrowserHistoryStore } from "~/browserHistoryStore";
 import { getProviderModelCapabilities, resolveSelectableProvider } from "../providerModels";
 import { NO_PROVIDER_MODEL_SELECTION } from "../providerInstances";
@@ -202,7 +206,6 @@ import {
   type ComposerImageAttachment,
   type DraftId,
   type DraftThreadEnvMode,
-  type PendingProjectDraftState,
   useComposerDraftStore,
 } from "../composerDraftStore";
 import {
@@ -219,10 +222,6 @@ import {
 import { appendPreviewAnnotationPrompt } from "../lib/previewAnnotation";
 import { appendReviewCommentsToPrompt, type ReviewCommentContext } from "../reviewCommentContext";
 import { environmentCatalog } from "../connection/catalog";
-import {
-  DEFAULT_NEW_PROJECTS_PARENT_DIRECTORY,
-  resolvePendingProjectLocation,
-} from "../lib/pendingProject";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { useKnownTerminalSessions, useThreadRunningTerminalIds } from "../state/terminalSessions";
 import { projectEnvironment } from "../state/projects";
@@ -324,7 +323,6 @@ import {
 import type { ThreadSyncPhase } from "../threadSync";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { useComposerHandleContext } from "../composerHandleContext";
-import { ProjectLocationControl } from "./chat/ProjectLocationControl";
 import { ProjectSelectorControl } from "./chat/ProjectSelectorControl";
 import { sanitizeThreadErrorMessage } from "~/rpc/transportError";
 import { RightPanelSheet } from "./RightPanelSheet";
@@ -1210,7 +1208,6 @@ function ChatViewContent(props: ChatViewProps) {
     [environmentId, threadId],
   );
   const routeThreadKey = useMemo(() => scopedThreadKey(routeThreadRef), [routeThreadRef]);
-  const createProject = useAtomCommand(projectEnvironment.create, { reportFailure: false });
   const updateProject = useAtomCommand(projectEnvironment.update, { reportFailure: false });
   const upsertKeybinding = useAtomCommand(serverEnvironment.upsertKeybinding, {
     reportFailure: false,
@@ -1355,8 +1352,10 @@ function ChatViewContent(props: ChatViewProps) {
     Record<string, LocalThreadErrorEntry>
   >({});
   const [isConnecting, _setIsConnecting] = useState(false);
-  const [projectLocationOpen, setProjectLocationOpen] = useState(false);
-  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  // Set while this composer is the one borrowing the command palette's
+  // add-project flow, so a selection published by another form's flow does not
+  // repoint this draft.
+  const awaitingPaletteProjectRef = useRef(false);
   const [isRevertingCheckpoint, setIsRevertingCheckpoint] = useState(false);
   const [maximizedRightPanelThreadKey, setMaximizedRightPanelThreadKey] = useState<string | null>(
     null,
@@ -5327,7 +5326,7 @@ function ChatViewContent(props: ChatViewProps) {
   };
 
   const handleSelectProject = (project: EnvironmentProject) => {
-    if (!draftId || isCreatingProject) {
+    if (!draftId) {
       return;
     }
     setDraftThreadContext(draftId, {
@@ -5339,110 +5338,43 @@ function ChatViewContent(props: ChatViewProps) {
     }
   };
 
+  // Borrows the command palette's whole add-project flow — local folder, git
+  // URL, GitHub, and the rest — rather than keeping a second, thinner "where
+  // should this live?" dialog. It hands the project back here instead of
+  // opening a thread in it.
   const handleCreateProjectSelection = () => {
-    if (!draftId || !activeThread || isCreatingProject) {
+    if (!draftId) {
       return;
     }
-    const targetEnvironmentId = activeThread.environmentId;
-    const configuredParentDirectory =
-      environmentById
-        .get(targetEnvironmentId)
-        ?.serverConfig?.settings.addProjectBaseDirectory.trim() ?? "";
-    const canReusePendingIdentity = activeProject === null && pendingProject !== null;
-    const projectId = canReusePendingIdentity ? activeThread.projectId : newProjectId();
-    const nextPendingProject: PendingProjectDraftState = {
-      ...(canReusePendingIdentity && pendingProject
-        ? pendingProject
-        : {
-            parentDirectory: configuredParentDirectory || DEFAULT_NEW_PROJECTS_PARENT_DIRECTORY,
-            folderName: "",
-          }),
-      association: "create",
-      locationConfirmed: false,
-      materialized: false,
-    };
-    setDraftThreadContext(draftId, {
-      projectRef: scopeProjectRef(targetEnvironmentId, projectId),
-      pendingProject: nextPendingProject,
-    });
-    setProjectLocationOpen(true);
+    awaitingPaletteProjectRef.current = true;
+    openCommandPalette({ open: "add-project", completion: "select" });
   };
 
-  const handlePendingProjectLocationConfirmed = async (
-    nextPendingProject: PendingProjectDraftState,
-  ): Promise<boolean> => {
-    if (!draftId || isCreatingProject) {
-      return false;
+  useEffect(() => {
+    if (!draftId) {
+      return;
     }
-    const targetDraft = useComposerDraftStore.getState().getDraftSession(draftId);
-    if (!targetDraft) {
-      return false;
-    }
-    const location = resolvePendingProjectLocation({
-      parentDirectory: nextPendingProject.parentDirectory,
-      customFolderName: nextPendingProject.folderName,
-      prompt: promptRef.current,
-      projectId: targetDraft.projectId,
-    });
-    const defaultModelSelection =
-      composerRef.current?.getSendContext().selectedModelSelection ?? null;
-
-    setIsCreatingProject(true);
-    setThreadError(targetDraft.threadId, null);
-    try {
-      const createResult = await createProject({
-        environmentId: targetDraft.environmentId,
-        input: {
-          projectId: targetDraft.projectId,
-          title: location.title,
-          workspaceRoot: location.workspaceRoot,
-          createWorkspaceRootIfMissing: true,
-          defaultModelSelection,
-        },
-      });
-      if (createResult._tag === "Failure") {
-        const error = squashAtomCommandFailure(createResult);
-        setThreadError(
-          targetDraft.threadId,
-          error instanceof Error ? error.message : "Failed to create project.",
-        );
-        return false;
+    return onCommandPaletteProjectSelected((selected) => {
+      if (!awaitingPaletteProjectRef.current) {
+        return;
       }
-      setDraftThreadContext(draftId, { pendingProject: null });
-      return true;
-    } catch (error) {
-      setThreadError(targetDraft.threadId, chatActionErrorMessage(error));
-      return false;
-    } finally {
-      setIsCreatingProject(false);
-    }
-  };
-
-  const handlePendingProjectEnvironmentChange = (nextEnvironmentId: EnvironmentId) => {
-    if (!draftId || !activeThread || nextEnvironmentId === environmentId) {
-      return;
-    }
-    const currentPendingProject = pendingProject;
-    if (!currentPendingProject) {
-      return;
-    }
-    const nextEnvironment = environmentById.get(nextEnvironmentId);
-    if (!nextEnvironment || nextEnvironment.connection.phase !== "connected") {
-      return;
-    }
-    const configuredParentDirectory =
-      nextEnvironment.serverConfig?.settings.addProjectBaseDirectory.trim() ?? "";
-    const nextPendingProject: PendingProjectDraftState = {
-      ...currentPendingProject,
-      parentDirectory: configuredParentDirectory || DEFAULT_NEW_PROJECTS_PARENT_DIRECTORY,
-      locationConfirmed: false,
-      materialized: false,
-    };
-    setDraftThreadContext(draftId, {
-      projectRef: scopeProjectRef(nextEnvironmentId, activeThread.projectId),
-      pendingProject: nextPendingProject,
+      awaitingPaletteProjectRef.current = false;
+      setDraftThreadContext(draftId, {
+        projectRef: scopeProjectRef(
+          selected.environmentId as EnvironmentId,
+          selected.projectId as ProjectId,
+        ),
+        pendingProject: null,
+      });
+      const draftThreadId = useComposerDraftStore.getState().getDraftSession(draftId)?.threadId;
+      if (draftThreadId) {
+        setThreadError(draftThreadId, null);
+      }
+      // The palette took focus on the way in; hand it back so the prompt the
+      // user was already writing stays typeable.
+      scheduleComposerFocus();
     });
-  };
+  }, [draftId, scheduleComposerFocus, setDraftThreadContext, setThreadError]);
 
   const onInterrupt = async () => {
     if (!activeThread) return;
@@ -6495,8 +6427,6 @@ function ChatViewContent(props: ChatViewProps) {
                                 <ProjectSelectorControl
                                   selectedProjectRef={activeProject ? activeProjectRef : null}
                                   selectedProjectTitle={activeProject?.title ?? null}
-                                  pendingNewProject={pendingProject?.association === "create"}
-                                  creatingProject={isCreatingProject}
                                   onSelectProject={handleSelectProject}
                                   onCreateProject={handleCreateProjectSelection}
                                 />
@@ -6530,29 +6460,6 @@ function ChatViewContent(props: ChatViewProps) {
                             setThreadError={setThreadError}
                             onExpandImage={onExpandTimelineImage}
                           />
-                          {pendingProject?.association === "create" && draftId && activeThread ? (
-                            <ProjectLocationControl
-                              draftId={draftId}
-                              environmentId={environmentId}
-                              environmentLabel={
-                                environmentById.get(environmentId)?.label ?? "This environment"
-                              }
-                              projectId={activeThread.projectId}
-                              environmentOptions={environments
-                                .filter(
-                                  (environment) => environment.connection.phase === "connected",
-                                )
-                                .map((environment) => ({
-                                  environmentId: environment.environmentId,
-                                  label: environment.label,
-                                }))}
-                              canBrowse={primaryEnvironment?.environmentId === environmentId}
-                              open={projectLocationOpen}
-                              onOpenChange={setProjectLocationOpen}
-                              onConfirmed={handlePendingProjectLocationConfirmed}
-                              onEnvironmentChange={handlePendingProjectEnvironmentChange}
-                            />
-                          ) : null}
                         </div>
                       </div>
                       <div className="min-h-0">

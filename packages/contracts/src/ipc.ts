@@ -75,7 +75,14 @@ import {
   PreviewAutomationStreamEvent,
   PreviewAutomationTypeInput,
   PreviewAutomationWaitForInput,
+  PreviewAutomationWalletApproveInput,
+  PreviewAutomationWalletConfigureInput,
+  PreviewAutomationWalletRejectInput,
+  PreviewAutomationWalletRequestList,
+  PreviewAutomationWalletResolution,
 } from "./previewAutomation.ts";
+import { Web3WalletStatus } from "@vetra-code/web3/schema";
+import type { Web3ProviderEvent } from "@vetra-code/web3/inpage";
 import type {
   ClientOrchestrationCommand,
   OrchestrationGetFullThreadDiffInput,
@@ -994,6 +1001,41 @@ export const DesktopPreviewAutomationWaitForInputSchema = Schema.Struct({
   input: PreviewAutomationWaitForInput,
 });
 
+export const DesktopPreviewWalletConfigureInputSchema = Schema.Struct({
+  tabId: DesktopPreviewTabIdSchema,
+  input: PreviewAutomationWalletConfigureInput,
+});
+
+export const DesktopPreviewWalletApproveInputSchema = Schema.Struct({
+  tabId: DesktopPreviewTabIdSchema,
+  input: PreviewAutomationWalletApproveInput,
+});
+
+export const DesktopPreviewWalletRejectInputSchema = Schema.Struct({
+  tabId: DesktopPreviewTabIdSchema,
+  input: PreviewAutomationWalletRejectInput,
+});
+
+/**
+ * Settings the renderer pushes down so the main process does not have to hold
+ * its own RPC client. Main also reads `settings.json` directly, so this is a
+ * fast path, not the source of truth.
+ */
+export const DesktopPreviewWalletSettingsSchema = Schema.Struct({
+  enabled: Schema.Boolean,
+  approvalMode: Schema.String,
+  chainId: Schema.NullOr(Schema.Int),
+  rpcUrl: Schema.NullOr(Schema.String),
+  autoConnectLoopback: Schema.Boolean,
+});
+export type DesktopPreviewWalletSettings = typeof DesktopPreviewWalletSettingsSchema.Type;
+
+/** Emitted to the renderer whenever wallet state or the pending queue changes. */
+export const DesktopPreviewWalletStateSchema = Schema.Struct({
+  status: Web3WalletStatus,
+});
+export type DesktopPreviewWalletState = typeof DesktopPreviewWalletStateSchema.Type;
+
 export interface DesktopBridge {
   getAppBranding: () => DesktopAppBranding | null;
   // One bootstrap per pool instance currently registered with bootstrap
@@ -1132,9 +1174,37 @@ export interface DesktopPreviewBridge {
     evaluate: (tabId: string, input: PreviewAutomationEvaluateInput) => Promise<unknown>;
     waitFor: (tabId: string, input: PreviewAutomationWaitForInput) => Promise<void>;
   };
+  wallet: {
+    status: () => Promise<Web3WalletStatus>;
+    configure: (
+      tabId: string,
+      input: PreviewAutomationWalletConfigureInput,
+    ) => Promise<Web3WalletStatus>;
+    requests: () => Promise<PreviewAutomationWalletRequestList>;
+    approve: (
+      tabId: string,
+      input: PreviewAutomationWalletApproveInput,
+    ) => Promise<PreviewAutomationWalletResolution>;
+    reject: (
+      tabId: string,
+      input: PreviewAutomationWalletRejectInput,
+    ) => Promise<PreviewAutomationWalletResolution>;
+    /** Pushes the current server settings so main can react without polling. */
+    applySettings: (settings: DesktopPreviewWalletSettings) => Promise<void>;
+    onStateChange: (listener: (state: DesktopPreviewWalletState) => void) => () => void;
+  };
   onStateChange: (listener: (tabId: string, state: DesktopPreviewTabState) => void) => () => void;
   onPointerEvent: (listener: (event: DesktopPreviewPointerEvent) => void) => () => void;
 }
+
+/** Guest-to-main wallet JSON-RPC hop, sent from the preview preload. */
+export interface DesktopPreviewWalletRequest {
+  readonly method: string;
+  readonly params?: unknown;
+  readonly origin: string;
+}
+
+export type DesktopPreviewWalletProviderEvent = Web3ProviderEvent;
 
 export type ConfirmDialogVariant = "default" | "destructive";
 

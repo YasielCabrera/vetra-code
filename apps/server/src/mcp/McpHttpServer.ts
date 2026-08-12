@@ -10,6 +10,7 @@ import { McpProtocol, McpSchema, McpServer, Tool } from "effect/unstable/ai";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 
 import packageJson from "../../package.json" with { type: "json" };
+import * as ServerSettings from "../serverSettings.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 import * as McpSessionRegistry from "./McpSessionRegistry.ts";
 import * as PreviewAutomationBroker from "./PreviewAutomationBroker.ts";
@@ -22,6 +23,8 @@ import {
   PreviewSnapshotToolkit,
   PreviewStandardToolkit,
 } from "./toolkits/preview/tools.ts";
+import { PreviewWalletToolkitHandlersLive } from "./toolkits/web3/handlers.ts";
+import { PreviewWalletToolkit } from "./toolkits/web3/tools.ts";
 
 const unauthorized = HttpServerResponse.jsonUnsafe(
   {
@@ -207,6 +210,35 @@ const PreviewStandardToolkitRegistrationLive = McpServer.toolkit(PreviewStandard
   Layer.provide(PreviewStandardToolkitHandlersLive),
 );
 
+/**
+ * The wallet toolkit is only advertised when `web3Wallet.enabled` is on.
+ *
+ * `McpServer` registers toolkits at layer construction and exposes no removal
+ * path, so this is decided once at boot: turning the wallet **on** needs a
+ * server restart before `preview_wallet_*` shows up in `tools/list`. Turning it
+ * off mid-session is covered by the call-time check in the handlers. Failing to
+ * read settings leaves the tools unregistered, which is the safe direction.
+ */
+const PreviewWalletToolkitRegistrationLive = Layer.unwrap(
+  Effect.gen(function* () {
+    const settings = yield* ServerSettings.ServerSettingsService;
+    const enabled = yield* settings.getSettings.pipe(
+      Effect.map((current) => current.web3Wallet.enabled),
+      Effect.catchCause((cause) =>
+        Effect.logWarning(
+          "could not read web3 wallet settings; preview_wallet_* tools stay unadvertised",
+          cause,
+        ).pipe(Effect.as(false)),
+      ),
+    );
+    if (!enabled) return Layer.empty;
+    yield* Effect.logInfo("advertising preview wallet MCP tools", { toolCount: 5 });
+    return McpServer.toolkit(PreviewWalletToolkit).pipe(
+      Layer.provide(PreviewWalletToolkitHandlersLive),
+    );
+  }),
+);
+
 const PreviewSnapshotRegistrationLive = Layer.effectDiscard(registerPreviewSnapshot()).pipe(
   Layer.provide(PreviewSnapshotToolkitHandlersLive),
 );
@@ -214,6 +246,7 @@ const PreviewSnapshotRegistrationLive = Layer.effectDiscard(registerPreviewSnaps
 export const PreviewToolkitRegistrationLive = Layer.mergeAll(
   PreviewStandardToolkitRegistrationLive,
   PreviewSnapshotRegistrationLive,
+  PreviewWalletToolkitRegistrationLive,
 );
 
 const McpTransportLive = McpServer.layerHttp({

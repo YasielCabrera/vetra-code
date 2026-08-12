@@ -5,6 +5,7 @@ import { FILL_PREVIEW_VIEWPORT } from "@vetra-code/contracts";
 import { useEffect, useMemo } from "react";
 
 import { isElectron } from "~/env";
+import { usePrimarySettings } from "~/hooks/useSettings";
 import { useTheme } from "~/hooks/useTheme";
 import { useActivePreviewSessions } from "~/previewStateStore";
 
@@ -15,6 +16,7 @@ import { previewRuntimeTabId } from "./previewRuntimeTabId";
 
 export function ElectronBrowserHost() {
   const { resolvedTheme } = useTheme();
+  const web3Wallet = usePrimarySettings((settings) => settings.web3Wallet);
   const previewByThreadKey = useActivePreviewSessions();
   const sessions = useMemo(
     () =>
@@ -76,6 +78,26 @@ export function ElectronBrowserHost() {
       useBrowserPointerStore.getState().apply(event);
     });
   }, []);
+
+  // The main process reads settings.json for its startup value, but nothing
+  // notifies it when the server rewrites the file. Pushing the wallet block
+  // from here is what makes toggling Settings > Web3 take effect without a
+  // desktop restart.
+  useEffect(() => {
+    const preview = window.desktopBridge?.preview;
+    if (!preview) return;
+    void preview.wallet
+      .applySettings({
+        enabled: web3Wallet.enabled,
+        approvalMode: web3Wallet.approvalMode,
+        chainId: web3Wallet.chainId,
+        rpcUrl: web3Wallet.rpcUrl,
+        autoConnectLoopback: web3Wallet.autoConnectLoopback,
+      })
+      .catch(() => {
+        // An older main process has no wallet bridge; the preview still works.
+      });
+  }, [web3Wallet]);
 
   if (!isElectron) return null;
   return (

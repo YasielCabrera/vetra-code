@@ -219,6 +219,7 @@ import type { SessionPhase, Thread } from "../../types";
 import type { PendingUserInputDraftAnswer } from "../../pendingUserInput";
 import type { PendingApproval, PendingUserInput } from "../../session-logic";
 import {
+  canPriceThreadCost,
   deriveLatestContextWindowSnapshot,
   formatProviderDisplayName,
 } from "../../lib/contextWindow";
@@ -390,6 +391,7 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
   compact: boolean;
   activeContextWindow: ReturnType<typeof deriveLatestContextWindowSnapshot>;
   activeThreadProviderDisplayName: string | null;
+  canPriceThreadCost: boolean;
   isPreparingWorktree: boolean;
   pendingAction: {
     questionIndex: number;
@@ -417,6 +419,8 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
         <ContextWindowMeter
           usage={props.activeContextWindow}
           providerDisplayName={props.activeThreadProviderDisplayName}
+          canPriceThreadCost={props.canPriceThreadCost}
+          isRunning={props.isRunning}
         />
       ) : null}
       {props.isPreparingWorktree ? (
@@ -929,6 +933,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       return getProviderDisplayName(providerStatuses, entry.driver);
     }
     return formatProviderDisplayName(activeThreadModelSelection.instanceId);
+  }, [providerStatuses, activeThreadModelSelection]);
+  const activeThreadCanPriceCost = useMemo(() => {
+    if (!activeThreadModelSelection) return false;
+    const entry = providerStatuses.find(
+      (p) => p.instanceId === activeThreadModelSelection.instanceId,
+    );
+    return canPriceThreadCost(entry?.driver ?? activeThreadModelSelection.instanceId);
   }, [providerStatuses, activeThreadModelSelection]);
 
   // ------------------------------------------------------------------
@@ -3184,6 +3195,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   compact={isComposerPrimaryActionsCompact}
                   activeContextWindow={activeContextWindow}
                   activeThreadProviderDisplayName={activeThreadProviderDisplayName}
+                  canPriceThreadCost={activeThreadCanPriceCost}
                   pendingAction={pendingPrimaryAction}
                   isRunning={phase === "running"}
                   showPlanFollowUpPrompt={pendingUserInputs.length === 0 && showPlanFollowUpPrompt}

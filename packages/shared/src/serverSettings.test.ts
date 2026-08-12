@@ -14,6 +14,7 @@ import {
   isModelSelectionProviderEnabled,
   normalizePersistedServerSettingString,
   parsePersistedServerObservabilitySettings,
+  parsePersistedWeb3WalletSettings,
   resolveSourceControlWriterModelSelection,
 } from "./serverSettings.ts";
 
@@ -511,5 +512,76 @@ describe("serverSettings helpers", () => {
     });
 
     expect(resolved.pauseWhenOnBattery).toBe(false);
+  });
+});
+
+describe("parsePersistedWeb3WalletSettings", () => {
+  it("reads the wallet block straight out of settings.json", () => {
+    const wallet = parsePersistedWeb3WalletSettings(
+      '{"web3Wallet":{"enabled":true,"approvalMode":"always-ask","chainId":31337,"rpcUrl":"http://127.0.0.1:8545"}}',
+    );
+
+    expect(wallet.enabled).toBe(true);
+    expect(wallet.approvalMode).toBe("always-ask");
+    expect(wallet.chainId).toBe(31337);
+    expect(wallet.rpcUrl).toBe("http://127.0.0.1:8545");
+  });
+
+  it("fills defaults when the file has no wallet block yet", () => {
+    expect(parsePersistedWeb3WalletSettings('{"enableProviderUpdateChecks":false}')).toEqual(
+      DEFAULT_SERVER_SETTINGS.web3Wallet,
+    );
+  });
+
+  it("tolerates the JSONC the settings file allows", () => {
+    const wallet = parsePersistedWeb3WalletSettings(
+      '{\n  // wallet on for local testing\n  "web3Wallet": { "enabled": true },\n}',
+    );
+    expect(wallet.enabled).toBe(true);
+  });
+
+  it("fails closed on an undecodable file rather than assuming enabled", () => {
+    // A wallet that can sign must not turn itself on because a file got corrupted.
+    expect(parsePersistedWeb3WalletSettings("{ not json").enabled).toBe(false);
+    expect(parsePersistedWeb3WalletSettings("").enabled).toBe(false);
+    expect(parsePersistedWeb3WalletSettings('{"web3Wallet":{"enabled":"yes"}}').enabled).toBe(
+      false,
+    );
+  });
+});
+
+describe("applyServerSettingsPatch web3Wallet", () => {
+  it("merges a partial wallet patch without clobbering siblings", () => {
+    const current = {
+      ...DEFAULT_SERVER_SETTINGS,
+      web3Wallet: {
+        ...DEFAULT_SERVER_SETTINGS.web3Wallet,
+        enabled: true,
+        approvalMode: "always-ask" as const,
+        chainId: 31337,
+      },
+    };
+
+    const next = applyServerSettingsPatch(current, { web3Wallet: { approvalMode: "always-auto" } });
+
+    expect(next.web3Wallet.approvalMode).toBe("always-auto");
+    expect(next.web3Wallet.enabled).toBe(true);
+    expect(next.web3Wallet.chainId).toBe(31337);
+  });
+
+  it("clears an override when the patch sets it to null", () => {
+    const current = {
+      ...DEFAULT_SERVER_SETTINGS,
+      web3Wallet: {
+        ...DEFAULT_SERVER_SETTINGS.web3Wallet,
+        chainId: 31337,
+        rpcUrl: "http://a.test",
+      },
+    };
+
+    const next = applyServerSettingsPatch(current, { web3Wallet: { chainId: null } });
+
+    expect(next.web3Wallet.chainId).toBeNull();
+    expect(next.web3Wallet.rpcUrl).toBe("http://a.test");
   });
 });

@@ -125,6 +125,7 @@ interface ClaudeResumeState {
   readonly resume?: string;
   readonly resumeSessionAt?: string;
   readonly turnCount?: number;
+  readonly costUsd?: number;
 }
 
 interface ClaudeTurnState {
@@ -243,6 +244,14 @@ interface ClaudeSessionContext {
   lastKnownContextWindow: number | undefined;
   lastKnownTokenUsage: ThreadTokenUsageSnapshot | undefined;
   lastKnownTotalProcessedTokens: number | undefined;
+  /**
+   * Cost already accumulated on this Vetra thread before the current SDK
+   * session. `result.total_cost_usd` is session-scoped, so thread cost is
+   * baseline + latest session figure.
+   */
+  costBaselineUsd: number;
+  lastKnownCostUsd: number | undefined;
+  lastKnownCostSource: "providerReported" | undefined;
   lastAssistantUuid: string | undefined;
   lastThreadStartedId: string | undefined;
   stopped: boolean;
@@ -623,6 +632,36 @@ function asRuntimeRequestId(value: ApprovalRequestId): RuntimeRequestId {
   return RuntimeRequestId.make(value);
 }
 
+function withClaudeThreadCost(
+  context: ClaudeSessionContext,
+  usage: ThreadTokenUsageSnapshot,
+): ThreadTokenUsageSnapshot {
+  if (
+    context.lastKnownCostUsd === undefined ||
+    context.lastKnownCostSource === undefined ||
+    !(context.lastKnownCostUsd > 0)
+  ) {
+    return usage;
+  }
+  return {
+    ...usage,
+    costUsd: context.lastKnownCostUsd,
+    costSource: context.lastKnownCostSource,
+  };
+}
+
+function applyClaudeSessionCost(
+  context: ClaudeSessionContext,
+  result: SDKResultMessage | undefined,
+): void {
+  const sessionCost = result?.total_cost_usd;
+  if (typeof sessionCost !== "number" || !Number.isFinite(sessionCost) || sessionCost < 0) {
+    return;
+  }
+  context.lastKnownCostUsd = context.costBaselineUsd + sessionCost;
+  context.lastKnownCostSource = "providerReported";
+}
+
 function readClaudeResumeState(resumeCursor: unknown): ClaudeResumeState | undefined {
   if (!resumeCursor || typeof resumeCursor !== "object") {
     return undefined;
@@ -633,6 +672,7 @@ function readClaudeResumeState(resumeCursor: unknown): ClaudeResumeState | undef
     sessionId?: unknown;
     resumeSessionAt?: unknown;
     turnCount?: unknown;
+    costUsd?: unknown;
   };
 
   const threadIdCandidate = typeof cursor.threadId === "string" ? cursor.threadId : undefined;
@@ -650,6 +690,7 @@ function readClaudeResumeState(resumeCursor: unknown): ClaudeResumeState | undef
   const resumeSessionAt =
     typeof cursor.resumeSessionAt === "string" ? cursor.resumeSessionAt : undefined;
   const turnCountValue = typeof cursor.turnCount === "number" ? cursor.turnCount : undefined;
+  const costUsdValue = typeof cursor.costUsd === "number" ? cursor.costUsd : undefined;
 
   return {
     ...(threadId ? { threadId } : {}),
@@ -657,6 +698,9 @@ function readClaudeResumeState(resumeCursor: unknown): ClaudeResumeState | undef
     ...(resumeSessionAt ? { resumeSessionAt } : {}),
     ...(turnCountValue !== undefined && Number.isInteger(turnCountValue) && turnCountValue >= 0
       ? { turnCount: turnCountValue }
+      : {}),
+    ...(costUsdValue !== undefined && Number.isFinite(costUsdValue) && costUsdValue >= 0
+      ? { costUsd: costUsdValue }
       : {}),
   };
 }
@@ -1744,6 +1788,9 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       ...(context.resumeSessionId ? { resume: context.resumeSessionId } : {}),
       ...(context.lastAssistantUuid ? { resumeSessionAt: context.lastAssistantUuid } : {}),
       turnCount: context.turns.length,
+      ...(context.lastKnownCostUsd !== undefined && context.lastKnownCostUsd > 0
+        ? { costUsd: context.lastKnownCostUsd }
+        : {}),
     };
 
     context.session = {
@@ -2030,9 +2077,10 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       return;
     }
 
-    context.lastKnownTokenUsage = usage;
+    const pricedUsage = withClaudeThreadCost(context, usage);
+    context.lastKnownTokenUsage = pricedUsage;
     context.lastKnownTotalProcessedTokens =
-      usage.totalProcessedTokens ?? context.lastKnownTotalProcessedTokens;
+      pricedUsage.totalProcessedTokens ?? context.lastKnownTotalProcessedTokens;
 
     const turnState = context.turnState;
     const stamp = yield* makeEventStamp();
@@ -2044,7 +2092,7 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       threadId: context.session.threadId,
       ...(turnState ? { turnId: turnState.turnId } : {}),
       payload: {
-        usage,
+        usage: pricedUsage,
       },
       providerRefs: nativeProviderRefs(context),
       ...(options?.rawMethod || options?.rawPayload
@@ -2171,6 +2219,8 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
     errorMessage?: string,
     result?: SDKResultMessage,
   ) {
+    applyClaudeSessionCost(context, result);
+
     const resultContextWindow = maxClaudeContextWindowFromModelUsage(result?.modelUsage);
     if (resultContextWindow !== undefined) {
       context.lastKnownContextWindow = resultContextWindow;
@@ -4219,6 +4269,12 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         lastKnownContextWindow: initialContextWindow,
         lastKnownTokenUsage: undefined,
         lastKnownTotalProcessedTokens: undefined,
+        costBaselineUsd: resumeState?.costUsd ?? 0,
+        lastKnownCostUsd: resumeState?.costUsd,
+        lastKnownCostSource:
+          resumeState?.costUsd !== undefined && resumeState.costUsd > 0
+            ? "providerReported"
+            : undefined,
         lastAssistantUuid: resumeState?.resumeSessionAt,
         lastThreadStartedId: undefined,
         stopped: false,

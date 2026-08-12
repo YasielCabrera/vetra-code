@@ -1,6 +1,8 @@
 import { cn } from "~/lib/utils";
 import { type ContextWindowSnapshot, formatContextWindowTokens } from "~/lib/contextWindow";
+import { formatThreadCostUsd } from "@vetra-code/shared/usageFormat";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
+import { Skeleton } from "../ui/skeleton";
 
 function formatPercentage(value: number | null): string | null {
   if (value === null || !Number.isFinite(value)) {
@@ -15,8 +17,10 @@ function formatPercentage(value: number | null): string | null {
 export function ContextWindowMeter(props: {
   usage: ContextWindowSnapshot;
   providerDisplayName?: string | null;
+  canPriceThreadCost?: boolean;
+  isRunning?: boolean;
 }) {
-  const { usage, providerDisplayName } = props;
+  const { usage, providerDisplayName, canPriceThreadCost = false, isRunning = false } = props;
   const usedPercentage = formatPercentage(usage.usedPercentage);
   const normalizedPercentage = Math.max(0, Math.min(100, usage.usedPercentage ?? 0));
   const radius = 9.75;
@@ -24,6 +28,11 @@ export function ContextWindowMeter(props: {
   const dashOffset = circumference * (1 - normalizedPercentage / 100);
   const totalProcessedTokens = usage.totalProcessedTokens ?? null;
   const showTotalProcessed = totalProcessedTokens !== null && totalProcessedTokens > 0;
+  const threadCostUsd =
+    typeof usage.costUsd === "number" && usage.costUsd > 0 ? usage.costUsd : null;
+  const showThreadCost = threadCostUsd !== null;
+  const showThreadCostLoading = canPriceThreadCost && !showThreadCost && isRunning;
+  const showApiRateFootnote = showThreadCost && usage.costSource === "modelPriced";
   const isOverloaded = normalizedPercentage > 90;
   const usageColor = isOverloaded
     ? "var(--color-error)"
@@ -126,6 +135,24 @@ export function ContextWindowMeter(props: {
               <span className="font-medium tabular-nums text-secondary-label">
                 {formatContextWindowTokens(totalProcessedTokens)}
               </span>
+            </div>
+          ) : null}
+          {showThreadCost || showThreadCostLoading ? (
+            <div className="flex items-center justify-between gap-3 text-[11px] leading-4">
+              <span className="text-secondary-label">Thread cost</span>
+              {showThreadCost ? (
+                <span className="font-medium tabular-nums text-secondary-label">
+                  {formatThreadCostUsd(threadCostUsd)}
+                  {showApiRateFootnote ? "*" : ""}
+                </span>
+              ) : (
+                <Skeleton className="h-3 w-10" aria-label="Loading thread cost" />
+              )}
+            </div>
+          ) : null}
+          {showApiRateFootnote ? (
+            <div className="text-pretty text-secondary-label text-[11px] font-medium">
+              * if billed at full API rate
             </div>
           ) : null}
           {usage.compactsAutomatically ? (

@@ -297,3 +297,71 @@ describe("ServerSettingsPatch string normalization", () => {
     expect(encoded.providers?.codex?.launchArgs).toBe("--strict-config");
   });
 });
+
+describe("ServerSettings web3Wallet", () => {
+  it("defaults to a disabled wallet that follows the dapp", () => {
+    const wallet = decodeServerSettings({}).web3Wallet;
+
+    // Fails closed: something that can sign must never default to on.
+    expect(wallet.enabled).toBe(false);
+    expect(wallet.approvalMode).toBe("auto-for-agents");
+    expect(wallet.chainId).toBeNull();
+    expect(wallet.rpcUrl).toBeNull();
+    expect(wallet.autoConnectLoopback).toBe(false);
+  });
+
+  it("fills the block when settings.json predates the wallet", () => {
+    expect(decodeServerSettings({ enableProviderUpdateChecks: false }).web3Wallet).toEqual(
+      DEFAULT_SERVER_SETTINGS.web3Wallet,
+    );
+  });
+
+  it("decodes a fully populated block", () => {
+    const wallet = decodeServerSettings({
+      web3Wallet: {
+        enabled: true,
+        approvalMode: "always-ask",
+        chainId: 31337,
+        rpcUrl: "http://127.0.0.1:8545",
+        autoConnectLoopback: true,
+      },
+    }).web3Wallet;
+
+    expect(wallet.enabled).toBe(true);
+    expect(wallet.approvalMode).toBe("always-ask");
+    expect(wallet.chainId).toBe(31337);
+    expect(wallet.rpcUrl).toBe("http://127.0.0.1:8545");
+  });
+
+  it("keeps partial blocks partial in the patch schema", () => {
+    const patch = decodeServerSettingsPatch({ web3Wallet: { enabled: true } });
+
+    expect(patch.web3Wallet?.enabled).toBe(true);
+    // Absent keys must stay absent so deepMerge does not clobber siblings.
+    expect(patch.web3Wallet).not.toHaveProperty("approvalMode");
+    expect(patch.web3Wallet).not.toHaveProperty("chainId");
+  });
+
+  it("accepts explicit nulls in the patch so overrides can be cleared", () => {
+    const patch = decodeServerSettingsPatch({ web3Wallet: { chainId: null, rpcUrl: null } });
+
+    expect(patch.web3Wallet?.chainId).toBeNull();
+    expect(patch.web3Wallet?.rpcUrl).toBeNull();
+  });
+
+  it("rejects an rpcUrl that is not http(s), so the wallet cannot be aimed at a bad scheme", () => {
+    expect(() => decodeServerSettings({ web3Wallet: { rpcUrl: "ws://127.0.0.1:8545" } })).toThrow();
+    expect(() => decodeServerSettings({ web3Wallet: { rpcUrl: "not a url" } })).toThrow();
+  });
+
+  it("rejects a non-positive chain id", () => {
+    expect(() => decodeServerSettings({ web3Wallet: { chainId: 0 } })).toThrow();
+    expect(() => decodeServerSettings({ web3Wallet: { chainId: -1 } })).toThrow();
+  });
+
+  it("rejects an unknown approval mode instead of silently falling back", () => {
+    expect(() =>
+      decodeServerSettings({ web3Wallet: { approvalMode: "yolo-approve-everything" } }),
+    ).toThrow();
+  });
+});

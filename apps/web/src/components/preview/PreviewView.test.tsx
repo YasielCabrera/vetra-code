@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { EnvironmentId, ThreadId } from "@vetra-code/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -178,17 +179,16 @@ vi.mock("./PreviewChromeRow", () => ({
     onPickElement?: () => void;
     onPictureInPicture?: () => void;
     pictureInPicture?: boolean;
-    trailingActions?: {
-      props: { onNativePictureInPicture?: () => void };
-    };
+    trailingActions?: ReactNode;
   }) => {
     mocks.submittedUrl = props.onSubmit;
     mocks.toggleAnnotation = props.onPickElement ?? null;
     mocks.togglePictureInPicture = props.onPictureInPicture ?? null;
-    mocks.toggleNativePictureInPicture =
-      props.trailingActions?.props.onNativePictureInPicture ?? null;
     mocks.pictureInPicturePressed = props.pictureInPicture ?? false;
-    return null;
+    // Render the trailing actions rather than reaching into their props, so
+    // the PreviewMoreMenu mock below is what captures its own callback. Reading
+    // `trailingActions.props` only worked while it was a single element.
+    return <>{props.trailingActions}</>;
   },
 }));
 
@@ -204,6 +204,7 @@ vi.mock("./PreviewMoreMenu", () => ({
     return null;
   },
 }));
+vi.mock("./PreviewWalletPanel", () => ({ PreviewWalletChip: () => null }));
 vi.mock("./PreviewUnreachable", () => ({ PreviewUnreachable: () => null }));
 vi.mock("./ZoomIndicator", () => ({ ZoomIndicator: () => null }));
 vi.mock("./AgentBrowserCursor", () => ({ AgentBrowserCursor: () => null }));

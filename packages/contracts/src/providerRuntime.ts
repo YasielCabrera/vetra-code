@@ -322,6 +322,17 @@ export const ThreadTokenUsageSnapshot = Schema.Struct({
   toolUses: Schema.optional(NonNegativeInt),
   durationMs: Schema.optional(NonNegativeInt),
   compactsAutomatically: Schema.optional(Schema.Boolean),
+  /**
+   * Cumulative API-equivalent USD for this Vetra thread. Occupancy may shrink
+   * on compact; this figure must not. Omitted when the provider cannot price
+   * the thread (unpriced model, or no billable usage yet).
+   */
+  costUsd: Schema.optional(Schema.Number),
+  /**
+   * How `costUsd` was produced. `unpriced` is never stored: omit `costUsd`
+   * instead so the client can hide the row.
+   */
+  costSource: Schema.optional(Schema.Literals(["providerReported", "modelPriced"])),
 });
 export type ThreadTokenUsageSnapshot = typeof ThreadTokenUsageSnapshot.Type;
 
