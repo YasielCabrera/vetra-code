@@ -12,7 +12,15 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@vetra-studio/client-runtime/state/runtime";
-import { ChevronRight, Code2, Eye, FolderTree, Globe2, LoaderCircle } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ChevronRight,
+  Code2,
+  Eye,
+  FolderTree,
+  Globe2,
+  LoaderCircle,
+} from "lucide-react";
 import * as Schema from "effect/Schema";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -80,6 +88,8 @@ interface FilePreviewPanelProps {
 }
 
 const FILE_EXPLORER_STORAGE_KEY = "vetra.fileExplorerOpen";
+const FILE_EXPLORER_SIDE_STORAGE_KEY = "vetra.fileExplorerSide";
+const FileExplorerSide = Schema.Literals(["left", "right"]);
 const RENDER_MARKDOWN_STORAGE_KEY = "vetra.renderMarkdown";
 const FILE_SAVE_DEBOUNCE_MS = 500;
 const FILE_LINK_REVEAL_ATTRIBUTE = "data-file-link-reveal";
@@ -781,6 +791,12 @@ export default function FilePreviewPanel({
   const isImage = relativePath !== null && isWorkspaceImagePreviewPath(relativePath);
   const file = useProjectFileQuery(environmentId, cwd, relativePath, !isImage);
   const [explorerOpen, setExplorerOpen] = useState(initialExplorerOpen);
+  // Which side the tree sits on is a workspace-wide preference, like the collapsed state.
+  const [explorerSide, setExplorerSide] = useLocalStorage(
+    FILE_EXPLORER_SIDE_STORAGE_KEY,
+    "left",
+    FileExplorerSide,
+  );
   // Reading markdown rendered is a preference, not a property of one file. Keeping
   // it on the panel meant a thread switch dropped it and forced source back.
   const [renderMarkdownPreferred, setRenderMarkdownPreferred] = useLocalStorage(
@@ -810,6 +826,8 @@ export default function FilePreviewPanel({
     [projectName, relativePath],
   );
   const onFilePostRender = useFileLineReveal(relativePath, revealLine, revealRequestId);
+  const swapExplorerSideLabel =
+    explorerSide === "left" ? "Move file explorer right" : "Move file explorer left";
 
   useEffect(() => {
     const currentCrumb = breadcrumbRef.current?.querySelector<HTMLElement>(
@@ -947,6 +965,27 @@ export default function FilePreviewPanel({
               <TooltipPopup>Open file in preview browser</TooltipPopup>
             </Tooltip>
           ) : null}
+          {explorerOpen ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Toggle
+                    className="shrink-0"
+                    pressed={false}
+                    onPressedChange={() =>
+                      setExplorerSide((current) => (current === "left" ? "right" : "left"))
+                    }
+                    aria-label={swapExplorerSideLabel}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    <ArrowLeftRight className="size-3.5" />
+                  </Toggle>
+                }
+              />
+              <TooltipPopup>{swapExplorerSideLabel}</TooltipPopup>
+            </Tooltip>
+          ) : null}
           <Tooltip>
             <TooltipTrigger
               render={
@@ -1050,12 +1089,15 @@ export default function FilePreviewPanel({
           ) : null}
         </div>
         {explorerOpen || relativePath === null ? (
+          // Ordered with CSS rather than by moving the aside among its siblings:
+          // reordering children remounts the tree, which would drop its expanded
+          // folders and search on every swap.
           <aside
             className={cn(
               "flex min-h-0 shrink-0 bg-background",
-              relativePath
-                ? "w-[min(22rem,46%)] min-w-64 border-l border-border/60"
-                : "min-w-0 flex-1",
+              relativePath ? "w-[min(22rem,46%)] min-w-64 border-border/60" : "min-w-0 flex-1",
+              relativePath &&
+                (explorerSide === "left" ? "order-first border-r" : "order-last border-l"),
             )}
           >
             <FileBrowserPanel
