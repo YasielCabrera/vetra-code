@@ -5,6 +5,7 @@ import {
   openPullRequestLink,
   parseChangeRequestUrl,
   PullRequestLinkOpenError,
+  shouldOpenPullRequestExternally,
 } from "./openPullRequestLink";
 
 describe("openPullRequestLink", () => {
@@ -34,11 +35,22 @@ describe("openPullRequestLink", () => {
   });
 });
 
+describe("shouldOpenPullRequestExternally", () => {
+  it("uses the browser for command-click and control-click", () => {
+    expect(shouldOpenPullRequestExternally({ metaKey: true, ctrlKey: false })).toBe(true);
+    expect(shouldOpenPullRequestExternally({ metaKey: false, ctrlKey: true })).toBe(true);
+  });
+
+  it("keeps an unmodified click in the pull request view", () => {
+    expect(shouldOpenPullRequestExternally({ metaKey: false, ctrlKey: false })).toBe(false);
+  });
+});
+
 describe("parseChangeRequestUrl", () => {
   it("reads a GitHub pull request", () => {
     expect(parseChangeRequestUrl("https://github.com/VetraCode/VetraCode/pull/123")).toEqual({
       host: "github.com",
-      repository: "vetra-code/vetra-code",
+      repository: "vetracode/vetracode",
       number: 123,
     });
   });
@@ -53,7 +65,9 @@ describe("parseChangeRequestUrl", () => {
 
   it("reads a GitLab merge request, nested groups and all", () => {
     expect(
-      parseChangeRequestUrl("https://gitlab.com/vetra-code/platform/vetra/-/merge_requests/42"),
+      parseChangeRequestUrl(
+        "https://gitlab.com/vetra-code/platform/vetra-code/-/merge_requests/42",
+      ),
     ).toEqual({
       host: "gitlab.com",
       repository: "vetra-code/platform/vetra-code",
@@ -81,14 +95,16 @@ describe("parseChangeRequestUrl", () => {
 
   it("reads both Azure DevOps URL forms, keeping `_git` in the repository path", () => {
     expect(
-      parseChangeRequestUrl("https://dev.azure.com/acme/platform/_git/vetra/pullrequest/17"),
+      parseChangeRequestUrl("https://dev.azure.com/acme/platform/_git/vetra-code/pullrequest/17"),
     ).toEqual({
       host: "dev.azure.com",
       repository: "acme/platform/_git/vetra-code",
       number: 17,
     });
     expect(
-      parseChangeRequestUrl("https://acme.visualstudio.com/platform/_git/vetra/pullrequest/17"),
+      parseChangeRequestUrl(
+        "https://acme.visualstudio.com/platform/_git/vetra-code/pullrequest/17",
+      ),
     ).toEqual({
       host: "acme.visualstudio.com",
       repository: "platform/_git/vetra-code",
@@ -97,20 +113,20 @@ describe("parseChangeRequestUrl", () => {
   });
 
   it("survives trailing segments, a trailing slash and a query string", () => {
-    expect(parseChangeRequestUrl("https://github.com/vetra-code/vetra/pull/123/files?w=1")).toEqual(
-      {
-        host: "github.com",
-        repository: "vetra-code/vetra-code",
-        number: 123,
-      },
-    );
+    expect(
+      parseChangeRequestUrl("https://github.com/vetra-code/vetra-code/pull/123/files?w=1"),
+    ).toEqual({
+      host: "github.com",
+      repository: "vetra-code/vetra-code",
+      number: 123,
+    });
     expect(
       parseChangeRequestUrl("https://gitlab.com/team/project/-/merge_requests/42/diffs#note_1"),
     ).toEqual({ host: "gitlab.com", repository: "team/project", number: 42 });
     expect(
       parseChangeRequestUrl("https://bitbucket.org/team/repo/pull-requests/5/commits"),
     ).toEqual({ host: "bitbucket.org", repository: "team/repo", number: 5 });
-    expect(parseChangeRequestUrl("https://github.com/vetra-code/vetra/pull/123/")).toEqual({
+    expect(parseChangeRequestUrl("https://github.com/vetra-code/vetra-code/pull/123/")).toEqual({
       host: "github.com",
       repository: "vetra-code/vetra-code",
       number: 123,

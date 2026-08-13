@@ -41,3 +41,14 @@ connect to a different server and read or modify that environment's state.
 A pairing link authorizes a client to exchange its one-time token for a durable server session.
 Revoke credentials or sessions that are no longer trusted. Managed cloud execution will keep this
 typed authenticated connection seam while placing each server in its own isolated workspace.
+
+## Vetra Connect environment deregistration
+
+When Vetra Connect is configured, the account menu's **Vetra Connect** page lists environments
+registered to the signed-in account. **Deregister** revokes that environment's Connect access,
+removes any managed tunnel, and frees its host space. This is an account action and does not
+need a live connection to the environment.
+
+Until Vetra-owned Clerk and relay settings are present, that page stays hidden with the rest of
+Vetra Connect. Device-local connect and disconnect controls remain in **Settings** →
+**Connections**.

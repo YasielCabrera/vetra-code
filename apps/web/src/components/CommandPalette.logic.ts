@@ -188,7 +188,16 @@ export function buildProjectActionItems(input: {
 
 export type BuildThreadActionItemsThread = Pick<
   SidebarThreadSummary,
-  "archivedAt" | "branch" | "createdAt" | "environmentId" | "id" | "projectId" | "title"
+  | "archivedAt"
+  | "branch"
+  | "createdAt"
+  | "environmentId"
+  | "id"
+  | "modelSelection"
+  | "projectId"
+  | "session"
+  | "title"
+  | "worktreePath"
 > & {
   updatedAt: string;
   latestUserMessageAt?: string | null;
@@ -204,6 +213,8 @@ export function buildThreadActionItems<TThread extends BuildThreadActionItemsThr
   renderLeadingContent?: (thread: TThread) => ReactNode;
   /** Optional content rendered inline after the title text per-thread. */
   renderTrailingContent?: (thread: TThread) => ReactNode;
+  /** Optional rich description (e.g. favicon + workspace icons). Falls back to text. */
+  renderDescription?: (thread: TThread, meta: { projectTitle: string | undefined }) => ReactNode;
   getContentMatch?: (thread: TThread) => CommandPaletteThreadContentMatch | undefined;
   runThread: (thread: Pick<SidebarThreadSummary, "environmentId" | "id">) => Promise<void>;
   limit?: number;
@@ -232,6 +243,9 @@ export function buildThreadActionItems<TThread extends BuildThreadActionItemsThr
     const leadingContent = input.renderLeadingContent?.(thread);
     const trailingContent = input.renderTrailingContent?.(thread);
     const contentMatch = input.getContentMatch?.(thread);
+    const description = input.renderDescription
+      ? input.renderDescription(thread, { projectTitle })
+      : descriptionParts.join(` · `);
 
     return Object.assign(
       {
@@ -244,7 +258,7 @@ export function buildThreadActionItems<TThread extends BuildThreadActionItemsThr
           contentMatch?.snippet ?? ``,
         ],
         title: thread.title,
-        description: descriptionParts.join(` · `),
+        description,
         timestamp: formatRelativeTimeLabel(
           thread.latestUserMessageAt ?? thread.updatedAt ?? thread.createdAt,
         ),

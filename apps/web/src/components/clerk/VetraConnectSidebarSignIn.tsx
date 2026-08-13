@@ -1,9 +1,10 @@
 import { UserButton, useAuth } from "@clerk/react";
-import { LogInIcon, SmartphoneIcon } from "lucide-react";
+import { LogInIcon, ServerIcon, SmartphoneIcon } from "lucide-react";
 
 import { hasCloudPublicConfig } from "../../cloud/publicConfig";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 import { MobileClientsUserProfilePage } from "./MobileClientsUserProfilePage";
+import { VetraConnectUserProfilePage } from "./VetraConnectUserProfilePage";
 import { useVetraConnectAuthPrompt } from "./useVetraConnectAuthPrompt";
 
 export function VetraConnectSidebarSignIn() {
@@ -38,6 +39,13 @@ function ConfiguredVetraConnectSidebarAvatar() {
         url="mobile-clients"
       >
         <MobileClientsUserProfilePage />
+      </UserButton.UserProfilePage>
+      <UserButton.UserProfilePage
+        label="Vetra Connect"
+        labelIcon={<ServerIcon className="size-4" />}
+        url="vetra-connect"
+      >
+        <VetraConnectUserProfilePage />
       </UserButton.UserProfilePage>
     </UserButton>
   );
