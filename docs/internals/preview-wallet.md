@@ -137,8 +137,13 @@ the guest.
 
 The same popover calls the renderer `wallet.configure` surface for account and
 bundled-network selection. Account changes persist in the keystore and broadcast
-`accountsChanged`; network selections use the dependency-free `./networks`
-catalog and broadcast `chainChanged`. Custom RPC entry stays in Settings.
+`accountsChanged`; renaming an account updates only the label stored on that
+keystore entry, so pages do not see an `accountsChanged` event. Removing an
+account is a configure call (`removeAccount`) after the UI confirms; the next
+derived account uses max(derivationIndex)+1 so a hole in the middle is not
+filled with an address the wallet still holds. Network selections use the
+dependency-free `./networks` catalog and broadcast `chainChanged`. Custom RPC
+entry stays in Settings.
 
 ## Settings
 
@@ -180,4 +185,5 @@ preview that loads untrusted content and can auto-approve, so the honest move is
 to make the blast radius obvious rather than dress it up as a vault. A missing
 file is an empty wallet; a file that exists but cannot be decoded is surfaced as
 an error rather than silently replaced, because that would be data loss for an
-imported key.
+imported key. Account labels live on the keystore entries themselves, not in
+`settings.json`, so a rename survives a restart.

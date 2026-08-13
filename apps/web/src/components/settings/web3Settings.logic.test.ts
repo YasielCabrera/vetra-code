@@ -11,6 +11,8 @@ import {
   parseChainIdInput,
   parseRpcUrlInput,
   pendingRequestTitle,
+  removeAccountConfirmationMessage,
+  resolveAccountLabelCommit,
   shortenAddress,
 } from "./web3Settings.logic";
 
@@ -50,6 +52,48 @@ describe("shortenAddress", () => {
 
   it("leaves short values alone", () => {
     expect(shortenAddress("0x1234")).toBe("0x1234");
+  });
+});
+
+describe("removeAccountConfirmationMessage", () => {
+  it("asks a question so the confirm dialog can split title from body", () => {
+    expect(removeAccountConfirmationMessage({ label: "Preview account 4", address: ADDRESS })).toBe(
+      "Remove Preview account 4?\n0xf39F…2266 will be dropped from this test wallet. You can add another account later.",
+    );
+  });
+});
+
+describe("resolveAccountLabelCommit", () => {
+  it("commits a trimmed name that actually changed", () => {
+    expect(
+      resolveAccountLabelCommit({ label: "  Treasury  ", originalLabel: "Preview account 1" }),
+    ).toEqual({
+      action: "commit",
+      label: "Treasury",
+    });
+  });
+
+  it("rejects empty so the previous name stays", () => {
+    expect(resolveAccountLabelCommit({ label: "   ", originalLabel: "Preview account 1" })).toEqual(
+      {
+        action: "reject-empty",
+      },
+    );
+  });
+
+  it("skips a no-op so we do not write the keystore for a click-and-blur", () => {
+    expect(resolveAccountLabelCommit({ label: "Treasury", originalLabel: "Treasury" })).toEqual({
+      action: "noop",
+    });
+  });
+
+  it("rejects a name longer than the wallet will store", () => {
+    expect(
+      resolveAccountLabelCommit({
+        label: "T".repeat(121),
+        originalLabel: "Preview account 1",
+      }),
+    ).toEqual({ action: "reject-too-long" });
   });
 });
 

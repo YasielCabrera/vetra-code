@@ -65,6 +65,53 @@ export const deriveMnemonicAccounts = Effect.fn("Web3Signer.deriveMnemonicAccoun
   });
 });
 
+/**
+ * Next BIP-44 index to derive from the mnemonic. Uses max+1 so removing a
+ * middle account does not make "Add account" recreate an address the wallet
+ * still holds.
+ */
+export function nextMnemonicDerivationIndex(accounts: ReadonlyArray<Web3Account>): number {
+  let maxIndex = -1;
+  for (const account of accounts) {
+    if (account.derivationIndex !== null && account.derivationIndex > maxIndex) {
+      maxIndex = account.derivationIndex;
+    }
+  }
+  return maxIndex + 1;
+}
+
+/**
+ * Drop one account from a keystore. Imported keys that match the address leave
+ * with it. Returns `null` when the wallet does not hold that address.
+ */
+export function dropAccountFromKeystore(
+  keystore: Web3KeystoreFile,
+  address: string,
+): Web3KeystoreFile | null {
+  const wanted = address.toLowerCase();
+  const account = keystore.accounts.find((entry) => entry.address.toLowerCase() === wanted);
+  if (account === undefined) return null;
+
+  const accounts = keystore.accounts.filter((entry) => entry.address.toLowerCase() !== wanted);
+  const privateKeys =
+    account.source === "imported"
+      ? keystore.privateKeys.filter((privateKey) => {
+          try {
+            return localAccountFromPrivateKey(privateKey).address.toLowerCase() !== wanted;
+          } catch {
+            return true;
+          }
+        })
+      : keystore.privateKeys;
+
+  const selectedAddress =
+    keystore.selectedAddress !== null && keystore.selectedAddress.toLowerCase() === wanted
+      ? (accounts[0]?.address ?? null)
+      : keystore.selectedAddress;
+
+  return { ...keystore, accounts, privateKeys, selectedAddress };
+}
+
 export const describeImportedPrivateKey = Effect.fn("Web3Signer.describeImportedPrivateKey")(
   function* (privateKey: string, label: string) {
     return yield* Effect.try({

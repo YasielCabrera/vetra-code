@@ -97,9 +97,12 @@ chain, so test-node cheat codes (`anvil_setBalance`, `evm_mine`) work through
 
 The wallet chip and the Web3 settings page both let you choose which account
 `eth_accounts` returns first. The popover shows the active account, a copyable
-address, and the current network. Use **New account** to derive another throwaway
-account and make it active immediately. Settings also lists every account and
-lets you copy its address.
+address, and the current network. Rename it from the account options menu — new
+accounts start as **Preview account 1**, **Preview account 2**, and so on. Use
+**New account** to derive another throwaway account and make it active immediately.
+Settings lists every account so you can click a name to rename it, copy its
+address, or remove it (you'll be asked to confirm). The preview popover keeps
+rename and remove behind the account options menu, not as primary actions.
 
 _Connected sites_ lists origins you have granted account access. **Forget all**
 clears them, so the next `eth_requestAccounts` prompts again.
@@ -108,13 +111,13 @@ clears them, so the next `eth_requestAccounts` prompts again.
 
 Five tools, available when the wallet is enabled:
 
-| Tool                       | Use                                                                                                       |
-| -------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `preview_wallet_status`    | Accounts, active account, chain, whether the RPC answers, approval mode, pending count, connected origins |
-| `preview_wallet_configure` | Change approval mode, active account, chain/RPC; add a generated account; clear connect grants            |
-| `preview_wallet_requests`  | List parked requests with decoded summaries                                                               |
-| `preview_wallet_approve`   | Approve one by id                                                                                         |
-| `preview_wallet_reject`    | Reject one by id, with a chosen EIP-1193 code                                                             |
+| Tool                       | Use                                                                                                            |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `preview_wallet_status`    | Accounts, active account, chain, whether the RPC answers, approval mode, pending count, connected origins      |
+| `preview_wallet_configure` | Change approval mode, active account, account label, chain/RPC; add or remove an account; clear connect grants |
+| `preview_wallet_requests`  | List parked requests with decoded summaries                                                                    |
+| `preview_wallet_approve`   | Approve one by id                                                                                              |
+| `preview_wallet_reject`    | Reject one by id, with a chosen EIP-1193 code                                                                  |
 
 A typical rejection-path test:
 
@@ -127,8 +130,8 @@ preview_snapshot     <assert the dapp showed its rejection state>
 ```
 
 Importing a private key is deliberately **not** available to agents — only
-through Settings → Web3, where the warning is visible. Agents can generate
-throwaway accounts, which is all an automated test needs.
+through Settings → Web3, where the warning is visible. Agents can generate or
+remove throwaway accounts, which is all an automated test needs.
 
 ## Where the keys live
 

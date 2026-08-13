@@ -9,7 +9,9 @@ import type { Web3Account, Web3Address, Web3Hex, Web3KeystoreFile } from "./sche
 import {
   deriveMnemonicAccounts,
   describeImportedPrivateKey,
+  dropAccountFromKeystore,
   generateWalletMnemonic,
+  nextMnemonicDerivationIndex,
   normalizePrivateKey,
   resolveSigner,
   sendTransaction,
@@ -98,6 +100,80 @@ describe("deriveMnemonicAccounts", () => {
       }
     }),
   );
+});
+
+describe("nextMnemonicDerivationIndex", () => {
+  it("starts at zero when nothing has been derived yet", () => {
+    expect(nextMnemonicDerivationIndex([])).toBe(0);
+    expect(
+      nextMnemonicDerivationIndex([
+        {
+          address: IMPORTED_ADDRESS as Web3Address,
+          label: "Imported",
+          source: "imported",
+          derivationIndex: null,
+        },
+      ]),
+    ).toBe(0);
+  });
+
+  it("uses max+1 so a hole in the middle is not filled with a duplicate", () => {
+    expect(
+      nextMnemonicDerivationIndex([derivedAccount(0, ACCOUNT_0), derivedAccount(2, ACCOUNT_1)]),
+    ).toBe(3);
+  });
+});
+
+describe("dropAccountFromKeystore", () => {
+  const generated = keystoreWith({
+    mnemonic: TEST_MNEMONIC,
+    accounts: [derivedAccount(0, ACCOUNT_0), derivedAccount(1, ACCOUNT_1)],
+  });
+
+  it("drops a generated account and moves the selection when it was active", () => {
+    const next = dropAccountFromKeystore(
+      { ...generated, selectedAddress: ACCOUNT_0 as Web3Address },
+      ACCOUNT_0,
+    );
+    expect(next?.accounts.map((account) => account.address)).toEqual([ACCOUNT_1]);
+    expect(next?.selectedAddress).toBe(ACCOUNT_1);
+    expect(next?.mnemonic).toBe(TEST_MNEMONIC);
+  });
+
+  it("leaves the selection alone when a different account is removed", () => {
+    const next = dropAccountFromKeystore(
+      { ...generated, selectedAddress: ACCOUNT_0 as Web3Address },
+      ACCOUNT_1,
+    );
+    expect(next?.selectedAddress).toBe(ACCOUNT_0);
+    expect(next?.accounts).toHaveLength(1);
+  });
+
+  it("drops the matching imported private key with the account", () => {
+    const next = dropAccountFromKeystore(
+      keystoreWith({
+        privateKeys: [IMPORTED_PRIVATE_KEY as Web3Hex],
+        accounts: [
+          {
+            address: IMPORTED_ADDRESS as Web3Address,
+            label: "Imported",
+            source: "imported",
+            derivationIndex: null,
+          },
+        ],
+      }),
+      IMPORTED_ADDRESS,
+    );
+    expect(next?.accounts).toEqual([]);
+    expect(next?.privateKeys).toEqual([]);
+    expect(next?.selectedAddress).toBeNull();
+  });
+
+  it("returns null for an address the wallet does not hold", () => {
+    expect(
+      dropAccountFromKeystore(generated, "0x0000000000000000000000000000000000000001"),
+    ).toBeNull();
+  });
 });
 
 describe("describeImportedPrivateKey", () => {

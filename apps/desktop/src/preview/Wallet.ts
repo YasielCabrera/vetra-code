@@ -65,7 +65,9 @@ import {
 } from "@vetra-code/web3/schema";
 import {
   deriveMnemonicAccounts,
+  dropAccountFromKeystore,
   generateWalletMnemonic,
+  nextMnemonicDerivationIndex,
   resolveSigner,
   sendTransaction,
   signPersonalMessage,
@@ -950,16 +952,35 @@ export const make = Effect.gen(function* PreviewWalletMake() {
             mnemonic = generateWalletMnemonic();
             keystore = { ...keystore, mnemonic };
           }
-          const derivedCount =
-            keystore.accounts.filter((account) => account.derivationIndex !== null).length + 1;
-          const derived = yield* deriveMnemonicAccounts(mnemonic, derivedCount);
-          const added = derived[derivedCount - 1];
+          const nextIndex = nextMnemonicDerivationIndex(keystore.accounts);
+          const derived = yield* deriveMnemonicAccounts(mnemonic, nextIndex + 1);
+          const added = derived[nextIndex];
           if (added !== undefined) {
             keystore = {
               ...keystore,
               accounts: [...keystore.accounts, added],
               selectedAddress: added.address,
             };
+          }
+        }
+
+        if (input.removeAccount !== undefined) {
+          const next = dropAccountFromKeystore(keystore, input.removeAccount);
+          if (next === null) return yield* new PreviewWalletNoAccountError();
+          keystore = next;
+        }
+
+        if (input.accountLabel !== undefined) {
+          const wanted = input.accountLabel.address.toLowerCase();
+          const index = keystore.accounts.findIndex(
+            (account) => account.address.toLowerCase() === wanted,
+          );
+          if (index < 0) return yield* new PreviewWalletNoAccountError();
+          const current = keystore.accounts[index]!;
+          if (current.label !== input.accountLabel.label) {
+            const accounts = keystore.accounts.slice();
+            accounts[index] = { ...current, label: input.accountLabel.label };
+            keystore = { ...keystore, accounts };
           }
         }
 
@@ -984,7 +1005,11 @@ export const make = Effect.gen(function* PreviewWalletMake() {
         if (keystore !== state.keystore) {
           yield* persistKeystore(keystore);
           yield* SynchronizedRef.update(stateRef, (current) => ({ ...current, keystore }));
-          broadcastAccountsChanged(keystore);
+          // Labels are display-only. Firing accountsChanged for a rename makes
+          // dapps refetch as if the connected account set changed.
+          if (keystoreAffectsPageAccounts(state.keystore, keystore)) {
+            broadcastAccountsChanged(keystore);
+          }
         }
 
         const settings: Web3WalletSettings = {
@@ -1115,6 +1140,16 @@ export const make = Effect.gen(function* PreviewWalletMake() {
 }).pipe(Effect.withSpan("PreviewWallet.make"));
 
 export const layer = Layer.effect(PreviewWallet, make);
+
+/** Pages only observe addresses and grants, not the labels shown in our UI. */
+function keystoreAffectsPageAccounts(previous: Web3KeystoreFile, next: Web3KeystoreFile): boolean {
+  if (previous.selectedAddress !== next.selectedAddress) return true;
+  if (previous.connectedOrigins.join("\0") !== next.connectedOrigins.join("\0")) return true;
+  if (previous.accounts.length !== next.accounts.length) return true;
+  return previous.accounts.some(
+    (account, index) => account.address !== next.accounts[index]?.address,
+  );
+}
 
 const DISABLED_STATUS: Web3WalletStatus = {
   enabled: false,

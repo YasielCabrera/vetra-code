@@ -17,6 +17,44 @@ describe("DesktopPreviewWalletConfigureInputSchema", () => {
     expect(decoded.tabId).toBe("");
     expect(decoded.input.generateAccount).toBe(true);
   });
+
+  it("accepts an account address to remove", () => {
+    const decoded = decode({
+      tabId: "",
+      input: { removeAccount: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" },
+    });
+    expect(decoded.input.removeAccount).toBe("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
+  });
+
+  it("accepts a renamed account label", () => {
+    const decoded = decode({
+      tabId: "",
+      input: {
+        accountLabel: {
+          address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          label: "  Treasury  ",
+        },
+      },
+    });
+    expect(decoded.input.accountLabel).toEqual({
+      address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      label: "Treasury",
+    });
+  });
+
+  it("rejects an empty account label", () => {
+    expect(() =>
+      decode({
+        tabId: "",
+        input: {
+          accountLabel: {
+            address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            label: "   ",
+          },
+        },
+      }),
+    ).toThrow();
+  });
 });
 
 describe("DesktopEnvironmentBootstrapSchema", () => {

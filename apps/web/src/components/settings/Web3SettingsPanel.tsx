@@ -11,17 +11,20 @@ import {
   type PreviewAutomationWalletConfigureInput,
 } from "@vetra-code/contracts";
 import type { Web3Account, Web3ApprovalMode } from "@vetra-code/web3/schema";
-import { CheckIcon, CopyIcon, PlusIcon, TriangleAlertIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
+import { ensureLocalApi } from "../../localApi";
 import { previewBridge } from "../preview/previewBridge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
 import { toastManager } from "../ui/toast";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { AccountIdenticon } from "./AccountIdenticon";
+import { AccountLabelEditor } from "./AccountLabelEditor";
 import {
   SettingResetButton,
   SettingsPageContainer,
@@ -34,6 +37,7 @@ import {
   describeWalletChain,
   parseChainIdInput,
   parseRpcUrlInput,
+  removeAccountConfirmationMessage,
   shortenAddress,
 } from "./web3Settings.logic";
 import { useWalletStatus } from "./useWalletStatus";
@@ -163,6 +167,28 @@ export function Web3SettingsPanel() {
     [runWalletConfigure],
   );
 
+  const renameAccount = useCallback(
+    async (address: string, nextLabel: string) => {
+      await runWalletConfigure(
+        { accountLabel: { address, label: nextLabel } },
+        "Could not rename the account",
+      );
+    },
+    [runWalletConfigure],
+  );
+
+  const removeAccount = useCallback(
+    async (account: Web3Account) => {
+      const confirmed = await ensureLocalApi().dialogs.confirm(
+        removeAccountConfirmationMessage(account),
+        { variant: "destructive" },
+      );
+      if (!confirmed) return;
+      await runWalletConfigure({ removeAccount: account.address }, "Could not remove the account");
+    },
+    [runWalletConfigure],
+  );
+
   const chainSummary = describeWalletChain(status);
 
   return (
@@ -268,7 +294,7 @@ export function Web3SettingsPanel() {
           {...searchableSetting("web3-wallet-accounts")}
           description={
             bridge
-              ? "Generated when the wallet is first enabled. The active account is returned first."
+              ? "Generated when the wallet is first enabled. Click a name to rename it. The active account is returned first."
               : "Accounts are only available in the desktop app, where the browser preview runs."
           }
           control={
@@ -295,7 +321,13 @@ export function Web3SettingsPanel() {
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <AccountIdenticon address={account.address} size={20} />
-                    <span className="truncate text-xs font-medium">{account.label}</span>
+                    <AccountLabelEditor
+                      address={account.address}
+                      label={account.label}
+                      disabled={!bridge || !wallet.enabled}
+                      className="text-xs font-medium"
+                      onCommit={(address, nextLabel) => void renameAccount(address, nextLabel)}
+                    />
                     {account.source === "imported" ? (
                       <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">
                         imported
@@ -318,6 +350,23 @@ export function Web3SettingsPanel() {
                         Make active
                       </Button>
                     )}
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-muted-foreground hover:text-destructive"
+                            aria-label={`Remove ${account.label}`}
+                            disabled={!bridge || !wallet.enabled}
+                            onClick={() => void removeAccount(account)}
+                          />
+                        }
+                      >
+                        <Trash2Icon />
+                      </TooltipTrigger>
+                      <TooltipPopup>Remove account</TooltipPopup>
+                    </Tooltip>
                   </div>
                 </div>
               );

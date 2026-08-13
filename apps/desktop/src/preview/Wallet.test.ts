@@ -722,6 +722,22 @@ describe("configure", () => {
     ),
   );
 
+  it.effect("keeps custom labels when adding another generated account", () =>
+    withWallet({}, (wallet) =>
+      Effect.gen(function* () {
+        const before = yield* wallet.status;
+        yield* wallet.configure({
+          accountLabel: { address: before.accounts[0]!.address, label: "Deployer" },
+        });
+
+        const after = yield* wallet.configure({ generateAccount: true });
+
+        expect(after.accounts[0]?.label).toBe("Deployer");
+        expect(after.accounts.at(-1)?.label).toBe(`Preview account ${after.accounts.length}`);
+      }),
+    ),
+  );
+
   it.effect("creates a mnemonic and first account when the keystore is still empty", () =>
     withWallet({ settings: { enabled: false } }, (wallet) =>
       Effect.gen(function* () {
@@ -749,6 +765,56 @@ describe("configure", () => {
     ),
   );
 
+  it.effect("removes an account and makes another active when it was selected", () =>
+    withWallet({ settings: { autoConnectLoopback: true } }, (wallet) =>
+      Effect.gen(function* () {
+        const before = yield* wallet.status;
+        const removed = before.accounts[0]!;
+        const remaining = before.accounts[1]!;
+
+        const after = yield* wallet.configure({ removeAccount: removed.address });
+        yield* connect(wallet);
+
+        expect(after.accounts.map((account) => account.address)).not.toContain(removed.address);
+        expect(after.selectedAddress).toBe(remaining.address);
+        const accounts = (yield* request(wallet, "eth_accounts")) as ReadonlyArray<string>;
+        expect(accounts[0]).toBe(remaining.address);
+        expect(accounts).not.toContain(removed.address);
+      }),
+    ),
+  );
+
+  it.effect("does not recreate a removed middle account on the next generate", () =>
+    withWallet({}, (wallet) =>
+      Effect.gen(function* () {
+        const before = yield* wallet.status;
+        const middle = before.accounts[1]!;
+        yield* wallet.configure({ removeAccount: middle.address });
+        const after = yield* wallet.configure({ generateAccount: true });
+
+        expect(after.accounts.map((account) => account.address)).not.toContain(middle.address);
+        expect(new Set(after.accounts.map((account) => account.address)).size).toBe(
+          after.accounts.length,
+        );
+      }),
+    ),
+  );
+
+  it.effect("refuses to remove an account the wallet does not hold", () =>
+    withWallet({}, (wallet) =>
+      Effect.gen(function* () {
+        const result = yield* wallet
+          .configure({ removeAccount: "0x0000000000000000000000000000000000000001" })
+          .pipe(Effect.result);
+
+        expect(result._tag).toBe("Failure");
+        if (result._tag === "Failure") {
+          expect(result.failure._tag).toBe("PreviewWalletNoAccountError");
+        }
+      }),
+    ),
+  );
+
   it.effect("refuses an account the wallet does not hold", () =>
     withWallet({}, (wallet) =>
       Effect.gen(function* () {
@@ -762,6 +828,79 @@ describe("configure", () => {
         }
       }),
     ),
+  );
+
+  it.effect("renames an account without changing which one is active", () =>
+    withWallet({}, (wallet) =>
+      Effect.gen(function* () {
+        const before = yield* wallet.status;
+        const second = before.accounts[1]!;
+
+        const after = yield* wallet.configure({
+          accountLabel: { address: second.address, label: "Treasury" },
+        });
+
+        expect(after.selectedAddress).toBe(before.selectedAddress);
+        expect(after.accounts[1]?.label).toBe("Treasury");
+        expect(after.accounts[0]?.label).toBe(before.accounts[0]?.label);
+      }),
+    ),
+  );
+
+  it.effect("refuses to rename an account the wallet does not hold", () =>
+    withWallet({}, (wallet) =>
+      Effect.gen(function* () {
+        const result = yield* wallet
+          .configure({
+            accountLabel: {
+              address: "0x0000000000000000000000000000000000000001",
+              label: "Ghost",
+            },
+          })
+          .pipe(Effect.result);
+
+        expect(result._tag).toBe("Failure");
+        if (result._tag === "Failure") {
+          expect(result.failure._tag).toBe("PreviewWalletNoAccountError");
+        }
+      }),
+    ),
+  );
+
+  it.effect("persists a renamed label across a restart", () =>
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const stateDir = yield* fileSystem.makeTempDirectoryScoped({
+        prefix: "vetra-wallet-rename-",
+      });
+      const serverSettingsPath = path.join(stateDir, "settings.json");
+      yield* fileSystem.writeFileString(serverSettingsPath, settingsJson({}));
+
+      const layer = Layer.mergeAll(
+        Layer.succeed(
+          DesktopEnvironment.DesktopEnvironment,
+          DesktopEnvironment.DesktopEnvironment.of({
+            serverSettingsPath,
+            previewWalletsDir: path.join(stateDir, "preview-wallets"),
+            path,
+          } as DesktopEnvironment.DesktopEnvironment["Service"]),
+        ),
+        rpcLayer(ANVIL_RESPONDERS),
+      );
+
+      const first = yield* PreviewWallet.make.pipe(Effect.provide(layer));
+      const firstStatus = yield* first.status;
+      const renamed = yield* first.configure({
+        accountLabel: { address: firstStatus.accounts[0]!.address, label: "Deployer" },
+      });
+
+      const second = yield* PreviewWallet.make.pipe(Effect.provide(layer));
+      const secondStatus = yield* second.status;
+
+      expect(secondStatus.accounts[0]?.label).toBe("Deployer");
+      expect(secondStatus.accounts[0]?.address).toBe(renamed.accounts[0]?.address);
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 
   it.effect("clears connect grants so the next request prompts again", () =>

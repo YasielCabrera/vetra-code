@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 import {
+  WEB3_ACCOUNT_LABEL_MAX_LENGTH,
   Web3Address,
   Web3ApprovalMode,
   Web3ChainId,
@@ -582,10 +583,10 @@ export type PreviewAutomationRecordingArtifact = typeof PreviewAutomationRecordi
 /**
  * Configure the preview wallet.
  *
- * Importing a private key is deliberately not exposed here. Generating a fresh
- * throwaway account is all an automated test needs, and routing real key
- * material through a tool call would put it in provider transcripts. Imports
- * stay in Settings > Web3, where a human is looking at the warning.
+ * Importing a private key is deliberately not exposed here. Generating or
+ * removing a throwaway account is all an automated test needs, and routing
+ * real key material through a tool call would put it in provider transcripts.
+ * Imports stay in Settings > Web3, where a human is looking at the warning.
  */
 export const PreviewAutomationWalletConfigureInput = Schema.Struct({
   ...PreviewAutomationTabTargetFields,
@@ -603,6 +604,21 @@ export const PreviewAutomationWalletConfigureInput = Schema.Struct({
       description: "Account to report first from eth_accounts. Must already exist in the wallet.",
     }),
   ).annotate({ description: "Account to make active." }),
+  accountLabel: Schema.optional(
+    Schema.Struct({
+      address: Web3Address.annotate({
+        description: "Account to rename. Must already exist in the wallet.",
+      }),
+      label: TrimmedNonEmptyString.check(
+        Schema.isMaxLength(WEB3_ACCOUNT_LABEL_MAX_LENGTH),
+      ).annotate({
+        description: "Human-readable label shown in the wallet UI.",
+      }),
+    }),
+  ).annotate({
+    description:
+      "Rename an existing account. Does not change which account is active or what pages see.",
+  }),
   chainId: Schema.optional(
     Schema.NullOr(Web3ChainId).annotate({
       description: "Decimal chain id to report to pages. Null clears the override.",
@@ -618,6 +634,14 @@ export const PreviewAutomationWalletConfigureInput = Schema.Struct({
       description: "Derive one more throwaway account from the wallet mnemonic and make it active.",
     }),
   ).annotate({ description: "Add a generated test account." }),
+  removeAccount: Schema.optional(
+    Web3Address.annotate({
+      description: "Account to drop from the wallet. Must already exist.",
+    }),
+  ).annotate({
+    description:
+      "Remove a test account. If it was active, another remaining account becomes active.",
+  }),
   clearConnectedOrigins: Schema.optional(
     Schema.Boolean.annotate({
       description:

@@ -2,7 +2,11 @@
  * Pure helpers for Web3 wallet UI (settings and the preview popover), split
  * out so they can be unit tested without rendering.
  */
-import type { Web3ApprovalMode, Web3WalletStatus } from "@vetra-code/web3/schema";
+import {
+  WEB3_ACCOUNT_LABEL_MAX_LENGTH,
+  type Web3ApprovalMode,
+  type Web3WalletStatus,
+} from "@vetra-code/web3/schema";
 
 export const APPROVAL_MODE_OPTIONS: ReadonlyArray<{
   readonly value: Web3ApprovalMode;
@@ -15,6 +19,37 @@ export const APPROVAL_MODE_OPTIONS: ReadonlyArray<{
 
 export function shortenAddress(address: string): string {
   return address.length <= 12 ? address : `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+/** Confirm-dialog copy for dropping one preview-wallet account. */
+export function removeAccountConfirmationMessage(account: {
+  readonly label: string;
+  readonly address: string;
+}): string {
+  return [
+    `Remove ${account.label}?`,
+    `${shortenAddress(account.address)} will be dropped from this test wallet. You can add another account later.`,
+  ].join("\n");
+}
+
+/**
+ * Click-to-edit commit rule for account names: trim, reject empty, skip when
+ * nothing changed. The input's maxLength is the UX cap; this still guards a
+ * paste that somehow overshoots.
+ */
+export function resolveAccountLabelCommit(input: {
+  readonly label: string;
+  readonly originalLabel: string;
+}):
+  | { readonly action: "commit"; readonly label: string }
+  | { readonly action: "reject-empty" }
+  | { readonly action: "reject-too-long" }
+  | { readonly action: "noop" } {
+  const trimmed = input.label.trim();
+  if (trimmed.length === 0) return { action: "reject-empty" };
+  if (trimmed.length > WEB3_ACCOUNT_LABEL_MAX_LENGTH) return { action: "reject-too-long" };
+  if (trimmed === input.originalLabel) return { action: "noop" };
+  return { action: "commit", label: trimmed };
 }
 
 export type ParsedSetting<A> =

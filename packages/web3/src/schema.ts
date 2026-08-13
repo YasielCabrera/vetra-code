@@ -44,9 +44,12 @@ export const WEB3_ACCOUNT_SOURCES = ["generated", "imported"] as const;
 export const Web3AccountSource = Schema.Literals(WEB3_ACCOUNT_SOURCES);
 export type Web3AccountSource = typeof Web3AccountSource.Type;
 
+/** Display names in the wallet UI; long enough for a sentence, short enough for a chip. */
+export const WEB3_ACCOUNT_LABEL_MAX_LENGTH = 120;
+
 export const Web3Account = Schema.Struct({
   address: Web3Address.annotate({ description: "Checksummed 0x-prefixed account address." }),
-  label: Trimmed.check(Schema.isMaxLength(120)).annotate({
+  label: Trimmed.check(Schema.isMaxLength(WEB3_ACCOUNT_LABEL_MAX_LENGTH)).annotate({
     description: "Human-readable label shown in the wallet UI.",
   }),
   source: Web3AccountSource.annotate({

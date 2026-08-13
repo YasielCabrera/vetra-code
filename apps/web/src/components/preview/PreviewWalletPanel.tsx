@@ -14,21 +14,35 @@ import {
   type Web3Account,
   type Web3PendingRequest,
 } from "@vetra-code/web3/schema";
-import { CheckIcon, CopyIcon, PlusIcon, TriangleAlertIcon, WalletIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  CopyIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+  WalletIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { acquireHostedBrowserPointerLock } from "~/browser/hostedBrowserPointerLock";
 import { cn } from "~/lib/utils";
 import { useUpdatePrimarySettings } from "../../hooks/useSettings";
+import { ensureLocalApi } from "../../localApi";
 import { AccountIdenticon } from "../settings/AccountIdenticon";
+import { AccountLabelEditor } from "../settings/AccountLabelEditor";
 import { getWalletStatus, useWalletStatus } from "../settings/useWalletStatus";
 import {
   networkSwatchClass,
   originHostname,
   pendingRequestTitle,
+  removeAccountConfirmationMessage,
   shortenAddress,
 } from "../settings/web3Settings.logic";
 import { Button } from "../ui/button";
+import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { Popover, PopoverPopup, PopoverTitle, PopoverTrigger } from "../ui/popover";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { toastManager } from "../ui/toast";
@@ -88,18 +102,16 @@ function SelectedAccountAvatar({
 function AccountMenu({
   accounts,
   selectedAddress,
-  activeLabel,
   disabled,
-  triggerClassName,
   onSelect,
 }: {
   readonly accounts: readonly Web3Account[];
   readonly selectedAddress: string | null;
-  readonly activeLabel: string;
   readonly disabled: boolean;
-  readonly triggerClassName: string;
   readonly onSelect: (address: string) => void;
 }) {
+  const selected = accounts.find((account) => account.address === selectedAddress);
+
   return (
     <Select
       value={selectedAddress ?? "no-account"}
@@ -110,12 +122,17 @@ function AccountMenu({
     >
       <SelectTrigger
         variant="ghost"
-        size="sm"
-        className={triggerClassName}
-        aria-label="Active preview wallet account"
+        size="xs"
+        className="h-7 w-auto min-w-0 max-w-[14rem] justify-start gap-1 px-1.5 font-medium text-foreground"
+        aria-label="Switch preview wallet account"
         disabled={disabled}
+        icon={<ChevronDownIcon className="size-3.5 opacity-70" />}
       >
-        <SelectValue>{selectedAddress === null ? "No account" : activeLabel}</SelectValue>
+        {selected === undefined ? (
+          <SelectValue>No account</SelectValue>
+        ) : (
+          <span className="truncate">{selected.label}</span>
+        )}
       </SelectTrigger>
       <SelectPopup alignItemWithTrigger={false} matchTriggerWidth={false}>
         {accounts.length === 0 ? (
@@ -139,6 +156,104 @@ function AccountMenu({
         )}
       </SelectPopup>
     </Select>
+  );
+}
+
+function AccountOverflowMenu({
+  disabled,
+  onRename,
+  onRemove,
+}: {
+  readonly disabled: boolean;
+  readonly onRename: () => void;
+  readonly onRemove: () => void;
+}) {
+  return (
+    <Menu modal={false}>
+      <MenuTrigger
+        disabled={disabled}
+        render={
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="size-6 shrink-0"
+            aria-label="Account options"
+            disabled={disabled}
+          />
+        }
+      >
+        <MoreHorizontalIcon aria-hidden className="size-3.5" />
+      </MenuTrigger>
+      <MenuPopup align="end" className="w-44">
+        <MenuItem onClick={onRename}>
+          <PencilIcon aria-hidden />
+          Rename account
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem variant="destructive" onClick={onRemove}>
+          <Trash2Icon aria-hidden />
+          Remove account
+        </MenuItem>
+      </MenuPopup>
+    </Menu>
+  );
+}
+
+function ActiveAccountRow({
+  accounts,
+  activeAccount,
+  selectedAddress,
+  disabled,
+  renaming,
+  align,
+  onSelect,
+  onStartRename,
+  onFinishRename,
+  onCommitLabel,
+  onRemove,
+}: {
+  readonly accounts: readonly Web3Account[];
+  readonly activeAccount: Web3Account | undefined;
+  readonly selectedAddress: string | null;
+  readonly disabled: boolean;
+  readonly renaming: boolean;
+  readonly align: "center" | "start";
+  readonly onSelect: (address: string) => void;
+  readonly onStartRename: () => void;
+  readonly onFinishRename: () => void;
+  readonly onCommitLabel: (address: string, nextLabel: string) => void;
+  readonly onRemove: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex max-w-full items-center gap-0.5",
+        align === "center" ? "justify-center" : "min-w-0",
+      )}
+    >
+      {renaming && activeAccount !== undefined ? (
+        <AccountLabelEditor
+          key={activeAccount.address}
+          address={activeAccount.address}
+          label={activeAccount.label}
+          disabled={disabled}
+          defaultEditing
+          className={cn("font-medium", align === "center" && "text-center")}
+          onCommit={onCommitLabel}
+          onEditingEnd={onFinishRename}
+        />
+      ) : (
+        <AccountMenu
+          accounts={accounts}
+          selectedAddress={selectedAddress}
+          disabled={disabled}
+          onSelect={onSelect}
+        />
+      )}
+      {activeAccount === undefined ? null : (
+        <AccountOverflowMenu disabled={disabled} onRename={onStartRename} onRemove={onRemove} />
+      )}
+    </div>
   );
 }
 
@@ -227,6 +342,7 @@ export function PreviewWalletChip() {
   const updateSettings = useUpdatePrimarySettings();
   const bridge = previewBridge?.wallet ?? null;
   const [open, setOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const previousPendingKey = useRef("");
   const pointerInsidePopup = useRef(false);
@@ -250,6 +366,13 @@ export function PreviewWalletChip() {
       return;
     }
     return acquireHostedBrowserPointerLock();
+  }, [open]);
+
+  // Clicking the guest still moves focus out of the renderer without producing
+  // the outside press Base UI uses to dismiss a popover. Ignore blur while the
+  // pointer is on the popover itself; that is the overlapping-webview case.
+  useEffect(() => {
+    if (!open) setRenaming(false);
   }, [open]);
 
   // Clicking the guest still moves focus out of the renderer without producing
@@ -286,6 +409,23 @@ export function PreviewWalletChip() {
     [bridge, busyAction, refresh],
   );
 
+  const confirmRemoveAccount = useCallback(
+    async (account: Web3Account) => {
+      setOpen(false);
+      const confirmed = await ensureLocalApi().dialogs.confirm(
+        removeAccountConfirmationMessage(account),
+        { variant: "destructive" },
+      );
+      if (!confirmed) return;
+      await configure(
+        `remove:${account.address}`,
+        { removeAccount: account.address },
+        "Could not remove the account",
+      );
+    },
+    [configure],
+  );
+
   const handleRequestResolved = useCallback(
     (completed: boolean) => {
       if (completed) setOpen(false);
@@ -319,6 +459,30 @@ export function PreviewWalletChip() {
     pendingCount > 0
       ? `Preview wallet, ${pendingCount} request${pendingCount === 1 ? "" : "s"} awaiting approval`
       : "Preview wallet";
+  const accountRow = {
+    accounts: status.accounts,
+    activeAccount,
+    selectedAddress: status.selectedAddress,
+    disabled: controlsDisabled,
+    renaming,
+    onSelect: (address: string) =>
+      void configure(
+        `account:${address}`,
+        { selectedAddress: address },
+        "Could not switch account",
+      ),
+    onStartRename: () => setRenaming(true),
+    onFinishRename: () => setRenaming(false),
+    onCommitLabel: (address: string, nextLabel: string) =>
+      void configure(
+        `label:${address}`,
+        { accountLabel: { address, label: nextLabel } },
+        "Could not rename account",
+      ),
+    onRemove: () => {
+      if (activeAccount !== undefined) void confirmRemoveAccount(activeAccount);
+    },
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -455,20 +619,7 @@ export function PreviewWalletChip() {
                 size={48}
                 iconClassName="size-5 text-muted-foreground"
               />
-              <AccountMenu
-                accounts={status.accounts}
-                selectedAddress={status.selectedAddress}
-                activeLabel={activeAccount?.label ?? "Account"}
-                disabled={controlsDisabled}
-                triggerClassName="h-auto max-w-full px-2 py-0.5 font-medium"
-                onSelect={(address) =>
-                  void configure(
-                    `account:${address}`,
-                    { selectedAddress: address },
-                    "Could not switch account",
-                  )
-                }
-              />
+              <ActiveAccountRow {...accountRow} align="center" />
               {status.selectedAddress === null ? null : (
                 <CopyAddressButton address={status.selectedAddress} />
               )}
@@ -497,20 +648,7 @@ export function PreviewWalletChip() {
                 iconClassName="size-3.5 text-muted-foreground"
               />
               <div className="flex min-w-0 flex-1 flex-col">
-                <AccountMenu
-                  accounts={status.accounts}
-                  selectedAddress={status.selectedAddress}
-                  activeLabel={activeAccount?.label ?? "Account"}
-                  disabled={controlsDisabled}
-                  triggerClassName="h-6 max-w-full justify-start px-1 font-medium"
-                  onSelect={(address) =>
-                    void configure(
-                      `account:${address}`,
-                      { selectedAddress: address },
-                      "Could not switch account",
-                    )
-                  }
-                />
+                <ActiveAccountRow {...accountRow} align="start" />
                 {status.selectedAddress === null ? null : (
                   <CopyAddressButton address={status.selectedAddress} />
                 )}
