@@ -50,6 +50,7 @@ import { formatShortTimestamp } from "../timestampFormat";
 import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
 import { DiffStatLabel } from "./chat/DiffStatLabel";
 import { AnnotatableCodeView, type AnnotatableCodeViewHandle } from "./diffs/AnnotatableCodeView";
+import { DiffFileCountBadge } from "./diffs/DiffFileCountBadge";
 import { DiffFileTreePanel } from "./diffs/DiffFileTreePanel";
 import {
   DIFF_FILE_TREE_DEFAULT_WIDTH,
@@ -748,14 +749,17 @@ export default function DiffPanel({
           </div>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]">
+      <div className="flex h-8 shrink-0 items-center gap-1 sm:h-7 [-webkit-app-region:no-drag]">
         {codeViewFiles.length > 0 && (
-          <DiffStatLabel
-            additions={diffLineStat.additions}
-            deletions={diffLineStat.deletions}
-            className="mr-1 text-[11px]"
-            layout="inline"
-          />
+          <>
+            <DiffFileCountBadge count={codeViewFiles.length} truncated={isSelectedPatchTruncated} />
+            <DiffStatLabel
+              additions={diffLineStat.additions}
+              deletions={diffLineStat.deletions}
+              className="mr-1 text-[11px] leading-none"
+              layout="inline"
+            />
+          </>
         )}
         {canRefreshGitDiff && (
           <Tooltip>
