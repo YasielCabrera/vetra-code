@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { fileBreadcrumbs } from "./filePath";
+import { fileBreadcrumbs, fileTreeAncestorDirectoryPaths } from "./filePath";
 
 describe("fileBreadcrumbs", () => {
   it("builds project, directory, and file crumbs", () => {
@@ -19,5 +19,23 @@ describe("fileBreadcrumbs", () => {
       "src",
       "index.ts",
     ]);
+  });
+});
+
+describe("fileTreeAncestorDirectoryPaths", () => {
+  it("returns every ancestor directory with a trailing slash", () => {
+    expect(fileTreeAncestorDirectoryPaths("apps/web/src/main.tsx")).toEqual([
+      "apps/",
+      "apps/web/",
+      "apps/web/src/",
+    ]);
+  });
+
+  it("returns nothing for a top-level file", () => {
+    expect(fileTreeAncestorDirectoryPaths("README.md")).toEqual([]);
+  });
+
+  it("ignores empty segments from leading or repeated separators", () => {
+    expect(fileTreeAncestorDirectoryPaths("/src//index.ts")).toEqual(["src/"]);
   });
 });

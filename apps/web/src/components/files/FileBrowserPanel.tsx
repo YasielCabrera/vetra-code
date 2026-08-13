@@ -19,6 +19,7 @@ import { cn } from "~/lib/utils";
 import { readLocalApi } from "~/localApi";
 import { VETRA_PIERRE_FOLDER_ICON_CSS, VETRA_PIERRE_ICONS } from "~/pierre-icons";
 
+import { fileTreeAncestorDirectoryPaths } from "./filePath";
 import { createFileTreeDragMentionController } from "./fileTreeDragMention";
 import { useProjectEntriesQuery } from "./projectFilesQueryState";
 
@@ -48,6 +49,15 @@ const TREE_UNSAFE_CSS = `
 
 function treePath(entry: ProjectEntry): string {
   return entry.kind === "directory" ? `${entry.path}/` : entry.path;
+}
+
+function expandTreeAncestors(model: ReturnType<typeof useFileTree>["model"], relativePath: string) {
+  // Directory rows are registered with a trailing slash (see treePath), so
+  // ancestor lookups must use the same form to expand them.
+  for (const ancestorPath of fileTreeAncestorDirectoryPaths(relativePath)) {
+    const item = model.getItem(ancestorPath) ?? model.getItem(ancestorPath.slice(0, -1));
+    if (item && "expand" in item) item.expand();
+  }
 }
 
 function RefreshFilesButton(props: { isPending: boolean; onRefresh: () => void }) {
@@ -223,7 +233,8 @@ export default function FileBrowserPanel({
     density: "compact",
     fileTreeSearchMode: "hide-non-matches",
     flattenEmptyDirectories: true,
-    initialExpansion: 1,
+    // Keep folders closed until the user opens them or a file's path is revealed.
+    initialExpansion: "closed",
     icons: VETRA_PIERRE_ICONS,
     onSelectionChange: (selectedPaths) => {
       // The drag controller's selection cache must track every change,
@@ -260,14 +271,24 @@ export default function FileBrowserPanel({
     if (previousTreePathsRef.current === treePaths) return;
     entryKindsRef.current = entryKinds;
     previousTreePathsRef.current = treePaths;
-    model.resetPaths(treePaths);
-  }, [entryKinds, model, treePaths]);
+    model.resetPaths(treePaths, {
+      initialExpandedPaths: selectedPath ? fileTreeAncestorDirectoryPaths(selectedPath) : undefined,
+    });
+  }, [entryKinds, model, selectedPath, treePaths]);
 
   useEffect(() => {
     if (!selectedPath) {
       handledRevealRef.current = null;
       return;
     }
+    if (entryKinds.get(selectedPath) !== "file") return;
+    const selectedItem = model.getItem(selectedPath);
+    if (!selectedItem) return;
+
+    // Keep the open file visible even when the rest of the tree stays collapsed,
+    // including after path resets that would otherwise drop expansion.
+    expandTreeAncestors(model, selectedPath);
+
     const revealRequest = { path: selectedPath, revealId: selectedPathRevealId };
     const handledReveal = handledRevealRef.current;
     // Entry refreshes rebuild treePaths while the same preview stays open.
@@ -278,9 +299,6 @@ export default function FileBrowserPanel({
     ) {
       return;
     }
-    if (entryKinds.get(selectedPath) !== "file") return;
-    const selectedItem = model.getItem(selectedPath);
-    if (!selectedItem) return;
 
     // A selection that originated inside the tree (clicking a row, possibly
     // in an active tree search) is already visible; re-revealing it would
@@ -301,16 +319,6 @@ export default function FileBrowserPanel({
     model.closeSearch();
     for (const path of model.getSelectedPaths()) {
       model.getItem(path)?.deselect();
-    }
-
-    // Directory rows are registered with a trailing slash (see treePath), so
-    // ancestor lookups must use the same form to expand them.
-    const segments = selectedPath.split("/");
-    let ancestorPath = "";
-    for (const segment of segments.slice(0, -1)) {
-      ancestorPath = ancestorPath ? `${ancestorPath}/${segment}` : segment;
-      const item = model.getItem(`${ancestorPath}/`) ?? model.getItem(ancestorPath);
-      if (item && "expand" in item) item.expand();
     }
 
     selectedItem.select();

@@ -15,3 +15,20 @@ export function fileBreadcrumbs(projectName: string, relativePath: string): File
     })),
   ];
 }
+
+/**
+ * Ancestor directories of a workspace-relative file, in Pierre tree form
+ * (trailing slash). Used to expand the path to an open file without opening
+ * sibling folders.
+ */
+export function fileTreeAncestorDirectoryPaths(relativePath: string): string[] {
+  const segments = relativePath.split("/").filter(Boolean);
+  if (segments.length < 2) return [];
+  const ancestors: string[] = [];
+  let ancestorPath = "";
+  for (const segment of segments.slice(0, -1)) {
+    ancestorPath = ancestorPath ? `${ancestorPath}/${segment}` : segment;
+    ancestors.push(`${ancestorPath}/`);
+  }
+  return ancestors;
+}
