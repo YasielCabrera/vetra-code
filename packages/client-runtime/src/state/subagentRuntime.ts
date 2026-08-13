@@ -854,6 +854,73 @@ export function deriveAgentPanelModel({
   };
 }
 
+export interface AgentControlGroup {
+  /** null = the "Direct spawns" section. */
+  readonly workflow: RuntimeSubagent | null;
+  readonly agents: ReadonlyArray<RuntimeSubagent>;
+  readonly settled: number;
+}
+
+export interface AgentControlState {
+  readonly settled: number;
+  readonly total: number;
+  readonly allSettled: boolean;
+  readonly liveCount: number;
+  readonly groups: ReadonlyArray<AgentControlGroup>;
+}
+
+/**
+ * Header Agents button: hide when the thread has never spawned an agent.
+ *
+ * The fraction counts exactly the rows the popover renders. Workflow
+ * coordinators are group headers rather than agent rows, so they stay out of
+ * the total — except when a run has no members yet and the coordinator is the
+ * only row there is (the panel makes the same fallback). Idle agents are
+ * resumable, so they land in the denominator and never in the numerator.
+ */
+export function deriveAgentControlState(model: AgentPanelModel): AgentControlState | null {
+  if (!model.hasAgents) {
+    return null;
+  }
+
+  const groups: AgentControlGroup[] = [];
+  const countSettled = (agents: ReadonlyArray<RuntimeSubagent>): number =>
+    agents.filter((agent) => isTerminalSubagentStatus(agent.status)).length;
+
+  for (const group of model.workflows) {
+    const members = [...group.phases.flatMap((phase) => phase.members), ...group.unphasedMembers];
+    const agents = members.length === 0 ? [group.workflow] : members;
+    groups.push({ workflow: group.workflow, agents, settled: countSettled(agents) });
+  }
+
+  if (model.directAgents.length > 0) {
+    groups.push({
+      workflow: null,
+      agents: model.directAgents,
+      settled: countSettled(model.directAgents),
+    });
+  }
+
+  let settled = 0;
+  let total = 0;
+  for (const group of groups) {
+    settled += group.settled;
+    total += group.agents.length;
+  }
+
+  return {
+    settled,
+    total,
+    allSettled: total > 0 && settled === total,
+    liveCount: model.liveCount,
+    groups,
+  };
+}
+
+export function agentControlAriaLabel(state: AgentControlState): string {
+  return state.allSettled ? "All agents finished" : `Agents ${state.settled} of ${state.total}`;
+}
+
 /**
  * Members ordered by urgency for the capped inline workflow card: running and
  * failed first, then waiting, then most recently updated.

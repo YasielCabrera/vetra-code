@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 import { classifyTaskAgentKind, type OrchestrationThreadActivity } from "@vetra-code/contracts";
 import {
+  agentControlAriaLabel,
+  deriveAgentControlState,
   deriveAgentPanelModel,
+  emptyAgentPanelModel,
   foldSubagentActivities,
   formatSubagentModelLabel,
   formatSubagentTokenCount,
@@ -479,6 +482,83 @@ describe("deriveAgentPanelModel", () => {
     const model = deriveAgentPanelModel({ agents: orphans });
     expect(model.workflows).toHaveLength(0);
     expect(model.directAgents.map((agent) => agent.id)).toEqual(["gone:wf:0"]);
+  });
+});
+
+describe("deriveAgentControlState", () => {
+  const workflowRoster = fold([
+    activity("task.started", { taskId: "wf-1", taskType: "local_workflow", title: "audit" }),
+    activity("task.progress", { taskId: "wf-1", phases: [{ index: 0, title: "Audit" }] }),
+    activity("task.progress", {
+      taskId: "wf-1:wf:0",
+      title: "audit:a",
+      status: "completed",
+      parentAgentId: "wf-1",
+      agentIndex: 0,
+      phaseIndex: 0,
+    }),
+    activity("task.completed", { taskId: "wf-1:wf:0", status: "completed", parentAgentId: "wf-1" }),
+    activity("task.progress", {
+      taskId: "wf-1:wf:1",
+      title: "audit:b",
+      status: "running",
+      parentAgentId: "wf-1",
+      agentIndex: 1,
+      phaseIndex: 0,
+    }),
+    activity("task.started", { taskId: "direct-1", title: "Marlow", role: "explorer" }),
+    activity("task.updated", { taskId: "direct-1", status: "idle" }),
+  ]);
+
+  it("hides the chip when the thread has never spawned an agent", () => {
+    expect(deriveAgentControlState(emptyAgentPanelModel())).toBeNull();
+  });
+
+  it("counts the rows it renders: coordinators head their group, idle is denominator only", () => {
+    const state = deriveAgentControlState(deriveAgentPanelModel({ agents: workflowRoster }))!;
+
+    // wf-1's two members + direct-1. The coordinator is a header, not a row.
+    expect(state.total).toBe(3);
+    expect(state.settled).toBe(1);
+    expect(state.allSettled).toBe(false);
+    expect(state.groups.map((group) => group.workflow?.id ?? null)).toEqual(["wf-1", null]);
+    expect(state.groups[0]!.agents.map((agent) => agent.id)).toEqual(["wf-1:wf:0", "wf-1:wf:1"]);
+    expect(state.groups[0]!.settled).toBe(1);
+    // direct-1 is idle: resumable, so it is in the total but never settled.
+    expect(state.groups[1]!.agents.map((agent) => agent.id)).toEqual(["direct-1"]);
+    expect(state.groups[1]!.settled).toBe(0);
+  });
+
+  it("falls back to the coordinator as the row when a run has no members yet", () => {
+    const bareRoster = fold([
+      activity("task.started", { taskId: "wf-2", taskType: "local_workflow", title: "sweep" }),
+    ]);
+    const state = deriveAgentControlState(deriveAgentPanelModel({ agents: bareRoster }))!;
+
+    expect(state.total).toBe(1);
+    expect(state.groups).toHaveLength(1);
+    expect(state.groups[0]!.agents.map((agent) => agent.id)).toEqual(["wf-2"]);
+  });
+
+  it("reads all settled once every row reaches a terminal status", () => {
+    const settledRoster = fold([
+      activity("task.started", { taskId: "direct-a", title: "First" }),
+      activity("task.completed", { taskId: "direct-a", status: "completed" }),
+      activity("task.started", { taskId: "direct-b", title: "Second" }),
+      activity("task.completed", { taskId: "direct-b", status: "failed" }),
+    ]);
+    const state = deriveAgentControlState(deriveAgentPanelModel({ agents: settledRoster }))!;
+
+    expect(state.settled).toBe(2);
+    expect(state.total).toBe(2);
+    expect(state.allSettled).toBe(true);
+    expect(state.liveCount).toBe(0);
+    expect(agentControlAriaLabel(state)).toBe("All agents finished");
+  });
+
+  it("labels an unfinished roster with its fraction", () => {
+    const state = deriveAgentControlState(deriveAgentPanelModel({ agents: workflowRoster }))!;
+    expect(agentControlAriaLabel(state)).toBe("Agents 1 of 3");
   });
 });
 

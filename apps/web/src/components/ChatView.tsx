@@ -157,6 +157,7 @@ import { PullRequestsUnavailableState } from "./pullRequest/PullRequestsUnavaila
 import { RightPanelTabs, type PullRequestTabStatus } from "./RightPanelTabs";
 import { AgentsPanel } from "./AgentsPanel";
 import {
+  deriveAgentControlState,
   deriveAgentPanelModel,
   foldSubagentActivities,
 } from "@vetra-code/client-runtime/state/subagentRuntime";
@@ -2270,6 +2271,11 @@ function ChatViewContent(props: ChatViewProps) {
     [activeLatestTurn?.turnId, threadActivities],
   );
   const taskControlState = useMemo(() => deriveTaskControlState(activePlan), [activePlan]);
+  // Header Agents chip: the same roster the panel renders, flattened to groups.
+  const agentControlState = useMemo(
+    () => deriveAgentControlState(agentPanelModel),
+    [agentPanelModel],
+  );
   // Current step for the in-chat working row: only for the running turn's own
   // plan (deriveActivePlanState falls back to older turns' plans, which must
   // not label fresh work). Falls back to the first pending step so an
@@ -6251,7 +6257,9 @@ function ChatViewContent(props: ChatViewProps) {
             rightPanelOpen={rightPanelOpen}
             gitCwd={gitCwd}
             taskControlState={taskControlState}
+            agentControlState={agentControlState}
             onNewThreadInProject={handleNewThreadInActiveProject}
+            onOpenAgents={addAgentsSurface}
             onRunProjectScript={runProjectScript}
             onAddProjectScript={saveProjectScript}
             onUpdateProjectScript={updateProjectScript}

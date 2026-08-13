@@ -10,6 +10,7 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@vetra-code/client-runtime/state/runtime";
+import type { AgentControlState } from "@vetra-code/client-runtime/state/subagentRuntime";
 import type { ChangeRequestStateLike } from "@vetra-code/client-runtime/state/thread-settled";
 import { ChevronDownIcon } from "lucide-react";
 import {
@@ -31,6 +32,7 @@ import ProjectScriptsControl, {
   type ProjectScriptActionResult,
 } from "../ProjectScriptsControl";
 import { OpenInPicker } from "./OpenInPicker";
+import { ThreadAgentsControl } from "./ThreadAgentsControl";
 import { ThreadTasksControl } from "./ThreadTasksControl";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useVetraProjectFileScripts } from "~/hooks/useVetraProjectFileScripts";
@@ -66,8 +68,11 @@ interface ChatHeaderProps {
   gitCwd: string | null;
   /** Current provider todo list; omitted from the header when null. */
   taskControlState: TaskControlState | null;
+  /** This thread's subagent roster; omitted from the header when null. */
+  agentControlState: AgentControlState | null;
   readonly onOpenPullRequest?: ((number: number) => void) | undefined;
   onNewThreadInProject: () => void;
+  onOpenAgents: () => void;
   onRunProjectScript: (script: ProjectScript) => void;
   onAddProjectScript: (input: NewProjectScriptInput) => Promise<ProjectScriptActionResult>;
   onUpdateProjectScript: (
@@ -121,8 +126,10 @@ export const ChatHeader = memo(function ChatHeader({
   rightPanelOpen,
   gitCwd,
   taskControlState,
+  agentControlState,
   onOpenPullRequest,
   onNewThreadInProject,
+  onOpenAgents,
   onRunProjectScript,
   onAddProjectScript,
   onUpdateProjectScript,
@@ -324,6 +331,9 @@ export const ChatHeader = memo(function ChatHeader({
             onDeleteScript={onDeleteProjectScript}
           />
         )}
+        {agentControlState ? (
+          <ThreadAgentsControl state={agentControlState} onOpenAgents={onOpenAgents} />
+        ) : null}
         {taskControlState ? <ThreadTasksControl state={taskControlState} /> : null}
         {showOpenInPicker && (
           <OpenInPicker
