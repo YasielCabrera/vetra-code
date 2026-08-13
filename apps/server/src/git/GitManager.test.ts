@@ -3598,7 +3598,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
             headRepositoryOwnerLogin: "binbandit",
           },
           repositoryCloneUrls: {
-            "binbandit/vetra-code": {
+            "binbandit/vetra": {
               url: forkDir,
               sshUrl: forkDir,
             },

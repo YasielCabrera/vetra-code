@@ -136,14 +136,24 @@ backends leak back in.
 - Resolve conflicts. Semantic choices stay with the reviewer.
 - Rename identifiers that are not in `RENAMES`. New upstream names (`T3SomethingNew`, a new npm
   scope, a new protocol) will survive until someone adds a pair to the table.
+- Rename **files**. The rewrite pass edits contents, not paths. A newly added
+  `T3ConnectUserProfilePage.tsx` will export `VetraConnectUserProfilePage` after rename and then
+  fail to import until you `git mv` it. `git ls-files | grep -iE 't3connect|T3Connect'` after the
+  script.
 - Rewrite `t3.codes` / `t3.gg` URLs. Expected in comments, licenses, and tests that mention
   upstream. Not acceptable as a runtime default, Clerk host, relay, updater feed, or analytics
   destination.
+- Rewrite generic `t3.` prefixes. A blanket `t3.` → `vetra.` pair would smash `t3.codes`. Persistence
+  keys such as `t3.pullRequests.list` therefore survive until a specific `RENAMES` pair exists or
+  you fix them by hand. Search `` `t3. `` / `"t3.` in code (not docs) after every sync.
 - Prune GitHub workflows. Upstream still has `release.yml`, `deploy-relay.yml`, and the
   `mobile-*.yml` workflows. A merge can restore them or conflict on the deletion. Delete them again
   if they return.
 - Change telemetry defaults. After rename, `AnalyticsService` still defaults to enabled and still
-  embeds the inherited PostHog project key. Do not leave that key active against T3's project.
+  embeds the inherited PostHog project key. If this merge did not touch that file, leave it and
+  record "still inherited" in the merge message rather than mixing a policy flip into the sync.
+  If the merge reintroduced the T3 `phc_…` key or `VETRA_TELEMETRY_ENABLED` defaulting to true,
+  revert those hunks. A dedicated follow-up can change the default.
 - Protect [`productIdentity.ts`](../../packages/shared/src/productIdentity.ts) as a concept. Upstream
   has no such file today; if it grows one, the merge will not know our constants are sacred.
 - Run `pnpm install`, typecheck, or tests.
@@ -158,15 +168,47 @@ Do not hand-edit a hundred occurrences of a new pattern.
 
 Do this on the Vetra product branch, with no unrelated local changes.
 
+Before fetching, identify the branch and inspect the worktree:
+
+```bash
+git status --short --branch
+git branch --show-current
+```
+
+The script refuses a dirty tree. Treat existing changes as user-owned until you know otherwise:
+never discard them to make the sync run. Finish or commit known sync work separately; if the
+changes are unrelated and their ownership is unclear, stop and ask before stashing them. A stash
+is not part of the sync and must not be left behind silently.
+
 1. **Read what is coming.**
 
    ```bash
    git fetch upstream --prune --tags
    git log --oneline HEAD..upstream/main
+   MB=$(git merge-base HEAD upstream/main)
+   git diff --name-only "$MB"..upstream/main
+   git merge-base --is-ancestor upstream/main HEAD
    ```
 
-   Skim for mobile/marketing, release/deploy workflows, Clerk/PostHog/updater, and new public
-   identifiers. That preview is how you know which review items will matter.
+   Use the merge-base two-dot range for the file list. `git diff HEAD..upstream/main` is every
+   Vetra-only path plus incoming work (this fork's `re-making-plan/`, `packages/web3`,
+   `sync-upstream.sh`, and so on look like upstream deletions). That is the wrong preview.
+
+   Skim for mobile/marketing, release/deploy workflows, Clerk/PostHog/updater, new public
+   identifiers, and new `T3*` filenames. That preview is how you know which review items will
+   matter.
+
+   The final ancestry command exits successfully when the product branch already contains the
+   fetched upstream ref. If it succeeds and the incoming log/file list are empty, there is nothing
+   to merge: do not manufacture an empty merge commit. Confirm local `main` also points at
+   `upstream/main`, then run only the post-sync audit needed for the task:
+
+   ```bash
+   git rev-parse main upstream/main
+   ```
+
+   If those two hashes differ while `upstream/main` is already in `HEAD`, a clean-tree run of the
+   script will fast-forward the local mirror and otherwise make no merge.
 
 2. **Run the script.**
 
@@ -180,6 +222,21 @@ Do this on the Vetra product branch, with no unrelated local changes.
    ```bash
    git merge --abort
    ```
+
+   Patterns that dominate a typical sync:
+
+   - **Import-only.** The rest of the file already uses the new symbols. Take upstream's import
+     block (the script has already rewritten `@t3tools` → `@vetra-code` inside conflicted files).
+   - **Fork UI vs upstream UI.** Take the incoming behavior; keep Vetra copy and gates. Example:
+     the draft hero. Upstream added a project picker that carries the typed prompt across a repo
+     change (`carryComposerContent`). This fork also has a pending-project builder headline.
+     Call hooks first, keep the pending-project early return, use the picker when a project is
+     already selected, and pass any new props through `ChatView`.
+   - **User docs vs bootstrap docs.** `docs/user/remote-access.md` in this fork is bootstrap-status
+     (pairing from source, deferred Connect/hosted/SSH). Upstream's file is a shipped-product
+     guide (`npx t3 serve`, `https://app.t3.codes`, mobile). Do not take the whole file. Keep our
+     framing and extract only new behaviors that exist in our tree, still described as gated.
+     Same call as the last sync's `t3-connect.md` drop.
 
 4. **Re-apply prune if workflows or other dropped trees came back.** At minimum:
 
@@ -207,6 +264,13 @@ Do this on the Vetra product branch, with no unrelated local changes.
    git grep -nIE 't3\.codes|t3\.gg|T3CODE_|@t3tools' -- . ':!.repos' ':!*lock*'
    ```
 
+   Also search paths and persistence keys the leftover grep does not cover:
+
+   ```bash
+   git ls-files | grep -iE 't3connect|T3Connect|^t3[^.]'
+   git grep -nIE '`t3\.|"t3\.' -- . ':!.repos' ':!*lock*' ':!docs' ':!scripts/sync-upstream.sh'
+   ```
+
    Acceptable leftovers: the upstream remote URL, copyright/license lines, historical comments,
    and tests that fixture an upstream host on purpose. Unacceptable: runtime product name, package
    scope, env vars, storage paths, URL schemes, application IDs, default hosted/relay/Clerk/PostHog
@@ -215,6 +279,15 @@ Do this on the Vetra product branch, with no unrelated local changes.
    Visible and persistence-bearing names must match
    [`productIdentity.ts`](../../packages/shared/src/productIdentity.ts). Do not add fallback aliases
    that could reconnect this runtime to T3 state (`T3_HOME`, `t3://`, `~/.t3`, and similar).
+
+   **Case-fold fixtures.** Upstream tests often pair `t3code` with `T3Code` because they lower-case
+   to the same slug. After rename they become `vetra-code` and `VetraCode` (`vetracode`), which do
+   **not** collide. Worktree / repo-identity tests must keep the hyphen in both forms
+   (`vetra-code` / `Vetra-Code`). URL-parser tests must expect `toLowerCase()` of the rewritten
+   input, not a slug that went through a different `RENAMES` pair. When a test derives repository
+   identity from a PR URL, keep the URL's repository path and any `repositoryCloneUrls` fixture key
+   identical after rebranding. A mismatch bypasses the fake remote and can surface only as an
+   opaque Git exit 128 while the test attempts a real clone.
 
 6. **Enforce the disable policy.** After the merge, confirm all of the following still hold:
 
@@ -240,8 +313,28 @@ Do this on the Vetra product branch, with no unrelated local changes.
    suite unless a human asked for it. If identity files changed, include the focused identity,
    pairing, telemetry, desktop-update, and public-config tests.
 
+   Repository scripts use Vite Plus (`vp`). If `vp` is not installed globally but dependencies are
+   present, invoke the repository-local binary rather than treating the tool as unavailable:
+
+   ```bash
+   pnpm exec vp test run path/to/focused.test.ts
+   pnpm exec vp run --filter @vetra-code/server typecheck
+   ```
+
 8. **Commit the merge.** The message is already staged from `git merge --no-commit`. Do not squash
    this into a product feature commit; keep it a merge commit so later syncs have a merge base.
+
+9. **Prove the final state.** Record the exact refs in the handoff rather than saying only
+   "up to date":
+
+   ```bash
+   git merge-base --is-ancestor upstream/main HEAD
+   git rev-parse HEAD upstream/main main
+   git status --short --branch
+   ```
+
+   The ancestry check must exit zero, local `main` must equal `upstream/main`, and the status may
+   contain only the changes intentionally kept outside the merge.
 
 ## Identity map
 
