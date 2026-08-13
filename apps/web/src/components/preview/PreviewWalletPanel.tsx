@@ -35,7 +35,6 @@ import { AccountIdenticon } from "../settings/AccountIdenticon";
 import { AccountLabelEditor } from "../settings/AccountLabelEditor";
 import { getWalletStatus, useWalletStatus } from "../settings/useWalletStatus";
 import {
-  networkSwatchClass,
   originHostname,
   pendingRequestTitle,
   removeAccountConfirmationMessage,
@@ -47,6 +46,7 @@ import { Popover, PopoverPopup, PopoverTitle, PopoverTrigger } from "../ui/popov
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { NetworkIcon } from "../web3/NetworkIcon";
 import { previewBridge } from "./previewBridge";
 
 function CopyAddressButton({ address }: { readonly address: string }) {
@@ -570,15 +570,7 @@ export function PreviewWalletChip() {
                 aria-label="Preview wallet network"
                 disabled={controlsDisabled}
               >
-                {activeChainId === null ? null : (
-                  <span
-                    className={cn(
-                      "size-2 shrink-0 rounded-full",
-                      networkSwatchClass(activeChainId),
-                    )}
-                    aria-hidden
-                  />
-                )}
+                {activeChainId === null ? null : <NetworkIcon chainId={activeChainId} />}
                 <SelectValue>{status.chain?.name ?? "No network"}</SelectValue>
               </SelectTrigger>
               <SelectPopup alignItemWithTrigger={false} matchTriggerWidth={false}>
@@ -591,13 +583,7 @@ export function PreviewWalletChip() {
                     value={`current:${status.chain.chainId}`}
                   >
                     <span className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "size-2 shrink-0 rounded-full",
-                          networkSwatchClass(status.chain.chainId),
-                        )}
-                        aria-hidden
-                      />
+                      <NetworkIcon chainId={status.chain.chainId} />
                       {status.chain.name} ({status.chain.chainId}, custom)
                     </span>
                   </SelectItem>
@@ -614,13 +600,7 @@ export function PreviewWalletChip() {
                     value={`network:${network.chainId}`}
                   >
                     <span className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "size-2 shrink-0 rounded-full",
-                          networkSwatchClass(network.chainId),
-                        )}
-                        aria-hidden
-                      />
+                      <NetworkIcon chainId={network.chainId} />
                       {network.name}
                     </span>
                   </SelectItem>
@@ -632,13 +612,7 @@ export function PreviewWalletChip() {
                     value={`custom:${network.chainId}`}
                   >
                     <span className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "size-2 shrink-0 rounded-full",
-                          networkSwatchClass(network.chainId),
-                        )}
-                        aria-hidden
-                      />
+                      <NetworkIcon chainId={network.chainId} />
                       {network.name}
                     </span>
                   </SelectItem>

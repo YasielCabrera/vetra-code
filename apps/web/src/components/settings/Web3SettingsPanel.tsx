@@ -29,7 +29,6 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
-import { cn } from "../../lib/utils";
 import { ensureLocalApi } from "../../localApi";
 import { previewBridge } from "../preview/previewBridge";
 import { Button } from "../ui/button";
@@ -48,6 +47,7 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../
 import { Switch } from "../ui/switch";
 import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { NetworkIcon } from "../web3/NetworkIcon";
 import { AccountIdenticon } from "./AccountIdenticon";
 import { AccountLabelEditor } from "./AccountLabelEditor";
 import {
@@ -60,7 +60,6 @@ import { searchableSetting } from "./settingsSearch";
 import {
   APPROVAL_MODE_OPTIONS,
   describeWalletChain,
-  networkSwatchClass,
   parseCustomNetworkDraft,
   removeAccountConfirmationMessage,
   removeCustomNetworkConfirmationMessage,
@@ -658,13 +657,7 @@ export function Web3SettingsPanel() {
                 className="flex items-center justify-between gap-2 rounded-md px-2 py-1 hover:bg-accent/50"
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <span
-                    className={cn(
-                      "size-2 shrink-0 rounded-full",
-                      networkSwatchClass(network.chainId),
-                    )}
-                    aria-hidden
-                  />
+                  <NetworkIcon chainId={network.chainId} />
                   <span className="truncate text-xs font-medium">{network.name}</span>
                   <span className="font-mono text-[10px] text-muted-foreground">
                     {network.chainId}
@@ -718,13 +711,7 @@ export function Web3SettingsPanel() {
                   className="flex items-center justify-between gap-2 rounded-md px-2 py-1 hover:bg-accent/50"
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <span
-                      className={cn(
-                        "size-2 shrink-0 rounded-full",
-                        networkSwatchClass(network.chainId),
-                      )}
-                      aria-hidden
-                    />
+                    <NetworkIcon chainId={network.chainId} />
                     <span className="truncate text-xs font-medium">{network.name}</span>
                     <span className="font-mono text-[10px] text-muted-foreground">
                       {network.chainId}

@@ -295,6 +295,9 @@ importers:
       '@vetra-code/web3':
         specifier: workspace:*
         version: link:../../packages/web3
+      '@web3icons/react':
+        specifier: ^4.1.20
+        version: 4.1.20(react@19.2.6)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -4200,6 +4203,14 @@ packages:
     engines: {node: '>=20.0.0'}
     cpu: [x64]
     os: [win32]
+
+  '@web3icons/common@0.11.49':
+    resolution: {integrity: sha512-hQOvBWe8GIrUTSvwhBejEC9/Nlt5KWt2oVDgviM5NZxLs3H7ubwrmYQadZuHsD0d+RUcb2LOX/FNJrwci4hMCw==}
+
+  '@web3icons/react@4.1.20':
+    resolution: {integrity: sha512-8Hn5VZo3hdJQymc3636JxxpF8a1dk5pCvwd6rHMa633Ae+UmUpP2AAAsiVLQp/C+1AZSUCWaziWh+3FMJwRHVw==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
 
   '@xmldom/xmldom@0.8.13':
     resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
@@ -12466,6 +12477,13 @@ snapshots:
 
   '@voidzero-dev/vite-plus-win32-x64-msvc@0.2.2':
     optional: true
+
+  '@web3icons/common@0.11.49': {}
+
+  '@web3icons/react@4.1.20(react@19.2.6)':
+    dependencies:
+      '@web3icons/common': 0.11.49
+      react: 19.2.6
 
   '@xmldom/xmldom@0.8.13': {}
 

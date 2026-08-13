@@ -32,6 +32,7 @@
     "@vetra-code/contracts": "workspace:*",
     "@vetra-code/shared": "workspace:*",
     "@vetra-code/web3": "workspace:*",
+    "@web3icons/react": "^4.1.20",
     "class-variance-authority": "^0.7.1",
     "culori": "^4.0.2",
     "effect": "catalog:",
