@@ -22,6 +22,7 @@ import { Children, isValidElement, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";
 
+export { DiffLineStat as PullRequestDiffStat } from "../diffs/DiffLineStat";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 interface StatePresentation {
@@ -235,31 +236,6 @@ export function PullRequestActorLabel({
     <span className={cn("flex min-w-0 items-center gap-1.5", className)} title={login}>
       <PullRequestActorAvatar actor={actor} />
       <span className="truncate">{login}</span>
-    </span>
-  );
-}
-
-/** Added and removed lines, coloured the way every host colours them. */
-export function PullRequestDiffStat({
-  additions,
-  deletions,
-  className,
-}: {
-  additions: number;
-  deletions: number;
-  className?: string;
-}) {
-  // Not every host reports line counts. Showing "+0 -0" would read as an empty change set
-  // rather than as a missing one, so the stat is left out instead.
-  if (additions === 0 && deletions === 0) {
-    return null;
-  }
-  return (
-    <span className={cn("inline-flex items-baseline gap-1 tabular-nums", className)}>
-      <span className="text-emerald-600 dark:text-emerald-300/90">
-        +{additions.toLocaleString()}
-      </span>
-      <span className="text-destructive">-{deletions.toLocaleString()}</span>
     </span>
   );
 }

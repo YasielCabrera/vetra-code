@@ -48,10 +48,10 @@ import { resolveThreadRouteRef } from "../threadRoutes";
 import { useClientSettings } from "../hooks/useSettings";
 import { formatShortTimestamp } from "../timestampFormat";
 import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
-import { DiffStatLabel } from "./chat/DiffStatLabel";
 import { AnnotatableCodeView, type AnnotatableCodeViewHandle } from "./diffs/AnnotatableCodeView";
-import { DiffFileCountBadge } from "./diffs/DiffFileCountBadge";
+import { DiffFileCount } from "./diffs/DiffFileCount";
 import { DiffFileTreePanel } from "./diffs/DiffFileTreePanel";
+import { DiffLineStat } from "./diffs/DiffLineStat";
 import {
   DIFF_FILE_TREE_DEFAULT_WIDTH,
   DIFF_FILE_TREE_MAX_FRACTION,
@@ -751,15 +751,14 @@ export default function DiffPanel({
       </div>
       <div className="flex h-8 shrink-0 items-center gap-1 sm:h-7 [-webkit-app-region:no-drag]">
         {codeViewFiles.length > 0 && (
-          <>
-            <DiffFileCountBadge count={codeViewFiles.length} truncated={isSelectedPatchTruncated} />
-            <DiffStatLabel
+          <span className="mr-1 inline-flex shrink-0 items-center gap-2">
+            <DiffFileCount count={codeViewFiles.length} truncated={isSelectedPatchTruncated} />
+            <DiffLineStat
               additions={diffLineStat.additions}
               deletions={diffLineStat.deletions}
-              className="mr-1 text-[11px] leading-none"
-              layout="inline"
+              className="shrink-0 font-mono text-[11px]"
             />
-          </>
+          </span>
         )}
         {canRefreshGitDiff && (
           <Tooltip>
