@@ -41,6 +41,12 @@ Each run is its own thread, and those threads are deliberately absent from the s
 firing overnight should not fill your inbox. They are listed under **Runs** in the automation's
 panel, newest first. Select one to open it like any other thread.
 
+A run finishes while you are not watching, so Vetra keeps count of the ones you have not read. A green
+number beside **Automations** in the sidebar says how many finished runs are waiting, each
+automation's row says how many of its own are unread, and under **Runs** the unread ones carry a green
+dot. Opening a run reads it and the count goes down. To clear several without opening them, select
+**Mark all read** above the run list, or **Mark runs read** in the row's ⋯ menu.
+
 To keep a run around, select **Show in sidebar** on its row. It joins your thread list and behaves
 like any thread you started yourself, while still counting as one of the automation's runs. To send
 it back, choose **Hide from sidebar** in the thread's menu.

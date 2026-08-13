@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { EnvironmentAutomation } from "@vetra-code/client-runtime/state/automations";
 import {
   CalendarClockIcon,
+  CheckCheckIcon,
   CircleAlertIcon,
   CircleDashedIcon,
   CloudIcon,
@@ -19,6 +20,8 @@ import { memo, useCallback, useMemo, useState, type ReactNode } from "react";
 import { isElectron } from "../../env";
 import { useAllEnvironmentShellsBootstrapped, useThreadShells } from "../../state/entities";
 import { useAutomationActions } from "../../hooks/useAutomationActions";
+import { useMarkAutomationRunsRead } from "../../hooks/useAutomationRunsRead";
+import { useUiStateStore } from "../../uiStateStore";
 import { useAutomations, useEnvironmentSupportsAutomations } from "../../state/automations";
 import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
 import { useProjects } from "../../state/entities";
@@ -42,6 +45,7 @@ import {
   matchesAutomationQuery,
   runCountLabel,
   sortAutomationRows,
+  unreadRunCountLabel,
   type AutomationRowModel,
   type AutomationRowStatus,
 } from "./automationsList.logic";
@@ -64,6 +68,7 @@ export function AutomationsPage(props?: {
   const timestampFormat = useClientSettings((settings) => settings.timestampFormat);
   const settings = usePrimarySettings();
   const serverProviders = useAtomValue(primaryServerProvidersAtom);
+  const threadLastVisitedAtById = useUiStateStore((state) => state.threadLastVisitedAtById);
   // Until the workspace has said what it holds, an empty list means "not
   // loaded" rather than "none" — and telling somebody to create the automation
   // they already have is the one wrong thing an empty state can say.
@@ -120,6 +125,7 @@ export function AutomationsPage(props?: {
             automation.environmentId === primaryEnvironmentId
               ? null
               : (environmentLabelById.get(automation.environmentId) ?? null),
+          lastVisitedAtByThreadKey: threadLastVisitedAtById,
           use24Hour: timestampFormat === "24-hour",
         }),
       ),
@@ -129,6 +135,7 @@ export function AutomationsPage(props?: {
       modelLabelBySlug,
       primaryEnvironmentId,
       projectTitleByKey,
+      threadLastVisitedAtById,
       threads,
       timestampFormat,
     ],
@@ -400,7 +407,9 @@ const AutomationRow = memo(function AutomationRow({
 }) {
   const status = statusPresentation(row.status);
   const { confirmAndDelete, runNow, setEnabled } = useAutomationActions();
+  const markRunsRead = useMarkAutomationRunsRead();
   const automation = row.automation;
+  const unreadRunCount = row.unreadRunThreads.length;
   return (
     <li className="group/automation-row flex items-center gap-1 rounded-lg pr-1 transition-colors hover:bg-accent/60">
       <button
@@ -452,7 +461,16 @@ const AutomationRow = memo(function AutomationRow({
             {status.icon}
             {status.label}
           </span>
-          <span className="text-muted-foreground/70">{runCountLabel(row.runCount)}</span>
+          {/* Unread runs displace the run total: which of them you still owe a
+              read is the more useful of the two numbers, and the total is one
+              click away in the panel. */}
+          {unreadRunCount > 0 ? (
+            <span className="font-medium text-emerald-700 dark:text-emerald-300">
+              {unreadRunCountLabel(unreadRunCount)}
+            </span>
+          ) : (
+            <span className="text-muted-foreground/70">{runCountLabel(row.runCount)}</span>
+          )}
         </span>
       </button>
       {/* Revealed on hover, and always on touch, where there is no hover to
@@ -479,6 +497,14 @@ const AutomationRow = memo(function AutomationRow({
             {automation.enabled ? <PauseIcon aria-hidden /> : <PlayCircleIcon aria-hidden />}
             {automation.enabled ? "Pause" : "Resume"}
           </MenuItem>
+          {/* Only offered when there is something to clear, so the menu never
+              carries an item that would do nothing. */}
+          {unreadRunCount > 0 ? (
+            <MenuItem onClick={() => markRunsRead(row.unreadRunThreads)}>
+              <CheckCheckIcon aria-hidden />
+              Mark runs read
+            </MenuItem>
+          ) : null}
           <MenuSeparator />
           <MenuItem
             variant="destructive"

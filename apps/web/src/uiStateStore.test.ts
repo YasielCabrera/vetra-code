@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
   legacyProjectCwdPreferenceKey,
+  markThreadsVisited,
   markThreadUnread,
   markThreadVisited,
   parsePersistedState,
@@ -37,6 +38,29 @@ describe("uiStateStore pure functions", () => {
     expect(visited.threadLastVisitedAtById[threadId]).toBe("2026-02-25T12:30:00.700Z");
     expect(markThreadVisited(visited, threadId, "2026-02-25T12:30:00.000Z")).toBe(visited);
     expect(markThreadVisited(visited, threadId, "not-a-date")).toBe(visited);
+  });
+
+  it("stamps a batch of threads in one update and keeps the no-op identical", () => {
+    const initialState = makeUiState();
+
+    const next = markThreadsVisited(initialState, [
+      { threadKey: "env-1:run-1", visitedAt: "2026-02-25T12:30:00.000Z" },
+      { threadKey: "env-1:run-2", visitedAt: "2026-02-25T13:00:00.000Z" },
+      // Same batch, older stamp: the per-thread guard still refuses to move
+      // a visit backwards.
+      { threadKey: "env-1:run-2", visitedAt: "2026-02-25T11:00:00.000Z" },
+    ]);
+
+    expect(next.threadLastVisitedAtById).toEqual({
+      "env-1:run-1": "2026-02-25T12:30:00.000Z",
+      "env-1:run-2": "2026-02-25T13:00:00.000Z",
+    });
+    expect(markThreadsVisited(next, [])).toBe(next);
+    expect(
+      markThreadsVisited(next, [
+        { threadKey: "env-1:run-1", visitedAt: "2026-02-25T12:00:00.000Z" },
+      ]),
+    ).toBe(next);
   });
 
   it("marks a completed thread unread using the server completion timestamp", () => {

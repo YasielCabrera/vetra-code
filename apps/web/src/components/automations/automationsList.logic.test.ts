@@ -1,14 +1,23 @@
 import type { EnvironmentAutomation } from "@vetra-code/client-runtime/state/automations";
 import type { EnvironmentThreadShell } from "@vetra-code/client-runtime/state/models";
-import type { AutomationId, EnvironmentId, ProjectId, ThreadId } from "@vetra-code/contracts";
+import type {
+  AutomationId,
+  EnvironmentId,
+  ProjectId,
+  ThreadId,
+  TurnId,
+} from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { describeAutomationDeletion } from "../../hooks/useAutomationActions";
 import {
   buildAutomationRowModels,
+  countUnreadAutomationRuns,
+  isAutomationRunUnread,
   matchesAutomationQuery,
   resolveAutomationRowStatus,
   sortAutomationRows,
+  unreadRunBadgeLabel,
 } from "./automationsList.logic";
 import {
   cronFromPreset,
@@ -71,6 +80,23 @@ function makeRunThread(overrides?: Partial<EnvironmentThreadShell>): Environment
     hasActionableProposedPlan: false,
     ...overrides,
   } as EnvironmentThreadShell;
+}
+
+function makeFinishedRunThread(
+  completedAt: string,
+  overrides?: Partial<EnvironmentThreadShell>,
+): EnvironmentThreadShell {
+  return makeRunThread({
+    latestTurn: {
+      turnId: "turn-1" as TurnId,
+      state: "completed",
+      requestedAt: completedAt,
+      startedAt: completedAt,
+      completedAt,
+      assistantMessageId: null,
+    },
+    ...overrides,
+  });
 }
 
 describe("schedule presets", () => {
@@ -271,6 +297,118 @@ describe("automation rows", () => {
       "unscheduled",
       "paused",
     ]);
+  });
+});
+
+describe("unread runs", () => {
+  const COMPLETED_AT = "2026-08-12T12:05:00.000Z";
+
+  it("counts a finished run nobody opened as unread", () => {
+    expect(
+      isAutomationRunUnread({
+        thread: makeFinishedRunThread(COMPLETED_AT),
+        lastVisitedAt: undefined,
+      }),
+    ).toBe(true);
+  });
+
+  it("clears once the run was opened after it finished", () => {
+    expect(
+      isAutomationRunUnread({
+        thread: makeFinishedRunThread(COMPLETED_AT),
+        lastVisitedAt: COMPLETED_AT,
+      }),
+    ).toBe(false);
+    // Opened while it was still working, then left before it landed.
+    expect(
+      isAutomationRunUnread({
+        thread: makeFinishedRunThread(COMPLETED_AT),
+        lastVisitedAt: "2026-08-12T12:00:00.000Z",
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps the signal when the stored visit is corrupt", () => {
+    expect(
+      isAutomationRunUnread({
+        thread: makeFinishedRunThread(COMPLETED_AT),
+        lastVisitedAt: "not-a-date",
+      }),
+    ).toBe(true);
+  });
+
+  it("says nothing about runs with no result to read", () => {
+    // Still running, archived, or not an automation's thread at all.
+    expect(isAutomationRunUnread({ thread: makeRunThread(), lastVisitedAt: undefined })).toBe(
+      false,
+    );
+    expect(
+      isAutomationRunUnread({
+        thread: makeFinishedRunThread(COMPLETED_AT, { archivedAt: "2026-08-12T13:00:00.000Z" }),
+        lastVisitedAt: undefined,
+      }),
+    ).toBe(false);
+    expect(
+      isAutomationRunUnread({
+        thread: makeFinishedRunThread(COMPLETED_AT, { automationId: null }),
+        lastVisitedAt: undefined,
+      }),
+    ).toBe(false);
+  });
+
+  it("totals unread runs across environments for the sidebar badge", () => {
+    const threads = [
+      makeFinishedRunThread(COMPLETED_AT, { id: "run-1" as ThreadId }),
+      makeFinishedRunThread(COMPLETED_AT, { id: "run-2" as ThreadId }),
+      makeFinishedRunThread(COMPLETED_AT, {
+        id: "run-3" as ThreadId,
+        environmentId: "env-2" as EnvironmentId,
+      }),
+      // Not an automation run, and a run still in flight: neither counts.
+      makeFinishedRunThread(COMPLETED_AT, { id: "chat-1" as ThreadId, automationId: null }),
+      makeRunThread({ id: "run-4" as ThreadId }),
+    ];
+
+    expect(
+      countUnreadAutomationRuns({
+        threads,
+        lastVisitedAtByThreadKey: { "env-1:run-1": COMPLETED_AT },
+        knownAutomationKeys: new Set(["env-1:automation-1", "env-2:automation-1"]),
+      }),
+    ).toBe(2);
+  });
+
+  it("leaves a deleted automation's promoted run to the sidebar", () => {
+    expect(
+      countUnreadAutomationRuns({
+        threads: [makeFinishedRunThread(COMPLETED_AT, { hiddenAt: null })],
+        lastVisitedAtByThreadKey: {},
+        knownAutomationKeys: new Set(),
+      }),
+    ).toBe(0);
+  });
+
+  it("hands each row the runs it still owes a read", () => {
+    const rows = buildAutomationRowModels({
+      automations: [makeAutomation()],
+      threads: [
+        makeFinishedRunThread(COMPLETED_AT, { id: "run-1" as ThreadId }),
+        makeFinishedRunThread(COMPLETED_AT, { id: "run-2" as ThreadId }),
+      ],
+      resolveProjectName: () => null,
+      resolveModelLabel: () => null,
+      resolveEnvironmentLabel: () => null,
+      lastVisitedAtByThreadKey: { "env-1:run-2": COMPLETED_AT },
+    });
+
+    expect(rows[0]?.runCount).toBe(2);
+    expect(rows[0]?.unreadRunThreads.map((thread) => thread.id)).toEqual(["run-1"]);
+  });
+
+  it("stops the badge from stretching its row", () => {
+    expect(unreadRunBadgeLabel(9)).toBe("9");
+    expect(unreadRunBadgeLabel(99)).toBe("99");
+    expect(unreadRunBadgeLabel(140)).toBe("99+");
   });
 });
 

@@ -105,6 +105,7 @@ import { useClientSettings } from "../hooks/useSettings";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useNowMinute } from "../hooks/useNowMinute";
+import { useAutomations } from "../state/automations";
 import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
 import { useProjects, useThreadShells } from "../state/entities";
 import { environmentServerConfigsAtom, primaryServerKeybindingsAtom } from "../state/server";
@@ -141,6 +142,11 @@ import {
   sortSettledThreadsForSidebar,
   sortThreadsForSidebar,
 } from "./Sidebar.logic";
+import {
+  countUnreadAutomationRuns,
+  unreadRunBadgeLabel,
+  unreadRunCountLabel,
+} from "./automations/automationsList.logic";
 import { resolveLocalCheckoutBranchMismatch } from "./BranchToolbar.logic";
 import {
   ThreadWorktreeIndicator,
@@ -1698,6 +1704,27 @@ export default function Sidebar() {
   const rangeSelectTo = useThreadSelectionStore((s) => s.rangeSelectTo);
   const markThreadUnread = useUiStateStore((s) => s.markThreadUnread);
   const markThreadVisited = useUiStateStore((s) => s.markThreadVisited);
+  const threadLastVisitedAtById = useUiStateStore((s) => s.threadLastVisitedAtById);
+  // Automations and threads ride the same shell snapshot, so a run and the
+  // automation it belongs to are never momentarily out of step here.
+  const automations = useAutomations();
+  const knownAutomationKeys = useMemo(
+    () => new Set(automations.map((automation) => `${automation.environmentId}:${automation.id}`)),
+    [automations],
+  );
+  // Automation runs are deliberately absent from the list below, so the row
+  // into the page is the only place their completions can surface. Counted over
+  // every thread the workspace knows, including runs promoted to the sidebar:
+  // an unread result is unread wherever its thread ended up.
+  const unreadAutomationRunCount = useMemo(
+    () =>
+      countUnreadAutomationRuns({
+        threads,
+        lastVisitedAtByThreadKey: threadLastVisitedAtById,
+        knownAutomationKeys,
+      }),
+    [knownAutomationKeys, threadLastVisitedAtById, threads],
+  );
   const acknowledgeWoke = useCallback(
     (threadRef: ScopedThreadRef, visitedAt: string) => {
       markThreadVisited(scopedThreadKey(threadRef), visitedAt);
@@ -3398,6 +3425,17 @@ export default function Sidebar() {
             >
               <CalendarClockIcon className="size-4 shrink-0" />
               <span className="min-w-0 flex-1 truncate">Automations</span>
+              {/* Emerald, like a thread's Done pill: same meaning, same hue
+                  wherever a finished-and-unread result surfaces. */}
+              {unreadAutomationRunCount > 0 ? (
+                <span
+                  className="shrink-0 rounded-full bg-emerald-500/12 px-1.5 py-px text-[11px] font-medium text-emerald-700 tabular-nums dark:bg-emerald-400/12 dark:text-emerald-300"
+                  title={unreadRunCountLabel(unreadAutomationRunCount)}
+                >
+                  <span aria-hidden>{unreadRunBadgeLabel(unreadAutomationRunCount)}</span>
+                  <span className="sr-only">{unreadRunCountLabel(unreadAutomationRunCount)}</span>
+                </span>
+              ) : null}
             </SidebarMenuButton>
             {/* The workspace's projects as a page of their own, above the scope
                 menu that only ever narrows the thread list below it. */}

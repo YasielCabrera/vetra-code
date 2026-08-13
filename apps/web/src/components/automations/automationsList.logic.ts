@@ -1,3 +1,4 @@
+import { scopeThreadRef, scopedThreadKey } from "@vetra-code/client-runtime/environment";
 import type { EnvironmentAutomation } from "@vetra-code/client-runtime/state/automations";
 import type { EnvironmentThreadShell } from "@vetra-code/client-runtime/state/models";
 
@@ -17,6 +18,75 @@ export interface AutomationRowModel {
   /** This automation's run threads, newest first. Grouped once here so the row
       menu's delete confirmation can count them without a second pass. */
   readonly runThreads: ReadonlyArray<EnvironmentThreadShell>;
+  /** The subset of `runThreads` nobody has read, newest first. */
+  readonly unreadRunThreads: ReadonlyArray<EnvironmentThreadShell>;
+}
+
+/** Where a thread's read stamp lives: `uiStateStore.threadLastVisitedAtById`. */
+export type ThreadLastVisitedAtByKey = Readonly<Record<string, string>>;
+
+export function automationRunVisitKey(thread: EnvironmentThreadShell): string {
+  return scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id));
+}
+
+/**
+ * A finished run whose result nobody has looked at: its thread has not been
+ * opened since the run completed.
+ *
+ * A never-opened run counts as unread, which is the opposite of the rule for
+ * threads you started yourself — the schedule fired while nobody was watching,
+ * so "never opened" is exactly the state worth reporting. Archiving a run is
+ * how you say you are done with it, so archived runs are read by definition.
+ */
+export function isAutomationRunUnread(input: {
+  readonly thread: EnvironmentThreadShell;
+  readonly lastVisitedAt: string | undefined;
+}): boolean {
+  const { lastVisitedAt, thread } = input;
+  if (thread.automationId == null) return false;
+  if (thread.archivedAt !== null) return false;
+  const completedAt = thread.latestTurn?.completedAt;
+  if (!completedAt) return false;
+  const completedAtMs = Date.parse(completedAt);
+  if (Number.isNaN(completedAtMs)) return false;
+  if (lastVisitedAt === undefined) return true;
+  const lastVisitedAtMs = Date.parse(lastVisitedAt);
+  // Corrupt local data must not eat the signal.
+  if (Number.isNaN(lastVisitedAtMs)) return true;
+  return completedAtMs > lastVisitedAtMs;
+}
+
+/**
+ * The sidebar badge's number: unread runs across every connected environment.
+ * Counted rather than collected — the badge only ever shows the total.
+ */
+export function countUnreadAutomationRuns(input: {
+  readonly threads: ReadonlyArray<EnvironmentThreadShell>;
+  readonly lastVisitedAtByThreadKey: ThreadLastVisitedAtByKey;
+  /**
+   * Keyed `environmentId:automationId`. A run whose automation is gone — deleted
+   * while the run itself was promoted to the sidebar — is a plain thread now,
+   * and the sidebar's own unread treatment owns it. Counting it here would leave
+   * a badge the automations page has nothing to clear.
+   */
+  readonly knownAutomationKeys: ReadonlySet<string>;
+}): number {
+  let count = 0;
+  for (const thread of input.threads) {
+    // The sidebar hands this every thread in the workspace, so the cheap tests
+    // come before the keys a lookup would need.
+    if (thread.automationId == null) continue;
+    if (!input.knownAutomationKeys.has(`${thread.environmentId}:${thread.automationId}`)) continue;
+    if (
+      isAutomationRunUnread({
+        thread,
+        lastVisitedAt: input.lastVisitedAtByThreadKey[automationRunVisitKey(thread)],
+      })
+    ) {
+      count += 1;
+    }
+  }
+  return count;
 }
 
 /**
@@ -70,6 +140,8 @@ export function buildAutomationRowModels(input: {
   readonly resolveProjectName: (automation: EnvironmentAutomation) => string | null;
   readonly resolveModelLabel: (automation: EnvironmentAutomation) => string | null;
   readonly resolveEnvironmentLabel: (automation: EnvironmentAutomation) => string | null;
+  /** Absent means nothing has been read yet, so every finished run is unread. */
+  readonly lastVisitedAtByThreadKey?: ThreadLastVisitedAtByKey;
   readonly use24Hour?: boolean;
 }): ReadonlyArray<AutomationRowModel> {
   const runThreadsByAutomation = new Map<string, EnvironmentThreadShell[]>();
@@ -84,6 +156,7 @@ export function buildAutomationRowModels(input: {
     }
   }
 
+  const lastVisitedAtByThreadKey = input.lastVisitedAtByThreadKey ?? {};
   return input.automations.map((automation) => {
     const runThreads =
       runThreadsByAutomation.get(`${automation.environmentId}:${automation.id}`) ?? [];
@@ -93,6 +166,9 @@ export function buildAutomationRowModels(input: {
         lastRunAt = thread.createdAt;
       }
     }
+    const newestFirst = runThreads.toSorted((left, right) =>
+      right.createdAt.localeCompare(left.createdAt),
+    );
     return {
       automation,
       scheduleLabel: describeAutomationSchedule(automation.schedule, {
@@ -104,8 +180,12 @@ export function buildAutomationRowModels(input: {
       runCount: runThreads.length,
       lastRunAt,
       status: resolveAutomationRowStatus({ automation, runThreads }),
-      runThreads: runThreads.toSorted((left, right) =>
-        right.createdAt.localeCompare(left.createdAt),
+      runThreads: newestFirst,
+      unreadRunThreads: newestFirst.filter((thread) =>
+        isAutomationRunUnread({
+          thread,
+          lastVisitedAt: lastVisitedAtByThreadKey[automationRunVisitKey(thread)],
+        }),
       ),
     };
   });
@@ -127,6 +207,15 @@ export function matchesAutomationQuery(row: AutomationRowModel, query: string): 
 
 export function runCountLabel(count: number): string {
   return count === 1 ? "1 run" : `${count} runs`;
+}
+
+export function unreadRunCountLabel(count: number): string {
+  return count === 1 ? "1 unread run" : `${count} unread runs`;
+}
+
+/** Kept short so a busy schedule cannot stretch the sidebar row it sits in. */
+export function unreadRunBadgeLabel(count: number): string {
+  return count > 99 ? "99+" : String(count);
 }
 
 /**

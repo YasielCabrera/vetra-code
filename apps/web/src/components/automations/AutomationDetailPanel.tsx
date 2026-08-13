@@ -22,6 +22,7 @@ import { createModelSelection } from "@vetra-code/shared/model";
 import {
   BotIcon,
   CalendarClockIcon,
+  CheckCheckIcon,
   FolderPlusIcon,
   PlayIcon,
   Trash2Icon,
@@ -39,6 +40,7 @@ import {
 import { onCommandPaletteProjectSelected, openCommandPalette } from "../../commandPaletteBus";
 import { isElectron } from "../../env";
 import { useAutomationActions } from "../../hooks/useAutomationActions";
+import { useMarkAutomationRunsRead } from "../../hooks/useAutomationRunsRead";
 import { useProjectGroups } from "../../hooks/useProjectGroups";
 import { useResizableWidth } from "../../hooks/useResizableWidth";
 import { useClientSettings, usePrimarySettings } from "../../hooks/useSettings";
@@ -51,6 +53,7 @@ import {
   resolveDefaultProviderModelSelection,
 } from "../../providerInstances";
 import { automationEnvironment, useAutomation } from "../../state/automations";
+import { useUiStateStore } from "../../uiStateStore";
 import { primaryServerProvidersAtom } from "../../state/server";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { TraitsPicker } from "../chat/TraitsPicker";
@@ -76,6 +79,11 @@ import { Switch } from "../ui/switch";
 import { Textarea } from "../ui/textarea";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { newAutomationId } from "./automationIds";
+import {
+  automationRunVisitKey,
+  isAutomationRunUnread,
+  unreadRunCountLabel,
+} from "./automationsList.logic";
 import {
   cronFromPreset,
   DEFAULT_SCHEDULE_PRESET,
@@ -231,6 +239,8 @@ export function AutomationDetailPanel(props: {
   // The same actions the list's row menu offers, so Run now, Pause, and Delete
   // behave identically wherever they are invoked from.
   const { confirmAndDelete, runNow, setEnabled } = useAutomationActions();
+  const markRunsRead = useMarkAutomationRunsRead();
+  const threadLastVisitedAtById = useUiStateStore((state) => state.threadLastVisitedAtById);
 
   const runThreads = useMemo(() => {
     if (automation === null) return [];
@@ -242,6 +252,22 @@ export function AutomationDetailPanel(props: {
       )
       .toSorted((left, right) => right.createdAt.localeCompare(left.createdAt));
   }, [automation, threads]);
+  // Which runs still owe the reader a look. Opening one clears its own mark
+  // (ChatView stamps the visit), so this list shrinks as they are read.
+  const unreadRunThreads = useMemo(
+    () =>
+      runThreads.filter((thread) =>
+        isAutomationRunUnread({
+          thread,
+          lastVisitedAt: threadLastVisitedAtById[automationRunVisitKey(thread)],
+        }),
+      ),
+    [runThreads, threadLastVisitedAtById],
+  );
+  const unreadRunKeys = useMemo(
+    () => new Set(unreadRunThreads.map((thread) => automationRunVisitKey(thread))),
+    [unreadRunThreads],
+  );
 
   const targetEnvironmentId = automation?.environmentId ?? primaryEnvironmentId;
   const scheduleLabel = describeAutomationSchedule(draftSchedule(draft), {
@@ -811,53 +837,93 @@ export function AutomationDetailPanel(props: {
 
         {!isNew ? (
           <section className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-foreground">Runs</span>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="text-sm font-medium text-foreground">Runs</span>
+              {unreadRunThreads.length > 0 ? (
+                <>
+                  <span className="text-xs font-medium text-emerald-700 tabular-nums dark:text-emerald-300">
+                    {unreadRunCountLabel(unreadRunThreads.length)}
+                  </span>
+                  {/* The way out at scale: a schedule that ran all week should
+                      not need a click per run to go quiet. */}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="ms-auto shrink-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => markRunsRead(unreadRunThreads)}
+                  >
+                    <CheckCheckIcon />
+                    Mark all read
+                  </Button>
+                </>
+              ) : null}
+            </div>
             {runThreads.length === 0 ? (
               <p className="text-xs text-muted-foreground">
                 Nothing has run yet. Each run will appear here as its own thread.
               </p>
             ) : (
               <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-                {runThreads.map((thread) => (
-                  <li
-                    key={thread.id}
-                    className="group/run-row flex items-center gap-2 rounded-lg pr-1 transition-colors hover:bg-accent/60"
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void navigate({
-                          to: "/$environmentId/$threadId",
-                          params: buildThreadRouteParams(
-                            scopeThreadRef(thread.environmentId, thread.id),
-                          ),
-                        })
-                      }
-                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-left outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                {runThreads.map((thread) => {
+                  const isUnread = unreadRunKeys.has(automationRunVisitKey(thread));
+                  return (
+                    <li
+                      key={thread.id}
+                      className="group/run-row flex items-center gap-2 rounded-lg pr-1 transition-colors hover:bg-accent/60"
                     >
-                      <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                        {thread.title}
-                      </span>
-                      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                        {formatRelativeTimeLabel(thread.createdAt)}
-                      </span>
-                    </button>
-                    {thread.hiddenAt != null ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="shrink-0 opacity-0 transition-opacity group-hover/run-row:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
-                        onClick={() => void handleRevealRun(thread.environmentId, thread.id)}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void navigate({
+                            to: "/$environmentId/$threadId",
+                            params: buildThreadRouteParams(
+                              scopeThreadRef(thread.environmentId, thread.id),
+                            ),
+                          })
+                        }
+                        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-left outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
-                        Show in sidebar
-                      </Button>
-                    ) : (
-                      <span className="shrink-0 px-3 text-xs text-muted-foreground/70">
-                        In sidebar
-                      </span>
-                    )}
-                  </li>
-                ))}
+                        <span className="flex min-w-0 flex-1 items-center gap-2">
+                          {/* The gutter is held whether or not the dot is in
+                              it, so titles line up down the list. */}
+                          <span
+                            aria-hidden
+                            className={cn(
+                              "size-1.5 shrink-0 rounded-full",
+                              isUnread ? "bg-emerald-500 dark:bg-emerald-400" : "bg-transparent",
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              "min-w-0 flex-1 truncate text-sm",
+                              isUnread ? "font-medium text-foreground" : "text-muted-foreground",
+                            )}
+                          >
+                            {thread.title}
+                            {isUnread ? <span className="sr-only"> (unread)</span> : null}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                          {formatRelativeTimeLabel(thread.createdAt)}
+                        </span>
+                      </button>
+                      {thread.hiddenAt != null ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="shrink-0 opacity-0 transition-opacity group-hover/run-row:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
+                          onClick={() => void handleRevealRun(thread.environmentId, thread.id)}
+                        >
+                          Show in sidebar
+                        </Button>
+                      ) : (
+                        <span className="shrink-0 px-3 text-xs text-muted-foreground/70">
+                          In sidebar
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>

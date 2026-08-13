@@ -245,6 +245,21 @@ export function markThreadVisited(state: UiState, threadId: string, visitedAt: s
   };
 }
 
+/**
+ * One update for many threads, so marking a whole automation's runs read does
+ * not re-render the app once per run. Stamps carry each thread's own read
+ * instant, and the per-thread guard still applies: nothing moves backwards.
+ */
+export function markThreadsVisited(
+  state: UiState,
+  entries: ReadonlyArray<{ readonly threadKey: string; readonly visitedAt: string }>,
+): UiState {
+  return entries.reduce(
+    (next, entry) => markThreadVisited(next, entry.threadKey, entry.visitedAt),
+    state,
+  );
+}
+
 export function markThreadUnread(
   state: UiState,
   threadId: string,
@@ -383,6 +398,9 @@ export function reorderProjects(
 
 interface UiStateStore extends UiState {
   markThreadVisited: (threadId: string, visitedAt: string) => void;
+  markThreadsVisited: (
+    entries: ReadonlyArray<{ readonly threadKey: string; readonly visitedAt: string }>,
+  ) => void;
   markThreadUnread: (threadId: string, latestTurnCompletedAt: string | null | undefined) => void;
   setThreadChangedFilesExpanded: (threadId: string, turnId: string, expanded: boolean) => void;
   setDefaultAdvertisedEndpointKey: (key: string | null) => void;
@@ -398,6 +416,7 @@ export const useUiStateStore = create<UiStateStore>((set) => ({
   ...readPersistedState(),
   markThreadVisited: (threadId, visitedAt) =>
     set((state) => markThreadVisited(state, threadId, visitedAt)),
+  markThreadsVisited: (entries) => set((state) => markThreadsVisited(state, entries)),
   markThreadUnread: (threadId, latestTurnCompletedAt) =>
     set((state) => markThreadUnread(state, threadId, latestTurnCompletedAt)),
   setThreadChangedFilesExpanded: (threadId, turnId, expanded) =>
