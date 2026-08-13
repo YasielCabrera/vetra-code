@@ -11,6 +11,7 @@ This is a living glossary for Vetra Code. It explains what common terms mean in 
 - [Orchestration](#orchestration)
 - [Provider runtime](#provider-runtime)
 - [Checkpointing](#checkpointing)
+- [Fork and upstream](#fork-and-upstream)
 
 ## Concepts
 
@@ -152,6 +153,16 @@ The patch difference between two checkpoints. Query logic lives in [CheckpointDi
 
 The file patch and changed-file summary for one turn. It is usually computed in [CheckpointDiffQuery.ts][20], represented in [the contracts][1], and recorded into thread state by [projector.ts][4].
 
+### Fork and upstream
+
+#### Upstream
+
+The original T3 Code repository, [pingdotgg/t3code](https://github.com/pingdotgg/t3code), configured as Git remote `upstream`. Local `main` is a mirror of `upstream/main`. Product work does not land on `main`. See [upstream-sync.md][26].
+
+#### Fork identity
+
+The Vetra-owned names that must survive every upstream merge: product name, `@vetra-code/*` packages, `VETRA_*` env vars, `~/.vetra-code`, `vetra://`, desktop application IDs, and `vetra.json`. They are centralized in [productIdentity.ts][27]. A raw merge from upstream reintroduces `t3*` names; [sync-upstream.sh][28] rewrites them mechanically, then a human review keeps auth, analytics, and auto-update from talking to T3.
+
 ## Practical Shortcuts
 
 - If you see `requested`, think "intent recorded".
@@ -159,6 +170,7 @@ The file patch and changed-file summary for one turn. It is usually computed in 
 - If you see `receipt`, think "async milestone signal, for tests".
 - If you see `checkpoint`, think "workspace snapshot for diff/restore".
 - If you see `quiesced`, think "all relevant follow-up work has gone idle".
+- If you see `upstream`, think "pingdotgg/t3code, merged through the sync script, not a raw merge".
 
 ## Related Docs
 
@@ -166,6 +178,7 @@ The file patch and changed-file summary for one turn. It is usually computed in 
 - [Provider architecture][16]
 - [Permission modes][18]
 - [Workspace layout][2]
+- [Syncing upstream T3 Code][26]
 
 [1]: ../../packages/contracts/src/orchestration.ts
 [2]: ./workspace-layout.md
@@ -192,3 +205,6 @@ The file patch and changed-file summary for one turn. It is usually computed in 
 [23]: ../../apps/server/src/checkpointing/Diffs.ts
 [24]: ./overview.md
 [25]: ../../apps/server/src/automation/Layers/AutomationScheduler.ts
+[26]: ./upstream-sync.md
+[27]: ../../packages/shared/src/productIdentity.ts
+[28]: ../../scripts/sync-upstream.sh

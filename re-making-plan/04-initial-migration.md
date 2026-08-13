@@ -8,6 +8,7 @@ application deletion, UI redesign, and cloud infrastructure into one unreviewabl
 ### Work
 
 1. Create a dedicated product fork/branch while retaining the original repository as `upstream`.
+   Recurring syncs after this step: [Syncing upstream T3 Code](../docs/internals/upstream-sync.md).
 2. Install Vite+ and dependencies if needed.
 3. Run the web-only isolated command from `03-safe-first-run.md`.
 4. Configure one provider with an isolated provider home below `.vetra-code/providers`; do not

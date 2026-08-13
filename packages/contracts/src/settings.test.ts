@@ -307,6 +307,8 @@ describe("ServerSettings web3Wallet", () => {
     expect(wallet.approvalMode).toBe("auto-for-agents");
     expect(wallet.chainId).toBeNull();
     expect(wallet.rpcUrl).toBeNull();
+    expect(wallet.disabledBuiltInChainIds).toEqual([]);
+    expect(wallet.customNetworks).toEqual([]);
     expect(wallet.autoConnectLoopback).toBe(false);
   });
 
@@ -324,6 +326,15 @@ describe("ServerSettings web3Wallet", () => {
         chainId: 31337,
         rpcUrl: "http://127.0.0.1:8545",
         autoConnectLoopback: true,
+        disabledBuiltInChainIds: [8453],
+        customNetworks: [
+          {
+            chainId: 31337,
+            name: "Anvil",
+            rpcUrl: "http://127.0.0.1:8545",
+            nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+          },
+        ],
       },
     }).web3Wallet;
 
@@ -331,6 +342,9 @@ describe("ServerSettings web3Wallet", () => {
     expect(wallet.approvalMode).toBe("always-ask");
     expect(wallet.chainId).toBe(31337);
     expect(wallet.rpcUrl).toBe("http://127.0.0.1:8545");
+    expect(wallet.disabledBuiltInChainIds).toEqual([8453]);
+    expect(wallet.customNetworks).toHaveLength(1);
+    expect(wallet.customNetworks[0]?.name).toBe("Anvil");
   });
 
   it("keeps partial blocks partial in the patch schema", () => {
@@ -357,6 +371,23 @@ describe("ServerSettings web3Wallet", () => {
   it("rejects a non-positive chain id", () => {
     expect(() => decodeServerSettings({ web3Wallet: { chainId: 0 } })).toThrow();
     expect(() => decodeServerSettings({ web3Wallet: { chainId: -1 } })).toThrow();
+  });
+
+  it("rejects a custom network whose RPC is not http(s)", () => {
+    expect(() =>
+      decodeServerSettings({
+        web3Wallet: {
+          customNetworks: [
+            {
+              chainId: 31337,
+              name: "Anvil",
+              rpcUrl: "ws://127.0.0.1:8545",
+              nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+            },
+          ],
+        },
+      }),
+    ).toThrow();
   });
 
   it("rejects an unknown approval mode instead of silently falling back", () => {

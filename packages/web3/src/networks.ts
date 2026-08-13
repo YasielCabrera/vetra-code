@@ -5,7 +5,7 @@
  *
  * @module Web3Networks
  */
-import type { Web3NativeCurrency } from "./schema.ts";
+import type { Web3CustomNetwork, Web3NativeCurrency } from "./schema.ts";
 
 /** MetaMask-compatible wallets conventionally start on Ethereum Mainnet. */
 export const DEFAULT_PUBLIC_CHAIN_ID = 1;
@@ -73,4 +73,107 @@ export const DEFAULT_WEB3_NETWORKS: ReadonlyArray<Web3DefaultNetwork> = [
 
 export function getDefaultNetwork(chainId: number): Web3DefaultNetwork | null {
   return DEFAULT_WEB3_NETWORKS.find((network) => network.chainId === chainId) ?? null;
+}
+
+export function isBuiltInChainId(chainId: number): boolean {
+  return getDefaultNetwork(chainId) !== null;
+}
+
+export function isBuiltInNetworkEnabled(
+  chainId: number,
+  disabledBuiltInChainIds: readonly number[],
+): boolean {
+  return isBuiltInChainId(chainId) && !disabledBuiltInChainIds.includes(chainId);
+}
+
+export function enabledBuiltInNetworks(
+  disabledBuiltInChainIds: readonly number[],
+): ReadonlyArray<Web3DefaultNetwork> {
+  const disabled = new Set(disabledBuiltInChainIds);
+  return DEFAULT_WEB3_NETWORKS.filter((network) => !disabled.has(network.chainId));
+}
+
+export function findCustomNetwork(
+  customNetworks: readonly Web3CustomNetwork[],
+  chainId: number,
+): Web3CustomNetwork | null {
+  return customNetworks.find((network) => network.chainId === chainId) ?? null;
+}
+
+/**
+ * Built-in chain ids to persist after a toggle. Unknown ids are dropped so a
+ * stale settings file cannot hide a network we no longer ship.
+ */
+export function setBuiltInNetworkEnabled(input: {
+  readonly chainId: number;
+  readonly enabled: boolean;
+  readonly disabledBuiltInChainIds: readonly number[];
+}): number[] {
+  const disabled = new Set(
+    input.disabledBuiltInChainIds.filter((chainId) => isBuiltInChainId(chainId)),
+  );
+  if (input.enabled) disabled.delete(input.chainId);
+  else if (isBuiltInChainId(input.chainId)) disabled.add(input.chainId);
+  return DEFAULT_WEB3_NETWORKS.filter((network) => disabled.has(network.chainId)).map(
+    (network) => network.chainId,
+  );
+}
+
+export interface WalletChainSelection {
+  readonly chainId: number | null;
+  readonly rpcUrl: string | null;
+}
+
+/**
+ * When the active chain is hidden or deleted, move to another listed network
+ * rather than leaving the wallet pointed at something the picker no longer
+ * shows. `chainId: null` means automatic selection and is left alone.
+ */
+export function nextChainSelectionAfterCatalogChange(input: {
+  readonly chainId: number | null;
+  readonly rpcUrl: string | null;
+  readonly removedOrDisabledChainId: number;
+  readonly disabledBuiltInChainIds: readonly number[];
+  readonly customNetworks: readonly Web3CustomNetwork[];
+}): WalletChainSelection {
+  if (input.chainId !== input.removedOrDisabledChainId) {
+    return { chainId: input.chainId, rpcUrl: input.rpcUrl };
+  }
+  const enabled = enabledBuiltInNetworks(input.disabledBuiltInChainIds);
+  const preferred =
+    enabled.find((network) => network.chainId === DEFAULT_PUBLIC_CHAIN_ID) ?? enabled[0];
+  if (preferred !== undefined) return { chainId: preferred.chainId, rpcUrl: null };
+  const custom = input.customNetworks[0];
+  if (custom !== undefined) return { chainId: custom.chainId, rpcUrl: custom.rpcUrl };
+  return { chainId: null, rpcUrl: null };
+}
+
+export function nativeCurrencyFromSymbol(symbol: string): Web3NativeCurrency {
+  const trimmed = symbol.trim();
+  if (trimmed.length === 0 || trimmed.toUpperCase() === "ETH") return ETHER;
+  return { name: trimmed, symbol: trimmed, decimals: 18 };
+}
+
+export function replaceCustomNetwork(
+  customNetworks: readonly Web3CustomNetwork[],
+  previousChainId: number,
+  next: Web3CustomNetwork,
+): Web3CustomNetwork[] {
+  return customNetworks.map((network) => (network.chainId === previousChainId ? next : network));
+}
+
+/**
+ * If the edited network was the pinned chain, keep the wallet on it after
+ * the chain id or RPC URL changes.
+ */
+export function nextChainSelectionAfterCustomNetworkEdit(input: {
+  readonly chainId: number | null;
+  readonly rpcUrl: string | null;
+  readonly previousChainId: number;
+  readonly next: Web3CustomNetwork;
+}): WalletChainSelection {
+  if (input.chainId !== input.previousChainId) {
+    return { chainId: input.chainId, rpcUrl: input.rpcUrl };
+  }
+  return { chainId: input.next.chainId, rpcUrl: input.next.rpcUrl };
 }

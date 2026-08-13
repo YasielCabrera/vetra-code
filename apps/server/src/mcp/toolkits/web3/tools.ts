@@ -56,7 +56,7 @@ export const PreviewWalletStatusTool = readonlyWalletTool(
 export const PreviewWalletConfigureTool = walletTool(
   Tool.make("preview_wallet_configure", {
     description:
-      "Configure the preview wallet before or during a test. Set approvalMode to always-ask to make signing requests park so they can be approved or rejected deterministically, switch the active account, rename an account, override the chain id and RPC URL, add a generated test account, remove an account, or clear per-origin connect grants.",
+      "Configure the preview wallet before or during a test. Set approvalMode to always-ask to make signing requests park so they can be approved or rejected deterministically, switch the active account, rename an account, override the chain id and RPC URL, add a generated test account, remove an account, or clear per-origin connect grants. Custom networks and built-in enable/disable live in Settings > Web3.",
     parameters: PreviewAutomationWalletConfigureInput,
     success: Web3WalletStatus,
     failure: walletFailure,

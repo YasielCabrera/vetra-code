@@ -5,20 +5,20 @@ Studio builder UI, not a claim that managed cloud execution or publishing is com
 
 ## Completed
 
-| Area                  | Vetra Code identity or result                                                  |
-| --------------------- | ------------------------------------------------------------------------------ |
-| Product and CLI       | `Vetra Code`, `vetra`, `@vetra-code/server`                                    |
-| Runtime data          | `~/.vetra-code`; optional repository-local `.vetra-code`                       |
-| Ports                 | production server `4873`; development starts at server `14873`, web `6733`     |
-| Desktop               | `com.vetra.code`, `com.vetra.code.dev`, `vetra://`, `vetra-dev://`             |
-| Browser state         | Vetra-specific local storage, IndexedDB, events, and preview partitions        |
-| Environment           | Vetra-owned runtime settings use `VETRA_*`                                     |
-| Package namespace     | all 14 workspace packages use `@vetra-code/*`                                  |
-| Git state             | checkpoints and support refs live below `refs/vetra/*`                         |
-| Project config        | `vetra.json` and `.vetra/vcs.json`                                             |
-| Removed surfaces      | `apps/mobile`, `apps/marketing`, their workflows, scripts, patches, and skills |
-| Production automation | inherited release and relay-deploy workflows removed                           |
-| Source control        | local branch `vetra-code`; original repository retained as `upstream`          |
+| Area                  | Vetra Code identity or result                                                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Product and CLI       | `Vetra Code`, `vetra`, `@vetra-code/server`                                                                                            |
+| Runtime data          | `~/.vetra-code`; optional repository-local `.vetra-code`                                                                               |
+| Ports                 | production server `4873`; development starts at server `14873`, web `6733`                                                             |
+| Desktop               | `com.vetra.code`, `com.vetra.code.dev`, `vetra://`, `vetra-dev://`                                                                     |
+| Browser state         | Vetra-specific local storage, IndexedDB, events, and preview partitions                                                                |
+| Environment           | Vetra-owned runtime settings use `VETRA_*`                                                                                             |
+| Package namespace     | all 14 workspace packages use `@vetra-code/*`                                                                                          |
+| Git state             | checkpoints and support refs live below `refs/vetra/*`                                                                                 |
+| Project config        | `vetra.json` and `.vetra/vcs.json`                                                                                                     |
+| Removed surfaces      | `apps/mobile`, `apps/marketing`, their workflows, scripts, patches, and skills                                                         |
+| Production automation | inherited release and relay-deploy workflows removed                                                                                   |
+| Source control        | local product branch (currently `vetra-studio`); `main` mirrors `upstream`; see [upstream-sync.md](../docs/internals/upstream-sync.md) |
 
 The root `vetra.json` configures Vetra Code's worktree setup and shared project scripts.
 

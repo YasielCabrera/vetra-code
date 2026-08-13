@@ -205,6 +205,20 @@ export function applyServerSettingsPatch(
     ...(patch.sourceControlWriterModelSelection !== undefined
       ? { sourceControlWriterModelSelection: patch.sourceControlWriterModelSelection }
       : {}),
+    ...(patch.web3Wallet?.customNetworks !== undefined ||
+    patch.web3Wallet?.disabledBuiltInChainIds !== undefined
+      ? {
+          web3Wallet: {
+            ...next.web3Wallet,
+            ...(patch.web3Wallet.customNetworks !== undefined
+              ? { customNetworks: [...patch.web3Wallet.customNetworks] }
+              : {}),
+            ...(patch.web3Wallet.disabledBuiltInChainIds !== undefined
+              ? { disabledBuiltInChainIds: [...patch.web3Wallet.disabledBuiltInChainIds] }
+              : {}),
+          },
+        }
+      : {}),
     ...(automaticGitFetchInterval !== undefined ? { automaticGitFetchInterval } : {}),
     ...(providerHealthRefreshInterval !== undefined ? { providerHealthRefreshInterval } : {}),
   };

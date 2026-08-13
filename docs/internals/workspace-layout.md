@@ -48,7 +48,7 @@ the task commands.
 ## Other top-level directories
 
 - `scripts/`: workspace tooling run through `vp run`. Dev runner, desktop artifact builds, release
-  helpers, and update-manifest merging.
+  helpers, update-manifest merging, and [upstream T3 Code sync](./upstream-sync.md).
 - `assets/`: brand and app icon sources per channel (`dev`, `nightly`, `prod`).
 - `patches/`: pnpm patches for pinned upstream dependencies.
 - `oxlint-plugin-vetra/`: repo-specific lint rules.

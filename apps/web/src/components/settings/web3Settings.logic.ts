@@ -3,8 +3,14 @@
  * out so they can be unit tested without rendering.
  */
 import {
+  findCustomNetwork,
+  isBuiltInChainId,
+  nativeCurrencyFromSymbol,
+} from "@vetra-code/web3/networks";
+import {
   WEB3_ACCOUNT_LABEL_MAX_LENGTH,
   type Web3ApprovalMode,
+  type Web3CustomNetwork,
   type Web3WalletStatus,
 } from "@vetra-code/web3/schema";
 
@@ -88,12 +94,92 @@ export function describeWalletChain(status: Web3WalletStatus | null): string {
   if (!status) return "";
   if (!status.enabled) return "The wallet is off.";
   if (status.chain === null) {
-    return "No chain resolved yet: clear custom network fields to use Ethereum Mainnet, start a local node, or let the page add one.";
+    return "No chain resolved yet: enable a built-in network, add a custom one, start a local node, or let the page add one.";
   }
   const target = status.chain.rpcUrl ?? "no endpoint";
   return status.rpcReachable
     ? `Currently on ${status.chain.name} (${status.chain.chainId}) via ${target}.`
     : `Currently on ${status.chain.name} (${status.chain.chainId}), but ${target} did not answer — reads and transactions will fail.`;
+}
+
+/** Empty is invalid here: adding a network requires an endpoint. */
+export function parseRequiredRpcUrlInput(raw: string): ParsedSetting<string> {
+  const parsed = parseRpcUrlInput(raw);
+  if (!parsed.valid || parsed.value === null) return { valid: false };
+  return { valid: true, value: parsed.value };
+}
+
+const CUSTOM_NETWORK_NAME_MAX_LENGTH = 120;
+const CUSTOM_NETWORK_SYMBOL_MAX_LENGTH = 12;
+
+export type CustomNetworkDraft = {
+  readonly name: string;
+  readonly chainId: string;
+  readonly rpcUrl: string;
+  readonly currencySymbol: string;
+};
+
+export type ParsedCustomNetwork =
+  | { readonly valid: true; readonly network: Web3CustomNetwork }
+  | { readonly valid: false; readonly error: string };
+
+export function parseCustomNetworkDraft(
+  draft: CustomNetworkDraft,
+  customNetworks: readonly Web3CustomNetwork[],
+  editingChainId: number | null = null,
+): ParsedCustomNetwork {
+  const name = draft.name.trim();
+  if (name.length === 0) return { valid: false, error: "Enter a network name." };
+  if (name.length > CUSTOM_NETWORK_NAME_MAX_LENGTH) {
+    return { valid: false, error: "Network name is too long." };
+  }
+
+  const chainId = parseChainIdInput(draft.chainId);
+  if (!chainId.valid || chainId.value === null) {
+    return { valid: false, error: "Enter a positive chain ID." };
+  }
+  if (isBuiltInChainId(chainId.value)) {
+    return {
+      valid: false,
+      error: "That chain ID is already a built-in network. Enable it in the list above.",
+    };
+  }
+  if (
+    findCustomNetwork(customNetworks, chainId.value) !== null &&
+    chainId.value !== editingChainId
+  ) {
+    return { valid: false, error: "A custom network with that chain ID already exists." };
+  }
+
+  const rpcUrl = parseRequiredRpcUrlInput(draft.rpcUrl);
+  if (!rpcUrl.valid) {
+    return { valid: false, error: "Enter an http(s) RPC URL." };
+  }
+
+  const symbol = draft.currencySymbol.trim();
+  if (symbol.length > CUSTOM_NETWORK_SYMBOL_MAX_LENGTH) {
+    return { valid: false, error: "Currency symbol is too long." };
+  }
+
+  return {
+    valid: true,
+    network: {
+      chainId: chainId.value,
+      name,
+      rpcUrl: rpcUrl.value,
+      nativeCurrency: nativeCurrencyFromSymbol(symbol),
+    },
+  };
+}
+
+export function removeCustomNetworkConfirmationMessage(network: {
+  readonly name: string;
+  readonly chainId: number;
+}): string {
+  return [
+    `Remove ${network.name}?`,
+    `Chain ${network.chainId} will be dropped from this test wallet. You can add it again later.`,
+  ].join("\n");
 }
 
 /** Compact label for the preview toolbar chip. */

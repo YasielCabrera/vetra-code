@@ -428,6 +428,8 @@ export const walletApplySettings = DesktopIpc.makeIpcMethod({
       chainId: settings.chainId,
       rpcUrl: settings.rpcUrl,
       autoConnectLoopback: settings.autoConnectLoopback,
+      disabledBuiltInChainIds: settings.disabledBuiltInChainIds,
+      customNetworks: settings.customNetworks,
     });
   }),
 });

@@ -652,6 +652,65 @@ describe("chain handling", () => {
       }),
     ),
   );
+
+  it.effect("switches to a custom network from settings without wallet_addEthereumChain", () =>
+    withWallet(
+      {
+        settings: {
+          approvalMode: "always-auto",
+          autoConnectLoopback: true,
+          customNetworks: [
+            {
+              chainId: 4242,
+              name: "Preview Chain",
+              rpcUrl: "https://preview.example.test",
+              nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+            },
+          ],
+        },
+        respondersByUrl: { "https://preview.example.test": { eth_chainId: "0x1092" } },
+      },
+      (wallet) =>
+        Effect.gen(function* () {
+          yield* connect(wallet);
+          expect(
+            yield* request(wallet, "wallet_switchEthereumChain", [{ chainId: "0x1092" }]),
+          ).toBeNull();
+
+          const status = yield* wallet.status;
+          expect(status.chain?.chainId).toBe(4242);
+          expect(status.chain?.name).toBe("Preview Chain");
+          expect(status.rpcReachable).toBe(true);
+        }),
+    ),
+  );
+
+  it.effect("refuses to switch to a disabled built-in network", () => {
+    const base = getDefaultChain(8453)!;
+    return withWallet(
+      {
+        settings: {
+          approvalMode: "always-auto",
+          autoConnectLoopback: true,
+          disabledBuiltInChainIds: [8453],
+        },
+        respondersByUrl: { [base.rpcUrl!]: { eth_chainId: "0x2105" } },
+      },
+      (wallet) =>
+        Effect.gen(function* () {
+          yield* connect(wallet);
+          const result = yield* request(wallet, "wallet_switchEthereumChain", [
+            { chainId: "0x2105" },
+          ]).pipe(Effect.result);
+
+          expect(result._tag).toBe("Failure");
+          if (result._tag === "Failure") {
+            expect((result.failure as { code?: number }).code).toBe(4902);
+          }
+          expect((yield* wallet.status).chain?.chainId).toBe(31337);
+        }),
+    );
+  });
 });
 
 describe("passthrough", () => {
@@ -961,6 +1020,8 @@ describe("applySettings", () => {
           chainId: null,
           rpcUrl: null,
           autoConnectLoopback: false,
+          disabledBuiltInChainIds: [],
+          customNetworks: [],
         });
 
         expect((yield* wallet.status).enabled).toBe(false);
@@ -979,6 +1040,8 @@ describe("applySettings", () => {
           chainId: 11155111,
           rpcUrl: "https://sepolia.example.test",
           autoConnectLoopback: false,
+          disabledBuiltInChainIds: [],
+          customNetworks: [],
         });
 
         const status = yield* wallet.status;

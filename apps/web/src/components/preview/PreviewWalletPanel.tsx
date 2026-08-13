@@ -8,7 +8,7 @@
  * EIP-1193 codes stay on `preview_wallet_reject` for agent-driven tests.
  */
 import type { PreviewAutomationWalletConfigureInput } from "@vetra-code/contracts";
-import { DEFAULT_WEB3_NETWORKS } from "@vetra-code/web3/networks";
+import { enabledBuiltInNetworks, findCustomNetwork } from "@vetra-code/web3/networks";
 import {
   DEFAULT_WEB3_REJECT_CODE,
   type Web3Account,
@@ -29,7 +29,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 
 import { acquireHostedBrowserPointerLock } from "~/browser/hostedBrowserPointerLock";
 import { cn } from "~/lib/utils";
-import { useUpdatePrimarySettings } from "../../hooks/useSettings";
+import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
 import { ensureLocalApi } from "../../localApi";
 import { AccountIdenticon } from "../settings/AccountIdenticon";
 import { AccountLabelEditor } from "../settings/AccountLabelEditor";
@@ -339,6 +339,7 @@ function PendingRequestCard({
 
 export function PreviewWalletChip() {
   const { status, refresh } = useWalletStatus();
+  const walletSettings = usePrimarySettings((settings) => settings.web3Wallet);
   const updateSettings = useUpdatePrimarySettings();
   const bridge = previewBridge?.wallet ?? null;
   const [open, setOpen] = useState(false);
@@ -441,17 +442,23 @@ export function PreviewWalletChip() {
   const pendingCount = status.pendingRequests.length;
   const controlsDisabled = !bridge || busyAction !== null;
   const activeChainId = status.chain?.chainId ?? null;
-  const activeBundledNetwork = DEFAULT_WEB3_NETWORKS.find(
-    (network) => network.chainId === activeChainId,
-  );
+  const listedBuiltIn = enabledBuiltInNetworks(walletSettings.disabledBuiltInChainIds);
+  const customNetworks = walletSettings.customNetworks;
+  const activeBuiltIn = listedBuiltIn.find((network) => network.chainId === activeChainId);
+  const activeCustom =
+    activeChainId === null ? null : findCustomNetwork(customNetworks, activeChainId);
   const activeChainUsesBundledRpc =
-    activeBundledNetwork !== undefined && activeBundledNetwork.rpcUrl === status.chain?.rpcUrl;
+    activeBuiltIn !== undefined && activeBuiltIn.rpcUrl === status.chain?.rpcUrl;
+  const activeChainUsesCustomRpc =
+    activeCustom !== null && activeCustom.rpcUrl === status.chain?.rpcUrl;
   const activeNetworkValue =
     activeChainId === null
       ? "no-network"
-      : activeChainUsesBundledRpc
-        ? `network:${activeChainId}`
-        : `current:${activeChainId}`;
+      : activeChainUsesCustomRpc
+        ? `custom:${activeChainId}`
+        : activeChainUsesBundledRpc
+          ? `network:${activeChainId}`
+          : `current:${activeChainId}`;
   const activeAccount = status.accounts.find(
     (account) => account.address === status.selectedAddress,
   );
@@ -528,10 +535,26 @@ export function PreviewWalletChip() {
             <Select
               value={activeNetworkValue}
               onValueChange={(value) => {
-                if (typeof value !== "string" || !value.startsWith("network:")) return;
-                const chainId = Number(value.slice("network:".length));
-                if (!Number.isSafeInteger(chainId) || chainId <= 0 || value === activeNetworkValue)
+                if (typeof value !== "string" || value === activeNetworkValue) return;
+                if (value.startsWith("custom:")) {
+                  const chainId = Number(value.slice("custom:".length));
+                  const custom = findCustomNetwork(customNetworks, chainId);
+                  if (custom === null || !Number.isSafeInteger(chainId) || chainId <= 0) {
+                    return;
+                  }
+                  updateSettings({
+                    web3Wallet: { chainId, rpcUrl: custom.rpcUrl },
+                  });
+                  void configure(
+                    `custom:${chainId}`,
+                    { chainId, rpcUrl: custom.rpcUrl },
+                    "Could not switch network",
+                  );
                   return;
+                }
+                if (!value.startsWith("network:")) return;
+                const chainId = Number(value.slice("network:".length));
+                if (!Number.isSafeInteger(chainId) || chainId <= 0) return;
                 updateSettings({ web3Wallet: { chainId, rpcUrl: null } });
                 void configure(
                   `network:${chainId}`,
@@ -559,7 +582,9 @@ export function PreviewWalletChip() {
                 <SelectValue>{status.chain?.name ?? "No network"}</SelectValue>
               </SelectTrigger>
               <SelectPopup alignItemWithTrigger={false} matchTriggerWidth={false}>
-                {status.chain !== null && !activeChainUsesBundledRpc ? (
+                {status.chain !== null &&
+                !activeChainUsesBundledRpc &&
+                !activeChainUsesCustomRpc ? (
                   <SelectItem
                     hideIndicator
                     key={`current:${status.chain.chainId}`}
@@ -582,11 +607,29 @@ export function PreviewWalletChip() {
                     No network
                   </SelectItem>
                 ) : null}
-                {DEFAULT_WEB3_NETWORKS.map((network) => (
+                {listedBuiltIn.map((network) => (
                   <SelectItem
                     hideIndicator
                     key={network.chainId}
                     value={`network:${network.chainId}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "size-2 shrink-0 rounded-full",
+                          networkSwatchClass(network.chainId),
+                        )}
+                        aria-hidden
+                      />
+                      {network.name}
+                    </span>
+                  </SelectItem>
+                ))}
+                {customNetworks.map((network) => (
+                  <SelectItem
+                    hideIndicator
+                    key={`custom:${network.chainId}`}
+                    value={`custom:${network.chainId}`}
                   >
                     <span className="flex items-center gap-2">
                       <span

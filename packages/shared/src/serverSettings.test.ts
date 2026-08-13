@@ -584,4 +584,25 @@ describe("applyServerSettingsPatch web3Wallet", () => {
     expect(next.web3Wallet.chainId).toBeNull();
     expect(next.web3Wallet.rpcUrl).toBe("http://a.test");
   });
+
+  it("replaces customNetworks instead of merging them by index", () => {
+    const current = {
+      ...DEFAULT_SERVER_SETTINGS,
+      web3Wallet: {
+        ...DEFAULT_SERVER_SETTINGS.web3Wallet,
+        customNetworks: [
+          {
+            chainId: 31337,
+            name: "Anvil",
+            rpcUrl: "http://127.0.0.1:8545",
+            nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+          },
+        ],
+      },
+    };
+
+    const next = applyServerSettingsPatch(current, { web3Wallet: { customNetworks: [] } });
+
+    expect(next.web3Wallet.customNetworks).toEqual([]);
+  });
 });

@@ -216,7 +216,13 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   {
     id: "web3-wallet-chain",
-    title: "Wallet network",
+    title: "Built-in networks",
+    to: "/settings/web3",
+    targetId: "web3-network",
+  },
+  {
+    id: "web3-wallet-custom-networks",
+    title: "Custom networks",
     to: "/settings/web3",
     targetId: "web3-network",
   },

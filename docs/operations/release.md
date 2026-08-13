@@ -18,6 +18,9 @@ artifacts, hosted web builds, or infrastructure under the wrong product identity
 Do not restore those workflows or target another product's GitHub repository, npm package, hosted
 domains, Clerk application, relay, telemetry project, signing identity, or updater feed.
 
+An upstream merge can bring `release.yml`, `deploy-relay.yml`, and the mobile workflows back. After
+every T3 Code sync, confirm they are still absent. See [Syncing upstream T3 Code](../internals/upstream-sync.md).
+
 ## Local release-shaped verification
 
 These commands build the artifacts without publishing anything:

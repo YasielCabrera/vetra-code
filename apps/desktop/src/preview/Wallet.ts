@@ -18,6 +18,7 @@
  *   helpers.
  */
 import {
+  DEFAULT_SERVER_SETTINGS,
   type PreviewAutomationWalletConfigureInput,
   type PreviewAutomationWalletRequestList,
   type PreviewAutomationWalletResolution,
@@ -27,6 +28,7 @@ import { parsePersistedWeb3WalletSettings } from "@vetra-code/shared/serverSetti
 import {
   DEFAULT_LOCAL_RPC_URL,
   describeChain,
+  describeCustomNetwork,
   getDefaultChain,
   parseAddEthereumChain,
   probeChainId,
@@ -40,6 +42,7 @@ import {
   readKeystore,
   writeKeystore,
 } from "@vetra-code/web3/keystore";
+import { findCustomNetwork, isBuiltInNetworkEnabled } from "@vetra-code/web3/networks";
 import {
   chainIdToHex,
   classifyWeb3Method,
@@ -124,6 +127,40 @@ const LOOPBACK_HOSTNAMES: ReadonlySet<string> = new Set([
   "::1",
   "0.0.0.0",
 ]);
+
+function sameNumberList(left: readonly number[], right: readonly number[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function sameCustomNetworks(
+  left: Web3WalletSettings["customNetworks"],
+  right: Web3WalletSettings["customNetworks"],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((network, index) => {
+      const other = right[index];
+      return (
+        other !== undefined &&
+        other.chainId === network.chainId &&
+        other.rpcUrl === network.rpcUrl &&
+        other.name === network.name
+      );
+    })
+  );
+}
+
+function catalogLostActiveChain(current: WalletState, settings: Web3WalletSettings): boolean {
+  const chainId = current.chain?.chainId;
+  if (chainId === undefined) return false;
+  const lostCustom =
+    findCustomNetwork(current.settings.customNetworks, chainId) !== null &&
+    findCustomNetwork(settings.customNetworks, chainId) === null;
+  const lostBuiltIn =
+    isBuiltInNetworkEnabled(chainId, current.settings.disabledBuiltInChainIds) &&
+    !isBuiltInNetworkEnabled(chainId, settings.disabledBuiltInChainIds);
+  return lostCustom || lostBuiltIn;
+}
 
 export interface PreviewWalletBootstrap {
   readonly enabled: boolean;
@@ -264,13 +301,7 @@ export const make = Effect.gen(function* PreviewWalletMake() {
   const walletContext = yield* Effect.context<never>();
 
   const stateRef = yield* SynchronizedRef.make<WalletState>({
-    settings: {
-      enabled: false,
-      approvalMode: "auto-for-agents",
-      chainId: null,
-      rpcUrl: null,
-      autoConnectLoopback: false,
-    },
+    settings: DEFAULT_SERVER_SETTINGS.web3Wallet,
     keystore: EMPTY_KEYSTORE,
     chain: null,
     rpcReachable: false,
@@ -383,6 +414,8 @@ export const make = Effect.gen(function* PreviewWalletMake() {
       resolveInitialChain({
         settingsChainId: settings.chainId,
         settingsRpcUrl: settings.rpcUrl,
+        disabledBuiltInChainIds: settings.disabledBuiltInChainIds,
+        customNetworks: settings.customNetworks,
       }),
     );
     if (chain === null) return { chain: null, rpcReachable: false } as const;
@@ -402,7 +435,9 @@ export const make = Effect.gen(function* PreviewWalletMake() {
       current.settings.approvalMode === settings.approvalMode &&
       current.settings.chainId === settings.chainId &&
       current.settings.rpcUrl === settings.rpcUrl &&
-      current.settings.autoConnectLoopback === settings.autoConnectLoopback;
+      current.settings.autoConnectLoopback === settings.autoConnectLoopback &&
+      sameNumberList(current.settings.disabledBuiltInChainIds, settings.disabledBuiltInChainIds) &&
+      sameCustomNetworks(current.settings.customNetworks, settings.customNetworks);
     if (unchanged && (current.keystore.accounts.length > 0 || !settings.enabled)) return;
 
     // A wallet that cannot read or create its keystore stays empty and logs;
@@ -421,7 +456,9 @@ export const make = Effect.gen(function* PreviewWalletMake() {
     const chainTargetChanged =
       current.settings.chainId !== settings.chainId ||
       current.settings.rpcUrl !== settings.rpcUrl ||
-      current.chain === null;
+      current.chain === null ||
+      catalogLostActiveChain(current, settings) ||
+      !sameCustomNetworks(current.settings.customNetworks, settings.customNetworks);
     const resolved =
       settings.enabled && chainTargetChanged
         ? yield* resolveChain(settings)
@@ -445,13 +482,7 @@ export const make = Effect.gen(function* PreviewWalletMake() {
     // that can sign must fail closed, never fail open.
     const settings = Option.isSome(raw)
       ? parsePersistedWeb3WalletSettings(raw.value)
-      : {
-          enabled: false,
-          approvalMode: "auto-for-agents" as const,
-          chainId: null,
-          rpcUrl: null,
-          autoConnectLoopback: false,
-        };
+      : DEFAULT_SERVER_SETTINGS.web3Wallet;
     yield* applySettings(settings);
   });
 
@@ -628,6 +659,7 @@ export const make = Effect.gen(function* PreviewWalletMake() {
         return yield* Effect.fail(providerError(4902, "Unrecognised chain id."));
       }
       if (state.chain?.chainId === chainId) return null;
+      const custom = findCustomNetwork(state.settings.customNetworks, chainId);
       // Keep the current endpoint only when it actually serves the target
       // chain; otherwise the wallet would claim a chain it cannot read.
       const reuseRpc =
@@ -636,27 +668,45 @@ export const make = Effect.gen(function* PreviewWalletMake() {
             ? state.chain.rpcUrl
             : null
           : null;
+      const customRpcUrl = custom?.rpcUrl ?? null;
+      const customChainId =
+        reuseRpc === null && customRpcUrl !== null
+          ? yield* withHttp(probeChainId(customRpcUrl))
+          : null;
       const localChainId =
-        reuseRpc === null ? yield* withHttp(probeChainId(DEFAULT_LOCAL_RPC_URL)) : null;
-      const defaultChain = getDefaultChain(chainId);
+        reuseRpc === null && customChainId !== chainId
+          ? yield* withHttp(probeChainId(DEFAULT_LOCAL_RPC_URL))
+          : null;
+      const defaultChain = isBuiltInNetworkEnabled(chainId, state.settings.disabledBuiltInChainIds)
+        ? getDefaultChain(chainId)
+        : null;
       const defaultRpcUrl = defaultChain?.rpcUrl ?? null;
       const defaultChainId =
-        reuseRpc === null && localChainId !== chainId && defaultRpcUrl !== null
+        reuseRpc === null &&
+        customChainId !== chainId &&
+        localChainId !== chainId &&
+        defaultRpcUrl !== null
           ? yield* withHttp(probeChainId(defaultRpcUrl))
           : null;
       const rpcUrl =
         reuseRpc ??
+        (customChainId === chainId ? customRpcUrl : null) ??
         (localChainId === chainId ? (DEFAULT_LOCAL_RPC_URL as Web3RpcUrl) : null) ??
         (defaultChainId === chainId ? defaultRpcUrl : null);
       if (rpcUrl === null) {
         return yield* Effect.fail(
           providerError(
             4902,
-            `No working JSON-RPC endpoint is known for chain ${chainId}. Add one in Settings > Web3 or call wallet_addEthereumChain.`,
+            `No working JSON-RPC endpoint is known for chain ${chainId}. Add a custom network in Settings > Web3 or call wallet_addEthereumChain.`,
           ),
         );
       }
-      yield* setChain(describeChain(chainId, rpcUrl), true);
+      yield* setChain(
+        custom !== null && rpcUrl === custom.rpcUrl
+          ? describeCustomNetwork(custom)
+          : describeChain(chainId, rpcUrl),
+        true,
+      );
       return null;
     }
 

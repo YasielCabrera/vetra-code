@@ -93,6 +93,8 @@ export function ElectronBrowserHost() {
         chainId: web3Wallet.chainId,
         rpcUrl: web3Wallet.rpcUrl,
         autoConnectLoopback: web3Wallet.autoConnectLoopback,
+        disabledBuiltInChainIds: web3Wallet.disabledBuiltInChainIds,
+        customNetworks: web3Wallet.customNetworks,
       })
       .catch(() => {
         // An older main process has no wallet bridge; the preview still works.

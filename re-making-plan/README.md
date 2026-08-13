@@ -57,7 +57,8 @@ The fork-isolation and repository-cleanup checkpoint is complete. Vetra now has 
 desktop, browser-storage, protocol, port, environment-variable, and Git-ref identities; mobile and
 marketing are removed; inherited production deployment workflows are disabled. See
 [Bootstrap progress and handoff](./08-bootstrap-progress.md) for the exact verified commands and the
-remaining boundaries before UI work starts.
+remaining boundaries before UI work starts. Recurring merges from `pingdotgg/t3code` are documented
+in [Syncing upstream T3 Code](../docs/internals/upstream-sync.md); do not raw-merge `upstream/main`.
 
 ## First milestone
 

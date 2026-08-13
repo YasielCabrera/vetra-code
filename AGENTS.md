@@ -70,7 +70,7 @@ The most common defect in this repo is a change that works on the path you teste
 - **Contracts.** Anything crossing the wire is typed in `packages/contracts`. Change the schema and the server, web, and desktop all follow.
 - **Reverse states.** If you added a way in, add the way out and the way to see it. Snooze needs unsnooze. Close needs reopen. A one-way door is a bug.
 - **Connection modes.** Local, remote/relay, and tunnel behave differently. Multi-device and multi-environment cases are real.
-- **Docs.** `docs/` splits by audience. Behavior changes that a user would notice belong in `docs/user/` (shipped-product voice, no repo tooling or source paths); architecture and contributor changes in `docs/internals/`; runbooks in `docs/operations/`; new vocabulary in `docs/internals/glossary.md`.
+- **Docs.** `docs/` splits by audience. Behavior changes that a user would notice belong in `docs/user/` (shipped-product voice, no repo tooling or source paths); architecture and contributor changes in `docs/internals/`; runbooks in `docs/operations/`; new vocabulary in `docs/internals/glossary.md`. Recurring T3 Code merges belong in [docs/internals/upstream-sync.md](docs/internals/upstream-sync.md); do not raw-merge `upstream/main`.
 
 ## Dev servers
 
@@ -131,6 +131,10 @@ Full glossary with file links: `docs/internals/glossary.md`
 - `packages/shared` - shared runtime utils, subpath exports, no barrel.
 - `packages/client-runtime` - non-visual client runtime used by the web renderer.
 - `.repos/` - vendored read-only references. Prefer their patterns over invented ones. Never edit or import from them. Sync with `vpr sync:repos` when bumping the matching dependency.
+
+## Upstream sync
+
+Vetra Code is a fork of `pingdotgg/t3code`. Bring bugfixes and runtime features with `scripts/sync-upstream.sh`, then finish the review in [docs/internals/upstream-sync.md](docs/internals/upstream-sync.md). A raw `git merge` restores deleted mobile/marketing trees and T3 names, and can point auth, analytics, and auto-update back at T3. Keep Vetra identity; keep Clerk, PostHog, relay, and the updater disabled until we own those destinations.
 
 ## Taste
 

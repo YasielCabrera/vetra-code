@@ -81,7 +81,7 @@ import {
   PreviewAutomationWalletRequestList,
   PreviewAutomationWalletResolution,
 } from "./previewAutomation.ts";
-import { Web3WalletStatus } from "@vetra-code/web3/schema";
+import { Web3CustomNetwork, Web3WalletStatus } from "@vetra-code/web3/schema";
 import type { Web3ProviderEvent } from "@vetra-code/web3/inpage";
 import type {
   ClientOrchestrationCommand,
@@ -1035,6 +1035,8 @@ export const DesktopPreviewWalletSettingsSchema = Schema.Struct({
   chainId: Schema.NullOr(Schema.Int),
   rpcUrl: Schema.NullOr(Schema.String),
   autoConnectLoopback: Schema.Boolean,
+  disabledBuiltInChainIds: Schema.Array(Schema.Int),
+  customNetworks: Schema.Array(Web3CustomNetwork),
 });
 export type DesktopPreviewWalletSettings = typeof DesktopPreviewWalletSettingsSchema.Type;
 

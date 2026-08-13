@@ -11,11 +11,17 @@
 import * as Effect from "effect/Effect";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
 
-import { DEFAULT_PUBLIC_CHAIN_ID, getDefaultNetwork } from "./networks.ts";
+import {
+  DEFAULT_PUBLIC_CHAIN_ID,
+  enabledBuiltInNetworks,
+  findCustomNetwork,
+  getDefaultNetwork,
+} from "./networks.ts";
 import { parseChainId } from "./rpc.ts";
 import {
   PreviewWalletRpcError,
   type Web3Chain,
+  type Web3CustomNetwork,
   type Web3NativeCurrency,
   type Web3RpcUrl,
 } from "./schema.ts";
@@ -45,6 +51,15 @@ export function describeChain(chainId: number, rpcUrl: string | null): Web3Chain
     name: bundled?.name ?? local?.name ?? `Chain ${chainId}`,
     rpcUrl: (rpcUrl ?? bundled?.rpcUrl ?? null) as Web3RpcUrl | null,
     nativeCurrency: bundled?.nativeCurrency ?? local?.currency ?? ETHER,
+  };
+}
+
+export function describeCustomNetwork(network: Web3CustomNetwork): Web3Chain {
+  return {
+    chainId: network.chainId,
+    name: network.name,
+    rpcUrl: network.rpcUrl,
+    nativeCurrency: network.nativeCurrency,
   };
 }
 
@@ -169,15 +184,42 @@ export const probeChainId = Effect.fn("Web3Chain.probeChainId")(function* (rpcUr
   return result === null ? null : parseChainId(result);
 });
 
+function fallbackPublicChain(input: {
+  readonly disabledBuiltInChainIds: readonly number[];
+  readonly customNetworks: readonly Web3CustomNetwork[];
+}): Web3Chain | null {
+  const enabled = enabledBuiltInNetworks(input.disabledBuiltInChainIds);
+  const preferred =
+    enabled.find((network) => network.chainId === DEFAULT_PUBLIC_CHAIN_ID) ?? enabled[0];
+  if (preferred !== undefined) return getDefaultChain(preferred.chainId);
+  const custom = input.customNetworks[0];
+  return custom === undefined ? null : describeCustomNetwork(custom);
+}
+
 /**
  * Precedence: an explicit setting wins; otherwise adopt a local node if one is
- * actually listening; otherwise start on the bundled Ethereum Mainnet endpoint.
+ * actually listening; otherwise the first enabled bundled network (Mainnet when
+ * it is still on), then the first custom network.
  */
 export const resolveInitialChain = Effect.fn("Web3Chain.resolveInitialChain")(function* (input: {
   readonly settingsChainId: number | null;
   readonly settingsRpcUrl: string | null;
+  readonly disabledBuiltInChainIds?: readonly number[];
+  readonly customNetworks?: readonly Web3CustomNetwork[];
 }) {
+  const disabledBuiltInChainIds = input.disabledBuiltInChainIds ?? [];
+  const customNetworks = input.customNetworks ?? [];
   if (input.settingsChainId !== null) {
+    const custom = findCustomNetwork(customNetworks, input.settingsChainId);
+    if (
+      custom !== null &&
+      (input.settingsRpcUrl === null || input.settingsRpcUrl === custom.rpcUrl)
+    ) {
+      return describeCustomNetwork({
+        ...custom,
+        rpcUrl: input.settingsRpcUrl ?? custom.rpcUrl,
+      });
+    }
     return describeChain(input.settingsChainId, input.settingsRpcUrl);
   }
   if (input.settingsRpcUrl !== null) {
@@ -186,6 +228,6 @@ export const resolveInitialChain = Effect.fn("Web3Chain.resolveInitialChain")(fu
   }
   const local = yield* probeChainId(DEFAULT_LOCAL_RPC_URL);
   return local === null
-    ? getDefaultChain(DEFAULT_PUBLIC_CHAIN_ID)
+    ? fallbackPublicChain({ disabledBuiltInChainIds, customNetworks })
     : describeChain(local, DEFAULT_LOCAL_RPC_URL);
 });

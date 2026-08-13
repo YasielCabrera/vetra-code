@@ -10,10 +10,9 @@ It identifies itself to pages as MetaMask (`window.ethereum.isMetaMask`, and
 that gate on MetaMask detection find it.
 
 > [!WARNING]
-> **This is a test wallet.** Its keys are generated on your machine and stored
-> unencrypted, so the preview can sign without prompting for a password. The
-> preview also loads untrusted web content. Never import a mnemonic or private
-> key that holds real funds.
+> **This is a test wallet.** Keys are unencrypted, and agents can use, create, or
+> delete wallets without notice. Never import a mnemonic or private key that
+> holds real funds.
 
 ## Turning it on
 
@@ -54,25 +53,36 @@ signs and reconnects that site; rejecting leaves it disconnected.
 
 ## Networks
 
-Leave _Chain ID_ and _RPC URL_ empty for automatic network selection:
+Built-in networks start **enabled**. Disable one in Settings → **Web3** to hide it
+from the preview wallet picker and from `wallet_switchEthereumChain`. Enable it
+again to put it back. A reset control on that list turns every built-in back on.
+
+Automatic selection when no network is pinned:
 
 1. If a node is listening on `http://127.0.0.1:8545` (Anvil, Hardhat), the wallet
    adopts it and reports its chain id.
-2. Otherwise the wallet starts on Ethereum Mainnet through a keyless public RPC,
-   so dapps always receive a valid chain id.
-3. `wallet_addEthereumChain` from the page is honoured, including the endpoint it
-   supplies.
-4. `wallet_switchEthereumChain` can select the bundled Ethereum, OP Mainnet, BNB
-   Smart Chain, Polygon, Base, Arbitrum One, Avalanche C-Chain, and Sepolia
-   endpoints. Other chains answer `4902` unless the page adds them first.
+2. Otherwise the wallet starts on the first enabled built-in network, preferring
+   Ethereum Mainnet.
+3. If every built-in is disabled, it uses the first custom network, or stays
+   unset until you add one.
+4. `wallet_addEthereumChain` from the page is honoured for the session, including
+   the endpoint it supplies.
+5. `wallet_switchEthereumChain` can select an enabled built-in or a custom
+   network you added. Other chains answer `4902` unless the page adds them first.
+
+**Add custom network** stores a name, RPC URL, chain ID, and currency symbol —
+the same shape MetaMask uses — so a local node or any other EVM chain can sit
+next to the built-in list. Edit a custom network from the pencil next to it.
+Removing one that is currently selected moves the wallet to another enabled
+network.
 
 Bundled endpoints are public and rate-limited. They are suitable for previews and
-development, not production traffic; fill the settings fields to use a dedicated
-or self-hosted RPC.
+development, not production traffic; add a custom network to use a dedicated or
+self-hosted RPC.
 
-Open the wallet chip in the preview toolbar to switch directly between bundled
-networks. The wallet emits `chainChanged`, so the open page sees the new network
-without reloading. Custom network targets remain available in Settings → Web3.
+Open the wallet chip in the preview toolbar to switch directly between enabled
+built-in networks and your custom networks. The wallet emits `chainChanged`, so
+the open page sees the new network without reloading.
 
 | Network           | Chain ID | Default RPC                                   |
 | ----------------- | -------: | --------------------------------------------- |
@@ -85,9 +95,8 @@ without reloading. Custom network targets remain available in Settings → Web3.
 | Avalanche C-Chain |    43114 | `https://api.avax.network/ext/bc/C/rpc`       |
 | Ethereum Sepolia  | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` |
 
-Fill either field to pin the wallet instead. When the configured endpoint does
-not answer, the Web3 page and the toolbar chip both say so — a silently dead RPC
-is the most confusing way for this to fail.
+When the active endpoint does not answer, the Web3 page and the toolbar chip
+both say so — a silently dead RPC is the most confusing way for this to fail.
 
 Any JSON-RPC method the wallet does not implement is forwarded to the active
 chain, so test-node cheat codes (`anvil_setBalance`, `evm_mine`) work through

@@ -9,6 +9,9 @@ fork/branch. A linked Git worktree is preferable if this checkout must remain av
 legacy upstream repository. Commit the planning folder before creating that worktree so the plan follows the new
 branch.
 
+Bringing later T3 Code commits into this fork is a recurring process, not a one-time merge. Follow
+[Syncing upstream T3 Code](../docs/internals/upstream-sync.md). Do not raw-merge `upstream/main`.
+
 A linked worktree receives repository-local development state automatically, but an explicit
 `--home-dir` is still useful for the first run because the selected path is easy to verify.
 Repository-local worktree state outranks an ambient `VETRA_HOME`; an explicit `--home-dir` wins over both.

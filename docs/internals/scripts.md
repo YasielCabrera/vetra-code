@@ -117,3 +117,12 @@ Collision scanning depends on the mode. `dev:web` scans only the web port and sh
 offset. `dev:server` scans only the server port. `dev` and `dev:desktop` scan both and shift them
 together as one shared offset. Explicit server or dev-URL overrides remove the corresponding port
 from the availability check. Treat the `[dev-runner]` output as authoritative.
+
+## Upstream T3 Code sync
+
+`scripts/sync-upstream.sh` merges `pingdotgg/t3code`, prunes trees this fork deleted, and re-applies
+the Vetra rename. It does not finish the job: conflicts, leftover T3 identity, restored release
+workflows, and auth/analytics/updater defaults still need a human pass.
+
+Full procedure, identity map, and disable-until-we-own-it policy:
+[Syncing upstream T3 Code](./upstream-sync.md).

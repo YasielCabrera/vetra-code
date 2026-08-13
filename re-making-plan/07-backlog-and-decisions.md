@@ -5,7 +5,8 @@
 ### P0 — Safe baseline
 
 - [x] P0.1 Create the local `vetra-code` branch and retain the original repository as `upstream`.
-      Add a Vetra-owned `origin` only after its repository exists.
+      Add a Vetra-owned `origin` only after its repository exists. Recurring merges:
+      [docs/internals/upstream-sync.md](../docs/internals/upstream-sync.md).
 - [x] P0.2 Install dependencies without launching desktop.
 - [x] P0.3 Resolve web/server configuration with `pnpm dev --dry-run`.
 - [x] P0.4 Confirm the printed Vetra base directory and ports are isolated.

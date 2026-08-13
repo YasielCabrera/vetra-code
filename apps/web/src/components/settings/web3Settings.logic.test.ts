@@ -9,9 +9,11 @@ import {
   networkSwatchClass,
   originHostname,
   parseChainIdInput,
+  parseCustomNetworkDraft,
   parseRpcUrlInput,
   pendingRequestTitle,
   removeAccountConfirmationMessage,
+  removeCustomNetworkConfirmationMessage,
   resolveAccountLabelCommit,
   shortenAddress,
 } from "./web3Settings.logic";
@@ -146,6 +148,107 @@ describe("parseRpcUrlInput", () => {
   });
 });
 
+describe("parseCustomNetworkDraft", () => {
+  const validDraft = {
+    name: "Anvil",
+    chainId: "31337",
+    rpcUrl: "http://127.0.0.1:8545",
+    currencySymbol: "ETH",
+  };
+
+  it("accepts a complete custom network", () => {
+    expect(parseCustomNetworkDraft(validDraft, [])).toEqual({
+      valid: true,
+      network: {
+        chainId: 31337,
+        name: "Anvil",
+        rpcUrl: "http://127.0.0.1:8545",
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+      },
+    });
+  });
+
+  it("rejects a built-in chain id so the user enables that row instead", () => {
+    const parsed = parseCustomNetworkDraft({ ...validDraft, chainId: "1" }, []);
+    expect(parsed.valid).toBe(false);
+    if (!parsed.valid) expect(parsed.error).toContain("built-in");
+  });
+
+  it("rejects a duplicate custom chain id", () => {
+    const parsed = parseCustomNetworkDraft(validDraft, [
+      {
+        chainId: 31337,
+        name: "Existing",
+        rpcUrl: "http://127.0.0.1:8545",
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+      },
+    ]);
+    expect(parsed.valid).toBe(false);
+    if (!parsed.valid) expect(parsed.error).toContain("already exists");
+  });
+
+  it("rejects an empty name or a non-http RPC", () => {
+    expect(parseCustomNetworkDraft({ ...validDraft, name: "  " }, []).valid).toBe(false);
+    expect(
+      parseCustomNetworkDraft({ ...validDraft, rpcUrl: "ws://127.0.0.1:8545" }, []).valid,
+    ).toBe(false);
+  });
+
+  it("allows keeping the same chain id when editing an existing custom network", () => {
+    const existing = {
+      chainId: 31337,
+      name: "Anvil",
+      rpcUrl: "http://127.0.0.1:8545",
+      nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    };
+    const parsed = parseCustomNetworkDraft(
+      { ...validDraft, name: "Local Anvil" },
+      [existing],
+      31337,
+    );
+    expect(parsed).toEqual({
+      valid: true,
+      network: {
+        chainId: 31337,
+        name: "Local Anvil",
+        rpcUrl: "http://127.0.0.1:8545",
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+      },
+    });
+  });
+
+  it("still rejects colliding with a different custom network while editing", () => {
+    const parsed = parseCustomNetworkDraft(
+      { ...validDraft, chainId: "4242" },
+      [
+        {
+          chainId: 31337,
+          name: "Anvil",
+          rpcUrl: "http://127.0.0.1:8545",
+          nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+        },
+        {
+          chainId: 4242,
+          name: "Other",
+          rpcUrl: "http://127.0.0.1:8546",
+          nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+        },
+      ],
+      31337,
+    );
+    expect(parsed.valid).toBe(false);
+    if (!parsed.valid) expect(parsed.error).toContain("already exists");
+  });
+});
+
+describe("removeCustomNetworkConfirmationMessage", () => {
+  it("asks a question so the confirm dialog can split title from body", () => {
+    expect(removeCustomNetworkConfirmationMessage({ name: "Anvil", chainId: 31337 })).toBe(
+      "Remove Anvil?\nChain 31337 will be dropped from this test wallet. You can add it again later.",
+    );
+  });
+});
+
 describe("describeWalletChain", () => {
   it("says nothing before status has loaded", () => {
     expect(describeWalletChain(null)).toBe("");
@@ -165,7 +268,7 @@ describe("describeWalletChain", () => {
 
   it("explains how to resolve a chain when none is set", () => {
     const summary = describeWalletChain(status({ chain: null }));
-    expect(summary).toContain("Ethereum Mainnet");
+    expect(summary).toContain("enable a built-in network");
     expect(summary).toContain("start a local node");
   });
 

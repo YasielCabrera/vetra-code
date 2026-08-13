@@ -86,6 +86,7 @@ pnpm dev --dry-run
 - [Bootstrap progress and handoff](./re-making-plan/08-bootstrap-progress.md)
 - [Architecture overview](./docs/internals/overview.md)
 - [Workspace layout](./docs/internals/workspace-layout.md)
+- [Syncing upstream T3 Code](./docs/internals/upstream-sync.md)
 - [Contributing](./CONTRIBUTING.md)
 
 ## Origin and license

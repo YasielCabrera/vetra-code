@@ -15,6 +15,7 @@ import {
   DEFAULT_WEB3_APPROVAL_MODE,
   Web3ApprovalMode,
   Web3ChainId,
+  Web3CustomNetwork,
   Web3RpcUrl,
 } from "@vetra-code/web3/schema";
 
@@ -521,6 +522,17 @@ export const Web3WalletSettings = Schema.Struct({
   /** Null means automatic: prefer a local node, then use the bundled public networks. */
   chainId: Schema.NullOr(Web3ChainId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   rpcUrl: Schema.NullOr(Web3RpcUrl).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  /**
+   * Built-in chain ids hidden from the picker and from `wallet_switchEthereumChain`.
+   * Empty means every bundled network is enabled, which is the default.
+   */
+  disabledBuiltInChainIds: Schema.Array(Web3ChainId).pipe(
+    Schema.withDecodingDefault(Effect.succeed([])),
+  ),
+  /** User-authored networks, shown alongside the enabled built-in catalog. */
+  customNetworks: Schema.Array(Web3CustomNetwork).pipe(
+    Schema.withDecodingDefault(Effect.succeed([])),
+  ),
   /** Skip the per-origin connect prompt for loopback origins. */
   autoConnectLoopback: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
 }).pipe(Schema.withDecodingDefault(Effect.succeed({})));
@@ -775,6 +787,8 @@ export const ServerSettingsPatch = Schema.Struct({
       approvalMode: Schema.optionalKey(Web3ApprovalMode),
       chainId: Schema.optionalKey(Schema.NullOr(Web3ChainId)),
       rpcUrl: Schema.optionalKey(Schema.NullOr(Web3RpcUrl)),
+      disabledBuiltInChainIds: Schema.optionalKey(Schema.Array(Web3ChainId)),
+      customNetworks: Schema.optionalKey(Schema.Array(Web3CustomNetwork)),
       autoConnectLoopback: Schema.optionalKey(Schema.Boolean),
     }),
   ),

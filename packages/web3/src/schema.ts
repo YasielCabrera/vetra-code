@@ -88,6 +88,23 @@ export const Web3Chain = Schema.Struct({
 });
 export type Web3Chain = typeof Web3Chain.Type;
 
+/**
+ * A user-authored network, stored in Settings. Distinct from the bundled
+ * catalog: these survive restarts and show up in the picker the same way
+ * MetaMask custom networks do.
+ */
+export const Web3CustomNetwork = Schema.Struct({
+  chainId: Web3ChainId.annotate({ description: "Decimal EIP-155 chain id." }),
+  name: TrimmedNonEmpty.check(Schema.isMaxLength(120)).annotate({
+    description: "Display name for the custom network.",
+  }),
+  rpcUrl: Web3RpcUrl.annotate({
+    description: "HTTP JSON-RPC endpoint for reads and broadcasts.",
+  }),
+  nativeCurrency: Web3NativeCurrency.annotate({ description: "Native currency metadata." }),
+});
+export type Web3CustomNetwork = typeof Web3CustomNetwork.Type;
+
 export const WEB3_APPROVAL_MODES = ["auto-for-agents", "always-ask", "always-auto"] as const;
 export const Web3ApprovalMode = Schema.Literals(WEB3_APPROVAL_MODES);
 export type Web3ApprovalMode = typeof Web3ApprovalMode.Type;
@@ -212,7 +229,7 @@ export class PreviewWalletNoChainError extends Schema.TaggedErrorClass<PreviewWa
   {},
 ) {
   override get message(): string {
-    return "No chain is resolved for the preview wallet. Set a chain id and RPC URL in Settings > Web3, run a local node on 127.0.0.1:8545, or let the page call wallet_addEthereumChain.";
+    return "No chain is resolved for the preview wallet. Enable a built-in network in Settings > Web3, add a custom network, run a local node on 127.0.0.1:8545, or let the page call wallet_addEthereumChain.";
   }
 }
 

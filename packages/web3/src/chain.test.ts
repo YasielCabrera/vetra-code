@@ -225,6 +225,61 @@ describe("resolveInitialChain", () => {
     }).pipe(Effect.provide(refusedLayer)),
   );
 
+  it.effect("skips a disabled Mainnet fallback and uses the next enabled built-in", () =>
+    Effect.gen(function* () {
+      const chain = yield* resolveInitialChain({
+        settingsChainId: null,
+        settingsRpcUrl: null,
+        disabledBuiltInChainIds: [1],
+      });
+      expect(chain?.chainId).toBe(10);
+      expect(chain?.name).toBe("OP Mainnet");
+    }).pipe(Effect.provide(refusedLayer)),
+  );
+
+  it.effect("uses a custom network when every built-in is disabled and no local node answers", () =>
+    Effect.gen(function* () {
+      const chain = yield* resolveInitialChain({
+        settingsChainId: null,
+        settingsRpcUrl: null,
+        disabledBuiltInChainIds: [1, 10, 56, 137, 8453, 42161, 43114, 11155111],
+        customNetworks: [
+          {
+            chainId: 31337,
+            name: "Anvil",
+            rpcUrl: "http://127.0.0.1:8545",
+            nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+          },
+        ],
+      });
+      expect(chain?.chainId).toBe(31337);
+      expect(chain?.name).toBe("Anvil");
+      expect(chain?.rpcUrl).toBe("http://127.0.0.1:8545");
+    }).pipe(Effect.provide(refusedLayer)),
+  );
+
+  it.effect("fills custom-network metadata when settings pin only that chain id", () =>
+    Effect.gen(function* () {
+      const calls: Array<RecordedJsonRpcCall> = [];
+      const chain = yield* resolveInitialChain({
+        settingsChainId: 31337,
+        settingsRpcUrl: null,
+        customNetworks: [
+          {
+            chainId: 31337,
+            name: "Anvil",
+            rpcUrl: "http://127.0.0.1:8545",
+            nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+          },
+        ],
+      }).pipe(Effect.provide(makeJsonRpcClientLayer({ eth_chainId: "0x1" }, calls)));
+
+      expect(chain?.name).toBe("Anvil");
+      expect(chain?.rpcUrl).toBe("http://127.0.0.1:8545");
+      expect(calls).toHaveLength(0);
+    }),
+  );
+
   it.effect("resolves no chain when a configured RPC URL is unreachable", () =>
     Effect.gen(function* () {
       expect(

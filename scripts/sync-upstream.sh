@@ -8,6 +8,11 @@
 # just brought in -- turning what would be recurring hand-editing into a
 # mechanical pass. Anything it cannot decide is left as a real conflict.
 #
+# This is only the mechanical pass. After it runs, follow
+# docs/internals/upstream-sync.md: resolve conflicts, drop restored T3 release
+# / mobile workflows, rebrand leftovers, and keep auth, analytics, and
+# auto-update from talking to T3 until Vetra owns those destinations.
+#
 # Usage: scripts/sync-upstream.sh [upstream-ref]   (default: upstream/main)
 set -euo pipefail
 
@@ -141,11 +146,13 @@ git grep -nIE 't3tools|t3code|T3 Code|T3CODE|T3_|T3[A-Z][a-z]' -- . \
 
 cat <<'EOF'
 
-Next:
+Next: docs/internals/upstream-sync.md
   1. Resolve any conflicts listed above, then `git add` them.
-  2. Run the leftover-t3 grep again; extend RENAMES in this script for anything
-     mechanical rather than hand-editing it.
-  3. pnpm install && pnpm check   (or your usual gate)
-  4. git commit    -- the merge message is already staged
-  5. To bail out entirely: git merge --abort
+  2. Drop restored T3 release / relay-deploy / mobile workflows if they came back.
+  3. Re-run the leftover-t3 grep; extend RENAMES in this script for anything
+     mechanical rather than hand-editing it. Also search t3.codes / t3.gg.
+  4. Confirm Clerk, relay, PostHog, and auto-update still cannot talk to T3.
+  5. pnpm install, then focused typecheck/tests for packages the merge touched.
+  6. git commit    -- the merge message is already staged
+  7. To bail out entirely: git merge --abort
 EOF

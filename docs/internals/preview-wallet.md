@@ -49,10 +49,14 @@ Electron-specific plumbing lives in `apps/desktop/src/preview/Wallet.ts`, which 
 deliberately thin.
 
 `./chain` keeps a small built-in catalog of keyless public RPCs for common EVM
-networks. Automatic startup still probes localhost first, then falls back to
-Ethereum Mainnet. Chain-switch requests verify a bundled endpoint's
-`eth_chainId` before changing provider state, so a stale or misconfigured public
-endpoint cannot make the wallet report one chain while reading another.
+networks. Settings can hide individual catalog entries (`disabledBuiltInChainIds`)
+and persist user-authored networks (`customNetworks`). Automatic startup still
+probes localhost first, then falls back to the first enabled bundled network
+(Ethereum Mainnet when it is still on), then the first custom network.
+Chain-switch requests verify a catalog or custom endpoint's `eth_chainId` before
+changing provider state, so a stale or misconfigured public endpoint cannot make
+the wallet report one chain while reading another. Disabled built-ins answer
+`4902` unless the page adds them for the session.
 
 ## Request path
 
@@ -136,14 +140,15 @@ pointer gesture ends, so a dismiss-on-pointerdown cannot leak its pointerup into
 the guest.
 
 The same popover calls the renderer `wallet.configure` surface for account and
-bundled-network selection. Account changes persist in the keystore and broadcast
+network selection. Account changes persist in the keystore and broadcast
 `accountsChanged`; renaming an account updates only the label stored on that
 keystore entry, so pages do not see an `accountsChanged` event. Removing an
 account is a configure call (`removeAccount`) after the UI confirms; the next
 derived account uses max(derivationIndex)+1 so a hole in the middle is not
 filled with an address the wallet still holds. Network selections use the
-dependency-free `./networks` catalog and broadcast `chainChanged`. Custom RPC
-entry stays in Settings.
+dependency-free `./networks` catalog (minus disabled built-ins) plus
+`customNetworks` from settings, and broadcast `chainChanged`. Adding, editing, or
+removing a custom network stays in Settings.
 
 ## Settings
 

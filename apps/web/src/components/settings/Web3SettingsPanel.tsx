@@ -10,15 +10,40 @@ import {
   DEFAULT_SERVER_SETTINGS,
   type PreviewAutomationWalletConfigureInput,
 } from "@vetra-code/contracts";
-import type { Web3Account, Web3ApprovalMode } from "@vetra-code/web3/schema";
-import { CheckIcon, CopyIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
+import {
+  DEFAULT_WEB3_NETWORKS,
+  nextChainSelectionAfterCatalogChange,
+  nextChainSelectionAfterCustomNetworkEdit,
+  replaceCustomNetwork,
+  setBuiltInNetworkEnabled,
+} from "@vetra-code/web3/networks";
+import type { Web3Account, Web3ApprovalMode, Web3CustomNetwork } from "@vetra-code/web3/schema";
+import {
+  CheckIcon,
+  CopyIcon,
+  PencilIcon,
+  PlusIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
+import { cn } from "../../lib/utils";
 import { ensureLocalApi } from "../../localApi";
 import { previewBridge } from "../preview/previewBridge";
 import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPanel,
+  DialogPopup,
+  DialogTitle,
+} from "../ui/dialog";
 import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
 import { toastManager } from "../ui/toast";
@@ -35,9 +60,10 @@ import { searchableSetting } from "./settingsSearch";
 import {
   APPROVAL_MODE_OPTIONS,
   describeWalletChain,
-  parseChainIdInput,
-  parseRpcUrlInput,
+  networkSwatchClass,
+  parseCustomNetworkDraft,
   removeAccountConfirmationMessage,
+  removeCustomNetworkConfirmationMessage,
   shortenAddress,
 } from "./web3Settings.logic";
 import { useWalletStatus } from "./useWalletStatus";
@@ -49,8 +75,8 @@ function TestWalletWarning() {
     <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
       <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
       <p>
-        This is a <strong>test wallet</strong>. Keys are stored unencrypted on this machine. Never
-        import a mnemonic or private key that holds real funds.
+        This is a <strong>test wallet</strong>. Keys are unencrypted, and agents can use, create, or
+        delete wallets without notice. Never import a mnemonic or private key that holds real funds.
       </p>
     </div>
   );
@@ -84,24 +110,138 @@ function CopyableAddress({ address }: { readonly address: string }) {
   );
 }
 
+function CustomNetworkDialog({
+  open,
+  editing,
+  customNetworks,
+  onOpenChange,
+  onSubmit,
+}: {
+  readonly open: boolean;
+  readonly editing: Web3CustomNetwork | null;
+  readonly customNetworks: readonly Web3CustomNetwork[];
+  readonly onOpenChange: (open: boolean) => void;
+  readonly onSubmit: (network: Web3CustomNetwork) => void;
+}) {
+  const [name, setName] = useState("");
+  const [chainId, setChainId] = useState("");
+  const [rpcUrl, setRpcUrl] = useState("");
+  const [currencySymbol, setCurrencySymbol] = useState("ETH");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    if (editing) {
+      setName(editing.name);
+      setChainId(String(editing.chainId));
+      setRpcUrl(editing.rpcUrl);
+      setCurrencySymbol(editing.nativeCurrency.symbol);
+    } else {
+      setName("");
+      setChainId("");
+      setRpcUrl("");
+      setCurrencySymbol("ETH");
+    }
+    setError(null);
+  }, [editing, open]);
+
+  const submit = () => {
+    const parsed = parseCustomNetworkDraft(
+      { name, chainId, rpcUrl, currencySymbol },
+      customNetworks,
+      editing?.chainId ?? null,
+    );
+    if (!parsed.valid) {
+      setError(parsed.error);
+      return;
+    }
+    onSubmit(parsed.network);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogPopup>
+        <DialogHeader>
+          <DialogTitle>{editing ? "Edit custom network" : "Add custom network"}</DialogTitle>
+          <DialogDescription>
+            {editing
+              ? "Update the name, RPC URL, chain ID, or currency for this network."
+              : "Use this for a local node or any chain that is not in the built-in list."}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogPanel>
+          <form
+            id="web3-custom-network-form"
+            className="flex flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            <div className="flex w-full flex-col gap-1.5">
+              <Label htmlFor="web3-custom-network-name">Network name</Label>
+              <Input
+                id="web3-custom-network-name"
+                value={name}
+                placeholder="Anvil"
+                autoComplete="off"
+                onChange={(event) => setName(event.target.value)}
+              />
+            </div>
+            <div className="flex w-full flex-col gap-1.5">
+              <Label htmlFor="web3-custom-network-rpc">RPC URL</Label>
+              <Input
+                id="web3-custom-network-rpc"
+                value={rpcUrl}
+                placeholder="http://127.0.0.1:8545"
+                autoComplete="off"
+                onChange={(event) => setRpcUrl(event.target.value)}
+              />
+            </div>
+            <div className="flex w-full flex-col gap-1.5">
+              <Label htmlFor="web3-custom-network-chain-id">Chain ID</Label>
+              <Input
+                id="web3-custom-network-chain-id"
+                value={chainId}
+                inputMode="numeric"
+                placeholder="31337"
+                autoComplete="off"
+                onChange={(event) => setChainId(event.target.value)}
+              />
+            </div>
+            <div className="flex w-full flex-col gap-1.5">
+              <Label htmlFor="web3-custom-network-symbol">Currency symbol</Label>
+              <Input
+                id="web3-custom-network-symbol"
+                value={currencySymbol}
+                placeholder="ETH"
+                autoComplete="off"
+                onChange={(event) => setCurrencySymbol(event.target.value)}
+              />
+            </div>
+            {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          </form>
+        </DialogPanel>
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" form="web3-custom-network-form">
+            {editing ? "Save" : "Add network"}
+          </Button>
+        </DialogFooter>
+      </DialogPopup>
+    </Dialog>
+  );
+}
+
 export function Web3SettingsPanel() {
   const settings = usePrimarySettings();
   const updateSettings = useUpdatePrimarySettings();
   const wallet = settings.web3Wallet;
   const { status, refresh } = useWalletStatus();
-
-  // Text inputs stay local until they parse, so a half-typed URL does not get
-  // written to settings on every keystroke.
-  const [chainIdDraft, setChainIdDraft] = useState(
-    wallet.chainId === null ? "" : String(wallet.chainId),
-  );
-  const [rpcUrlDraft, setRpcUrlDraft] = useState(wallet.rpcUrl ?? "");
-  useEffect(() => {
-    setChainIdDraft(wallet.chainId === null ? "" : String(wallet.chainId));
-  }, [wallet.chainId]);
-  useEffect(() => {
-    setRpcUrlDraft(wallet.rpcUrl ?? "");
-  }, [wallet.rpcUrl]);
+  const [networkDialog, setNetworkDialog] = useState<Web3CustomNetwork | "add" | null>(null);
 
   const bridge = previewBridge?.wallet ?? null;
 
@@ -113,12 +253,16 @@ export function Web3SettingsPanel() {
       chainId: wallet.chainId,
       rpcUrl: wallet.rpcUrl,
       autoConnectLoopback: wallet.autoConnectLoopback,
+      disabledBuiltInChainIds: wallet.disabledBuiltInChainIds,
+      customNetworks: wallet.customNetworks,
     });
   }, [
     bridge,
     wallet.approvalMode,
     wallet.autoConnectLoopback,
     wallet.chainId,
+    wallet.customNetworks,
+    wallet.disabledBuiltInChainIds,
     wallet.enabled,
     wallet.rpcUrl,
   ]);
@@ -187,6 +331,99 @@ export function Web3SettingsPanel() {
       await runWalletConfigure({ removeAccount: account.address }, "Could not remove the account");
     },
     [runWalletConfigure],
+  );
+
+  const toggleBuiltInNetwork = useCallback(
+    (chainId: number, enabled: boolean) => {
+      const disabledBuiltInChainIds = setBuiltInNetworkEnabled({
+        chainId,
+        enabled,
+        disabledBuiltInChainIds: wallet.disabledBuiltInChainIds,
+      });
+      updateSettings({
+        web3Wallet: enabled
+          ? { disabledBuiltInChainIds }
+          : {
+              disabledBuiltInChainIds,
+              ...nextChainSelectionAfterCatalogChange({
+                chainId: wallet.chainId,
+                rpcUrl: wallet.rpcUrl,
+                removedOrDisabledChainId: chainId,
+                disabledBuiltInChainIds,
+                customNetworks: wallet.customNetworks,
+              }),
+            },
+      });
+    },
+    [
+      updateSettings,
+      wallet.chainId,
+      wallet.customNetworks,
+      wallet.disabledBuiltInChainIds,
+      wallet.rpcUrl,
+    ],
+  );
+
+  const addCustomNetwork = useCallback(
+    (network: Web3CustomNetwork) => {
+      updateSettings({
+        web3Wallet: {
+          customNetworks: [...wallet.customNetworks, network],
+          chainId: network.chainId,
+          rpcUrl: network.rpcUrl,
+        },
+      });
+    },
+    [updateSettings, wallet.customNetworks],
+  );
+
+  const editCustomNetwork = useCallback(
+    (previous: Web3CustomNetwork, next: Web3CustomNetwork) => {
+      updateSettings({
+        web3Wallet: {
+          customNetworks: replaceCustomNetwork(wallet.customNetworks, previous.chainId, next),
+          ...nextChainSelectionAfterCustomNetworkEdit({
+            chainId: wallet.chainId,
+            rpcUrl: wallet.rpcUrl,
+            previousChainId: previous.chainId,
+            next,
+          }),
+        },
+      });
+    },
+    [updateSettings, wallet.chainId, wallet.customNetworks, wallet.rpcUrl],
+  );
+
+  const removeCustomNetwork = useCallback(
+    async (network: Web3CustomNetwork) => {
+      const confirmed = await ensureLocalApi().dialogs.confirm(
+        removeCustomNetworkConfirmationMessage(network),
+        { variant: "destructive" },
+      );
+      if (!confirmed) return;
+      const customNetworks = wallet.customNetworks.filter(
+        (entry) => entry.chainId !== network.chainId,
+      );
+      updateSettings({
+        web3Wallet: {
+          customNetworks,
+          ...nextChainSelectionAfterCatalogChange({
+            chainId: wallet.chainId,
+            rpcUrl: wallet.rpcUrl,
+            removedOrDisabledChainId: network.chainId,
+            disabledBuiltInChainIds: wallet.disabledBuiltInChainIds,
+            customNetworks,
+          }),
+        },
+      });
+    },
+    [
+      updateSettings,
+      wallet.chainId,
+      wallet.customNetworks,
+      wallet.disabledBuiltInChainIds,
+      wallet.rpcUrl,
+    ],
   );
 
   const chainSummary = describeWalletChain(status);
@@ -336,20 +573,22 @@ export function Web3SettingsPanel() {
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <CopyableAddress address={account.address} />
-                    {active ? (
-                      <span className="px-2 text-[10px] font-medium text-muted-foreground">
-                        Active
-                      </span>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => void selectAccount(account.address)}
-                      >
-                        Make active
-                      </Button>
-                    )}
+                    <div className="flex w-28 shrink-0 items-center justify-end">
+                      {active ? (
+                        <span className="inline-flex h-7 items-center px-2.5 text-xs font-medium text-muted-foreground">
+                          Active
+                        </span>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => void selectAccount(account.address)}
+                        >
+                          Make active
+                        </Button>
+                      )}
+                    </div>
                     <Tooltip>
                       <TooltipTrigger
                         render={
@@ -397,51 +636,160 @@ export function Web3SettingsPanel() {
       <SettingsSection id="web3-network" title="Network">
         <SettingsRow
           {...searchableSetting("web3-wallet-chain")}
-          description="Leave empty to prefer a local node, then Ethereum Mainnet. Common networks switch automatically; fill these fields to pin a custom target."
+          description="Enabled networks appear in the preview wallet picker and can be selected by dapps."
           status={chainSummary || undefined}
           resetAction={
-            wallet.chainId !== DEFAULTS.chainId || wallet.rpcUrl !== DEFAULTS.rpcUrl ? (
+            wallet.disabledBuiltInChainIds.length > 0 ? (
               <SettingResetButton
-                label="the wallet network"
-                onClick={() =>
-                  updateSettings({
-                    web3Wallet: { chainId: DEFAULTS.chainId, rpcUrl: DEFAULTS.rpcUrl },
-                  })
-                }
+                label="built-in networks"
+                onClick={() => updateSettings({ web3Wallet: { disabledBuiltInChainIds: [] } })}
               />
             ) : null
           }
+        />
+
+        <div className="flex flex-col gap-1 px-1 pb-2">
+          {DEFAULT_WEB3_NETWORKS.map((network) => {
+            const enabled = !wallet.disabledBuiltInChainIds.includes(network.chainId);
+            const active = status?.chain?.chainId === network.chainId;
+            return (
+              <div
+                key={network.chainId}
+                className="flex items-center justify-between gap-2 rounded-md px-2 py-1 hover:bg-accent/50"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className={cn(
+                      "size-2 shrink-0 rounded-full",
+                      networkSwatchClass(network.chainId),
+                    )}
+                    aria-hidden
+                  />
+                  <span className="truncate text-xs font-medium">{network.name}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {network.chainId}
+                  </span>
+                  {active ? (
+                    <span className="px-1 text-[10px] font-medium text-muted-foreground">
+                      Active
+                    </span>
+                  ) : null}
+                </div>
+                <Switch
+                  checked={enabled}
+                  onCheckedChange={(checked) =>
+                    toggleBuiltInNetwork(network.chainId, Boolean(checked))
+                  }
+                  disabled={!wallet.enabled}
+                  aria-label={`${enabled ? "Disable" : "Enable"} ${network.name}`}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        <SettingsRow
+          {...searchableSetting("web3-wallet-custom-networks")}
+          description={
+            wallet.customNetworks.length > 0
+              ? "Add a local node or any EVM chain the built-in list does not cover."
+              : "No custom networks yet. Add a local node or any EVM chain the built-in list does not cover."
+          }
           control={
-            <div className="flex w-full flex-col gap-2 sm:w-72">
-              <Input
-                value={chainIdDraft}
-                inputMode="numeric"
-                placeholder="Chain ID (e.g. 31337)"
-                aria-label="Wallet chain id"
-                disabled={!wallet.enabled}
-                onChange={(event) => setChainIdDraft(event.target.value)}
-                onBlur={() => {
-                  const parsed = parseChainIdInput(chainIdDraft);
-                  if (parsed.valid) updateSettings({ web3Wallet: { chainId: parsed.value } });
-                  else setChainIdDraft(wallet.chainId === null ? "" : String(wallet.chainId));
-                }}
-              />
-              <Input
-                value={rpcUrlDraft}
-                placeholder="RPC URL (e.g. http://127.0.0.1:8545)"
-                aria-label="Wallet RPC URL"
-                disabled={!wallet.enabled}
-                onChange={(event) => setRpcUrlDraft(event.target.value)}
-                onBlur={() => {
-                  const parsed = parseRpcUrlInput(rpcUrlDraft);
-                  if (parsed.valid) updateSettings({ web3Wallet: { rpcUrl: parsed.value } });
-                  else setRpcUrlDraft(wallet.rpcUrl ?? "");
-                }}
-              />
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setNetworkDialog("add")}
+              disabled={!wallet.enabled}
+            >
+              <PlusIcon className="size-3.5" aria-hidden />
+              Add custom network
+            </Button>
           }
         />
+
+        {wallet.customNetworks.length > 0 ? (
+          <div className="flex flex-col gap-1 px-1 pb-2">
+            {wallet.customNetworks.map((network) => {
+              const active = status?.chain?.chainId === network.chainId;
+              return (
+                <div
+                  key={network.chainId}
+                  className="flex items-center justify-between gap-2 rounded-md px-2 py-1 hover:bg-accent/50"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className={cn(
+                        "size-2 shrink-0 rounded-full",
+                        networkSwatchClass(network.chainId),
+                      )}
+                      aria-hidden
+                    />
+                    <span className="truncate text-xs font-medium">{network.name}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      {network.chainId}
+                    </span>
+                    {active ? (
+                      <span className="px-1 text-[10px] font-medium text-muted-foreground">
+                        Active
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-muted-foreground"
+                            aria-label={`Edit ${network.name}`}
+                            disabled={!wallet.enabled}
+                            onClick={() => setNetworkDialog(network)}
+                          />
+                        }
+                      >
+                        <PencilIcon />
+                      </TooltipTrigger>
+                      <TooltipPopup>Edit network</TooltipPopup>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-muted-foreground hover:text-destructive"
+                            aria-label={`Remove ${network.name}`}
+                            disabled={!wallet.enabled}
+                            onClick={() => void removeCustomNetwork(network)}
+                          />
+                        }
+                      >
+                        <Trash2Icon />
+                      </TooltipTrigger>
+                      <TooltipPopup>Remove network</TooltipPopup>
+                    </Tooltip>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
       </SettingsSection>
+
+      <CustomNetworkDialog
+        open={networkDialog !== null}
+        editing={networkDialog === "add" || networkDialog === null ? null : networkDialog}
+        customNetworks={wallet.customNetworks}
+        onOpenChange={(open) => {
+          if (!open) setNetworkDialog(null);
+        }}
+        onSubmit={(network) => {
+          if (networkDialog === "add" || networkDialog === null) addCustomNetwork(network);
+          else editCustomNetwork(networkDialog, network);
+        }}
+      />
     </SettingsPageContainer>
   );
 }
