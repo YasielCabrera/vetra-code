@@ -17,7 +17,7 @@ import { writeTextToClipboard } from "~/hooks/useCopyToClipboard";
 import { useTheme } from "~/hooks/useTheme";
 import { cn } from "~/lib/utils";
 import { readLocalApi } from "~/localApi";
-import { VETRA_PIERRE_ICONS } from "~/pierre-icons";
+import { VETRA_PIERRE_FOLDER_ICON_CSS, VETRA_PIERRE_ICONS } from "~/pierre-icons";
 
 import { createFileTreeDragMentionController } from "./fileTreeDragMention";
 import { useProjectEntriesQuery } from "./projectFilesQueryState";
@@ -43,6 +43,7 @@ const TREE_UNSAFE_CSS = `
     --trees-font-size-override: 12px;
   }
   button[data-type='item'] { border-radius: 5px; }
+  ${VETRA_PIERRE_FOLDER_ICON_CSS}
 `;
 
 function treePath(entry: ProjectEntry): string {

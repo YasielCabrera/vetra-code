@@ -4,8 +4,14 @@ import {
   hasSpecificPierreIconForFileName,
   resolvePierreIconForEntry,
   syntheticFileNameForLanguageId,
+  VETRA_PIERRE_FOLDER_ICON_CSS,
   VETRA_PIERRE_ICONS,
 } from "./pierre-icons";
+import {
+  DEFAULT_PIERRE_FOLDER_ICON_ID,
+  PIERRE_FOLDER_ICONS,
+  resolvePierreFolderIcon,
+} from "./pierre-folder-icons";
 
 describe("Pierre file icons", () => {
   it("uses Pierre exact filename and complete-set extension mappings", () => {
@@ -38,6 +44,9 @@ describe("Pierre file icons", () => {
     for (const iconName of customIconNames) {
       assert.include(VETRA_PIERRE_ICONS.spriteSheet, `id="${iconName}"`);
     }
+    for (const icon of PIERRE_FOLDER_ICONS) {
+      assert.include(VETRA_PIERRE_ICONS.spriteSheet, `id="${icon.id}"`);
+    }
   });
 
   it("uses the Pierre default icon for unknown file types", () => {
@@ -45,8 +54,38 @@ describe("Pierre file icons", () => {
     assert.isFalse(hasSpecificPierreIconForFileName("artifact.unknown-ext"));
   });
 
-  it("leaves directory rendering to the shared folder fallback", () => {
-    assert.isNull(resolvePierreIconForEntry("packages/client-runtime", "directory"));
+  it("resolves directory icons from the folder-name map", () => {
+    assert.equal(resolvePierreIconForEntry("apps", "directory")?.name, "vetra-folder-icon-app");
+    assert.equal(
+      resolvePierreIconForEntry("packages/", "directory")?.name,
+      "vetra-folder-icon-package",
+    );
+    assert.equal(
+      resolvePierreIconForEntry(".github", "directory")?.name,
+      "vetra-folder-icon-github",
+    );
+    assert.equal(
+      resolvePierreIconForEntry(".cursor", "directory")?.name,
+      "vetra-folder-icon-vscode",
+    );
+    assert.equal(
+      resolvePierreIconForEntry("k8s", "directory")?.name,
+      "vetra-folder-icon-kubernetes",
+    );
+    assert.equal(
+      resolvePierreIconForEntry("packages/client-runtime", "directory")?.name,
+      DEFAULT_PIERRE_FOLDER_ICON_ID,
+    );
+    assert.equal(resolvePierreFolderIcon("SRC").id, "vetra-folder-icon-src");
+  });
+
+  it("injects folder icons into Pierre file trees via CSS", () => {
+    assert.include(
+      VETRA_PIERRE_FOLDER_ICON_CSS,
+      "[data-item-type='folder'] > [data-item-section='icon']::after",
+    );
+    assert.include(VETRA_PIERRE_FOLDER_ICON_CSS, "[data-item-path='apps/' i]");
+    assert.include(VETRA_PIERRE_FOLDER_ICON_CSS, "[data-item-path$='/node_modules/' i]");
   });
 
   it("normalizes common markdown fence language aliases", () => {

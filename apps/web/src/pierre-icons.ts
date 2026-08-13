@@ -4,6 +4,12 @@ import {
   type FileTreeIcons,
 } from "@pierre/trees";
 
+import {
+  pierreFolderIconSpriteSheet,
+  pierreFolderIconTreeCss,
+  resolvePierreFolderIcon,
+} from "./pierre-folder-icons";
+
 export interface PierreIconResolution {
   name: string;
   token?: string;
@@ -37,10 +43,12 @@ const VETRA_FILE_ICON_SPRITE = `
   </symbol>
 </svg>`;
 
+export const VETRA_PIERRE_FOLDER_ICON_CSS = pierreFolderIconTreeCss();
+
 export const VETRA_PIERRE_ICONS = {
   set: "complete",
   colored: true,
-  spriteSheet: VETRA_FILE_ICON_SPRITE,
+  spriteSheet: `${VETRA_FILE_ICON_SPRITE}${pierreFolderIconSpriteSheet()}`,
   byFileName: {
     "package.json": "vetra-file-icon-package-json",
     "tsconfig.json": "vetra-file-icon-tsconfig",
@@ -94,7 +102,7 @@ export function resolvePierreIconForEntry(
   pathValue: string,
   kind: "file" | "directory",
 ): PierreIconResolution | null {
-  if (kind === "directory") return null;
+  if (kind === "directory") return { name: resolvePierreFolderIcon(pathValue).id };
   return completeIconResolver.resolveIcon("file-tree-icon-file", pathValue);
 }
 
@@ -112,6 +120,6 @@ export function ensurePierreIconSprite(): void {
   container.style.height = "0";
   container.style.overflow = "hidden";
   container.style.pointerEvents = "none";
-  container.innerHTML = `${getBuiltInSpriteSheet("complete")}${VETRA_FILE_ICON_SPRITE}`;
+  container.innerHTML = `${getBuiltInSpriteSheet("complete")}${VETRA_PIERRE_ICONS.spriteSheet}`;
   document.body.prepend(container);
 }

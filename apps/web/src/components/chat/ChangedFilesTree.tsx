@@ -11,8 +11,6 @@ import {
   ChevronsUpDownIcon,
   ChevronRightIcon,
   FileDiffIcon,
-  FolderIcon,
-  FolderClosedIcon,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { DiffStatLabel, hasNonZeroStat } from "./DiffStatLabel";
@@ -265,11 +263,12 @@ export const ChangedFilesTree = memo(function ChangedFilesTree(props: {
                 isExpanded && "rotate-90",
               )}
             />
-            {isExpanded ? (
-              <FolderIcon className="size-3.5 shrink-0 text-muted-foreground/75" />
-            ) : (
-              <FolderClosedIcon className="size-3.5 shrink-0 text-muted-foreground/75" />
-            )}
+            <PierreEntryIcon
+              pathValue={node.path}
+              kind="directory"
+              theme={resolvedTheme}
+              className="size-3.5"
+            />
             <span className="truncate font-mono text-[11px] text-muted-foreground/90 group-hover:text-foreground/90">
               {node.name}
             </span>

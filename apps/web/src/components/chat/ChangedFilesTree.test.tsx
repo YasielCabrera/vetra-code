@@ -239,4 +239,23 @@ describe("ChangedFilesTree", () => {
       }
     },
   );
+
+  it("renders Pierre folder icons on directory rows", () => {
+    const markup = renderToStaticMarkup(
+      <ChangedFilesTree
+        turnId={TurnId.make("turn-1")}
+        files={[
+          { path: "apps/web/src/index.ts", kind: "modified", additions: 2, deletions: 1 },
+          { path: "apps/server/src/main.ts", kind: "modified", additions: 3, deletions: 0 },
+          { path: "packages/shared/src/git.ts", kind: "modified", additions: 8, deletions: 2 },
+        ]}
+        allDirectoriesExpanded
+        resolvedTheme="light"
+        onOpenTurnDiff={() => {}}
+      />,
+    );
+
+    expect(markup).toContain('data-pierre-icon="vetra-folder-icon-app"');
+    expect(markup).toContain('data-pierre-icon="vetra-folder-icon-src"');
+  });
 });

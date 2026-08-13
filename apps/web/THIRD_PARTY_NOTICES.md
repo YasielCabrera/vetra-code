@@ -2,7 +2,7 @@
 
 ## vscode-icons
 
-The custom file icon symbols in `src/pierre-icons.ts` are adapted from the
+The custom file and folder icon symbols are adapted from the
 [`vscode-icons`](https://github.com/vscode-icons/vscode-icons) project.
 
 Copyright (c) 2016 Roberto Huertas

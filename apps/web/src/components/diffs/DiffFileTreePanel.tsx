@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { InputGroup, InputGroupInput } from "~/components/ui/input-group";
 import { useTheme } from "~/hooks/useTheme";
 import { buildDiffFileTreeModel, type DiffFileTreeEntry } from "~/lib/diffFileTree";
-import { VETRA_PIERRE_ICONS } from "~/pierre-icons";
+import { VETRA_PIERRE_FOLDER_ICON_CSS, VETRA_PIERRE_ICONS } from "~/pierre-icons";
 
 interface DiffFileTreePanelProps {
   files: ReadonlyArray<DiffFileTreeEntry>;
@@ -26,6 +26,7 @@ const TREE_UNSAFE_CSS = `
     --trees-status-deleted-override: var(--destructive);
   }
   button[data-type='item'] { border-radius: 5px; }
+  ${VETRA_PIERRE_FOLDER_ICON_CSS}
 `;
 
 function FilterFilesField(props: {
