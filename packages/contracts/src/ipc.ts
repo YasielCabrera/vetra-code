@@ -1001,18 +1001,26 @@ export const DesktopPreviewAutomationWaitForInputSchema = Schema.Struct({
   input: PreviewAutomationWaitForInput,
 });
 
+/**
+ * Wallet operations are host-scoped: one wallet per desktop runtime. A tab id
+ * is accepted so the automation broker can keep its sticky host lease, but
+ * Settings and the approval chip have no preview tab and send `""`. The
+ * handler ignores the value either way, so it must not require a real tab id.
+ */
+export const DesktopPreviewWalletIpcTabIdSchema = Schema.String;
+
 export const DesktopPreviewWalletConfigureInputSchema = Schema.Struct({
-  tabId: DesktopPreviewTabIdSchema,
+  tabId: DesktopPreviewWalletIpcTabIdSchema,
   input: PreviewAutomationWalletConfigureInput,
 });
 
 export const DesktopPreviewWalletApproveInputSchema = Schema.Struct({
-  tabId: DesktopPreviewTabIdSchema,
+  tabId: DesktopPreviewWalletIpcTabIdSchema,
   input: PreviewAutomationWalletApproveInput,
 });
 
 export const DesktopPreviewWalletRejectInputSchema = Schema.Struct({
-  tabId: DesktopPreviewTabIdSchema,
+  tabId: DesktopPreviewWalletIpcTabIdSchema,
   input: PreviewAutomationWalletRejectInput,
 });
 

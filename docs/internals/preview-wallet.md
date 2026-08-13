@@ -34,6 +34,7 @@ because `contracts` depends on _it_.
 | `./schema`   | Wire schemas and tagged errors                            | `effect`         |
 | `./inpage`   | The EIP-1193 provider + EIP-6963 announce                 | **none**         |
 | `./rpc`      | Method classification, hex helpers, request summarisation | **none**         |
+| `./networks` | Bundled public network metadata                           | **none**         |
 | `./chain`    | Chain resolution, JSON-RPC transport, endpoint probing    | `effect`         |
 | `./signer`   | Account derivation, signing, transaction filling          | `viem`, `effect` |
 | `./keystore` | Mode-0600 keystore read/write                             | `effect`         |
@@ -46,6 +47,12 @@ that inlines nothing and the packaged app fails at runtime, not at build time.
 
 Electron-specific plumbing lives in `apps/desktop/src/preview/Wallet.ts`, which is
 deliberately thin.
+
+`./chain` keeps a small built-in catalog of keyless public RPCs for common EVM
+networks. Automatic startup still probes localhost first, then falls back to
+Ethereum Mainnet. Chain-switch requests verify a bundled endpoint's
+`eth_chainId` before changing provider state, so a stale or misconfigured public
+endpoint cannot make the wallet report one chain while reading another.
 
 ## Request path
 
@@ -63,6 +70,12 @@ page: window.ethereum.request({...})
   → PreviewWalletReply envelope
   → preload rebuilds a ProviderRpcError with its `code`
 ```
+
+Account state is origin-scoped at bootstrap and for `accountsChanged` events.
+If a connector restores stale local connection state and signs before issuing a
+fresh `eth_requestAccounts`, the signature enters the normal approval gate. A
+successful approval writes the missing origin grant after signing; rejection or
+signing failure never grants the origin.
 
 Two details worth knowing before changing this:
 
@@ -108,6 +121,24 @@ its own 30-second grace window per `webContents` id.
 `always-auto` still parks the first request from a non-loopback origin. "Approve
 everything" is meant to remove friction from local development, not to hand a
 signing oracle to any page the preview happens to load.
+
+Every `park` publishes the new status through the renderer IPC subscription. The
+preview wallet chip treats a new request id as an instruction to open its
+controlled popover, mirroring an extension wallet opening its approval surface.
+This is intentionally event-driven; no polling or attention animation runs while
+the wallet is idle.
+
+The popover is renderer HTML sitting over an Electron `<webview>`. Native guests
+receive clicks even when a higher-z overlay covers them, so Approve would also
+land in the page and dismiss the dapp's own modal. While the popover is open the
+webview's `pointer-events` are turned off; they come back only after the current
+pointer gesture ends, so a dismiss-on-pointerdown cannot leak its pointerup into
+the guest.
+
+The same popover calls the renderer `wallet.configure` surface for account and
+bundled-network selection. Account changes persist in the keystore and broadcast
+`accountsChanged`; network selections use the dependency-free `./networks`
+catalog and broadcast `chainChanged`. Custom RPC entry stays in Settings.
 
 ## Settings
 

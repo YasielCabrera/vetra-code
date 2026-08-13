@@ -139,11 +139,18 @@ export function createWeb3InpageProvider(options: Web3InpageOptions): {
         : String(Number.parseInt(options.chainId, 16)),
     selectedAddress: options.selectedAddress ?? null,
 
-    request(args) {
+    async request(args) {
       if (typeof args?.method !== "string" || args.method.length === 0) {
-        return Promise.reject(providerError(-32600, "Invalid request: method is required."));
+        throw providerError(-32600, "Invalid request: method is required.");
       }
-      return options.transport({ method: args.method, params: args.params });
+      const result = await options.transport({ method: args.method, params: args.params });
+      if (args.method === "eth_accounts" || args.method === "eth_requestAccounts") {
+        const accounts = Array.isArray(result) ? result : [];
+        provider.selectedAddress = typeof accounts[0] === "string" ? accounts[0] : null;
+      } else if (args.method === "wallet_revokePermissions") {
+        provider.selectedAddress = null;
+      }
+      return result;
     },
 
     on(event, listener) {

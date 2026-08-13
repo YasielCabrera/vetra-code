@@ -39,25 +39,51 @@ _Wallet approvals_ decides who confirms a signature or transaction request:
 | **Always ask**                   | Every request waits for you. Use this to test rejection paths deterministically.                                                                     |
 | **Approve everything**           | Approves without asking — except the _first_ request from a non-localhost origin, which still waits once.                                            |
 
-Pending requests appear on the wallet chip in the preview toolbar, with a decoded
-summary of what approving would do. You can approve, or reject with a specific
-EIP-1193 code (`4001` user rejected, `4100` unauthorized, `4900` disconnected,
-`4902` unknown chain) to exercise a dapp's error branches.
+When a page asks for approval, the wallet popover opens from the preview toolbar
+with a decoded summary of what approving would do. Approve or reject closes it.
+Reject tells the page the user declined (`4001`). Agents can still reject with other EIP-1193 codes
+(`4100` unauthorized, `4900` disconnected, `4902` unknown chain) through
+`preview_wallet_reject` to exercise a dapp's error branches. If the wallet
+cannot complete an approved request, it shows the failure instead of leaving
+the page behind an unexplained spinner.
 
-Signing requests from an origin that never called `eth_requestAccounts` are
-refused with `4100` rather than prompting, which is what MetaMask does.
+Some connector libraries restore their own connected state without calling
+`eth_requestAccounts` again. If such a page asks to sign after its preview-wallet
+grant was cleared, the wallet opens the normal approval prompt. Approving both
+signs and reconnects that site; rejecting leaves it disconnected.
 
 ## Networks
 
-Leave _Chain ID_ and _RPC URL_ empty to follow the dapp:
+Leave _Chain ID_ and _RPC URL_ empty for automatic network selection:
 
 1. If a node is listening on `http://127.0.0.1:8545` (Anvil, Hardhat), the wallet
    adopts it and reports its chain id.
-2. `wallet_addEthereumChain` from the page is honoured, including the endpoint it
+2. Otherwise the wallet starts on Ethereum Mainnet through a keyless public RPC,
+   so dapps always receive a valid chain id.
+3. `wallet_addEthereumChain` from the page is honoured, including the endpoint it
    supplies.
-3. `wallet_switchEthereumChain` is honoured when the wallet has an endpoint that
-   actually serves that chain; otherwise it answers `4902` rather than claiming a
-   chain it cannot read.
+4. `wallet_switchEthereumChain` can select the bundled Ethereum, OP Mainnet, BNB
+   Smart Chain, Polygon, Base, Arbitrum One, Avalanche C-Chain, and Sepolia
+   endpoints. Other chains answer `4902` unless the page adds them first.
+
+Bundled endpoints are public and rate-limited. They are suitable for previews and
+development, not production traffic; fill the settings fields to use a dedicated
+or self-hosted RPC.
+
+Open the wallet chip in the preview toolbar to switch directly between bundled
+networks. The wallet emits `chainChanged`, so the open page sees the new network
+without reloading. Custom network targets remain available in Settings → Web3.
+
+| Network           | Chain ID | Default RPC                                   |
+| ----------------- | -------: | --------------------------------------------- |
+| Ethereum Mainnet  |        1 | `https://ethereum-rpc.publicnode.com`         |
+| OP Mainnet        |       10 | `https://mainnet.optimism.io`                 |
+| BNB Smart Chain   |       56 | `https://bsc-dataseed.bnbchain.org`           |
+| Polygon           |      137 | `https://polygon.drpc.org`                    |
+| Base              |     8453 | `https://mainnet.base.org`                    |
+| Arbitrum One      |    42161 | `https://arb1.arbitrum.io/rpc`                |
+| Avalanche C-Chain |    43114 | `https://api.avax.network/ext/bc/C/rpc`       |
+| Ethereum Sepolia  | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` |
 
 Fill either field to pin the wallet instead. When the configured endpoint does
 not answer, the Web3 page and the toolbar chip both say so — a silently dead RPC
@@ -69,8 +95,11 @@ chain, so test-node cheat codes (`anvil_setBalance`, `evm_mine`) work through
 
 ## Accounts and connected sites
 
-The Web3 page lists accounts, lets you copy an address, add another generated
-account, and choose which one `eth_accounts` returns first.
+The wallet chip and the Web3 settings page both let you choose which account
+`eth_accounts` returns first. The popover shows the active account, a copyable
+address, and the current network. Use **New account** to derive another throwaway
+account and make it active immediately. Settings also lists every account and
+lets you copy its address.
 
 _Connected sites_ lists origins you have granted account access. **Forget all**
 clears them, so the next `eth_requestAccounts` prompts again.

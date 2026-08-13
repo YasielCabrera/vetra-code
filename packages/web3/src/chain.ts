@@ -1,17 +1,17 @@
 /**
  * Chain resolution and raw JSON-RPC transport for the preview wallet.
  *
- * "Follow the dapp" lives here: the wallet does not ship a curated chain list
- * with baked-in third-party RPC endpoints. It adopts what the page asks for via
- * `wallet_addEthereumChain` (which hands us an endpoint), what the user typed in
- * Settings > Web3, or a local node it can actually see. Anything else is
- * reported as unreachable rather than silently pointed at someone's public RPC.
+ * The wallet ships a deliberately small catalog of common EVM networks with
+ * keyless public RPC endpoints. A local node or an explicit setting still wins,
+ * while the catalog gives ordinary dapps a real initial chain and makes
+ * `wallet_switchEthereumChain` useful without setup.
  *
  * @module Web3Chain
  */
 import * as Effect from "effect/Effect";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
 
+import { DEFAULT_PUBLIC_CHAIN_ID, getDefaultNetwork } from "./networks.ts";
 import { parseChainId } from "./rpc.ts";
 import {
   PreviewWalletRpcError,
@@ -23,32 +23,35 @@ import {
 /** Anvil and Hardhat both default here; probing it is how zero-config works. */
 export const DEFAULT_LOCAL_RPC_URL = "http://127.0.0.1:8545";
 
+export { DEFAULT_PUBLIC_CHAIN_ID } from "./networks.ts";
+
 const ETHER: Web3NativeCurrency = { name: "Ether", symbol: "ETH", decimals: 18 };
 
-/**
- * Names only — no RPC URLs. Naming a chain is cosmetic and safe; supplying an
- * endpoint we invented is not.
- */
-const KNOWN_CHAIN_NAMES: Readonly<Record<number, { name: string; currency: Web3NativeCurrency }>> =
-  {
-    1: { name: "Ethereum Mainnet", currency: ETHER },
-    10: { name: "OP Mainnet", currency: ETHER },
-    137: { name: "Polygon", currency: { name: "POL", symbol: "POL", decimals: 18 } },
-    1337: { name: "Localhost 1337", currency: ETHER },
-    8453: { name: "Base", currency: ETHER },
-    31337: { name: "Anvil / Hardhat", currency: ETHER },
-    42161: { name: "Arbitrum One", currency: ETHER },
-    11155111: { name: "Sepolia", currency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 } },
-  };
+interface LocalChain {
+  readonly name: string;
+  readonly currency: Web3NativeCurrency;
+}
+
+const LOCAL_CHAINS: Readonly<Record<number, LocalChain>> = {
+  1337: { name: "Localhost 1337", currency: ETHER },
+  31337: { name: "Anvil / Hardhat", currency: ETHER },
+};
 
 export function describeChain(chainId: number, rpcUrl: string | null): Web3Chain {
-  const known = KNOWN_CHAIN_NAMES[chainId];
+  const bundled = getDefaultNetwork(chainId);
+  const local = LOCAL_CHAINS[chainId];
   return {
     chainId,
-    name: known?.name ?? `Chain ${chainId}`,
-    rpcUrl: rpcUrl as Web3RpcUrl | null,
-    nativeCurrency: known?.currency ?? ETHER,
+    name: bundled?.name ?? local?.name ?? `Chain ${chainId}`,
+    rpcUrl: (rpcUrl ?? bundled?.rpcUrl ?? null) as Web3RpcUrl | null,
+    nativeCurrency: bundled?.nativeCurrency ?? local?.currency ?? ETHER,
   };
+}
+
+/** A bundled network that can be selected without asking the dapp for an RPC. */
+export function getDefaultChain(chainId: number): Web3Chain | null {
+  const network = getDefaultNetwork(chainId);
+  return network === null ? null : describeChain(chainId, network.rpcUrl);
 }
 
 function firstHttpUrl(value: unknown): string | null {
@@ -84,7 +87,7 @@ export function parseAddEthereumChain(params: unknown): Web3Chain | null {
       typeof record.chainName === "string" && record.chainName.trim().length > 0
         ? record.chainName.trim()
         : fallback.name,
-    rpcUrl: rpcUrl as Web3RpcUrl | null,
+    rpcUrl: fallback.rpcUrl,
     nativeCurrency:
       currency &&
       typeof currency.name === "string" &&
@@ -168,8 +171,7 @@ export const probeChainId = Effect.fn("Web3Chain.probeChainId")(function* (rpcUr
 
 /**
  * Precedence: an explicit setting wins; otherwise adopt a local node if one is
- * actually listening; otherwise no chain, and the page gets a clear error until
- * it calls `wallet_addEthereumChain` or the user configures one.
+ * actually listening; otherwise start on the bundled Ethereum Mainnet endpoint.
  */
 export const resolveInitialChain = Effect.fn("Web3Chain.resolveInitialChain")(function* (input: {
   readonly settingsChainId: number | null;
@@ -183,5 +185,7 @@ export const resolveInitialChain = Effect.fn("Web3Chain.resolveInitialChain")(fu
     return probed === null ? null : describeChain(probed, input.settingsRpcUrl);
   }
   const local = yield* probeChainId(DEFAULT_LOCAL_RPC_URL);
-  return local === null ? null : describeChain(local, DEFAULT_LOCAL_RPC_URL);
+  return local === null
+    ? getDefaultChain(DEFAULT_PUBLIC_CHAIN_ID)
+    : describeChain(local, DEFAULT_LOCAL_RPC_URL);
 });

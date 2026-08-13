@@ -23,6 +23,7 @@ import {
 } from "react";
 import GitActionsControl from "../GitActionsControl";
 import { type DraftId } from "~/composerDraftStore";
+import type { TaskControlState } from "~/session-logic";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { toastManager } from "../ui/toast";
 import ProjectScriptsControl, {
@@ -30,6 +31,7 @@ import ProjectScriptsControl, {
   type ProjectScriptActionResult,
 } from "../ProjectScriptsControl";
 import { OpenInPicker } from "./OpenInPicker";
+import { ThreadTasksControl } from "./ThreadTasksControl";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useVetraProjectFileScripts } from "~/hooks/useVetraProjectFileScripts";
 import { useThreadActionMenu } from "~/hooks/useThreadActionMenu";
@@ -62,6 +64,8 @@ interface ChatHeaderProps {
   availableEditors: ReadonlyArray<EditorId>;
   rightPanelOpen: boolean;
   gitCwd: string | null;
+  /** Current provider todo list; omitted from the header when null. */
+  taskControlState: TaskControlState | null;
   readonly onOpenPullRequest?: ((number: number) => void) | undefined;
   onNewThreadInProject: () => void;
   onRunProjectScript: (script: ProjectScript) => void;
@@ -116,6 +120,7 @@ export const ChatHeader = memo(function ChatHeader({
   availableEditors,
   rightPanelOpen,
   gitCwd,
+  taskControlState,
   onOpenPullRequest,
   onNewThreadInProject,
   onRunProjectScript,
@@ -193,7 +198,7 @@ export const ChatHeader = memo(function ChatHeader({
   const handleHeaderContextMenu = useCallback(
     (event: ReactMouseEvent) => {
       if (!isServerThread || renamingTitle !== null) return;
-      // The right-side controls (git, scripts, open-in) keep their own
+      // The right-side controls (git, scripts, tasks, open-in) keep their own
       // behavior; only the breadcrumb area opens the thread menu.
       if ((event.target as HTMLElement).closest("[data-chat-header-actions]")) return;
       event.preventDefault();
@@ -319,6 +324,7 @@ export const ChatHeader = memo(function ChatHeader({
             onDeleteScript={onDeleteProjectScript}
           />
         )}
+        {taskControlState ? <ThreadTasksControl state={taskControlState} /> : null}
         {showOpenInPicker && (
           <OpenInPicker
             environmentId={activeThreadEnvironmentId}

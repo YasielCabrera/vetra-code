@@ -21,10 +21,11 @@ export const HIDDEN_BROWSER_WEBVIEW_OFFSET = -100_000;
 export function resolveHostedBrowserWebviewWrapperStyle(input: {
   readonly active: boolean;
   readonly cornerRadius?: number;
+  readonly interactable?: boolean;
   readonly rect: BrowserSurfaceRect | null;
   readonly hiddenSize: HostedBrowserWebviewSize;
 }): HostedBrowserWebviewWrapperStyle {
-  const { active, cornerRadius = 0, hiddenSize, rect } = input;
+  const { active, cornerRadius = 0, hiddenSize, interactable = true, rect } = input;
   if (active && rect) {
     return {
       left: rect.x,
@@ -32,7 +33,9 @@ export function resolveHostedBrowserWebviewWrapperStyle(input: {
       width: rect.width,
       height: rect.height,
       zIndex: 30,
-      pointerEvents: "auto",
+      // Electron webviews receive clicks even under higher-z HTML overlays.
+      // Callers set interactable=false while a renderer popover is open.
+      pointerEvents: interactable ? "auto" : "none",
       ...(cornerRadius > 0 ? { borderRadius: cornerRadius } : {}),
     };
   }

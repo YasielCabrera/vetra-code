@@ -6,7 +6,10 @@
  * exercised by a person or driven by an agent through the `preview_wallet_*`
  * MCP tools.
  */
-import { DEFAULT_SERVER_SETTINGS } from "@vetra-code/contracts";
+import {
+  DEFAULT_SERVER_SETTINGS,
+  type PreviewAutomationWalletConfigureInput,
+} from "@vetra-code/contracts";
 import type { Web3Account, Web3ApprovalMode } from "@vetra-code/web3/schema";
 import { CheckIcon, CopyIcon, PlusIcon, TriangleAlertIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -17,6 +20,8 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
+import { toastManager } from "../ui/toast";
+import { AccountIdenticon } from "./AccountIdenticon";
 import {
   SettingResetButton,
   SettingsPageContainer,
@@ -40,9 +45,8 @@ function TestWalletWarning() {
     <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
       <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
       <p>
-        This is a <strong>test wallet</strong>. Its keys are generated on this machine and stored
-        unencrypted so the preview can sign without prompting. The preview also loads untrusted web
-        content. Never import a mnemonic or private key that holds real funds.
+        This is a <strong>test wallet</strong>. Keys are stored unencrypted on this machine. Never
+        import a mnemonic or private key that holds real funds.
       </p>
     </div>
   );
@@ -97,25 +101,66 @@ export function Web3SettingsPanel() {
 
   const bridge = previewBridge?.wallet ?? null;
 
-  const generateAccount = useCallback(async () => {
+  const pushWalletSettings = useCallback(async () => {
     if (!bridge) return;
-    await bridge.configure("", { generateAccount: true });
-    await refresh();
-  }, [bridge, refresh]);
+    await bridge.applySettings({
+      enabled: wallet.enabled,
+      approvalMode: wallet.approvalMode,
+      chainId: wallet.chainId,
+      rpcUrl: wallet.rpcUrl,
+      autoConnectLoopback: wallet.autoConnectLoopback,
+    });
+  }, [
+    bridge,
+    wallet.approvalMode,
+    wallet.autoConnectLoopback,
+    wallet.chainId,
+    wallet.enabled,
+    wallet.rpcUrl,
+  ]);
+
+  // ElectronBrowserHost also pushes this, but Settings is where a stale
+  // "wallet is off" is visible — retry here so toggling on actually seeds
+  // the keystore even if the host effect ran before the wallet IPC was ready.
+  useEffect(() => {
+    if (!bridge) return;
+    void pushWalletSettings()
+      .then(() => refresh())
+      .catch(() => undefined);
+  }, [bridge, pushWalletSettings, refresh]);
+
+  const runWalletConfigure = useCallback(
+    async (input: PreviewAutomationWalletConfigureInput, failedTitle: string) => {
+      if (!bridge) return;
+      try {
+        await pushWalletSettings();
+        await bridge.configure("", input);
+        await refresh();
+      } catch (error) {
+        toastManager.add({
+          type: "error",
+          title: failedTitle,
+          description:
+            error instanceof Error ? error.message : "The preview wallet did not respond.",
+        });
+      }
+    },
+    [bridge, pushWalletSettings, refresh],
+  );
+
+  const generateAccount = useCallback(async () => {
+    await runWalletConfigure({ generateAccount: true }, "Could not add an account");
+  }, [runWalletConfigure]);
 
   const clearOrigins = useCallback(async () => {
-    if (!bridge) return;
-    await bridge.configure("", { clearConnectedOrigins: true });
-    await refresh();
-  }, [bridge, refresh]);
+    await runWalletConfigure({ clearConnectedOrigins: true }, "Could not forget connected sites");
+  }, [runWalletConfigure]);
 
   const selectAccount = useCallback(
     async (address: string) => {
-      if (!bridge) return;
-      await bridge.configure("", { selectedAddress: address });
-      await refresh();
+      await runWalletConfigure({ selectedAddress: address }, "Could not switch the active account");
     },
-    [bridge, refresh],
+    [runWalletConfigure],
   );
 
   const chainSummary = describeWalletChain(status);
@@ -129,7 +174,7 @@ export function Web3SettingsPanel() {
 
         <SettingsRow
           {...searchableSetting("web3-wallet-enabled")}
-          description="Inject an EIP-1193 provider into the browser preview and announce it over EIP-6963 as MetaMask, so dapps detect it. Turning this on requires a server restart before the preview_wallet_* MCP tools become available to agents."
+          description="Inject a MetaMask-compatible wallet into the browser preview. Restart the server after enabling so agents can use it."
           resetAction={
             wallet.enabled !== DEFAULTS.enabled ? (
               <SettingResetButton
@@ -151,7 +196,7 @@ export function Web3SettingsPanel() {
 
         <SettingsRow
           {...searchableSetting("web3-wallet-approval-mode")}
-          description="Who confirms signature and transaction requests. Agent-driven approves silently while an agent is driving the tab and asks otherwise — the default that keeps automated tests moving without leaving a signing oracle open to any page."
+          description="Who confirms signatures and transactions."
           resetAction={
             wallet.approvalMode !== DEFAULTS.approvalMode ? (
               <SettingResetButton
@@ -192,7 +237,7 @@ export function Web3SettingsPanel() {
 
         <SettingsRow
           {...searchableSetting("web3-wallet-auto-connect")}
-          description="Skip the connect prompt for pages served from localhost. Remote origins always have to be approved once, even in approve-everything mode."
+          description="Skip the connect prompt on localhost. Remote sites still need approval once."
           resetAction={
             wallet.autoConnectLoopback !== DEFAULTS.autoConnectLoopback ? (
               <SettingResetButton
@@ -223,7 +268,7 @@ export function Web3SettingsPanel() {
           {...searchableSetting("web3-wallet-accounts")}
           description={
             bridge
-              ? "Generated from a throwaway mnemonic the first time the wallet is enabled. The active account is the one eth_accounts returns first."
+              ? "Generated when the wallet is first enabled. The active account is returned first."
               : "Accounts are only available in the desktop app, where the browser preview runs."
           }
           control={
@@ -249,6 +294,7 @@ export function Web3SettingsPanel() {
                   className="flex items-center justify-between gap-2 rounded-md px-2 py-1 hover:bg-accent/50"
                 >
                   <div className="flex min-w-0 items-center gap-2">
+                    <AccountIdenticon address={account.address} size={20} />
                     <span className="truncate text-xs font-medium">{account.label}</span>
                     {account.source === "imported" ? (
                       <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">
@@ -284,7 +330,7 @@ export function Web3SettingsPanel() {
           description={
             status && status.connectedOrigins.length > 0
               ? `Granted account access to ${status.connectedOrigins.join(", ")}.`
-              : "No site has been granted account access yet."
+              : "No connected sites yet."
           }
           control={
             <Button
@@ -302,7 +348,8 @@ export function Web3SettingsPanel() {
       <SettingsSection id="web3-network" title="Network">
         <SettingsRow
           {...searchableSetting("web3-wallet-chain")}
-          description={`Leave both empty to follow the dapp: the wallet adopts a node on 127.0.0.1:8545 if one is listening, and honours wallet_addEthereumChain from the page. ${chainSummary}`}
+          description="Leave empty to prefer a local node, then Ethereum Mainnet. Common networks switch automatically; fill these fields to pin a custom target."
+          status={chainSummary || undefined}
           resetAction={
             wallet.chainId !== DEFAULTS.chainId || wallet.rpcUrl !== DEFAULTS.rpcUrl ? (
               <SettingResetButton

@@ -27,6 +27,7 @@ import { parsePersistedWeb3WalletSettings } from "@vetra-code/shared/serverSetti
 import {
   DEFAULT_LOCAL_RPC_URL,
   describeChain,
+  getDefaultChain,
   parseAddEthereumChain,
   probeChainId,
   resolveInitialChain,
@@ -144,6 +145,7 @@ interface PendingEntry {
   readonly request: Web3PendingRequest;
   readonly kind: Web3MethodKind;
   readonly webContentsId: number;
+  readonly grantOriginOnApproval: boolean;
   readonly deferred: Deferred.Deferred<PendingOutcome>;
 }
 
@@ -179,7 +181,7 @@ export class PreviewWallet extends Context.Service<
      */
     readonly noteAgentActivity: (webContentsId: number) => Effect.Effect<void>;
     readonly subscribeStateChanges: (
-      listener: (status: Web3WalletStatus) => void,
+      listener: (status: Web3WalletStatus) => Effect.Effect<void>,
     ) => Effect.Effect<void>;
     /**
      * Runs one EIP-1193 request on behalf of a preview guest.
@@ -272,7 +274,9 @@ export const make = Effect.gen(function* PreviewWalletMake() {
     rpcReachable: false,
     pending: new Map(),
   });
-  const listenersRef = yield* Ref.make<ReadonlyArray<(status: Web3WalletStatus) => void>>([]);
+  const listenersRef = yield* Ref.make<
+    ReadonlyArray<(status: Web3WalletStatus) => Effect.Effect<void>>
+  >([]);
   const agentActivityRef = yield* Ref.make<ReadonlyMap<number, number>>(new Map());
   const keystoreLock = yield* Semaphore.make(1);
 
@@ -313,15 +317,16 @@ export const make = Effect.gen(function* PreviewWalletMake() {
     const status = toStatus(state);
     snapshot = status;
     const listeners = yield* Ref.get(listenersRef);
-    yield* Effect.sync(() => {
-      for (const listener of listeners) {
-        try {
-          listener(status);
-        } catch {
-          // A broken subscriber must not stop the wallet publishing state.
-        }
-      }
-    });
+    yield* Effect.forEach(
+      listeners,
+      (listener) =>
+        listener(status).pipe(
+          Effect.catchCause((cause) =>
+            Effect.logWarning("preview wallet state subscriber failed", cause),
+          ),
+        ),
+      { discard: true },
+    );
   });
 
   // One wallet per desktop state directory. Preview partitions are
@@ -380,7 +385,9 @@ export const make = Effect.gen(function* PreviewWalletMake() {
     );
     if (chain === null) return { chain: null, rpcReachable: false } as const;
     const reachable =
-      chain.rpcUrl === null ? false : (yield* withHttp(probeChainId(chain.rpcUrl))) !== null;
+      chain.rpcUrl === null
+        ? false
+        : (yield* withHttp(probeChainId(chain.rpcUrl))) === chain.chainId;
     return { chain, rpcReachable: reachable } as const;
   });
 
@@ -535,17 +542,42 @@ export const make = Effect.gen(function* PreviewWalletMake() {
   };
 
   const broadcastProviderEvent = (event: Web3ProviderEvent): void => {
-    // Every preview guest gets wallet events; a page that never asked simply
-    // has no listeners attached.
     for (const contents of webContents.getAllWebContents()) {
       if (contents.getType() !== "webview" || contents.isDestroyed()) continue;
       contents.send(PREVIEW_WALLET_PROVIDER_EVENT_CHANNEL, event);
     }
   };
 
-  const setChain = Effect.fn("PreviewWallet.setChain")(function* (chain: Web3Chain) {
+  /** Account visibility is an origin grant, so never broadcast it globally. */
+  const broadcastAccountsChanged = (keystore: Web3KeystoreFile): void => {
+    for (const contents of webContents.getAllWebContents()) {
+      if (contents.getType() !== "webview" || contents.isDestroyed()) continue;
+      const origin = originOf(contents.getURL());
+      contents.send(PREVIEW_WALLET_PROVIDER_EVENT_CHANNEL, {
+        event: "accountsChanged",
+        payload: originGranted(keystore, origin) ? accountList(keystore) : [],
+      } satisfies Web3ProviderEvent);
+    }
+  };
+
+  const grantOriginAndNotify = Effect.fn("PreviewWallet.grantOriginAndNotify")(function* (
+    origin: string,
+  ) {
+    yield* grantOrigin(origin);
+    const next = yield* SynchronizedRef.get(stateRef);
+    yield* publish();
+    broadcastAccountsChanged(next.keystore);
+    return accountList(next.keystore);
+  });
+
+  const setChain = Effect.fn("PreviewWallet.setChain")(function* (
+    chain: Web3Chain,
+    alreadyVerified = false,
+  ) {
     const reachable =
-      chain.rpcUrl === null ? false : (yield* withHttp(probeChainId(chain.rpcUrl))) !== null;
+      chain.rpcUrl === null
+        ? false
+        : alreadyVerified || (yield* withHttp(probeChainId(chain.rpcUrl))) === chain.chainId;
     yield* SynchronizedRef.update(stateRef, (state) => ({
       ...state,
       chain,
@@ -566,12 +598,9 @@ export const make = Effect.gen(function* PreviewWalletMake() {
     const state = yield* SynchronizedRef.get(stateRef);
 
     if (kind === "connect") {
-      yield* grantOrigin(origin);
-      const next = yield* SynchronizedRef.get(stateRef);
-      const accounts = accountList(next.keystore);
+      const accounts = accountList(state.keystore);
       if (accounts.length === 0) return yield* new PreviewWalletNoAccountError();
-      yield* publish();
-      broadcastProviderEvent({ event: "accountsChanged", payload: accounts });
+      yield* grantOriginAndNotify(origin);
       if (method === "wallet_requestPermissions") {
         return [{ parentCapability: "eth_accounts" }];
       }
@@ -607,17 +636,25 @@ export const make = Effect.gen(function* PreviewWalletMake() {
           : null;
       const localChainId =
         reuseRpc === null ? yield* withHttp(probeChainId(DEFAULT_LOCAL_RPC_URL)) : null;
+      const defaultChain = getDefaultChain(chainId);
+      const defaultRpcUrl = defaultChain?.rpcUrl ?? null;
+      const defaultChainId =
+        reuseRpc === null && localChainId !== chainId && defaultRpcUrl !== null
+          ? yield* withHttp(probeChainId(defaultRpcUrl))
+          : null;
       const rpcUrl =
-        reuseRpc ?? (localChainId === chainId ? (DEFAULT_LOCAL_RPC_URL as Web3RpcUrl) : null);
+        reuseRpc ??
+        (localChainId === chainId ? (DEFAULT_LOCAL_RPC_URL as Web3RpcUrl) : null) ??
+        (defaultChainId === chainId ? defaultRpcUrl : null);
       if (rpcUrl === null) {
         return yield* Effect.fail(
           providerError(
             4902,
-            `No JSON-RPC endpoint is known for chain ${chainId}. Add one in Settings > Web3 or call wallet_addEthereumChain.`,
+            `No working JSON-RPC endpoint is known for chain ${chainId}. Add one in Settings > Web3 or call wallet_addEthereumChain.`,
           ),
         );
       }
-      yield* setChain(describeChain(chainId, rpcUrl));
+      yield* setChain(describeChain(chainId, rpcUrl), true);
       return null;
     }
 
@@ -714,7 +751,8 @@ export const make = Effect.gen(function* PreviewWalletMake() {
           }),
         );
         yield* publish();
-        broadcastProviderEvent({ event: "accountsChanged", payload: [] });
+        const next = yield* SynchronizedRef.get(stateRef);
+        broadcastAccountsChanged(next.keystore);
         return null;
       }
       case "web3_clientVersion":
@@ -730,6 +768,7 @@ export const make = Effect.gen(function* PreviewWalletMake() {
     readonly origin: string;
     readonly kind: Web3MethodKind;
     readonly webContentsId: number;
+    readonly grantOriginOnApproval: boolean;
   }) {
     const requestId = yield* crypto.randomUUIDv4;
     const now = yield* DateTime.now;
@@ -743,7 +782,7 @@ export const make = Effect.gen(function* PreviewWalletMake() {
         method: input.method,
         params: input.params,
         origin: input.origin,
-      }),
+      }).concat(input.grantOriginOnApproval ? " Approving also connects this site." : ""),
       createdAt: DateTime.formatIso(now),
     };
 
@@ -753,6 +792,7 @@ export const make = Effect.gen(function* PreviewWalletMake() {
         request,
         kind: input.kind,
         webContentsId: input.webContentsId,
+        grantOriginOnApproval: input.grantOriginOnApproval,
         deferred,
       });
       return { ...state, pending };
@@ -803,12 +843,12 @@ export const make = Effect.gen(function* PreviewWalletMake() {
       );
     }
 
-    if (web3MethodNeedsAccountGrant(input.method) && !originGranted(state.keystore, input.origin)) {
-      // Matches MetaMask: sign before connect is unauthorized, not a prompt.
-      return yield* Effect.fail(
-        providerError(4100, "Call eth_requestAccounts before requesting a signature."),
-      );
-    }
+    // Some connector libraries restore their own "connected" cache without
+    // calling eth_requestAccounts again. Treat the first signature as a
+    // recoverable connect request: it still goes through the approval gate,
+    // and the origin grant is written only after signing succeeds.
+    const grantOriginOnApproval =
+      web3MethodNeedsAccountGrant(input.method) && !originGranted(state.keystore, input.origin);
 
     if (!web3MethodRequiresApproval(kind)) {
       return yield* executeRequest({ ...input, kind });
@@ -820,9 +860,13 @@ export const make = Effect.gen(function* PreviewWalletMake() {
       origin: input.origin,
       webContentsId: input.webContentsId,
     });
-    if (auto) return yield* executeRequest({ ...input, kind });
+    if (auto) {
+      const result = yield* executeRequest({ ...input, kind });
+      if (grantOriginOnApproval) yield* grantOriginAndNotify(input.origin);
+      return result;
+    }
 
-    const outcome = yield* park({ ...input, kind });
+    const outcome = yield* park({ ...input, kind, grantOriginOnApproval });
     if (outcome.approved) return outcome.result;
     return yield* Effect.fail(providerError(outcome.code, WEB3_REJECT_MESSAGES[outcome.code]));
   });
@@ -858,6 +902,9 @@ export const make = Effect.gen(function* PreviewWalletMake() {
       };
     }
 
+    if (entry.grantOriginOnApproval) {
+      yield* grantOriginAndNotify(entry.request.origin);
+    }
     yield* Deferred.succeed(entry.deferred, { approved: true, result: executed.success });
     return {
       requestId,
@@ -892,8 +939,17 @@ export const make = Effect.gen(function* PreviewWalletMake() {
         let keystore = state.keystore;
 
         if (input.generateAccount === true) {
-          const mnemonic = keystore.mnemonic;
-          if (mnemonic === null) return yield* new PreviewWalletNoAccountError();
+          let mnemonic = keystore.mnemonic;
+          if (mnemonic === null) {
+            // Imported-only wallets have no mnemonic to derive from. An empty
+            // wallet is the Settings "Add account" path before first enable
+            // has created a keystore — generate one rather than failing.
+            if (keystore.accounts.length > 0) {
+              return yield* new PreviewWalletNoAccountError();
+            }
+            mnemonic = generateWalletMnemonic();
+            keystore = { ...keystore, mnemonic };
+          }
           const derivedCount =
             keystore.accounts.filter((account) => account.derivationIndex !== null).length + 1;
           const derived = yield* deriveMnemonicAccounts(mnemonic, derivedCount);
@@ -928,7 +984,7 @@ export const make = Effect.gen(function* PreviewWalletMake() {
         if (keystore !== state.keystore) {
           yield* persistKeystore(keystore);
           yield* SynchronizedRef.update(stateRef, (current) => ({ ...current, keystore }));
-          broadcastProviderEvent({ event: "accountsChanged", payload: accountList(keystore) });
+          broadcastAccountsChanged(keystore);
         }
 
         const settings: Web3WalletSettings = {
@@ -980,12 +1036,15 @@ export const make = Effect.gen(function* PreviewWalletMake() {
       Effect.sync(() => {
         ipcMain.removeAllListeners(PREVIEW_WALLET_BOOTSTRAP_CHANNEL);
         ipcMain.on(PREVIEW_WALLET_BOOTSTRAP_CHANNEL, (event) => {
+          const origin = originOf(event.sender.getURL());
           const bootstrap: PreviewWalletBootstrap = isPreviewGuest(event.sender)
             ? {
                 enabled: snapshot.enabled,
                 uuid: providerUuid,
                 chainId: snapshot.chain === null ? null : chainIdToHex(snapshot.chain.chainId),
-                selectedAddress: snapshot.selectedAddress,
+                selectedAddress: snapshot.connectedOrigins.includes(origin)
+                  ? snapshot.selectedAddress
+                  : null,
               }
             : { enabled: false, uuid: providerUuid, chainId: null, selectedAddress: null };
           event.returnValue = bootstrap;

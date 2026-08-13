@@ -23,6 +23,20 @@ describe("resolveHostedBrowserWebviewWrapperStyle", () => {
     });
   });
 
+  it("disables pointer events on an active webview while a renderer overlay is open", () => {
+    expect(
+      resolveHostedBrowserWebviewWrapperStyle({
+        active: true,
+        interactable: false,
+        rect: { x: 12, y: 34, width: 800, height: 600 },
+        hiddenSize: { width: 1280, height: 800 },
+      }),
+    ).toMatchObject({
+      pointerEvents: "none",
+      zIndex: 30,
+    });
+  });
+
   it("clips a floating webview to the mini-player frame", () => {
     expect(
       resolveHostedBrowserWebviewWrapperStyle({

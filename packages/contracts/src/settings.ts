@@ -518,7 +518,7 @@ export const Web3WalletSettings = Schema.Struct({
   approvalMode: Web3ApprovalMode.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_WEB3_APPROVAL_MODE)),
   ),
-  /** Null means "follow the dapp": adopt a local node or whatever the page adds. */
+  /** Null means automatic: prefer a local node, then use the bundled public networks. */
   chainId: Schema.NullOr(Web3ChainId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   rpcUrl: Schema.NullOr(Web3RpcUrl).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   /** Skip the per-origin connect prompt for loopback origins. */

@@ -5,7 +5,9 @@ import { HttpClient, HttpClientError } from "effect/unstable/http";
 
 import {
   DEFAULT_LOCAL_RPC_URL,
+  DEFAULT_PUBLIC_CHAIN_ID,
   describeChain,
+  getDefaultChain,
   parseAddEthereumChain,
   probeChainId,
   resolveInitialChain,
@@ -35,13 +37,35 @@ const defectiveLayer = Layer.succeed(
 );
 
 describe("describeChain", () => {
-  it("names well-known chains without inventing an RPC endpoint for them", () => {
+  it("fills bundled metadata and public RPC endpoints for common networks", () => {
     const mainnet = describeChain(1, null);
     expect(mainnet.name).toBe("Ethereum Mainnet");
-    expect(mainnet.rpcUrl).toBeNull();
+    expect(mainnet.rpcUrl).toBe("https://ethereum-rpc.publicnode.com");
     expect(mainnet.nativeCurrency.symbol).toBe("ETH");
 
     expect(describeChain(31337, DEFAULT_LOCAL_RPC_URL).name).toBe("Anvil / Hardhat");
+  });
+
+  it("bundles the expected keyless networks and leaves local chains unconfigured", () => {
+    const expected = new Map([
+      [1, "https://ethereum-rpc.publicnode.com"],
+      [10, "https://mainnet.optimism.io"],
+      [56, "https://bsc-dataseed.bnbchain.org"],
+      [137, "https://polygon.drpc.org"],
+      [8453, "https://mainnet.base.org"],
+      [42161, "https://arb1.arbitrum.io/rpc"],
+      [43114, "https://api.avax.network/ext/bc/C/rpc"],
+      [11155111, "https://ethereum-sepolia-rpc.publicnode.com"],
+    ]);
+
+    for (const [chainId, rpcUrl] of expected) {
+      expect(getDefaultChain(chainId)?.rpcUrl).toBe(rpcUrl);
+    }
+    expect(getDefaultChain(31337)).toBeNull();
+  });
+
+  it("lets an explicit endpoint override the bundled one", () => {
+    expect(describeChain(1, "https://rpc.example.test").rpcUrl).toBe("https://rpc.example.test");
   });
 
   it("falls back to a generic name for unknown chains", () => {
@@ -75,7 +99,7 @@ describe("parseAddEthereumChain", () => {
     const chain = parseAddEthereumChain([{ chainId: "0x1" }]);
     expect(chain?.name).toBe("Ethereum Mainnet");
     expect(chain?.nativeCurrency.decimals).toBe(18);
-    expect(chain?.rpcUrl).toBeNull();
+    expect(chain?.rpcUrl).toBe("https://ethereum-rpc.publicnode.com");
   });
 
   it("returns null for a malformed request so the caller can answer 4902", () => {
@@ -155,6 +179,19 @@ describe("resolveInitialChain", () => {
     }),
   );
 
+  it.effect("fills a bundled endpoint when settings pin only a known chain id", () =>
+    Effect.gen(function* () {
+      const calls: Array<RecordedJsonRpcCall> = [];
+      const chain = yield* resolveInitialChain({
+        settingsChainId: 8453,
+        settingsRpcUrl: null,
+      }).pipe(Effect.provide(makeJsonRpcClientLayer({ eth_chainId: "0x7a69" }, calls)));
+
+      expect(chain).toEqual(getDefaultChain(8453));
+      expect(calls).toHaveLength(0);
+    }),
+  );
+
   it.effect("probes a settings RPC URL when no chain id is pinned", () =>
     Effect.gen(function* () {
       const chain = yield* resolveInitialChain({
@@ -180,11 +217,11 @@ describe("resolveInitialChain", () => {
     }),
   );
 
-  it.effect("resolves no chain rather than guessing a public endpoint", () =>
+  it.effect("falls back to the bundled public network when no local node answers", () =>
     Effect.gen(function* () {
-      expect(
-        yield* resolveInitialChain({ settingsChainId: null, settingsRpcUrl: null }),
-      ).toBeNull();
+      const chain = yield* resolveInitialChain({ settingsChainId: null, settingsRpcUrl: null });
+      expect(chain?.chainId).toBe(DEFAULT_PUBLIC_CHAIN_ID);
+      expect(chain?.rpcUrl).toBe("https://ethereum-rpc.publicnode.com");
     }).pipe(Effect.provide(refusedLayer)),
   );
 

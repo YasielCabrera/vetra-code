@@ -86,6 +86,7 @@ import {
   deriveTimelineEntries,
   deriveActiveWorkStartedAt,
   deriveActivePlanState,
+  deriveTaskControlState,
   deriveTurnPlans,
   findLatestProposedPlan,
   deriveWorkLogEntries,
@@ -2263,6 +2264,7 @@ function ChatViewContent(props: ChatViewProps) {
     () => deriveActivePlanState(threadActivities, activeLatestTurn?.turnId ?? undefined),
     [activeLatestTurn?.turnId, threadActivities],
   );
+  const taskControlState = useMemo(() => deriveTaskControlState(activePlan), [activePlan]);
   // Current step for the in-chat working row: only for the running turn's own
   // plan (deriveActivePlanState falls back to older turns' plans, which must
   // not label fresh work). Falls back to the first pending step so an
@@ -6231,6 +6233,7 @@ function ChatViewContent(props: ChatViewProps) {
             availableEditors={availableEditors}
             rightPanelOpen={rightPanelOpen}
             gitCwd={gitCwd}
+            taskControlState={taskControlState}
             onNewThreadInProject={handleNewThreadInActiveProject}
             onRunProjectScript={runProjectScript}
             onAddProjectScript={saveProjectScript}

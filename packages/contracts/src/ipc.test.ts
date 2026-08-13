@@ -1,7 +1,23 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
-import { DesktopEnvironmentBootstrapSchema } from "./ipc.ts";
+import {
+  DesktopEnvironmentBootstrapSchema,
+  DesktopPreviewWalletConfigureInputSchema,
+} from "./ipc.ts";
+
+describe("DesktopPreviewWalletConfigureInputSchema", () => {
+  const decode = Schema.decodeUnknownSync(DesktopPreviewWalletConfigureInputSchema);
+
+  it("accepts an empty tab id so Settings can add an account without a preview tab", () => {
+    const decoded = decode({
+      tabId: "",
+      input: { generateAccount: true },
+    });
+    expect(decoded.tabId).toBe("");
+    expect(decoded.input.generateAccount).toBe(true);
+  });
+});
 
 describe("DesktopEnvironmentBootstrapSchema", () => {
   const decode = Schema.decodeUnknownSync(DesktopEnvironmentBootstrapSchema);

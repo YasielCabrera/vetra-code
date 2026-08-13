@@ -126,6 +126,30 @@ describe("installWeb3InpageProvider", () => {
     });
   });
 
+  it("synchronizes selectedAddress from account request results", async () => {
+    const responses = new Map<string, unknown>([
+      ["eth_requestAccounts", ["0xAbC"]],
+      ["eth_accounts", []],
+      ["wallet_revokePermissions", null],
+    ]);
+    const handle = installWeb3InpageProvider(
+      makeWindow(),
+      options(({ method }) => Promise.resolve(responses.get(method))),
+    );
+
+    expect(handle.provider.selectedAddress).toBeNull();
+    await handle.provider.request({ method: "eth_requestAccounts" });
+    expect(handle.provider.selectedAddress).toBe("0xAbC");
+
+    await handle.provider.request({ method: "eth_accounts" });
+    expect(handle.provider.selectedAddress).toBeNull();
+
+    responses.set("eth_requestAccounts", ["0xDeF"]);
+    await handle.provider.request({ method: "eth_requestAccounts" });
+    await handle.provider.request({ method: "wallet_revokePermissions" });
+    expect(handle.provider.selectedAddress).toBeNull();
+  });
+
   it("rejects a request with no method instead of forwarding it", async () => {
     const transport = vi.fn(() => Promise.resolve(null));
     const window = makeWindow();

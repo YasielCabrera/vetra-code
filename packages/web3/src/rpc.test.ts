@@ -149,6 +149,24 @@ describe("summarizeWeb3Request", () => {
     expect(summary).toContain("Seaport");
   });
 
+  it("uses the chain when typed data has no domain name", () => {
+    const summary = summarizeWeb3Request({
+      method: "eth_signTypedData_v4",
+      params: [
+        "0x1111111111111111111111111111111111111111",
+        JSON.stringify({
+          domain: { version: "1", chainId: 1 },
+          primaryType: "VerifiableCredential",
+          types: {},
+          message: {},
+        }),
+      ],
+      origin,
+    });
+    expect(summary).toContain("VerifiableCredential");
+    expect(summary).toContain("chain 1");
+  });
+
   it("survives malformed typed data without throwing", () => {
     const summary = summarizeWeb3Request({
       method: "eth_signTypedData_v4",

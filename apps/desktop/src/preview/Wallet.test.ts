@@ -1,5 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
+import { getDefaultChain } from "@vetra-code/web3/chain";
 import { toQuantityHex } from "@vetra-code/web3/rpc";
 import type { Web3WalletSettings } from "@vetra-code/contracts";
 import * as Effect from "effect/Effect";
@@ -8,18 +9,39 @@ import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
+import * as Scope from "effect/Scope";
 import { HttpBody, HttpClient, HttpClientResponse } from "effect/unstable/http";
 import { vi } from "vite-plus/test";
 
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
+import { PREVIEW_WALLET_BOOTSTRAP_CHANNEL } from "./GuestProtocol.ts";
 import * as PreviewWallet from "./Wallet.ts";
 
-// The wallet touches `ipcMain`/`webContents` only when installing the guest
-// bridge, which these tests do not do — but the module-level import still needs
-// electron to resolve.
+const electronMock = vi.hoisted(() => ({
+  bootstrapListeners: new Map<
+    string,
+    (event: { sender: unknown; returnValue?: unknown }) => void
+  >(),
+  contents: [] as Array<{
+    getType(): string;
+    isDestroyed(): boolean;
+    getURL(): string;
+    send(channel: string, event: unknown): void;
+  }>,
+}));
+
 vi.mock("electron", () => ({
-  ipcMain: { on: vi.fn(), handle: vi.fn(), removeAllListeners: vi.fn(), removeHandler: vi.fn() },
-  webContents: { getAllWebContents: () => [] },
+  ipcMain: {
+    on: vi.fn((channel: string, listener: (event: { sender: unknown }) => void) => {
+      electronMock.bootstrapListeners.set(channel, listener);
+    }),
+    handle: vi.fn(),
+    removeAllListeners: vi.fn((channel: string) => {
+      electronMock.bootstrapListeners.delete(channel);
+    }),
+    removeHandler: vi.fn(),
+  },
+  webContents: { getAllWebContents: () => electronMock.contents },
 }));
 
 const LOCAL_ORIGIN = "http://localhost:5173";
@@ -34,16 +56,21 @@ const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 const readBody = (body: HttpBody.HttpBody): string =>
   body._tag === "Uint8Array" ? new TextDecoder().decode(body.body) : "{}";
 
-const rpcLayer = (responders: Record<string, unknown>, calls: Array<string> = []) =>
+const rpcLayer = (
+  responders: Record<string, unknown>,
+  calls: Array<string> = [],
+  respondersByUrl: Readonly<Record<string, Record<string, unknown>>> = {},
+) =>
   Layer.succeed(
     HttpClient.HttpClient,
     HttpClient.make((request) =>
       Effect.sync(() => {
         const call = decodeJsonRpcCall(readBody(request.body));
         calls.push(call.method);
+        const requestResponders = respondersByUrl[request.url] ?? responders;
         const body =
-          call.method in responders
-            ? { jsonrpc: "2.0", id: 1, result: responders[call.method] }
+          call.method in requestResponders
+            ? { jsonrpc: "2.0", id: 1, result: requestResponders[call.method] }
             : { jsonrpc: "2.0", id: 1, error: { code: -32601, message: call.method } };
         return HttpClientResponse.fromWeb(request, new Response(encodeJson(body)));
       }),
@@ -72,11 +99,12 @@ const withWallet = <A, E>(
   input: {
     readonly settings?: Partial<Web3WalletSettings>;
     readonly responders?: Record<string, unknown>;
+    readonly respondersByUrl?: Readonly<Record<string, Record<string, unknown>>>;
     readonly calls?: Array<string>;
   },
   use: (
     wallet: PreviewWallet.PreviewWallet["Service"],
-  ) => Effect.Effect<A, E, FileSystem.FileSystem>,
+  ) => Effect.Effect<A, E, FileSystem.FileSystem | Scope.Scope>,
 ) =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
@@ -98,7 +126,7 @@ const withWallet = <A, E>(
       Effect.provide(
         Layer.mergeAll(
           environmentLayer,
-          rpcLayer(input.responders ?? ANVIL_RESPONDERS, input.calls ?? []),
+          rpcLayer(input.responders ?? ANVIL_RESPONDERS, input.calls ?? [], input.respondersByUrl),
         ),
       ),
     );
@@ -176,11 +204,27 @@ describe("startup", () => {
     ),
   );
 
-  it.effect("reports no chain rather than guessing when nothing is reachable", () =>
+  it.effect("falls back to Ethereum Mainnet when no local node is reachable", () => {
+    const mainnet = getDefaultChain(1)!;
+    return withWallet(
+      {
+        responders: {},
+        respondersByUrl: { [mainnet.rpcUrl!]: { eth_chainId: "0x1" } },
+      },
+      (wallet) =>
+        Effect.gen(function* () {
+          const status = yield* wallet.status;
+          expect(status.chain).toEqual(mainnet);
+          expect(status.rpcReachable).toBe(true);
+        }),
+    );
+  });
+
+  it.effect("keeps the default network visible when its public RPC is unreachable", () =>
     withWallet({ responders: {} }, (wallet) =>
       Effect.gen(function* () {
         const status = yield* wallet.status;
-        expect(status.chain).toBeNull();
+        expect(status.chain?.chainId).toBe(1);
         expect(status.rpcReachable).toBe(false);
       }),
     ),
@@ -210,6 +254,74 @@ describe("local reads", () => {
 });
 
 describe("connect grants", () => {
+  it.effect("broadcasts account changes according to each preview origin's grant", () => {
+    const grantedEvents: Array<{ event?: string; payload?: unknown }> = [];
+    const ungrantedEvents: Array<{ event?: string; payload?: unknown }> = [];
+    const guest = (origin: string, events: Array<{ event?: string; payload?: unknown }>) => ({
+      getType: () => "webview",
+      isDestroyed: () => false,
+      getURL: () => `${origin}/page`,
+      send: (_channel: string, event: unknown) => {
+        events.push(event as { event?: string; payload?: unknown });
+      },
+    });
+    electronMock.contents.push(
+      guest(REMOTE_ORIGIN, grantedEvents),
+      guest("https://other.example.test", ungrantedEvents),
+    );
+
+    return withWallet({ settings: { approvalMode: "always-auto" } }, (wallet) =>
+      Effect.gen(function* () {
+        const connectFiber = yield* Effect.forkChild(connect(wallet, REMOTE_ORIGIN));
+        const pending = (yield* waitForPending(wallet, 1)).requests[0]!;
+        yield* wallet.approve(pending.requestId);
+        yield* Fiber.join(connectFiber);
+
+        expect(grantedEvents.at(-1)?.event).toBe("accountsChanged");
+        expect(grantedEvents.at(-1)?.payload).toEqual(
+          expect.arrayContaining([yield* activeAddress(wallet)]),
+        );
+        expect(ungrantedEvents.at(-1)).toEqual({ event: "accountsChanged", payload: [] });
+      }),
+    ).pipe(
+      Effect.ensuring(
+        Effect.sync(() => {
+          electronMock.contents.length = 0;
+        }),
+      ),
+    );
+  });
+
+  it.effect("bootstraps account state only for an origin that was granted access", () =>
+    withWallet({ settings: { approvalMode: "always-auto" } }, (wallet) =>
+      Effect.gen(function* () {
+        const connectFiber = yield* Effect.forkChild(connect(wallet, REMOTE_ORIGIN));
+        const pending = (yield* waitForPending(wallet, 1)).requests[0]!;
+        yield* wallet.approve(pending.requestId);
+        yield* Fiber.join(connectFiber);
+        yield* wallet.installGuestBridge;
+
+        const bootstrap = electronMock.bootstrapListeners.get(PREVIEW_WALLET_BOOTSTRAP_CHANNEL)!;
+        const eventFor = (origin: string) => {
+          const event: { sender: unknown; returnValue?: unknown } = {
+            sender: {
+              id: GUEST_ID,
+              getType: () => "webview",
+              isDestroyed: () => false,
+              getURL: () => `${origin}/page`,
+              hostWebContents: { isDestroyed: () => false },
+            },
+          };
+          bootstrap(event);
+          return event.returnValue as PreviewWallet.PreviewWalletBootstrap;
+        };
+
+        expect(eventFor(REMOTE_ORIGIN).selectedAddress).toBe(yield* activeAddress(wallet));
+        expect(eventFor("https://other.example.test").selectedAddress).toBeNull();
+      }),
+    ),
+  );
+
   it.effect("auto-connects a loopback origin when that is switched on", () =>
     withWallet({ settings: { approvalMode: "always-ask", autoConnectLoopback: true } }, (wallet) =>
       Effect.gen(function* () {
@@ -261,21 +373,27 @@ describe("connect grants", () => {
     ),
   );
 
-  it.effect("rejects a signature from an origin that never connected", () =>
+  it.effect("does not grant an origin when its first signature prompt is rejected", () =>
     withWallet({ settings: { approvalMode: "always-auto" } }, (wallet) =>
       Effect.gen(function* () {
-        const result = yield* request(
-          wallet,
-          "personal_sign",
-          ["0x68656c6c6f", yield* activeAddress(wallet)],
-          REMOTE_ORIGIN,
-        ).pipe(Effect.result);
+        const fiber = yield* Effect.forkChild(
+          request(
+            wallet,
+            "personal_sign",
+            ["0x68656c6c6f", yield* activeAddress(wallet)],
+            REMOTE_ORIGIN,
+          ).pipe(Effect.result),
+        );
+        const parked = yield* waitForPending(wallet, 1);
 
+        expect(parked.requests[0]?.summary).toContain("Approving also connects this site");
+        yield* wallet.reject(parked.requests[0]!.requestId, 4001);
+        const result = yield* Fiber.join(fiber);
         expect(result._tag).toBe("Failure");
         if (result._tag === "Failure") {
-          // 4100 unauthorized, matching MetaMask — not a prompt.
-          expect((result.failure as { code?: number }).code).toBe(4100);
+          expect((result.failure as { code?: number }).code).toBe(4001);
         }
+        expect((yield* wallet.status).connectedOrigins).toEqual([]);
         expect((yield* wallet.pendingRequests).requests).toEqual([]);
       }),
     ),
@@ -283,6 +401,26 @@ describe("connect grants", () => {
 });
 
 describe("the approval gate", () => {
+  it.effect("publishes parked requests to the preview approval UI", () =>
+    withWallet({ settings: { approvalMode: "always-ask" } }, (wallet) =>
+      Effect.gen(function* () {
+        const publishedPendingCounts: Array<number> = [];
+        yield* wallet.subscribeStateChanges((status) =>
+          Effect.sync(() => {
+            publishedPendingCounts.push(status.pendingRequests.length);
+          }),
+        );
+
+        const fiber = yield* Effect.forkChild(connect(wallet, REMOTE_ORIGIN).pipe(Effect.result));
+        const parked = yield* waitForPending(wallet, 1);
+
+        expect(publishedPendingCounts).toContain(1);
+        yield* wallet.reject(parked.requests[0]!.requestId);
+        yield* Fiber.join(fiber);
+      }),
+    ),
+  );
+
   it.effect("parks every signature in always-ask mode", () =>
     withWallet({ settings: { approvalMode: "always-ask", autoConnectLoopback: true } }, (wallet) =>
       Effect.gen(function* () {
@@ -295,6 +433,81 @@ describe("the approval gate", () => {
 
         yield* wallet.approve(parked.requests[0]!.requestId);
         expect(String(yield* Fiber.join(fiber)).startsWith("0x")).toBe(true);
+        expect((yield* wallet.pendingRequests).requests).toEqual([]);
+      }),
+    ),
+  );
+
+  it.effect("prompts for and signs Renown's VerifiableCredential typed data", () =>
+    withWallet({ settings: { approvalMode: "always-ask" } }, (wallet) =>
+      Effect.gen(function* () {
+        const address = yield* activeAddress(wallet);
+        const typedData = {
+          domain: { version: "1", chainId: 1 },
+          primaryType: "VerifiableCredential",
+          types: {
+            EIP712Domain: [
+              { name: "version", type: "string" },
+              { name: "chainId", type: "uint256" },
+            ],
+            VerifiableCredential: [
+              { name: "@context", type: "string[]" },
+              { name: "type", type: "string[]" },
+              { name: "id", type: "string" },
+              { name: "issuer", type: "Issuer" },
+              { name: "credentialSubject", type: "CredentialSubject" },
+              { name: "credentialSchema", type: "CredentialSchema" },
+              { name: "issuanceDate", type: "string" },
+              { name: "expirationDate", type: "string" },
+            ],
+            Issuer: [
+              { name: "id", type: "string" },
+              { name: "ethereumAddress", type: "string" },
+            ],
+            CredentialSubject: [
+              { name: "id", type: "string" },
+              { name: "app", type: "string" },
+            ],
+            CredentialSchema: [
+              { name: "id", type: "string" },
+              { name: "type", type: "string" },
+            ],
+          },
+          message: {
+            "@context": ["https://www.w3.org/2018/credentials/v1"],
+            type: ["VerifiableCredential", "RenownCredential"],
+            id: "urn:uuid:6d0fe97e-77dc-4d72-a012-a37ec2f15e3d",
+            issuer: {
+              id: `did:pkh:eip155:1:${address.toLowerCase()}`,
+              ethereumAddress: address,
+            },
+            credentialSubject: {
+              id: "did:key:zDnaed7MPwsg3pTxC1gPqVvxfxbqDcTuPqjZdACkSF1wWMvKE",
+              app: "renown-app",
+            },
+            credentialSchema: {
+              id: "https://renown.id/schemas/renown-credential/v1",
+              type: "JsonSchemaValidator2018",
+            },
+            issuanceDate: "2026-08-12T12:00:00.000Z",
+            expirationDate: "2026-08-19T12:00:00.000Z",
+          },
+        };
+        const signFiber = yield* Effect.forkChild(
+          request(wallet, "eth_signTypedData_v4", [address, encodeJson(typedData)], REMOTE_ORIGIN),
+        );
+        const signRequest = (yield* waitForPending(wallet, 1)).requests[0]!;
+
+        expect(signRequest.method).toBe("eth_signTypedData_v4");
+        expect(signRequest.summary).toContain("VerifiableCredential");
+        expect(signRequest.summary).toContain("chain 1");
+        expect(signRequest.summary).toContain("Approving also connects this site");
+
+        const resolution = yield* wallet.approve(signRequest.requestId);
+        expect(resolution.failure).toBeNull();
+        const signature = String(yield* Fiber.join(signFiber));
+        expect(signature).toMatch(/^0x[0-9a-f]{130}$/i);
+        expect((yield* wallet.status).connectedOrigins).toEqual([REMOTE_ORIGIN]);
         expect((yield* wallet.pendingRequests).requests).toEqual([]);
       }),
     ),
@@ -401,12 +614,33 @@ describe("chain handling", () => {
     ),
   );
 
+  it.effect("switches to a bundled public network without wallet_addEthereumChain", () => {
+    const base = getDefaultChain(8453)!;
+    return withWallet(
+      {
+        settings: { approvalMode: "always-auto", autoConnectLoopback: true },
+        respondersByUrl: { [base.rpcUrl!]: { eth_chainId: "0x2105" } },
+      },
+      (wallet) =>
+        Effect.gen(function* () {
+          yield* connect(wallet);
+          expect(
+            yield* request(wallet, "wallet_switchEthereumChain", [{ chainId: "0x2105" }]),
+          ).toBeNull();
+
+          const status = yield* wallet.status;
+          expect(status.chain).toEqual(base);
+          expect(status.rpcReachable).toBe(true);
+        }),
+    );
+  });
+
   it.effect("refuses to switch to a chain it has no endpoint for", () =>
     withWallet({ settings: { approvalMode: "always-auto", autoConnectLoopback: true } }, (wallet) =>
       Effect.gen(function* () {
         yield* connect(wallet);
         const result = yield* request(wallet, "wallet_switchEthereumChain", [
-          { chainId: "0x1" },
+          { chainId: "0x67932" },
         ]).pipe(Effect.result);
 
         expect(result._tag).toBe("Failure");
@@ -462,6 +696,20 @@ describe("transactions", () => {
 });
 
 describe("configure", () => {
+  it.effect("switches to a bundled network without a custom RPC", () => {
+    const base = getDefaultChain(8453)!;
+    return withWallet(
+      { respondersByUrl: { [base.rpcUrl!]: { eth_chainId: "0x2105" } } },
+      (wallet) =>
+        Effect.gen(function* () {
+          const after = yield* wallet.configure({ chainId: 8453, rpcUrl: null });
+
+          expect(after.chain).toEqual(base);
+          expect(after.rpcReachable).toBe(true);
+        }),
+    );
+  });
+
   it.effect("adds a generated account and makes it active", () =>
     withWallet({}, (wallet) =>
       Effect.gen(function* () {
@@ -470,6 +718,19 @@ describe("configure", () => {
 
         expect(after.accounts).toHaveLength(before.accounts.length + 1);
         expect(after.selectedAddress).toBe(after.accounts.at(-1)?.address);
+      }),
+    ),
+  );
+
+  it.effect("creates a mnemonic and first account when the keystore is still empty", () =>
+    withWallet({ settings: { enabled: false } }, (wallet) =>
+      Effect.gen(function* () {
+        expect((yield* wallet.status).accounts).toHaveLength(0);
+
+        const after = yield* wallet.configure({ generateAccount: true });
+
+        expect(after.accounts).toHaveLength(1);
+        expect(after.selectedAddress).toBe(after.accounts[0]?.address);
       }),
     ),
   );
@@ -584,6 +845,7 @@ describe("applySettings", () => {
         const status = yield* wallet.status;
         expect(status.chain?.chainId).toBe(11155111);
         expect(status.chain?.rpcUrl).toBe("https://sepolia.example.test");
+        expect(status.rpcReachable).toBe(false);
       }),
     ),
   );

@@ -1,6 +1,6 @@
 /**
- * Pure helpers for the Web3 settings panel, split out so they can be unit
- * tested without rendering (the convention `SettingsPanels.logic.ts` follows).
+ * Pure helpers for Web3 wallet UI (settings and the preview popover), split
+ * out so they can be unit tested without rendering.
  */
 import type { Web3ApprovalMode, Web3WalletStatus } from "@vetra-code/web3/schema";
 
@@ -53,7 +53,7 @@ export function describeWalletChain(status: Web3WalletStatus | null): string {
   if (!status) return "";
   if (!status.enabled) return "The wallet is off.";
   if (status.chain === null) {
-    return "No chain resolved yet: set one here, start a local node, or let the page add one.";
+    return "No chain resolved yet: clear custom network fields to use Ethereum Mainnet, start a local node, or let the page add one.";
   }
   const target = status.chain.rpcUrl ?? "no endpoint";
   return status.rpcReachable
@@ -68,4 +68,125 @@ export function formatWalletChip(status: Web3WalletStatus | null): string | null
     status.selectedAddress === null ? "No account" : shortenAddress(status.selectedAddress);
   const chain = status.chain === null ? "No network" : status.chain.name;
   return `${chain} · ${account}`;
+}
+
+/**
+ * Filled cells of a 5x5 mirrored identicon. Same address always yields the
+ * same cells and hue, so the preview chip, popover, and settings list agree.
+ */
+export type IdenticonCell = {
+  readonly x: number;
+  readonly y: number;
+};
+
+export type IdenticonPattern = {
+  readonly hue: number;
+  readonly cells: readonly IdenticonCell[];
+};
+
+export function identiconPattern(address: string): IdenticonPattern {
+  const rand = mulberry32(fnv1a(address.toLowerCase()));
+  const hue = Math.floor(rand() * 360);
+  const cells: IdenticonCell[] = [];
+  for (let y = 0; y < 5; y += 1) {
+    const left = rand() >= 0.5;
+    const inner = rand() >= 0.5;
+    const center = rand() >= 0.5;
+    if (left) {
+      cells.push({ x: 0, y }, { x: 4, y });
+    }
+    if (inner) {
+      cells.push({ x: 1, y }, { x: 3, y });
+    }
+    if (center) {
+      cells.push({ x: 2, y });
+    }
+  }
+  return { hue, cells };
+}
+
+/** Tailwind background class for the network color dot. */
+export function networkSwatchClass(chainId: number): string {
+  switch (chainId) {
+    case 1:
+      return "bg-indigo-500";
+    case 10:
+      return "bg-red-500";
+    case 56:
+      return "bg-amber-400";
+    case 137:
+      return "bg-violet-500";
+    case 8453:
+      return "bg-blue-600";
+    case 42161:
+      return "bg-sky-500";
+    case 43114:
+      return "bg-rose-500";
+    case 11155111:
+      return "bg-purple-400";
+    case 1337:
+    case 31337:
+      return "bg-emerald-500";
+    default:
+      return "bg-muted-foreground";
+  }
+}
+
+/** Short title for a parked request, shown above the decoded summary. */
+export function pendingRequestTitle(method: string): string {
+  switch (method) {
+    case "eth_requestAccounts":
+    case "wallet_requestPermissions":
+      return "Connection request";
+    case "personal_sign":
+    case "eth_sign":
+      return "Signature request";
+    case "eth_signTypedData":
+    case "eth_signTypedData_v1":
+    case "eth_signTypedData_v3":
+    case "eth_signTypedData_v4":
+      return "Typed data signature";
+    case "eth_sendTransaction":
+      return "Transaction request";
+    case "eth_signTransaction":
+      return "Sign transaction";
+    case "wallet_switchEthereumChain":
+      return "Switch network";
+    case "wallet_addEthereumChain":
+      return "Add network";
+    case "wallet_watchAsset":
+      return "Add token";
+    default:
+      return method;
+  }
+}
+
+/** Hostname for the origin badge; falls back to the raw string if it is not a URL. */
+export function originHostname(origin: string): string {
+  try {
+    const host = new URL(origin).host;
+    return host.length > 0 ? host : origin;
+  } catch {
+    return origin;
+  }
+}
+
+function fnv1a(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function mulberry32(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let next = state;
+    next = Math.imul(next ^ (next >>> 15), next | 1);
+    next ^= next + Math.imul(next ^ (next >>> 7), next | 61);
+    return ((next ^ (next >>> 14)) >>> 0) / 4294967296;
+  };
 }

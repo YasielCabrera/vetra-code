@@ -190,7 +190,13 @@ export function summarizeWeb3Request(input: {
       }
       const record = asRecord(parsed);
       const domain = asRecord(record?.domain);
-      const domainName = typeof domain?.name === "string" ? domain.name : "unknown domain";
+      const domainChainId = parseChainId(domain?.chainId);
+      const domainName =
+        typeof domain?.name === "string"
+          ? domain.name
+          : domainChainId === null
+            ? "unknown domain"
+            : `chain ${domainChainId}`;
       const primaryType = typeof record?.primaryType === "string" ? record.primaryType : "unknown";
       return `Sign typed data (${primaryType}) for ${domainName} from ${origin}.`;
     }

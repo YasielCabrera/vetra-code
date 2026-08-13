@@ -15,6 +15,10 @@
       "types": "./src/keystore.ts",
       "import": "./src/keystore.ts"
     },
+    "./networks": {
+      "types": "./src/networks.ts",
+      "import": "./src/networks.ts"
+    },
     "./rpc": {
       "types": "./src/rpc.ts",
       "import": "./src/rpc.ts"

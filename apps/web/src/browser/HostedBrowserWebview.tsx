@@ -17,6 +17,7 @@ import {
 import { BrowserDeviceToolbar } from "./BrowserDeviceToolbar";
 import { BrowserViewportResizeHandles } from "./BrowserViewportResizeHandles";
 import { acquireDesktopTab, type AcquiredDesktopTab } from "./desktopTabLifetime";
+import { useHostedBrowserPointerLocked } from "./hostedBrowserPointerLock";
 import { resolveHostedBrowserWebviewWrapperStyle } from "./hostedBrowserWebviewStyle";
 import { usePreviewWebviewConfig } from "./previewWebviewConfigState";
 import { useBrowserViewportResize } from "./useBrowserViewportResize";
@@ -71,6 +72,7 @@ export function HostedBrowserWebview(props: {
     }),
   );
   usePreviewBridge({ threadRef, tabId, runtimeTabId });
+  const pointerLocked = useHostedBrowserPointerLocked();
 
   useEffect(() => {
     crashRecoveryRef.current = INITIAL_WEBVIEW_CRASH_RECOVERY_STATE;
@@ -234,6 +236,7 @@ export function HostedBrowserWebview(props: {
   const wrapperStyle = resolveHostedBrowserWebviewWrapperStyle({
     active,
     cornerRadius: presentation.cornerRadius,
+    interactable: !pointerLocked,
     rect: lastRect,
     hiddenSize,
   });
@@ -293,6 +296,7 @@ export function HostedBrowserWebview(props: {
             height: layout.viewportHeight / layout.viewportScale,
             transform: layout.viewportScale < 1 ? `scale(${layout.viewportScale})` : undefined,
             transformOrigin: "top left",
+            pointerEvents: pointerLocked ? "none" : undefined,
           }}
         />
         {active && effectiveViewport._tag !== "fill" && !fittedSourceViewport ? (

@@ -5,8 +5,12 @@ import {
   APPROVAL_MODE_OPTIONS,
   describeWalletChain,
   formatWalletChip,
+  identiconPattern,
+  networkSwatchClass,
+  originHostname,
   parseChainIdInput,
   parseRpcUrlInput,
+  pendingRequestTitle,
   shortenAddress,
 } from "./web3Settings.logic";
 
@@ -117,6 +121,7 @@ describe("describeWalletChain", () => {
 
   it("explains how to resolve a chain when none is set", () => {
     const summary = describeWalletChain(status({ chain: null }));
+    expect(summary).toContain("Ethereum Mainnet");
     expect(summary).toContain("start a local node");
   });
 
@@ -139,5 +144,62 @@ describe("formatWalletChip", () => {
     expect(formatWalletChip(status({ chain: null, selectedAddress: null }))).toBe(
       "No network · No account",
     );
+  });
+});
+
+describe("identiconPattern", () => {
+  it("is stable for a given address, including checksum case", () => {
+    const first = identiconPattern(ADDRESS);
+    const second = identiconPattern(ADDRESS.toLowerCase());
+    expect(first).toEqual(second);
+    expect(first.hue).toBeGreaterThanOrEqual(0);
+    expect(first.hue).toBeLessThan(360);
+  });
+
+  it("mirrors each row so the mark stays recognisable at small sizes", () => {
+    const filled = new Set(identiconPattern(ADDRESS).cells.map((cell) => `${cell.x},${cell.y}`));
+    for (const key of filled) {
+      const [x, y] = key.split(",");
+      expect(filled.has(`${4 - Number(x)},${y}`)).toBe(true);
+    }
+  });
+
+  it("changes when the address changes", () => {
+    expect(identiconPattern(ADDRESS)).not.toEqual(
+      identiconPattern("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"),
+    );
+  });
+});
+
+describe("networkSwatchClass", () => {
+  it("gives bundled networks a distinct color and a fallback for unknown chains", () => {
+    expect(networkSwatchClass(1)).toBe("bg-indigo-500");
+    expect(networkSwatchClass(8453)).toBe("bg-blue-600");
+    expect(networkSwatchClass(31337)).toBe("bg-emerald-500");
+    expect(networkSwatchClass(999999)).toBe("bg-muted-foreground");
+  });
+});
+
+describe("pendingRequestTitle", () => {
+  it("names the consequence rather than echoing the JSON-RPC method", () => {
+    expect(pendingRequestTitle("eth_requestAccounts")).toBe("Connection request");
+    expect(pendingRequestTitle("personal_sign")).toBe("Signature request");
+    expect(pendingRequestTitle("eth_sendTransaction")).toBe("Transaction request");
+    expect(pendingRequestTitle("wallet_switchEthereumChain")).toBe("Switch network");
+  });
+
+  it("falls back to the method name for anything unrecognised", () => {
+    expect(pendingRequestTitle("anvil_setBalance")).toBe("anvil_setBalance");
+  });
+});
+
+describe("originHostname", () => {
+  it("strips the scheme so the origin badge stays short", () => {
+    expect(originHostname("https://app.uniswap.org")).toBe("app.uniswap.org");
+    expect(originHostname("http://127.0.0.1:3000")).toBe("127.0.0.1:3000");
+  });
+
+  it("returns the raw value when it is not a URL", () => {
+    expect(originHostname("not a url")).toBe("not a url");
   });
 });
