@@ -48,6 +48,13 @@ import { projectEnvironment } from "~/state/projects";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { useAtomQueryRunner } from "~/state/use-atom-query-runner";
 
+import {
+  FILE_EXPLORER_DEFAULT_WIDTH,
+  FILE_EXPLORER_MAX_FRACTION,
+  FILE_EXPLORER_MIN_WIDTH,
+  FILE_EXPLORER_WIDTH_STORAGE_KEY,
+} from "../fileTreePaneWidth";
+import { ResizableFileTreePane } from "../ResizableFileTreePane";
 import FileBrowserPanel from "./FileBrowserPanel";
 import {
   type FileCommentAnnotationEntry,
@@ -1092,10 +1099,16 @@ export default function FilePreviewPanel({
           // Ordered with CSS rather than by moving the aside among its siblings:
           // reordering children remounts the tree, which would drop its expanded
           // folders and search on every swap.
-          <aside
+          <ResizableFileTreePane
+            storageKey={FILE_EXPLORER_WIDTH_STORAGE_KEY}
+            defaultWidth={FILE_EXPLORER_DEFAULT_WIDTH}
+            minWidth={FILE_EXPLORER_MIN_WIDTH}
+            maxFraction={FILE_EXPLORER_MAX_FRACTION}
+            side={explorerSide}
+            fill={relativePath === null}
+            label="Resize file explorer"
             className={cn(
-              "flex min-h-0 shrink-0 bg-background",
-              relativePath ? "w-[min(22rem,46%)] min-w-64 border-border/60" : "min-w-0 flex-1",
+              relativePath && "border-border/60",
               relativePath &&
                 (explorerSide === "left" ? "order-first border-r" : "order-last border-l"),
             )}
@@ -1109,7 +1122,7 @@ export default function FilePreviewPanel({
               selectedPathRevealId={revealRequestId}
               onOpenFile={onOpenFile}
             />
-          </aside>
+          </ResizableFileTreePane>
         ) : null}
       </div>
     </div>
