@@ -5,7 +5,7 @@ import type {
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vite-plus/test";
 
-import { ThreadAgentsControl } from "./ThreadAgentsControl";
+import { AgentPopoverRow, ThreadAgentsControl } from "./ThreadAgentsControl";
 
 function agent(overrides: Partial<RuntimeSubagent> & { id: string }): RuntimeSubagent {
   return {
@@ -92,6 +92,19 @@ function buttonTag(html: string, ariaLabel: string) {
 }
 
 describe("ThreadAgentsControl", () => {
+  it("wraps the full agent title instead of truncating it", () => {
+    const title = "Explore portal/company-discovery and document every integration boundary";
+    const html = renderToStaticMarkup(
+      <AgentPopoverRow agent={agent({ id: "long-title", title, role: "Explore" })} />,
+    );
+    const titleTag = html.match(new RegExp(`<span class="([^"]*)">${title}</span>`));
+
+    expect(titleTag).toBeDefined();
+    expect(titleTag?.[1]).toContain("whitespace-normal");
+    expect(titleTag?.[1]).toContain("wrap-anywhere");
+    expect(titleTag?.[1]).not.toContain("truncate");
+  });
+
   it("shows settled of total on an unfinished roster", () => {
     const html = renderToStaticMarkup(
       <ThreadAgentsControl state={IN_PROGRESS} onOpenAgents={() => {}} />,
