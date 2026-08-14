@@ -41,6 +41,19 @@ describe("browser target resolver", () => {
     });
   });
 
+  it("derives a service favicon from the resolved remote origin", async () => {
+    readPreparedConnection.mockReturnValue({ httpBaseUrl: "http://100.65.180.100:3773" });
+    const [{ resolveDiscoveredServerUrl }, { faviconUrlForOrigin }] = await Promise.all([
+      import("./browserTargetResolver"),
+      import("../lib/favicon"),
+    ]);
+    const resolved = resolveDiscoveredServerUrl(
+      EnvironmentId.make("environment-1"),
+      "http://localhost:5173/dashboard?mode=test#results",
+    );
+    expect(faviconUrlForOrigin(resolved)).toBe("http://100.65.180.100:5173/favicon.ico");
+  });
+
   it("preserves URL credentials when mapping localhost onto a remote host", async () => {
     readPreparedConnection.mockReturnValue({ httpBaseUrl: "http://100.65.180.100:3773" });
     const { resolveBrowserNavigationTarget } = await import("./browserTargetResolver");

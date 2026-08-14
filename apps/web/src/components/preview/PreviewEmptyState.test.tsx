@@ -62,6 +62,8 @@ describe("PreviewEmptyState", () => {
     expect(html).toContain("Admin");
     expect(html).toContain("Recent Local");
     expect(html).toContain("node");
+    expect(html).toContain('src="https://myapp.test/favicon.ico"');
+    expect(html).toContain('src="http://localhost:5173/favicon.ico"');
   });
 
   it("renders only the recents group when no servers are found", () => {

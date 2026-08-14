@@ -2,6 +2,7 @@ import type { EnvironmentId } from "@vetra-code/contracts";
 import { Globe, History, RadioTower } from "lucide-react";
 
 import type { BrowserHistoryEntry } from "~/browserHistoryStore";
+import { resolveDiscoveredServerUrl } from "~/browser/browserTargetResolver";
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "~/components/ui/empty";
 
 import { PreviewLocalServerCard } from "./PreviewLocalServerCard";
@@ -61,6 +62,7 @@ export function PreviewEmptyState({
                 <PreviewRecentUrlCard
                   key={entry.url}
                   entry={entry}
+                  faviconSourceUrl={resolveDiscoveredServerUrl(environmentId, entry.url)}
                   onOpen={() => onOpenUrl(entry.url)}
                   onRemove={() => onRemoveRecent(entry.url)}
                 />
@@ -79,6 +81,7 @@ export function PreviewEmptyState({
                 <PreviewLocalServerCard
                   key={`${server.host}:${server.port}`}
                   server={server}
+                  faviconSourceUrl={resolveDiscoveredServerUrl(environmentId, server.requestedUrl)}
                   onOpen={() => onOpenUrl(server.requestedUrl)}
                 />
               ))}

@@ -1,12 +1,13 @@
-import { BrowserMockup } from "./BrowserMockup";
+import { BrowserFavicon } from "./BrowserFavicon";
 import type { PreviewableServer } from "./useDiscoveredLocalServers";
 
 interface Props {
   server: PreviewableServer;
+  faviconSourceUrl: string;
   onOpen: () => void;
 }
 
-export function PreviewLocalServerCard({ server, onOpen }: Props) {
+export function PreviewLocalServerCard({ server, faviconSourceUrl, onOpen }: Props) {
   const subtitle = describeServer(server);
   return (
     <button
@@ -14,7 +15,7 @@ export function PreviewLocalServerCard({ server, onOpen }: Props) {
       onClick={onOpen}
       className="group flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
     >
-      <BrowserMockup className="size-7 shrink-0" />
+      <BrowserFavicon url={faviconSourceUrl} variant="card" />
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm font-medium text-foreground">{subtitle}</span>
         <span className="truncate text-xs text-muted-foreground">

@@ -33,11 +33,11 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { Kbd } from "~/components/ui/kbd";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "~/components/ui/menu";
 import { ScrollArea } from "~/components/ui/scroll-area";
-import { faviconUrlForOrigin } from "~/lib/favicon";
 import { useTheme } from "~/hooks/useTheme";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 
 import { PreviewPanelShell, type PreviewPanelMode } from "./preview/PreviewPanelShell";
+import { BrowserFavicon } from "./preview/BrowserFavicon";
 import { PierreEntryIcon } from "./chat/PierreEntryIcon";
 
 interface RightPanelTabsProps {
@@ -439,22 +439,6 @@ function surfaceTitle(
   }
 }
 
-function PreviewFavicon({ url }: { url: string | null }) {
-  const faviconUrl = faviconUrlForOrigin(url, 32);
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  if (!faviconUrl || failedUrl === faviconUrl) return <Globe2 className="size-3 shrink-0" />;
-  return (
-    <img
-      src={faviconUrl}
-      alt=""
-      aria-hidden
-      draggable={false}
-      className="size-3 shrink-0 rounded-sm"
-      onError={() => setFailedUrl(faviconUrl)}
-    />
-  );
-}
-
 function SurfaceIcon({
   surface,
   sessions,
@@ -470,7 +454,7 @@ function SurfaceIcon({
     case "preview": {
       const snapshot = surface.resourceId ? sessions[surface.resourceId] : null;
       const url = !snapshot || snapshot.navStatus._tag === "Idle" ? null : snapshot.navStatus.url;
-      return <PreviewFavicon url={url} />;
+      return <BrowserFavicon url={url} variant="tab" />;
     }
     case "diff":
       return <FileDiff className="size-3 shrink-0" />;

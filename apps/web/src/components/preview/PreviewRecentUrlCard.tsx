@@ -4,15 +4,16 @@ import { isValidHistoryTimestamp, type BrowserHistoryEntry } from "~/browserHist
 import { useNowMinute } from "~/hooks/useNowMinute";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
 
-import { BrowserMockup } from "./BrowserMockup";
+import { BrowserFavicon } from "./BrowserFavicon";
 
 interface Props {
   entry: BrowserHistoryEntry;
+  faviconSourceUrl: string;
   onOpen: () => void;
   onRemove: () => void;
 }
 
-export function PreviewRecentUrlCard({ entry, onOpen, onRemove }: Props) {
+export function PreviewRecentUrlCard({ entry, faviconSourceUrl, onOpen, onRemove }: Props) {
   const parsed = new URL(entry.url);
   const path = parsed.pathname === "/" ? "" : parsed.pathname;
   const label = `${parsed.host}${path}${parsed.search}${parsed.hash}`;
@@ -27,7 +28,7 @@ export function PreviewRecentUrlCard({ entry, onOpen, onRemove }: Props) {
         onClick={onOpen}
         className="flex w-full items-center gap-3 px-3 py-3 pr-10 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
-        <BrowserMockup className="size-7 shrink-0" />
+        <BrowserFavicon url={faviconSourceUrl} variant="card" />
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm font-medium text-foreground">
             {entry.title ?? label}
