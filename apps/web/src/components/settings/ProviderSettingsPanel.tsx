@@ -31,7 +31,7 @@ import {
   RefreshCwIcon,
   TerminalIcon,
 } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { isDesktopLocalConnectionTarget } from "../../connection/desktopLocal";
 import { isElectron } from "../../env";
@@ -72,6 +72,8 @@ import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { AddProviderInstanceDialog } from "./AddProviderInstanceDialog";
 import { ProviderInstanceCard } from "./ProviderInstanceCard";
+import { ProviderSubscriptionCredentialControl } from "./ProviderSubscriptionCredentialControl";
+import { ProviderSubscriptionUsageSettings } from "./ProviderSubscriptionUsageSettings";
 import { DRIVER_OPTIONS, getDriverOption } from "./providerDriverMeta";
 import { searchableSetting } from "./settingsSearch";
 import {
@@ -188,7 +190,13 @@ function EnvironmentUnavailableRow({
   );
 }
 
-export function ProviderSettingsPanel() {
+export function ProviderSettingsPanel({
+  targetEnvironmentId,
+  targetInstanceId,
+}: {
+  readonly targetEnvironmentId?: EnvironmentId | undefined;
+  readonly targetInstanceId?: ProviderInstanceId | undefined;
+} = {}) {
   const { environments, isReady } = useEnvironments();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const options = useMemo(
@@ -199,7 +207,7 @@ export function ProviderSettingsPanel() {
   // device that drops out of the catalog falls back without erasing the pick —
   // if it reappears (e.g. after a reconnect) the selection is restored.
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<EnvironmentId | null>(
-    primaryEnvironmentId,
+    targetEnvironmentId ?? primaryEnvironmentId,
   );
   const effectiveEnvironmentId = resolveSelectedProviderEnvironmentId(
     options,
@@ -275,33 +283,58 @@ export function ProviderSettingsPanel() {
         <SelectedEnvironmentProviderSettings
           key={selectedEnvironment.environmentId}
           environment={selectedEnvironment}
+          targetInstanceId={
+            selectedEnvironment.environmentId === targetEnvironmentId ? targetInstanceId : undefined
+          }
         />
       ) : null}
+
+      <ProviderSubscriptionUsageSettings />
     </SettingsPageContainer>
   );
 }
 
 function SelectedEnvironmentProviderSettings({
   environment,
+  targetInstanceId,
 }: {
   readonly environment: EnvironmentPresentation;
+  readonly targetInstanceId?: ProviderInstanceId | undefined;
 }) {
   const isPrimary = environment.entry.target._tag === "PrimaryConnectionTarget";
   if (isPrimary) {
     // The desktop app owns its primary server outright; a browser session
     // checks the scopes its cookie session was granted.
     if (isElectron) {
-      return <AccessGatedProviderSettings environment={environment} operateAccess="granted" />;
+      return (
+        <AccessGatedProviderSettings
+          environment={environment}
+          operateAccess="granted"
+          targetInstanceId={targetInstanceId}
+        />
+      );
     }
-    return <PrimarySessionGatedProviderSettings environment={environment} />;
+    return (
+      <PrimarySessionGatedProviderSettings
+        environment={environment}
+        targetInstanceId={targetInstanceId}
+      />
+    );
   }
-  return <RemoteSessionGatedProviderSettings environment={environment} />;
+  return (
+    <RemoteSessionGatedProviderSettings
+      environment={environment}
+      targetInstanceId={targetInstanceId}
+    />
+  );
 }
 
 function PrimarySessionGatedProviderSettings({
   environment,
+  targetInstanceId,
 }: {
   readonly environment: EnvironmentPresentation;
+  readonly targetInstanceId?: ProviderInstanceId | undefined;
 }) {
   const primarySessionState = usePrimarySessionState();
   const operateAccess = resolvePrimaryOperateAccess({
@@ -311,13 +344,21 @@ function PrimarySessionGatedProviderSettings({
     isPending: primarySessionState.isPending,
     hasError: primarySessionState.error !== null,
   });
-  return <AccessGatedProviderSettings environment={environment} operateAccess={operateAccess} />;
+  return (
+    <AccessGatedProviderSettings
+      environment={environment}
+      operateAccess={operateAccess}
+      targetInstanceId={targetInstanceId}
+    />
+  );
 }
 
 function RemoteSessionGatedProviderSettings({
   environment,
+  targetInstanceId,
 }: {
   readonly environment: EnvironmentPresentation;
+  readonly targetInstanceId?: ProviderInstanceId | undefined;
 }) {
   const sessionState = useEnvironmentSessionState(environment.environmentId);
   const operateAccess = resolveRemoteOperateAccess({
@@ -325,15 +366,23 @@ function RemoteSessionGatedProviderSettings({
     isPending: sessionState.isPending,
     hasError: sessionState.hasError,
   });
-  return <AccessGatedProviderSettings environment={environment} operateAccess={operateAccess} />;
+  return (
+    <AccessGatedProviderSettings
+      environment={environment}
+      operateAccess={operateAccess}
+      targetInstanceId={targetInstanceId}
+    />
+  );
 }
 
 function AccessGatedProviderSettings({
   environment,
   operateAccess,
+  targetInstanceId,
 }: {
   readonly environment: EnvironmentPresentation;
   readonly operateAccess: ProviderOperateAccess;
+  readonly targetInstanceId?: ProviderInstanceId | undefined;
 }) {
   const access = classifyProviderEnvironmentAccess({
     connectionPhase: environment.connection.phase,
@@ -348,6 +397,7 @@ function AccessGatedProviderSettings({
       environmentId={environment.environmentId}
       environmentLabel={environment.label}
       readOnly={access.kind === "read-only"}
+      targetInstanceId={targetInstanceId}
     />
   );
 }
@@ -356,6 +406,7 @@ export function EnvironmentProviderSettings({
   environmentId,
   environmentLabel,
   readOnly = false,
+  targetInstanceId,
 }: {
   readonly environmentId: EnvironmentId;
   readonly environmentLabel: string;
@@ -366,6 +417,7 @@ export function EnvironmentProviderSettings({
    * every one of its writes from being offered and then rejected.
    */
   readonly readOnly?: boolean;
+  readonly targetInstanceId?: ProviderInstanceId | undefined;
 }) {
   const settings = useEnvironmentSettings(environmentId);
   const updateSettings = useUpdateEnvironmentSettings(environmentId);
@@ -382,9 +434,22 @@ export function EnvironmentProviderSettings({
   const [updatingProviderDrivers, setUpdatingProviderDrivers] = useState<
     ReadonlySet<ProviderDriverKind>
   >(() => new Set());
-  const [openInstanceDetails, setOpenInstanceDetails] = useState<Record<string, boolean>>({});
+  const [openInstanceDetails, setOpenInstanceDetails] = useState<Record<string, boolean>>(() =>
+    targetInstanceId ? { [targetInstanceId]: true } : {},
+  );
   const refreshingRef = useRef(false);
   const updatingDriversRef = useRef<Set<ProviderDriverKind>>(new Set());
+
+  useEffect(() => {
+    if (!targetInstanceId) return;
+    setOpenInstanceDetails((existing) => ({ ...existing, [targetInstanceId]: true }));
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .getElementById(`provider-instance-${targetInstanceId}`)
+        ?.scrollIntoView({ block: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [serverProviders, targetInstanceId]);
 
   const providerUpdateCandidates = useMemo(
     () => collectProviderUpdateCandidates(serverProviders),
@@ -854,6 +919,16 @@ export function EnvironmentProviderSettings({
                 }}
                 onDelete={row.isDefault ? undefined : () => deleteProviderInstance(row.instanceId)}
                 headerAction={headerAction}
+                subscriptionCredentialControl={
+                  row.driver === "cursor" || row.driver === "opencode" ? (
+                    <ProviderSubscriptionCredentialControl
+                      environmentId={environmentId}
+                      instanceId={row.instanceId}
+                      driver={row.driver}
+                      readOnly={readOnly}
+                    />
+                  ) : undefined
+                }
                 hiddenModels={modelPreferences.hiddenModels}
                 favoriteModels={favoriteModels}
                 modelOrder={modelPreferences.modelOrder}

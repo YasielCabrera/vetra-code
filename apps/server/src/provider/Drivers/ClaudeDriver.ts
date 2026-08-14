@@ -27,6 +27,7 @@ import { makeClaudeTextGeneration } from "../../textGeneration/ClaudeTextGenerat
 import * as BackgroundPolicy from "../../background/BackgroundPolicy.ts";
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
+import * as UsageService from "../../usage/UsageService.ts";
 import { ProviderDriverError } from "../Errors.ts";
 import { makeClaudeAdapter } from "../Layers/ClaudeAdapter.ts";
 import {
@@ -54,7 +55,13 @@ import {
   makeProviderSnapshotSettingsSource,
   type ProviderSnapshotSettings,
 } from "../providerUpdateSettings.ts";
-import { makeClaudeCapabilitiesCacheKey, makeClaudeContinuationGroupKey } from "./ClaudeHome.ts";
+import { makeClaudeSubscriptionUsageCapability } from "../usage/ClaudeSubscriptionUsage.ts";
+import { readProviderLocalUsageCost } from "../usage/ProviderLocalUsageCost.ts";
+import {
+  makeClaudeCapabilitiesCacheKey,
+  makeClaudeContinuationGroupKey,
+  resolveClaudeHomePath,
+} from "./ClaudeHome.ts";
 const decodeClaudeSettings = Schema.decodeSync(ClaudeSettings);
 
 const DRIVER_KIND = ProviderDriverKind.make("claudeAgent");
@@ -90,7 +97,8 @@ export type ClaudeDriverEnv =
   | Path.Path
   | ProviderEventLoggers
   | ServerConfig
-  | ServerSettingsService;
+  | ServerSettingsService
+  | UsageService.UsageService;
 
 const withInstanceIdentity =
   (input: {
@@ -125,6 +133,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv> = {
       const httpClient = yield* HttpClient.HttpClient;
       const serverSettings = yield* ServerSettingsService;
       const eventLoggers = yield* ProviderEventLoggers;
+      const usage = yield* UsageService.UsageService;
       const processEnv = mergeProviderInstanceEnvironment(environment);
       const fallbackContinuationIdentity = defaultProviderContinuationIdentity({
         driverKind: DRIVER_KIND,
@@ -136,6 +145,8 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv> = {
         env: processEnv,
       });
       const continuationGroupKey = yield* makeClaudeContinuationGroupKey(effectiveConfig);
+      const resolvedHomePath = yield* resolveClaudeHomePath(effectiveConfig);
+      const transcriptRoot = yield* UsageService.resolveClaudeUsageTranscriptDir(resolvedHomePath);
       const stampIdentity = withInstanceIdentity({
         instanceId,
         displayName,
@@ -150,6 +161,18 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv> = {
       };
       const adapter = yield* makeClaudeAdapter(effectiveConfig, adapterOptions);
       const textGeneration = yield* makeClaudeTextGeneration(effectiveConfig, processEnv);
+      const subscriptionUsage = makeClaudeSubscriptionUsageCapability({
+        instance: { instanceId, driverKind: DRIVER_KIND, displayName },
+        settings: effectiveConfig,
+        environment: processEnv,
+        cwd,
+        path,
+        localCost: readProviderLocalUsageCost({
+          usage,
+          provider: "claude",
+          transcriptRoot,
+        }),
+      });
 
       // Per-instance capabilities cache: keyed on binary + resolved HOME so
       // account-specific probes never share auth metadata across instances.
@@ -216,6 +239,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv> = {
         snapshot,
         adapter,
         textGeneration,
+        subscriptionUsage,
       } satisfies ProviderInstance;
     }),
 };

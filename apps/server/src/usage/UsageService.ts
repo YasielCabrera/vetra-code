@@ -15,6 +15,7 @@ import * as NodeOS from "node:os";
 
 import {
   USAGE_CONTRACT_VERSION,
+  UsageDay,
   type UsageProviderKind,
   type UsageSource,
   type UsageSummary,
@@ -70,6 +71,19 @@ const MAX_HOURLY_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** Longest window the UI offers, plus slack. Older entries are pruned. */
 const CACHE_RETENTION_DAYS = 90;
 
+/** Resolves the Claude transcript root for a concrete provider instance. */
+export const resolveClaudeUsageTranscriptDir = Effect.fn(
+  "UsageService.resolveClaudeUsageTranscriptDir",
+)(function* (homePath: string): Effect.fn.Return<string, never, FileSystem.FileSystem | Path.Path> {
+  const fileSystem = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const nested = path.join(homePath, ".claude", "projects");
+  const nestedExists = yield* fileSystem
+    .exists(nested)
+    .pipe(Effect.catchCause(() => Effect.succeed(false)));
+  return nestedExists ? nested : path.join(homePath, "projects");
+});
+
 /** On-disk shape of the rate snapshot. */
 const RatesCacheFile = Schema.Struct({
   fetchedAtMs: Schema.Number,
@@ -91,6 +105,8 @@ export class UsageService extends Context.Service<
   UsageService,
   {
     readonly readSummary: (input: UsageSummaryInput) => Effect.Effect<UsageSummary, UsageReadError>;
+    /** Shared one-hour snapshot used to enrich subscription cards without duplicate scans. */
+    readonly readSubscriptionSummary: Effect.Effect<UsageSummary, UsageReadError>;
     /**
      * Prices one billable token bundle with the same LiteLLM table and
      * `priceUsage` arithmetic the Usage page uses. Adapters must not keep a
@@ -125,6 +141,22 @@ export const layerTest = Layer.succeed(
         },
         scanDurationMs: 0,
       }),
+    readSubscriptionSummary: Effect.succeed({
+      contractVersion: USAGE_CONTRACT_VERSION,
+      readAt: "1970-01-01T00:00:00.000Z",
+      timeZone: "UTC",
+      sinceDay: UsageDay.make("1970-01-01"),
+      untilDay: UsageDay.make("1970-01-30"),
+      buckets: [],
+      sources: [],
+      pricing: {
+        status: "unavailable",
+        source: LITELLM_RATES_URL,
+        fetchedAt: null,
+        knownModels: 0,
+      },
+      scanDurationMs: 0,
+    }),
     price: (model, totals, reportedCostUsd) =>
       Effect.succeed(priceUsage(new Map(), model, totals, reportedCostUsd)),
   }),
@@ -197,19 +229,6 @@ export const make = Effect.gen(function* () {
     );
   });
 
-  /**
-   * Claude's config dir is the home itself when overridden, but a default
-   * install nests transcripts under `~/.claude/projects`. Probe both.
-   */
-  const resolveClaudeTranscriptDir = (homePath: string) =>
-    Effect.gen(function* () {
-      const nested = path.join(homePath, ".claude", "projects");
-      const nestedExists = yield* fileSystem
-        .exists(nested)
-        .pipe(Effect.catchCause(() => Effect.succeed(false)));
-      return nestedExists ? nested : path.join(homePath, "projects");
-    });
-
   /** Resolves the transcript directory for each provider. */
   const resolveTranscriptDirs = Effect.fn("UsageService.resolveTranscriptDirs")(function* () {
     // A settings failure must surface as an error: swallowing it here would
@@ -229,7 +248,10 @@ export const make = Effect.gen(function* () {
     );
 
     const claudeHome = yield* resolveClaudeHomePath(settings.providers.claudeAgent);
-    const claudeDir = yield* resolveClaudeTranscriptDir(claudeHome);
+    const claudeDir = yield* resolveClaudeUsageTranscriptDir(claudeHome).pipe(
+      Effect.provideService(FileSystem.FileSystem, fileSystem),
+      Effect.provideService(Path.Path, path),
+    );
     const codexLayout = yield* resolveCodexHomeLayout(settings.providers.codex);
 
     return [
@@ -464,7 +486,23 @@ export const make = Effect.gen(function* () {
     return priceUsage(rates, model, totals, reportedCostUsd);
   });
 
-  return { readSummary, price } as const;
+  const readSubscriptionSummary = yield* Effect.cachedWithTTL(
+    Effect.gen(function* () {
+      const zone = DateTime.zoneMakeLocal();
+      const now = yield* DateTime.now;
+      const zonedNow = DateTime.makeZonedUnsafe(DateTime.toEpochMillis(now), { timeZone: zone });
+      const untilDay = DateTime.formatIsoDate(zonedNow);
+      const sinceDay = DateTime.formatIsoDate(DateTime.subtract(zonedNow, { days: 29 }));
+      return yield* readSummary({
+        sinceDay: UsageDay.make(sinceDay),
+        untilDay: UsageDay.make(untilDay),
+        timeZone: DateTime.zoneToString(zone),
+      });
+    }),
+    "1 hour",
+  );
+
+  return { readSummary, readSubscriptionSummary, price } as const;
 });
 
 export const layer = Layer.effect(UsageService, make);

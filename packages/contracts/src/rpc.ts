@@ -177,6 +177,14 @@ import {
   ResourceTelemetrySnapshot,
 } from "./resourceTelemetry.ts";
 import { UsageReadError, UsageSummary, UsageSummaryInput } from "./usage.ts";
+import {
+  ProviderSubscriptionCredentialInput,
+  ProviderSubscriptionCredentialSetInput,
+  ProviderSubscriptionCredentialStatus,
+  ProviderSubscriptionUsageError,
+  ProviderSubscriptionUsageReadInput,
+  ProviderSubscriptionUsageReport,
+} from "./providerSubscriptionUsage.ts";
 import { ServerSettings, ServerSettingsError, ServerSettingsPatch } from "./settings.ts";
 import {
   SourceControlCloneRepositoryInput,
@@ -270,6 +278,10 @@ export const WS_METHODS = {
   serverReportHostPowerState: "server.reportHostPowerState",
   serverGetBackgroundPolicy: "server.getBackgroundPolicy",
   serverGetUsageSummary: "server.getUsageSummary",
+  serverGetProviderSubscriptionUsage: "server.getProviderSubscriptionUsage",
+  serverGetProviderSubscriptionCredentialStatus: "server.getProviderSubscriptionCredentialStatus",
+  serverSetProviderSubscriptionCredential: "server.setProviderSubscriptionCredential",
+  serverClearProviderSubscriptionCredential: "server.clearProviderSubscriptionCredential",
 
   // Cloud environment methods
   cloudGetRelayClientStatus: "cloud.getRelayClientStatus",
@@ -430,6 +442,42 @@ export const WsServerGetUsageSummaryRpc = Rpc.make(WS_METHODS.serverGetUsageSumm
   success: UsageSummary,
   error: Schema.Union([EnvironmentAuthorizationError, UsageReadError]),
 });
+
+export const WsServerGetProviderSubscriptionUsageRpc = Rpc.make(
+  WS_METHODS.serverGetProviderSubscriptionUsage,
+  {
+    payload: ProviderSubscriptionUsageReadInput,
+    success: ProviderSubscriptionUsageReport,
+    error: Schema.Union([EnvironmentAuthorizationError, ProviderSubscriptionUsageError]),
+  },
+);
+
+export const WsServerGetProviderSubscriptionCredentialStatusRpc = Rpc.make(
+  WS_METHODS.serverGetProviderSubscriptionCredentialStatus,
+  {
+    payload: ProviderSubscriptionCredentialInput,
+    success: ProviderSubscriptionCredentialStatus,
+    error: Schema.Union([EnvironmentAuthorizationError, ProviderSubscriptionUsageError]),
+  },
+);
+
+export const WsServerSetProviderSubscriptionCredentialRpc = Rpc.make(
+  WS_METHODS.serverSetProviderSubscriptionCredential,
+  {
+    payload: ProviderSubscriptionCredentialSetInput,
+    success: ProviderSubscriptionCredentialStatus,
+    error: Schema.Union([EnvironmentAuthorizationError, ProviderSubscriptionUsageError]),
+  },
+);
+
+export const WsServerClearProviderSubscriptionCredentialRpc = Rpc.make(
+  WS_METHODS.serverClearProviderSubscriptionCredential,
+  {
+    payload: ProviderSubscriptionCredentialInput,
+    success: ProviderSubscriptionCredentialStatus,
+    error: Schema.Union([EnvironmentAuthorizationError, ProviderSubscriptionUsageError]),
+  },
+);
 
 export const WsServerSignalProcessRpc = Rpc.make(WS_METHODS.serverSignalProcess, {
   payload: ServerSignalProcessInput,
@@ -988,6 +1036,10 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetResourceTelemetryHistoryRpc,
   WsServerRetryResourceTelemetryRpc,
   WsServerGetUsageSummaryRpc,
+  WsServerGetProviderSubscriptionUsageRpc,
+  WsServerGetProviderSubscriptionCredentialStatusRpc,
+  WsServerSetProviderSubscriptionCredentialRpc,
+  WsServerClearProviderSubscriptionCredentialRpc,
   WsServerSignalProcessRpc,
   WsServerReportClientActivityRpc,
   WsServerReportHostPowerStateRpc,

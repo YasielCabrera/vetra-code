@@ -19,7 +19,7 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
-import { AsyncResult, Atom } from "effect/unstable/reactivity";
+import { AsyncResult, Atom, AtomRegistry } from "effect/unstable/reactivity";
 
 import {
   createAtomCommandScheduler,
@@ -679,6 +679,43 @@ export function createServerEnvironmentAtoms<R, E>(
       Atom.withLabel(`environment-data:server:providers:${environmentId}`),
     ),
   );
+  const providerSubscriptionUsage = createEnvironmentRpcQueryAtomFamily(runtime, {
+    label: "environment-data:server:provider-subscription-usage",
+    tag: WS_METHODS.serverGetProviderSubscriptionUsage,
+    staleTimeMs: 0,
+  });
+  const providerSubscriptionCredentialStatus = createEnvironmentRpcQueryAtomFamily(runtime, {
+    label: "environment-data:server:provider-subscription-credential-status",
+    tag: WS_METHODS.serverGetProviderSubscriptionCredentialStatus,
+    staleTimeMs: 0,
+  });
+  const refreshProviderSubscriptionUsageQuery = (
+    environmentId: EnvironmentId,
+    registry: AtomRegistry.AtomRegistry,
+  ) =>
+    Effect.sync(() => {
+      registry.refresh(
+        providerSubscriptionUsage({
+          environmentId,
+          input: {},
+        }),
+      );
+    });
+  const refreshProviderSubscriptionCredentialStatusQuery = (
+    environmentId: EnvironmentId,
+    instanceId: EnvironmentRpcInput<
+      typeof WS_METHODS.serverGetProviderSubscriptionCredentialStatus
+    >["instanceId"],
+    registry: AtomRegistry.AtomRegistry,
+  ) =>
+    Effect.sync(() => {
+      registry.refresh(
+        providerSubscriptionCredentialStatus({
+          environmentId,
+          input: { instanceId },
+        }),
+      );
+    });
 
   return {
     configValueAtom,
@@ -713,6 +750,52 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "environment-data:server:usage-summary",
       tag: WS_METHODS.serverGetUsageSummary,
       staleTimeMs: 60_000,
+    }),
+    providerSubscriptionUsage,
+    providerSubscriptionCredentialStatus,
+    refreshProviderSubscriptionUsage: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:refresh-provider-subscription-usage",
+      tag: WS_METHODS.serverGetProviderSubscriptionUsage,
+      concurrency: {
+        mode: "singleFlight",
+        key: ({ environmentId }) => environmentId,
+      },
+      onSettled: ({ environmentId }, registry) =>
+        refreshProviderSubscriptionUsageQuery(environmentId, registry),
+    }),
+    setProviderSubscriptionCredential: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:set-provider-subscription-credential",
+      tag: WS_METHODS.serverSetProviderSubscriptionCredential,
+      concurrency: {
+        mode: "singleFlight",
+        key: ({ environmentId, input }) => `${environmentId}:${input.instanceId}`,
+      },
+      onSettled: ({ environmentId, input }, registry) =>
+        Effect.all([
+          refreshProviderSubscriptionCredentialStatusQuery(
+            environmentId,
+            input.instanceId,
+            registry,
+          ),
+          refreshProviderSubscriptionUsageQuery(environmentId, registry),
+        ]).pipe(Effect.asVoid),
+    }),
+    clearProviderSubscriptionCredential: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:clear-provider-subscription-credential",
+      tag: WS_METHODS.serverClearProviderSubscriptionCredential,
+      concurrency: {
+        mode: "singleFlight",
+        key: ({ environmentId, input }) => `${environmentId}:${input.instanceId}`,
+      },
+      onSettled: ({ environmentId, input }, registry) =>
+        Effect.all([
+          refreshProviderSubscriptionCredentialStatusQuery(
+            environmentId,
+            input.instanceId,
+            registry,
+          ),
+          refreshProviderSubscriptionUsageQuery(environmentId, registry),
+        ]).pipe(Effect.asVoid),
     }),
     configProjection,
     welcome: createEnvironmentRpcSubscriptionAtomFamily(runtime, {

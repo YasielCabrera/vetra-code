@@ -341,6 +341,7 @@ interface ProviderInstanceCardProps {
    * omit it.
    */
   readonly headerAction?: ReactNode | undefined;
+  readonly subscriptionCredentialControl?: ReactNode | undefined;
   readonly hiddenModels: ReadonlyArray<string>;
   readonly favoriteModels: ReadonlyArray<string>;
   readonly modelOrder: ReadonlyArray<string>;
@@ -385,6 +386,7 @@ export function ProviderInstanceCard({
   onUpdate,
   onDelete,
   headerAction,
+  subscriptionCredentialControl,
   hiddenModels,
   favoriteModels,
   modelOrder,
@@ -600,7 +602,10 @@ export function ProviderInstanceCard({
   ) : null;
 
   return (
-    <div className="rounded-xl transition-colors hover:bg-muted/20">
+    <div
+      id={`provider-instance-${instanceId}`}
+      className="rounded-xl transition-colors hover:bg-muted/20"
+    >
       <div className="px-3 py-3 sm:px-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 flex-1 space-y-1">
@@ -773,6 +778,8 @@ export function ProviderInstanceCard({
                 onChange={updateConfig}
               />
             ) : null}
+
+            {subscriptionCredentialControl}
 
             {driverOption !== undefined ? (
               <ProviderModelsSection

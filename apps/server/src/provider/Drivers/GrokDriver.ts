@@ -37,6 +37,7 @@ import {
   makeProviderSnapshotSettingsSource,
   type ProviderSnapshotSettings,
 } from "../providerUpdateSettings.ts";
+import { makeGrokSubscriptionUsageCapability } from "../usage/GrokSubscriptionUsage.ts";
 const decodeGrokSettings = Schema.decodeSync(GrokSettings);
 
 const DRIVER_KIND = ProviderDriverKind.make("grok");
@@ -86,6 +87,7 @@ export const GrokDriver: ProviderDriver<GrokSettings, GrokDriverEnv> = {
     Effect.gen(function* () {
       const crypto = yield* Crypto.Crypto;
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+      const serverConfig = yield* ServerConfig;
       const httpClient = yield* HttpClient.HttpClient;
       const serverSettings = yield* ServerSettingsService;
       const eventLoggers = yield* ProviderEventLoggers;
@@ -112,6 +114,13 @@ export const GrokDriver: ProviderDriver<GrokSettings, GrokDriverEnv> = {
         instanceId,
       });
       const textGeneration = yield* makeGrokTextGeneration(effectiveConfig, processEnv);
+      const subscriptionUsage = makeGrokSubscriptionUsageCapability({
+        instance: { instanceId, driverKind: DRIVER_KIND, displayName },
+        settings: effectiveConfig,
+        environment: processEnv,
+        cwd: serverConfig.cwd,
+        spawner,
+      });
 
       const checkProvider = checkGrokProviderStatus(effectiveConfig, processEnv).pipe(
         Effect.map(stampIdentity),
@@ -158,6 +167,7 @@ export const GrokDriver: ProviderDriver<GrokSettings, GrokDriverEnv> = {
         snapshot,
         adapter,
         textGeneration,
+        subscriptionUsage,
       } satisfies ProviderInstance;
     }),
 };

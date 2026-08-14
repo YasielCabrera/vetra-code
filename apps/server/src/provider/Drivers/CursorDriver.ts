@@ -12,6 +12,7 @@
  * @module provider/Drivers/CursorDriver
  */
 import { CursorSettings, ProviderDriverKind, type ServerProvider } from "@vetra-code/contracts";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -50,6 +51,8 @@ import {
   makeProviderSnapshotSettingsSource,
   type ProviderSnapshotSettings,
 } from "../providerUpdateSettings.ts";
+import { ProviderSubscriptionCredentialStore } from "../usage/ProviderSubscriptionCredentialStore.ts";
+import { makeCursorSubscriptionUsageCapability } from "../usage/CursorSubscriptionUsage.ts";
 const decodeCursorSettings = Schema.decodeSync(CursorSettings);
 
 const DRIVER_KIND = ProviderDriverKind.make("cursor");
@@ -108,6 +111,8 @@ export const CursorDriver: ProviderDriver<CursorSettings, CursorDriverEnv> = {
       const httpClient = yield* HttpClient.HttpClient;
       const serverSettings = yield* ServerSettingsService;
       const eventLoggers = yield* ProviderEventLoggers;
+      const subscriptionCredentials = yield* ProviderSubscriptionCredentialStore;
+      const platform = yield* HostProcessPlatform;
       const processEnv = mergeProviderInstanceEnvironment(environment);
       const continuationIdentity = defaultProviderContinuationIdentity({
         driverKind: DRIVER_KIND,
@@ -131,6 +136,13 @@ export const CursorDriver: ProviderDriver<CursorSettings, CursorDriverEnv> = {
         instanceId,
       });
       const textGeneration = yield* makeCursorTextGeneration(effectiveConfig, processEnv);
+      const subscriptionUsage = makeCursorSubscriptionUsageCapability({
+        instance: { instanceId, driverKind: DRIVER_KIND, displayName },
+        environment: processEnv,
+        platform,
+        httpClient,
+        credentials: subscriptionCredentials,
+      });
 
       const checkProvider = checkCursorProviderStatus(effectiveConfig, processEnv).pipe(
         Effect.map(stampIdentity),
@@ -183,6 +195,7 @@ export const CursorDriver: ProviderDriver<CursorSettings, CursorDriverEnv> = {
         snapshot,
         adapter,
         textGeneration,
+        subscriptionUsage,
       } satisfies ProviderInstance;
     }),
 };

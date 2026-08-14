@@ -30,6 +30,21 @@ describe("RPC authorization scopes", () => {
     );
   });
 
+  it("separates subscription usage reads from credential writes", () => {
+    expect(requiredScopeForRpcMethod(WS_METHODS.serverGetProviderSubscriptionUsage)).toBe(
+      AuthOrchestrationReadScope,
+    );
+    expect(
+      requiredScopeForRpcMethod(WS_METHODS.serverGetProviderSubscriptionCredentialStatus),
+    ).toBe(AuthOrchestrationReadScope);
+    expect(requiredScopeForRpcMethod(WS_METHODS.serverSetProviderSubscriptionCredential)).toBe(
+      AuthOrchestrationOperateScope,
+    );
+    expect(requiredScopeForRpcMethod(WS_METHODS.serverClearProviderSubscriptionCredential)).toBe(
+      AuthOrchestrationOperateScope,
+    );
+  });
+
   it("allows relay status reads without granting relay installation access", () => {
     expect(requiredScopeForRpcMethod(WS_METHODS.cloudGetRelayClientStatus)).toBe(
       AuthRelayReadScope,

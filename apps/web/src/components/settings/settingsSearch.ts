@@ -182,6 +182,16 @@ export const SETTINGS_SEARCH_ITEMS = [
     to: "/settings/providers",
   },
   {
+    id: "subscription-usage-refresh",
+    title: "Subscription usage refresh",
+    to: "/settings/providers",
+  },
+  {
+    id: "subscription-limit-alerts",
+    title: "Subscription limit alerts",
+    to: "/settings/providers",
+  },
+  {
     id: "source-control",
     title: "Source control",
     to: "/settings/source-control",

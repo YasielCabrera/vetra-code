@@ -111,6 +111,19 @@ export const EnvironmentIdentificationMode = Schema.Literals(["artwork", "pill",
 export type EnvironmentIdentificationMode = typeof EnvironmentIdentificationMode.Type;
 export const DEFAULT_ENVIRONMENT_IDENTIFICATION_MODE: EnvironmentIdentificationMode = "artwork";
 
+export const ProviderUsageRefreshIntervalMinutes = Schema.NullOr(Schema.Literals([5, 15, 30, 60]));
+export type ProviderUsageRefreshIntervalMinutes = typeof ProviderUsageRefreshIntervalMinutes.Type;
+export const DEFAULT_PROVIDER_USAGE_REFRESH_INTERVAL_MINUTES: ProviderUsageRefreshIntervalMinutes = 5;
+
+export const ProviderUsageAlertTransitionMarker = Schema.Struct({
+  cycleKey: Schema.String,
+  lowNotified: Schema.Boolean,
+  exhausted: Schema.Boolean,
+  restorationNotified: Schema.Boolean,
+  lastUsedPercent: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+});
+export type ProviderUsageAlertTransitionMarker = typeof ProviderUsageAlertTransitionMarker.Type;
+
 /**
  * A user-chosen font family (a single name or a comma-separated list). Empty
  * means "use the app default"; clients compose their own fallback stacks.
@@ -174,6 +187,15 @@ export const ClientSettingsSchema = Schema.Struct({
       ),
       modelOrder: Schema.Array(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
     }),
+  ).pipe(Schema.withDecodingDefault(Effect.succeed({}))),
+  providerUsageRefreshIntervalMinutes: ProviderUsageRefreshIntervalMinutes.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROVIDER_USAGE_REFRESH_INTERVAL_MINUTES)),
+  ),
+  providerUsageAlertsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  /** Internal client-local transition memory; never sent to an environment. */
+  providerUsageAlertTransitions: Schema.Record(
+    Schema.String,
+    ProviderUsageAlertTransitionMarker,
   ).pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   // Legacy plan mode. The composer's Build/Plan toggle was removed from the
   // default UI; this beta flag restores it (plus the /plan and /default slash
@@ -467,13 +489,23 @@ export const OpenCodeSettings = makeProviderSettingsSchema(
         },
       }),
     ),
+    goWorkspaceId: Schema.optionalKey(TrimmedString).pipe(
+      Schema.annotateKey({
+        title: "OpenCode Go workspace",
+        description: "Optional wrk_… workspace override for OpenCode Go subscription limits.",
+        providerSettingsForm: {
+          placeholder: "wrk_…",
+          clearWhenEmpty: "omit",
+        },
+      }),
+    ),
     customModels: Schema.Array(Schema.String).pipe(
       Schema.withDecodingDefault(Effect.succeed([])),
       Schema.annotateKey({ providerSettingsForm: { hidden: true } }),
     ),
   },
   {
-    order: ["binaryPath", "serverUrl", "serverPassword"],
+    order: ["binaryPath", "serverUrl", "serverPassword", "goWorkspaceId"],
   },
 );
 export type OpenCodeSettings = typeof OpenCodeSettings.Type;
@@ -745,6 +777,7 @@ const OpenCodeSettingsPatch = Schema.Struct({
   binaryPath: Schema.optionalKey(TrimmedString),
   serverUrl: Schema.optionalKey(TrimmedString),
   serverPassword: Schema.optionalKey(TrimmedString),
+  goWorkspaceId: Schema.optionalKey(TrimmedString),
   customModels: Schema.optionalKey(Schema.Array(Schema.String)),
 });
 
@@ -844,6 +877,11 @@ export const ClientSettingsPatch = Schema.Struct({
         ),
       }),
     ),
+  ),
+  providerUsageRefreshIntervalMinutes: Schema.optionalKey(ProviderUsageRefreshIntervalMinutes),
+  providerUsageAlertsEnabled: Schema.optionalKey(Schema.Boolean),
+  providerUsageAlertTransitions: Schema.optionalKey(
+    Schema.Record(Schema.String, ProviderUsageAlertTransitionMarker),
   ),
   planModeEnabled: Schema.optionalKey(Schema.Boolean),
   legacySidebarEnabled: Schema.optionalKey(Schema.Boolean),

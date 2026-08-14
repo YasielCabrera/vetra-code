@@ -39,6 +39,10 @@ directory to route session and turn operations for a thread, so callers name a t
 Adding a driver means writing the driver plus adapter and adding it to `BUILT_IN_DRIVERS`. No
 orchestration, contract, or client change is required for the common case.
 
+Live provider-owned allowance windows are a separate, optional capability on each materialized
+instance. See [Provider subscription usage](./provider-subscription-usage.md) for its adapter,
+caching, identity, and credential boundaries.
+
 ## How provider work is requested
 
 Clients never call a provider directly. They dispatch orchestration commands over the RPC method

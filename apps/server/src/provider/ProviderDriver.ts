@@ -22,6 +22,7 @@
  * @module provider/ProviderDriver
  */
 import type {
+  ProviderSubscriptionUsageInstanceResult,
   ProviderDriverKind,
   ProviderInstanceEnvironment,
   ProviderInstanceId,
@@ -71,6 +72,25 @@ export interface ProviderInstance {
   readonly snapshot: ServerProviderShape;
   readonly adapter: ProviderAdapterShape<ProviderAdapterError>;
   readonly textGeneration: TextGeneration.TextGeneration["Service"];
+  /** Optional live quota reader captured from this exact materialized instance. */
+  readonly subscriptionUsage?: ProviderSubscriptionUsageCapability;
+}
+
+/**
+ * One settled provider read. `transient` stays off the wire contract because it
+ * is a caching decision, not something a client may act on.
+ */
+export interface ProviderSubscriptionUsageProbe {
+  readonly result: ProviderSubscriptionUsageInstanceResult;
+  /** Only network, timeout, rate-limit, and server failures may reuse last-good data. */
+  readonly transient?: boolean;
+}
+
+export interface ProviderSubscriptionUsageCapability {
+  /** Non-secret fingerprint of all auth/config inputs that affect the probe. */
+  readonly fingerprint: Effect.Effect<string, never>;
+  /** A settled probe. Provider and transport failures are represented in-band. */
+  readonly read: Effect.Effect<ProviderSubscriptionUsageProbe, never>;
 }
 
 export interface ProviderContinuationIdentity {

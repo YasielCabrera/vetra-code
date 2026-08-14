@@ -52,6 +52,8 @@ import {
   makeProviderSnapshotSettingsSource,
   type ProviderSnapshotSettings,
 } from "../providerUpdateSettings.ts";
+import { ProviderSubscriptionCredentialStore } from "../usage/ProviderSubscriptionCredentialStore.ts";
+import { makeOpenCodeSubscriptionUsageCapability } from "../usage/OpenCodeSubscriptionUsage.ts";
 const decodeOpenCodeSettings = Schema.decodeSync(OpenCodeSettings);
 
 const DRIVER_KIND = ProviderDriverKind.make("opencode");
@@ -119,6 +121,7 @@ export const OpenCodeDriver: ProviderDriver<OpenCodeSettings, OpenCodeDriverEnv>
       const httpClient = yield* HttpClient.HttpClient;
       const serverSettings = yield* ServerSettingsService;
       const eventLoggers = yield* ProviderEventLoggers;
+      const subscriptionCredentials = yield* ProviderSubscriptionCredentialStore;
       const processEnv = mergeProviderInstanceEnvironment(environment);
       const continuationIdentity = defaultProviderContinuationIdentity({
         driverKind: DRIVER_KIND,
@@ -142,6 +145,12 @@ export const OpenCodeDriver: ProviderDriver<OpenCodeSettings, OpenCodeDriverEnv>
         ...(eventLoggers.native ? { nativeEventLogger: eventLoggers.native } : {}),
       });
       const textGeneration = yield* makeOpenCodeTextGeneration(effectiveConfig, processEnv);
+      const subscriptionUsage = makeOpenCodeSubscriptionUsageCapability({
+        instance: { instanceId, driverKind: DRIVER_KIND, displayName },
+        settings: effectiveConfig,
+        httpClient,
+        credentials: subscriptionCredentials,
+      });
 
       const checkProvider = checkOpenCodeProviderStatus(
         effectiveConfig,
@@ -189,6 +198,7 @@ export const OpenCodeDriver: ProviderDriver<OpenCodeSettings, OpenCodeDriverEnv>
         snapshot,
         adapter,
         textGeneration,
+        subscriptionUsage,
       } satisfies ProviderInstance;
     }),
 };

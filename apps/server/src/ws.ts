@@ -1,6 +1,7 @@
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Redacted from "effect/Redacted";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
@@ -104,6 +105,7 @@ import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
 import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
 import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
 import * as UsageService from "./usage/UsageService.ts";
+import * as ProviderSubscriptionUsageService from "./provider/usage/ProviderSubscriptionUsageService.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
 import * as PullRequestService from "./pullRequest/PullRequestService.ts";
 import * as SourceControlDiscovery from "./sourceControl/SourceControlDiscovery.ts";
@@ -387,6 +389,8 @@ const makeWsRpcLayer = (
       const processResourceMonitor = yield* ProcessResourceMonitor.ProcessResourceMonitor;
       const resourceTelemetry = yield* ResourceTelemetry.ResourceTelemetry;
       const usage = yield* UsageService.UsageService;
+      const providerSubscriptionUsage =
+        yield* ProviderSubscriptionUsageService.ProviderSubscriptionUsageService;
       const relayClient = yield* RelayClient.RelayClient;
       const authorizationError = (requiredScope: AuthEnvironmentScope) =>
         new EnvironmentAuthorizationError({
@@ -1316,6 +1320,30 @@ const makeWsRpcLayer = (
           observeRpcEffect(WS_METHODS.serverGetUsageSummary, usage.readSummary(input), {
             "rpc.aggregate": "server",
           }),
+        [WS_METHODS.serverGetProviderSubscriptionUsage]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.serverGetProviderSubscriptionUsage,
+            providerSubscriptionUsage.read(input),
+            { "rpc.aggregate": "server" },
+          ),
+        [WS_METHODS.serverGetProviderSubscriptionCredentialStatus]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.serverGetProviderSubscriptionCredentialStatus,
+            providerSubscriptionUsage.getCredentialStatus(input.instanceId),
+            { "rpc.aggregate": "server" },
+          ),
+        [WS_METHODS.serverSetProviderSubscriptionCredential]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.serverSetProviderSubscriptionCredential,
+            providerSubscriptionUsage.setCredential(input.instanceId, Redacted.value(input.secret)),
+            { "rpc.aggregate": "server" },
+          ),
+        [WS_METHODS.serverClearProviderSubscriptionCredential]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.serverClearProviderSubscriptionCredential,
+            providerSubscriptionUsage.clearCredential(input.instanceId),
+            { "rpc.aggregate": "server" },
+          ),
         [WS_METHODS.serverRetryResourceTelemetry]: (_input) =>
           observeRpcEffect(WS_METHODS.serverRetryResourceTelemetry, resourceTelemetry.retry, {
             "rpc.aggregate": "server",

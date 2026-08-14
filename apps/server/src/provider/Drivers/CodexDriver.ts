@@ -58,6 +58,8 @@ import {
   materializeCodexShadowHome,
   resolveCodexHomeLayout,
 } from "./CodexHomeLayout.ts";
+import { makeCodexSubscriptionUsageCapability } from "../usage/CodexSubscriptionUsage.ts";
+import { readProviderLocalUsageCost } from "../usage/ProviderLocalUsageCost.ts";
 const decodeCodexSettings = Schema.decodeSync(CodexSettings);
 
 const DRIVER_KIND = ProviderDriverKind.make("codex");
@@ -118,6 +120,8 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
   create: ({ instanceId, displayName, accentColor, environment, enabled, config }) =>
     Effect.gen(function* () {
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+      const path = yield* Path.Path;
+      const serverConfig = yield* ServerConfig;
       const httpClient = yield* HttpClient.HttpClient;
       const serverSettings = yield* ServerSettingsService;
       const eventLoggers = yield* ProviderEventLoggers;
@@ -165,6 +169,18 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
         ...(eventLoggers.native ? { nativeEventLogger: eventLoggers.native } : {}),
       });
       const textGeneration = yield* makeCodexTextGeneration(effectiveConfig, processEnv);
+      const subscriptionUsage = makeCodexSubscriptionUsageCapability({
+        instance: { instanceId, driverKind: DRIVER_KIND, displayName },
+        settings: effectiveConfig,
+        environment: processEnv,
+        cwd: serverConfig.cwd,
+        spawner,
+        localCost: readProviderLocalUsageCost({
+          usage,
+          provider: "codex",
+          transcriptRoot: path.join(homeLayout.sharedHomePath, "sessions"),
+        }),
+      });
 
       // Build a managed snapshot whose settings never change — mutations come
       // in as instance rebuilds from the registry rather than in-place
@@ -212,6 +228,7 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
         snapshot,
         adapter,
         textGeneration,
+        subscriptionUsage,
       } satisfies ProviderInstance;
     }),
 };
