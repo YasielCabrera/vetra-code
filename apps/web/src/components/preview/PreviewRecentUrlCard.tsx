@@ -1,19 +1,27 @@
+import type { ScopedThreadRef } from "@vetra-code/contracts";
 import { X } from "lucide-react";
 
 import { isValidHistoryTimestamp, type BrowserHistoryEntry } from "~/browserHistoryStore";
 import { useNowMinute } from "~/hooks/useNowMinute";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
 
-import { BrowserFavicon } from "./BrowserFavicon";
+import { PreviewFaviconIcon } from "./PreviewFaviconIcon";
 
 interface Props {
+  threadRef: ScopedThreadRef;
   entry: BrowserHistoryEntry;
   faviconSourceUrl: string;
   onOpen: () => void;
   onRemove: () => void;
 }
 
-export function PreviewRecentUrlCard({ entry, faviconSourceUrl, onOpen, onRemove }: Props) {
+export function PreviewRecentUrlCard({
+  threadRef,
+  entry,
+  faviconSourceUrl,
+  onOpen,
+  onRemove,
+}: Props) {
   const parsed = new URL(entry.url);
   const path = parsed.pathname === "/" ? "" : parsed.pathname;
   const label = `${parsed.host}${path}${parsed.search}${parsed.hash}`;
@@ -28,7 +36,7 @@ export function PreviewRecentUrlCard({ entry, faviconSourceUrl, onOpen, onRemove
         onClick={onOpen}
         className="flex w-full items-center gap-3 px-3 py-3 pr-10 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
-        <BrowserFavicon url={faviconSourceUrl} variant="card" />
+        <PreviewFaviconIcon threadRef={threadRef} url={entry.url} fallbackUrl={faviconSourceUrl} />
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm font-medium text-foreground">
             {entry.title ?? label}

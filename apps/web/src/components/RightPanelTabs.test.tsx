@@ -1,41 +1,70 @@
-import type { PreviewSessionSnapshot } from "@vetra-code/contracts";
+import type { DesktopPreviewFavicon, PreviewSessionSnapshot } from "@vetra-code/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vite-plus/test";
 
-import type { RightPanelSurface } from "~/rightPanelStore";
-
 import { RightPanelTabs } from "./RightPanelTabs";
 
-const previewSurface: RightPanelSurface = {
-  id: "browser:tab-1",
-  kind: "preview",
+const previewSurface = {
+  id: "browser:tab-1" as const,
+  kind: "preview" as const,
   resourceId: "tab-1",
 };
-
-const previewSession: PreviewSessionSnapshot = {
-  threadId: "thread-1",
-  tabId: "tab-1",
-  navStatus: {
-    _tag: "Success",
-    url: "http://localhost:5173/dashboard?mode=test#results",
-    title: "Favicon Fixture",
+const secondSurface = {
+  id: "browser:tab-2" as const,
+  kind: "preview" as const,
+  resourceId: "tab-2",
+};
+const sessions: Readonly<Record<string, PreviewSessionSnapshot>> = {
+  "tab-1": {
+    threadId: "thread-1",
+    tabId: "tab-1",
+    navStatus: { _tag: "Success", url: "http://24x.xf.local/", title: "Local site" },
+    canGoBack: false,
+    canGoForward: false,
+    updatedAt: "2026-08-09T00:00:00.000Z",
   },
-  canGoBack: false,
-  canGoForward: false,
-  updatedAt: "2026-08-13T00:00:00.000Z",
+  "tab-2": {
+    threadId: "thread-1",
+    tabId: "tab-2",
+    navStatus: { _tag: "Success", url: "http://24x.xf.local/admin", title: "Admin" },
+    canGoBack: false,
+    canGoForward: false,
+    updatedAt: "2026-08-09T00:00:00.000Z",
+  },
 };
 
-function renderTab(
-  surface: RightPanelSurface,
-  previewSessions: Readonly<Record<string, PreviewSessionSnapshot>>,
-) {
+const favicon = (dataUrl: string, pageUrl: string): DesktopPreviewFavicon => ({
+  dataUrl,
+  pageUrl,
+  capturedAt: 1,
+});
+
+function overlay(icon: DesktopPreviewFavicon | null) {
+  return {
+    hasWebContents: true,
+    canGoBack: false,
+    canGoForward: false,
+    loading: false,
+    zoomFactor: 1,
+    pictureInPicture: false,
+    colorScheme: "system" as const,
+    controller: "none" as const,
+    favicon: icon,
+  };
+}
+
+function renderTabs(first: DesktopPreviewFavicon | null, second?: DesktopPreviewFavicon) {
   return renderToStaticMarkup(
     <RightPanelTabs
-      mode="embedded"
-      surfaces={[surface]}
-      activeSurfaceId={surface.id}
+      mode="inline"
+      surfaces={second ? [previewSurface, secondSurface] : [previewSurface]}
+      activeSurfaceId={previewSurface.id}
       pendingSurfaceIds={new Set()}
-      previewSessions={previewSessions}
+      previewSessions={sessions}
+      desktopByTabId={{
+        "tab-1": overlay(first),
+        ...(second ? { "tab-2": overlay(second) } : {}),
+      }}
       terminalLabelsById={new Map()}
       onActivate={() => undefined}
       onCloseSurface={() => undefined}
@@ -45,37 +74,44 @@ function renderTab(
       onCopyFilePath={() => undefined}
       onAddBrowser={() => undefined}
       onAddTerminal={() => undefined}
+      onAddPullRequest={() => undefined}
       onAddDiff={() => undefined}
       onAddFiles={() => undefined}
-      onAddPullRequest={() => undefined}
       onAddAgents={() => undefined}
-      browserAvailable
-      terminalAvailable
-      diffAvailable
-      filesAvailable
-      pullRequestAvailable
-      agentsAvailable
       liveAgentCount={0}
+      browserAvailable
+      terminalAvailable={false}
+      diffAvailable={false}
+      filesAvailable={false}
+      pullRequestAvailable={false}
+      agentsAvailable={false}
     >
-      Preview content
+      <div>content</div>
     </RightPanelTabs>,
   );
 }
 
-describe("RightPanelTabs browser identity", () => {
-  it("renders the active page favicon without changing its title", () => {
-    const html = renderTab(previewSurface, { "tab-1": previewSession });
-
-    expect(html).toContain('src="http://localhost:5173/favicon.ico"');
-    expect(html).toContain('aria-label="Close Favicon Fixture"');
-    expect(html).toContain(">Favicon Fixture</span>");
+describe("RightPanelTabs preview favicon", () => {
+  it("prefers a live capture and never asks Google about a private hostname", () => {
+    const captured = renderTabs(favicon("data:image/png;base64,AAAA", "http://24x.xf.local/"));
+    expect(captured).toContain("data:image/png;base64,AAAA");
+    expect(captured).not.toContain("s2/favicons");
+    expect(renderTabs(null)).not.toContain("s2/favicons");
+    expect(captured).toContain('aria-label="Close Local site"');
+    expect(captured).toContain(">Local site</span>");
   });
 
-  it("keeps the generic browser identity for a URL-less tab", () => {
-    const html = renderTab({ id: "browser:new", kind: "preview", resourceId: null }, {});
+  it("keeps route-specific captures isolated between live tabs on one origin", () => {
+    const html = renderTabs(
+      favicon("data:image/png;base64,AAAA", "http://24x.xf.local/"),
+      favicon("data:image/png;base64,BBBB", "http://24x.xf.local/admin"),
+    );
+    expect(html).toContain("data:image/png;base64,AAAA");
+    expect(html).toContain("data:image/png;base64,BBBB");
+  });
 
-    expect(html).not.toContain("<img");
-    expect(html).toContain('aria-label="Close Browser"');
-    expect(html).toContain(">Browser</span>");
+  it("hides a capture while the server session still describes another origin", () => {
+    const html = renderTabs(favicon("data:image/png;base64,AAAA", "https://example.com/"));
+    expect(html).not.toContain("data:image/png;base64,AAAA");
   });
 });

@@ -95,7 +95,9 @@ function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
           fill={onBackdrop ? "currentColor" : "#04C161"}
         />
       </svg>
-      <span className="truncate text-sm font-semibold tracking-tight">{APP_BASE_NAME}</span>
+      <span className="-translate-y-px truncate text-sm font-semibold tracking-tight">
+        {APP_BASE_NAME}
+      </span>
     </Link>
   );
 }

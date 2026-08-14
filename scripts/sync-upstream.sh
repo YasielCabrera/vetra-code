@@ -21,6 +21,7 @@ UPSTREAM_REF="${1:-upstream/main}"
 # Trees this fork deleted for good. Upstream edits inside them are dropped, and
 # files upstream newly adds inside them never land.
 PRUNE_PATHS=(
+  .agents/skills/test-t3-mobile
   apps/mobile
   apps/marketing
   scripts/mobile-showcase.ts
@@ -32,6 +33,7 @@ PRUNE_PATHS=(
   't3.json'
 )
 PRUNE_GLOBS=(
+  'patches/*react-navigation*'
   'patches/*react-native*'
   'patches/*expo*'
 )

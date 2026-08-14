@@ -70,13 +70,14 @@ After the merge, those changes must appear under Vetra names (`Vetra Code`, `@ve
 
 Surfaces this fork deleted and will not ship:
 
-| Path                                                                 | Why                        |
-| -------------------------------------------------------------------- | -------------------------- |
-| `apps/mobile/`                                                       | Mobile client removed.     |
-| `apps/marketing/`                                                    | Marketing site removed.    |
-| `scripts/mobile-showcase*` and `scripts/mobile-native-static-check*` | Mobile-only tooling.       |
-| `t3.json`                                                            | Replaced by `vetra.json`.  |
-| `patches/*react-native*` and `patches/*expo*`                        | Mobile dependency patches. |
+| Path                                                                         | Why                        |
+| ---------------------------------------------------------------------------- | -------------------------- |
+| `.agents/skills/test-t3-mobile/`                                             | Mobile-only testing skill. |
+| `apps/mobile/`                                                               | Mobile client removed.     |
+| `apps/marketing/`                                                            | Marketing site removed.    |
+| `scripts/mobile-showcase*` and `scripts/mobile-native-static-check*`         | Mobile-only tooling.       |
+| `t3.json`                                                                    | Replaced by `vetra.json`.  |
+| `patches/*react-navigation*`, `patches/*react-native*`, and `patches/*expo*` | Mobile dependency patches. |
 
 The script's `PRUNE_PATHS` / `PRUNE_GLOBS` lists are the source of truth for the mechanical drop.
 If upstream adds a new file inside those trees, the prune pass deletes it again. If upstream adds a
@@ -242,13 +243,15 @@ is not part of the sync and must not be left behind silently.
 
    ```bash
    git rm -rf --ignore-unmatch \
+     .agents/skills/test-t3-mobile \
      .github/workflows/release.yml \
      .github/workflows/deploy-relay.yml \
      .github/workflows/mobile-eas-preview.yml \
      .github/workflows/mobile-eas-production.yml \
      .github/workflows/mobile-fingerprint-check.yml \
      .github/workflows/mobile-showcase-screenshots.yml \
-     apps/mobile apps/marketing t3.json
+     apps/mobile apps/marketing t3.json \
+     'patches/*react-navigation*'
    ```
 
    If upstream added a new workflow or app we also do not want, delete it and add the path to

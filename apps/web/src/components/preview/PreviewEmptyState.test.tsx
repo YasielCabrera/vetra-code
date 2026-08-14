@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vetra-code/contracts";
+import { EnvironmentId, ThreadId } from "@vetra-code/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vite-plus/test";
 
@@ -12,17 +12,22 @@ const mocks = vi.hoisted(() => ({
     pid: number | null;
     terminal: null;
     source: "scanner";
-    listening: boolean;
   }>,
 }));
 
 vi.mock("./useDiscoveredLocalServers", () => ({
   useDiscoveredLocalServers: () => mocks.servers,
 }));
+vi.mock("./PreviewFaviconIcon", () => ({
+  PreviewFaviconIcon: ({ fallbackUrl }: { fallbackUrl?: string }) => (
+    <span data-favicon-url={fallbackUrl} />
+  ),
+}));
 
 import { PreviewEmptyState } from "./PreviewEmptyState";
 
 const environmentId = EnvironmentId.make("env-1");
+const threadRef = { environmentId, threadId: ThreadId.make("thread-1") };
 
 function server(port: number) {
   return {
@@ -34,13 +39,13 @@ function server(port: number) {
     pid: 1,
     terminal: null,
     source: "scanner" as const,
-    listening: true,
   };
 }
 
 function render(recentEntries: Array<{ url: string; lastVisitedAt: number; title?: string }>) {
   return renderToStaticMarkup(
     <PreviewEmptyState
+      threadRef={threadRef}
       environmentId={environmentId}
       recentEntries={recentEntries}
       onRemoveRecent={() => undefined}
@@ -62,8 +67,8 @@ describe("PreviewEmptyState", () => {
     expect(html).toContain("Admin");
     expect(html).toContain("Recent Local");
     expect(html).toContain("node");
-    expect(html).toContain('src="https://myapp.test/favicon.ico"');
-    expect(html).toContain('src="http://localhost:5173/favicon.ico"');
+    expect(html).toContain('data-favicon-url="https://myapp.test/admin#users"');
+    expect(html).toContain('data-favicon-url="http://localhost:5173"');
   });
 
   it("renders only the recents group when no servers are found", () => {

@@ -13,8 +13,9 @@ pnpm exec vp run --filter @vetra-code/server build
 pnpm exec vp run --filter @vetra-code/desktop build
 ```
 
-Finish active agent work and terminal processes before restarting development servers. A registry-based
-update command is unavailable until the Vetra server package is published.
+Finish active agent work and terminal processes before restarting development servers. A
+registry-based update command is unavailable until the Vetra server package is published.
 
-Versioned server updates and desktop auto-update can be enabled only after the release prerequisites
-in the [release runbook](../operations/release.md) are owned and configured by Vetra Code.
+Versioned server updates and desktop auto-update can be enabled only after the release
+prerequisites in the [release runbook](../operations/release.md) are owned and configured by Vetra
+Code. See [Background service status](./background-service.md) for the currently supported path.

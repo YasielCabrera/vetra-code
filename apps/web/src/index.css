@@ -279,8 +279,8 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(vetra-mo
 
 @layer base {
   :root {
-    /* Vetra artwork defaults. Built-in themes override these seven pigments
-       in the components layer; Nightly derives a darker matching palette. */
+    /* Vetra artwork defaults. Built-in themes override these pigments in the
+       components layer; Nightly derives a darker matching palette. */
     --stage-art-top: #8de8b8;
     --stage-art-mid: #04c161;
     --stage-art-bottom: #075f38;
@@ -288,9 +288,20 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(vetra-mo
     --stage-art-secondary: #51d995;
     --stage-art-tertiary: #0b3d27;
     --stage-art-line: #e8fff3;
-    --stage-night-top: color-mix(in oklch, var(--stage-art-top) 38%, #0b3d27);
-    --stage-night-mid: color-mix(in oklch, var(--stage-art-mid) 38%, #062e1c);
-    --stage-night-bottom: color-mix(in oklch, var(--stage-art-bottom) 38%, #041f14);
+    --stage-art-celeste-highlight: var(--stage-art-highlight);
+    --stage-art-celeste-secondary: var(--stage-art-secondary);
+    --stage-art-violet-highlight: var(--stage-art-highlight);
+    --stage-art-grid-line: var(--stage-art-line);
+    --stage-night-base-top: #0b3d27;
+    --stage-night-base-mid: #062e1c;
+    --stage-night-base-bottom: #041f14;
+    --stage-night-top: color-mix(in oklch, var(--stage-art-top) 38%, var(--stage-night-base-top));
+    --stage-night-mid: color-mix(in oklch, var(--stage-art-mid) 38%, var(--stage-night-base-mid));
+    --stage-night-bottom: color-mix(
+      in oklch,
+      var(--stage-art-bottom) 38%,
+      var(--stage-night-base-bottom)
+    );
     --stage-night-highlight: var(--stage-art-highlight);
     --stage-night-secondary: color-mix(
       in oklch,
@@ -303,6 +314,9 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(vetra-mo
       var(--stage-night-top)
     );
     --stage-night-line: color-mix(in oklch, var(--stage-art-line) 82%, oklch(1 0 0));
+    --stage-night-glow-highlight: var(--stage-night-highlight);
+    --stage-night-glow-secondary: var(--stage-night-secondary);
+    --stage-night-sparkle: var(--stage-night-line);
   }
 
   .dark {
@@ -533,6 +547,44 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(vetra-mo
     --stage-art-secondary: oklch(0.670994 0.13095 296.689);
     --stage-art-tertiary: oklch(0.679357 0.165376 340.439);
     --stage-art-line: oklch(0.940582 0.032921 299.076);
+  }
+
+  :is(html[data-theme-id="vetra-chat"], html[data-theme-id="ocean"], html[data-theme-id="iris"]) {
+    --stage-night-top: color-mix(in oklch, var(--stage-art-top) 38%, var(--stage-night-base-top));
+    --stage-night-mid: color-mix(in oklch, var(--stage-art-mid) 38%, var(--stage-night-base-mid));
+    --stage-night-bottom: color-mix(
+      in oklch,
+      var(--stage-art-bottom) 38%,
+      var(--stage-night-base-bottom)
+    );
+    --stage-night-highlight: var(--stage-art-highlight);
+    --stage-night-secondary: color-mix(
+      in oklch,
+      var(--stage-art-secondary) 55%,
+      var(--stage-night-mid)
+    );
+    --stage-night-tertiary: color-mix(
+      in oklch,
+      var(--stage-art-tertiary) 60%,
+      var(--stage-night-top)
+    );
+    --stage-night-line: color-mix(in oklch, var(--stage-art-line) 82%, oklch(1 0 0));
+  }
+
+  :is(
+    html[data-theme-id="vetra-chat"],
+    html[data-theme-id="grove"],
+    html[data-theme-id="ocean"],
+    html[data-theme-id="ember"],
+    html[data-theme-id="iris"]
+  ) {
+    --stage-art-celeste-highlight: var(--stage-art-highlight);
+    --stage-art-celeste-secondary: var(--stage-art-secondary);
+    --stage-art-violet-highlight: var(--stage-art-highlight);
+    --stage-art-grid-line: var(--stage-art-line);
+    --stage-night-glow-highlight: var(--stage-night-highlight);
+    --stage-night-glow-secondary: var(--stage-night-secondary);
+    --stage-night-sparkle: var(--stage-night-line);
   }
 
   .workspace-topbar {
