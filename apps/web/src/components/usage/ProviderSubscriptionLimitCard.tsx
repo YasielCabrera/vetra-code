@@ -14,20 +14,20 @@ export type ReadySubscriptionUsage = Extract<
   { readonly state: "ready" }
 >;
 
-interface ProviderPresentation {
+export interface ProviderSubscriptionPresentation {
   readonly accentColor: string;
   readonly name: string;
 }
 
 const CURSOR_ACCENT_COLOR = "#00bfa5";
-const PRESENTATIONS: Readonly<Record<string, ProviderPresentation>> = {
+const PRESENTATIONS: Readonly<Record<string, ProviderSubscriptionPresentation>> = {
   claudeAgent: { accentColor: "#cc7c5e", name: "Claude" },
   codex: { accentColor: "#49a3b0", name: "Codex" },
   cursor: { accentColor: CURSOR_ACCENT_COLOR, name: "Cursor" },
   grok: { accentColor: "#10a37f", name: "Grok" },
   opencode: { accentColor: "#3b82f6", name: "OpenCode" },
 };
-const FALLBACK_PRESENTATION: ProviderPresentation = {
+const FALLBACK_PRESENTATION: ProviderSubscriptionPresentation = {
   accentColor: "#94a3b8",
   name: "Provider",
 };
@@ -45,8 +45,9 @@ const absoluteDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   timeStyle: "short",
 });
 
-const presentationFor = (driver: ReadySubscriptionUsage["driver"]): ProviderPresentation =>
-  PRESENTATIONS[driver] ?? FALLBACK_PRESENTATION;
+export const providerSubscriptionPresentationFor = (
+  driver: ReadySubscriptionUsage["driver"],
+): ProviderSubscriptionPresentation => PRESENTATIONS[driver] ?? FALLBACK_PRESENTATION;
 
 const moneyFormatter = (currencyCode: string) => {
   const existing = moneyFormatters.get(currencyCode);
@@ -310,7 +311,7 @@ function ProviderCostDashboard({
 }: {
   readonly cost: ProviderSubscriptionUsageCost;
   readonly now: Date;
-  readonly presentation: ProviderPresentation;
+  readonly presentation: ProviderSubscriptionPresentation;
 }) {
   const points = chartPoints(cost, now);
   const maxCost = points.reduce((maximum, point) => Math.max(maximum, point.cost ?? 0), 0);
@@ -629,7 +630,7 @@ export function ProviderSubscriptionLimitCard({
   readonly now?: Date;
 }) {
   const renderTime = now ?? new Date();
-  const presentation = presentationFor(instance.driver);
+  const presentation = providerSubscriptionPresentationFor(instance.driver);
   const isStale = instance.freshness === "stale";
   const plan = formatPlan(instance.driver, instance.planLabel);
   const details = detailPresentation(instance.driver, instance.details);

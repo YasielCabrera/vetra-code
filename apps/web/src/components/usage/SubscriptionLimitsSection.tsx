@@ -1,6 +1,12 @@
 import type { ProviderSubscriptionUsageInstanceResult } from "@vetra-code/contracts";
 import { Link } from "@tanstack/react-router";
-import { CircleAlertIcon, KeyRoundIcon, RefreshCwIcon, WifiOffIcon } from "lucide-react";
+import {
+  CircleAlertIcon,
+  CircleDashedIcon,
+  KeyRoundIcon,
+  RefreshCwIcon,
+  WifiOffIcon,
+} from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import type { EnvironmentProviderSubscriptionUsageStatus } from "../../state/providerSubscriptionUsage";
@@ -18,6 +24,64 @@ const formatTimestamp = (value: string): string => {
   const milliseconds = Date.parse(value);
   return Number.isFinite(milliseconds) ? dateTimeFormatter.format(milliseconds) : value;
 };
+
+export type SubscriptionUsageStatusKind =
+  | "offline"
+  | "not-supported"
+  | "error"
+  | "empty"
+  | "loading"
+  | "missing-instance";
+
+const SUBSCRIPTION_USAGE_STATUS_PRESENTATION: Readonly<
+  Record<
+    SubscriptionUsageStatusKind,
+    { readonly icon: typeof CircleAlertIcon; readonly message: string }
+  >
+> = {
+  offline: {
+    icon: WifiOffIcon,
+    message:
+      "This environment is not connected. Its provider limits are not merged with another device.",
+  },
+  "not-supported": {
+    icon: CircleAlertIcon,
+    message:
+      "Subscription limits are not supported by this environment. API-equivalent activity remains available in its tab.",
+  },
+  error: {
+    icon: CircleAlertIcon,
+    message:
+      "Subscription limits could not be loaded from this environment. API-equivalent activity remains available in its tab.",
+  },
+  empty: {
+    icon: CircleAlertIcon,
+    message: "No enabled provider instances reported subscription limits.",
+  },
+  loading: {
+    icon: CircleDashedIcon,
+    message: "Loading subscription limits for the selected provider.",
+  },
+  "missing-instance": {
+    icon: CircleAlertIcon,
+    message: "The selected provider has not reported subscription limits yet.",
+  },
+};
+
+export function SubscriptionUsageStatusCard({
+  status,
+}: {
+  readonly status: SubscriptionUsageStatusKind;
+}) {
+  const presentation = SUBSCRIPTION_USAGE_STATUS_PRESENTATION[status];
+  const Icon = presentation.icon;
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-border px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+      <Icon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+      <span>{presentation.message}</span>
+    </div>
+  );
+}
 
 export function SubscriptionLimitsSection({
   environments,
@@ -103,19 +167,11 @@ export function EnvironmentSubscriptionLimits({
       </div>
 
       {environment.error === "offline" ? (
-        <EnvironmentMessage icon={WifiOffIcon}>
-          This environment is not connected. Its provider limits are not merged with another device.
-        </EnvironmentMessage>
+        <SubscriptionUsageStatusCard status="offline" />
       ) : environment.error === "not-supported" || environment.error === "contract-version" ? (
-        <EnvironmentMessage icon={CircleAlertIcon}>
-          Subscription limits are not supported by this environment. API-equivalent activity remains
-          available in its tab.
-        </EnvironmentMessage>
+        <SubscriptionUsageStatusCard status="not-supported" />
       ) : environment.error === "error" ? (
-        <EnvironmentMessage icon={CircleAlertIcon}>
-          Subscription limits could not be loaded from this environment. API-equivalent activity
-          remains available in its tab.
-        </EnvironmentMessage>
+        <SubscriptionUsageStatusCard status="error" />
       ) : environment.isPending && environment.report === null ? (
         <div
           aria-label={`Loading subscription limits for ${environment.label}`}
@@ -136,25 +192,8 @@ export function EnvironmentSubscriptionLimits({
           ))}
         </div>
       ) : (
-        <EnvironmentMessage icon={CircleAlertIcon}>
-          No enabled provider instances reported subscription limits.
-        </EnvironmentMessage>
+        <SubscriptionUsageStatusCard status="empty" />
       )}
-    </div>
-  );
-}
-
-function EnvironmentMessage({
-  icon: Icon,
-  children,
-}: {
-  readonly icon: typeof CircleAlertIcon;
-  readonly children: string;
-}) {
-  return (
-    <div className="flex items-start gap-2 rounded-lg border border-border px-3 py-3 text-xs leading-relaxed text-muted-foreground">
-      <Icon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-      <span>{children}</span>
     </div>
   );
 }

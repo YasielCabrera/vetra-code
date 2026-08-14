@@ -1,6 +1,6 @@
-import { cn } from "~/lib/utils";
 import { type ContextWindowSnapshot, formatContextWindowTokens } from "~/lib/contextWindow";
 import { formatThreadCostUsd } from "@vetra-code/shared/usageFormat";
+import { CircularUsageMeterButton } from "../ui/circular-usage-meter";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Skeleton } from "../ui/skeleton";
 
@@ -23,9 +23,6 @@ export function ContextWindowMeter(props: {
   const { usage, providerDisplayName, canPriceThreadCost = false, isRunning = false } = props;
   const usedPercentage = formatPercentage(usage.usedPercentage);
   const normalizedPercentage = Math.max(0, Math.min(100, usage.usedPercentage ?? 0));
-  const radius = 9.75;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference * (1 - normalizedPercentage / 100);
   const totalProcessedTokens = usage.totalProcessedTokens ?? null;
   const showTotalProcessed = totalProcessedTokens !== null && totalProcessedTokens > 0;
   const threadCostUsd =
@@ -45,48 +42,15 @@ export function ContextWindowMeter(props: {
         delay={150}
         closeDelay={0}
         render={
-          <button
-            type="button"
-            className={cn(
-              "inline-flex size-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-muted-foreground outline-none transition-colors",
-              "hover:bg-accent data-[pressed]:bg-accent",
-              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-            )}
+          <CircularUsageMeterButton
+            value={normalizedPercentage}
+            indicatorColor={usageColor}
             aria-label={
               usage.maxTokens !== null && usedPercentage
                 ? `Context window ${usedPercentage} used`
                 : `Context window ${formatContextWindowTokens(usage.usedTokens)} tokens used`
             }
-          >
-            <span className="relative flex size-5 items-center justify-center">
-              <svg
-                viewBox="0 0 24 24"
-                className="-rotate-90 absolute inset-0 size-full transform-gpu"
-                aria-hidden="true"
-              >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r={radius}
-                  fill="none"
-                  stroke="color-mix(in oklab, var(--color-muted-foreground) 24%, transparent)"
-                  strokeWidth="3"
-                />
-                <circle
-                  cx="12"
-                  cy="12"
-                  r={radius}
-                  fill="none"
-                  stroke={usageColor}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={dashOffset}
-                  className="transition-[stroke-dashoffset,stroke] duration-500 ease-out motion-reduce:transition-none"
-                />
-              </svg>
-            </span>
-          </button>
+          />
         }
       />
       <PopoverPopup

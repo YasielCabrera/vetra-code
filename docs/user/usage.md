@@ -14,6 +14,13 @@ equivalent** tabs:
 The chat composer’s context-window popover continues to show the API-equivalent cost for the current
 thread.
 
+On wider thread views, a small ring in the bottom-left corner shows subscription usage for the exact
+provider instance selected in the composer. The ring fills with the most-used allowance window that
+account reported; hover, focus, or click it to open the same complete card used on the Subscriptions
+tab. Switching models within one provider instance keeps the same account limits, while switching
+provider instances changes the card. Narrow thread columns hide the ring so it does not overlap the
+composer.
+
 ## Subscription limits
 
 Limits are grouped first by environment and then by provider instance. Vetra Code does not combine
@@ -48,8 +55,12 @@ information; Vetra Code does not invent values.
 
 A **Stale** card contains the last successful reading after a temporary network, rate-limit, or
 provider-server failure. Its original refresh time remains visible. Authentication failures and
-account changes do not reuse old data. Unsupported and authentication states affect only the
-Subscriptions tab; API-equivalent history remains available from the API equivalent tab.
+account changes do not reuse old data. Unsupported and authentication states do not affect the
+separate API-equivalent history.
+
+The thread ring uses a dashed neutral state while limits are loading or when the selected provider
+is offline, unsupported, missing authentication, unavailable, or has no percentage window. Opening
+it explains the state without combining limits from another environment.
 
 ## Credentials
 

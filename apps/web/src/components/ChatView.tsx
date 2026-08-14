@@ -256,6 +256,7 @@ import { environmentShell } from "../state/shell";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
 import { DraftHeroHeadline } from "./chat/DraftHeroHeadline";
 import { ExpandedImageDialog } from "./chat/ExpandedImageDialog";
+import { ThreadSubscriptionUsageIndicator } from "./chat/ThreadSubscriptionUsageIndicator";
 import { PullRequestThreadDialog } from "./PullRequestThreadDialog";
 import { MessagesTimeline } from "./chat/MessagesTimeline";
 import { resolveTimelineIsAtEnd } from "./chat/MessagesTimeline.logic";
@@ -6289,7 +6290,7 @@ function ChatViewContent(props: ChatViewProps) {
         {/* Main content area with optional plan sidebar */}
         <div className="flex min-h-0 min-w-0 flex-1">
           {/* Chat column */}
-          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="@container/thread-content relative flex min-h-0 min-w-0 flex-1 flex-col">
             {/* Provider status overlays the timeline without changing its content height. */}
             <div className="pointer-events-none absolute inset-x-0 top-0 z-20">
               <ProviderStatusBanner
@@ -6548,6 +6549,16 @@ function ChatViewContent(props: ChatViewProps) {
                 </div>
               </div>
             </div>
+
+            {activeProviderInstanceId ? (
+              <div className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] left-[calc(env(safe-area-inset-left)+1.25rem)] z-30 hidden @min-[56rem]/thread-content:block">
+                <ThreadSubscriptionUsageIndicator
+                  environmentId={activeThread.environmentId}
+                  providerInstanceId={activeProviderInstanceId}
+                  providerDisplayName={activeProviderStatus?.displayName ?? null}
+                />
+              </div>
+            ) : null}
 
             {activeThreadRef && activePreviewMiniPlayer ? (
               <ThreadPreviewMiniPlayer
