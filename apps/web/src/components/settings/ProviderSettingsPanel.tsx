@@ -735,9 +735,8 @@ export function EnvironmentProviderSettings({
                   <TooltipTrigger
                     render={
                       <Button
-                        size="icon-xs"
-                        variant="ghost"
-                        className="size-5 rounded-sm p-0 text-muted-foreground hover:text-foreground"
+                        size="icon-micro"
+                        variant="ghost-muted"
                         onClick={() => setIsAddInstanceDialogOpen(true)}
                         aria-label="Add provider instance"
                       >
@@ -751,9 +750,8 @@ export function EnvironmentProviderSettings({
                   <TooltipTrigger
                     render={
                       <Button
-                        size="icon-xs"
-                        variant="ghost"
-                        className="size-5 rounded-sm p-0 text-muted-foreground hover:text-foreground"
+                        size="icon-micro"
+                        variant="ghost-muted"
                         disabled={isRefreshingProviders}
                         onClick={() => void refreshProviders()}
                         aria-label="Refresh provider status"

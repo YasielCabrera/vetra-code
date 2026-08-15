@@ -932,7 +932,7 @@ it.effect("reads a repository once when several worktrees share it", () =>
           title: "vetra-code worktree",
           workspaceRoot: "/b",
           // Same slug as p1 after toLowerCase. `VetraCode` would become `vetracode` and
-          // would not collide with `vetra-code` — a rename trap from T3Code vs t3code.
+          // would not collide with `vetra-code` — a rename trap from VetraCode vs vetra-code.
           repository: "Vetra-Code/Vetra-Code",
         }),
       ],
@@ -1645,7 +1645,7 @@ it.effect("refuses line comments on a host that takes only a summary", () =>
         number: 1,
         verdict: "comment",
         body: "",
-        comments: [{ path: "src/a.ts", line: 1, side: "right", body: "nit" }],
+        comments: [{ path: "src/a.ts", position: { kind: "added", newLine: 1 }, body: "nit" }],
       }),
     );
 

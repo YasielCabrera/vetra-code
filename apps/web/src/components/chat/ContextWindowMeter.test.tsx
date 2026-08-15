@@ -35,7 +35,7 @@ describe("ContextWindowMeter", () => {
     if (!usage) throw new Error("context usage fixture did not resolve");
 
     const html = renderToStaticMarkup(
-      <ContextWindowMeter usage={usage} providerDisplayName="Codex" />,
+      <ContextWindowMeter usage={usage} modelDisplayName="Codex" />,
     );
 
     expect(html).toContain('aria-label="Context window 75% used"');
@@ -43,6 +43,6 @@ describe("ContextWindowMeter", () => {
     expect(html).toContain("75k/100k");
     expect(html).toContain("Total processed");
     expect(html).toContain("125k");
-    expect(html).toContain("Codex automatically compacts its context when needed.");
+    expect(html).toContain("Context for Codex compacts automatically when needed.");
   });
 });

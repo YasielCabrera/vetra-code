@@ -134,7 +134,7 @@ describe("buildProjectGroups", () => {
       repositoryIdentity: null,
       updatedAt: "2026-07-01T00:00:00.000Z",
     });
-    const fresh = makeProject("fresh", "/work/vetra/", {
+    const fresh = makeProject("fresh", "/work/vetra-code/", {
       updatedAt: "2026-07-02T00:00:00.000Z",
     });
 
@@ -152,7 +152,7 @@ describe("buildProjectGroups", () => {
     const identified = makeProject("identified", "/work/vetra-code", {
       updatedAt: "2026-07-01T00:00:00.000Z",
     });
-    const freshUnidentified = makeProject("fresh", "/work/vetra/", {
+    const freshUnidentified = makeProject("fresh", "/work/vetra-code/", {
       repositoryIdentity: null,
       updatedAt: "2026-07-02T00:00:00.000Z",
     });
@@ -177,7 +177,7 @@ describe("buildProjectGroups", () => {
       repositoryIdentity: staleIdentity,
       updatedAt: "2026-07-01T00:00:00.000Z",
     });
-    const fresh = makeProject("fresh", "/work/vetra/", {
+    const fresh = makeProject("fresh", "/work/vetra-code/", {
       updatedAt: "2026-07-02T00:00:00.000Z",
     });
     const sibling = makeProject("sibling", "/work/vetra-code-2");
@@ -201,7 +201,7 @@ describe("buildProjectGroups", () => {
       repositoryIdentity: staleIdentity,
       updatedAt: "2026-07-01T00:00:00.000Z",
     });
-    const freshIdentified = makeProject("fresh-identified", "/work/vetra/", {
+    const freshIdentified = makeProject("fresh-identified", "/work/vetra-code/", {
       updatedAt: "2026-07-02T00:00:00.000Z",
     });
     const winner = makeProject("winner", "/work/vetra-code", {

@@ -43,7 +43,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       });
 
       yield* git(cwd, ["init"]);
-      yield* git(cwd, ["remote", "add", "origin", "git@github.com:VetraCode/vetra-code.git"]);
+      yield* git(cwd, ["remote", "add", "origin", "git@github.com:Vetra-Code/vetra-code.git"]);
 
       const resolver = yield* RepositoryIdentityResolver.RepositoryIdentityResolver;
       const identity = yield* resolver.resolve(cwd);
@@ -72,7 +72,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
 
       yield* fileSystem.makeDirectory(nestedWorkspace, { recursive: true });
       yield* git(repoRoot, ["init"]);
-      yield* git(repoRoot, ["remote", "add", "origin", "git@github.com:VetraCode/vetra-code.git"]);
+      yield* git(repoRoot, ["remote", "add", "origin", "git@github.com:Vetra-Code/vetra-code.git"]);
 
       const resolver = yield* RepositoryIdentityResolver.RepositoryIdentityResolver;
       const identity = yield* resolver.resolve(nestedWorkspace);
@@ -118,7 +118,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
 
       yield* git(cwd, ["init"]);
       yield* git(cwd, ["remote", "add", "origin", "git@github.com:julius/vetra-code.git"]);
-      yield* git(cwd, ["remote", "add", "upstream", "git@github.com:VetraCode/vetra-code.git"]);
+      yield* git(cwd, ["remote", "add", "upstream", "git@github.com:Vetra-Code/vetra-code.git"]);
 
       const resolver = yield* RepositoryIdentityResolver.RepositoryIdentityResolver;
       const identity = yield* resolver.resolve(cwd);
@@ -142,7 +142,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
         "remote",
         "add",
         "origin",
-        "git@gitlab.com:VetraCode/platform/vetra-code.git",
+        "git@gitlab.com:Vetra-Code/platform/vetra-code.git",
       ]);
 
       const resolver = yield* RepositoryIdentityResolver.RepositoryIdentityResolver;
@@ -171,7 +171,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
         const initialIdentity = yield* resolver.resolve(cwd);
         expect(initialIdentity).toBeNull();
 
-        yield* git(cwd, ["remote", "add", "origin", "git@github.com:VetraCode/vetra-code.git"]);
+        yield* git(cwd, ["remote", "add", "origin", "git@github.com:Vetra-Code/vetra-code.git"]);
 
         for (const _attempt of [1, 2, 3]) {
           const cachedIdentity = yield* resolver.resolve(cwd);
@@ -205,7 +205,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       });
 
       yield* git(cwd, ["init"]);
-      yield* git(cwd, ["remote", "add", "origin", "git@github.com:VetraCode/vetra-code.git"]);
+      yield* git(cwd, ["remote", "add", "origin", "git@github.com:Vetra-Code/vetra-code.git"]);
 
       const resolver = yield* RepositoryIdentityResolver.RepositoryIdentityResolver;
       const initialIdentity = yield* resolver.resolve(cwd);
@@ -216,7 +216,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
         "remote",
         "set-url",
         "origin",
-        "git@github.com:VetraCode/vetra-code-next.git",
+        "git@github.com:Vetra-Code/vetra-code-next.git",
       ]);
 
       const cachedIdentity = yield* resolver.resolve(cwd);

@@ -31,6 +31,12 @@ PRUNE_PATHS=(
   scripts/mobile-native-static-check.ts
   scripts/mobile-native-static-check.test.ts
   't3.json'
+  # Upstream's AUR publishing pipeline. The fork owns no AUR package, and
+  # publish-aur.yml is only reachable from the release.yml we deleted. The
+  # PKGBUILD directories also carry T3 identity in their *paths*, which the
+  # rename pass below never rewrites.
+  .github/workflows/publish-aur.yml
+  packaging/aur
 )
 PRUNE_GLOBS=(
   'patches/*react-navigation*'
@@ -50,6 +56,10 @@ RENAMES=(
   # does not match an underscore, so only typecheck catches a miss.
   'T3_=VETRA_'
   't3tools=vetra-code'
+  # All-caps wordmark used in the DMG installer artwork. Neither `T3 Code` nor
+  # the leftover grep below matches it (the space defeats `T3CODE`, the case
+  # defeats `T3 Code`), so without this pair it ships T3 branding silently.
+  'T3 CODE=VETRA CODE'
   'T3 Code=Vetra Code'
   'T3-Code=Vetra-Code'
   't3-code=vetra-code'
@@ -66,6 +76,8 @@ RENAMES=(
   'T3Code=VetraCode'
   't3-resource-monitor=vetra-resource-monitor'
   't3-relay=vetra-relay'
+  # Prose form of the theme name, which `t3-chat` below does not match.
+  'T3 Chat=Vetra Chat'
   't3-chat=vetra-chat'
   't3-env=vetra-env'
   't3-test=vetra-test'
@@ -112,6 +124,11 @@ say "Re-applying the vetra rename to merged files"
 unmerged=$'\n'"$(git diff --name-only --diff-filter=U)"$'\n'
 rewritten=0
 while IFS= read -r file; do
+  # `perl -pi` writes a fresh file and renames it over the target, which turns a
+  # symlink into a regular copy of whatever it pointed at. CLAUDE.md -> AGENTS.md
+  # was silently flattened this way. Nothing in RENAMES applies to a link target,
+  # so skipping links loses nothing.
+  [[ -L "$file" ]] && continue
   [[ -f "$file" ]] || continue
   grep -Iq . "$file" 2>/dev/null || continue   # skip binaries
   grep -qE 't3|T3' "$file" 2>/dev/null || continue

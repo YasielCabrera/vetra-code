@@ -1926,6 +1926,10 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
           lastPricedUsage: undefined as ThreadTokenUsageSnapshot | undefined,
         };
 
+        // Fork into the session scope, not the calling fiber. `forkChild` makes
+        // this a child of `startSession`, and Effect interrupts a fiber's
+        // children when it completes, so the consumer died on return and every
+        // runtime event the session emitted afterwards was dropped.
         const eventFiber = yield* Stream.runForEach(runtime.events, (event) =>
           Effect.gen(function* () {
             yield* writeNativeEvent(event);
@@ -1942,7 +1946,7 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
             }
             yield* Queue.offerAll(runtimeEventQueue, pricedEvents);
           }),
-        ).pipe(Effect.forkChild);
+        ).pipe(Effect.forkIn(sessionScope));
 
         const started = yield* runtime.start().pipe(
           Effect.mapError(

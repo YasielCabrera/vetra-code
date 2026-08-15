@@ -79,11 +79,11 @@ describe("resolveMarkdownFileLinkTarget", () => {
   it("formats tooltip display paths relative to the cwd when possible", () => {
     expect(
       resolveMarkdownFileLinkMeta(
-        "file:///C:/Users/mike/dev-stuff/vetra/apps/web/src/session-logic.ts#L501",
+        "file:///C:/Users/mike/dev-stuff/vetra-code/apps/web/src/session-logic.ts#L501",
         "C:/Users/mike/dev-stuff/vetra-code",
       ),
     ).toMatchObject({
-      displayPath: "vetra/apps/web/src/session-logic.ts:501",
+      displayPath: "vetra-code/apps/web/src/session-logic.ts:501",
       workspaceRelativePath: "apps/web/src/session-logic.ts",
     });
   });
@@ -91,11 +91,11 @@ describe("resolveMarkdownFileLinkTarget", () => {
   it("formats tooltip display paths relative to the cwd for slash-prefixed windows paths", () => {
     expect(
       resolveMarkdownFileLinkMeta(
-        "/C:/Users/mike/dev-stuff/vetra/apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
+        "/C:/Users/mike/dev-stuff/vetra-code/apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
         "C:/Users/mike/dev-stuff/vetra-code",
       ),
     ).toMatchObject({
-      displayPath: "vetra/apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
+      displayPath: "vetra-code/apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
       workspaceRelativePath:
         "apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
     });
@@ -270,5 +270,30 @@ describe("resolveInlineCodeFileLinkMeta", () => {
 
   it("ignores relative paths without a cwd to resolve against", () => {
     expect(resolveInlineCodeFileLinkMeta(".plans/worktree-management-v1.md")).toBeNull();
+  });
+});
+
+describe("directory paths with a trailing separator", () => {
+  it("keeps the final segment for a POSIX directory path", () => {
+    expect(resolveMarkdownFileLinkMeta("/tmp/favicons/", "/repo/project")).toMatchObject({
+      basename: "favicons",
+    });
+  });
+
+  it("keeps the final segment for a Windows directory path", () => {
+    expect(
+      resolveMarkdownFileLinkMeta("C:\\Users\\kelchm\\.claude\\", "/repo/project"),
+    ).toMatchObject({ basename: ".claude" });
+  });
+
+  it("matches the label of the same path without a trailing separator", () => {
+    const withSlash = resolveMarkdownFileLinkMeta("/tmp/favicons/", "/repo/project");
+    const withoutSlash = resolveMarkdownFileLinkMeta("/tmp/favicons", "/repo/project");
+    expect(withSlash?.basename).toBe(withoutSlash?.basename);
+  });
+
+  it("does not produce an empty label for the filesystem root", () => {
+    const meta = resolveMarkdownFileLinkMeta("/tmp/", "/repo/project");
+    expect(meta?.basename).not.toBe("");
   });
 });

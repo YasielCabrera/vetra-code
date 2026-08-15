@@ -22,11 +22,12 @@ import {
   formatUsd,
   makeWindow,
 } from "@vetra-code/shared/usageFormat";
+import { Button } from "../ui/button";
 import { SidebarInset } from "../ui/sidebar";
 import { WorkspaceBreadcrumb, WorkspaceBreadcrumbItem } from "../WorkspaceBreadcrumb";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "../../workspaceTitlebar";
 import { UsageChartLegend, UsageProviderChart, type UsageChartMetric } from "./UsageProviderChart";
-import { PROVIDER_COLOR, PROVIDER_LABEL, PROVIDER_MARK, PROVIDER_ORDER } from "./usageProviders";
+import { PROVIDER_ORDER, PROVIDER_PRESENTATION } from "./usageProviders";
 import { SubscriptionLimitsSection } from "./SubscriptionLimitsSection";
 import { UsageTabs } from "./UsageTabs";
 
@@ -47,6 +48,7 @@ export function UsagePage() {
   const { days: windowDays, window } = windowSelection;
   const isPast24Hours = windowDays === 1;
   const { merged, environments, isPending, isPartial, refresh } = useUsage(window);
+
   const subscriptionUsage = useProviderSubscriptionUsage();
   const forceRefreshSubscriptionUsage = useAtomCommand(
     serverEnvironment.refreshProviderSubscriptionUsage,
@@ -54,6 +56,26 @@ export function UsagePage() {
   );
   const [isRefreshingSubscriptions, setIsRefreshingSubscriptions] = useState(false);
   const refreshingSubscriptionsRef = useRef(false);
+  const refreshSubscriptions = async () => {
+    if (refreshingSubscriptionsRef.current) return;
+    refreshingSubscriptionsRef.current = true;
+    setIsRefreshingSubscriptions(true);
+    try {
+      await Promise.all(
+        subscriptionUsage.environments
+          .filter((environment) => environment.connectionPhase === "connected")
+          .map((environment) =>
+            forceRefreshSubscriptionUsage({
+              environmentId: environment.environmentId,
+              input: { forceRefresh: true },
+            }),
+          ),
+      );
+    } finally {
+      refreshingSubscriptionsRef.current = false;
+      setIsRefreshingSubscriptions(false);
+    }
+  };
 
   // Hold the content until every environment is terminal. Rendering merged
   // totals while devices are still answering makes every number on the page
@@ -110,26 +132,6 @@ export function UsagePage() {
       setWindowSelection({ days: windowDays, window: nextWindow });
     }
   };
-  const refreshSubscriptions = async () => {
-    if (refreshingSubscriptionsRef.current) return;
-    refreshingSubscriptionsRef.current = true;
-    setIsRefreshingSubscriptions(true);
-    try {
-      await Promise.all(
-        subscriptionUsage.environments
-          .filter((environment) => environment.connectionPhase === "connected")
-          .map((environment) =>
-            forceRefreshSubscriptionUsage({
-              environmentId: environment.environmentId,
-              input: { forceRefresh: true },
-            }),
-          ),
-      );
-    } finally {
-      refreshingSubscriptionsRef.current = false;
-      setIsRefreshingSubscriptions(false);
-    }
-  };
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground isolate">
@@ -137,7 +139,7 @@ export function UsagePage() {
         {!isElectron && (
           <header
             className={cn(
-              "workspace-topbar px-3 transition-[padding-left] duration-200 ease-linear motion-reduce:transition-none sm:px-5",
+              "flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center px-3 transition-[padding-left] duration-200 ease-linear motion-reduce:transition-none sm:px-5",
               COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
             )}
           >
@@ -203,23 +205,20 @@ export function UsagePage() {
                       </button>
                     ))}
                   </div>
-                  <button
-                    type="button"
+                  <Button
+                    size="icon"
+                    variant="outline"
                     onClick={refreshWindow}
-                    disabled={settling}
-                    aria-label="Refresh API-equivalent activity"
-                    className="cursor-pointer rounded-md border border-border p-2 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Refresh usage"
                   >
-                    <RefreshCwIcon className={cn("size-3.5", settling && "animate-spin")} />
-                  </button>
+                    <RefreshCwIcon className="size-3.5" />
+                  </Button>
                 </div>
               </div>
 
               {settling ? (
                 <>
-                  {environments.length > 1 ? (
-                    <UsageDeviceStrip environments={environments} />
-                  ) : null}
+                  {environments.length > 1 ? <UsageDeviceStrip environments={environments} /> : null}
                   <UsageSkeleton resolution={isPast24Hours ? "hour" : "day"} />
                 </>
               ) : (
@@ -233,7 +232,7 @@ export function UsagePage() {
                   {/* Cost first: the financial answer, then the provider split. */}
                   <section className="grid gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
                     {/* The summary follows the chart toggle, so the headline and the
-                  series are always reading the same units. */}
+                    series are always reading the same units. */}
                     <div className="flex flex-col gap-5">
                       <div className="flex flex-col gap-1">
                         <span className="text-xs tracking-wide text-muted-foreground uppercase">
@@ -258,7 +257,7 @@ export function UsagePage() {
                             <div className="flex items-baseline justify-between">
                               <span className="flex items-center gap-2 text-sm text-foreground">
                                 <ProviderMark provider={provider.provider} className="size-4" />
-                                {PROVIDER_LABEL[provider.provider]}
+                                {PROVIDER_PRESENTATION[provider.provider].label}
                               </span>
                               <span className="text-sm text-foreground tabular-nums">
                                 {metric === "cost"
@@ -271,7 +270,7 @@ export function UsagePage() {
                                 className="h-full"
                                 style={{
                                   width: `${(share * 100).toFixed(1)}%`,
-                                  backgroundColor: PROVIDER_COLOR[provider.provider],
+                                  backgroundColor: PROVIDER_PRESENTATION[provider.provider].color,
                                 }}
                               />
                             </div>
@@ -434,7 +433,7 @@ export function UsagePage() {
                             <th className="py-2 font-normal">{isPast24Hours ? "Hour" : "Day"}</th>
                             {PROVIDER_ORDER.map((provider) => (
                               <th key={provider} className="py-2 text-right font-normal">
-                                {PROVIDER_LABEL[provider]}
+                                {PROVIDER_PRESENTATION[provider].label}
                               </th>
                             ))}
                             <th className="py-2 text-right font-normal">Total</th>
@@ -498,7 +497,7 @@ function ProviderMark({
   readonly provider: UsageProviderKind;
   readonly className: string;
 }) {
-  const Mark = PROVIDER_MARK[provider];
+  const Mark = PROVIDER_PRESENTATION[provider].mark;
   return <Mark className={cn("shrink-0", className)} aria-hidden />;
 }
 
@@ -645,7 +644,7 @@ function UsageSkeleton({ resolution }: { readonly resolution: "day" | "hour" }) 
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-sm text-foreground">
                   <ProviderMark provider={provider} className="size-4" />
-                  {PROVIDER_LABEL[provider]}
+                  {PROVIDER_PRESENTATION[provider].label}
                 </span>
                 <div className="h-3.5 w-14 rounded-sm bg-muted" />
               </div>

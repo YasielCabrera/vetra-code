@@ -12,22 +12,22 @@ import {
 
 describe("normalizeGitRemoteUrl", () => {
   it("canonicalizes equivalent GitHub remotes across protocol variants", () => {
-    expect(normalizeGitRemoteUrl("git@github.com:VetraCode/VetraCode.git")).toBe(
+    expect(normalizeGitRemoteUrl("git@github.com:Vetra-Code/Vetra-Code.git")).toBe(
       "github.com/vetra-code/vetra-code",
     );
-    expect(normalizeGitRemoteUrl("https://github.com/VetraCode/VetraCode.git")).toBe(
+    expect(normalizeGitRemoteUrl("https://github.com/Vetra-Code/Vetra-Code.git")).toBe(
       "github.com/vetra-code/vetra-code",
     );
-    expect(normalizeGitRemoteUrl("ssh://git@github.com/VetraCode/VetraCode")).toBe(
+    expect(normalizeGitRemoteUrl("ssh://git@github.com/Vetra-Code/Vetra-Code")).toBe(
       "github.com/vetra-code/vetra-code",
     );
   });
 
   it("preserves nested group paths for providers like GitLab", () => {
-    expect(normalizeGitRemoteUrl("git@gitlab.com:VetraCode/platform/VetraCode.git")).toBe(
+    expect(normalizeGitRemoteUrl("git@gitlab.com:Vetra-Code/platform/Vetra-Code.git")).toBe(
       "gitlab.com/vetra-code/platform/vetra-code",
     );
-    expect(normalizeGitRemoteUrl("https://gitlab.com/VetraCode/platform/VetraCode.git")).toBe(
+    expect(normalizeGitRemoteUrl("https://gitlab.com/Vetra-Code/platform/Vetra-Code.git")).toBe(
       "gitlab.com/vetra-code/platform/vetra-code",
     );
   });
@@ -40,16 +40,25 @@ describe("normalizeGitRemoteUrl", () => {
       "gitlab.company.com/team/project",
     );
   });
+
+  it("normalizes SCP-like remotes with non-git SSH users", () => {
+    expect(normalizeGitRemoteUrl("gitlab@gitlab.example.com:group/project.git")).toBe(
+      "gitlab.example.com/group/project",
+    );
+    expect(normalizeGitRemoteUrl("deploy@bitbucket.org:workspace/repo.git")).toBe(
+      "bitbucket.org/workspace/repo",
+    );
+  });
 });
 
 describe("parseGitHubRepositoryNameWithOwnerFromRemoteUrl", () => {
   it("extracts the owner and repository from common GitHub remote shapes", () => {
     expect(
-      parseGitHubRepositoryNameWithOwnerFromRemoteUrl("git@github.com:VetraCode/VetraCode.git"),
-    ).toBe("VetraCode/VetraCode");
+      parseGitHubRepositoryNameWithOwnerFromRemoteUrl("git@github.com:Vetra-Code/Vetra-Code.git"),
+    ).toBe("Vetra-Code/Vetra-Code");
     expect(
-      parseGitHubRepositoryNameWithOwnerFromRemoteUrl("https://github.com/VetraCode/VetraCode.git"),
-    ).toBe("VetraCode/VetraCode");
+      parseGitHubRepositoryNameWithOwnerFromRemoteUrl("https://github.com/Vetra-Code/Vetra-Code.git"),
+    ).toBe("Vetra-Code/Vetra-Code");
   });
 });
 

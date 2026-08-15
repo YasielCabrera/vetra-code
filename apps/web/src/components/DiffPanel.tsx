@@ -157,6 +157,9 @@ export default function DiffPanel({
       : null,
   );
   const activeCwd = activeThread?.worktreePath ?? activeProject?.workspaceRoot;
+  const activeRepositoryRoot = activeThread?.worktreePath
+    ? undefined
+    : activeProject?.repositoryIdentity?.rootPath;
   const serverConfig = useAtomValue(
     serverEnvironment.configValueAtom(activeThread?.environmentId ?? null),
   );
@@ -488,6 +491,7 @@ export default function DiffPanel({
         threadRef: routeThreadRef,
         filePath,
         activeCwd,
+        repositoryRoot: activeRepositoryRoot,
         openInEditor: (targetPath) => {
           void (async () => {
             const result = await openInPreferredEditor(targetPath);
@@ -507,7 +511,7 @@ export default function DiffPanel({
         },
       });
     },
-    [activeCwd, openInPreferredEditor, routeThreadRef],
+    [activeCwd, activeRepositoryRoot, openInPreferredEditor, routeThreadRef],
   );
   const toggleDiffFileCollapsed = useCallback(
     (fileKey: string) => {
@@ -1011,10 +1015,11 @@ export default function DiffPanel({
                         <Tooltip>
                           <TooltipTrigger
                             render={
-                              <button
-                                type="button"
+                              <Button
+                                size="icon-micro"
+                                variant="ghost"
                                 className={cn(
-                                  "-ms-0.5 inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 transition-colors hover:bg-foreground/10 focus-visible:outline-hidden",
+                                  "-ms-0.5 [--control-icon-color:currentColor] bg-transparent hover:bg-foreground/10",
                                   getDiffCollapseIconClassName(fileDiff),
                                 )}
                                 aria-label={

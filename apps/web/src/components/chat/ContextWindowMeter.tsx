@@ -3,6 +3,7 @@ import { formatThreadCostUsd } from "@vetra-code/shared/usageFormat";
 import { CircularUsageMeterButton } from "../ui/circular-usage-meter";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Skeleton } from "../ui/skeleton";
+import { formatContextWindowCompactionMessage } from "./ContextWindowMeter.logic";
 
 function formatPercentage(value: number | null): string | null {
   if (value === null || !Number.isFinite(value)) {
@@ -16,11 +17,11 @@ function formatPercentage(value: number | null): string | null {
 
 export function ContextWindowMeter(props: {
   usage: ContextWindowSnapshot;
-  providerDisplayName?: string | null;
+  modelDisplayName?: string | null;
   canPriceThreadCost?: boolean;
   isRunning?: boolean;
 }) {
-  const { usage, providerDisplayName, canPriceThreadCost = false, isRunning = false } = props;
+  const { usage, modelDisplayName, canPriceThreadCost = false, isRunning = false } = props;
   const usedPercentage = formatPercentage(usage.usedPercentage);
   const normalizedPercentage = Math.max(0, Math.min(100, usage.usedPercentage ?? 0));
   const totalProcessedTokens = usage.totalProcessedTokens ?? null;
@@ -121,7 +122,7 @@ export function ContextWindowMeter(props: {
           ) : null}
           {usage.compactsAutomatically ? (
             <div className="mt-1 text-pretty text-secondary-label text-[11px] font-medium">
-              {providerDisplayName ?? "It"} automatically compacts its context when needed.
+              {formatContextWindowCompactionMessage(modelDisplayName)}
             </div>
           ) : null}
         </div>

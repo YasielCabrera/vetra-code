@@ -60,6 +60,8 @@ Linked Git worktrees already default to their own gitignored `.vetra-code` direc
 
 In a second development session, or instead of web mode:
 
+Stable:
+
 ```bash
 pnpm dev:desktop
 ```

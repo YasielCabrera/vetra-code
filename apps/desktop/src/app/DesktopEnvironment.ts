@@ -61,6 +61,13 @@ export class DesktopEnvironment extends Context.Service<
     readonly previewWalletsDir: string;
     readonly rootDir: string;
     readonly appRoot: string;
+    // Root of the tree containing apps/server/dist and node_modules for the
+    // backend. Equals appRoot everywhere except packaged Windows, where the
+    // server tree ships as the resources/server.asar sidecar (see
+    // scripts/build-desktop-artifact.ts) that the asar-aware
+    // ELECTRON_RUN_AS_NODE primary reads in place and the WSL backend
+    // extracts on demand (see DesktopWslServerTree).
+    readonly serverRoot: string;
     readonly backendEntryPath: string;
     readonly backendCwd: string;
     readonly preloadPath: string;
@@ -84,7 +91,6 @@ export class DesktopEnvironment extends Context.Service<
     readonly runtimeInfo: DesktopRuntimeInfo;
     readonly resolvePickFolderDefaultPath: (rawOptions: unknown) => Option.Option<string>;
     readonly resolveResourcePathCandidates: (fileName: string) => readonly string[];
-    readonly developmentDockIconPath: string;
   }
 >()("@vetra-code/desktop/app/DesktopEnvironment") {}
 
@@ -166,6 +172,10 @@ const make = Effect.fn("desktop.environment.make")(function* (
   });
   const rootDir = path.resolve(input.dirname, "../../..");
   const appRoot = input.isPackaged ? input.appPath : rootDir;
+  const serverRoot =
+    input.isPackaged && input.platform === "win32"
+      ? path.join(input.resourcesPath, "server.asar")
+      : appRoot;
   const branding = resolveDesktopAppBranding({
     isDevelopment,
     appVersion: input.appVersion,
@@ -212,7 +222,8 @@ const make = Effect.fn("desktop.environment.make")(function* (
     previewWalletsDir: path.join(stateDir, "preview-wallets"),
     rootDir,
     appRoot,
-    backendEntryPath: path.join(appRoot, "apps/server/dist/bin.mjs"),
+    serverRoot,
+    backendEntryPath: path.join(serverRoot, "apps/server/dist/bin.mjs"),
     backendCwd: input.isPackaged ? homeDirectory : appRoot,
     preloadPath: path.join(input.dirname, "preload.cjs"),
     appUpdateYmlPath: input.isPackaged
@@ -274,7 +285,6 @@ const make = Effect.fn("desktop.environment.make")(function* (
       path.join(resourcesPath, "resources", fileName),
       path.join(resourcesPath, fileName),
     ],
-    developmentDockIconPath: path.join(rootDir, "assets", "dev", "blueprint-macos-1024.png"),
   });
 });
 

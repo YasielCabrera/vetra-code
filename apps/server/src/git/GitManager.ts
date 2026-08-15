@@ -43,6 +43,7 @@ import {
 import { PRODUCT_SLUG, PRODUCT_WORKTREE_BRANCH_PREFIX } from "@vetra-code/shared/productIdentity";
 import {
   getChangeRequestTerminologyForKind,
+  isSshRemoteUrl,
   type ChangeRequestTerminology,
 } from "@vetra-code/shared/sourceControl";
 
@@ -575,8 +576,7 @@ function toResolvedPullRequest(pr: {
 
 function shouldPreferSshRemote(url: string | null): boolean {
   if (!url) return false;
-  const trimmed = url.trim();
-  return trimmed.startsWith("git@") || trimmed.startsWith("ssh://");
+  return isSshRemoteUrl(url);
 }
 
 function toPullRequestHeadRemoteInfo(pr: {

@@ -10,6 +10,7 @@ const baseState: ThreadActionMenuState = {
   canSnoozeNow: true,
   isAutomationRun: false,
   isRegeneratingTitle: false,
+  isRunning: false,
   supports: {
     settlement: true,
     snooze: true,
@@ -39,7 +40,7 @@ describe("buildThreadActionMenuItems", () => {
           automations: false,
         },
       }),
-    ).toEqual(["rename", "mark-unread", "copy-path", "copy-thread-id", "delete"]);
+    ).toEqual(["rename", "mark-unread", "copy-path", "copy-thread-id", "archive", "delete"]);
   });
 
   it("includes branch items only for threads with a branch", () => {
@@ -89,5 +90,35 @@ describe("buildThreadActionMenuItems", () => {
         supports: { ...baseState.supports, automations: false },
       }),
     ).not.toContain("hide");
+  });
+
+  it("offers archive as a non-destructive action right before delete", () => {
+    const items = buildThreadActionMenuItems(baseState);
+    const archiveItem = items.at(-2);
+    expect(archiveItem?.id).toBe("archive");
+    expect(archiveItem?.destructive).toBeFalsy();
+    expect(items.at(-1)?.id).toBe("delete");
+  });
+
+  it("keeps archive available even when the environment lacks every other capability", () => {
+    expect(
+      ids({
+        ...baseState,
+        supports: {
+          settlement: false,
+          snooze: false,
+          pinning: false,
+          titleRegeneration: false,
+          automations: false,
+        },
+      }),
+    ).toContain("archive");
+  });
+
+  it("disables archive while the thread is running", () => {
+    const archiveItem = buildThreadActionMenuItems({ ...baseState, isRunning: true }).find(
+      (item) => item.id === "archive",
+    );
+    expect(archiveItem?.disabled).toBe(true);
   });
 });
