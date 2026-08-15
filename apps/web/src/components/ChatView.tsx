@@ -6551,7 +6551,16 @@ function ChatViewContent(props: ChatViewProps) {
             </div>
 
             {activeProviderInstanceId ? (
-              <div className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] left-[calc(env(safe-area-inset-left)+1.25rem)] z-30 hidden @min-[56rem]/thread-content:block">
+              <div
+                // Anchored by the meter's optical center rather than its box:
+                // the size-7 hit area is wider than the ring it draws, so a
+                // plain inset would push the ring off both references. x is the
+                // header favicon's center (that header's sm inset plus half a
+                // size-3.5 icon), y is the sidebar footer icons' center (footer
+                // inset plus half a size-8 button) — one column with the
+                // breadcrumb, one baseline with the sidebar controls.
+                className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+var(--sidebar-content-inset)+1rem)] left-[calc(env(safe-area-inset-left)+1.25rem+0.4375rem)] z-30 hidden -translate-x-1/2 translate-y-1/2 @min-[56rem]/thread-content:block"
+              >
                 <ThreadSubscriptionUsageIndicator
                   environmentId={activeThread.environmentId}
                   providerInstanceId={activeProviderInstanceId}
