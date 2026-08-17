@@ -89,15 +89,15 @@ lists rather than deleting by hand every sync.
 Auth, cloud, analytics, and auto-update code may still exist in the tree. That is fine. Runtime
 must not send users, tokens, or events to T3 until we configure Vetra-owned replacements.
 
-| Concern                     | Vetra policy                                                                  | How it is gated today                                                                                                                                                                                                                          |
-| --------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Clerk / hosted auth         | Off until we have our own Clerk application and OAuth callbacks.              | Cloud UI and Clerk providers stay dark unless Clerk + relay public config is present. Do not copy T3 keys into `.env` / `.env.local`.                                                                                                          |
-| Vetra Connect / relay       | Off until we have our own relay and hosted app.                               | `hasCloudPublicConfig` requires a publishable key, JWT template, and HTTPS relay URL. Absent config hides connect UI.                                                                                                                          |
-| Hosted app URL              | Must not fall back to `app.t3.codes`.                                         | [`packages/shared/src/productIdentity.ts`](../../packages/shared/src/productIdentity.ts) sets `PRODUCT_DEFAULT_HOSTED_APP_URL` to `https://app.vetra.invalid`.                                                                                 |
-| Desktop auto-update         | Off until we own signing and a release repository.                            | Disabled unless `VETRA_ENABLE_AUTO_UPDATE=true`. The desktop build does not infer the current GitHub repo as an updater feed.                                                                                                                  |
-| Product analytics (PostHog) | Off until we own a PostHog project. Do not ship the inherited T3 project key. | Env vars were renamed `T3CODE_*` → `VETRA_*`. The default key and `VETRA_TELEMETRY_ENABLED=true` are still inherited from upstream; flipping that default is **not** something the script does. Treat it as a required review item every sync. |
-| OTLP / Grafana              | Optional, and only to endpoints we own.                                       | Unset by default. See [observability](../operations/observability.md).                                                                                                                                                                         |
-| Release / relay-deploy CI   | Absent until we own every publish target.                                     | `.github/workflows/release.yml` and `deploy-relay.yml` were deleted. Upstream still has them. The script does **not** prune `.github/workflows`.                                                                                               |
+| Concern                     | Vetra policy                                                                  | How it is gated today                                                                                                                                                                                                                                                                      |
+| --------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Clerk / hosted auth         | Off until we have our own Clerk application and OAuth callbacks.              | Cloud UI and Clerk providers stay dark unless Clerk + relay public config is present. Do not copy T3 keys into `.env` / `.env.local`.                                                                                                                                                      |
+| Vetra Connect / relay       | Off until we have our own relay and hosted app.                               | `hasCloudPublicConfig` requires a publishable key, JWT template, and HTTPS relay URL. Absent config hides connect UI.                                                                                                                                                                      |
+| Hosted app URL              | Must not fall back to `app.t3.codes`.                                         | [`packages/shared/src/productIdentity.ts`](../../packages/shared/src/productIdentity.ts) sets `PRODUCT_DEFAULT_HOSTED_APP_URL` to `https://app.vetra.invalid`.                                                                                                                             |
+| Desktop auto-update         | Off until we own signing and a release repository.                            | Disabled unless `VETRA_ENABLE_AUTO_UPDATE=true`. The desktop build does not infer the current GitHub repo as an updater feed.                                                                                                                                                              |
+| Product analytics (PostHog) | Off until we own a PostHog project. Do not ship the inherited T3 project key. | `VETRA_TELEMETRY_ENABLED` defaults to false and `VETRA_POSTHOG_KEY` has no default; a blank key is treated as disabled, so opting in without your own project sends nothing. Upstream defaults the other way, so a merge touching `AnalyticsService` is a required review item every sync. |
+| OTLP / Grafana              | Optional, and only to endpoints we own.                                       | Unset by default. See [observability](../operations/observability.md).                                                                                                                                                                                                                     |
+| Release / relay-deploy CI   | Absent until we own every publish target.                                     | `.github/workflows/release.yml` and `deploy-relay.yml` were deleted. Upstream still has them. The script does **not** prune `.github/workflows`.                                                                                                                                           |
 
 Canonical disable-list for publishing is [Release bootstrap status](../operations/release.md).
 Identity constants live in [`packages/shared/src/productIdentity.ts`](../../packages/shared/src/productIdentity.ts).
@@ -150,11 +150,10 @@ backends leak back in.
 - Prune GitHub workflows. Upstream still has `release.yml`, `deploy-relay.yml`, and the
   `mobile-*.yml` workflows. A merge can restore them or conflict on the deletion. Delete them again
   if they return.
-- Change telemetry defaults. After rename, `AnalyticsService` still defaults to enabled and still
-  embeds the inherited PostHog project key. If this merge did not touch that file, leave it and
-  record "still inherited" in the merge message rather than mixing a policy flip into the sync.
-  If the merge reintroduced the T3 `phc_…` key or `VETRA_TELEMETRY_ENABLED` defaulting to true,
-  revert those hunks. A dedicated follow-up can change the default.
+- Keep telemetry defaults off. This fork defaults `VETRA_TELEMETRY_ENABLED` to false and ships no
+  PostHog project key; upstream defaults to enabled with its own key, so a merge that touches
+  `AnalyticsService` will try to restore both. Revert those hunks rather than re-deriving the policy,
+  and let the "sends nothing" tests confirm it.
 - Protect [`productIdentity.ts`](../../packages/shared/src/productIdentity.ts) as a concept. Upstream
   has no such file today; if it grows one, the merge will not know our constants are sacred.
 - Run `pnpm install`, typecheck, or tests.
@@ -299,10 +298,13 @@ is not part of the sync and must not be left behind silently.
      once we have one). It must not be `https://app.t3.codes`.
    - Desktop auto-update still defaults off (`VETRA_ENABLE_AUTO_UPDATE` unset/false; no inferred
      T3 GitHub releases repo).
-   - Product analytics does not send to T3. Until we own PostHog, that means
-     `VETRA_TELEMETRY_ENABLED` defaulting to false **or** no baked-in `phc_…` key. The inherited
-     default key `phc_XOWci4oZP4VvLiEyrFqkFjP4CZn55mjYYBMREK5Wd6m` is T3's project; do not leave it
-     as a live default.
+   - Product analytics does not send to T3. This fork now holds both halves of that:
+     `VETRA_TELEMETRY_ENABLED` defaults to false **and** `VETRA_POSTHOG_KEY` has no default, with a
+     blank key treated as disabled. The inherited default key
+     `phc_XOWci4oZP4VvLiEyrFqkFjP4CZn55mjYYBMREK5Wd6m` is T3's project; if a merge restores it or
+     flips the flag back on, revert those hunks. The two "sends nothing" cases in
+     [`AnalyticsService.test.ts`](../../apps/server/src/telemetry/AnalyticsService.test.ts) fail when
+     either default regresses, so run them whenever a sync touches telemetry.
    - `.github/workflows/release.yml` and `deploy-relay.yml` are still absent.
    - Cloud UI still requires explicit Vetra config; `.env.example` stays commented.
 

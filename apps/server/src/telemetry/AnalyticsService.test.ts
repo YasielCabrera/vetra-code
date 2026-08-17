@@ -35,6 +35,43 @@ interface RecordedBatchBody {
   }>;
 }
 
+/**
+ * Boots AnalyticsService against a capturing batch server, records one event and
+ * flushes, so a caller can assert on whatever left the process.
+ */
+const runWithTelemetryConfig = (
+  capturedRequests: Array<RecordedBatchRequest>,
+  env: Readonly<Record<string, string | number | boolean>>,
+) =>
+  Effect.gen(function* () {
+    const serverConfigLayer = ServerConfig.ServerConfig.layerTest(process.cwd(), {
+      prefix: "vetra-telemetry-disabled-",
+    });
+    const telemetryLayer = AnalyticsService.layer.pipe(Layer.provideMerge(serverConfigLayer));
+    const batchServerLayer = HttpServer.serve(
+      Effect.gen(function* () {
+        const request = yield* HttpServerRequest.HttpServerRequest;
+        const payload = yield* request.json.pipe(
+          Effect.map((body) => body as RecordedBatchRequest["body"]),
+          Effect.orElseSucceed(() => null),
+        );
+        capturedRequests.push({ path: request.url, body: payload });
+        return HttpServerResponse.jsonUnsafe({});
+      }),
+    );
+    const runtimeLayer = telemetryLayer.pipe(
+      Layer.provide(ConfigProvider.layer(ConfigProvider.fromUnknown(env))),
+      Layer.provideMerge(NodeHttpServer.layerTest),
+    );
+
+    yield* Effect.gen(function* () {
+      yield* Layer.launch(batchServerLayer).pipe(Effect.forkScoped);
+      const analytics = yield* AnalyticsService.AnalyticsService;
+      yield* analytics.record("test.disabled", { index: 0 });
+      yield* analytics.flush;
+    }).pipe(Effect.provide(runtimeLayer));
+  });
+
 it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
   it.effect("flush drains all buffered events across multiple batches", () =>
     Effect.gen(function* () {
@@ -117,6 +154,34 @@ it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
         ),
         true,
       );
+    }),
+  );
+
+  // Vetra owns no PostHog project, so an unconfigured install must stay silent.
+  // Upstream ships this defaulting on with its own project key, and every sync
+  // can restore that; these cases fail loudly if it comes back.
+  it.effect("sends nothing when telemetry is left unconfigured", () =>
+    Effect.gen(function* () {
+      const capturedRequests: Array<RecordedBatchRequest> = [];
+
+      yield* runWithTelemetryConfig(capturedRequests, {
+        VETRA_POSTHOG_HOST: "http://localhost",
+      });
+
+      assert.deepEqual(capturedRequests, []);
+    }),
+  );
+
+  it.effect("sends nothing when enabled without a project key", () =>
+    Effect.gen(function* () {
+      const capturedRequests: Array<RecordedBatchRequest> = [];
+
+      yield* runWithTelemetryConfig(capturedRequests, {
+        VETRA_TELEMETRY_ENABLED: true,
+        VETRA_POSTHOG_HOST: "http://localhost",
+      });
+
+      assert.deepEqual(capturedRequests, []);
     }),
   );
 });

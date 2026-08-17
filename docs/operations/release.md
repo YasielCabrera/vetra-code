@@ -13,7 +13,9 @@ artifacts, hosted web builds, or infrastructure under the wrong product identity
 - `@vetra-code/server` is private and cannot be installed through `npx`;
 - hosted web deployment has no production route or domain;
 - desktop auto-update does not start unless `VETRA_ENABLE_AUTO_UPDATE=true`;
-- cloud UI stays hidden when Vetra Clerk and relay public configuration is absent.
+- cloud UI stays hidden when Vetra Clerk and relay public configuration is absent;
+- product analytics send nothing: `VETRA_TELEMETRY_ENABLED` defaults to false, no PostHog project
+  key ships, and a blank key is treated as disabled even when the flag is on.
 
 Do not restore those workflows or target another product's GitHub repository, npm package, hosted
 domains, Clerk application, relay, telemetry project, signing identity, or updater feed.

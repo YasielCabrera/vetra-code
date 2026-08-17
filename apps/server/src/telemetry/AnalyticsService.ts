@@ -29,13 +29,14 @@ interface BufferedAnalyticsEvent {
 }
 
 const TelemetryEnvConfig = Config.all({
-  posthogKey: Config.string("VETRA_POSTHOG_KEY").pipe(
-    Config.withDefault("phc_XOWci4oZP4VvLiEyrFqkFjP4CZn55mjYYBMREK5Wd6m"),
-  ),
+  // No default project key. Vetra does not own a PostHog project yet, and the
+  // inherited upstream key pointed at T3's. Telemetry stays off until an
+  // operator supplies a destination we own.
+  posthogKey: Config.string("VETRA_POSTHOG_KEY").pipe(Config.withDefault("")),
   posthogHost: Config.string("VETRA_POSTHOG_HOST").pipe(
     Config.withDefault("https://us.i.posthog.com"),
   ),
-  enabled: Config.boolean("VETRA_TELEMETRY_ENABLED").pipe(Config.withDefault(true)),
+  enabled: Config.boolean("VETRA_TELEMETRY_ENABLED").pipe(Config.withDefault(false)),
   flushBatchSize: Config.number("VETRA_TELEMETRY_FLUSH_BATCH_SIZE").pipe(Config.withDefault(20)),
   maxBufferedEvents: Config.number("VETRA_TELEMETRY_MAX_BUFFERED_EVENTS").pipe(
     Config.withDefault(1_000),
@@ -68,6 +69,9 @@ export class AnalyticsService extends Context.Service<
 
 export const make = Effect.gen(function* () {
   const telemetryConfig = yield* TelemetryEnvConfig;
+  // Opting in without a project key has nowhere safe to send, so treat a blank
+  // key as disabled rather than posting to whatever default a merge restores.
+  const telemetryEnabled = telemetryConfig.enabled && telemetryConfig.posthogKey !== "";
   const httpClient = yield* HttpClient.HttpClient;
   const serverConfig = yield* ServerConfig.ServerConfig;
   const identifier = yield* getTelemetryIdentifier;
@@ -106,7 +110,7 @@ export const make = Effect.gen(function* () {
   const sendBatch = Effect.fn("AnalyticsService.sendBatch")(function* (
     events: ReadonlyArray<BufferedAnalyticsEvent>,
   ) {
-    if (!telemetryConfig.enabled || !identifier) return;
+    if (!telemetryEnabled || !identifier) return;
 
     const payload = {
       api_key: telemetryConfig.posthogKey,
@@ -160,7 +164,7 @@ export const make = Effect.gen(function* () {
 
   const record: AnalyticsService["Service"]["record"] = Effect.fn("AnalyticsService.record")(
     function* (event, properties) {
-      if (!telemetryConfig.enabled || !identifier) return;
+      if (!telemetryEnabled || !identifier) return;
 
       const enqueueResult = yield* enqueueBufferedEvent(event, properties);
       if (enqueueResult.dropped) {
