@@ -115,6 +115,7 @@ export default defineConfig({
       "vetra/no-global-process-runtime": "error",
       "vetra/no-inline-schema-compile": "warn",
       "vetra/no-manual-effect-runtime-in-tests": "error",
+      "vetra/no-native-title-tooltip": "error",
       "vetra/namespace-node-imports": "error",
     },
     options: {

@@ -1,7 +1,8 @@
-import type {
-  PreviewOpenInput,
-  PreviewSessionSnapshot,
-  ScopedThreadRef,
+import {
+  FILL_PREVIEW_VIEWPORT,
+  type PreviewOpenInput,
+  type PreviewSessionSnapshot,
+  type ScopedThreadRef,
 } from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/unstable/reactivity";
@@ -45,7 +46,10 @@ describe("openPreviewSession", () => {
       threadRef,
     });
 
-    expect(open).toHaveBeenCalledWith({ threadId: "thread-1" });
+    expect(open).toHaveBeenCalledWith({
+      threadId: "thread-1",
+      viewport: FILL_PREVIEW_VIEWPORT,
+    });
     expect(readThreadPreviewState(threadRef).snapshot).toEqual(idleSnapshot);
     expect(readThreadPreviewState(threadRef).recentlySeenUrls).toEqual([]);
   });
@@ -59,7 +63,11 @@ describe("openPreviewSession", () => {
       url: "vetra.chat",
     });
 
-    expect(open).toHaveBeenCalledWith({ threadId: "thread-1", url: "vetra.chat" });
+    expect(open).toHaveBeenCalledWith({
+      threadId: "thread-1",
+      url: "vetra.chat",
+      viewport: FILL_PREVIEW_VIEWPORT,
+    });
     expect(readThreadPreviewState(threadRef).snapshot).toEqual(snapshot);
     expect(readThreadPreviewState(threadRef).recentlySeenUrls).toEqual(["https://example.com/"]);
   });

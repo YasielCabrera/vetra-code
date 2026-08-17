@@ -1,5 +1,9 @@
 import { MoonIcon, SunIcon } from "lucide-react";
 import type { CSSProperties } from "react";
+import {
+  STANDARD_THEME_PREVIEW_COLORS as SHARED_STANDARD_THEME_PREVIEW_COLORS,
+  THEME_PREVIEW_RENDER_SPECS,
+} from "@vetra-code/shared/themePreview";
 import { cn } from "../../lib/utils";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
@@ -37,21 +41,17 @@ const STANDARD_THEME_PREVIEW_COLORS: Record<
 > = {
   light: {
     sidebar: "#f7f8fa",
-    canvas: "#f6faf7",
     surface: "#ffffff",
     accentSurface: "#e9f7ee",
-    accent: "#04c161",
     messageSurface: "#e2f7ea",
-    messageAction: "#04c161",
+    ...SHARED_STANDARD_THEME_PREVIEW_COLORS.light,
   },
   dark: {
     sidebar: "#09110d",
-    canvas: "#0b1510",
     surface: "#111d16",
     accentSurface: "#183423",
-    accent: "#20d978",
     messageSurface: "#173522",
-    messageAction: "#20d978",
+    ...SHARED_STANDARD_THEME_PREVIEW_COLORS.dark,
   },
 };
 
@@ -102,23 +102,20 @@ function getThemePreviewStyle(
   colors: ThemeCardPreviewColors,
   mode: ThemeAppearance,
 ): CSSProperties {
-  const isDark = mode === "dark";
+  const spec = THEME_PREVIEW_RENDER_SPECS[mode];
   // The canvas carries the ball's light/dark identity, so it stays dominant:
   // a near-true base with a contained accent glow, instead of an accent wash
   // that makes both modes read alike.
-  const modeBase = isDark
-    ? `color-mix(in oklab, ${colors.canvas} 80%, #09090b)`
-    : `color-mix(in oklab, ${colors.canvas} 80%, #ffffff)`;
-  const accentPosition = isDark ? "28% 78%" : "72% 22%";
-  const actionPosition = isDark ? "82% 18%" : "18% 82%";
-  const accentFade = isDark ? 62 : 72;
+  const modeBase = `color-mix(in oklab, ${colors.canvas} ${spec.baseWeight * 100}%, ${spec.baseTarget})`;
+  const accentPosition = `${spec.accent.center[0] * 100}% ${spec.accent.center[1] * 100}%`;
+  const actionPosition = `${spec.action.center[0] * 100}% ${spec.action.center[1] * 100}%`;
   return {
     backgroundColor: modeBase,
     backgroundImage: [
-      `radial-gradient(circle at ${accentPosition} in oklab, ${colors.accent} 0%, color-mix(in oklab, ${colors.accent} ${accentFade}%, transparent) 28%, transparent 58%)`,
+      `radial-gradient(circle at ${accentPosition} in oklab, ${colors.accent} 0%, color-mix(in oklab, ${colors.accent} ${spec.accent.middleOpacity * 100}%, transparent) ${spec.accent.middleOffset * 100}%, transparent ${spec.accent.endOffset * 100}%)`,
       // The action color is a soft tint from the opposite corner, not a second
       // light source — two bright hotspots read as headlights.
-      `radial-gradient(circle at ${actionPosition} in oklab, color-mix(in oklab, ${colors.messageAction} 45%, transparent) 0%, transparent 55%)`,
+      `radial-gradient(circle at ${actionPosition} in oklab, color-mix(in oklab, ${colors.messageAction} ${spec.action.startOpacity * 100}%, transparent) 0%, transparent ${spec.action.endOffset * 100}%)`,
     ].join(", "),
   };
 }
@@ -145,8 +142,12 @@ export function ThemePreviewCircle({
       style={{ boxShadow: themePreviewEdgeShadow(mode) }}
     >
       <span
-        className="absolute inset-0 scale-110 rounded-full blur-[3px]"
-        style={getThemePreviewStyle(colors, mode)}
+        className="absolute inset-0 rounded-full"
+        style={{
+          ...getThemePreviewStyle(colors, mode),
+          filter: `blur(${THEME_PREVIEW_RENDER_SPECS[mode].blurAt56Px}px)`,
+          transform: `scale(${THEME_PREVIEW_RENDER_SPECS[mode].scale})`,
+        }}
       />
     </span>
   );

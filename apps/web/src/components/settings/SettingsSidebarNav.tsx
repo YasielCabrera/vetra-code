@@ -10,6 +10,7 @@ import {
 import {
   ArchiveIcon,
   ArrowLeftIcon,
+  BlocksIcon,
   BotIcon,
   GitBranchIcon,
   KeyboardIcon,
@@ -53,6 +54,7 @@ const SETTINGS_SECTION_ICONS: Readonly<
   "/settings/appearance": PaletteIcon,
   "/settings/keybindings": KeyboardIcon,
   "/settings/providers": BotIcon,
+  "/settings/integrations": BlocksIcon,
   "/settings/source-control": GitBranchIcon,
   "/settings/connections": Link2Icon,
   "/settings/web3": WalletIcon,

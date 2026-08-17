@@ -5,6 +5,7 @@ export type SettingsPath =
   | "/settings/appearance"
   | "/settings/keybindings"
   | "/settings/providers"
+  | "/settings/integrations"
   | "/settings/source-control"
   | "/settings/connections"
   | "/settings/web3"
@@ -29,6 +30,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/appearance": "Appearance",
   "/settings/keybindings": "Keybindings",
   "/settings/providers": "Providers",
+  "/settings/integrations": "Integrations",
   "/settings/source-control": "Source Control",
   "/settings/connections": "Connections",
   "/settings/web3": "Web3",
@@ -206,6 +208,36 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "subscription-limit-alerts",
     title: "Subscription limit alerts",
     to: "/settings/providers",
+  },
+  {
+    id: "agent-browser-access",
+    title: "Agent browser access",
+    to: "/settings/integrations",
+    targetId: "browser",
+  },
+  {
+    id: "browser-default-viewport",
+    title: "Default browser viewport",
+    to: "/settings/integrations",
+    targetId: "browser",
+  },
+  {
+    id: "browser-default-zoom",
+    title: "Default browser zoom",
+    to: "/settings/integrations",
+    targetId: "browser",
+  },
+  {
+    id: "browser-default-appearance",
+    title: "Default browser appearance",
+    to: "/settings/integrations",
+    targetId: "browser",
+  },
+  {
+    id: "browser-auto-show-floating-preview",
+    title: "Auto-show floating preview",
+    to: "/settings/integrations",
+    targetId: "browser",
   },
   {
     id: "source-control",

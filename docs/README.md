@@ -28,7 +28,7 @@ policy in [CONTRIBUTING.md](../CONTRIBUTING.md); agent rules in [AGENTS.md](../A
 - [Workspace layout](./internals/workspace-layout.md)
 - [Glossary](./internals/glossary.md)
 - [Scripts](./internals/scripts.md)
-- [Syncing upstream T3 Code](./internals/upstream-sync.md)
+- [Syncing upstream Vetra Code](./internals/upstream-sync.md)
 - [Connection runtime](./internals/connection-runtime.md)
 - [Providers](./internals/providers.md)
 - [Remote environments](./internals/remote.md)
@@ -41,7 +41,7 @@ policy in [CONTRIBUTING.md](../CONTRIBUTING.md); agent rules in [AGENTS.md](../A
 
 ### Runbooks
 
-- [Syncing upstream T3 Code](./internals/upstream-sync.md)
+- [Syncing upstream Vetra Code](./internals/upstream-sync.md)
 - [Release](./operations/release.md)
 - [Observability](./operations/observability.md)
 - [Relay observability](./operations/relay-observability.md)
