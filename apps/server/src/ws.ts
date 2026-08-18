@@ -791,6 +791,10 @@ const makeWsRpcLayer = (
         vcsStatusBroadcaster
           .refreshStatus(cwd)
           .pipe(Effect.ignoreCause({ log: true }), Effect.forkDetach, Effect.asVoid);
+      const refreshLocalGitStatus = (cwd: string) =>
+        vcsStatusBroadcaster
+          .refreshLocalStatus(cwd)
+          .pipe(Effect.ignoreCause({ log: true }), Effect.forkDetach, Effect.asVoid);
 
       return WsRpcGroup.of({
         [ORCHESTRATION_WS_METHODS.dispatchCommand]: (command) =>
@@ -1570,6 +1574,7 @@ const makeWsRpcLayer = (
           observeRpcEffect(
             WS_METHODS.projectsListEntries,
             workspaceEntries.list(input).pipe(
+              Effect.tap(() => refreshLocalGitStatus(input.cwd)),
               Effect.mapError(
                 (cause) =>
                   new ProjectListEntriesError({
@@ -1600,6 +1605,7 @@ const makeWsRpcLayer = (
           observeRpcEffect(
             WS_METHODS.projectsWriteFile,
             workspaceFileSystem.writeFile(input).pipe(
+              Effect.tap(() => refreshLocalGitStatus(input.cwd)),
               Effect.mapError(
                 (cause) =>
                   new ProjectWriteFileError({

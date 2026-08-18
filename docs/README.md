@@ -8,6 +8,7 @@
 - [Organizing threads](./user/thread-sidebar.md)
 - [Review usage](./user/usage.md)
 - [Browse your projects](./user/browsing-projects.md)
+- [Explore project files](./user/file-explorer.md)
 - [Run work on a schedule](./user/automations.md)
 - [Customize a project icon](./user/project-settings.md)
 - [Remote access](./user/remote-access.md)

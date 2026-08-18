@@ -7,6 +7,7 @@ import {
   GitRunStackedActionResult,
   GitRunStackedActionInput,
   GitResolvePullRequestResult,
+  VcsStatusLocalResult,
 } from "./git.ts";
 
 const decodeCreateWorktreeInput = Schema.decodeUnknownSync(VcsCreateWorktreeInput);
@@ -16,6 +17,42 @@ const decodePreparePullRequestThreadInput = Schema.decodeUnknownSync(
 const decodeRunStackedActionInput = Schema.decodeUnknownSync(GitRunStackedActionInput);
 const decodeRunStackedActionResult = Schema.decodeUnknownSync(GitRunStackedActionResult);
 const decodeResolvePullRequestResult = Schema.decodeUnknownSync(GitResolvePullRequestResult);
+const decodeStatusLocalResult = Schema.decodeUnknownSync(VcsStatusLocalResult);
+
+function localStatusFile(status?: string) {
+  return decodeStatusLocalResult({
+    isRepo: true,
+    hasPrimaryRemote: false,
+    isDefaultRef: true,
+    refName: "main",
+    hasWorkingTreeChanges: true,
+    workingTree: {
+      files: [
+        {
+          path: "src/index.ts",
+          insertions: 1,
+          deletions: 0,
+          ...(status === undefined ? {} : { status }),
+        },
+      ],
+      insertions: 1,
+      deletions: 0,
+    },
+  }).workingTree.files[0];
+}
+
+describe("VcsStatusLocalResult", () => {
+  it.each(["added", "modified", "renamed", "untracked", "deleted"])(
+    "accepts the %s working-tree file status",
+    (status) => {
+      expect(localStatusFile(status)?.status).toBe(status);
+    },
+  );
+
+  it("accepts legacy working-tree files without a status", () => {
+    expect(localStatusFile()?.status).toBeUndefined();
+  });
+});
 
 describe("VcsCreateWorktreeInput", () => {
   it("accepts omitted newRefName for existing-refName worktrees", () => {

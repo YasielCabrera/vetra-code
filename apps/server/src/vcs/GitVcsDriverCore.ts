@@ -25,6 +25,7 @@ import {
   type ReviewDiffPreviewInput,
   type ReviewDiffPreviewSource,
   type VcsRef,
+  type VcsWorkingTreeFileStatus,
 } from "@vetra-code/contracts";
 import {
   dedupeRemoteBranchesWithLocalMatches,
@@ -165,19 +166,28 @@ function parseNumstatEntries(
   stdout: string,
 ): Array<{ path: string; insertions: number; deletions: number }> {
   const entries: Array<{ path: string; insertions: number; deletions: number }> = [];
-  for (const line of stdout.split(/\r?\n/g)) {
-    if (line.trim().length === 0) continue;
-    const [addedRaw, deletedRaw, ...pathParts] = line.split("\t");
-    const rawPath =
-      pathParts.length > 1 ? (pathParts.at(-1) ?? "").trim() : pathParts.join("\t").trim();
-    if (rawPath.length === 0) continue;
+  const records = stdout.split("\0");
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index] ?? "";
+    if (record.length === 0) continue;
+    const firstTabIndex = record.indexOf("\t");
+    const secondTabIndex = record.indexOf("\t", firstTabIndex + 1);
+    if (firstTabIndex < 0 || secondTabIndex < 0) continue;
+    const addedRaw = record.slice(0, firstTabIndex);
+    const deletedRaw = record.slice(firstTabIndex + 1, secondTabIndex);
+    let filePath = record.slice(secondTabIndex + 1);
+    if (filePath.length === 0) {
+      index += 1;
+      const oldPath = records[index] ?? "";
+      index += 1;
+      const newPath = records[index] ?? "";
+      filePath = newPath || oldPath;
+    }
+    if (filePath.length === 0) continue;
     const added = Number.parseInt(addedRaw ?? "0", 10);
     const deleted = Number.parseInt(deletedRaw ?? "0", 10);
-    const renameArrowIndex = rawPath.indexOf(" => ");
-    const normalizedPath =
-      renameArrowIndex >= 0 ? rawPath.slice(renameArrowIndex + " => ".length).trim() : rawPath;
     entries.push({
-      path: normalizedPath.length > 0 ? normalizedPath : rawPath,
+      path: filePath,
       insertions: Number.isFinite(added) ? added : 0,
       deletions: Number.isFinite(deleted) ? deleted : 0,
     });
@@ -185,26 +195,92 @@ function parseNumstatEntries(
   return entries;
 }
 
-function parsePorcelainPath(line: string): string | null {
-  if (line.startsWith("? ") || line.startsWith("! ")) {
-    const simple = line.slice(2).trim();
-    return simple.length > 0 ? simple : null;
+interface ParsedPorcelainStatus {
+  readonly refName: string | null;
+  readonly upstreamRef: string | null;
+  readonly aheadCount: number;
+  readonly behindCount: number;
+  readonly statusByPath: ReadonlyMap<string, VcsWorkingTreeFileStatus>;
+}
+
+function splitPorcelainRecordPrefix(
+  record: string,
+  fieldCount: number,
+): { readonly fields: readonly string[]; readonly remainder: string } | null {
+  const fields: string[] = [];
+  let offset = 0;
+  for (let index = 0; index < fieldCount; index += 1) {
+    const separatorIndex = record.indexOf(" ", offset);
+    if (separatorIndex < 0) return null;
+    fields.push(record.slice(offset, separatorIndex));
+    offset = separatorIndex + 1;
+  }
+  return { fields, remainder: record.slice(offset) };
+}
+
+function statusForPorcelainRecord(
+  recordType: "1" | "2" | "u",
+  indexAndWorktreeStatus: string,
+): VcsWorkingTreeFileStatus {
+  if (recordType === "2") return "renamed";
+  if (recordType === "u") return "modified";
+  const indexStatus = indexAndWorktreeStatus.at(0) ?? ".";
+  const worktreeStatus = indexAndWorktreeStatus.at(1) ?? ".";
+  if (indexStatus === "D" || worktreeStatus === "D") return "deleted";
+  if (indexStatus === "A") return "added";
+  if (indexStatus === "R" || indexStatus === "C") return "renamed";
+  return "modified";
+}
+
+function parsePorcelainStatus(stdout: string): ParsedPorcelainStatus {
+  let refName: string | null = null;
+  let upstreamRef: string | null = null;
+  let aheadCount = 0;
+  let behindCount = 0;
+  const statusByPath = new Map<string, VcsWorkingTreeFileStatus>();
+  const records = stdout.split("\0");
+
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index] ?? "";
+    if (record.startsWith("# branch.head ")) {
+      const value = record.slice("# branch.head ".length).trim();
+      refName = value.startsWith("(") ? null : value;
+      continue;
+    }
+    if (record.startsWith("# branch.upstream ")) {
+      const value = record.slice("# branch.upstream ".length).trim();
+      upstreamRef = value.length > 0 ? value : null;
+      continue;
+    }
+    if (record.startsWith("# branch.ab ")) {
+      const value = record.slice("# branch.ab ".length).trim();
+      const parsed = parseBranchAb(value);
+      aheadCount = parsed.ahead;
+      behindCount = parsed.behind;
+      continue;
+    }
+    if (record.startsWith("? ")) {
+      const filePath = record.slice(2);
+      if (filePath.length > 0) statusByPath.set(filePath, "untracked");
+      continue;
+    }
+    if (!(record.startsWith("1 ") || record.startsWith("2 ") || record.startsWith("u "))) {
+      continue;
+    }
+
+    const recordType = record[0] as "1" | "2" | "u";
+    const fixedFieldCount = recordType === "1" ? 8 : recordType === "2" ? 9 : 10;
+    const parsed = splitPorcelainRecordPrefix(record, fixedFieldCount);
+    if (!parsed || parsed.remainder.length === 0) continue;
+    const indexAndWorktreeStatus = parsed.fields[1] ?? "..";
+    statusByPath.set(
+      parsed.remainder,
+      statusForPorcelainRecord(recordType, indexAndWorktreeStatus),
+    );
+    if (recordType === "2") index += 1;
   }
 
-  if (!(line.startsWith("1 ") || line.startsWith("2 ") || line.startsWith("u "))) {
-    return null;
-  }
-
-  const tabIndex = line.indexOf("\t");
-  if (tabIndex >= 0) {
-    const fromTab = line.slice(tabIndex + 1);
-    const [filePath] = fromTab.split("\t");
-    return filePath?.trim().length ? filePath.trim() : null;
-  }
-
-  const parts = line.trim().split(/\s+/g);
-  const filePath = parts.at(-1) ?? "";
-  return filePath.length > 0 ? filePath : null;
+  return { refName, upstreamRef, aheadCount, behindCount, statusByPath };
 }
 
 function filterBranchesForListQuery(
@@ -1568,7 +1644,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     const statusResult = yield* executeGitWithStableDiagnostics(
       "GitVcsDriver.statusDetails.status",
       cwd,
-      ["status", "--porcelain=2", "--branch"],
+      ["status", "--porcelain=2", "--branch", "-z"],
       {
         allowNonZeroExit: true,
       },
@@ -1591,7 +1667,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
         ...gitCommandContext({
           operation: "GitVcsDriver.statusDetails.status",
           cwd,
-          args: ["status", "--porcelain=2", "--branch"],
+          args: ["status", "--porcelain=2", "--branch", "-z"],
         }),
         detail: "Git status failed.",
         exitCode: statusResult.exitCode,
@@ -1609,7 +1685,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
         executeGitWithStableDiagnostics(
           "GitVcsDriver.statusDetails.numstat",
           cwd,
-          ["diff", "HEAD", "--numstat", "--"],
+          ["diff", "HEAD", "--numstat", "-z", "--"],
           { allowNonZeroExit: true },
         ).pipe(
           Effect.flatMap((result) => {
@@ -1620,11 +1696,13 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
                   runGitStdout("GitVcsDriver.statusDetails.numstat.unborn", cwd, [
                     "diff",
                     "--numstat",
+                    "-z",
                   ]),
                   runGitStdout("GitVcsDriver.statusDetails.numstat.unborn.staged", cwd, [
                     "diff",
                     "--cached",
                     "--numstat",
+                    "-z",
                   ]),
                 ]),
                 ([unstagedStdout, stagedStdout]) => {
@@ -1641,8 +1719,8 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
                     map.set(entry.path, existing);
                   }
                   return Array.from(map.entries())
-                    .map(([p, s]) => `${s.insertions}\t${s.deletions}\t${p}`)
-                    .join("\n");
+                    .map(([p, s]) => `${s.insertions}\t${s.deletions}\t${p}\0`)
+                    .join("");
                 },
               );
             }
@@ -1651,7 +1729,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
                 ...gitCommandContext({
                   operation: "GitVcsDriver.statusDetails.numstat",
                   cwd,
-                  args: ["diff", "HEAD", "--numstat", "--"],
+                  args: ["diff", "HEAD", "--numstat", "-z", "--"],
                 }),
                 detail: "git diff HEAD --numstat failed.",
                 exitCode: result.exitCode,
@@ -1670,40 +1748,10 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       ],
       { concurrency: "unbounded" },
     );
-    const statusStdout = statusResult.stdout;
-
-    let refName: string | null = null;
-    let upstreamRef: string | null = null;
-    let aheadCount = 0;
-    let behindCount = 0;
+    const parsedStatus = parsePorcelainStatus(statusResult.stdout);
+    let { refName, upstreamRef, aheadCount, behindCount } = parsedStatus;
     let aheadOfDefaultCount = 0;
-    let hasWorkingTreeChanges = false;
-    const changedFilesWithoutNumstat = new Set<string>();
-
-    for (const line of statusStdout.split(/\r?\n/g)) {
-      if (line.startsWith("# branch.head ")) {
-        const value = line.slice("# branch.head ".length).trim();
-        refName = value.startsWith("(") ? null : value;
-        continue;
-      }
-      if (line.startsWith("# branch.upstream ")) {
-        const value = line.slice("# branch.upstream ".length).trim();
-        upstreamRef = value.length > 0 ? value : null;
-        continue;
-      }
-      if (line.startsWith("# branch.ab ")) {
-        const value = line.slice("# branch.ab ".length).trim();
-        const parsed = parseBranchAb(value);
-        aheadCount = parsed.ahead;
-        behindCount = parsed.behind;
-        continue;
-      }
-      if (line.trim().length > 0 && !line.startsWith("#")) {
-        hasWorkingTreeChanges = true;
-        const pathValue = parsePorcelainPath(line);
-        if (pathValue) changedFilesWithoutNumstat.add(pathValue);
-      }
-    }
+    const hasWorkingTreeChanges = parsedStatus.statusByPath.size > 0;
 
     const fallbackAheadCount =
       !upstreamRef && refName
@@ -1738,13 +1786,18 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       .map(([filePath, stat]) => {
         insertions += stat.insertions;
         deletions += stat.deletions;
-        return { path: filePath, insertions: stat.insertions, deletions: stat.deletions };
+        return {
+          path: filePath,
+          insertions: stat.insertions,
+          deletions: stat.deletions,
+          status: parsedStatus.statusByPath.get(filePath) ?? "modified",
+        };
       })
       .toSorted((a, b) => a.path.localeCompare(b.path));
 
-    for (const filePath of changedFilesWithoutNumstat) {
+    for (const [filePath, status] of parsedStatus.statusByPath) {
       if (fileStatMap.has(filePath)) continue;
-      files.push({ path: filePath, insertions: 0, deletions: 0 });
+      files.push({ path: filePath, insertions: 0, deletions: 0, status });
     }
     files.sort((a, b) => a.path.localeCompare(b.path));
 

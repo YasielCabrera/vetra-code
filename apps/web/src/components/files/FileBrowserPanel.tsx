@@ -2,7 +2,7 @@ import type {
   ContextMenuItem as TreeContextMenuItem,
   ContextMenuOpenContext as TreeContextMenuOpenContext,
 } from "@pierre/trees";
-import type { EnvironmentId, ProjectEntry } from "@vetra-code/contracts";
+import type { EnvironmentId, ProjectEntry, VcsStatusResult } from "@vetra-code/contracts";
 import { FileTree, useFileTree, useFileTreeSearch } from "@pierre/trees/react";
 import { serializeComposerFileLink } from "@vetra-code/shared/composerTrigger";
 import { RotateCw } from "lucide-react";
@@ -18,9 +18,12 @@ import { useTheme } from "~/hooks/useTheme";
 import { cn } from "~/lib/utils";
 import { readLocalApi } from "~/localApi";
 import { VETRA_PIERRE_FOLDER_ICON_CSS, VETRA_PIERRE_ICONS } from "~/pierre-icons";
+import { useEnvironmentQuery } from "~/state/query";
+import { vcsEnvironment } from "~/state/vcs";
 
 import { fileTreeAncestorDirectoryPaths } from "./filePath";
 import { createFileTreeDragMentionController } from "./fileTreeDragMention";
+import { buildFileTreeGitStatus } from "./fileTreeGitStatus";
 import { useProjectEntriesQuery } from "./projectFilesQueryState";
 
 interface FileBrowserPanelProps {
@@ -42,10 +45,19 @@ const TREE_UNSAFE_CSS = `
     --trees-border-color-override: color-mix(in srgb, currentColor 14%, transparent);
     --trees-font-family-override: var(--font-sans);
     --trees-font-size-override: 12px;
+    --trees-status-added-override: var(--success);
+    --trees-status-deleted-override: var(--destructive);
   }
   button[data-type='item'] { border-radius: 5px; }
+  [data-item-contains-git-change='true'] > [data-item-section='content'] {
+    color: var(--trees-git-modified-color);
+    font-weight: var(--trees-font-weight-semibold);
+  }
   ${VETRA_PIERRE_FOLDER_ICON_CSS}
 `;
+
+const EMPTY_PROJECT_ENTRIES: readonly ProjectEntry[] = [];
+const EMPTY_WORKING_TREE_FILES: VcsStatusResult["workingTree"]["files"] = [];
 
 function treePath(entry: ProjectEntry): string {
   return entry.kind === "directory" ? `${entry.path}/` : entry.path;
@@ -120,13 +132,21 @@ export default function FileBrowserPanel({
   const { resolvedTheme } = useTheme();
   const composerRef = useComposerHandleContext();
   const entriesQuery = useProjectEntriesQuery(environmentId, cwd);
-  const entries = entriesQuery.data?.entries ?? [];
+  const vcsStatusQuery = useEnvironmentQuery(
+    vcsEnvironment.status({ environmentId, input: { cwd } }),
+  );
+  const entries = entriesQuery.data?.entries ?? EMPTY_PROJECT_ENTRIES;
+  const changedFiles = vcsStatusQuery.data?.workingTree.files ?? EMPTY_WORKING_TREE_FILES;
   const entryKinds = useMemo(
     () => new Map(entries.map((entry) => [entry.path, entry.kind] as const)),
     [entries],
   );
   const entryKindsRef = useRef<ReadonlyMap<string, ProjectEntry["kind"]>>(entryKinds);
   const treePaths = useMemo(() => entries.map(treePath), [entries]);
+  const gitStatus = useMemo(
+    () => buildFileTreeGitStatus(entries, changedFiles),
+    [changedFiles, entries],
+  );
   const previousTreePathsRef = useRef<readonly string[]>([]);
   const syncingSelectionRef = useRef(false);
   const treeSelectionPathRef = useRef<string | null>(null);
@@ -233,6 +253,7 @@ export default function FileBrowserPanel({
     density: "compact",
     fileTreeSearchMode: "hide-non-matches",
     flattenEmptyDirectories: true,
+    gitStatus,
     // Keep folders closed until the user opens them or a file's path is revealed.
     initialExpansion: "closed",
     icons: VETRA_PIERRE_ICONS,
@@ -266,6 +287,10 @@ export default function FileBrowserPanel({
     }
     search.setValue(value);
   };
+
+  useEffect(() => {
+    model.setGitStatus(gitStatus);
+  }, [gitStatus, model]);
 
   useEffect(() => {
     if (previousTreePathsRef.current === treePaths) return;

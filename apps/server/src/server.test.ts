@@ -4765,8 +4765,18 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         path.join(workspaceDir, "src", "index.ts"),
         "export const answer = 42;\n",
       );
+      const refreshLocalStatus = vi.fn((_: string) =>
+        Effect.succeed({
+          isRepo: true,
+          hasPrimaryRemote: false,
+          isDefaultRef: true,
+          refName: "main",
+          hasWorkingTreeChanges: false,
+          workingTree: { files: [], insertions: 0, deletions: 0 },
+        }),
+      );
 
-      yield* buildAppUnderTest();
+      yield* buildAppUnderTest({ layers: { vcsStatusBroadcaster: { refreshLocalStatus } } });
 
       const wsUrl = yield* getWsServerUrl("/ws");
       const response = yield* Effect.scoped(
@@ -4788,6 +4798,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         byteLength: 26,
         truncated: false,
       });
+      assert.deepEqual(refreshLocalStatus.mock.calls, [[workspaceDir]]);
     }).pipe(Effect.provide(NodeHttpServer.layerTest), TestClock.withLive),
   );
 
@@ -4997,8 +5008,18 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const workspaceDir = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-ws-project-write-" });
+      const refreshLocalStatus = vi.fn((_: string) =>
+        Effect.succeed({
+          isRepo: true,
+          hasPrimaryRemote: false,
+          isDefaultRef: true,
+          refName: "main",
+          hasWorkingTreeChanges: true,
+          workingTree: { files: [], insertions: 0, deletions: 0 },
+        }),
+      );
 
-      yield* buildAppUnderTest();
+      yield* buildAppUnderTest({ layers: { vcsStatusBroadcaster: { refreshLocalStatus } } });
 
       const wsUrl = yield* getWsServerUrl("/ws");
       const response = yield* Effect.scoped(
@@ -5014,6 +5035,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       assert.equal(response.relativePath, "nested/created.txt");
       const persisted = yield* fs.readFileString(path.join(workspaceDir, "nested", "created.txt"));
       assert.equal(persisted, "written-by-rpc");
+      assert.deepEqual(refreshLocalStatus.mock.calls, [[workspaceDir]]);
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 

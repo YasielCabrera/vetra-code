@@ -160,7 +160,7 @@ it.effect("uses stable diagnostics for every parsed non-repository command", () 
     yield* driver.listRefs({ cwd });
 
     assert.deepStrictEqual(commands, [
-      { args: ["status", "--porcelain=2", "--branch"], lcAll: "C" },
+      { args: ["status", "--porcelain=2", "--branch", "-z"], lcAll: "C" },
       { args: ["rev-parse", "--abbrev-ref", "HEAD"], lcAll: "C" },
       { args: ["rev-parse", "--git-common-dir"], lcAll: "C" },
     ]);
@@ -947,6 +947,75 @@ it.layer(TestLayer)("GitVcsDriver core integration", (it) => {
           status.workingTree.files.map((file) => file.path),
           "feature.ts",
         );
+        assert.equal(
+          status.workingTree.files.find((file) => file.path === "feature.ts")?.status,
+          "untracked",
+        );
+      }),
+    );
+
+    it.effect("reports exact working-tree statuses with NUL-safe paths", () =>
+      Effect.gen(function* () {
+        const cwd = yield* makeTmpDir();
+        yield* initRepoWithCommit(cwd);
+        yield* writeTextFile(cwd, "old name.ts", "export const oldName = true;\n");
+        yield* writeTextFile(cwd, "deleted.ts", "export const removed = true;\n");
+        yield* git(cwd, ["add", "old name.ts", "deleted.ts"]);
+        yield* git(cwd, ["commit", "-m", "add status fixtures"]);
+
+        yield* writeTextFile(cwd, "README.md", "# changed\n");
+        yield* writeTextFile(cwd, "staged file.ts", "export const staged = true;\n");
+        yield* git(cwd, ["add", "staged file.ts"]);
+        yield* git(cwd, ["mv", "old name.ts", "renamed name.ts"]);
+        yield* git(cwd, ["rm", "deleted.ts"]);
+        yield* writeTextFile(
+          cwd,
+          "new folder/untracked file.ts",
+          "export const untracked = true;\n",
+        );
+
+        const status = yield* (yield* GitVcsDriver.GitVcsDriver).statusDetails(cwd);
+        const filesByPath = new Map(status.workingTree.files.map((file) => [file.path, file]));
+
+        assert.equal(filesByPath.get("README.md")?.status, "modified");
+        assert.equal(filesByPath.get("staged file.ts")?.status, "added");
+        assert.equal(filesByPath.get("renamed name.ts")?.status, "renamed");
+        assert.equal(filesByPath.get("deleted.ts")?.status, "deleted");
+        assert.equal(filesByPath.get("new folder/")?.status, "untracked");
+        assert.isFalse(filesByPath.has("old name.ts"));
+        assert.equal(filesByPath.get("staged file.ts")?.insertions, 1);
+      }),
+    );
+
+    it.effect("reports merge conflicts as modified files", () =>
+      Effect.gen(function* () {
+        const cwd = yield* makeTmpDir();
+        const { initialBranch } = yield* initRepoWithCommit(cwd);
+        const driver = yield* GitVcsDriver.GitVcsDriver;
+        yield* git(cwd, ["checkout", "-b", "conflict-side"]);
+        yield* writeTextFile(cwd, "README.md", "# side\n");
+        yield* git(cwd, ["add", "README.md"]);
+        yield* git(cwd, ["commit", "-m", "change from side"]);
+        yield* git(cwd, ["checkout", initialBranch]);
+        yield* writeTextFile(cwd, "README.md", "# main\n");
+        yield* git(cwd, ["add", "README.md"]);
+        yield* git(cwd, ["commit", "-m", "change from main"]);
+
+        const merge = yield* driver.execute({
+          operation: "GitVcsDriver.test.mergeConflict",
+          cwd,
+          args: ["merge", "conflict-side"],
+          allowNonZeroExit: true,
+          timeoutMs: 10_000,
+        });
+        assert.notEqual(merge.exitCode, 0);
+
+        const status = yield* driver.statusDetails(cwd);
+
+        assert.equal(
+          status.workingTree.files.find((file) => file.path === "README.md")?.status,
+          "modified",
+        );
       }),
     );
 
@@ -967,6 +1036,7 @@ it.layer(TestLayer)("GitVcsDriver core integration", (it) => {
           path: "HEAD",
           insertions: 1,
           deletions: 0,
+          status: "modified",
         });
       }),
     );
@@ -1217,6 +1287,7 @@ it.layer(TestLayer)("GitVcsDriver core integration", (it) => {
         // Combined net from HEAD: +2 insertions.
         assert.equal(file.insertions, 2);
         assert.equal(file.deletions, 0);
+        assert.equal(file.status, "modified");
       }),
     );
 
@@ -1238,6 +1309,7 @@ it.layer(TestLayer)("GitVcsDriver core integration", (it) => {
         if (file) {
           assert.equal(file.path, "initial.ts");
           assert.equal(file.insertions, 1);
+          assert.equal(file.status, "added");
         }
       }),
     );
