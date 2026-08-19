@@ -73,8 +73,10 @@ Surfaces this fork deleted and will not ship:
 | Path                                                                         | Why                        |
 | ---------------------------------------------------------------------------- | -------------------------- |
 | `.agents/skills/test-t3-mobile/`                                             | Mobile-only testing skill. |
+| `.github/ISSUE_TEMPLATE/via-triage.yml`, `.github/triage/`                   | T3-owned support workflow. |
 | `apps/mobile/`                                                               | Mobile client removed.     |
 | `apps/marketing/`                                                            | Marketing site removed.    |
+| `apps/server/src/cli/triage*`                                                | Files issues in T3's repo. |
 | `scripts/mobile-showcase*` and `scripts/mobile-native-static-check*`         | Mobile-only tooling.       |
 | `t3.json`                                                                    | Replaced by `vetra.json`.  |
 | `patches/*react-navigation*`, `patches/*react-native*`, and `patches/*expo*` | Mobile dependency patches. |
@@ -348,6 +350,7 @@ substrings of earlier ones. Current pairs (see the script for the live list):
 
 | Upstream                                                              | Vetra                                              |
 | --------------------------------------------------------------------- | -------------------------------------------------- |
+| `com.t3tools.t3code`                                                  | `com.vetra.code`                                   |
 | `@t3tools/`                                                           | `@vetra-code/`                                     |
 | `T3CODE_`                                                             | `VETRA_`                                           |
 | `T3_`                                                                 | `VETRA_`                                           |
@@ -372,6 +375,7 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
 | Session cookie | `vetra_session`                                    |
 | Ports          | production `4873`; dev server `14873`, web `6733`  |
 | Desktop IDs    | `com.vetra.code`, `com.vetra.code.dev`             |
+| Launch agent   | `com.vetra.code.service`                           |
 | Protocols      | `vetra://`, `vetra-dev://`                         |
 | Git refs       | `refs/vetra/checkpoints`, `refs/vetra/pre-refresh` |
 | Env prefix     | `VETRA_*` only. No `T3CODE_*` aliases.             |

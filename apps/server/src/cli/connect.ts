@@ -5,6 +5,7 @@ import {
   type RelayClientInstallProgressStage,
 } from "@vetra-code/contracts";
 import { RelayOkResponse } from "@vetra-code/contracts/relay";
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 import * as RelayClient from "@vetra-code/shared/relayClient";
 import { withRelayClientTracing } from "@vetra-code/shared/relayTracing";
 import * as Cause from "effect/Cause";
@@ -695,8 +696,11 @@ export const connectCommand = Command.make("connect", {
         // fail the command, just tell the user what happened and move on.
         const background = yield* recoverServiceOnboardingOffer(offerServiceDuringOnboarding);
         if (background) {
+          const platform = yield* HostProcessPlatform;
           yield* Console.log(
-            "\n✓ Background service ready\n\nVetra Code will stay reachable after you log out.",
+            platform === "darwin"
+              ? "\n✓ Background service ready\n\nVetra Code will stay reachable while you are logged in to this Mac."
+              : "\n✓ Background service ready\n\nVetra Code will stay reachable after you log out.",
           );
           return;
         }

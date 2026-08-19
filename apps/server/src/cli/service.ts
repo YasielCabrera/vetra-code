@@ -1,3 +1,4 @@
+import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -49,7 +50,7 @@ export function formatServiceStatus(
   cliVersion: string,
 ): string {
   if (!status.supported) {
-    return "Vetra Code service\n  Status: unavailable on this machine\n  Supported on: Linux with systemd";
+    return "Vetra Code service\n  Status: unavailable on this machine\n  Supported on: Linux with systemd, macOS with launchd";
   }
   if (!status.installed) {
     return `Vetra Code service\n  Status: not installed\n  Next: Run \`${PRODUCT_CLI_NAME} service install\`.`;
@@ -157,12 +158,18 @@ export const offerServiceDuringOnboarding = Effect.gen(function* () {
     yield* Console.log("Vetra Code is already set up to run in the background on this machine.");
     return true;
   }
+  // A LaunchAgent starts at login and dies at logout; there is no
+  // enable-linger equivalent on macOS. Do not promise more than that.
+  const platform = yield* HostProcessPlatform;
   const wanted = yield* Prompt.run(
     Prompt.confirm({
       message: installed
         ? "The installed Vetra Code service needs an update or repair. Update it now?"
-        : "Run Vetra Code in the background whenever this machine boots? " +
-          "It stays reachable through Vetra Connect even after you log out.",
+        : platform === "darwin"
+          ? "Run Vetra Code in the background whenever you log in to this Mac? " +
+            "It stays reachable through Vetra Connect while you are logged in."
+          : "Run Vetra Code in the background whenever this machine boots? " +
+            "It stays reachable through Vetra Connect even after you log out.",
       initial: true,
     }),
   );

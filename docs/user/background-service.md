@@ -1,12 +1,39 @@
 # Background service status
 
-The Linux background-service implementation remains in the codebase, but installing it is not a
-supported Vetra Code bootstrap workflow because `@vetra-code/server` is private and unpublished.
+Vetra Code includes Linux and macOS background-service support, but installing it is not yet a
+supported workflow because `@vetra-code/server` is private and unpublished. Until Vetra publishes
+and validates its own server package, keep a source-built server running in a terminal or in a
+process supervisor that you configure explicitly.
 
-For development, keep `pnpm dev --home-dir <isolated-directory>` running in a terminal or in a
-process supervisor that you configure explicitly. The package-based `npx vetra service ...` path remains
-unavailable until Vetra publishes and validates its own server package.
+Service distribution becomes supported after the package is published from a Vetra-owned registry
+and the install, update, rollback, and uninstall paths are validated against Vetra's own identifiers
+and data directories.
 
-Vetra service distribution becomes supported after the server package is published from a
-Vetra-owned registry and the install/update path is tested against `vetra-code.service` and
-`~/.vetra-code`.
+## Implemented behavior
+
+The gated service uses a small stable launcher. Exact Vetra Code versions are installed separately,
+so a failed remote candidate can return to the previous version without rewriting the service
+definition. The launcher snapshots the database before a remote candidate starts, allowing database
+updates to roll back with the server version.
+
+- **Linux** uses a systemd user unit at `~/.config/systemd/user/vetra-code.service`. The service
+  starts when the machine boots and can keep running after logout when lingering is enabled.
+- **macOS** uses a launch agent at
+  `~/Library/LaunchAgents/com.vetra.code.service.plist`. It starts at login and stops at
+  logout; macOS has no equivalent of Linux lingering for user agents.
+- **Windows** is not supported yet.
+
+On macOS, installing over SSH requires a user to be logged in at the Mac's screen for the launch
+agent to start immediately. Protected folders may also require Full Disk Access for the Node binary
+listed in the launch agent's `ProgramArguments`. The agent appears in System Settings under General
+→ Login Items.
+
+Updating the service briefly restarts Vetra Code, so active agent work and terminal commands should
+finish first. If a remote update is already in progress, wait for it to finish before retrying a
+local update.
+
+## Vetra Connect
+
+Vetra Connect remains unavailable until Vetra-owned cloud configuration is present. Once enabled,
+its setup may offer to install the background service so the environment stays reachable. The two
+features remain independently managed: signing out of Vetra Connect does not uninstall the service.

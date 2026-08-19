@@ -22,6 +22,11 @@ UPSTREAM_REF="${1:-upstream/main}"
 # files upstream newly adds inside them never land.
 PRUNE_PATHS=(
   .agents/skills/test-t3-mobile
+  # Upstream support automation fetches T3's playbook and files issues in
+  # pingdotgg/t3code. Keep it out until Vetra owns a published CLI and support
+  # destination.
+  .github/ISSUE_TEMPLATE/via-triage.yml
+  .github/triage
   apps/mobile
   apps/marketing
   scripts/mobile-showcase.ts
@@ -39,6 +44,7 @@ PRUNE_PATHS=(
   packaging/aur
 )
 PRUNE_GLOBS=(
+  'apps/server/src/cli/triage*'
   'patches/*react-navigation*'
   'patches/*react-native*'
   'patches/*expo*'
@@ -48,6 +54,7 @@ PRUNE_GLOBS=(
 # ones. `pingdotgg/t3code` is excluded -- that is the real upstream repo URL and
 # must survive verbatim. Likewise t3.codes domains are deliberately absent.
 RENAMES=(
+  'com.t3tools.t3code=com.vetra.code'
   '@t3tools/=@vetra-code/'
   'T3CODE_=VETRA_'
   # Upstream's SCREAMING_SNAKE constants and test env vars (T3_CHAT_THEME,

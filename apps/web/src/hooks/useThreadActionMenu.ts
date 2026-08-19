@@ -9,7 +9,7 @@ import {
   canSnooze,
   effectiveSettled,
   effectiveSnoozed,
-  type ChangeRequestStateLike,
+  type ChangeRequestSettleSource,
 } from "@vetra-code/client-runtime/state/thread-settled";
 import type { ScopedThreadRef, ThreadId } from "@vetra-code/contracts";
 import { useCallback } from "react";
@@ -61,11 +61,11 @@ export function useThreadActionMenu(input: {
   readonly threadRef: ScopedThreadRef | null;
   /** Fallback for "Copy path" when the thread has no worktree. */
   readonly projectCwd: string | null;
-  /** PR state feeding auto-settle classification, as resolved by the caller. */
-  readonly changeRequestState: ChangeRequestStateLike | null;
+  /** PR feeding auto-settle classification, as resolved by the caller. */
+  readonly changeRequest: ChangeRequestSettleSource | null;
   readonly onStartRename: () => void;
 }) {
-  const { threadRef, projectCwd, changeRequestState, onStartRename } = input;
+  const { threadRef, projectCwd, changeRequest, onStartRename } = input;
   const {
     settleThread,
     unsettleThread,
@@ -139,7 +139,7 @@ export function useThreadActionMenu(input: {
               now: `${now.toISOString().slice(0, 16)}:00.000Z`,
               autoSettleAfterDays,
               autoSettleOnMerge,
-              changeRequestState,
+              changeRequest,
             }),
           isSnoozed: supports.snooze && effectiveSnoozed(thread, { now: now.toISOString() }),
           canSnoozeNow: canSnooze(thread, { now: now.toISOString() }),
@@ -319,7 +319,7 @@ export function useThreadActionMenu(input: {
       archiveThread,
       autoSettleAfterDays,
       autoSettleOnMerge,
-      changeRequestState,
+      changeRequest,
       confirmThreadArchive,
       confirmThreadDelete,
       copyBranchToClipboard,

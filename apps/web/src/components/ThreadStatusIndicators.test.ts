@@ -1,6 +1,11 @@
 import { effectiveSettled } from "@vetra-code/client-runtime/state/thread-settled";
 import type { OrchestrationThreadShell } from "@vetra-code/contracts";
-import { ProjectId, ProviderInstanceId, ThreadId, type VcsStatusResult } from "@vetra-code/contracts";
+import {
+  ProjectId,
+  ProviderInstanceId,
+  ThreadId,
+  type VcsStatusResult,
+} from "@vetra-code/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import { AtomRegistry } from "effect/unstable/reactivity";
@@ -426,7 +431,7 @@ describe("resolveDisplayedThreadPr + nextThreadChangeRequestSnapshot", () => {
       effectiveSettled(shell, {
         now: "2026-04-10T00:00:00.000Z",
         autoSettleAfterDays: null,
-        changeRequestState: displayed?.state ?? null,
+        changeRequest: displayed,
       }),
     ).toBe(true);
   });
