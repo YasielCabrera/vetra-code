@@ -699,4 +699,48 @@ describe("rightPanelStore", () => {
       ),
     ).toEqual(["terminal:term-1", "browser:tab-b", "browser:tab-c"]);
   });
+  it("opens and closes the powerhouse surface as a singleton", () => {
+    useRightPanelStore.getState().toggle(refA, "powerhouse");
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA),
+    ).toMatchObject({
+      isOpen: true,
+      activeSurfaceId: "powerhouse",
+      surfaces: [{ id: "powerhouse", kind: "powerhouse" }],
+    });
+
+    useRightPanelStore.getState().open(refA, "powerhouse");
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).surfaces,
+    ).toHaveLength(1);
+
+    useRightPanelStore.getState().toggle(refA, "powerhouse");
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).isOpen,
+    ).toBe(false);
+  });
+
+  // No storage version bump was needed, so this pins the normalizer passing
+  // the surface through untouched.
+  it("keeps a persisted powerhouse surface through migration", () => {
+    expect(
+      migratePersistedRightPanelState({
+        byThreadKey: {
+          "env-1:thread-A": {
+            isOpen: true,
+            activeSurfaceId: "powerhouse",
+            surfaces: [{ id: "powerhouse", kind: "powerhouse" }],
+          },
+        },
+      }),
+    ).toEqual({
+      byThreadKey: {
+        "env-1:thread-A": {
+          isOpen: true,
+          activeSurfaceId: "powerhouse",
+          surfaces: [{ id: "powerhouse", kind: "powerhouse" }],
+        },
+      },
+    });
+  });
 });

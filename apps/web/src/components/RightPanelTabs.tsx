@@ -13,6 +13,7 @@ import {
   Plus,
   TerminalSquare,
   X,
+  Zap,
 } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -69,12 +70,15 @@ interface RightPanelTabsProps {
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddAgents: () => void;
+  onAddPowerhouse: () => void;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
   filesAvailable: boolean;
   pullRequestAvailable: boolean;
   agentsAvailable: boolean;
+  /** Powerhouse projects only; the surface is hidden everywhere else. */
+  powerhouseAvailable: boolean;
   pullRequestStatuses?: Readonly<Record<string, PullRequestTabStatus>>;
   /** Running + waiting subagents; badges the Agents card in the empty state. */
   liveAgentCount: number;
@@ -164,12 +168,14 @@ function RightPanelEmptyState(props: {
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddAgents: () => void;
+  onAddPowerhouse: () => void;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
   filesAvailable: boolean;
   pullRequestAvailable: boolean;
   agentsAvailable: boolean;
+  powerhouseAvailable: boolean;
   liveAgentCount: number;
 }) {
   // -1 means no highlight: it only appears on hover or arrow use.
@@ -236,7 +242,23 @@ function RightPanelEmptyState(props: {
       onClick: props.onAddAgents,
       badgeCount: props.liveAgentCount,
     },
-  ] as const;
+    // Absent rather than dimmed outside a Powerhouse project, where it could
+    // never be opened.
+    ...(props.powerhouseAvailable
+      ? [
+          {
+            label: "Powerhouse",
+            description: "Inspect document models and reactor data.",
+            icon: Zap,
+            shortcut: "H",
+            available: true,
+            disabledReason: "",
+            onClick: props.onAddPowerhouse,
+            badgeCount: 0,
+          },
+        ]
+      : []),
+  ];
 
   type SurfaceAction = (typeof actions)[number];
 
@@ -430,6 +452,8 @@ function surfaceTitle(
       return `#${surface.number}`;
     case "agents":
       return "Agents";
+    case "powerhouse":
+      return "Powerhouse";
     case "preview": {
       const snapshot = surface.resourceId ? sessions[surface.resourceId] : null;
       if (!snapshot || snapshot.navStatus._tag === "Idle") return "Browser";
@@ -515,6 +539,8 @@ function SurfaceIcon({
     }
     case "agents":
       return <Bot className="size-3 shrink-0" />;
+    case "powerhouse":
+      return <Zap className="size-3 shrink-0" />;
   }
 }
 
@@ -747,6 +773,12 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                     <Bot />
                     Agents
                   </SurfaceMenuItem>
+                  {props.powerhouseAvailable ? (
+                    <SurfaceMenuItem available onClick={props.onAddPowerhouse}>
+                      <Zap />
+                      Powerhouse
+                    </SurfaceMenuItem>
+                  ) : null}
                 </MenuPopup>
               </Menu>
             ) : null}
@@ -763,12 +795,14 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddFiles={props.onAddFiles}
             onAddPullRequest={props.onAddPullRequest}
             onAddAgents={props.onAddAgents}
+            onAddPowerhouse={props.onAddPowerhouse}
             browserAvailable={props.browserAvailable}
             terminalAvailable={props.terminalAvailable}
             diffAvailable={props.diffAvailable}
             filesAvailable={props.filesAvailable}
             pullRequestAvailable={props.pullRequestAvailable}
             agentsAvailable={props.agentsAvailable}
+            powerhouseAvailable={props.powerhouseAvailable}
             liveAgentCount={props.liveAgentCount}
           />
         ) : (

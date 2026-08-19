@@ -18,6 +18,26 @@ import {
   FilesystemBrowseResult,
   FilesystemBrowseError,
 } from "./filesystem.ts";
+import {
+  PowerhouseDocumentModel,
+  PowerhouseGetDocumentModelInput,
+  PowerhouseListProjectsInput,
+  PowerhouseListProjectsResult,
+  PowerhouseListDocumentModelsInput,
+  PowerhouseListDocumentModelsResult,
+  PowerhouseProjectError,
+  PowerhouseReactorConnection,
+  PowerhouseReactorDocument,
+  PowerhouseReactorError,
+  PowerhouseReactorGetDocumentInput,
+  PowerhouseReactorGetOperationsInput,
+  PowerhouseReactorGetOperationsResult,
+  PowerhouseReactorListDocumentsInput,
+  PowerhouseReactorListDocumentsResult,
+  PowerhouseReactorListDrivesInput,
+  PowerhouseReactorListDrivesResult,
+  PowerhouseReactorProbeInput,
+} from "./powerhouse.ts";
 import { AssetAccessError, AssetCreateUrlInput, AssetCreateUrlResult } from "./assets.ts";
 import {
   GitActionProgressEvent,
@@ -223,6 +243,16 @@ export const WS_METHODS = {
   // Filesystem methods
   filesystemBrowse: "filesystem.browse",
   assetsCreateUrl: "assets.createUrl",
+
+  // Powerhouse panel methods
+  powerhouseListProjects: "powerhouse.listProjects",
+  powerhouseListDocumentModels: "powerhouse.listDocumentModels",
+  powerhouseGetDocumentModel: "powerhouse.getDocumentModel",
+  powerhouseReactorProbe: "powerhouse.reactorProbe",
+  powerhouseReactorListDrives: "powerhouse.reactorListDrives",
+  powerhouseReactorListDocuments: "powerhouse.reactorListDocuments",
+  powerhouseReactorGetDocument: "powerhouse.reactorGetDocument",
+  powerhouseReactorGetOperations: "powerhouse.reactorGetOperations",
 
   // VCS methods
   vcsPull: "vcs.pull",
@@ -720,6 +750,64 @@ export const WsAssetsCreateUrlRpc = Rpc.make(WS_METHODS.assetsCreateUrl, {
   error: Schema.Union([AssetAccessError, EnvironmentAuthorizationError]),
 });
 
+export const WsPowerhouseListProjectsRpc = Rpc.make(WS_METHODS.powerhouseListProjects, {
+  payload: PowerhouseListProjectsInput,
+  success: PowerhouseListProjectsResult,
+  error: Schema.Union([PowerhouseProjectError, EnvironmentAuthorizationError]),
+});
+
+export const WsPowerhouseListDocumentModelsRpc = Rpc.make(WS_METHODS.powerhouseListDocumentModels, {
+  payload: PowerhouseListDocumentModelsInput,
+  success: PowerhouseListDocumentModelsResult,
+  error: Schema.Union([PowerhouseProjectError, EnvironmentAuthorizationError]),
+});
+
+export const WsPowerhouseGetDocumentModelRpc = Rpc.make(WS_METHODS.powerhouseGetDocumentModel, {
+  payload: PowerhouseGetDocumentModelInput,
+  success: PowerhouseDocumentModel,
+  error: Schema.Union([PowerhouseProjectError, EnvironmentAuthorizationError]),
+});
+
+export const WsPowerhouseReactorProbeRpc = Rpc.make(WS_METHODS.powerhouseReactorProbe, {
+  payload: PowerhouseReactorProbeInput,
+  success: PowerhouseReactorConnection,
+  error: Schema.Union([
+    PowerhouseReactorError,
+    PowerhouseProjectError,
+    EnvironmentAuthorizationError,
+  ]),
+});
+
+export const WsPowerhouseReactorListDrivesRpc = Rpc.make(WS_METHODS.powerhouseReactorListDrives, {
+  payload: PowerhouseReactorListDrivesInput,
+  success: PowerhouseReactorListDrivesResult,
+  error: Schema.Union([PowerhouseReactorError, EnvironmentAuthorizationError]),
+});
+
+export const WsPowerhouseReactorListDocumentsRpc = Rpc.make(
+  WS_METHODS.powerhouseReactorListDocuments,
+  {
+    payload: PowerhouseReactorListDocumentsInput,
+    success: PowerhouseReactorListDocumentsResult,
+    error: Schema.Union([PowerhouseReactorError, EnvironmentAuthorizationError]),
+  },
+);
+
+export const WsPowerhouseReactorGetDocumentRpc = Rpc.make(WS_METHODS.powerhouseReactorGetDocument, {
+  payload: PowerhouseReactorGetDocumentInput,
+  success: PowerhouseReactorDocument,
+  error: Schema.Union([PowerhouseReactorError, EnvironmentAuthorizationError]),
+});
+
+export const WsPowerhouseReactorGetOperationsRpc = Rpc.make(
+  WS_METHODS.powerhouseReactorGetOperations,
+  {
+    payload: PowerhouseReactorGetOperationsInput,
+    success: PowerhouseReactorGetOperationsResult,
+    error: Schema.Union([PowerhouseReactorError, EnvironmentAuthorizationError]),
+  },
+);
+
 export const WsSubscribeVcsStatusRpc = Rpc.make(WS_METHODS.subscribeVcsStatus, {
   payload: VcsStatusInput,
   success: VcsStatusStreamEvent,
@@ -1155,4 +1243,12 @@ export const WsRpcGroup = RpcGroup.make(
   WsOrchestrationGetArchivedShellSnapshotRpc,
   WsOrchestrationSubscribeShellRpc,
   WsOrchestrationSubscribeThreadRpc,
+  WsPowerhouseListProjectsRpc,
+  WsPowerhouseListDocumentModelsRpc,
+  WsPowerhouseGetDocumentModelRpc,
+  WsPowerhouseReactorProbeRpc,
+  WsPowerhouseReactorListDrivesRpc,
+  WsPowerhouseReactorListDocumentsRpc,
+  WsPowerhouseReactorGetDocumentRpc,
+  WsPowerhouseReactorGetOperationsRpc,
 );

@@ -95,7 +95,8 @@ describe("resolveMarkdownFileLinkTarget", () => {
         "C:/Users/mike/dev-stuff/vetra-code",
       ),
     ).toMatchObject({
-      displayPath: "vetra-code/apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
+      displayPath:
+        "vetra-code/apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
       workspaceRelativePath:
         "apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
     });
@@ -295,5 +296,22 @@ describe("directory paths with a trailing separator", () => {
   it("does not produce an empty label for the filesystem root", () => {
     const meta = resolveMarkdownFileLinkMeta("/tmp/", "/repo/project");
     expect(meta?.basename).not.toBe("");
+  });
+});
+
+describe("Powerhouse references", () => {
+  // A reference is inline code shaped like `powerhouse:doc/<id>`. Resolving one
+  // as a file would render a chip that links nowhere, so the shape checks must
+  // keep rejecting it even when an id happens to carry a dot.
+  it("are never resolved as file links", () => {
+    for (const candidate of [
+      "powerhouse:drive/powerhouse",
+      "powerhouse:doc/c4cb1cab-fb9e-4c12-a76c-d865b36f48c6",
+      "powerhouse:folder/f7d15463-6785-442f-826f-9bb48857b96c",
+      "powerhouse:drive/my.drive",
+      "powerhouse:doc/report.pdf",
+    ]) {
+      expect(resolveInlineCodeFileLinkMeta(candidate, "/repo")).toBe(null);
+    }
   });
 });

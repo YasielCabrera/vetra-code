@@ -64,6 +64,7 @@ import {
   selectionTouchesMentionBoundary,
   splitPromptIntoComposerSegments,
 } from "~/composer-editor-mentions";
+import type { PowerhouseReferenceKind } from "@vetra-code/shared/composerInlineTokens";
 import {
   INLINE_TERMINAL_CONTEXT_PLACEHOLDER,
   type TerminalContextDraft,
@@ -78,6 +79,7 @@ import {
   SKILL_CHIP_ICON_SVG,
 } from "./composerInlineChip";
 import { FILE_TAG_CHIP_CLASS_NAME, FileTagChipContent } from "./chat/FileTagChip";
+import { POWERHOUSE_TAG_CHIP_CLASS_NAME, PowerhouseTagChipContent } from "./chat/PowerhouseTagChip";
 import { ComposerPendingTerminalContextChip } from "./chat/ComposerPendingTerminalContexts";
 import { formatProviderSkillDisplayName } from "~/providerSkillPresentation";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
@@ -115,6 +117,18 @@ type SerializedComposerSkillNode = Spread<
     skillLabel?: string;
     skillDescription?: string;
     type: "composer-skill";
+    version: 1;
+  },
+  SerializedLexicalNode
+>;
+
+type SerializedComposerPowerhouseNode = Spread<
+  {
+    kind: PowerhouseReferenceKind;
+    label: string;
+    detail: string;
+    source: string;
+    type: "composer-powerhouse";
     version: 1;
   },
   SerializedLexicalNode
@@ -361,6 +375,127 @@ function $createComposerSkillNode(
   return $applyNodeReplacement(new ComposerSkillNode(skillName, skillLabel, skillDescription));
 }
 
+function ComposerPowerhouseDecorator(props: {
+  kind: PowerhouseReferenceKind;
+  label: string;
+  detail: string;
+}) {
+  const chip = (
+    <span
+      className={POWERHOUSE_TAG_CHIP_CLASS_NAME}
+      contentEditable={false}
+      spellCheck={false}
+      data-composer-powerhouse-chip="true"
+    >
+      <PowerhouseTagChipContent kind={props.kind} label={props.label} />
+    </span>
+  );
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={chip} />
+      <TooltipPopup side="top" className="max-w-120 whitespace-normal leading-tight wrap-anywhere">
+        {props.detail}
+      </TooltipPopup>
+    </Tooltip>
+  );
+}
+
+/**
+ * A Powerhouse reference. The node keeps the reference's whole source text,
+ * because that — not the label the chip shows — is what the agent receives.
+ */
+class ComposerPowerhouseNode extends DecoratorNode<React.ReactElement> {
+  __kind: PowerhouseReferenceKind;
+  __label: string;
+  __detail: string;
+  __source: string;
+
+  static override getType(): string {
+    return "composer-powerhouse";
+  }
+
+  static override clone(node: ComposerPowerhouseNode): ComposerPowerhouseNode {
+    return new ComposerPowerhouseNode(
+      node.__kind,
+      node.__label,
+      node.__detail,
+      node.__source,
+      node.__key,
+    );
+  }
+
+  static override importJSON(
+    serializedNode: SerializedComposerPowerhouseNode,
+  ): ComposerPowerhouseNode {
+    return $createComposerPowerhouseNode(
+      serializedNode.kind,
+      serializedNode.label,
+      serializedNode.detail,
+      serializedNode.source,
+    ).updateFromJSON(serializedNode);
+  }
+
+  constructor(
+    kind: PowerhouseReferenceKind,
+    label: string,
+    detail: string,
+    source: string,
+    key?: NodeKey,
+  ) {
+    super(key);
+    this.__kind = kind;
+    this.__label = label;
+    this.__detail = detail;
+    this.__source = source;
+  }
+
+  override exportJSON(): SerializedComposerPowerhouseNode {
+    return {
+      ...super.exportJSON(),
+      kind: this.__kind,
+      label: this.__label,
+      detail: this.__detail,
+      source: this.__source,
+      type: "composer-powerhouse",
+      version: 1,
+    };
+  }
+
+  override createDOM(): HTMLElement {
+    const dom = document.createElement("span");
+    dom.className = COMPOSER_INLINE_CHIP_DECORATOR_CLASS_NAME;
+    return dom;
+  }
+
+  override updateDOM(): false {
+    return false;
+  }
+
+  override getTextContent(): string {
+    return this.__source;
+  }
+
+  override isInline(): true {
+    return true;
+  }
+
+  override decorate(): React.ReactElement {
+    return (
+      <ComposerPowerhouseDecorator kind={this.__kind} label={this.__label} detail={this.__detail} />
+    );
+  }
+}
+
+function $createComposerPowerhouseNode(
+  kind: PowerhouseReferenceKind,
+  label: string,
+  detail: string,
+  source: string,
+): ComposerPowerhouseNode {
+  return $applyNodeReplacement(new ComposerPowerhouseNode(kind, label, detail, source));
+}
+
 function ComposerTerminalContextDecorator(props: { context: TerminalContextDraft }) {
   return <ComposerPendingTerminalContextChip context={props.context} />;
 }
@@ -428,12 +563,14 @@ function $createComposerTerminalContextNode(
 type ComposerInlineTokenNode =
   | ComposerMentionNode
   | ComposerSkillNode
+  | ComposerPowerhouseNode
   | ComposerTerminalContextNode;
 
 function isComposerInlineTokenNode(candidate: unknown): candidate is ComposerInlineTokenNode {
   return (
     candidate instanceof ComposerMentionNode ||
     candidate instanceof ComposerSkillNode ||
+    candidate instanceof ComposerPowerhouseNode ||
     candidate instanceof ComposerTerminalContextNode
   );
 }
@@ -845,6 +982,12 @@ function $setComposerEditorPrompt(
       );
       continue;
     }
+    if (segment.type === "powerhouse") {
+      paragraph.append(
+        $createComposerPowerhouseNode(segment.kind, segment.label, segment.detail, segment.source),
+      );
+      continue;
+    }
     if (segment.type === "terminal-context") {
       if (segment.context) {
         paragraph.append($createComposerTerminalContextNode(segment.context));
@@ -1252,6 +1395,8 @@ function ComposerInlineTokenPastePlugin() {
     () =>
       registerComposerInlineTokenPaste(editor, {
         createMentionNode: $createComposerMentionNode,
+        createPowerhouseNode: (token) =>
+          $createComposerPowerhouseNode(token.kind, token.label, token.detail, token.source),
         getExpandedAbsoluteOffsetForPoint,
       }),
     [editor],
@@ -1808,7 +1953,12 @@ export function ComposerPromptEditor({
     () => ({
       namespace: "vetra-code-composer-editor",
       editable: true,
-      nodes: [ComposerMentionNode, ComposerSkillNode, ComposerTerminalContextNode],
+      nodes: [
+        ComposerMentionNode,
+        ComposerSkillNode,
+        ComposerPowerhouseNode,
+        ComposerTerminalContextNode,
+      ],
       editorState: () => {
         $setComposerEditorPrompt(
           initialValueRef.current,

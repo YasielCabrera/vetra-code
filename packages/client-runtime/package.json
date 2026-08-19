@@ -79,6 +79,10 @@
       "types": "./src/state/presentation.ts",
       "default": "./src/state/presentation.ts"
     },
+    "./state/powerhouse": {
+      "types": "./src/state/powerhouse.ts",
+      "default": "./src/state/powerhouse.ts"
+    },
     "./state/preview": {
       "types": "./src/state/preview.ts",
       "default": "./src/state/preview.ts"

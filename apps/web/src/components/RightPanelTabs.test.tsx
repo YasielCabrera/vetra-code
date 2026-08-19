@@ -78,6 +78,7 @@ function renderTabs(first: DesktopPreviewFavicon | null, second?: DesktopPreview
       onAddDiff={() => undefined}
       onAddFiles={() => undefined}
       onAddAgents={() => undefined}
+      onAddPowerhouse={() => undefined}
       liveAgentCount={0}
       browserAvailable
       terminalAvailable={false}
@@ -85,6 +86,7 @@ function renderTabs(first: DesktopPreviewFavicon | null, second?: DesktopPreview
       filesAvailable={false}
       pullRequestAvailable={false}
       agentsAvailable={false}
+      powerhouseAvailable={false}
     >
       <div>content</div>
     </RightPanelTabs>,
@@ -113,5 +115,55 @@ describe("RightPanelTabs preview favicon", () => {
   it("hides a capture while the server session still describes another origin", () => {
     const html = renderTabs(favicon("data:image/png;base64,AAAA", "https://example.com/"));
     expect(html).not.toContain("data:image/png;base64,AAAA");
+  });
+});
+
+function renderLauncher(powerhouseAvailable: boolean) {
+  return renderToStaticMarkup(
+    <RightPanelTabs
+      mode="inline"
+      surfaces={[]}
+      activeSurfaceId={null}
+      pendingSurfaceIds={new Set()}
+      previewSessions={{}}
+      desktopByTabId={{}}
+      terminalLabelsById={new Map()}
+      onActivate={() => undefined}
+      onCloseSurface={() => undefined}
+      onCloseOtherSurfaces={() => undefined}
+      onCloseSurfacesToRight={() => undefined}
+      onCloseAllSurfaces={() => undefined}
+      onCopyFilePath={() => undefined}
+      onAddBrowser={() => undefined}
+      onAddTerminal={() => undefined}
+      onAddPullRequest={() => undefined}
+      onAddDiff={() => undefined}
+      onAddFiles={() => undefined}
+      onAddAgents={() => undefined}
+      onAddPowerhouse={() => undefined}
+      liveAgentCount={0}
+      browserAvailable
+      terminalAvailable={false}
+      diffAvailable={false}
+      filesAvailable={false}
+      pullRequestAvailable={false}
+      agentsAvailable={false}
+      powerhouseAvailable={powerhouseAvailable}
+    >
+      <div>content</div>
+    </RightPanelTabs>,
+  );
+}
+
+describe("RightPanelTabs powerhouse launcher", () => {
+  it("offers the surface in a Powerhouse project", () => {
+    const html = renderLauncher(true);
+    expect(html).toContain("Powerhouse");
+    expect(html).toContain("Inspect document models and reactor data.");
+  });
+
+  it("shows nothing at all outside a Powerhouse project", () => {
+    // Not a dimmed card either: a surface that can never open is noise.
+    expect(renderLauncher(false)).not.toContain("Powerhouse");
   });
 });

@@ -49,6 +49,8 @@ import * as McpSessionRegistry from "./mcp/McpSessionRegistry.ts";
 import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
 import * as PreviewManager from "./preview/Manager.ts";
 import * as PortScanner from "./preview/PortScanner.ts";
+import * as PowerhouseProject from "./powerhouse/PowerhouseProject.ts";
+import * as PowerhouseReactorClient from "./powerhouse/PowerhouseReactorClient.ts";
 import * as ProcessRunner from "./processRunner.ts";
 import * as GitManager from "./git/GitManager.ts";
 import * as Keybindings from "./keybindings.ts";
@@ -363,6 +365,11 @@ const WorkspaceLayerLive = Layer.mergeAll(
   WorkspaceFileSystemLayerLive,
 );
 
+const PowerhouseLayerLive = Layer.mergeAll(
+  PowerhouseProject.layer.pipe(Layer.provide(WorkspacePaths.layer)),
+  PowerhouseReactorClient.layer,
+);
+
 const ProjectFaviconResolverLayerLive = ProjectFaviconResolver.layer.pipe(
   Layer.provide(WorkspacePaths.layer),
   Layer.provide(VetraProjectFileLoader.layer),
@@ -422,6 +429,7 @@ const RuntimeCoreDependenciesLive = RuntimeCoreDependenciesBaseLive.pipe(
   Layer.provideMerge(OpenCodeRuntime.OpenCodeRuntimeLive),
   Layer.provideMerge(ProviderSubscriptionCredentialStoreLive),
   Layer.provideMerge(WorkspaceLayerLive),
+  Layer.provideMerge(PowerhouseLayerLive),
   Layer.provideMerge(FileAnnotationLayerLive),
   Layer.provideMerge(ProjectFaviconResolverLayerLive),
   Layer.provideMerge(RepositoryIdentityResolver.layer),

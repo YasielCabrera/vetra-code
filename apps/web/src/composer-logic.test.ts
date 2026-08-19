@@ -372,3 +372,35 @@ describe("parseStandaloneComposerSlashCommand", () => {
     expect(parseStandaloneComposerSlashCommand("/plan explain this")).toBeNull();
   });
 });
+
+describe("composer cursors across a Powerhouse reference", () => {
+  const reference = "`powerhouse:doc/abc` (a.pdf \u00b7 t/x \u00b7 http://127.0.0.1:4001)";
+  const text = `look at ${reference} now`;
+
+  it("collapses a reference to one character, like a mention", () => {
+    expect(collapseExpandedComposerCursor(text, `look at ${reference}`.length)).toBe(
+      "look at ".length + 1,
+    );
+  });
+
+  it("expands a collapsed cursor back past the whole reference source", () => {
+    expect(expandCollapsedComposerCursor(text, "look at ".length + 1)).toBe(
+      `look at ${reference}`.length,
+    );
+  });
+
+  it("round-trips every collapsed cursor position", () => {
+    const collapsedLength = "look at ".length + 1 + " now".length;
+    for (let cursor = 0; cursor <= collapsedLength; cursor += 1) {
+      expect(
+        collapseExpandedComposerCursor(text, expandCollapsedComposerCursor(text, cursor)),
+      ).toBe(cursor);
+    }
+  });
+
+  it("reports a collapsed cursor sitting beside the reference chip", () => {
+    expect(isCollapsedCursorAdjacentToInlineToken(text, "look at ".length, "right")).toBe(true);
+    expect(isCollapsedCursorAdjacentToInlineToken(text, "look at ".length + 1, "left")).toBe(true);
+    expect(isCollapsedCursorAdjacentToInlineToken(text, 0, "right")).toBe(false);
+  });
+});

@@ -87,6 +87,16 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.projectsWriteFile]: AuthOrchestrationOperateScope,
   [WS_METHODS.shellOpenInEditor]: AuthOrchestrationOperateScope,
   [WS_METHODS.filesystemBrowse]: AuthOrchestrationReadScope,
+  // Powerhouse is read-only throughout, including reactor calls made on the
+  // client's behalf.
+  [WS_METHODS.powerhouseListProjects]: AuthOrchestrationReadScope,
+  [WS_METHODS.powerhouseListDocumentModels]: AuthOrchestrationReadScope,
+  [WS_METHODS.powerhouseGetDocumentModel]: AuthOrchestrationReadScope,
+  [WS_METHODS.powerhouseReactorProbe]: AuthOrchestrationReadScope,
+  [WS_METHODS.powerhouseReactorListDrives]: AuthOrchestrationReadScope,
+  [WS_METHODS.powerhouseReactorListDocuments]: AuthOrchestrationReadScope,
+  [WS_METHODS.powerhouseReactorGetDocument]: AuthOrchestrationReadScope,
+  [WS_METHODS.powerhouseReactorGetOperations]: AuthOrchestrationReadScope,
   [WS_METHODS.assetsCreateUrl]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeVcsStatus]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeResourceTelemetry]: AuthOrchestrationReadScope,

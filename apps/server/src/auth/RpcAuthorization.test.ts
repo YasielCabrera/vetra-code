@@ -30,6 +30,21 @@ describe("RPC authorization scopes", () => {
     );
   });
 
+  it("keeps every powerhouse method read-only, including the reactor calls", () => {
+    for (const method of [
+      WS_METHODS.powerhouseListProjects,
+      WS_METHODS.powerhouseListDocumentModels,
+      WS_METHODS.powerhouseGetDocumentModel,
+      WS_METHODS.powerhouseReactorProbe,
+      WS_METHODS.powerhouseReactorListDrives,
+      WS_METHODS.powerhouseReactorListDocuments,
+      WS_METHODS.powerhouseReactorGetDocument,
+      WS_METHODS.powerhouseReactorGetOperations,
+    ]) {
+      expect(requiredScopeForRpcMethod(method)).toBe(AuthOrchestrationReadScope);
+    }
+  });
+
   it("separates subscription usage reads from credential writes", () => {
     expect(requiredScopeForRpcMethod(WS_METHODS.serverGetProviderSubscriptionUsage)).toBe(
       AuthOrchestrationReadScope,

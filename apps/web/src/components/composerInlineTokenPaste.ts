@@ -1,4 +1,7 @@
-import { collectComposerInlineTokens } from "@vetra-code/shared/composerInlineTokens";
+import {
+  collectComposerInlineTokens,
+  type ComposerInlineToken,
+} from "@vetra-code/shared/composerInlineTokens";
 import {
   $createLineBreakNode,
   $createTextNode,
@@ -13,6 +16,9 @@ import {
 
 interface ComposerInlineTokenPasteOptions {
   createMentionNode: (path: string) => LexicalNode;
+  createPowerhouseNode: (
+    token: Extract<ComposerInlineToken, { type: "powerhouse" }>,
+  ) => LexicalNode;
   getExpandedAbsoluteOffsetForPoint: (node: LexicalNode, pointOffset: number) => number;
 }
 
@@ -34,11 +40,12 @@ export function registerComposerInlineTokenPaste(
         return false;
       }
       // Token grammar requires trailing whitespace; a virtual newline lets a
-      // mention at the very end of the pasted text still parse.
-      const mentions = collectComposerInlineTokens(`${text}\n`).filter(
-        (token) => token.type === "mention" && token.end <= text.length,
+      // chip at the very end of the pasted text still parse.
+      const chips = collectComposerInlineTokens(`${text}\n`).filter(
+        (token) =>
+          (token.type === "mention" || token.type === "powerhouse") && token.end <= text.length,
       );
-      if (mentions.length === 0) {
+      if (chips.length === 0) {
         return false;
       }
 
@@ -62,8 +69,8 @@ export function registerComposerInlineTokenPaste(
           }
         }
       };
-      const firstMention = mentions[0];
-      if (firstMention && firstMention.start === 0) {
+      const firstChip = chips[0];
+      if (firstChip && firstChip.start === 0) {
         const startPoint = selection.isBackward() ? selection.focus : selection.anchor;
         const insertionOffset = options.getExpandedAbsoluteOffsetForPoint(
           startPoint.getNode(),
@@ -77,21 +84,25 @@ export function registerComposerInlineTokenPaste(
         }
       }
       let cursor = 0;
-      for (const mention of mentions) {
-        if (mention.start < cursor) {
+      for (const chip of chips) {
+        if (chip.start < cursor) {
           continue;
         }
-        if (mention.start > cursor) {
-          appendText(text.slice(cursor, mention.start));
+        if (chip.start > cursor) {
+          appendText(text.slice(cursor, chip.start));
         }
-        nodes.push(options.createMentionNode(mention.value));
-        cursor = mention.end;
+        nodes.push(
+          chip.type === "powerhouse"
+            ? options.createPowerhouseNode(chip)
+            : options.createMentionNode(chip.value),
+        );
+        cursor = chip.end;
       }
       if (cursor < text.length) {
         appendText(text.slice(cursor));
       } else {
-        // Keep the serialized prompt valid: mention tokens need trailing
-        // whitespace, so a paste ending in a mention gets the same
+        // Keep the serialized prompt valid: chip tokens need trailing
+        // whitespace, so a paste ending in one gets the same
         // trailing space the autocomplete inserts.
         nodes.push($createTextNode(" "));
       }

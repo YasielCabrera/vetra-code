@@ -12,6 +12,19 @@ export type ComposerInlineToken =
       readonly source: string;
       readonly start: number;
       readonly end: number;
+    }
+  | {
+      readonly type: "powerhouse";
+      /** `<kind>/<id>` — what the reference addresses. */
+      readonly value: string;
+      readonly kind: PowerhouseReferenceKind;
+      /** What a chip shows: the item's name, or its id when the reference names none. */
+      readonly label: string;
+      /** The facts after the label, verbatim, for a chip's tooltip. */
+      readonly detail: string;
+      readonly source: string;
+      readonly start: number;
+      readonly end: number;
     };
 
 export interface CollectComposerInlineTokensOptions {
@@ -40,6 +53,115 @@ const WINDOWS_DRIVE_PATH_REGEX = /^[A-Za-z]:[\\/]/;
 // Autocomplete emits canonical file links, so ambiguous bare @scope/package text stays a package.
 const SCOPED_PACKAGE_REFERENCE_REGEX =
   /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*(?:\/[^\s@"]+)*$/;
+
+/**
+ * A Powerhouse reference addresses a drive, a folder, or a leaf document in a
+ * reactor. Unlike a file mention there is no path to link, so the reference
+ * carries an addressable token plus the facts needed to fetch the item.
+ */
+export type PowerhouseReferenceKind = "drive" | "folder" | "doc";
+
+export interface PowerhouseReferenceFields {
+  readonly kind: PowerhouseReferenceKind;
+  readonly id: string;
+  /** The item's name. Empty when the reactor only knew its id. */
+  readonly name: string;
+  /** Reactor document type. Empty for a drive or folder, whose kind already says it. */
+  readonly documentType: string;
+  /** Drive slug, when it is neither the id nor the name again. */
+  readonly slug: string;
+  /** Containing drive and folders, joined with `/`. Empty for a drive. */
+  readonly path: string;
+  readonly reactorUrl: string;
+}
+
+const POWERHOUSE_REFERENCE_KINDS = ["drive", "folder", "doc"] as const;
+const POWERHOUSE_FACT_SEPARATOR = " \u00b7 ";
+const POWERHOUSE_SLUG_FACT_PREFIX = "slug ";
+const POWERHOUSE_PATH_FACT_PREFIX = "in ";
+/**
+ * Bounded for the same reason the file link label is: an unbounded lazy body
+ * makes every whitespace a candidate start and every failed attempt a scan to
+ * the end of the prompt. Reactor ids, types, and URLs are all length-bounded at
+ * the RPC boundary, so nothing a reactor can produce comes close.
+ */
+const MAX_POWERHOUSE_REFERENCE_ID_LENGTH = 512;
+const MAX_POWERHOUSE_REFERENCE_DETAIL_LENGTH = 1024;
+/**
+ * The detail body is lazy so it ends at the first `)` that closes the
+ * reference, which lets a document named `report (final).pdf` still match: its
+ * inner `)` is not followed by whitespace.
+ */
+const POWERHOUSE_REFERENCE_TOKEN_REGEX = new RegExp(
+  "(^|\\s)`powerhouse:(" +
+    POWERHOUSE_REFERENCE_KINDS.join("|") +
+    `)/([^\`\\s]{1,${MAX_POWERHOUSE_REFERENCE_ID_LENGTH}})\` ` +
+    `\\(([^\\n]{0,${MAX_POWERHOUSE_REFERENCE_DETAIL_LENGTH}}?)\\)(?=\\s)`,
+  "g",
+);
+
+function isPowerhouseReferenceKind(value: string): value is PowerhouseReferenceKind {
+  return (POWERHOUSE_REFERENCE_KINDS as ReadonlyArray<string>).includes(value);
+}
+
+/**
+ * Facts are emitted in a fixed order — name, type, slug, path, reactor URL —
+ * with empty ones left out, so a reader can peel them back from the right
+ * without guessing what any one of them means.
+ */
+export function serializePowerhouseReference(fields: PowerhouseReferenceFields): string {
+  const facts: string[] = [];
+  if (fields.name.length > 0) facts.push(fields.name);
+  if (fields.documentType.length > 0) facts.push(fields.documentType);
+  if (fields.slug.length > 0) facts.push(`${POWERHOUSE_SLUG_FACT_PREFIX}${fields.slug}`);
+  if (fields.path.length > 0) facts.push(`${POWERHOUSE_PATH_FACT_PREFIX}${fields.path}`);
+  facts.push(fields.reactorUrl);
+  return `\`powerhouse:${fields.kind}/${fields.id}\` (${facts.join(POWERHOUSE_FACT_SEPARATOR)})`;
+}
+
+/**
+ * The name a reference carries, or empty when it named only an id. Read from the
+ * right: the reactor URL is always last, the optional slots announce themselves
+ * with a prefix, and a type slot exists only for a leaf. Whatever survives on
+ * the left is the name, rejoined in case it contained the separator itself.
+ */
+function powerhouseReferenceName(kind: PowerhouseReferenceKind, detail: string): string {
+  const facts = detail.split(POWERHOUSE_FACT_SEPARATOR);
+  facts.pop();
+  const last = () => facts[facts.length - 1] ?? "";
+  if (facts.length > 0 && last().startsWith(POWERHOUSE_PATH_FACT_PREFIX)) facts.pop();
+  if (facts.length > 0 && last().startsWith(POWERHOUSE_SLUG_FACT_PREFIX)) facts.pop();
+  if (kind === "doc" && facts.length > 0) facts.pop();
+  return facts.join(POWERHOUSE_FACT_SEPARATOR);
+}
+
+function collectPowerhouseTokens(text: string): ComposerInlineToken[] {
+  const matches: ComposerInlineToken[] = [];
+  for (const match of text.matchAll(POWERHOUSE_REFERENCE_TOKEN_REGEX)) {
+    const fullMatch = match[0];
+    const prefix = match[1] ?? "";
+    const kind = match[2] ?? "";
+    const id = match[3] ?? "";
+    const detail = match[4] ?? "";
+    if (!isPowerhouseReferenceKind(kind) || id.length === 0) {
+      continue;
+    }
+    const name = powerhouseReferenceName(kind, detail);
+    const start = (match.index ?? 0) + prefix.length;
+    const end = start + fullMatch.length - prefix.length;
+    matches.push({
+      type: "powerhouse",
+      value: `${kind}/${id}`,
+      kind,
+      label: name.length > 0 ? name : id,
+      detail,
+      source: text.slice(start, end),
+      start,
+      end,
+    });
+  }
+  return matches;
+}
 
 function collectMentionTokens(text: string): ComposerInlineToken[] {
   const matches: ComposerInlineToken[] = [];
@@ -98,7 +220,7 @@ export function collectComposerInlineTokens(
   text: string,
   options: CollectComposerInlineTokensOptions = {},
 ): ReadonlyArray<ComposerInlineToken> {
-  const matches = collectMentionTokens(text);
+  const matches = [...collectMentionTokens(text), ...collectPowerhouseTokens(text)];
 
   for (const match of text.matchAll(SKILL_TOKEN_REGEX)) {
     const fullMatch = match[0];

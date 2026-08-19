@@ -11,6 +11,7 @@ This is a living glossary for Vetra Code. It explains what common terms mean in 
 - [Orchestration](#orchestration)
 - [Provider runtime](#provider-runtime)
 - [Checkpointing](#checkpointing)
+- [Powerhouse](#powerhouse)
 - [Fork and upstream](#fork-and-upstream)
 
 ## Concepts
@@ -105,6 +106,8 @@ The current materialized view of orchestration state. In [the contracts][1], it 
 
 A side-effecting service that handles follow-up work after events or runtime signals. Examples include [CheckpointReactor.ts][6], [ProviderCommandReactor.ts][12], and [ProviderRuntimeIngestion.ts][5].
 
+Not to be confused with a [Powerhouse reactor](#powerhouse-reactor), which is an unrelated thing owned by a different project.
+
 #### Receipt
 
 A typed signal emitted when an async milestone completes, such as `checkpoint.baseline.captured`, `checkpoint.diff.finalized`, or `turn.processing.quiesced`. Receipts are a test-only mechanism: the production `RuntimeReceiptBusLive` publish is a no-op and only the test layer is PubSub-backed. Do not build production behavior on them. See [RuntimeReceiptBus.ts][13] and [CheckpointReactor.ts][6].
@@ -164,6 +167,30 @@ The patch difference between two checkpoints. Query logic lives in [CheckpointDi
 #### Turn diff
 
 The file patch and changed-file summary for one turn. It is usually computed in [CheckpointDiffQuery.ts][20], represented in [the contracts][1], and recorded into thread state by [projector.ts][4].
+
+### Powerhouse
+
+Powerhouse is a separate open-source project. Vetra Code ships a read-only panel for its projects; see [powerhouse-panel.md](./powerhouse-panel.md).
+
+#### Powerhouse reactor
+
+Powerhouse's document server, also called a switchboard. It stores documents, serves them over GraphQL, and is what the panel's Explorer mode reads. It has nothing to do with a Vetra Code [reactor](#reactor).
+
+#### Document model
+
+A Powerhouse document type, declared on disk as `<documentModelsDir>/<name>/<name>.json`. It holds GraphQL schemas for the document's state and one input schema per operation. Versions are repeated entries in the file's `specifications` array rather than separate files.
+
+#### Powerhouse drive
+
+A container document in a reactor, identified by its document type rather than by a dedicated API. The reactor has no query that lists drives; they are found by searching for documents of the drive container types.
+
+#### Powerhouse reference
+
+The text a dragged Powerhouse panel row leaves in the chat composer. A model row leaves an ordinary file mention of the model's directory. A reactor row, having no path to link, leaves `` `powerhouse:<drive|folder|doc>/<id>` `` followed by the name, type, containing path, and reactor URL that let an agent fetch it. The composer renders one as a chip named after the item; the full text is what reaches the agent.
+
+#### Vetra (Powerhouse)
+
+Powerhouse's own brand for its authoring toolchain — the `@powerhousedao/vetra` package and the `ph vetra` command. Unrelated to Vetra Code. Nothing in our Powerhouse surface uses the name.
 
 ### Fork and upstream
 

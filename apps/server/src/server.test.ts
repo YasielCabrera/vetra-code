@@ -126,6 +126,8 @@ import * as PreviewManager from "./preview/Manager.ts";
 import * as PortScanner from "./preview/PortScanner.ts";
 import * as BrowserTraceCollector from "./observability/BrowserTraceCollector.ts";
 import * as ProjectFaviconResolver from "./project/ProjectFaviconResolver.ts";
+import * as PowerhouseProject from "./powerhouse/PowerhouseProject.ts";
+import * as PowerhouseReactorClient from "./powerhouse/PowerhouseReactorClient.ts";
 import * as VetraProjectFileLoader from "./project/VetraProjectFileLoader.ts";
 import * as ProjectSetupScriptRunner from "./project/ProjectSetupScriptRunner.ts";
 import * as RepositoryIdentityResolver from "./project/RepositoryIdentityResolver.ts";
@@ -579,6 +581,8 @@ const buildAppUnderTest = (options?: {
         Layer.provide(WorkspacePaths.layer),
         Layer.provide(VetraProjectFileLoader.layer),
       ),
+      PowerhouseProject.layer.pipe(Layer.provide(WorkspacePaths.layer)),
+      PowerhouseReactorClient.layer,
     );
     const fileAnnotationLayer = options?.layers?.fileAnnotationService
       ? Layer.mock(FileAnnotationService.FileAnnotationService)({
@@ -5063,6 +5067,136 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       assert.equal(browseError.failure, "read_directory_failed");
       assert.equal(browseError.parentPath, missingBrowseParent);
       assert.isDefined(browseError.cause);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("serves powerhouse document models over the rpc with its failures intact", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const projectDir = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-ws-powerhouse-" });
+      const plainDir = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-ws-not-powerhouse-" });
+      yield* fs.writeFileString(path.join(projectDir, "powerhouse.config.json"), "{}");
+      yield* fs.makeDirectory(path.join(projectDir, "document-models", "todo"), {
+        recursive: true,
+      });
+      yield* fs.writeFileString(
+        path.join(projectDir, "document-models", "todo", "todo.json"),
+        // @effect-diagnostics-next-line preferSchemaOverJson:off - building fixture file contents.
+        JSON.stringify({
+          id: "powerhouse/todo",
+          name: "Todo",
+          extension: "todo",
+          description: "A todo list",
+          specifications: [
+            {
+              version: 1,
+              changeLog: [],
+              state: { global: { schema: "type TodoState { id: ID! }" }, local: { schema: "" } },
+              modules: [
+                {
+                  name: "base",
+                  operations: [{ name: "ADD_TODO", schema: "input A { x: String }" }],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+
+      // A monorepo whose Powerhouse project sits under apps/, which is how the
+      // project is laid out in practice.
+      const monorepoDir = yield* fs.makeTempDirectoryScoped({
+        prefix: "vetra-ws-powerhouse-mono-",
+      });
+      yield* fs.makeDirectory(path.join(monorepoDir, "apps", "connect"), { recursive: true });
+      yield* fs.writeFileString(
+        path.join(monorepoDir, "apps", "connect", "powerhouse.config.json"),
+        "{}",
+      );
+
+      yield* buildAppUnderTest();
+      const wsUrl = yield* getWsServerUrl("/ws");
+      const results = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          Effect.all({
+            discovered: client[WS_METHODS.powerhouseListProjects]({ cwd: projectDir }).pipe(
+              Effect.result,
+            ),
+            discoveredNested: client[WS_METHODS.powerhouseListProjects]({
+              cwd: monorepoDir,
+            }).pipe(Effect.result),
+            discoveredNone: client[WS_METHODS.powerhouseListProjects]({ cwd: plainDir }).pipe(
+              Effect.result,
+            ),
+            listed: client[WS_METHODS.powerhouseListDocumentModels]({ cwd: projectDir }).pipe(
+              Effect.result,
+            ),
+            detail: client[WS_METHODS.powerhouseGetDocumentModel]({
+              cwd: projectDir,
+              directoryName: "todo",
+            }).pipe(Effect.result),
+            traversal: client[WS_METHODS.powerhouseGetDocumentModel]({
+              cwd: projectDir,
+              directoryName: "../secrets",
+            }).pipe(Effect.result),
+            notAProject: client[WS_METHODS.powerhouseListDocumentModels]({ cwd: plainDir }).pipe(
+              Effect.result,
+            ),
+          }),
+        ),
+      );
+
+      if (
+        results.discovered._tag !== "Success" ||
+        results.discoveredNested._tag !== "Success" ||
+        results.discoveredNone._tag !== "Success"
+      ) {
+        assert.fail("Expected project discovery to succeed");
+      }
+      assert.deepEqual(
+        results.discovered.success.projects.map((project) => project.path),
+        [""],
+      );
+      assert.deepEqual(
+        results.discoveredNested.success.projects.map((project) => project.path),
+        ["apps/connect"],
+      );
+      // A workspace with no Powerhouse project answers with an empty list, not a failure.
+      assert.deepEqual(results.discoveredNone.success.projects, []);
+
+      if (results.listed._tag !== "Success") {
+        assert.fail("Expected the document model listing to succeed");
+      }
+      assert.equal(results.listed.success.documentModelsDir, "./document-models");
+      assert.deepEqual(results.listed.success.failures, []);
+      assert.lengthOf(results.listed.success.models, 1);
+      assert.equal(results.listed.success.models[0]?.name, "Todo");
+      assert.equal(results.listed.success.models[0]?.operationCount, 1);
+
+      if (results.detail._tag !== "Success") {
+        assert.fail("Expected the document model detail to succeed");
+      }
+      assert.equal(
+        results.detail.success.specifications[0]?.globalSchema,
+        "type TodoState { id: ID! }",
+      );
+
+      if (
+        results.traversal._tag !== "Failure" ||
+        results.traversal.failure._tag !== "PowerhouseProjectError"
+      ) {
+        assert.fail("Expected a PowerhouseProjectError");
+      }
+      assert.equal(results.traversal.failure.failure, "invalid_model_name");
+
+      if (
+        results.notAProject._tag !== "Failure" ||
+        results.notAProject.failure._tag !== "PowerhouseProjectError"
+      ) {
+        assert.fail("Expected a PowerhouseProjectError");
+      }
+      assert.equal(results.notAProject.failure.failure, "not_a_powerhouse_project");
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 

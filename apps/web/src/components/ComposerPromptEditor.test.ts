@@ -50,6 +50,7 @@ describe("registerComposerInlineTokenPaste", () => {
     );
     registerComposerInlineTokenPaste(editor, {
       createMentionNode: (path) => $createTextNode(`<mention:${path}>`),
+      createPowerhouseNode: (token) => $createTextNode(`<powerhouse:${token.value}>`),
       getExpandedAbsoluteOffsetForPoint: () => 0,
     });
     editor.registerCommand(PASTE_COMMAND, plainTextFallback, COMMAND_PRIORITY_EDITOR);
@@ -95,6 +96,7 @@ describe("registerComposerInlineTokenPaste", () => {
     );
     registerComposerInlineTokenPaste(editor, {
       createMentionNode: (path) => $createTextNode(`<mention:${path}>`),
+      createPowerhouseNode: (token) => $createTextNode(`<powerhouse:${token.value}>`),
       getExpandedAbsoluteOffsetForPoint: () => 0,
     });
     editor.registerCommand(PASTE_COMMAND, plainTextFallback, COMMAND_PRIORITY_EDITOR);
@@ -129,6 +131,7 @@ describe("registerComposerInlineTokenPaste", () => {
     );
     registerComposerInlineTokenPaste(editor, {
       createMentionNode: (path) => $createTextNode(`<mention:${path}>`),
+      createPowerhouseNode: (token) => $createTextNode(`<powerhouse:${token.value}>`),
       getExpandedAbsoluteOffsetForPoint: () => 0,
     });
     editor.registerCommand(PASTE_COMMAND, plainTextFallback, COMMAND_PRIORITY_EDITOR);
@@ -147,6 +150,43 @@ describe("registerComposerInlineTokenPaste", () => {
     expect(event.defaultPrevented).toBe(true);
     expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe(
       "<mention:@scope/pkg/sub> ",
+    );
+  });
+
+  it("turns a pasted Powerhouse reference into a chip node", () => {
+    vi.stubGlobal("ClipboardEvent", TestClipboardEvent);
+    const editor = createEditor();
+    const reference = "`powerhouse:doc/abc` (a.pdf \u00b7 t/x \u00b7 http://127.0.0.1:4001)";
+
+    editor.update(
+      () => {
+        const paragraph = $createParagraphNode();
+        $getRoot().append(paragraph);
+        paragraph.selectEnd();
+      },
+      { discrete: true },
+    );
+    registerComposerInlineTokenPaste(editor, {
+      createMentionNode: (path) => $createTextNode(`<mention:${path}>`),
+      createPowerhouseNode: (token) => $createTextNode(`<powerhouse:${token.value}>`),
+      getExpandedAbsoluteOffsetForPoint: () => 0,
+    });
+
+    const event = new TestClipboardEvent(`see ${reference}`);
+    let handled = false;
+    editor.update(
+      () => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          handled = editor.dispatchCommand(PASTE_COMMAND, event);
+        }
+      },
+      { discrete: true },
+    );
+
+    expect(handled).toBe(true);
+    expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe(
+      "see <powerhouse:doc/abc> ",
     );
   });
 });

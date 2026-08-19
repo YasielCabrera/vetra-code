@@ -5,6 +5,7 @@ import {
 import {
   collectComposerInlineTokens,
   type ComposerInlineToken,
+  type PowerhouseReferenceKind,
 } from "@vetra-code/shared/composerInlineTokens";
 
 export type ComposerPromptSegment =
@@ -20,6 +21,13 @@ export type ComposerPromptSegment =
   | {
       type: "skill";
       name: string;
+    }
+  | {
+      type: "powerhouse";
+      kind: PowerhouseReferenceKind;
+      label: string;
+      detail: string;
+      source: string;
     }
   | {
       type: "terminal-context";
@@ -145,6 +153,14 @@ function splitPromptTextIntoComposerSegments(text: string): ComposerPromptSegmen
       segments.push({
         type: "mention",
         path: match.value,
+        source: match.source,
+      });
+    } else if (match.type === "powerhouse") {
+      segments.push({
+        type: "powerhouse",
+        kind: match.kind,
+        label: match.label,
+        detail: match.detail,
         source: match.source,
       });
     } else {

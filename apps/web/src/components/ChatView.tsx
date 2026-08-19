@@ -333,6 +333,8 @@ import {
 } from "./ChatView.logic";
 import type { ThreadSyncPhase } from "../threadSync";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
+import { usePowerhouseProjects } from "./powerhouse/usePowerhouseProject";
+import { PowerhousePanelLoading } from "./powerhouse/PowerhousePanelPrimitives";
 import { useComposerHandleContext } from "../composerHandleContext";
 import { ProjectSelectorControl } from "./chat/ProjectSelectorControl";
 import { sanitizeThreadErrorMessage } from "~/rpc/transportError";
@@ -444,6 +446,7 @@ const PreviewPanel = lazy(() =>
 );
 const DiffPanel = lazy(() => import("./DiffPanel"));
 const FilePreviewPanel = lazy(() => import("./files/FilePreviewPanel"));
+const PowerhousePanel = lazy(() => import("./powerhouse/PowerhousePanel"));
 const EMPTY_PENDING_FILE_SURFACE_IDS: ReadonlySet<string> = new Set();
 const TYPE_TO_FOCUS_EDITABLE_SELECTOR = [
   "input",
@@ -2709,6 +2712,14 @@ function ChatViewContent(props: ChatViewProps) {
     terminalUiLaunchContext?.threadId === activeThreadId ? terminalUiLaunchContext : null;
   // Default true while loading to avoid toolbar flicker.
   const isGitRepo = gitStatusQuery.data?.isRepo ?? true;
+  // The surface exists only in workspaces that hold a Powerhouse project —
+  // including a monorepo where it sits under apps/ — so this discovery gates
+  // the launcher card, the + menu entry, and the keybinding alike.
+  const powerhouseProjects = usePowerhouseProjects(
+    activeProject?.environmentId ?? null,
+    activeWorkspaceRoot ?? null,
+  );
+  const powerhouseAvailable = powerhouseProjects.isPowerhouseWorkspace;
   const showComposerContextStrip = shouldShowComposerContextStrip({
     hasActiveProject: activeProject !== null,
     isGitRepo,
@@ -3319,6 +3330,14 @@ function ChatViewContent(props: ChatViewProps) {
     if (!activeThreadRef) return;
     useRightPanelStore.getState().open(activeThreadRef, "agents");
   }, [activeThreadRef]);
+  const addPowerhouseSurface = useCallback(() => {
+    if (!activeThreadRef || !powerhouseAvailable) return;
+    useRightPanelStore.getState().open(activeThreadRef, "powerhouse");
+  }, [activeThreadRef, powerhouseAvailable]);
+  const togglePowerhouseSurface = useCallback(() => {
+    if (!activeThreadRef || !powerhouseAvailable) return;
+    useRightPanelStore.getState().toggle(activeThreadRef, "powerhouse");
+  }, [activeThreadRef, powerhouseAvailable]);
   const openFileSurface = useCallback(
     (relativePath: string) => {
       if (!activeThreadRef || !activeProject) return;
@@ -4827,6 +4846,14 @@ function ChatViewContent(props: ChatViewProps) {
         return;
       }
 
+      if (command === "powerhouse.toggle") {
+        if (!powerhouseAvailable) return;
+        event.preventDefault();
+        event.stopPropagation();
+        togglePowerhouseSurface();
+        return;
+      }
+
       if (command === "modelPicker.toggle") {
         event.preventDefault();
         event.stopPropagation();
@@ -4860,6 +4887,8 @@ function ChatViewContent(props: ChatViewProps) {
     splitPanelTerminal,
     keybindings,
     onToggleDiff,
+    powerhouseAvailable,
+    togglePowerhouseSurface,
     toggleRightPanel,
     toggleRightPanelMaximized,
     toggleTerminalVisibility,
@@ -6263,6 +6292,14 @@ function ChatViewContent(props: ChatViewProps) {
           onPendingChange={handleFilePendingChange}
         />
       </Suspense>
+    ) : activeRightPanelSurface?.kind === "powerhouse" && activeProject && activeWorkspaceRoot ? (
+      <Suspense fallback={<PowerhousePanelLoading />}>
+        <PowerhousePanel
+          key={`${activeProject.environmentId}:${activeWorkspaceRoot}`}
+          environmentId={activeProject.environmentId}
+          cwd={activeWorkspaceRoot}
+        />
+      </Suspense>
     ) : null
   ) : null;
 
@@ -6744,12 +6781,14 @@ function ChatViewContent(props: ChatViewProps) {
           onAddFiles={addFilesSurface}
           onAddPullRequest={addPullRequestSurface}
           onAddAgents={addAgentsSurface}
+          onAddPowerhouse={addPowerhouseSurface}
           browserAvailable={isPreviewSupportedInRuntime()}
           terminalAvailable={activeProject !== null}
           diffAvailable={isServerThread && isGitRepo}
           filesAvailable={activeProject !== null}
           pullRequestAvailable={pullRequestSurfaceAvailable}
           agentsAvailable
+          powerhouseAvailable={powerhouseAvailable}
           pullRequestStatuses={pullRequestTabStatuses}
           liveAgentCount={agentPanelModel.liveCount}
         >
@@ -6783,12 +6822,14 @@ function ChatViewContent(props: ChatViewProps) {
             onAddFiles={addFilesSurface}
             onAddPullRequest={addPullRequestSurface}
             onAddAgents={addAgentsSurface}
+            onAddPowerhouse={addPowerhouseSurface}
             browserAvailable={isPreviewSupportedInRuntime()}
             terminalAvailable={activeProject !== null}
             diffAvailable={isServerThread && isGitRepo}
             filesAvailable={activeProject !== null}
             pullRequestAvailable={pullRequestSurfaceAvailable}
             agentsAvailable
+            powerhouseAvailable={powerhouseAvailable}
             pullRequestStatuses={pullRequestTabStatuses}
             liveAgentCount={agentPanelModel.liveCount}
           >

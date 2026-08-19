@@ -46,6 +46,7 @@ import {
   SettingsIcon,
   SquarePenIcon,
   TextSearchIcon,
+  ZapIcon,
 } from "lucide-react";
 import {
   useCallback,
@@ -77,6 +78,7 @@ import { useAtomQueryRunner } from "../state/use-atom-query-runner";
 import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
 import { useProjects, useThreadShells } from "../state/entities";
 import { useThreadSearch } from "../state/queries";
+import { usePowerhouseProjects } from "./powerhouse/usePowerhouseProject";
 import { resolveThreadActionProjectRef, startNewThreadFromContext } from "../lib/chatThreadActions";
 import {
   appendBrowsePathSegment,
@@ -878,9 +880,14 @@ function OpenCommandPaletteDialog(props: {
   const currentProjectEnvironmentId =
     activeThread?.environmentId ?? activeDraftThread?.environmentId ?? null;
   const currentProjectId = activeThread?.projectId ?? activeDraftThread?.projectId ?? null;
+  const currentThreadRef = activeThread
+    ? scopeThreadRef(activeThread.environmentId, activeThread.id)
+    : null;
   const currentProjectCwd = currentProjectId
     ? (projectCwdById.get(currentProjectId) ?? null)
     : null;
+  const powerhouseProjects = usePowerhouseProjects(currentProjectEnvironmentId, currentProjectCwd);
+  const powerhouseAvailable = currentThreadRef !== null && powerhouseProjects.isPowerhouseWorkspace;
   const currentProjectCwdForBrowse =
     browseEnvironmentId && currentProjectEnvironmentId === browseEnvironmentId
       ? currentProjectCwd
@@ -1584,6 +1591,20 @@ function OpenCommandPaletteDialog(props: {
       });
     },
   });
+
+  if (powerhouseAvailable && currentThreadRef !== null) {
+    actionItems.push({
+      kind: "action",
+      value: "action:toggle-powerhouse",
+      searchTerms: ["powerhouse", "document models", "reactor", "explorer", "right panel"],
+      title: "Toggle Powerhouse panel",
+      icon: <ZapIcon className={ITEM_ICON_CLASS} />,
+      shortcutCommand: "powerhouse.toggle",
+      run: async () => {
+        useRightPanelStore.getState().toggle(currentThreadRef, "powerhouse");
+      },
+    });
+  }
 
   actionItems.push({
     kind: "action",
