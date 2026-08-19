@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import {
   DEFAULT_PREFERENCES,
+  EMPTY_DATABASE_SESSION,
   EMPTY_EXPLORER_SELECTION,
   migratePersistedPowerhousePanelState,
   powerhouseProjectKey,
@@ -21,6 +22,7 @@ beforeEach(() => {
     selectedProjectByWorkspaceKey: {},
     modelSelectionByProjectKey: {},
     explorerSelectionByProjectKey: {},
+    databaseSessionByProjectKey: {},
   });
 });
 
@@ -60,6 +62,12 @@ describe("preferences", () => {
       reactorUrlOverride: "http://10.0.0.5:4001",
     });
     expect(byProjectKey[keyB]).toEqual({ mode: "models", reactorUrlOverride: null });
+  });
+
+  it("persists Database as a project mode without changing the Models default", () => {
+    usePowerhousePanelStore.getState().setMode(keyA, "database");
+    expect(usePowerhousePanelStore.getState().byProjectKey[keyA]?.mode).toBe("database");
+    expect(DEFAULT_PREFERENCES.mode).toBe("models");
   });
 
   it("clears the override back to autodetection", () => {
@@ -107,6 +115,20 @@ describe("migratePersistedPowerhousePanelState", () => {
       }),
     ).toEqual({
       byProjectKey: { [keyA]: { mode: "explorer", reactorUrlOverride: "http://x:4001" } },
+      selectedProjectByWorkspaceKey: {},
+    });
+  });
+
+  it("migrates the Database mode and drops session-only SQL", () => {
+    expect(
+      migratePersistedPowerhousePanelState({
+        byProjectKey: { [keyA]: { mode: "database", reactorUrlOverride: null } },
+        databaseSessionByProjectKey: {
+          [keyA]: { ...EMPTY_DATABASE_SESSION, draft: "SELECT secret FROM credentials" },
+        },
+      }),
+    ).toEqual({
+      byProjectKey: { [keyA]: { mode: "database", reactorUrlOverride: null } },
       selectedProjectByWorkspaceKey: {},
     });
   });
@@ -165,6 +187,34 @@ describe("migratePersistedPowerhousePanelState", () => {
 });
 
 describe("selection", () => {
+  it("keeps database target, draft, and bounded history in session state", () => {
+    const store = usePowerhousePanelStore.getState();
+    store.setDatabaseTarget(keyA, "reactor");
+    store.selectDatabaseRelation(keyA, "public", "documents");
+    store.setDatabaseDraft(keyA, "SELECT * FROM public.documents");
+    store.recordDatabaseQuery(keyA, "SELECT * FROM public.documents");
+    store.recordDatabaseQuery(keyA, "SELECT count(*) FROM public.documents");
+
+    expect(usePowerhousePanelStore.getState().databaseSessionByProjectKey[keyA]).toMatchObject({
+      target: "reactor",
+      schema: "public",
+      relation: "documents",
+      draft: "SELECT * FROM public.documents",
+      history: ["SELECT count(*) FROM public.documents", "SELECT * FROM public.documents"],
+    });
+  });
+
+  it("resets relation selection when the database target changes", () => {
+    const store = usePowerhousePanelStore.getState();
+    store.selectDatabaseRelation(keyA, "public", "documents");
+    usePowerhousePanelStore.getState().setDatabaseTarget(keyA, "reactor");
+    expect(usePowerhousePanelStore.getState().databaseSessionByProjectKey[keyA]).toMatchObject({
+      target: "reactor",
+      schema: null,
+      relation: null,
+    });
+  });
+
   it("resets the version picker when a different model is selected", () => {
     const store = usePowerhousePanelStore.getState();
     store.selectModel(keyA, "todo");

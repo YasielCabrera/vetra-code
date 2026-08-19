@@ -9,6 +9,7 @@
  * across a reload would re-fetch data from a reactor that may no longer be
  * running, so selection resets instead.
  */
+import type { PowerhouseDatabaseRowLimit, PowerhouseDatabaseTargetId } from "@vetra-code/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import * as Predicate from "effect/Predicate";
@@ -17,7 +18,7 @@ import { resolveStorage } from "~/lib/storage";
 
 import { normalizeReactorUrl } from "./PowerhousePanel.logic";
 
-export type PowerhouseMode = "models" | "explorer";
+export type PowerhouseMode = "models" | "explorer" | "database";
 
 export interface PowerhouseProjectPreferences {
   readonly mode: PowerhouseMode;
@@ -42,6 +43,16 @@ export interface PowerhouseModelSelection {
   readonly specIndex: number | null;
 }
 
+export interface PowerhouseDatabaseSession {
+  readonly target: PowerhouseDatabaseTargetId;
+  readonly schema: string | null;
+  readonly relation: string | null;
+  readonly draft: string;
+  readonly history: ReadonlyArray<string>;
+  readonly rowLimit: PowerhouseDatabaseRowLimit;
+  readonly includeSystemSchemas: boolean;
+}
+
 export const DEFAULT_PREFERENCES: PowerhouseProjectPreferences = {
   mode: "models",
   reactorUrlOverride: null,
@@ -55,6 +66,16 @@ export const EMPTY_EXPLORER_SELECTION: PowerhouseExplorerSelection = {
 
 const EMPTY_MODEL_SELECTION: PowerhouseModelSelection = { directoryName: null, specIndex: null };
 
+export const EMPTY_DATABASE_SESSION: PowerhouseDatabaseSession = {
+  target: "read_models",
+  schema: null,
+  relation: null,
+  draft: "",
+  history: [],
+  rowLimit: 100,
+  includeSystemSchemas: false,
+};
+
 interface PowerhousePanelStoreState {
   /** Persisted, keyed by `powerhouseProjectKey`. */
   byProjectKey: Record<string, PowerhouseProjectPreferences>;
@@ -63,6 +84,7 @@ interface PowerhousePanelStoreState {
   /** Session-only, keyed by `powerhouseProjectKey`. */
   modelSelectionByProjectKey: Record<string, PowerhouseModelSelection>;
   explorerSelectionByProjectKey: Record<string, PowerhouseExplorerSelection>;
+  databaseSessionByProjectKey: Record<string, PowerhouseDatabaseSession>;
   selectProject: (workspaceKey: string, projectPath: string) => void;
   setMode: (projectKey: string, mode: PowerhouseMode) => void;
   setReactorUrlOverride: (projectKey: string, url: string | null) => void;
@@ -73,6 +95,12 @@ interface PowerhousePanelStoreState {
   /** Truncate the path to `depth` crumbs — how a breadcrumb click navigates back. */
   popToDepth: (projectKey: string, depth: number) => void;
   selectDocument: (projectKey: string, documentId: string | null) => void;
+  setDatabaseTarget: (projectKey: string, target: PowerhouseDatabaseTargetId) => void;
+  selectDatabaseRelation: (projectKey: string, schema: string, relation: string) => void;
+  setDatabaseDraft: (projectKey: string, draft: string) => void;
+  recordDatabaseQuery: (projectKey: string, sql: string) => void;
+  setDatabaseRowLimit: (projectKey: string, rowLimit: PowerhouseDatabaseRowLimit) => void;
+  setDatabaseIncludeSystemSchemas: (projectKey: string, include: boolean) => void;
 }
 
 /** One workspace. A monorepo can hold several Powerhouse projects under it. */
@@ -89,10 +117,10 @@ export const powerhouseProjectKey = (environmentId: string, cwd: string, project
 const POWERHOUSE_PANEL_STORAGE_KEY = "vetra:powerhouse-panel:v1";
 // v2 keys preferences by project rather than by workspace, so a monorepo's
 // projects stop sharing one reactor address.
-const POWERHOUSE_PANEL_STORAGE_VERSION = 2;
+const POWERHOUSE_PANEL_STORAGE_VERSION = 3;
 
 const isMode = (value: unknown): value is PowerhouseMode =>
-  value === "models" || value === "explorer";
+  value === "models" || value === "explorer" || value === "database";
 
 /**
  * Drop anything that does not read back as a preference rather than failing the
@@ -152,6 +180,17 @@ const updateExplorer = (
   },
 });
 
+const updateDatabase = (
+  state: PowerhousePanelStoreState,
+  projectKey: string,
+  next: (previous: PowerhouseDatabaseSession) => PowerhouseDatabaseSession,
+) => ({
+  databaseSessionByProjectKey: {
+    ...state.databaseSessionByProjectKey,
+    [projectKey]: next(state.databaseSessionByProjectKey[projectKey] ?? EMPTY_DATABASE_SESSION),
+  },
+});
+
 export const usePowerhousePanelStore = create<PowerhousePanelStoreState>()(
   persist(
     (set) => ({
@@ -159,6 +198,7 @@ export const usePowerhousePanelStore = create<PowerhousePanelStoreState>()(
       selectedProjectByWorkspaceKey: {},
       modelSelectionByProjectKey: {},
       explorerSelectionByProjectKey: {},
+      databaseSessionByProjectKey: {},
       selectProject: (workspaceKey, projectPath) =>
         set((state) => ({
           selectedProjectByWorkspaceKey: {
@@ -229,6 +269,41 @@ export const usePowerhousePanelStore = create<PowerhousePanelStoreState>()(
       selectDocument: (projectKey, documentId) =>
         set((state) =>
           updateExplorer(state, projectKey, (previous) => ({ ...previous, documentId })),
+        ),
+      setDatabaseTarget: (projectKey, target) =>
+        set((state) =>
+          updateDatabase(state, projectKey, (previous) => ({
+            ...previous,
+            target,
+            schema: null,
+            relation: null,
+          })),
+        ),
+      selectDatabaseRelation: (projectKey, schema, relation) =>
+        set((state) =>
+          updateDatabase(state, projectKey, (previous) => ({ ...previous, schema, relation })),
+        ),
+      setDatabaseDraft: (projectKey, draft) =>
+        set((state) => updateDatabase(state, projectKey, (previous) => ({ ...previous, draft }))),
+      recordDatabaseQuery: (projectKey, sql) =>
+        set((state) =>
+          updateDatabase(state, projectKey, (previous) => ({
+            ...previous,
+            history: [sql, ...previous.history.filter((entry) => entry !== sql)].slice(0, 20),
+          })),
+        ),
+      setDatabaseRowLimit: (projectKey, rowLimit) =>
+        set((state) =>
+          updateDatabase(state, projectKey, (previous) => ({ ...previous, rowLimit })),
+        ),
+      setDatabaseIncludeSystemSchemas: (projectKey, includeSystemSchemas) =>
+        set((state) =>
+          updateDatabase(state, projectKey, (previous) => ({
+            ...previous,
+            includeSystemSchemas,
+            schema: null,
+            relation: null,
+          })),
         ),
     }),
     {

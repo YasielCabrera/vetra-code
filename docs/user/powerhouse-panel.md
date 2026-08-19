@@ -1,8 +1,8 @@
 # Inspect Powerhouse projects
 
-Open **Powerhouse** in a thread's right panel to read a Powerhouse project's document models and,
-when one is running, browse the data in its reactor. The panel is read-only; editing documents
-stays in Connect.
+Open **Powerhouse** in a thread's right panel to read a Powerhouse project's document models,
+browse a running reactor, and inspect the generated database shape. The panel is read-only;
+editing documents stays in Connect.
 
 The surface appears only in workspaces that contain a Powerhouse project — one with a
 `powerhouse.config.json`. That project does not have to be the workspace root: in a monorepo it is
@@ -105,6 +105,59 @@ remains available. PNG generation loads only after an image action is selected a
 dimensions to avoid browser canvas failures on unusually large graphs. Copying depends on image
 clipboard access in a secure browser connection; the panel reports when the browser cannot provide
 it, while PNG download remains available.
+
+## Database
+
+**Database** inspects the two stores Powerhouse builds:
+
+- **Read models** contains the generated processor schemas and read-model tables.
+- **Reactor** contains the reactor's operational storage.
+
+Choose a target at the top of the view. Its status always says whether you are looking at a
+point-in-time **Snapshot** or **Live Postgres**. Vetra Code does not poll either database in the
+background; use **Refresh** when you want to capture a newer local snapshot or re-read a live
+catalog.
+
+The left side lists schemas and their tables, partitioned tables, views, materialized views, and
+foreign tables. Search matches both schema and relation names. PostgreSQL system schemas are
+hidden by default and can be included explicitly. Generated read-model schema hashes are shown as
+Powerhouse created them; the panel does not guess which processor name produced a hash.
+
+Open a relation to inspect:
+
+- **Data** — a bounded, read-only preview. Select a cell to copy it.
+- **Columns** — current types, nullability, defaults, and generated values.
+- **Indexes** and **Constraints** — their exact catalog definitions.
+- **Definition** — the exact view definition, or a clearly labeled reconstructed table structure.
+  PostgreSQL does not retain the original migration statement for a table.
+
+**Open in SQL** prepares an identifier-safe `SELECT` for the current relation. The SQL console
+accepts one row-producing PostgreSQL statement (`SELECT`, `WITH`, `VALUES`, or `TABLE`), runs it in
+a read-only transaction, and always rolls that transaction back. Use Cmd+Enter or Ctrl+Enter to
+run it. Results can show 50, 100, or 200 rows and stop at the transfer-size limit. Query drafts and
+the 20 most recent queries live only for the current Vetra Code session; they are not saved to
+browser storage.
+
+**Add schema to chat** and **Add result to chat** put a capped plain-text excerpt in the composer
+without sending it. You can edit the context before asking the agent anything.
+
+For local Powerhouse storage, the Database view reads only Powerhouse's atomic `snapshot.bin` and
+restores it into temporary Vetra-owned storage. It never opens the working storage directory.
+Snapshots are near-live rather than live: press **Refresh** after database changes. Snapshots over
+512 MiB, older loose-file PGlite stores, in-memory stores, and unsupported snapshot versions show
+setup guidance instead of being opened.
+
+Postgres inspection is intentionally limited to loopback and local Unix-socket connections in
+this version. Vetra Code keeps connection URLs and credentials on the server; they are never sent
+to the browser. A privileged PostgreSQL function can still have side effects when invoked from a
+`SELECT`, so use a least-privilege, read-only database role for inspection.
+
+Database locations follow Powerhouse's standard environment settings. If you launch `ph vetra`
+with a command-line-only `--db-path`, add the equivalent `DATABASE_URL`,
+`PH_REACTOR_DATABASE_URL`, or `PH_SWITCHBOARD_DATABASE_URL` to the project's `.env` so Vetra Code
+can discover it. A project-local `.env` value is used only when the Vetra Code server environment
+does not already define that setting. Custom PGlite directories must stay inside the selected
+Powerhouse project.
 
 ## Connecting to a reactor
 

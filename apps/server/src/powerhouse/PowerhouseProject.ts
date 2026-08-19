@@ -99,6 +99,10 @@ export class PowerhouseProject extends Context.Service<
     readonly readConfig: (
       ref: PowerhouseProjectRef,
     ) => Effect.Effect<PowerhouseProjectConfig, PowerhouseProjectError>;
+    /** Canonical project directory after workspace containment and config checks. */
+    readonly resolveProjectDirectory: (
+      ref: PowerhouseProjectRef,
+    ) => Effect.Effect<string, PowerhouseProjectError>;
     /** Summaries of every model directory, with unreadable ones reported as failures. */
     readonly listDocumentModels: (
       ref: PowerhouseProjectRef,
@@ -359,6 +363,20 @@ export const make = Effect.gen(function* () {
     return config.value.config;
   });
 
+  const resolveProjectDirectory: PowerhouseProject["Service"]["resolveProjectDirectory"] =
+    Effect.fn("PowerhouseProject.resolveProjectDirectory")(function* (ref) {
+      const { projectDir } = yield* resolveProjectDir(ref);
+      const config = yield* readConfigAt(projectDir, ref.cwd);
+      if (Option.isNone(config)) {
+        return yield* new PowerhouseProjectError({
+          failure: "not_a_powerhouse_project",
+          cwd: ref.cwd,
+          ...(ref.projectPath === undefined ? {} : { detail: ref.projectPath }),
+        });
+      }
+      return projectDir;
+    });
+
   /**
    * Absolute path of the configured models directory, rejecting a
    * `documentModelsDir` that points outside its project.
@@ -589,7 +607,13 @@ export const make = Effect.gen(function* () {
     return parsed.model;
   });
 
-  return PowerhouseProject.of({ listProjects, readConfig, listDocumentModels, getDocumentModel });
+  return PowerhouseProject.of({
+    listProjects,
+    readConfig,
+    resolveProjectDirectory,
+    listDocumentModels,
+    getDocumentModel,
+  });
 });
 
 export const layer = Layer.effect(PowerhouseProject, make);

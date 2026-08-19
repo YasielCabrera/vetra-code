@@ -126,6 +126,7 @@ import * as PreviewManager from "./preview/Manager.ts";
 import * as PortScanner from "./preview/PortScanner.ts";
 import * as BrowserTraceCollector from "./observability/BrowserTraceCollector.ts";
 import * as ProjectFaviconResolver from "./project/ProjectFaviconResolver.ts";
+import * as PowerhouseDatabaseInspector from "./powerhouse/PowerhouseDatabaseInspector.ts";
 import * as PowerhouseProject from "./powerhouse/PowerhouseProject.ts";
 import * as PowerhouseReactorClient from "./powerhouse/PowerhouseReactorClient.ts";
 import * as VetraProjectFileLoader from "./project/VetraProjectFileLoader.ts";
@@ -570,6 +571,9 @@ const buildAppUnderTest = (options?: {
       Layer.provide(WorkspacePaths.layer),
       Layer.provideMerge(vcsDriverRegistryLayer),
     );
+    const powerhouseProjectLayer = PowerhouseProject.layer.pipe(
+      Layer.provide(WorkspacePaths.layer),
+    );
     const workspaceAndProjectServicesLayer = Layer.mergeAll(
       WorkspacePaths.layer,
       workspaceEntriesLayer,
@@ -581,7 +585,8 @@ const buildAppUnderTest = (options?: {
         Layer.provide(WorkspacePaths.layer),
         Layer.provide(VetraProjectFileLoader.layer),
       ),
-      PowerhouseProject.layer.pipe(Layer.provide(WorkspacePaths.layer)),
+      powerhouseProjectLayer,
+      PowerhouseDatabaseInspector.layer.pipe(Layer.provide(powerhouseProjectLayer)),
       PowerhouseReactorClient.layer,
     );
     const fileAnnotationLayer = options?.layers?.fileAnnotationService

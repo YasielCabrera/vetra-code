@@ -1,5 +1,5 @@
 import { useAtomRefresh, useAtomValue } from "@effect/atom-react";
-import type { PowerhouseReactorError } from "@vetra-code/contracts";
+import type { PowerhouseDatabaseError, PowerhouseReactorError } from "@vetra-code/contracts";
 import * as Cause from "effect/Cause";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
@@ -27,6 +27,43 @@ const EMPTY_ATOM = Atom.make(AsyncResult.initial<never, never>(false)).pipe(
 
 const isReactorError = (value: unknown): value is PowerhouseReactorError =>
   Predicate.isObject(value) && value._tag === "PowerhouseReactorError";
+
+const isDatabaseError = (value: unknown): value is PowerhouseDatabaseError =>
+  Predicate.isObject(value) && value._tag === "PowerhouseDatabaseError";
+
+export interface DatabaseQueryView<A> {
+  readonly data: A | null;
+  readonly error: PowerhouseDatabaseError | null;
+  readonly errorMessage: string | null;
+  readonly isFailure: boolean;
+  readonly isPending: boolean;
+  readonly refresh: () => void;
+}
+
+/** Query view that preserves the inspector's structured failure variant. */
+export function useDatabaseQuery<A, E>(
+  atom: Atom.Atom<AsyncResult.AsyncResult<A, E>> | null,
+): DatabaseQueryView<A> {
+  const selectedAtom = atom ?? EMPTY_ATOM;
+  const result = useAtomValue(selectedAtom);
+  const refreshAtom = useAtomRefresh(selectedAtom);
+  const refresh = useCallback(() => refreshAtom(), [refreshAtom]);
+  const squashed = result._tag === "Failure" ? Cause.squash(result.cause) : null;
+  const databaseError = isDatabaseError(squashed) ? squashed : null;
+  return {
+    data: Option.getOrNull(AsyncResult.value(result)),
+    error: databaseError,
+    errorMessage:
+      squashed === null
+        ? null
+        : squashed instanceof Error && squashed.message.trim().length > 0
+          ? squashed.message
+          : "The database request failed.",
+    isFailure: result._tag === "Failure",
+    isPending: atom !== null && result.waiting,
+    refresh,
+  };
+}
 
 /**
  * Like `useEnvironmentQuery`, but keeps the typed reactor error instead of

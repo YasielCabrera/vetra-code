@@ -19,6 +19,19 @@ import {
   FilesystemBrowseError,
 } from "./filesystem.ts";
 import {
+  PowerhouseDatabaseCatalogInput,
+  PowerhouseDatabaseCatalogResult,
+  PowerhouseDatabaseDiscoverInput,
+  PowerhouseDatabaseDiscoverResult,
+  PowerhouseDatabaseError,
+  PowerhouseDatabaseExecuteQueryInput,
+  PowerhouseDatabaseExecuteQueryResult,
+  PowerhouseDatabaseGetRelationInput,
+  PowerhouseDatabaseGetRelationResult,
+  PowerhouseDatabasePreviewRelationInput,
+  PowerhouseDatabasePreviewRelationResult,
+  PowerhouseDatabaseRefreshSnapshotInput,
+  PowerhouseDatabaseRefreshSnapshotResult,
   PowerhouseDocumentModel,
   PowerhouseGetDocumentModelInput,
   PowerhouseListProjectsInput,
@@ -253,6 +266,12 @@ export const WS_METHODS = {
   powerhouseReactorListDocuments: "powerhouse.reactorListDocuments",
   powerhouseReactorGetDocument: "powerhouse.reactorGetDocument",
   powerhouseReactorGetOperations: "powerhouse.reactorGetOperations",
+  powerhouseDatabaseDiscover: "powerhouse.databaseDiscover",
+  powerhouseDatabaseCatalog: "powerhouse.databaseCatalog",
+  powerhouseDatabaseGetRelation: "powerhouse.databaseGetRelation",
+  powerhouseDatabasePreviewRelation: "powerhouse.databasePreviewRelation",
+  powerhouseDatabaseExecuteQuery: "powerhouse.databaseExecuteQuery",
+  powerhouseDatabaseRefreshSnapshot: "powerhouse.databaseRefreshSnapshot",
 
   // VCS methods
   vcsPull: "vcs.pull",
@@ -808,6 +827,78 @@ export const WsPowerhouseReactorGetOperationsRpc = Rpc.make(
   },
 );
 
+export const WsPowerhouseDatabaseDiscoverRpc = Rpc.make(WS_METHODS.powerhouseDatabaseDiscover, {
+  payload: PowerhouseDatabaseDiscoverInput,
+  success: PowerhouseDatabaseDiscoverResult,
+  error: Schema.Union([
+    PowerhouseDatabaseError,
+    PowerhouseProjectError,
+    EnvironmentAuthorizationError,
+  ]),
+});
+
+export const WsPowerhouseDatabaseCatalogRpc = Rpc.make(WS_METHODS.powerhouseDatabaseCatalog, {
+  payload: PowerhouseDatabaseCatalogInput,
+  success: PowerhouseDatabaseCatalogResult,
+  error: Schema.Union([
+    PowerhouseDatabaseError,
+    PowerhouseProjectError,
+    EnvironmentAuthorizationError,
+  ]),
+});
+
+export const WsPowerhouseDatabaseGetRelationRpc = Rpc.make(
+  WS_METHODS.powerhouseDatabaseGetRelation,
+  {
+    payload: PowerhouseDatabaseGetRelationInput,
+    success: PowerhouseDatabaseGetRelationResult,
+    error: Schema.Union([
+      PowerhouseDatabaseError,
+      PowerhouseProjectError,
+      EnvironmentAuthorizationError,
+    ]),
+  },
+);
+
+export const WsPowerhouseDatabasePreviewRelationRpc = Rpc.make(
+  WS_METHODS.powerhouseDatabasePreviewRelation,
+  {
+    payload: PowerhouseDatabasePreviewRelationInput,
+    success: PowerhouseDatabasePreviewRelationResult,
+    error: Schema.Union([
+      PowerhouseDatabaseError,
+      PowerhouseProjectError,
+      EnvironmentAuthorizationError,
+    ]),
+  },
+);
+
+export const WsPowerhouseDatabaseExecuteQueryRpc = Rpc.make(
+  WS_METHODS.powerhouseDatabaseExecuteQuery,
+  {
+    payload: PowerhouseDatabaseExecuteQueryInput,
+    success: PowerhouseDatabaseExecuteQueryResult,
+    error: Schema.Union([
+      PowerhouseDatabaseError,
+      PowerhouseProjectError,
+      EnvironmentAuthorizationError,
+    ]),
+  },
+);
+
+export const WsPowerhouseDatabaseRefreshSnapshotRpc = Rpc.make(
+  WS_METHODS.powerhouseDatabaseRefreshSnapshot,
+  {
+    payload: PowerhouseDatabaseRefreshSnapshotInput,
+    success: PowerhouseDatabaseRefreshSnapshotResult,
+    error: Schema.Union([
+      PowerhouseDatabaseError,
+      PowerhouseProjectError,
+      EnvironmentAuthorizationError,
+    ]),
+  },
+);
+
 export const WsSubscribeVcsStatusRpc = Rpc.make(WS_METHODS.subscribeVcsStatus, {
   payload: VcsStatusInput,
   success: VcsStatusStreamEvent,
@@ -1251,4 +1342,10 @@ export const WsRpcGroup = RpcGroup.make(
   WsPowerhouseReactorListDocumentsRpc,
   WsPowerhouseReactorGetDocumentRpc,
   WsPowerhouseReactorGetOperationsRpc,
+  WsPowerhouseDatabaseDiscoverRpc,
+  WsPowerhouseDatabaseCatalogRpc,
+  WsPowerhouseDatabaseGetRelationRpc,
+  WsPowerhouseDatabasePreviewRelationRpc,
+  WsPowerhouseDatabaseExecuteQueryRpc,
+  WsPowerhouseDatabaseRefreshSnapshotRpc,
 );

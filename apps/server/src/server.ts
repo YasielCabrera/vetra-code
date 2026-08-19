@@ -50,6 +50,7 @@ import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
 import * as PreviewManager from "./preview/Manager.ts";
 import * as PortScanner from "./preview/PortScanner.ts";
 import * as PowerhouseProject from "./powerhouse/PowerhouseProject.ts";
+import * as PowerhouseDatabaseInspector from "./powerhouse/PowerhouseDatabaseInspector.ts";
 import * as PowerhouseReactorClient from "./powerhouse/PowerhouseReactorClient.ts";
 import * as ProcessRunner from "./processRunner.ts";
 import * as GitManager from "./git/GitManager.ts";
@@ -365,8 +366,13 @@ const WorkspaceLayerLive = Layer.mergeAll(
   WorkspaceFileSystemLayerLive,
 );
 
+const PowerhouseProjectLayerLive = PowerhouseProject.layer.pipe(
+  Layer.provide(WorkspacePaths.layer),
+);
+
 const PowerhouseLayerLive = Layer.mergeAll(
-  PowerhouseProject.layer.pipe(Layer.provide(WorkspacePaths.layer)),
+  PowerhouseProjectLayerLive,
+  PowerhouseDatabaseInspector.layer.pipe(Layer.provide(PowerhouseProjectLayerLive)),
   PowerhouseReactorClient.layer,
 );
 

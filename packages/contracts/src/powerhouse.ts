@@ -24,6 +24,12 @@ export const POWERHOUSE_REACTOR_DOCUMENT_TYPE_MAX_LENGTH = 1024;
 const POWERHOUSE_TIMESTAMP_MAX_LENGTH = 128;
 export const POWERHOUSE_REACTOR_OPERATION_TEXT_MAX_LENGTH = 8192;
 const POWERHOUSE_REACTOR_METADATA_MAX_LENGTH = 4096;
+export const POWERHOUSE_DATABASE_SQL_MAX_LENGTH = 64 * 1024;
+export const POWERHOUSE_DATABASE_ROW_LIMITS = [50, 100, 200] as const;
+const POWERHOUSE_DATABASE_IDENTIFIER_MAX_LENGTH = 255;
+const POWERHOUSE_DATABASE_TYPE_MAX_LENGTH = 1024;
+const POWERHOUSE_DATABASE_DEFINITION_MAX_LENGTH = 256 * 1024;
+const POWERHOUSE_DATABASE_MESSAGE_MAX_LENGTH = 4096;
 
 /** Bounds list-valued Switchboard filters before they cross the websocket. */
 export const POWERHOUSE_REACTOR_FILTER_VALUE_MAX_COUNT = 100;
@@ -311,6 +317,270 @@ export class PowerhouseProjectError extends Schema.TaggedErrorClass<PowerhousePr
     super({
       ...props,
       message: props.message ?? POWERHOUSE_PROJECT_FAILURE_MESSAGES[props.failure],
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Database inspector (server-side PGlite snapshots or live local Postgres)
+// ---------------------------------------------------------------------------
+
+export const PowerhouseDatabaseTargetId = Schema.Literals(["read_models", "reactor"]);
+export type PowerhouseDatabaseTargetId = typeof PowerhouseDatabaseTargetId.Type;
+
+export const PowerhouseDatabaseBackend = Schema.Literals(["pglite_snapshot", "postgres"]);
+export type PowerhouseDatabaseBackend = typeof PowerhouseDatabaseBackend.Type;
+
+export const PowerhouseDatabaseTargetStatus = Schema.Literals([
+  "ready",
+  "missing",
+  "unsupported",
+  "unreachable",
+]);
+export type PowerhouseDatabaseTargetStatus = typeof PowerhouseDatabaseTargetStatus.Type;
+
+export const PowerhouseDatabaseTargetSource = Schema.Literals([
+  "default",
+  "project_env",
+  "server_env",
+]);
+export type PowerhouseDatabaseTargetSource = typeof PowerhouseDatabaseTargetSource.Type;
+
+const PowerhouseDatabaseIdentifier = TrimmedNonEmptyString.check(
+  Schema.isMaxLength(POWERHOUSE_DATABASE_IDENTIFIER_MAX_LENGTH),
+);
+
+const PowerhouseDatabaseBaseInput = Schema.Struct({
+  cwd: PowerhouseCwd,
+  projectPath: Schema.optional(PowerhouseProjectPath),
+  target: PowerhouseDatabaseTargetId,
+});
+
+export const PowerhouseDatabaseDiscoverInput = Schema.Struct({
+  cwd: PowerhouseCwd,
+  projectPath: Schema.optional(PowerhouseProjectPath),
+});
+export type PowerhouseDatabaseDiscoverInput = typeof PowerhouseDatabaseDiscoverInput.Type;
+
+export const PowerhouseDatabaseTarget = Schema.Struct({
+  id: PowerhouseDatabaseTargetId,
+  label: TrimmedNonEmptyString,
+  backend: PowerhouseDatabaseBackend,
+  status: PowerhouseDatabaseTargetStatus,
+  source: PowerhouseDatabaseTargetSource,
+  /** File mtime for PGlite. Null for Postgres and missing snapshots. */
+  snapshotWrittenAtUtcIso: Schema.NullOr(
+    Schema.String.check(Schema.isMaxLength(POWERHOUSE_TIMESTAMP_MAX_LENGTH)),
+  ),
+  /** Actionable, credential-free status detail for non-ready targets. */
+  detail: Schema.NullOr(
+    Schema.String.check(Schema.isMaxLength(POWERHOUSE_DATABASE_MESSAGE_MAX_LENGTH)),
+  ),
+});
+export type PowerhouseDatabaseTarget = typeof PowerhouseDatabaseTarget.Type;
+
+export const PowerhouseDatabaseDiscoverResult = Schema.Struct({
+  targets: Schema.Array(PowerhouseDatabaseTarget),
+});
+export type PowerhouseDatabaseDiscoverResult = typeof PowerhouseDatabaseDiscoverResult.Type;
+
+export const PowerhouseDatabaseRelationKind = Schema.Literals([
+  "table",
+  "partitioned_table",
+  "view",
+  "materialized_view",
+  "foreign_table",
+]);
+export type PowerhouseDatabaseRelationKind = typeof PowerhouseDatabaseRelationKind.Type;
+
+export const PowerhouseDatabaseRelationSummary = Schema.Struct({
+  schema: PowerhouseDatabaseIdentifier,
+  name: PowerhouseDatabaseIdentifier,
+  kind: PowerhouseDatabaseRelationKind,
+  estimatedRows: Schema.NullOr(Schema.Number),
+});
+export type PowerhouseDatabaseRelationSummary = typeof PowerhouseDatabaseRelationSummary.Type;
+
+export const PowerhouseDatabaseSchemaSummary = Schema.Struct({
+  name: PowerhouseDatabaseIdentifier,
+  system: Schema.Boolean,
+  relations: Schema.Array(PowerhouseDatabaseRelationSummary),
+});
+export type PowerhouseDatabaseSchemaSummary = typeof PowerhouseDatabaseSchemaSummary.Type;
+
+export const PowerhouseDatabaseCatalogInput = Schema.Struct({
+  ...PowerhouseDatabaseBaseInput.fields,
+  includeSystemSchemas: Schema.optional(Schema.Boolean),
+});
+export type PowerhouseDatabaseCatalogInput = typeof PowerhouseDatabaseCatalogInput.Type;
+
+export const PowerhouseDatabaseCatalogResult = Schema.Struct({
+  target: PowerhouseDatabaseTarget,
+  schemas: Schema.Array(PowerhouseDatabaseSchemaSummary),
+});
+export type PowerhouseDatabaseCatalogResult = typeof PowerhouseDatabaseCatalogResult.Type;
+
+const PowerhouseDatabaseRelationInputFields = {
+  ...PowerhouseDatabaseBaseInput.fields,
+  schema: PowerhouseDatabaseIdentifier,
+  relation: PowerhouseDatabaseIdentifier,
+};
+
+export const PowerhouseDatabaseGetRelationInput = Schema.Struct(
+  PowerhouseDatabaseRelationInputFields,
+);
+export type PowerhouseDatabaseGetRelationInput = typeof PowerhouseDatabaseGetRelationInput.Type;
+
+export const PowerhouseDatabaseColumn = Schema.Struct({
+  name: PowerhouseDatabaseIdentifier,
+  ordinal: PositiveInt,
+  dataType: Schema.String.check(Schema.isMaxLength(POWERHOUSE_DATABASE_TYPE_MAX_LENGTH)),
+  nullable: Schema.Boolean,
+  defaultExpression: Schema.NullOr(
+    Schema.String.check(Schema.isMaxLength(POWERHOUSE_DATABASE_DEFINITION_MAX_LENGTH)),
+  ),
+  generated: Schema.Boolean,
+});
+export type PowerhouseDatabaseColumn = typeof PowerhouseDatabaseColumn.Type;
+
+export const PowerhouseDatabaseIndex = Schema.Struct({
+  name: PowerhouseDatabaseIdentifier,
+  unique: Schema.Boolean,
+  primary: Schema.Boolean,
+  definition: Schema.String.check(Schema.isMaxLength(POWERHOUSE_DATABASE_DEFINITION_MAX_LENGTH)),
+});
+export type PowerhouseDatabaseIndex = typeof PowerhouseDatabaseIndex.Type;
+
+export const PowerhouseDatabaseConstraint = Schema.Struct({
+  name: PowerhouseDatabaseIdentifier,
+  type: Schema.Literals(["check", "foreign_key", "primary_key", "unique", "exclusion"]),
+  definition: Schema.String.check(Schema.isMaxLength(POWERHOUSE_DATABASE_DEFINITION_MAX_LENGTH)),
+});
+export type PowerhouseDatabaseConstraint = typeof PowerhouseDatabaseConstraint.Type;
+
+export const PowerhouseDatabaseRelationDetail = Schema.Struct({
+  schema: PowerhouseDatabaseIdentifier,
+  name: PowerhouseDatabaseIdentifier,
+  kind: PowerhouseDatabaseRelationKind,
+  columns: Schema.Array(PowerhouseDatabaseColumn),
+  indexes: Schema.Array(PowerhouseDatabaseIndex),
+  constraints: Schema.Array(PowerhouseDatabaseConstraint),
+  definition: Schema.String.check(Schema.isMaxLength(POWERHOUSE_DATABASE_DEFINITION_MAX_LENGTH)),
+  definitionKind: Schema.Literals(["exact", "reconstructed"]),
+});
+export type PowerhouseDatabaseRelationDetail = typeof PowerhouseDatabaseRelationDetail.Type;
+
+export const PowerhouseDatabaseGetRelationResult = Schema.Struct({
+  target: PowerhouseDatabaseTarget,
+  relation: PowerhouseDatabaseRelationDetail,
+});
+export type PowerhouseDatabaseGetRelationResult = typeof PowerhouseDatabaseGetRelationResult.Type;
+
+export const PowerhouseDatabaseRowLimit = Schema.Literals(POWERHOUSE_DATABASE_ROW_LIMITS);
+export type PowerhouseDatabaseRowLimit = typeof PowerhouseDatabaseRowLimit.Type;
+
+export const PowerhouseDatabasePreviewRelationInput = Schema.Struct({
+  ...PowerhouseDatabaseRelationInputFields,
+  limit: Schema.optional(PowerhouseDatabaseRowLimit),
+});
+export type PowerhouseDatabasePreviewRelationInput =
+  typeof PowerhouseDatabasePreviewRelationInput.Type;
+
+export const PowerhouseDatabaseQueryColumn = Schema.Struct({
+  name: Schema.String.check(Schema.isMaxLength(POWERHOUSE_DATABASE_IDENTIFIER_MAX_LENGTH)),
+  dataType: Schema.String.check(Schema.isMaxLength(POWERHOUSE_DATABASE_TYPE_MAX_LENGTH)),
+});
+export type PowerhouseDatabaseQueryColumn = typeof PowerhouseDatabaseQueryColumn.Type;
+
+export const PowerhouseDatabaseQueryResult = Schema.Struct({
+  columns: Schema.Array(PowerhouseDatabaseQueryColumn),
+  rows: Schema.Array(Schema.Array(Schema.NullOr(Schema.String))).check(
+    Schema.isMaxLength(POWERHOUSE_DATABASE_ROW_LIMITS.at(-1) ?? 200),
+  ),
+  truncated: Schema.Boolean,
+  elapsedMs: NonNegativeInt,
+  rowLimit: PowerhouseDatabaseRowLimit,
+});
+export type PowerhouseDatabaseQueryResult = typeof PowerhouseDatabaseQueryResult.Type;
+
+export const PowerhouseDatabasePreviewRelationResult = Schema.Struct({
+  target: PowerhouseDatabaseTarget,
+  result: PowerhouseDatabaseQueryResult,
+});
+export type PowerhouseDatabasePreviewRelationResult =
+  typeof PowerhouseDatabasePreviewRelationResult.Type;
+
+export const PowerhouseDatabaseExecuteQueryInput = Schema.Struct({
+  ...PowerhouseDatabaseBaseInput.fields,
+  sql: TrimmedNonEmptyString.check(Schema.isMaxLength(POWERHOUSE_DATABASE_SQL_MAX_LENGTH)),
+  limit: Schema.optional(PowerhouseDatabaseRowLimit),
+});
+export type PowerhouseDatabaseExecuteQueryInput = typeof PowerhouseDatabaseExecuteQueryInput.Type;
+
+export const PowerhouseDatabaseExecuteQueryResult = Schema.Struct({
+  target: PowerhouseDatabaseTarget,
+  result: PowerhouseDatabaseQueryResult,
+});
+export type PowerhouseDatabaseExecuteQueryResult = typeof PowerhouseDatabaseExecuteQueryResult.Type;
+
+export const PowerhouseDatabaseRefreshSnapshotInput = PowerhouseDatabaseBaseInput;
+export type PowerhouseDatabaseRefreshSnapshotInput =
+  typeof PowerhouseDatabaseRefreshSnapshotInput.Type;
+
+export const PowerhouseDatabaseRefreshSnapshotResult = Schema.Struct({
+  target: PowerhouseDatabaseTarget,
+});
+export type PowerhouseDatabaseRefreshSnapshotResult =
+  typeof PowerhouseDatabaseRefreshSnapshotResult.Type;
+
+export const PowerhouseDatabaseFailure = Schema.Literals([
+  "missing",
+  "unsupported_backend",
+  "snapshot_too_large",
+  "runtime_missing",
+  "unreachable",
+  "timeout",
+  "query_rejected",
+  "relation_not_found",
+  "decode_failed",
+  "response_too_large",
+  "read_failed",
+]);
+export type PowerhouseDatabaseFailure = typeof PowerhouseDatabaseFailure.Type;
+
+const POWERHOUSE_DATABASE_FAILURE_MESSAGES: Record<PowerhouseDatabaseFailure, string> = {
+  missing: "The Powerhouse database has not been created yet.",
+  unsupported_backend: "This Powerhouse database configuration is not supported.",
+  snapshot_too_large: "The Powerhouse PGlite snapshot is too large to inspect safely.",
+  runtime_missing: "The matching Powerhouse PGlite runtime is not installed.",
+  unreachable: "The Powerhouse database could not be reached.",
+  timeout: "The database query exceeded the time limit.",
+  query_rejected: "Only one read-only row-producing SQL statement is allowed.",
+  relation_not_found: "The requested database relation no longer exists.",
+  decode_failed: "The Powerhouse PGlite snapshot could not be decoded.",
+  response_too_large: "The database result exceeded the transfer limit.",
+  read_failed: "The Powerhouse database could not be inspected.",
+};
+
+export class PowerhouseDatabaseError extends Schema.TaggedErrorClass<PowerhouseDatabaseError>()(
+  "PowerhouseDatabaseError",
+  {
+    failure: PowerhouseDatabaseFailure,
+    target: Schema.optional(PowerhouseDatabaseTargetId),
+    message: TrimmedNonEmptyString,
+    cause: Schema.optional(Schema.Defect()),
+  },
+) {
+  // @effect-diagnostics-next-line overriddenSchemaConstructor:off
+  constructor(props: {
+    readonly failure: PowerhouseDatabaseFailure;
+    readonly target?: PowerhouseDatabaseTargetId | undefined;
+    readonly cause?: unknown;
+    readonly message?: string | undefined;
+  }) {
+    super({
+      ...props,
+      message: props.message ?? POWERHOUSE_DATABASE_FAILURE_MESSAGES[props.failure],
     });
   }
 }

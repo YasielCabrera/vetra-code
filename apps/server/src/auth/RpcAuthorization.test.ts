@@ -40,6 +40,12 @@ describe("RPC authorization scopes", () => {
       WS_METHODS.powerhouseReactorListDocuments,
       WS_METHODS.powerhouseReactorGetDocument,
       WS_METHODS.powerhouseReactorGetOperations,
+      WS_METHODS.powerhouseDatabaseDiscover,
+      WS_METHODS.powerhouseDatabaseCatalog,
+      WS_METHODS.powerhouseDatabaseGetRelation,
+      WS_METHODS.powerhouseDatabasePreviewRelation,
+      WS_METHODS.powerhouseDatabaseExecuteQuery,
+      WS_METHODS.powerhouseDatabaseRefreshSnapshot,
     ]) {
       expect(requiredScopeForRpcMethod(method)).toBe(AuthOrchestrationReadScope);
     }

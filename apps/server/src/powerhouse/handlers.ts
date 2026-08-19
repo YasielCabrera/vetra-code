@@ -12,6 +12,12 @@ import {
   EnvironmentAuthorizationError,
   POWERHOUSE_DEFAULT_REACTOR_PORT,
   POWERHOUSE_FALLBACK_REACTOR_PORT,
+  type PowerhouseDatabaseCatalogInput,
+  type PowerhouseDatabaseDiscoverInput,
+  type PowerhouseDatabaseExecuteQueryInput,
+  type PowerhouseDatabaseGetRelationInput,
+  type PowerhouseDatabasePreviewRelationInput,
+  type PowerhouseDatabaseRefreshSnapshotInput,
   type PowerhouseReactorGetDocumentInput,
   type PowerhouseReactorGetOperationsInput,
   type PowerhouseReactorListDocumentsInput,
@@ -20,6 +26,7 @@ import {
 
 import * as PowerhouseProject from "./PowerhouseProject.ts";
 import * as PowerhouseReactorClient from "./PowerhouseReactorClient.ts";
+import * as PowerhouseDatabaseInspector from "./PowerhouseDatabaseInspector.ts";
 
 type ObserveRpcEffect = <A, E, R>(
   method: string,
@@ -67,6 +74,7 @@ export const makePowerhouseWsHandlers = (observeRpcEffect: ObserveRpcEffect) =>
   Effect.gen(function* () {
     const project = yield* PowerhouseProject.PowerhouseProject;
     const reactor = yield* PowerhouseReactorClient.PowerhouseReactorClient;
+    const database = yield* PowerhouseDatabaseInspector.PowerhouseDatabaseInspector;
 
     return {
       [WS_METHODS.powerhouseListProjects]: (input: { readonly cwd: string }) =>
@@ -139,6 +147,38 @@ export const makePowerhouseWsHandlers = (observeRpcEffect: ObserveRpcEffect) =>
         observeRpcEffect(
           WS_METHODS.powerhouseReactorGetOperations,
           reactor.getOperations(input),
+          TRACE,
+        ),
+      [WS_METHODS.powerhouseDatabaseDiscover]: (input: PowerhouseDatabaseDiscoverInput) =>
+        observeRpcEffect(WS_METHODS.powerhouseDatabaseDiscover, database.discover(input), TRACE),
+      [WS_METHODS.powerhouseDatabaseCatalog]: (input: PowerhouseDatabaseCatalogInput) =>
+        observeRpcEffect(WS_METHODS.powerhouseDatabaseCatalog, database.catalog(input), TRACE),
+      [WS_METHODS.powerhouseDatabaseGetRelation]: (input: PowerhouseDatabaseGetRelationInput) =>
+        observeRpcEffect(
+          WS_METHODS.powerhouseDatabaseGetRelation,
+          database.getRelation(input),
+          TRACE,
+        ),
+      [WS_METHODS.powerhouseDatabasePreviewRelation]: (
+        input: PowerhouseDatabasePreviewRelationInput,
+      ) =>
+        observeRpcEffect(
+          WS_METHODS.powerhouseDatabasePreviewRelation,
+          database.previewRelation(input),
+          TRACE,
+        ),
+      [WS_METHODS.powerhouseDatabaseExecuteQuery]: (input: PowerhouseDatabaseExecuteQueryInput) =>
+        observeRpcEffect(
+          WS_METHODS.powerhouseDatabaseExecuteQuery,
+          database.executeQuery(input),
+          TRACE,
+        ),
+      [WS_METHODS.powerhouseDatabaseRefreshSnapshot]: (
+        input: PowerhouseDatabaseRefreshSnapshotInput,
+      ) =>
+        observeRpcEffect(
+          WS_METHODS.powerhouseDatabaseRefreshSnapshot,
+          database.refreshSnapshot(input),
           TRACE,
         ),
     };

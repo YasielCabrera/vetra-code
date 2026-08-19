@@ -4,6 +4,9 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   POWERHOUSE_REACTOR_FILTER_VALUE_MAX_COUNT,
   parsePowerhouseConfig,
+  PowerhouseDatabaseError,
+  PowerhouseDatabaseQueryResult,
+  PowerhouseDatabaseTarget,
   PowerhouseDocumentModel,
   PowerhouseProjectError,
   PowerhouseReactorDocument,
@@ -25,6 +28,10 @@ const encodeOperation = Schema.encodeUnknownSync(PowerhouseReactorOperation);
 const decodeOperation = Schema.decodeUnknownSync(PowerhouseReactorOperation);
 const decodeGetDocumentInput = Schema.decodeUnknownSync(PowerhouseReactorGetDocumentInput);
 const decodeListDocumentsInput = Schema.decodeUnknownSync(PowerhouseReactorListDocumentsInput);
+const encodeDatabaseError = Schema.encodeUnknownSync(PowerhouseDatabaseError);
+const decodeDatabaseError = Schema.decodeUnknownSync(PowerhouseDatabaseError);
+const decodeDatabaseQueryResult = Schema.decodeUnknownSync(PowerhouseDatabaseQueryResult);
+const decodeDatabaseTarget = Schema.decodeUnknownSync(PowerhouseDatabaseTarget);
 
 describe("parsePowerhouseConfig", () => {
   it("reads the fields the panel needs", () => {
@@ -129,6 +136,59 @@ describe("PowerhouseReactorError", () => {
     expect(decoded.failure).toBe("graphql_error");
     expect(decoded.graphqlMessages).toEqual(["Unauthorized"]);
     expect(decoded.status).toBe(200);
+  });
+});
+
+describe("PowerhouseDatabase contracts", () => {
+  it.each([
+    "missing",
+    "unsupported_backend",
+    "snapshot_too_large",
+    "runtime_missing",
+    "unreachable",
+    "timeout",
+    "query_rejected",
+    "relation_not_found",
+    "decode_failed",
+    "response_too_large",
+    "read_failed",
+  ] as const)("round-trips the %s failure without credentials", (failure) => {
+    const encoded = encodeDatabaseError(
+      new PowerhouseDatabaseError({ failure, target: "read_models" }),
+    );
+    const decoded = decodeDatabaseError(encoded);
+    expect(decoded.failure).toBe(failure);
+    expect(decoded.target).toBe("read_models");
+    expect(JSON.stringify(encoded)).not.toContain("DATABASE_URL");
+  });
+
+  it("decodes a credential-free snapshot target", () => {
+    expect(
+      decodeDatabaseTarget({
+        id: "reactor",
+        label: "Reactor",
+        backend: "pglite_snapshot",
+        status: "ready",
+        source: "project_env",
+        snapshotWrittenAtUtcIso: "2026-08-19T14:00:00.000Z",
+        detail: null,
+      }),
+    ).toMatchObject({ id: "reactor", backend: "pglite_snapshot", status: "ready" });
+  });
+
+  it("bounds query rows at the largest selectable limit", () => {
+    const base = {
+      columns: [{ name: "id", dataType: "integer" }],
+      truncated: false,
+      elapsedMs: 1,
+      rowLimit: 200 as const,
+    };
+    expect(() =>
+      decodeDatabaseQueryResult({ ...base, rows: Array.from({ length: 201 }, () => ["1"]) }),
+    ).toThrow();
+    expect(
+      decodeDatabaseQueryResult({ ...base, rows: Array.from({ length: 200 }, () => ["1"]) }).rows,
+    ).toHaveLength(200);
   });
 });
 

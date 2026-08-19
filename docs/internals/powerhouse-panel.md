@@ -7,12 +7,14 @@ Status: implemented
 ## Purpose
 
 A read-only right-panel surface for developers working in [Powerhouse](https://github.com/powerhouse-inc/powerhouse)
-projects. It has two modes behind one toggle:
+projects. It has three modes behind one toggle:
 
 - **Models** — document model definitions read from the project's working tree. Needs nothing
   running, and is the default and the fallback.
 - **Explorer** — drives, documents, and operation history from a live reactor (switchboard) over
   GraphQL.
+- **Database** — generated read-model and reactor database shape, using a point-in-time PGlite
+  snapshot or a live local Postgres connection.
 
 The panel is deliberately confined to modules that can be lifted out in one pass; see
 [Removal map](#removal-map) below. Everything outside those modules is a short, named edit.
@@ -102,6 +104,115 @@ did not answer in time_ (`timeout`), and _something listening that is not a reac
 The connection chip remains interactive after a successful probe. Its popover uses the same URL
 form as the offline state, so an override is a reversible choice: users can replace it, retry it,
 or return to autodetection without first stopping the reactor.
+
+## Database inspector
+
+The database feature is implemented entirely in Vetra Code. The Powerhouse repository and the
+selected Powerhouse project are read-only inputs: no Powerhouse source is imported, vendored,
+patched, or written. `PowerhouseDatabaseInspector` is the deep server module. Its six-operation
+interface owns discovery, catalog reads, relation detail, previews, query execution, and snapshot
+refresh; PGlite snapshots and Postgres are private adapters behind that seam.
+
+Every database RPC takes only `cwd`, optional `projectPath`, a logical target (`read_models` or
+`reactor`), and — where applicable — a catalog relation identifier or SQL text. It never accepts a
+path or connection URL. This keeps local filesystem and database authority on the environment
+server, which also makes the feature behave identically for local, relay, tunnel, and desktop
+clients. The browser never receives database locations or credentials, and errors are reduced to
+credential-free structured failures before encoding.
+
+### Discovery
+
+Discovery mirrors the current `ph vetra`/Switchboard precedence:
+
+- Read models: `DATABASE_URL`, then `PH_SWITCHBOARD_DATABASE_URL`, then `.ph/read-storage`.
+- Reactor: `PH_REACTOR_DATABASE_URL`, then `PH_SWITCHBOARD_DATABASE_URL`, then
+  `.ph/reactor-storage`.
+
+For each allowlisted variable, the Vetra server environment wins over the selected project's
+`.env`; no other `.env` values are retained. Project configuration still determines which nested
+Powerhouse project is selected. PGlite directories are resolved canonically and must stay inside
+that project. The storage directory and `snapshot.bin` must be real directories/files rather than
+links. Postgres URLs are accepted only for loopback IPv4/IPv6, `localhost`, or an absolute local
+Unix-socket `host` parameter. Discovery results contain backend, status, source class, and snapshot
+mtime, never the configured value.
+
+A path supplied only to `ph vetra --db-path` is inherently undiscoverable outside that process.
+The missing state tells the user which standard variable to add instead of probing the filesystem
+or process table. Empty/in-memory URLs, project-external PGlite paths, loose-file legacy stores,
+remote Postgres, and oversized snapshots are explicit unsupported states.
+
+### Atomic PGlite snapshots
+
+Powerhouse's current `AtomicNodeFs` keeps the working PGlite filesystem in memory and atomically
+renames a complete `snapshot.bin`. Opening the live storage path with another PGlite instance would
+therefore be both inaccurate and unsafe. Vetra opens the current snapshot with `O_NOFOLLOW` and
+keeps that descriptor while decoding, so a concurrent atomic rename cannot mix two snapshots.
+
+The Vetra-owned decoder supports format version 1 (`PGLA`, version, entry count, then typed/mode/path/
+length/data entries). It streams file bytes rather than loading up to 512 MiB into another buffer,
+and validates the header, supported version, entry count, entry and path lengths, UTF-8, duplicate
+paths, traversal, containment, types, truncation, trailing bytes, and `PG_VERSION`. Unknown format
+or PostgreSQL versions are rejected rather than guessed. Restored files live under a unique
+Vetra-owned temporary directory; cleanup refuses any path outside that exact temp prefix.
+
+`PG_VERSION` selects the installed Powerhouse runtime: PostgreSQL 16 resolves
+`pglite-legacy-02`, while PostgreSQL 17 resolves `@electric-sql/pglite`, both starting from the
+selected project's installed `@powerhousedao/ph-cli`/Switchboard dependency graph. Vetra does not
+depend on or copy `@powerhousedao/pglite-fs`. The restored database opens in an isolated Node child
+using an inline protocol, so the server and desktop bundle have no helper asset to lose. Every
+request runs `BEGIN TRANSACTION READ ONLY`, establishes the fixed statement timeout, reads through
+a cursor, and rolls back. Interrupting the RPC terminates that captured child process, never a PID
+found by pattern.
+
+At most two restored sessions exist. They expire opportunistically after five idle minutes — no
+timer or polling loop — and are removed on explicit refresh, LRU eviction, interruption, and server
+scope shutdown. A cached session retains the mtime from the exact inode it restored, so the UI does
+not claim newer source bytes are already loaded.
+
+### Postgres and SQL
+
+Postgres uses one `pg` client and `pg-cursor` per operation. It opens `BEGIN READ ONLY`, sets the
+10-second local statement timeout with fixed SQL, performs a fixed probe query, reads at most the
+requested rows plus one through a cursor, closes the cursor, and rolls back even after success.
+RPC interruption closes the client. A local role can still expose a side-effectful function through
+`SELECT`; the user documentation therefore recommends a least-privilege read-only role rather than
+claiming transaction mode is an absolute sandbox.
+
+The SQL-console scanner understands comments, quoted strings and identifiers, and dollar-quoted
+text. It accepts one `SELECT`, `WITH`, `VALUES`, or `TABLE` statement, permits one final semicolon,
+and rejects extra statements, transaction control, DDL/DML, `COPY`, `CALL`, and `DO`. Mutating CTEs
+are rejected before execution; Postgres read-only mode is the second boundary. SQL is capped at 64
+KiB, output at 200 rows and 2 MiB, and every cell becomes a JSON-safe string or null. SQL syntax
+errors retain useful database wording after configured URLs and paths are redacted.
+
+Catalog and relation inspection use fixed `pg_catalog` statements. Catalogs include schemas,
+relation kinds, and approximate `reltuples`; relation detail uses `format_type`, `pg_get_expr`,
+`pg_get_indexdef`, `pg_get_constraintdef`, and `pg_get_viewdef`. View text and each index/constraint
+definition are exact catalog output. A table's `CREATE TABLE` is explicitly labeled reconstructed,
+because Postgres does not preserve its original migration statement.
+
+The typed RPC surface is:
+
+- `powerhouse.databaseDiscover`
+- `powerhouse.databaseCatalog`
+- `powerhouse.databaseGetRelation`
+- `powerhouse.databasePreviewRelation`
+- `powerhouse.databaseExecuteQuery`
+- `powerhouse.databaseRefreshSnapshot`
+
+Database UI state follows the existing panel ownership. Mode remains a persisted per-project
+preference; target, relation, SQL draft, row limit, and a deduplicated 20-query history are
+session-only Zustand state excluded from persistence. CodeMirror and PostgreSQL completion are a
+lazy child chunk loaded only when SQL is opened. Completion is derived from the already loaded
+catalog. There is no database polling. “Add schema/result to chat” inserts capped plain text through
+the existing composer handle and never sends a turn.
+
+The deliberate limitations are point-in-time rather than exact-live PGlite data, snapshot restore
+disk/WASM cost, dependence on an internal snapshot version, no CLI-only or external PGlite paths,
+no loose-file/in-memory PGlite, no remote Postgres, and no reliable processor-name mapping for
+hashed read-model schemas. The next high-leverage improvement is catalog-signature diffing between
+refreshes/checkpoints, followed by Find in code and visual `EXPLAIN`; a generic admin iframe would
+not handle Powerhouse PGlite and would add another authentication/process boundary.
 
 `PortScanner` is untouched. Its probe only accepts `text/html` — it would reject a reactor — and it
 polls `lsof` every three seconds for the preview feature. The Powerhouse module probes on demand
@@ -288,7 +399,9 @@ websocket would multiply traffic for a read-only diagnostic surface, and websock
 repo's most common performance regression. The panel uses unary RPCs behind the shared SWR atom
 layer: 30s stale time for disk data, 15s for the probe, 10s for reactor data, plus explicit refresh
 controls. A failed refresh retains the most recent successful result and labels it as stale instead
-of blanking the panel. Subscriptions can be added later without changing the contract.
+of blanking the panel. Database catalog reads are similarly manual; refreshing a PGlite target is
+the explicit moment a new atomic snapshot is restored. Subscriptions can be added later without
+changing the contract.
 
 ## Paging
 
@@ -352,6 +465,8 @@ Document `state` and operation `input` are unbounded JSON that crosses the clien
   clamp to 500 instead, since they cannot be paged.
 - `listDrives` walks at most 10 pages per drive type.
 - Response bodies are capped at 8 MB before decoding.
+- Database snapshots are capped at 512 MiB, SQL at 64 KiB, results at 200 rows and 2 MiB, restored
+  sessions at two, and statements at 10 seconds.
 
 ## Removal map
 
@@ -368,10 +483,10 @@ Then remove these small integration edits:
 
 | File                                                  | Edit                                                                                                          |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `packages/contracts/src/rpc.ts`                       | import block, 8 `WS_METHODS` entries, 8 `Rpc.make` consts, 8 `WsRpcGroup` entries                             |
+| `packages/contracts/src/rpc.ts`                       | import block, 14 `WS_METHODS` entries, 14 `Rpc.make` consts, 14 `WsRpcGroup` entries                          |
 | `packages/contracts/src/index.ts`                     | one re-export                                                                                                 |
 | `packages/contracts/src/keybindings.ts`               | `"powerhouse.toggle"` in `STATIC_KEYBINDING_COMMANDS`                                                         |
-| `apps/server/src/auth/RpcAuthorization.ts`            | 8 entries in `RPC_REQUIRED_SCOPES`                                                                            |
+| `apps/server/src/auth/RpcAuthorization.ts`            | 14 entries in `RPC_REQUIRED_SCOPES`                                                                           |
 | `apps/server/src/ws.ts`                               | import plus one `...powerhouseHandlers` spread                                                                |
 | `apps/server/src/server.ts`                           | imports, `PowerhouseLayerLive`, one `Layer.provideMerge`                                                      |
 | `apps/server/src/server.test.ts`                      | layer entries in `buildAppUnderTest`, one e2e test                                                            |
@@ -384,6 +499,7 @@ Then remove these small integration edits:
 | `apps/web/src/routes/_chat.pull-requests.tsx`         | two no-op props                                                                                               |
 | `apps/web/src/rightPanelStore.test.ts`                | two tests                                                                                                     |
 | `packages/client-runtime/package.json`                | one subpath export                                                                                            |
+| `apps/server/package.json`, `apps/web/package.json`   | database adapter and lazy SQL-editor dependencies                                                             |
 | `packages/shared/src/composerInlineTokens.ts`         | the `powerhouse` token variant, its grammar, and its serializer                                               |
 | `apps/web/src/composer-editor-mentions.ts`            | one `ComposerPromptSegment` variant and its arm                                                               |
 | `apps/web/src/composer-logic.ts`                      | `"powerhouse"` in the two cursor arms                                                                         |
@@ -408,7 +524,11 @@ No running Powerhouse project is needed anywhere:
 | Reactor client             | `apps/server/src/powerhouse/PowerhouseReactorClient.test.ts`, a hand-built `HttpClient` answering canned GraphQL |
 | RPC wiring                 | one e2e case in `apps/server/src/server.test.ts`                                                                 |
 | Project discovery          | `PowerhouseProject.test.ts`, including a monorepo fixture with the project under `apps/`                         |
+| Database discovery         | `PowerhouseDatabaseInspector.test.ts`, including precedence, containment, monorepos, local Postgres, redaction   |
+| Snapshot decoder           | `powerhouseDatabaseSnapshot.test.ts`, PG16/17, malformed/traversal/truncation/version/size/source-integrity      |
+| SQL guard                  | `powerhouseDatabaseSql.test.ts`, statement classes, quoting, multiple statements, size                           |
 | Panel state and copy       | `apps/web/src/components/powerhouse/*.test.ts`                                                                   |
+| Database panel logic       | `apps/web/src/components/powerhouse/database/databaseViewLogic.test.ts`                                          |
 | Schema diagram projection  | `apps/web/src/components/powerhouse/models/graphqlSchemaDiagram.test.ts`                                         |
 | Composer drag payloads     | `apps/web/src/components/powerhouse/powerhouseDragMention.test.ts`                                               |
 | Reference grammar          | `packages/shared/src/composerInlineTokens.test.ts`, round-trip over every fact combination                       |
@@ -419,4 +539,6 @@ No running Powerhouse project is needed anywhere:
 
 For a manual pass, open a monorepo whose Powerhouse app lives under `apps/`, inspect at least one
 model detail, then run `ph reactor` or `ph switchboard` in that app and walk a drive, document,
-operation, and state in Explorer. Check both themes and both the inline and maximized panel widths.
+operation, and state in Explorer. In Database, inspect both targets, refresh a snapshot, walk every
+relation tab, run a bounded query, and add schema/result context to the composer without sending.
+Check both themes and both the inline and maximized panel widths.

@@ -1,10 +1,9 @@
 /**
  * Powerhouse right-panel surface.
  *
- * Two modes behind one toggle: document models read from the working tree,
- * which always works, and a live reactor explorer, which needs a reactor
- * running. Models is the default and the fallback — the panel is useful with
- * nothing else running.
+ * Three modes behind one toggle: document models read from the working tree,
+ * a live reactor explorer, and a database inspector backed by server-side
+ * snapshot/live adapters. Models remains the default and fallback.
  *
  * The Powerhouse project is not always the workspace root. In a monorepo it is
  * usually an app directory, and there can be more than one, so the panel picks
@@ -30,6 +29,7 @@ import {
 import { ExplorerView } from "./explorer/ExplorerView";
 import { ReactorUrlForm } from "./explorer/ReactorUrlForm";
 import { ModelsView } from "./models/ModelsView";
+import { DatabaseView } from "./database/DatabaseView";
 import {
   EMPTY_EXPLORER_SELECTION,
   powerhouseProjectKey,
@@ -49,6 +49,7 @@ interface PowerhousePanelProps {
 const MODES: ReadonlyArray<{ readonly id: PowerhouseMode; readonly label: string }> = [
   { id: "models", label: "Models" },
   { id: "explorer", label: "Explorer" },
+  { id: "database", label: "Database" },
 ];
 
 /**
@@ -281,7 +282,7 @@ export default function PowerhousePanel({ environmentId, cwd }: PowerhousePanelP
             onSelectModel={(directoryName) => selectModel(projectKey, directoryName)}
             onSelectSpec={(index) => selectSpec(projectKey, index)}
           />
-        ) : (
+        ) : preferences.mode === "explorer" ? (
           <ExplorerView
             key={projectKey}
             environmentId={environmentId}
@@ -294,6 +295,14 @@ export default function PowerhousePanel({ environmentId, cwd }: PowerhousePanelP
             onEnterFolder={(folder) => enterFolder(projectKey, folder)}
             onPopToDepth={(depth) => popToDepth(projectKey, depth)}
             onSelectDocument={(documentId) => selectDocument(projectKey, documentId)}
+          />
+        ) : (
+          <DatabaseView
+            key={projectKey}
+            environmentId={environmentId}
+            cwd={cwd}
+            projectPath={projectPath}
+            projectKey={projectKey}
           />
         )}
       </div>

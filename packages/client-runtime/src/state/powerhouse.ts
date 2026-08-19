@@ -10,11 +10,26 @@ import { WS_METHODS } from "@vetra-code/contracts";
 import { Atom } from "effect/unstable/reactivity";
 
 import type { EnvironmentRegistry } from "../connection/registry.ts";
-import { createEnvironmentRpcQueryAtomFamily } from "./runtime.ts";
+import {
+  createAtomCommandScheduler,
+  createEnvironmentRpcCommand,
+  createEnvironmentRpcQueryAtomFamily,
+} from "./runtime.ts";
 
 export function createPowerhouseEnvironmentAtoms<R, E>(
   runtime: Atom.AtomRuntime<EnvironmentRegistry | R, E>,
 ) {
+  const databaseCommandScheduler = createAtomCommandScheduler();
+  const databaseTargetConcurrency = {
+    mode: "singleFlight" as const,
+    key: ({
+      environmentId,
+      input,
+    }: {
+      environmentId: string;
+      input: { target: string; cwd: string; projectPath?: string | undefined };
+    }) => JSON.stringify([environmentId, input.cwd, input.projectPath ?? "", input.target]),
+  };
   return {
     // Project layout changes rarely, and this decides whether the panel exists
     // at all, so it is asked for on every thread render.
@@ -57,6 +72,37 @@ export function createPowerhouseEnvironmentAtoms<R, E>(
       label: "environment-data:powerhouse:reactor-operations",
       tag: WS_METHODS.powerhouseReactorGetOperations,
       staleTimeMs: 10_000,
+    }),
+    databaseDiscover: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:powerhouse:database-discover",
+      tag: WS_METHODS.powerhouseDatabaseDiscover,
+    }),
+    databaseCatalog: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:powerhouse:database-catalog",
+      tag: WS_METHODS.powerhouseDatabaseCatalog,
+      staleTimeMs: 60_000,
+    }),
+    databaseRelation: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:powerhouse:database-relation",
+      tag: WS_METHODS.powerhouseDatabaseGetRelation,
+      staleTimeMs: 60_000,
+    }),
+    databasePreview: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:powerhouse:database-preview",
+      tag: WS_METHODS.powerhouseDatabasePreviewRelation,
+      staleTimeMs: 0,
+    }),
+    databaseExecute: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:powerhouse:database-execute",
+      tag: WS_METHODS.powerhouseDatabaseExecuteQuery,
+      scheduler: databaseCommandScheduler,
+      concurrency: databaseTargetConcurrency,
+    }),
+    databaseRefresh: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:powerhouse:database-refresh",
+      tag: WS_METHODS.powerhouseDatabaseRefreshSnapshot,
+      scheduler: databaseCommandScheduler,
+      concurrency: databaseTargetConcurrency,
     }),
   };
 }
