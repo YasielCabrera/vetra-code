@@ -8,6 +8,8 @@ import {
   useUpdateClientSettings,
 } from "../hooks/useSettings";
 import { useProviderSubscriptionUsage } from "../state/providerSubscriptionUsage";
+import { serverEnvironment } from "../state/server";
+import { useAtomCommand } from "../state/use-atom-command";
 import {
   connectedProviderUsageEnvironmentIds,
   newlyConnectedProviderUsageEnvironmentIds,
@@ -43,7 +45,11 @@ export function ProviderSubscriptionUsageMonitor() {
 
 function HydratedProviderSubscriptionUsageMonitor() {
   const navigate = useNavigate();
-  const { environments, refresh } = useProviderSubscriptionUsage();
+  const { environments } = useProviderSubscriptionUsage();
+  const forceRefreshSubscriptionUsage = useAtomCommand(
+    serverEnvironment.refreshProviderSubscriptionUsage,
+    { reportFailure: false },
+  );
   const refreshIntervalMinutes = useClientSettings(
     (settings) => settings.providerUsageRefreshIntervalMinutes,
   );
@@ -58,23 +64,20 @@ function HydratedProviderSubscriptionUsageMonitor() {
   const handledReportSignaturesRef = useRef(new Map<EnvironmentId, string>());
   const refreshNow = useEffectEvent((environmentIds?: ReadonlySet<EnvironmentId>) => {
     lastRefreshAtRef.current = Date.now();
-    refresh(environmentIds);
+    for (const environment of environments) {
+      if (
+        environment.connectionPhase !== "connected" ||
+        (environmentIds !== undefined && !environmentIds.has(environment.environmentId))
+      ) {
+        continue;
+      }
+      void forceRefreshSubscriptionUsage({
+        environmentId: environment.environmentId,
+        input: { forceRefresh: true },
+      });
+    }
   });
-  const connectedKey = environments
-    .filter((environment) => environment.connectionPhase === "connected")
-    .map((environment) => environment.environmentId)
-    .toSorted()
-    .join("\u0000");
-  const providerInstancesKey = environments
-    .filter((environment) => environment.connectionPhase === "connected")
-    .map(
-      (environment) =>
-        `${environment.environmentId}\u0000${environment.providerInstancesKey ?? "unknown"}`,
-    )
-    .toSorted()
-    .join("\u0001");
-
-  useEffect(() => {
+  const refreshChangedEnvironments = useEffectEvent(() => {
     const connected = connectedProviderUsageEnvironmentIds(environments);
     const newlyConnected = newlyConnectedProviderUsageEnvironmentIds(
       environments,
@@ -92,7 +95,24 @@ function HydratedProviderSubscriptionUsageMonitor() {
     );
     const refreshIds = new Set([...newlyConnected, ...changedInstances]);
     if (refreshIds.size > 0) refreshNow(refreshIds);
-  }, [connectedKey, environments, providerInstancesKey, refreshNow]);
+  });
+  const connectedKey = environments
+    .filter((environment) => environment.connectionPhase === "connected")
+    .map((environment) => environment.environmentId)
+    .toSorted()
+    .join("\u0000");
+  const providerInstancesKey = environments
+    .filter((environment) => environment.connectionPhase === "connected")
+    .map(
+      (environment) =>
+        `${environment.environmentId}\u0000${environment.providerInstancesKey ?? "unknown"}`,
+    )
+    .toSorted()
+    .join("\u0001");
+
+  useEffect(() => {
+    refreshChangedEnvironments();
+  }, [connectedKey, providerInstancesKey]);
 
   useEffect(() => {
     const intervalMs = providerUsageRefreshIntervalMs(refreshIntervalMinutes);
@@ -115,7 +135,7 @@ function HydratedProviderSubscriptionUsageMonitor() {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", catchUpWhenVisible);
     };
-  }, [refreshIntervalMinutes, refreshNow]);
+  }, [refreshIntervalMinutes]);
 
   useEffect(() => {
     if (!alertsEnabled) return;

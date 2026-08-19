@@ -11,9 +11,7 @@ import {
 import * as Cause from "effect/Cause";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
-import { useCallback } from "react";
 
-import { appAtomRegistry } from "../rpc/atomRegistry";
 import { environmentPresentations } from "./presentation";
 import { serverEnvironment } from "./server";
 
@@ -135,32 +133,7 @@ export const providerSubscriptionUsageStatusesAtom = Atom.make(
   },
 ).pipe(Atom.withLabel("web-provider-subscription-usage"));
 
-export function refreshProviderSubscriptionUsageQueries(
-  statuses: readonly EnvironmentProviderSubscriptionUsageStatus[],
-  environmentIds?: ReadonlySet<EnvironmentId>,
-): void {
-  for (const environment of statuses) {
-    if (
-      environment.connectionPhase !== "connected" ||
-      (environmentIds !== undefined && !environmentIds.has(environment.environmentId))
-    ) {
-      continue;
-    }
-    appAtomRegistry.refresh(
-      serverEnvironment.providerSubscriptionUsage({
-        environmentId: environment.environmentId,
-        input: {},
-      }),
-    );
-  }
-}
-
 export function useProviderSubscriptionUsage() {
   const environments = useAtomValue(providerSubscriptionUsageStatusesAtom);
-  const refresh = useCallback(
-    (environmentIds?: ReadonlySet<EnvironmentId>) =>
-      refreshProviderSubscriptionUsageQueries(environments, environmentIds),
-    [environments],
-  );
-  return { environments, refresh };
+  return { environments };
 }
