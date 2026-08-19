@@ -15,3 +15,18 @@ Folders with changed descendants carry a dot and a highlighted name, including w
 collapsed. Deleted files do not appear in the explorer because they are no longer present in the
 checkout; review them from the diff panel instead. Committed differences between a feature branch
 and its base branch do not decorate the explorer.
+
+Open a text file to see those working-tree changes in context. A green gutter bar marks added lines,
+a blue bar marks modified lines, and a red wedge marks a gap where lines were removed. These markers
+compare the current file, including staged changes, with `HEAD`. They follow edits while you type and
+settle to Git's authoritative result after the file is saved.
+
+Place the text caret on a line to see who last changed it and when. The hint sits after the line's
+code without covering it or changing the line spacing. Blame history loads only after the first
+blame interaction, so opening a file is not delayed by history. Use the author toggle in the file
+header to keep author names visible beside every rendered line; use the same toggle to hide the
+column again. Lines that have not been committed are labeled **You**.
+
+In-file markers and blame are available for complete text-file previews in Git projects. Truncated
+large-file previews, binary files, and non-Git projects remain undecorated. The diff panel is
+unchanged and remains the place to review patch-only or word-level changes.

@@ -203,6 +203,10 @@
       "types": "./src/filePreview.ts",
       "import": "./src/filePreview.ts"
     },
+    "./fileRevision": {
+      "types": "./src/fileRevision.ts",
+      "import": "./src/fileRevision.ts"
+    },
     "./chatList": {
       "types": "./src/chatList.ts",
       "import": "./src/chatList.ts"

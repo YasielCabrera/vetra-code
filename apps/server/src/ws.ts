@@ -54,6 +54,8 @@ import {
   type TerminalError,
   type TerminalEvent,
   type TerminalMetadataStreamEvent,
+  type VcsFileAnnotationFailure,
+  VcsFileAnnotationError,
   WS_METHODS,
   WsRpcGroup,
 } from "@vetra-code/contracts";
@@ -93,6 +95,7 @@ import * as WorkspaceFileSystem from "./workspace/WorkspaceFileSystem.ts";
 import { readWorkflowScript } from "./orchestration/workflowScriptQuery.ts";
 import * as WorkspacePaths from "./workspace/WorkspacePaths.ts";
 import * as VcsStatusBroadcaster from "./vcs/VcsStatusBroadcaster.ts";
+import * as FileAnnotationService from "./vcs/FileAnnotationService.ts";
 import * as VcsProvisioningService from "./vcs/VcsProvisioningService.ts";
 import * as GitWorkflowService from "./git/GitWorkflowService.ts";
 import * as ReviewService from "./review/ReviewService.ts";
@@ -245,6 +248,32 @@ function projectFileFailureContext(
   }
 }
 
+export function fileAnnotationFailureContext(
+  error: FileAnnotationService.FileAnnotationServiceError,
+): VcsFileAnnotationFailure {
+  switch (error._tag) {
+    case "FileAnnotationContentChangedError":
+      return "content_changed";
+    case "FileAnnotationFileTooLargeError":
+      return "file_too_large";
+    case "FileAnnotationUnsupportedError":
+      return "unsupported";
+    case "WorkspaceBinaryFileError":
+      return "binary_file";
+    case "WorkspacePathOutsideRootError":
+    case "WorkspaceFilePathEscapeError":
+      return "path_outside_workspace";
+    case "WorkspacePathNotFileError":
+      return "path_not_file";
+    case "WorkspaceFileSystemOperationError":
+      return "file_unavailable";
+    case "GitFileAnnotationParseError":
+      return "invalid_output";
+    default:
+      return "git_failed";
+  }
+}
+
 export function isThreadDetailEvent(event: OrchestrationEvent): event is Extract<
   OrchestrationEvent,
   {
@@ -339,6 +368,7 @@ const makeWsRpcLayer = (
       const gitWorkflow = yield* GitWorkflowService.GitWorkflowService;
       const threadTurnBootstrap = yield* ThreadTurnBootstrap.ThreadTurnBootstrap;
       const review = yield* ReviewService.ReviewService;
+      const fileAnnotations = yield* FileAnnotationService.FileAnnotationService;
       const vcsProvisioning = yield* VcsProvisioningService.VcsProvisioningService;
       const vcsStatusBroadcaster = yield* VcsStatusBroadcaster.VcsStatusBroadcaster;
       const terminalManager = yield* TerminalManager.TerminalManager;
@@ -1724,6 +1754,36 @@ const makeWsRpcLayer = (
             {
               "rpc.aggregate": "vcs",
             },
+          ),
+        [WS_METHODS.vcsGetFileLineChanges]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.vcsGetFileLineChanges,
+            fileAnnotations.getLineChanges(input).pipe(
+              Effect.mapError(
+                (error) =>
+                  new VcsFileAnnotationError({
+                    operation: "line_changes",
+                    path: input.path,
+                    failure: fileAnnotationFailureContext(error),
+                  }),
+              ),
+            ),
+            { "rpc.aggregate": "vcs" },
+          ),
+        [WS_METHODS.vcsGetFileBlame]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.vcsGetFileBlame,
+            fileAnnotations.getBlame(input).pipe(
+              Effect.mapError(
+                (error) =>
+                  new VcsFileAnnotationError({
+                    operation: "blame",
+                    path: input.path,
+                    failure: fileAnnotationFailureContext(error),
+                  }),
+              ),
+            ),
+            { "rpc.aggregate": "vcs" },
           ),
         [WS_METHODS.vcsPull]: (input) =>
           observeRpcEffect(

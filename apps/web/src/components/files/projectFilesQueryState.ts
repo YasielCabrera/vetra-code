@@ -177,7 +177,10 @@ export function useProjectFileQuery(
   cwd: string,
   relativePath: string | null,
   enabled = true,
-): ProjectQueryState<ProjectReadFileResult> {
+): ProjectQueryState<ProjectReadFileResult> & {
+  readonly confirmedData: ProjectReadFileResult | null;
+  readonly confirmationToken: object | null;
+} {
   const atom = enabled
     ? getProjectFileQueryAtom(environmentId, cwd, relativePath)
     : EMPTY_PROJECT_FILE_QUERY_ATOM;
@@ -189,9 +192,12 @@ export function useProjectFileQuery(
     optimisticFileAtom(environmentId, cwd, relativePath ?? EMPTY_PROJECT_FILE_PATH),
   );
   const optimisticFile = relativePath === null ? null : optimisticResult;
+  const hasConfirmedOptimisticFile = optimisticFile?.confirmedAgainst !== undefined;
 
   return {
     data: optimisticFile?.data ?? data,
+    confirmedData: hasConfirmedOptimisticFile ? optimisticFile.data : data,
+    confirmationToken: hasConfirmedOptimisticFile ? optimisticFile : data,
     error: errorMessage(result),
     isPending: result.waiting,
     refresh,

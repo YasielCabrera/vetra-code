@@ -256,6 +256,7 @@ function toLocalStatusPart(status: VcsStatusResult): VcsStatusLocalResult {
     hasPrimaryRemote: status.hasPrimaryRemote,
     isDefaultRef: status.isDefaultRef,
     refName: status.refName,
+    ...(status.headOid === undefined ? {} : { headOid: status.headOid }),
     hasWorkingTreeChanges: status.hasWorkingTreeChanges,
     workingTree: status.workingTree,
   };

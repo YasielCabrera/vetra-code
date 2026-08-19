@@ -853,6 +853,7 @@ export const make = Effect.gen(function* () {
   const normalizeStatusCacheKey = canonicalizeExistingPath;
   const nonRepositoryStatusDetails = {
     isRepo: false,
+    headOid: null,
     hasOriginRemote: false,
     isDefaultBranch: false,
     branch: null,
@@ -880,6 +881,7 @@ export const make = Effect.gen(function* () {
       hasPrimaryRemote: details.hasOriginRemote,
       isDefaultRef: details.isDefaultBranch,
       refName: details.branch,
+      headOid: details.headOid,
       hasWorkingTreeChanges: details.hasWorkingTreeChanges,
       workingTree: details.workingTree,
     } satisfies VcsStatusLocalResult;

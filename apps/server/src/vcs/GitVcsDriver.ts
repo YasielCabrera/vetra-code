@@ -29,8 +29,11 @@ import {
   type VcsRemoveWorktreeInput,
   type VcsStatusInput,
   type VcsStatusResult,
+  type VcsFileBlameResult,
+  type VcsFileLineChangesResult,
 } from "@vetra-code/contracts";
 import { makeGitVcsDriverCore } from "./GitVcsDriverCore.ts";
+import type { GitFileAnnotationParseError } from "./GitFileAnnotationError.ts";
 import * as VcsDriver from "./VcsDriver.ts";
 import * as VcsProcess from "./VcsProcess.ts";
 
@@ -57,6 +60,7 @@ export interface ExecuteGitResult {
 
 export interface GitStatusDetails {
   isRepo: boolean;
+  headOid: string | null;
   sourceControlProvider?: VcsStatusResult["sourceControlProvider"];
   hasOriginRemote: boolean;
   isDefaultBranch: boolean;
@@ -225,6 +229,15 @@ export interface GitRemoteStatusOptions {
   readonly refreshUpstream?: boolean;
 }
 
+export interface GitFileAnnotationInput {
+  readonly cwd: string;
+  readonly path: string;
+  readonly contentRevision: string;
+  readonly lineCount: number;
+  readonly byteLength: number;
+  readonly headOidHint?: string | null;
+}
+
 export class GitVcsDriver extends Context.Service<
   GitVcsDriver,
   {
@@ -261,6 +274,12 @@ export class GitVcsDriver extends Context.Service<
     readonly getReviewDiffFileContents: (
       input: ReviewDiffFileContentsInput,
     ) => Effect.Effect<ReviewDiffFileContentsResult, GitCommandError>;
+    readonly getFileLineChanges: (
+      input: GitFileAnnotationInput,
+    ) => Effect.Effect<VcsFileLineChangesResult, GitCommandError>;
+    readonly getFileBlame: (
+      input: GitFileAnnotationInput,
+    ) => Effect.Effect<VcsFileBlameResult, GitCommandError | GitFileAnnotationParseError>;
     readonly readConfigValue: (
       cwd: string,
       key: string,

@@ -3,6 +3,7 @@ import * as NodeSocket from "@effect/platform-node/NodeSocket";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NodeCrypto from "node:crypto";
 import { HostProcessEnvironment, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { fileContentRevision } from "@vetra-code/shared/fileRevision";
 
 import {
   AuthAccessTokenType,
@@ -133,6 +134,7 @@ import * as WorkspaceEntries from "./workspace/WorkspaceEntries.ts";
 import * as WorkspaceFileSystem from "./workspace/WorkspaceFileSystem.ts";
 import * as WorkspacePaths from "./workspace/WorkspacePaths.ts";
 import * as GitVcsDriver from "./vcs/GitVcsDriver.ts";
+import * as FileAnnotationService from "./vcs/FileAnnotationService.ts";
 import * as VcsDriver from "./vcs/VcsDriver.ts";
 import * as VcsStatusBroadcaster from "./vcs/VcsStatusBroadcaster.ts";
 import * as VcsDriverRegistry from "./vcs/VcsDriverRegistry.ts";
@@ -393,6 +395,7 @@ const buildAppUnderTest = (options?: {
     vcsDriver?: Partial<VcsDriver.VcsDriver["Service"]>;
     vcsDriverRegistry?: Partial<VcsDriverRegistry.VcsDriverRegistry["Service"]>;
     gitVcsDriver?: Partial<GitVcsDriver.GitVcsDriver["Service"]>;
+    fileAnnotationService?: Partial<FileAnnotationService.FileAnnotationService["Service"]>;
     gitManager?: Partial<GitManager.GitManager["Service"]>;
     sourceControlRepositoryService?: Partial<
       SourceControlRepositoryService.SourceControlRepositoryService["Service"]
@@ -577,6 +580,15 @@ const buildAppUnderTest = (options?: {
         Layer.provide(VetraProjectFileLoader.layer),
       ),
     );
+    const fileAnnotationLayer = options?.layers?.fileAnnotationService
+      ? Layer.mock(FileAnnotationService.FileAnnotationService)({
+          ...options.layers.fileAnnotationService,
+        })
+      : FileAnnotationService.layer.pipe(
+          Layer.provideMerge(gitVcsDriverLayer),
+          Layer.provide(vcsDriverRegistryLayer),
+          Layer.provide(workspaceAndProjectServicesLayer),
+        );
     const gitWorkflowLayer = GitWorkflowService.layer.pipe(
       Layer.provideMerge(vcsDriverRegistryLayer),
       Layer.provideMerge(gitVcsDriverLayer),
@@ -732,11 +744,16 @@ const buildAppUnderTest = (options?: {
             }),
         }),
       ),
-      Layer.provide(gitManagerLayer),
-      Layer.provide(gitVcsDriverLayer),
-      Layer.provide(gitWorkflowLayer),
-      Layer.provide(reviewLayer),
-      Layer.provide(vcsProvisioningLayer),
+      Layer.provide(
+        Layer.mergeAll(
+          gitManagerLayer,
+          gitVcsDriverLayer,
+          fileAnnotationLayer,
+          gitWorkflowLayer,
+          reviewLayer,
+          vcsProvisioningLayer,
+        ),
+      ),
       Layer.provide(
         Layer.mock(SourceControlRepositoryService.SourceControlRepositoryService)({
           ...options?.layers?.sourceControlRepositoryService,
@@ -4800,6 +4817,85 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       });
       assert.deepEqual(refreshLocalStatus.mock.calls, [[workspaceDir]]);
     }).pipe(Effect.provide(NodeHttpServer.layerTest), TestClock.withLive),
+  );
+
+  it.effect("round-trips file line changes, blame, and stale-revision failures", () =>
+    Effect.gen(function* () {
+      const contents = "first\nsecond\n";
+      const contentRevision = fileContentRevision(contents);
+      yield* buildAppUnderTest({
+        layers: {
+          fileAnnotationService: {
+            getLineChanges: (request) =>
+              request.contentRevision === contentRevision
+                ? Effect.succeed({
+                    state: "modified" as const,
+                    headOid: "1111111111111111111111111111111111111111",
+                    lineCount: 2,
+                    addedRanges: [2, 1],
+                    modifiedRanges: [],
+                    deletionMarkers: [0, 1],
+                  })
+                : Effect.fail(
+                    new FileAnnotationService.FileAnnotationContentChangedError({
+                      path: request.path,
+                    }),
+                  ),
+            getBlame: () =>
+              Effect.succeed({
+                firstLine: 1,
+                lineCount: 2,
+                headOid: "1111111111111111111111111111111111111111",
+                commits: [
+                  {
+                    oid: "1111111111111111111111111111111111111111",
+                    author: "Pierre",
+                    authorEmail: "pierre@example.com",
+                    authorTime: 1_700_000_000,
+                    summary: "Annotate files",
+                  },
+                ],
+                runs: [2, 0],
+                localIdentity: { author: "Pierre", authorEmail: "pierre@example.com" },
+              }),
+          },
+        },
+      });
+
+      const wsUrl = yield* getWsServerUrl("/ws");
+      const response = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          Effect.gen(function* () {
+            const request = {
+              cwd: "/tmp/repo",
+              path: "src/file.ts",
+              contentRevision,
+              headOid: null,
+            } as const;
+            const lineChanges = yield* client[WS_METHODS.vcsGetFileLineChanges](request);
+            const blame = yield* client[WS_METHODS.vcsGetFileBlame](request);
+            const stale = yield* Effect.flip(
+              client[WS_METHODS.vcsGetFileLineChanges]({
+                ...request,
+                contentRevision: "stale-revision",
+              }),
+            );
+            return { lineChanges, blame, stale };
+          }),
+        ),
+      );
+
+      assert.deepEqual(response.lineChanges.addedRanges, [2, 1]);
+      assert.deepEqual(response.lineChanges.deletionMarkers, [0, 1]);
+      assert.deepEqual(response.blame.runs, [2, 0]);
+      assert.equal(response.blame.commits[0]?.author, "Pierre");
+      assert.equal(response.stale._tag, "VcsFileAnnotationError");
+      if (response.stale._tag === "VcsFileAnnotationError") {
+        assert.equal(response.stale.operation, "line_changes");
+        assert.equal(response.stale.path, "src/file.ts");
+        assert.equal(response.stale.failure, "content_changed");
+      }
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
   it.effect("routes websocket rpc projects.searchEntries excludes gitignored files", () =>

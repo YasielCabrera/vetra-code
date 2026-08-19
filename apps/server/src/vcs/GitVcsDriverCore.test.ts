@@ -15,13 +15,22 @@ import * as TestClock from "effect/testing/TestClock";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 import { GitCommandError, type ReviewDiffFileContentsInput } from "@vetra-code/contracts";
+import { fileContentRevision } from "@vetra-code/shared/fileRevision";
 import { ServerConfig } from "../config.ts";
-import { makeGitVcsDriverCore, splitNullSeparatedGitStdoutPaths } from "./GitVcsDriverCore.ts";
+import { GitFileAnnotationParseError } from "./GitFileAnnotationError.ts";
+import {
+  makeGitVcsDriverCore,
+  parseFileDiffHunks,
+  parseIncrementalBlame,
+  parsePorcelainStatus,
+  splitNullSeparatedGitStdoutPaths,
+} from "./GitVcsDriverCore.ts";
 import * as GitVcsDriver from "./GitVcsDriver.ts";
 
 const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
   prefix: "vetra-git-vcs-driver-test-",
 });
+const CoreDependenciesLayer = ServerConfigLayer.pipe(Layer.provideMerge(NodeServices.layer));
 const TestLayer = GitVcsDriver.layer.pipe(
   Layer.provide(ServerConfigLayer),
   Layer.provideMerge(NodeServices.layer),
@@ -127,6 +136,405 @@ const initRepoWithCommit = (
     const initialBranch = yield* git(cwd, ["branch", "--show-current"]);
     return { initialBranch };
   });
+
+const makeRecordingGitDriver = Effect.gen(function* () {
+  const delegate = yield* ChildProcessSpawner.ChildProcessSpawner;
+  const commands: Array<{
+    readonly args: ReadonlyArray<string>;
+    readonly lcAll: string | undefined;
+  }> = [];
+  const recordingSpawner = ChildProcessSpawner.make((command) =>
+    Effect.gen(function* () {
+      if (!ChildProcess.isStandardCommand(command)) {
+        return yield* Effect.die("expected a standard Git command");
+      }
+      commands.push({ args: command.args, lcAll: command.options.env?.LC_ALL });
+      return yield* delegate.spawn(command);
+    }),
+  );
+  const driver = yield* makeGitVcsDriverCore().pipe(
+    Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, recordingSpawner),
+  );
+  return { driver, commands };
+});
+
+describe("file annotation parsers", () => {
+  describe("zero-context diff hunks", () => {
+    it("maps additions, deletions, replacements, and omitted counts", () => {
+      assert.deepStrictEqual(parseFileDiffHunks("@@ -20,0 +21,2 @@\n"), {
+        combined: false,
+        addedRanges: [21, 2],
+        modifiedRanges: [],
+        deletionMarkers: [],
+      });
+      assert.deepStrictEqual(parseFileDiffHunks("@@ -1,3 +0,0 @@\n"), {
+        combined: false,
+        addedRanges: [],
+        modifiedRanges: [],
+        deletionMarkers: [0, 3],
+      });
+      assert.deepStrictEqual(parseFileDiffHunks("@@ -52,2 +51,0 @@\n"), {
+        combined: false,
+        addedRanges: [],
+        modifiedRanges: [],
+        deletionMarkers: [51, 2],
+      });
+      assert.deepStrictEqual(parseFileDiffHunks("@@ -205,3 +283 @@\n"), {
+        combined: false,
+        addedRanges: [],
+        modifiedRanges: [283, 1],
+        deletionMarkers: [],
+      });
+      assert.deepStrictEqual(parseFileDiffHunks("@@ -3 +3 @@\n"), {
+        combined: false,
+        addedRanges: [],
+        modifiedRanges: [3, 1],
+        deletionMarkers: [],
+      });
+    });
+
+    it("accepts CRLF and ignores no-newline markers and header-looking content", () => {
+      assert.deepStrictEqual(
+        parseFileDiffHunks("@@ -4 +4 @@\r\n\\ No newline at end of file\r\n+@@ -8 +8 @@\r\n"),
+        {
+          combined: false,
+          addedRanges: [],
+          modifiedRanges: [4, 1],
+          deletionMarkers: [],
+        },
+      );
+    });
+
+    it("falls back for combined diff hunks", () => {
+      assert.deepStrictEqual(parseFileDiffHunks("@@@ -1,2 -1,2 +1,3 @@@\n"), {
+        combined: true,
+        addedRanges: [],
+        modifiedRanges: [],
+        deletionMarkers: [],
+      });
+    });
+  });
+
+  describe("porcelain v2 status", () => {
+    const headOid = "0123456789abcdef0123456789abcdef01234567";
+
+    it("reads HEAD, untracked paths with spaces, and rename sources", () => {
+      const parsed = parsePorcelainStatus(
+        [
+          `# branch.oid ${headOid}`,
+          "# branch.head main",
+          "? untracked path.ts",
+          "2 R. N... 100644 100644 100644 aaaaaaa bbbbbbb R100 renamed path.ts",
+          "source path.ts",
+          "",
+        ].join("\0"),
+      );
+
+      assert.equal(parsed.headOid, headOid);
+      assert.equal(parsed.initialHead, false);
+      assert.equal(parsed.statusByPath.get("untracked path.ts"), "untracked");
+      assert.equal(parsed.statusByPath.get("renamed path.ts"), "renamed");
+      assert.equal(parsed.renameSourceByPath.get("renamed path.ts"), "source path.ts");
+    });
+
+    it("detects an unborn HEAD", () => {
+      const parsed = parsePorcelainStatus("# branch.oid (initial)\0# branch.head main\0");
+      assert.equal(parsed.initialHead, true);
+      assert.equal(parsed.headOid, null);
+    });
+  });
+
+  describe("incremental blame", () => {
+    const firstOid = "1111111111111111111111111111111111111111";
+    const secondOid = "2222222222222222222222222222222222222222";
+    const zeroOid = "0000000000000000000000000000000000000000";
+    const metadata = (oid: string, author: string, finalLine: number, lineCount: number) =>
+      [
+        `${oid} 1 ${finalLine} ${lineCount}`,
+        `author ${author}`,
+        `author-mail <${author.toLowerCase()}@example.com>`,
+        "author-time 1700000000",
+        `summary ${author} summary`,
+        "filename src/file.ts",
+      ].join("\n");
+
+    it("sorts runs, reuses first-mention metadata, and coalesces adjacent runs", () => {
+      const parsed = parseIncrementalBlame(
+        [
+          metadata(secondOid, "Second", 3, 1),
+          metadata(firstOid, "First", 1, 2),
+          `${firstOid} 3 4 1\nfilename src/file.ts`,
+        ].join("\n"),
+        4,
+      );
+
+      assert.deepStrictEqual(parsed.runs, [2, 0, 1, 1, 1, 0]);
+      assert.deepStrictEqual(
+        parsed.commits.map((commit) => commit.oid),
+        [firstOid, secondOid],
+      );
+    });
+
+    it("recognizes zero-SHA runs and removes Git's placeholder identity", () => {
+      const parsed = parseIncrementalBlame(metadata(zeroOid, "Not Committed Yet", 1, 2), 2);
+      assert.equal(parsed.commits[0]?.author, "");
+      assert.equal(parsed.commits[0]?.authorEmail, "");
+      assert.equal(parsed.commits[0]?.authorTime, null);
+      assert.deepStrictEqual(parsed.runs, [2, 0]);
+    });
+
+    it("rejects gaps, overlaps, and incomplete coverage", () => {
+      assert.throws(
+        () => parseIncrementalBlame(metadata(firstOid, "First", 2, 1), 2),
+        GitFileAnnotationParseError,
+      );
+      assert.throws(
+        () =>
+          parseIncrementalBlame(
+            [metadata(firstOid, "First", 1, 2), metadata(secondOid, "Second", 2, 1)].join("\n"),
+            3,
+          ),
+        GitFileAnnotationParseError,
+      );
+      assert.throws(
+        () => parseIncrementalBlame(metadata(firstOid, "First", 1, 1), 2),
+        GitFileAnnotationParseError,
+      );
+    });
+  });
+});
+
+it.effect("classifies unmodified and untracked files with one hardened Git command", () =>
+  Effect.gen(function* () {
+    const { driver, commands } = yield* makeRecordingGitDriver;
+    const cwd = yield* makeTmpDir("git-file-lines-");
+    yield* driver.initRepo({ cwd });
+    yield* driver.execute({
+      operation: "GitVcsDriver.test.configEmail",
+      cwd,
+      args: ["config", "user.email", "test@example.com"],
+    });
+    yield* driver.execute({
+      operation: "GitVcsDriver.test.configName",
+      cwd,
+      args: ["config", "user.name", "Test"],
+    });
+    yield* writeTextFile(cwd, "tracked.ts", "export const tracked = true;\n");
+    yield* writeTextFile(cwd, ".gitignore", "ignored.ts\n");
+    yield* driver.execute({ operation: "GitVcsDriver.test.add", cwd, args: ["add", "."] });
+    yield* driver.execute({
+      operation: "GitVcsDriver.test.commit",
+      cwd,
+      args: ["commit", "-m", "initial"],
+    });
+
+    commands.length = 0;
+    const unchanged = yield* driver.getFileLineChanges({
+      cwd,
+      path: "tracked.ts",
+      contentRevision: fileContentRevision("export const tracked = true;\n"),
+      lineCount: 1,
+      byteLength: 29,
+    });
+    assert.equal(unchanged.state, "unchanged");
+    assert.equal(commands.length, 1);
+
+    yield* writeTextFile(cwd, "untracked file.ts", "new line\n");
+    commands.length = 0;
+    const untracked = yield* driver.getFileLineChanges({
+      cwd,
+      path: "untracked file.ts",
+      contentRevision: fileContentRevision("new line\n"),
+      lineCount: 1,
+      byteLength: 9,
+    });
+    assert.deepStrictEqual(untracked.addedRanges, [1, 1]);
+    assert.equal(commands.length, 1);
+
+    yield* writeTextFile(cwd, "ignored.ts", "ignored line\n");
+    commands.length = 0;
+    const ignored = yield* driver.getFileLineChanges({
+      cwd,
+      path: "ignored.ts",
+      contentRevision: fileContentRevision("ignored line\n"),
+      lineCount: 1,
+      byteLength: 13,
+    });
+    assert.equal(ignored.state, "unchanged");
+    assert.equal(commands.length, 1);
+
+    for (const command of commands) {
+      assert.equal(command.args[0], "--no-optional-locks");
+      assert.equal(command.lcAll, "C");
+    }
+    assert.deepStrictEqual(commands[0]?.args.slice(0, 7), [
+      "--no-optional-locks",
+      "status",
+      "--porcelain=2",
+      "--branch",
+      "-z",
+      "-uall",
+      "--",
+    ]);
+
+    const unbornCwd = yield* makeTmpDir("git-file-lines-unborn-");
+    yield* driver.initRepo({ cwd: unbornCwd });
+    yield* writeTextFile(unbornCwd, ".gitignore", "ignored.ts\n");
+    yield* writeTextFile(unbornCwd, "new.ts", "new before first commit\n");
+    commands.length = 0;
+    const unbornUntracked = yield* driver.getFileLineChanges({
+      cwd: unbornCwd,
+      path: "new.ts",
+      contentRevision: fileContentRevision("new before first commit\n"),
+      lineCount: 1,
+      byteLength: 24,
+    });
+    assert.deepStrictEqual(unbornUntracked.addedRanges, [1, 1]);
+    assert.equal(commands.length, 1);
+
+    yield* writeTextFile(unbornCwd, "ignored.ts", "ignored before first commit\n");
+    commands.length = 0;
+    const unbornIgnored = yield* driver.getFileLineChanges({
+      cwd: unbornCwd,
+      path: "ignored.ts",
+      contentRevision: fileContentRevision("ignored before first commit\n"),
+      lineCount: 1,
+      byteLength: 28,
+    });
+    assert.equal(unbornIgnored.state, "unchanged");
+    assert.equal(commands.length, 1);
+  }).pipe(Effect.provide(CoreDependenciesLayer)),
+);
+
+it.effect("synthesizes whole-file uncommitted blame when HEAD cannot provide the path", () =>
+  Effect.gen(function* () {
+    const { driver } = yield* makeRecordingGitDriver;
+    const unbornCwd = yield* makeTmpDir("git-file-blame-unborn-");
+    yield* driver.initRepo({ cwd: unbornCwd });
+    yield* writeTextFile(unbornCwd, "new.ts", "one\ntwo\n");
+    const unborn = yield* driver.getFileBlame({
+      cwd: unbornCwd,
+      path: "new.ts",
+      contentRevision: fileContentRevision("one\ntwo\n"),
+      lineCount: 2,
+      byteLength: 8,
+    });
+    assert.equal(unborn.headOid, null);
+    assert.deepStrictEqual(unborn.runs, [2, 0]);
+    assert.equal(unborn.commits[0]?.oid, "0000000000000000000000000000000000000000");
+
+    const stagedCwd = yield* makeTmpDir("git-file-blame-staged-");
+    yield* driver.initRepo({ cwd: stagedCwd });
+    yield* driver.execute({
+      operation: "GitVcsDriver.test.configEmail",
+      cwd: stagedCwd,
+      args: ["config", "user.email", "test@example.com"],
+    });
+    yield* driver.execute({
+      operation: "GitVcsDriver.test.configName",
+      cwd: stagedCwd,
+      args: ["config", "user.name", "Test"],
+    });
+    yield* writeTextFile(stagedCwd, "base.ts", "base\n");
+    yield* driver.execute({
+      operation: "GitVcsDriver.test.addBase",
+      cwd: stagedCwd,
+      args: ["add", "."],
+    });
+    yield* driver.execute({
+      operation: "GitVcsDriver.test.commitBase",
+      cwd: stagedCwd,
+      args: ["commit", "-m", "base"],
+    });
+    yield* writeTextFile(stagedCwd, "staged.ts", "new staged line\n");
+    yield* driver.execute({
+      operation: "GitVcsDriver.test.addStaged",
+      cwd: stagedCwd,
+      args: ["add", "staged.ts"],
+    });
+    const staged = yield* driver.getFileBlame({
+      cwd: stagedCwd,
+      path: "staged.ts",
+      contentRevision: fileContentRevision("new staged line\n"),
+      lineCount: 1,
+      byteLength: 16,
+    });
+    assert.deepStrictEqual(staged.runs, [1, 0]);
+    assert.equal(staged.commits[0]?.oid, "0000000000000000000000000000000000000000");
+  }).pipe(Effect.provide(CoreDependenciesLayer)),
+);
+
+it.effect("caches blame by content revision and HEAD oid", () =>
+  Effect.gen(function* () {
+    const { driver, commands } = yield* makeRecordingGitDriver;
+    const pathService = yield* Path.Path;
+    const cwd = yield* makeTmpDir("git-file-blame-");
+    yield* driver.initRepo({ cwd });
+    yield* driver.execute({
+      operation: "GitVcsDriver.test.configEmail",
+      cwd,
+      args: ["config", "user.email", "test@example.com"],
+    });
+    yield* driver.execute({
+      operation: "GitVcsDriver.test.configName",
+      cwd,
+      args: ["config", "user.name", "Test"],
+    });
+    const targetContents = "first\nsecond\n";
+    yield* writeTextFile(cwd, "nested/target.ts", targetContents);
+    yield* driver.execute({ operation: "GitVcsDriver.test.add", cwd, args: ["add", "."] });
+    yield* driver.execute({
+      operation: "GitVcsDriver.test.commit",
+      cwd,
+      args: ["commit", "-m", "initial"],
+    });
+    const firstHead = (yield* driver.execute({
+      operation: "GitVcsDriver.test.head",
+      cwd,
+      args: ["rev-parse", "HEAD"],
+    })).stdout.trim();
+    const annotationCwd = pathService.join(cwd, "nested");
+    const request = {
+      cwd: annotationCwd,
+      path: "target.ts",
+      contentRevision: fileContentRevision(targetContents),
+      lineCount: 2,
+      byteLength: targetContents.length,
+      headOidHint: firstHead,
+    } as const;
+
+    commands.length = 0;
+    const first = yield* driver.getFileBlame(request);
+    const second = yield* driver.getFileBlame(request);
+    assert.equal(first.commits[0]?.oid, firstHead);
+    assert.equal(first.commits[0]?.author, "Test");
+    assert.deepStrictEqual(second.runs, first.runs);
+    const firstBlameCommands = commands.filter((command) => command.args.includes("blame"));
+    assert.equal(firstBlameCommands.length, 1);
+    assert.equal(firstBlameCommands[0]?.args.at(-1), "target.ts");
+
+    yield* writeTextFile(cwd, "other.ts", "another commit\n");
+    yield* driver.execute({ operation: "GitVcsDriver.test.addOther", cwd, args: ["add", "."] });
+    yield* driver.execute({
+      operation: "GitVcsDriver.test.commitOther",
+      cwd,
+      args: ["commit", "-m", "other"],
+    });
+    const secondHead = (yield* driver.execute({
+      operation: "GitVcsDriver.test.secondHead",
+      cwd,
+      args: ["rev-parse", "HEAD"],
+    })).stdout.trim();
+    commands.length = 0;
+    const afterCommit = yield* driver.getFileBlame({ ...request, headOidHint: secondHead });
+    assert.equal(afterCommit.headOid, secondHead);
+    assert.equal(commands.filter((command) => command.args.includes("blame")).length, 1);
+    for (const command of commands) {
+      assert.equal(command.args[0], "--no-optional-locks");
+      assert.equal(command.lcAll, "C");
+    }
+  }).pipe(Effect.provide(CoreDependenciesLayer)),
+);
 
 it.effect("uses stable diagnostics for every parsed non-repository command", () => {
   const commands: Array<{ readonly args: ReadonlyArray<string>; readonly lcAll?: string }> = [];

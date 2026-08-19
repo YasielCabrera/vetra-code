@@ -29,6 +29,18 @@ The root filesystem path for a project. In [the orchestration model][1], it is t
 
 A Git worktree used as an isolated workspace for a thread. If a thread has a `worktreePath` in [the contracts][1], it runs there instead of in the main working tree. Git operations live behind the VCS driver contract in `apps/server/src/vcs/VcsDriver.ts`, implemented by [GitVcsDriverCore.ts][3].
 
+#### Content revision
+
+A deterministic token derived from the exact file bytes a client last confirmed on disk. File-annotation requests carry it so the server can reject stale work before invoking Git, and clients include it in query keys so a confirmed save naturally selects a new result. Live editor buffers keep the saved revision and project annotations locally until persistence confirms the new bytes.
+
+#### Line changes
+
+The `HEAD`-relative added, modified, and removed-line ranges shown in the full-file reader. They describe the working tree, including staged changes, rather than the branch-range diff. Git-backed extraction lives in [GitVcsDriverCore.ts][3]; file-byte verification and non-Git behavior live in `apps/server/src/vcs/FileAnnotationService.ts`.
+
+#### Blame run
+
+A contiguous sequence of rendered lines with the same blame commit. The wire format stores each run as a line count plus a commit-table index, with the start implied by the preceding runs. This keeps whole-file blame compact and makes complete, gap-free coverage a contract invariant.
+
 ### Thread timeline
 
 #### Thread

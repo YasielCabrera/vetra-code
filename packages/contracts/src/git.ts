@@ -6,6 +6,12 @@ import { VcsDriverKind } from "./vcs.ts";
 const TrimmedNonEmptyStringSchema = TrimmedNonEmptyString;
 const GIT_LIST_BRANCHES_MAX_LIMIT = 200;
 
+const FlatNonNegativeIntPairs = Schema.Array(NonNegativeInt).check(
+  Schema.makeFilter((values) =>
+    values.length % 2 === 0 ? undefined : "Expected a flat array of number pairs.",
+  ),
+);
+
 // Domain Types
 
 export const GitStackedAction = Schema.Literals([
@@ -103,6 +109,19 @@ export const VcsStatusInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
 });
 export type VcsStatusInput = typeof VcsStatusInput.Type;
+
+export const VcsFileAnnotationInput = Schema.Struct({
+  cwd: TrimmedNonEmptyStringSchema,
+  path: TrimmedNonEmptyStringSchema,
+  contentRevision: TrimmedNonEmptyStringSchema,
+  /** Cache-busting hint from the status stream. The server always resolves HEAD itself. */
+  headOid: Schema.optional(Schema.NullOr(TrimmedNonEmptyStringSchema)),
+});
+export type VcsFileAnnotationInput = typeof VcsFileAnnotationInput.Type;
+export const VcsFileLineChangesInput = VcsFileAnnotationInput;
+export type VcsFileLineChangesInput = typeof VcsFileLineChangesInput.Type;
+export const VcsFileBlameInput = VcsFileAnnotationInput;
+export type VcsFileBlameInput = typeof VcsFileBlameInput.Type;
 
 export const VcsPullInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
@@ -214,6 +233,8 @@ const VcsStatusLocalShape = {
   hasPrimaryRemote: Schema.Boolean,
   isDefaultRef: Schema.Boolean,
   refName: Schema.NullOr(TrimmedNonEmptyStringSchema),
+  // Optional for compatibility with environments predating file annotations.
+  headOid: Schema.optional(Schema.NullOr(TrimmedNonEmptyStringSchema)),
   hasWorkingTreeChanges: Schema.Boolean,
   workingTree: Schema.Struct({
     files: Schema.Array(
@@ -336,6 +357,88 @@ export const VcsPullResult = Schema.Struct({
   upstreamRef: TrimmedNonEmptyStringSchema.pipe(Schema.NullOr),
 });
 export type VcsPullResult = typeof VcsPullResult.Type;
+
+export const VcsFileLineChangesResult = Schema.Struct({
+  state: Schema.Literals(["unchanged", "modified"]),
+  headOid: Schema.NullOr(TrimmedNonEmptyStringSchema),
+  lineCount: NonNegativeInt,
+  /** Flat `[startLine, lineCount]` pairs. */
+  addedRanges: FlatNonNegativeIntPairs,
+  /** Flat `[startLine, lineCount]` pairs. */
+  modifiedRanges: FlatNonNegativeIntPairs,
+  /** Flat `[afterLine, removedLineCount]` pairs. */
+  deletionMarkers: FlatNonNegativeIntPairs,
+});
+export type VcsFileLineChangesResult = typeof VcsFileLineChangesResult.Type;
+
+export const VcsFileBlameCommit = Schema.Struct({
+  oid: Schema.String.check(Schema.isPattern(/^[0-9a-f]{40}$/)),
+  author: Schema.String,
+  authorEmail: Schema.String,
+  authorTime: Schema.NullOr(NonNegativeInt),
+  summary: Schema.String,
+});
+export type VcsFileBlameCommit = typeof VcsFileBlameCommit.Type;
+
+export const VcsFileBlameResult = Schema.Struct({
+  firstLine: PositiveInt,
+  lineCount: NonNegativeInt,
+  headOid: Schema.NullOr(TrimmedNonEmptyStringSchema),
+  commits: Schema.Array(VcsFileBlameCommit),
+  /** Flat `[lineCount, commitIndex]` pairs; starts are implied by contiguity. */
+  runs: FlatNonNegativeIntPairs,
+  localIdentity: Schema.NullOr(
+    Schema.Struct({
+      author: Schema.String,
+      authorEmail: Schema.String,
+    }),
+  ),
+}).check(
+  Schema.makeFilter((result) => {
+    let coveredLines = 0;
+    for (let index = 0; index < result.runs.length; index += 2) {
+      const lineCount = result.runs[index] ?? 0;
+      const commitIndex = result.runs[index + 1] ?? -1;
+      if (lineCount < 1) return { path: ["runs", index], issue: "Run length must be positive." };
+      if (commitIndex < 0 || commitIndex >= result.commits.length) {
+        return { path: ["runs", index + 1], issue: "Run commit index is out of bounds." };
+      }
+      coveredLines += lineCount;
+    }
+    return coveredLines === result.lineCount
+      ? undefined
+      : { path: ["runs"], issue: "Blame runs must cover the whole file." };
+  }),
+);
+export type VcsFileBlameResult = typeof VcsFileBlameResult.Type;
+
+export const VcsFileAnnotationOperation = Schema.Literals(["line_changes", "blame"]);
+export type VcsFileAnnotationOperation = typeof VcsFileAnnotationOperation.Type;
+export const VcsFileAnnotationFailure = Schema.Literals([
+  "content_changed",
+  "file_too_large",
+  "binary_file",
+  "path_outside_workspace",
+  "path_not_file",
+  "file_unavailable",
+  "unsupported",
+  "git_failed",
+  "invalid_output",
+]);
+export type VcsFileAnnotationFailure = typeof VcsFileAnnotationFailure.Type;
+
+export class VcsFileAnnotationError extends Schema.TaggedErrorClass<VcsFileAnnotationError>()(
+  "VcsFileAnnotationError",
+  {
+    operation: VcsFileAnnotationOperation,
+    path: TrimmedNonEmptyStringSchema,
+    failure: VcsFileAnnotationFailure,
+  },
+) {
+  override get message(): string {
+    return `File ${this.operation} failed for '${this.path}' (${this.failure}).`;
+  }
+}
 
 // RPC / domain errors
 export class GitCommandError extends Schema.TaggedErrorClass<GitCommandError>()("GitCommandError", {

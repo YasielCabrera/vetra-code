@@ -21,6 +21,11 @@ import {
 import { AssetAccessError, AssetCreateUrlInput, AssetCreateUrlResult } from "./assets.ts";
 import {
   GitActionProgressEvent,
+  VcsFileAnnotationError,
+  VcsFileBlameInput,
+  VcsFileBlameResult,
+  VcsFileLineChangesInput,
+  VcsFileLineChangesResult,
   VcsSwitchRefInput,
   VcsSwitchRefResult,
   GitCommandError,
@@ -228,6 +233,8 @@ export const WS_METHODS = {
   vcsCreateRef: "vcs.createRef",
   vcsSwitchRef: "vcs.switchRef",
   vcsInit: "vcs.init",
+  vcsGetFileLineChanges: "vcs.getFileLineChanges",
+  vcsGetFileBlame: "vcs.getFileBlame",
 
   // Git workflow methods
   gitRunStackedAction: "git.runStackedAction",
@@ -732,6 +739,18 @@ export const WsVcsRefreshStatusRpc = Rpc.make(WS_METHODS.vcsRefreshStatus, {
   error: Schema.Union([GitManagerServiceError, EnvironmentAuthorizationError]),
 });
 
+export const WsVcsGetFileLineChangesRpc = Rpc.make(WS_METHODS.vcsGetFileLineChanges, {
+  payload: VcsFileLineChangesInput,
+  success: VcsFileLineChangesResult,
+  error: Schema.Union([VcsFileAnnotationError, EnvironmentAuthorizationError]),
+});
+
+export const WsVcsGetFileBlameRpc = Rpc.make(WS_METHODS.vcsGetFileBlame, {
+  payload: VcsFileBlameInput,
+  success: VcsFileBlameResult,
+  error: Schema.Union([VcsFileAnnotationError, EnvironmentAuthorizationError]),
+});
+
 export const WsGitRunStackedActionRpc = Rpc.make(WS_METHODS.gitRunStackedAction, {
   payload: GitRunStackedActionInput,
   success: GitActionProgressEvent,
@@ -1089,6 +1108,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeVcsStatusRpc,
   WsVcsPullRpc,
   WsVcsRefreshStatusRpc,
+  WsVcsGetFileLineChangesRpc,
+  WsVcsGetFileBlameRpc,
   WsGitRunStackedActionRpc,
   WsGitResolvePullRequestRpc,
   WsGitPreparePullRequestThreadRpc,

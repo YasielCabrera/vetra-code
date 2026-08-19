@@ -20,6 +20,7 @@ import {
   FolderTree,
   Globe2,
   LoaderCircle,
+  UserRound,
 } from "lucide-react";
 import * as Schema from "effect/Schema";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -46,8 +47,10 @@ import { assetEnvironment } from "~/state/assets";
 import { useEnvironmentHttpBaseUrl, usePrimaryEnvironmentId } from "~/state/environments";
 import { previewEnvironment } from "~/state/preview";
 import { projectEnvironment } from "~/state/projects";
+import { useEnvironmentQuery } from "~/state/query";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { useAtomQueryRunner } from "~/state/use-atom-query-runner";
+import { vcsEnvironment } from "~/state/vcs";
 
 import {
   FILE_EXPLORER_DEFAULT_WIDTH,
@@ -74,6 +77,13 @@ import { fileBreadcrumbs } from "./filePath";
 import { isMarkdownPreviewFile, setMarkdownTaskChecked } from "./filePreviewMode";
 import { FileSaveCoordinator } from "./fileSaveCoordinator";
 import {
+  type FileEditorCaretListeners,
+  fileEditorCaretLine,
+  FILE_LINE_DECORATIONS_UNSAFE_CSS,
+  installFileEditorCaretListeners,
+  useFileLineDecorations,
+} from "./useFileLineDecorations";
+import {
   confirmProjectFileQueryData,
   getOptimisticProjectFileQueryData,
   setProjectFileQueryData,
@@ -99,6 +109,7 @@ const FILE_EXPLORER_STORAGE_KEY = "vetra.fileExplorerOpen";
 const FILE_EXPLORER_SIDE_STORAGE_KEY = "vetra.fileExplorerSide";
 const FileExplorerSide = Schema.Literals(["left", "right"]);
 const RENDER_MARKDOWN_STORAGE_KEY = "vetra.renderMarkdown";
+const BLAME_AUTHOR_COLUMN_STORAGE_KEY = "vetra.blameAuthorColumn";
 const FILE_SAVE_DEBOUNCE_MS = 500;
 const FILE_LINK_REVEAL_ATTRIBUTE = "data-file-link-reveal";
 const FILE_LINK_REVEAL_UNSAFE_CSS = `
@@ -404,10 +415,14 @@ interface EditableFileSurfaceProps {
   cwd: string;
   relativePath: string;
   composerDraftTarget: ScopedThreadRef | DraftId;
+  confirmedContents: string;
+  confirmationToken: object | null;
   contents: string;
+  headOid: string | null | undefined;
   resolvedTheme: "light" | "dark";
   revealRequestId: number;
   wordWrap: boolean;
+  showBlameColumn: boolean;
   onPostRender: FilePostRender;
   onPendingChange: (relativePath: string, pending: boolean) => void;
 }
@@ -453,10 +468,14 @@ function EditableFileSurface({
   cwd,
   relativePath,
   composerDraftTarget,
+  confirmedContents,
+  confirmationToken,
   contents,
+  headOid,
   resolvedTheme,
   revealRequestId,
   wordWrap,
+  showBlameColumn,
   onPostRender,
   onPendingChange,
 }: EditableFileSurfaceProps) {
@@ -474,18 +493,53 @@ function EditableFileSurface({
   );
   const surfaceRef = useRef<HTMLDivElement>(null);
   const selectionFrameRef = useRef<number | null>(null);
+  const caretFrameRef = useRef<number | null>(null);
+  const caretListenersRef = useRef<FileEditorCaretListeners | null>(null);
   const saveCoordinator = useFileSaveCoordinator({
     environmentId,
     cwd,
     relativePath,
     onPendingChange,
   });
+  const fileLineDecorations = useFileLineDecorations({
+    environmentId,
+    cwd,
+    relativePath,
+    confirmedContents,
+    confirmationToken,
+    contents,
+    headOid,
+    showBlameColumn,
+  });
+  const syncEditorCaretLine = useCallback(() => {
+    if (caretFrameRef.current !== null) return;
+    caretFrameRef.current = requestAnimationFrame(() => {
+      caretFrameRef.current = null;
+      const content = caretListenersRef.current?.content;
+      fileLineDecorations.onCaretLineChange(
+        content?.matches(":focus") ? fileEditorCaretLine(content) : null,
+      );
+    });
+  }, [fileLineDecorations.onCaretLineChange]);
+  const handleEditorFocus = useCallback(() => {
+    fileLineDecorations.onEditorFocus();
+    syncEditorCaretLine();
+  }, [fileLineDecorations.onEditorFocus, syncEditorCaretLine]);
+  const handleEditorBlur = useCallback(() => {
+    if (caretFrameRef.current !== null) {
+      cancelAnimationFrame(caretFrameRef.current);
+      caretFrameRef.current = null;
+    }
+    fileLineDecorations.onEditorBlur();
+  }, [fileLineDecorations.onEditorBlur]);
   const editor = useMemo(
     () =>
       new Editor<FileCommentAnnotationGroup>({
         persistState: true,
         persistStateStorage: "inMemory",
         onChange: (file, nextLineAnnotations) => {
+          fileLineDecorations.onContentsChange(file.contents);
+          syncEditorCaretLine();
           setProjectFileQueryData(environmentId, cwd, relativePath, file.contents);
           saveCoordinator.change(file.contents);
           if (nextLineAnnotations) {
@@ -512,14 +566,31 @@ function EditableFileSurface({
           }
         },
       }),
-    [addReviewComment, composerDraftTarget, cwd, environmentId, relativePath, saveCoordinator],
+    [
+      addReviewComment,
+      composerDraftTarget,
+      cwd,
+      environmentId,
+      fileLineDecorations.onContentsChange,
+      relativePath,
+      saveCoordinator,
+      syncEditorCaretLine,
+    ],
   );
 
   useEffect(
     () => () => {
+      if (caretFrameRef.current !== null) cancelAnimationFrame(caretFrameRef.current);
       editor.cleanUp();
     },
     [editor],
+  );
+  useEffect(
+    () => () => {
+      caretListenersRef.current?.dispose();
+      caretListenersRef.current = null;
+    },
+    [],
   );
 
   const removeAnnotationEntry = useCallback(
@@ -640,6 +711,23 @@ function EditableFileSurface({
   const handlePostRender = useCallback<FilePostRender>(
     (fileContainer, instance, phase) => {
       onPostRender(fileContainer, instance, phase);
+      fileLineDecorations.onPostRender(fileContainer, instance, phase);
+
+      if (phase === "unmount") {
+        caretListenersRef.current?.dispose();
+        caretListenersRef.current = null;
+      } else {
+        const root = fileContainer.shadowRoot ?? fileContainer;
+        const content = root.querySelector<HTMLElement>("[data-content][contenteditable=true]");
+        if (content && caretListenersRef.current?.content !== content) {
+          caretListenersRef.current?.dispose();
+          caretListenersRef.current = installFileEditorCaretListeners(fileContainer, {
+            onFocus: handleEditorFocus,
+            onBlur: handleEditorBlur,
+            onCaretMove: syncEditorCaretLine,
+          });
+        }
+      }
 
       if (selectionFrameRef.current !== null) {
         cancelAnimationFrame(selectionFrameRef.current);
@@ -653,7 +741,14 @@ function EditableFileSurface({
         instance.setSelectedLines(selectedRange, { notify: false });
       });
     },
-    [onPostRender, selectedRange],
+    [
+      fileLineDecorations.onPostRender,
+      handleEditorBlur,
+      handleEditorFocus,
+      onPostRender,
+      selectedRange,
+      syncEditorCaretLine,
+    ],
   );
 
   return (
@@ -688,7 +783,7 @@ function EditableFileSurface({
               overflow: wordWrap ? "wrap" : "scroll",
               theme: resolveDiffThemeName(resolvedTheme),
               themeType: resolvedTheme,
-              unsafeCSS: FILE_LINK_REVEAL_UNSAFE_CSS,
+              unsafeCSS: `${FILE_LINK_REVEAL_UNSAFE_CSS}\n${FILE_LINE_DECORATIONS_UNSAFE_CSS}`,
               onPostRender: handlePostRender,
             }}
             selectedLines={selectedRange}
@@ -728,8 +823,11 @@ function RenderedMarkdownSurface({
   EditableFileSurfaceProps,
   | "resolvedTheme"
   | "composerDraftTarget"
-  | "revealLine"
+  | "confirmedContents"
+  | "confirmationToken"
+  | "headOid"
   | "revealRequestId"
+  | "showBlameColumn"
   | "wordWrap"
   | "onPostRender"
 > & {
@@ -799,6 +897,11 @@ export default function FilePreviewPanel({
   });
   const isImage = relativePath !== null && isWorkspaceImagePreviewPath(relativePath);
   const file = useProjectFileQuery(environmentId, cwd, relativePath, !isImage);
+  const vcsStatus = useEnvironmentQuery(
+    relativePath !== null && !isImage && file.data !== null && !file.data.truncated
+      ? vcsEnvironment.status({ environmentId, input: { cwd } })
+      : null,
+  );
   const [explorerOpen, setExplorerOpen] = useState(initialExplorerOpen);
   // Which side the tree sits on is a workspace-wide preference, like the collapsed state.
   const [explorerSide, setExplorerSide] = useLocalStorage(
@@ -810,6 +913,11 @@ export default function FilePreviewPanel({
   // it on the panel meant a thread switch dropped it and forced source back.
   const [renderMarkdownPreferred, setRenderMarkdownPreferred] = useLocalStorage(
     RENDER_MARKDOWN_STORAGE_KEY,
+    false,
+    Schema.Boolean,
+  );
+  const [showBlameColumn, setShowBlameColumn] = useLocalStorage(
+    BLAME_AUTHOR_COLUMN_STORAGE_KEY,
     false,
     Schema.Boolean,
   );
@@ -967,6 +1075,27 @@ export default function FilePreviewPanel({
               </TooltipPopup>
             </Tooltip>
           ) : null}
+          {!isImage && file.data !== null && !file.data.truncated ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Toggle
+                    className="shrink-0"
+                    pressed={showBlameColumn}
+                    onPressedChange={setShowBlameColumn}
+                    aria-label={showBlameColumn ? "Hide blame authors" : "Show blame authors"}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    <UserRound className="size-3.5" />
+                  </Toggle>
+                }
+              />
+              <TooltipPopup>
+                {showBlameColumn ? "Hide blame authors" : "Show blame authors"}
+              </TooltipPopup>
+            </Tooltip>
+          ) : null}
           {canOpenInBrowser ? (
             <Tooltip>
               <TooltipTrigger
@@ -1099,10 +1228,14 @@ export default function FilePreviewPanel({
                 cwd={cwd}
                 relativePath={relativePath}
                 composerDraftTarget={composerDraftTarget}
+                confirmedContents={file.confirmedData?.contents ?? file.data.contents}
+                confirmationToken={file.confirmationToken}
                 contents={file.data.contents}
+                headOid={vcsStatus.data?.headOid}
                 resolvedTheme={resolvedTheme}
                 revealRequestId={revealRequestId}
                 wordWrap={wordWrap}
+                showBlameColumn={showBlameColumn}
                 onPostRender={onFilePostRender}
                 onPendingChange={onPendingChange}
               />

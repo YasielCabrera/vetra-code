@@ -7,6 +7,9 @@ import {
   GitRunStackedActionResult,
   GitRunStackedActionInput,
   GitResolvePullRequestResult,
+  VcsFileAnnotationError,
+  VcsFileBlameResult,
+  VcsFileLineChangesResult,
   VcsStatusLocalResult,
 } from "./git.ts";
 
@@ -18,6 +21,9 @@ const decodeRunStackedActionInput = Schema.decodeUnknownSync(GitRunStackedAction
 const decodeRunStackedActionResult = Schema.decodeUnknownSync(GitRunStackedActionResult);
 const decodeResolvePullRequestResult = Schema.decodeUnknownSync(GitResolvePullRequestResult);
 const decodeStatusLocalResult = Schema.decodeUnknownSync(VcsStatusLocalResult);
+const decodeFileLineChangesResult = Schema.decodeUnknownSync(VcsFileLineChangesResult);
+const decodeFileBlameResult = Schema.decodeUnknownSync(VcsFileBlameResult);
+const decodeFileAnnotationError = Schema.decodeUnknownSync(VcsFileAnnotationError);
 
 function localStatusFile(status?: string) {
   return decodeStatusLocalResult({
@@ -51,6 +57,108 @@ describe("VcsStatusLocalResult", () => {
 
   it("accepts legacy working-tree files without a status", () => {
     expect(localStatusFile()?.status).toBeUndefined();
+  });
+});
+
+describe("file annotation contracts", () => {
+  const lineChanges = {
+    state: "modified",
+    headOid: "0123456789abcdef0123456789abcdef01234567",
+    lineCount: 4,
+    addedRanges: [1, 2],
+    modifiedRanges: [3, 1],
+    deletionMarkers: [0, 2, 4, 1],
+  } as const;
+
+  it("decodes flat line-change pairs", () => {
+    expect(decodeFileLineChangesResult(lineChanges)).toEqual(lineChanges);
+  });
+
+  it.each([
+    ["negative", [-1, 1]],
+    ["non-integer", [1, 1.5]],
+    ["odd-length", [1]],
+  ])("rejects %s flat arrays", (_label, addedRanges) => {
+    expect(() => decodeFileLineChangesResult({ ...lineChanges, addedRanges })).toThrow();
+  });
+
+  it("decodes contiguous blame runs", () => {
+    expect(
+      decodeFileBlameResult({
+        firstLine: 1,
+        lineCount: 4,
+        headOid: lineChanges.headOid,
+        commits: [
+          {
+            oid: lineChanges.headOid,
+            author: "Pierre",
+            authorEmail: "pierre@example.com",
+            authorTime: 1_700_000_000,
+            summary: "Annotate files",
+          },
+        ],
+        runs: [4, 0],
+        localIdentity: { author: "Pierre", authorEmail: "pierre@example.com" },
+      }).runs,
+    ).toEqual([4, 0]);
+  });
+
+  it.each([
+    ["negative", [-1, 0]],
+    ["non-integer", [1.5, 0]],
+    ["odd-length", [4]],
+    ["zero-length run", [0, 0]],
+    ["out-of-bounds commit", [4, 1]],
+    ["coverage mismatch", [3, 0]],
+  ])("rejects %s blame runs", (_label, runs) => {
+    expect(() =>
+      decodeFileBlameResult({
+        firstLine: 1,
+        lineCount: 4,
+        headOid: null,
+        commits: [
+          {
+            oid: "0000000000000000000000000000000000000000",
+            author: "",
+            authorEmail: "",
+            authorTime: null,
+            summary: "",
+          },
+        ],
+        runs,
+        localIdentity: null,
+      }),
+    ).toThrow();
+  });
+
+  it.each(["line_changes", "blame"] as const)("round-trips the %s operation", (operation) => {
+    const error = decodeFileAnnotationError({
+      _tag: "VcsFileAnnotationError",
+      operation,
+      path: "src/index.ts",
+      failure: "content_changed",
+    });
+    expect(error.operation).toBe(operation);
+  });
+
+  it.each([
+    "content_changed",
+    "file_too_large",
+    "binary_file",
+    "path_outside_workspace",
+    "path_not_file",
+    "file_unavailable",
+    "unsupported",
+    "git_failed",
+    "invalid_output",
+  ] as const)("round-trips the %s failure", (failure) => {
+    const error = decodeFileAnnotationError({
+      _tag: "VcsFileAnnotationError",
+      operation: "blame",
+      path: "src/index.ts",
+      failure,
+    });
+    expect(error.failure).toBe(failure);
   });
 });
 

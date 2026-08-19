@@ -24,6 +24,9 @@ import {
   type ReviewDiffFileContentsInput,
   type ReviewDiffPreviewInput,
   type ReviewDiffPreviewSource,
+  type VcsFileBlameCommit,
+  type VcsFileBlameResult,
+  type VcsFileLineChangesResult,
   type VcsRef,
   type VcsWorkingTreeFileStatus,
 } from "@vetra-code/contracts";
@@ -36,6 +39,7 @@ import { PRODUCT_PRE_REFRESH_REF_PREFIX, PRODUCT_SLUG } from "@vetra-code/shared
 import { decodeJsonResult } from "@vetra-code/shared/schemaJson";
 import { gitCommandDuration, gitCommandsTotal, withMetrics } from "../observability/Metrics.ts";
 import * as GitVcsDriver from "./GitVcsDriver.ts";
+import { GitFileAnnotationParseError } from "./GitFileAnnotationError.ts";
 import {
   parseRemoteNames,
   parseRemoteNamesInGitOrder,
@@ -54,6 +58,14 @@ const REVIEW_DIFF_PATCH_MAX_OUTPUT_BYTES = 120_000;
 const REVIEW_UNTRACKED_DIFF_MAX_OUTPUT_BYTES = 80_000;
 const REVIEW_DIFF_FILE_MAX_OUTPUT_BYTES = 1024 * 1024;
 const WORKSPACE_FILES_MAX_OUTPUT_BYTES = 120_000;
+const FILE_BLAME_MAX_FILE_BYTES = 768 * 1024;
+const FILE_BLAME_MAX_OUTPUT_BYTES = FILE_BLAME_MAX_FILE_BYTES * 3;
+const FILE_BLAME_TIMEOUT_MS = 5_000;
+const FILE_BLAME_CACHE_CAPACITY = 128;
+const FILE_BLAME_CACHE_TTL = Duration.minutes(5);
+const FILE_ANNOTATION_HEAD_CACHE_CAPACITY = 256;
+const FILE_ANNOTATION_HEAD_CACHE_TTL = Duration.seconds(1);
+const UNCOMMITTED_BLAME_OID = "0000000000000000000000000000000000000000";
 const STATUS_UPSTREAM_REFRESH_INTERVAL = Duration.seconds(15);
 const STATUS_UPSTREAM_REFRESH_TIMEOUT = Duration.seconds(5);
 
@@ -81,6 +93,7 @@ const DEFAULT_BASE_BRANCH_CANDIDATES = ["main", "master"] as const;
 const GIT_LIST_BRANCHES_DEFAULT_LIMIT = 100;
 const NON_REPOSITORY_STATUS_DETAILS = Object.freeze<GitVcsDriver.GitStatusDetails>({
   isRepo: false,
+  headOid: null,
   hasOriginRemote: false,
   isDefaultBranch: false,
   branch: null,
@@ -129,6 +142,22 @@ class GitRefsRefreshCacheKey extends Data.Class<{
   gitCommonDir: string;
   generation: number;
 }> {}
+
+class FileAnnotationHeadCacheKey extends Data.Class<{
+  cwd: string;
+}> {}
+
+class FileBlameCacheKey extends Data.Class<{
+  cwd: string;
+  path: string;
+  contentRevision: string;
+  headOid: string | null;
+}> {}
+
+interface RawFileBlame {
+  readonly stdout: string | null;
+  readonly localIdentity: VcsFileBlameResult["localIdentity"];
+}
 
 interface GitRepositoryPaths {
   readonly gitCommonDir: string;
@@ -195,12 +224,15 @@ function parseNumstatEntries(
   return entries;
 }
 
-interface ParsedPorcelainStatus {
+export interface ParsedPorcelainStatus {
   readonly refName: string | null;
   readonly upstreamRef: string | null;
   readonly aheadCount: number;
   readonly behindCount: number;
+  readonly headOid: string | null;
+  readonly initialHead: boolean;
   readonly statusByPath: ReadonlyMap<string, VcsWorkingTreeFileStatus>;
+  readonly renameSourceByPath: ReadonlyMap<string, string>;
 }
 
 function splitPorcelainRecordPrefix(
@@ -232,12 +264,15 @@ function statusForPorcelainRecord(
   return "modified";
 }
 
-function parsePorcelainStatus(stdout: string): ParsedPorcelainStatus {
+export function parsePorcelainStatus(stdout: string): ParsedPorcelainStatus {
   let refName: string | null = null;
   let upstreamRef: string | null = null;
   let aheadCount = 0;
   let behindCount = 0;
+  let headOid: string | null = null;
+  let initialHead = false;
   const statusByPath = new Map<string, VcsWorkingTreeFileStatus>();
+  const renameSourceByPath = new Map<string, string>();
   const records = stdout.split("\0");
 
   for (let index = 0; index < records.length; index += 1) {
@@ -245,6 +280,12 @@ function parsePorcelainStatus(stdout: string): ParsedPorcelainStatus {
     if (record.startsWith("# branch.head ")) {
       const value = record.slice("# branch.head ".length).trim();
       refName = value.startsWith("(") ? null : value;
+      continue;
+    }
+    if (record.startsWith("# branch.oid ")) {
+      const value = record.slice("# branch.oid ".length).trim();
+      initialHead = value === "(initial)";
+      headOid = initialHead || value.length === 0 ? null : value;
       continue;
     }
     if (record.startsWith("# branch.upstream ")) {
@@ -277,10 +318,200 @@ function parsePorcelainStatus(stdout: string): ParsedPorcelainStatus {
       parsed.remainder,
       statusForPorcelainRecord(recordType, indexAndWorktreeStatus),
     );
-    if (recordType === "2") index += 1;
+    if (recordType === "2") {
+      const sourcePath = records[index + 1] ?? "";
+      if (sourcePath.length > 0) renameSourceByPath.set(parsed.remainder, sourcePath);
+      index += 1;
+    }
   }
 
-  return { refName, upstreamRef, aheadCount, behindCount, statusByPath };
+  return {
+    refName,
+    upstreamRef,
+    aheadCount,
+    behindCount,
+    headOid,
+    initialHead,
+    statusByPath,
+    renameSourceByPath,
+  };
+}
+
+export interface ParsedFileDiffHunks {
+  readonly combined: boolean;
+  readonly addedRanges: ReadonlyArray<number>;
+  readonly modifiedRanges: ReadonlyArray<number>;
+  readonly deletionMarkers: ReadonlyArray<number>;
+}
+
+const FILE_DIFF_HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(?: .*)?\r?$/;
+
+export function parseFileDiffHunks(stdout: string): ParsedFileDiffHunks {
+  const addedRanges: number[] = [];
+  const modifiedRanges: number[] = [];
+  const deletionMarkers: number[] = [];
+  let combined = false;
+
+  for (const line of stdout.split("\n")) {
+    if (line.startsWith("@@@")) {
+      combined = true;
+      continue;
+    }
+    if (!line.startsWith("@@ ") && !line.startsWith("@@ -")) continue;
+    const match = FILE_DIFF_HUNK_HEADER.exec(line);
+    if (!match) continue;
+
+    const oldStart = Number.parseInt(match[1] ?? "0", 10);
+    const oldCount = Number.parseInt(match[2] ?? "1", 10);
+    const newStart = Number.parseInt(match[3] ?? "0", 10);
+    const newCount = Number.parseInt(match[4] ?? "1", 10);
+    if (![oldStart, oldCount, newStart, newCount].every(Number.isSafeInteger)) continue;
+
+    if (newCount === 0) {
+      deletionMarkers.push(newStart, oldCount);
+    } else if (oldCount === 0) {
+      addedRanges.push(newStart, newCount);
+    } else {
+      modifiedRanges.push(newStart, newCount);
+    }
+  }
+
+  return combined
+    ? { combined: true, addedRanges: [], modifiedRanges: [], deletionMarkers: [] }
+    : { combined: false, addedRanges, modifiedRanges, deletionMarkers };
+}
+
+export interface IncrementalBlameGroup {
+  readonly oid: string;
+  readonly finalLine: number;
+  readonly lineCount: number;
+}
+
+export interface NormalizedBlameRuns {
+  readonly commits: ReadonlyArray<VcsFileBlameCommit>;
+  readonly runs: ReadonlyArray<number>;
+}
+
+export function normalizeIncrementalBlameRuns(
+  groups: ReadonlyArray<IncrementalBlameGroup>,
+  metadataByOid: ReadonlyMap<string, VcsFileBlameCommit>,
+  expectedLineCount: number,
+): NormalizedBlameRuns {
+  if (expectedLineCount === 0) {
+    if (groups.length !== 0) {
+      throw new GitFileAnnotationParseError("Blame returned runs for an empty file.");
+    }
+    return { commits: [], runs: [] };
+  }
+
+  const sorted = [...groups].toSorted((left, right) => left.finalLine - right.finalLine);
+  let nextLine = 1;
+  for (const group of sorted) {
+    if (group.finalLine !== nextLine || group.lineCount < 1) {
+      throw new GitFileAnnotationParseError("Blame runs contain a gap or overlap.");
+    }
+    nextLine += group.lineCount;
+  }
+  if (nextLine - 1 !== expectedLineCount) {
+    throw new GitFileAnnotationParseError("Blame runs do not cover the rendered file.");
+  }
+
+  const commits: VcsFileBlameCommit[] = [];
+  const commitIndexByOid = new Map<string, number>();
+  const runs: number[] = [];
+  for (const group of sorted) {
+    let commitIndex = commitIndexByOid.get(group.oid);
+    if (commitIndex === undefined) {
+      const metadata = metadataByOid.get(group.oid);
+      if (!metadata) {
+        throw new GitFileAnnotationParseError(`Blame metadata is missing for ${group.oid}.`);
+      }
+      commitIndex = commits.length;
+      commitIndexByOid.set(group.oid, commitIndex);
+      commits.push(metadata);
+    }
+
+    const previousCommitIndex = runs.at(-1);
+    if (previousCommitIndex === commitIndex) {
+      runs[runs.length - 2] = (runs[runs.length - 2] ?? 0) + group.lineCount;
+    } else {
+      runs.push(group.lineCount, commitIndex);
+    }
+  }
+
+  return { commits, runs };
+}
+
+function stripBlameEmail(value: string): string {
+  return value.startsWith("<") && value.endsWith(">") ? value.slice(1, -1) : value;
+}
+
+export function parseIncrementalBlame(
+  stdout: string,
+  expectedLineCount: number,
+): NormalizedBlameRuns {
+  const groups: IncrementalBlameGroup[] = [];
+  const metadataByOid = new Map<string, VcsFileBlameCommit>();
+  const lines = stdout.split(/\r?\n/);
+  let index = 0;
+
+  while (index < lines.length) {
+    const header = lines[index] ?? "";
+    index += 1;
+    if (header.length === 0) continue;
+    const match = /^([0-9a-f]{40}) (\d+) (\d+) (\d+)$/.exec(header);
+    if (!match) {
+      throw new GitFileAnnotationParseError("Blame output contains an invalid group header.");
+    }
+    const oid = match[1] ?? "";
+    const finalLine = Number.parseInt(match[3] ?? "0", 10);
+    const lineCount = Number.parseInt(match[4] ?? "0", 10);
+    groups.push({ oid, finalLine, lineCount });
+
+    const existing = metadataByOid.get(oid);
+    let author = existing?.author ?? "";
+    let authorEmail = existing?.authorEmail ?? "";
+    let authorTime = existing?.authorTime ?? null;
+    let summary = existing?.summary ?? "";
+    let sawMetadata = existing !== undefined;
+
+    while (index < lines.length) {
+      const line = lines[index] ?? "";
+      if (/^[0-9a-f]{40} \d+ \d+ \d+$/.test(line) || line.length === 0) break;
+      index += 1;
+      const separator = line.indexOf(" ");
+      const key = separator < 0 ? line : line.slice(0, separator);
+      const value = separator < 0 ? "" : line.slice(separator + 1);
+      if (key === "author") {
+        author = value;
+        sawMetadata = true;
+      } else if (key === "author-mail") {
+        authorEmail = stripBlameEmail(value);
+        sawMetadata = true;
+      } else if (key === "author-time") {
+        const parsed = Number.parseInt(value, 10);
+        authorTime = Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+        sawMetadata = true;
+      } else if (key === "summary") {
+        summary = value;
+        sawMetadata = true;
+      }
+      if (key === "filename") break;
+    }
+
+    if (!sawMetadata) {
+      throw new GitFileAnnotationParseError(`Blame metadata is missing for ${oid}.`);
+    }
+    metadataByOid.set(oid, {
+      oid,
+      author: oid === UNCOMMITTED_BLAME_OID ? "" : author,
+      authorEmail: oid === UNCOMMITTED_BLAME_OID ? "" : authorEmail,
+      authorTime: oid === UNCOMMITTED_BLAME_OID ? null : authorTime,
+      summary,
+    });
+  }
+
+  return normalizeIncrementalBlameRuns(groups, metadataByOid, expectedLineCount);
 }
 
 function filterBranchesForListQuery(
@@ -785,6 +1016,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
   const commandSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
   const { worktreesDir } = yield* ServerConfig;
   const crypto = yield* Crypto.Crypto;
+  const fileAnnotationSemaphore = yield* Semaphore.make(2);
 
   const executeRaw: GitVcsDriver.GitVcsDriver["Service"]["execute"] = Effect.fnUntraced(
     function* (input) {
@@ -984,6 +1216,262 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
         LC_ALL: "C",
       },
     });
+
+  const fileAnnotationHeadCache = yield* Cache.makeWith<
+    FileAnnotationHeadCacheKey,
+    string | null,
+    GitCommandError
+  >(
+    (key) =>
+      fileAnnotationSemaphore.withPermits(1)(
+        executeGitWithStableDiagnostics(
+          "GitVcsDriver.getFileBlame.headOid",
+          key.cwd,
+          ["--no-optional-locks", "rev-parse", "--verify", "HEAD"],
+          { allowNonZeroExit: true, timeoutMs: 2_000 },
+        ).pipe(
+          Effect.map((result) =>
+            result.exitCode === 0 && result.stdout.trim().length > 0 ? result.stdout.trim() : null,
+          ),
+        ),
+      ),
+    {
+      capacity: FILE_ANNOTATION_HEAD_CACHE_CAPACITY,
+      timeToLive: (exit) => (Exit.isSuccess(exit) ? FILE_ANNOTATION_HEAD_CACHE_TTL : Duration.zero),
+    },
+  );
+
+  const parseLocalGitIdentity = (stdout: string): VcsFileBlameResult["localIdentity"] => {
+    const match = /^(.*) <([^>]*)> \d+ [+-]\d+$/.exec(stdout.trim());
+    if (!match) return null;
+    return { author: match[1] ?? "", authorEmail: match[2] ?? "" };
+  };
+
+  const isBlamePathMissingFromHead = (stderr: string): boolean => {
+    const normalized = stderr.toLowerCase();
+    return normalized.includes("no such path") && normalized.includes("in head");
+  };
+
+  const fileBlameCache = yield* Cache.makeWith<FileBlameCacheKey, RawFileBlame, GitCommandError>(
+    (key) =>
+      fileAnnotationSemaphore.withPermits(1)(
+        Effect.gen(function* () {
+          if (key.headOid === null) {
+            return { stdout: null, localIdentity: null };
+          }
+
+          const blameResult = yield* executeGitWithStableDiagnostics(
+            "GitVcsDriver.getFileBlame.blame",
+            key.cwd,
+            [
+              "--no-optional-locks",
+              "blame",
+              "--incremental",
+              "--no-progress",
+              "--",
+              // blame accepts one cwd-relative path, not pathspec magic;
+              // `:(top)` is treated as part of the literal filename here.
+              key.path,
+            ],
+            {
+              allowNonZeroExit: true,
+              timeoutMs: FILE_BLAME_TIMEOUT_MS,
+              maxOutputBytes: FILE_BLAME_MAX_OUTPUT_BYTES,
+            },
+          );
+          if (blameResult.stdoutTruncated) {
+            return yield* new GitCommandError({
+              operation: "GitVcsDriver.getFileBlame.blame",
+              command: "git",
+              cwd: key.cwd,
+              detail: "Git blame output exceeded the annotation limit.",
+              stdoutLength: blameResult.stdout.length,
+              stderrLength: blameResult.stderr.length,
+            });
+          }
+          if (blameResult.exitCode !== 0 && !isBlamePathMissingFromHead(blameResult.stderr)) {
+            return yield* new GitCommandError({
+              operation: "GitVcsDriver.getFileBlame.blame",
+              command: "git",
+              cwd: key.cwd,
+              detail: "Git blame exited with a non-zero status.",
+              exitCode: blameResult.exitCode,
+              stdoutLength: blameResult.stdout.length,
+              stderrLength: blameResult.stderr.length,
+            });
+          }
+
+          const identityResult = yield* executeGitWithStableDiagnostics(
+            "GitVcsDriver.getFileBlame.identity",
+            key.cwd,
+            ["--no-optional-locks", "var", "GIT_AUTHOR_IDENT"],
+            { allowNonZeroExit: true, timeoutMs: 2_000, maxOutputBytes: 8_192 },
+          );
+          return {
+            stdout: blameResult.exitCode === 0 ? blameResult.stdout : null,
+            localIdentity:
+              identityResult.exitCode === 0 ? parseLocalGitIdentity(identityResult.stdout) : null,
+          };
+        }),
+      ),
+    {
+      capacity: FILE_BLAME_CACHE_CAPACITY,
+      timeToLive: (exit) => (Exit.isSuccess(exit) ? FILE_BLAME_CACHE_TTL : Duration.zero),
+    },
+  );
+
+  const resolveFileAnnotationHeadOid = Effect.fn("resolveFileAnnotationHeadOid")(function* (
+    input: GitVcsDriver.GitFileAnnotationInput,
+  ) {
+    const key = new FileAnnotationHeadCacheKey({ cwd: input.cwd });
+    let headOid = yield* Cache.get(fileAnnotationHeadCache, key);
+    if (input.headOidHint !== undefined && input.headOidHint !== headOid) {
+      yield* Cache.invalidate(fileAnnotationHeadCache, key);
+      headOid = yield* Cache.get(fileAnnotationHeadCache, key);
+    }
+    return headOid;
+  });
+
+  const wholeFileAddedResult = (
+    lineCount: number,
+    headOid: string | null,
+  ): VcsFileLineChangesResult => ({
+    state: "modified",
+    headOid,
+    lineCount,
+    addedRanges: lineCount === 0 ? [] : [1, lineCount],
+    modifiedRanges: [],
+    deletionMarkers: [],
+  });
+
+  const getFileLineChangesUnbounded = Effect.fn("getFileLineChanges")(function* (
+    input: GitVcsDriver.GitFileAnnotationInput,
+  ) {
+    const statusArgs = [
+      "--no-optional-locks",
+      "status",
+      "--porcelain=2",
+      "--branch",
+      "-z",
+      "-uall",
+      "--",
+      `:(top)${input.path}`,
+    ] as const;
+    const statusResult = yield* executeGitWithStableDiagnostics(
+      "GitVcsDriver.getFileLineChanges.status",
+      input.cwd,
+      statusArgs,
+      { allowNonZeroExit: true, timeoutMs: 5_000 },
+    );
+    if (statusResult.exitCode !== 0) {
+      return yield* new GitCommandError({
+        operation: "GitVcsDriver.getFileLineChanges.status",
+        command: "git",
+        cwd: input.cwd,
+        detail: "Git status exited with a non-zero status.",
+        exitCode: statusResult.exitCode,
+        stdoutLength: statusResult.stdout.length,
+        stderrLength: statusResult.stderr.length,
+      });
+    }
+
+    const status = parsePorcelainStatus(statusResult.stdout);
+    const fileStatus = status.statusByPath.get(input.path);
+    if (fileStatus === undefined) {
+      return {
+        state: "unchanged" as const,
+        headOid: status.headOid,
+        lineCount: input.lineCount,
+        addedRanges: [],
+        modifiedRanges: [],
+        deletionMarkers: [],
+      };
+    }
+    if (status.initialHead || fileStatus === "untracked") {
+      return wholeFileAddedResult(input.lineCount, status.headOid);
+    }
+
+    const renameSource = status.renameSourceByPath.get(input.path);
+    const diffPaths = renameSource
+      ? [`:(top)${renameSource}`, `:(top)${input.path}`]
+      : [`:(top)${input.path}`];
+    const diffArgs = [
+      "--no-optional-locks",
+      "diff",
+      "--no-color",
+      "-U0",
+      "--no-ext-diff",
+      "--no-textconv",
+      ...(renameSource ? ["-M"] : []),
+      "HEAD",
+      "--",
+      ...diffPaths,
+    ];
+    const diffResult = yield* executeGitWithStableDiagnostics(
+      "GitVcsDriver.getFileLineChanges.diff",
+      input.cwd,
+      diffArgs,
+      { timeoutMs: 5_000, maxOutputBytes: 4 * 1024 * 1024 },
+    );
+    const parsed = parseFileDiffHunks(diffResult.stdout);
+    return {
+      state: "modified" as const,
+      headOid: status.headOid,
+      lineCount: input.lineCount,
+      addedRanges: parsed.addedRanges,
+      modifiedRanges: parsed.modifiedRanges,
+      deletionMarkers: parsed.deletionMarkers,
+    };
+  });
+  const getFileLineChanges: GitVcsDriver.GitVcsDriver["Service"]["getFileLineChanges"] = (input) =>
+    fileAnnotationSemaphore.withPermits(1)(getFileLineChangesUnbounded(input));
+
+  const getFileBlame: GitVcsDriver.GitVcsDriver["Service"]["getFileBlame"] = Effect.fn(
+    "getFileBlame",
+  )(function* (input) {
+    const headOid = yield* resolveFileAnnotationHeadOid(input);
+    const cached = yield* Cache.get(
+      fileBlameCache,
+      new FileBlameCacheKey({
+        cwd: input.cwd,
+        path: input.path,
+        contentRevision: input.contentRevision,
+        headOid,
+      }),
+    );
+    const normalized =
+      cached.stdout === null
+        ? input.lineCount === 0
+          ? { commits: [], runs: [] }
+          : {
+              commits: [
+                {
+                  oid: UNCOMMITTED_BLAME_OID,
+                  author: "",
+                  authorEmail: "",
+                  authorTime: null,
+                  summary: "",
+                },
+              ],
+              runs: [input.lineCount, 0],
+            }
+        : yield* Effect.try({
+            try: () => parseIncrementalBlame(cached.stdout ?? "", input.lineCount),
+            catch: (cause) =>
+              cause instanceof GitFileAnnotationParseError
+                ? cause
+                : new GitFileAnnotationParseError("Could not parse Git blame output."),
+          });
+
+    return {
+      firstLine: 1,
+      lineCount: input.lineCount,
+      headOid,
+      commits: normalized.commits,
+      runs: normalized.runs,
+      localIdentity: cached.localIdentity,
+    };
+  });
 
   const runGit = (
     operation: string,
@@ -1803,6 +2291,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
 
     return {
       isRepo: true,
+      headOid: parsedStatus.headOid,
       hasOriginRemote: hasPrimaryRemote,
       isDefaultBranch,
       branch: refName,
@@ -1860,6 +2349,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
         hasPrimaryRemote: details.hasOriginRemote,
         isDefaultRef: details.isDefaultBranch,
         refName: details.branch,
+        headOid: details.headOid,
         hasWorkingTreeChanges: details.hasWorkingTreeChanges,
         workingTree: details.workingTree,
         hasUpstream: details.hasUpstream,
@@ -3228,6 +3718,8 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     readRangeContext,
     getReviewDiffPreview,
     getReviewDiffFileContents,
+    getFileLineChanges,
+    getFileBlame,
     readConfigValue,
     listRefs,
     createWorktree: (input) => withListRefsInvalidation(input.cwd, createWorktree(input)),

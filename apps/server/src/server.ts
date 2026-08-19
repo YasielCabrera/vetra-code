@@ -73,6 +73,7 @@ import * as WorkspaceFileSystem from "./workspace/WorkspaceFileSystem.ts";
 import * as WorkspacePaths from "./workspace/WorkspacePaths.ts";
 import * as GitVcsDriver from "./vcs/GitVcsDriver.ts";
 import * as VcsDriverRegistry from "./vcs/VcsDriverRegistry.ts";
+import * as FileAnnotationService from "./vcs/FileAnnotationService.ts";
 import * as VcsProjectConfig from "./vcs/VcsProjectConfig.ts";
 import * as VcsProcess from "./vcs/VcsProcess.ts";
 import * as VcsProvisioningService from "./vcs/VcsProvisioningService.ts";
@@ -350,6 +351,12 @@ const WorkspaceFileSystemLayerLive = WorkspaceFileSystem.layer.pipe(
   Layer.provide(WorkspaceEntriesLayerLive),
 );
 
+const FileAnnotationLayerLive = FileAnnotationService.layer.pipe(
+  Layer.provideMerge(GitVcsDriver.layer),
+  Layer.provideMerge(VcsDriverRegistryLayerLive),
+  Layer.provideMerge(WorkspaceFileSystemLayerLive),
+);
+
 const WorkspaceLayerLive = Layer.mergeAll(
   WorkspacePaths.layer,
   WorkspaceEntriesLayerLive,
@@ -415,6 +422,7 @@ const RuntimeCoreDependenciesLive = RuntimeCoreDependenciesBaseLive.pipe(
   Layer.provideMerge(OpenCodeRuntime.OpenCodeRuntimeLive),
   Layer.provideMerge(ProviderSubscriptionCredentialStoreLive),
   Layer.provideMerge(WorkspaceLayerLive),
+  Layer.provideMerge(FileAnnotationLayerLive),
   Layer.provideMerge(ProjectFaviconResolverLayerLive),
   Layer.provideMerge(RepositoryIdentityResolver.layer),
   Layer.provideMerge(ServerEnvironment.layer),
