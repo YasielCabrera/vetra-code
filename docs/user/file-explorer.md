@@ -23,9 +23,9 @@ settle to Git's authoritative result after the file is saved.
 
 Place the text caret on a line to see who last changed it and when. The hint sits after the line's
 code without covering it or changing the line spacing. Blame history loads only after the first
-blame interaction, so opening a file is not delayed by history. Use the author toggle in the file
-header to keep author names visible beside every rendered line; use the same toggle to hide the
-column again. Lines that have not been committed are labeled **You**.
+blame interaction, so opening a file is not delayed by history. Per-line blame is enabled by default;
+turn it off from **Settings → Source Control → File viewer**. Lines that have not been committed are
+labeled **You**.
 
 In-file markers and blame are available for complete text-file previews in Git projects. Truncated
 large-file previews, binary files, and non-Git projects remain undecorated. The diff panel is

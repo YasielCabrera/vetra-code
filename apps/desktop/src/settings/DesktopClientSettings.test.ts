@@ -24,6 +24,7 @@ const clientSettings: ClientSettings = {
   diffIgnoreWhitespace: true,
   environmentIdentificationMode: "artwork",
   favorites: [],
+  fileLineBlameEnabled: true,
   fontFamilyCode: "",
   fontFamilyComposer: "",
   fontFamilySans: "",

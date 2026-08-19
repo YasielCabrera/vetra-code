@@ -245,6 +245,11 @@ export const SETTINGS_SEARCH_ITEMS = [
     to: "/settings/source-control",
   },
   {
+    id: "file-line-blame",
+    title: "Per-line blame",
+    to: "/settings/source-control",
+  },
+  {
     id: "remote-environments",
     title: "Remote environments",
     to: "/settings/connections",

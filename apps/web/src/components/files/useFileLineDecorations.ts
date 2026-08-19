@@ -29,7 +29,6 @@ export interface FileEditorCaretListeners {
 
 const VETRA_CHANGE_ATTRIBUTE = "data-vetra-change";
 const VETRA_DELETION_ATTRIBUTE = "data-vetra-deletion";
-const VETRA_BLAME_ATTRIBUTE = "data-vetra-blame";
 const VETRA_BLAME_INLINE_ATTRIBUTE = "data-vetra-blame-inline";
 const VETRA_ACTIVE_LINE_ATTRIBUTE = "data-vetra-active-line";
 
@@ -70,24 +69,6 @@ export const FILE_LINE_DECORATIONS_UNSAFE_CSS = `
   [${VETRA_DELETION_ATTRIBUTE}="below"]::after {
     top: auto;
     bottom: -3px;
-  }
-
-  [data-vetra-blame-column="true"] {
-    --diffs-min-number-column-width: 19ch;
-  }
-
-  [data-vetra-blame-column="true"] [data-line-number-content][${VETRA_BLAME_ATTRIBUTE}]::before {
-    content: attr(${VETRA_BLAME_ATTRIBUTE});
-    color: var(--diffs-fg-number);
-    opacity: .72;
-    width: 13ch;
-    text-align: left;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
-    position: absolute;
-    left: 0;
-    top: 0;
   }
 
   [data-content]:focus > [data-line][${VETRA_ACTIVE_LINE_ATTRIBUTE}][${VETRA_BLAME_INLINE_ATTRIBUTE}]::after {
@@ -171,10 +152,7 @@ export function installFileEditorCaretListeners(
   };
 }
 
-function blameLabels(
-  index: FileLineDecorationIndex,
-  line: number,
-): { readonly author: string; readonly inline: string } | null {
+function blameLabel(index: FileLineDecorationIndex, line: number): string | null {
   const commitIndex = blameCommitIndexAtLine(index, line);
   if (commitIndex === null) return null;
   const commit = index.commits[commitIndex];
@@ -186,22 +164,18 @@ function blameLabels(
     commit.authorTime === null
       ? "uncommitted"
       : formatRelativeTimeLabel(new Date(commit.authorTime * 1_000).toISOString());
-  return {
-    author,
-    inline: [author, relativeTime, commit.summary].filter((part) => part.length > 0).join(" · "),
-  };
+  return [author, relativeTime, commit.summary].filter((part) => part.length > 0).join(" · ");
 }
 
 export function stampFileLineDecorations(
   fileContainer: HTMLElement,
   index: FileLineDecorationIndex,
-  showBlameColumn: boolean,
+  fileLineBlameEnabled: boolean,
   activeLine: number | null = null,
 ): void {
   const root = fileContainer.shadowRoot ?? fileContainer;
   const code = root.querySelector<HTMLElement>("[data-code]");
   if (!code) return;
-  setAttribute(code, "data-vetra-blame-column", showBlameColumn ? "true" : "false");
 
   const gutter = code.children[0];
   const content = code.children[1];
@@ -235,18 +209,15 @@ export function stampFileLineDecorations(
       .join(", ");
     setAttribute(cell, "title", stateLabel || null);
     setAttribute(cell, "aria-label", stateLabel ? `Line ${line}, ${stateLabel}` : null);
-
-    const labels = blameLabels(index, line);
-    const lineNumber = cell.querySelector<HTMLElement>("[data-line-number-content]");
-    if (lineNumber) setAttribute(lineNumber, VETRA_BLAME_ATTRIBUTE, labels?.author ?? null);
   }
 
   for (const row of content.children) {
     if (!(row instanceof HTMLElement) || !row.hasAttribute("data-line")) continue;
     const line = lineFromElement(row);
     if (line === null) continue;
-    setAttribute(row, VETRA_ACTIVE_LINE_ATTRIBUTE, line === activeLine ? "" : null);
-    setAttribute(row, VETRA_BLAME_INLINE_ATTRIBUTE, blameLabels(index, line)?.inline ?? null);
+    const isActiveLine = fileLineBlameEnabled && line === activeLine;
+    setAttribute(row, VETRA_ACTIVE_LINE_ATTRIBUTE, isActiveLine ? "" : null);
+    setAttribute(row, VETRA_BLAME_INLINE_ATTRIBUTE, isActiveLine ? blameLabel(index, line) : null);
   }
 }
 
@@ -258,7 +229,7 @@ interface UseFileLineDecorationsInput {
   readonly confirmationToken: object | null;
   readonly contents: string;
   readonly headOid: string | null | undefined;
-  readonly showBlameColumn: boolean;
+  readonly fileLineBlameEnabled: boolean;
 }
 
 export function useFileLineDecorations(input: UseFileLineDecorationsInput): {
@@ -285,7 +256,7 @@ export function useFileLineDecorations(input: UseFileLineDecorationsInput): {
     vcsEnvironment.fileLineChanges({ environmentId: input.environmentId, input: request }),
   );
   const [caretBlameRequested, setCaretBlameRequested] = useState(false);
-  const blameRequested = input.showBlameColumn || caretBlameRequested;
+  const blameRequested = input.fileLineBlameEnabled && caretBlameRequested;
   const blame = useEnvironmentQuery(
     blameRequested
       ? vcsEnvironment.fileBlame({ environmentId: input.environmentId, input: request })
@@ -301,8 +272,8 @@ export function useFileLineDecorations(input: UseFileLineDecorationsInput): {
   const containerRef = useRef<HTMLElement | null>(null);
   const frameRef = useRef<number | null>(null);
   const activeLineRef = useRef<number | null>(null);
-  const showBlameColumnRef = useRef(input.showBlameColumn);
-  showBlameColumnRef.current = input.showBlameColumn;
+  const fileLineBlameEnabledRef = useRef(input.fileLineBlameEnabled);
+  fileLineBlameEnabledRef.current = input.fileLineBlameEnabled;
 
   const stamp = useCallback(() => {
     const container = containerRef.current;
@@ -310,7 +281,7 @@ export function useFileLineDecorations(input: UseFileLineDecorationsInput): {
       stampFileLineDecorations(
         container,
         indexRef.current,
-        showBlameColumnRef.current,
+        fileLineBlameEnabledRef.current,
         activeLineRef.current,
       );
     }
@@ -324,8 +295,12 @@ export function useFileLineDecorations(input: UseFileLineDecorationsInput): {
   }, [stamp]);
 
   useEffect(() => {
+    if (!input.fileLineBlameEnabled) {
+      activeLineRef.current = null;
+      setCaretBlameRequested(false);
+    }
     scheduleStamp();
-  }, [input.showBlameColumn, scheduleStamp]);
+  }, [input.fileLineBlameEnabled, scheduleStamp]);
 
   useEffect(() => {
     if (
@@ -399,7 +374,9 @@ export function useFileLineDecorations(input: UseFileLineDecorationsInput): {
     },
     [scheduleStamp],
   );
-  const onEditorFocus = useCallback(() => setCaretBlameRequested(true), []);
+  const onEditorFocus = useCallback(() => {
+    if (input.fileLineBlameEnabled) setCaretBlameRequested(true);
+  }, [input.fileLineBlameEnabled]);
   const onCaretLineChange = useCallback(
     (line: number | null) => {
       if (activeLineRef.current === line) return;
@@ -418,7 +395,7 @@ export function useFileLineDecorations(input: UseFileLineDecorationsInput): {
     stampFileLineDecorations(
       fileContainer,
       indexRef.current,
-      showBlameColumnRef.current,
+      fileLineBlameEnabledRef.current,
       activeLineRef.current,
     );
   }, []);

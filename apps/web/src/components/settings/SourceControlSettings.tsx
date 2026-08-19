@@ -11,6 +11,7 @@ import type {
   VcsDriverKind,
   VcsDiscoveryItem,
 } from "@vetra-code/contracts";
+import { DEFAULT_CLIENT_SETTINGS } from "@vetra-code/contracts/settings";
 import {
   getBackgroundActivityBaseProfile,
   getBackgroundActivityPresetSettings,
@@ -59,6 +60,7 @@ import {
   PolicyTooltip,
   SettingResetButton,
   SettingsPageContainer,
+  SettingsRow,
   SettingsSection,
 } from "./settingsLayout";
 import { searchableSetting } from "./settingsSearch";
@@ -410,6 +412,41 @@ function GitFetchIntervalSettings() {
   );
 }
 
+function FileViewerSettings() {
+  const settings = usePrimarySettings();
+  const updateSettings = useUpdatePrimarySettings();
+
+  return (
+    <SettingsSection title="File viewer">
+      <SettingsRow
+        {...searchableSetting("file-line-blame")}
+        description="Show the last author, relative time, and commit summary beside the line containing the caret."
+        resetAction={
+          settings.fileLineBlameEnabled === DEFAULT_CLIENT_SETTINGS.fileLineBlameEnabled ? null : (
+            <SettingResetButton
+              label="per-line blame"
+              onClick={() =>
+                updateSettings({
+                  fileLineBlameEnabled: DEFAULT_CLIENT_SETTINGS.fileLineBlameEnabled,
+                })
+              }
+            />
+          )
+        }
+        control={
+          <Switch
+            checked={settings.fileLineBlameEnabled}
+            onCheckedChange={(checked) =>
+              updateSettings({ fileLineBlameEnabled: Boolean(checked) })
+            }
+            aria-label="Show per-line blame in file previews"
+          />
+        }
+      />
+    </SettingsSection>
+  );
+}
+
 function SourceControlSectionSkeleton({
   title,
   headerAction,
@@ -537,6 +574,8 @@ export function SourceControlSettingsPanel() {
 
   return (
     <SettingsPageContainer>
+      <FileViewerSettings />
+
       {isInitialScanPending ? (
         <>
           <SourceControlSectionSkeleton title="Version Control" headerAction={scanButton} />

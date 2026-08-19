@@ -33,6 +33,19 @@ describe("ClientSettings word wrap", () => {
   });
 });
 
+describe("ClientSettings per-line blame", () => {
+  it("defaults per-line blame on", () => {
+    expect(decodeClientSettings({}).fileLineBlameEnabled).toBe(true);
+  });
+
+  it("allows per-line blame to be disabled", () => {
+    expect(decodeClientSettings({ fileLineBlameEnabled: false }).fileLineBlameEnabled).toBe(false);
+    expect(decodeClientSettingsPatch({ fileLineBlameEnabled: false }).fileLineBlameEnabled).toBe(
+      false,
+    );
+  });
+});
+
 describe("ClientSettings glass opacity", () => {
   it("defaults to a readable translucent surface", () => {
     expect(decodeClientSettings({}).glassOpacity).toBe(80);

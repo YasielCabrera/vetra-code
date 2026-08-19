@@ -20,7 +20,6 @@ import {
   FolderTree,
   Globe2,
   LoaderCircle,
-  UserRound,
 } from "lucide-react";
 import * as Schema from "effect/Schema";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -109,7 +108,6 @@ const FILE_EXPLORER_STORAGE_KEY = "vetra.fileExplorerOpen";
 const FILE_EXPLORER_SIDE_STORAGE_KEY = "vetra.fileExplorerSide";
 const FileExplorerSide = Schema.Literals(["left", "right"]);
 const RENDER_MARKDOWN_STORAGE_KEY = "vetra.renderMarkdown";
-const BLAME_AUTHOR_COLUMN_STORAGE_KEY = "vetra.blameAuthorColumn";
 const FILE_SAVE_DEBOUNCE_MS = 500;
 const FILE_LINK_REVEAL_ATTRIBUTE = "data-file-link-reveal";
 const FILE_LINK_REVEAL_UNSAFE_CSS = `
@@ -422,7 +420,7 @@ interface EditableFileSurfaceProps {
   resolvedTheme: "light" | "dark";
   revealRequestId: number;
   wordWrap: boolean;
-  showBlameColumn: boolean;
+  fileLineBlameEnabled: boolean;
   onPostRender: FilePostRender;
   onPendingChange: (relativePath: string, pending: boolean) => void;
 }
@@ -475,7 +473,7 @@ function EditableFileSurface({
   resolvedTheme,
   revealRequestId,
   wordWrap,
-  showBlameColumn,
+  fileLineBlameEnabled,
   onPostRender,
   onPendingChange,
 }: EditableFileSurfaceProps) {
@@ -509,10 +507,10 @@ function EditableFileSurface({
     confirmationToken,
     contents,
     headOid,
-    showBlameColumn,
+    fileLineBlameEnabled,
   });
   const syncEditorCaretLine = useCallback(() => {
-    if (caretFrameRef.current !== null) return;
+    if (!fileLineBlameEnabled || caretFrameRef.current !== null) return;
     caretFrameRef.current = requestAnimationFrame(() => {
       caretFrameRef.current = null;
       const content = caretListenersRef.current?.content;
@@ -520,7 +518,7 @@ function EditableFileSurface({
         content?.matches(":focus") ? fileEditorCaretLine(content) : null,
       );
     });
-  }, [fileLineDecorations.onCaretLineChange]);
+  }, [fileLineBlameEnabled, fileLineDecorations.onCaretLineChange]);
   const handleEditorFocus = useCallback(() => {
     fileLineDecorations.onEditorFocus();
     syncEditorCaretLine();
@@ -592,6 +590,11 @@ function EditableFileSurface({
     },
     [],
   );
+  useEffect(() => {
+    if (fileLineBlameEnabled) return;
+    caretListenersRef.current?.dispose();
+    caretListenersRef.current = null;
+  }, [fileLineBlameEnabled]);
 
   const removeAnnotationEntry = useCallback(
     (entryId: string) => {
@@ -713,7 +716,7 @@ function EditableFileSurface({
       onPostRender(fileContainer, instance, phase);
       fileLineDecorations.onPostRender(fileContainer, instance, phase);
 
-      if (phase === "unmount") {
+      if (phase === "unmount" || !fileLineBlameEnabled) {
         caretListenersRef.current?.dispose();
         caretListenersRef.current = null;
       } else {
@@ -743,6 +746,7 @@ function EditableFileSurface({
     },
     [
       fileLineDecorations.onPostRender,
+      fileLineBlameEnabled,
       handleEditorBlur,
       handleEditorFocus,
       onPostRender,
@@ -827,7 +831,7 @@ function RenderedMarkdownSurface({
   | "confirmationToken"
   | "headOid"
   | "revealRequestId"
-  | "showBlameColumn"
+  | "fileLineBlameEnabled"
   | "wordWrap"
   | "onPostRender"
 > & {
@@ -885,7 +889,7 @@ export default function FilePreviewPanel({
   onPendingChange,
 }: FilePreviewPanelProps) {
   const { resolvedTheme } = useTheme();
-  const wordWrap = useClientSettings((settings) => settings.wordWrap);
+  const { fileLineBlameEnabled, wordWrap } = useClientSettings();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const remoteOpenState = useRemoteOpenState(environmentId);
   const environmentHttpBaseUrl = useEnvironmentHttpBaseUrl(environmentId);
@@ -913,11 +917,6 @@ export default function FilePreviewPanel({
   // it on the panel meant a thread switch dropped it and forced source back.
   const [renderMarkdownPreferred, setRenderMarkdownPreferred] = useLocalStorage(
     RENDER_MARKDOWN_STORAGE_KEY,
-    false,
-    Schema.Boolean,
-  );
-  const [showBlameColumn, setShowBlameColumn] = useLocalStorage(
-    BLAME_AUTHOR_COLUMN_STORAGE_KEY,
     false,
     Schema.Boolean,
   );
@@ -1075,27 +1074,6 @@ export default function FilePreviewPanel({
               </TooltipPopup>
             </Tooltip>
           ) : null}
-          {!isImage && file.data !== null && !file.data.truncated ? (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Toggle
-                    className="shrink-0"
-                    pressed={showBlameColumn}
-                    onPressedChange={setShowBlameColumn}
-                    aria-label={showBlameColumn ? "Hide blame authors" : "Show blame authors"}
-                    variant="ghost"
-                    size="sm"
-                  >
-                    <UserRound className="size-3.5" />
-                  </Toggle>
-                }
-              />
-              <TooltipPopup>
-                {showBlameColumn ? "Hide blame authors" : "Show blame authors"}
-              </TooltipPopup>
-            </Tooltip>
-          ) : null}
           {canOpenInBrowser ? (
             <Tooltip>
               <TooltipTrigger
@@ -1235,7 +1213,7 @@ export default function FilePreviewPanel({
                 resolvedTheme={resolvedTheme}
                 revealRequestId={revealRequestId}
                 wordWrap={wordWrap}
-                showBlameColumn={showBlameColumn}
+                fileLineBlameEnabled={fileLineBlameEnabled}
                 onPostRender={onFilePostRender}
                 onPendingChange={onPendingChange}
               />

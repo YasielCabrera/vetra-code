@@ -89,5 +89,9 @@ describe("searchSettings", () => {
       to: "/settings/appearance",
       targetId: "appearance",
     });
+    expect(searchSettings("per-line blame")[0]).toMatchObject({
+      id: "file-line-blame",
+      to: "/settings/source-control",
+    });
   });
 });

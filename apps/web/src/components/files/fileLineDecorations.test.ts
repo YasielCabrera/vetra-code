@@ -165,9 +165,7 @@ describe("stampFileLineDecorations", () => {
       configurable: true,
       value: FakeElement,
     });
-    const number = new FakeElement();
-    number.setAttribute("data-line-number-content", "");
-    const gutterCell = new FakeElement().append(number);
+    const gutterCell = new FakeElement();
     gutterCell.dataset.lineIndex = "1";
     gutterCell.setAttribute("data-column-number", "2");
     const contentRow = new FakeElement();
@@ -181,22 +179,23 @@ describe("stampFileLineDecorations", () => {
     const index = buildFileLineDecorationIndex(6, lineChanges, blame);
 
     stampFileLineDecorations(container as unknown as HTMLElement, index, true, 2);
-    expect(code.getAttribute("data-vetra-blame-column")).toBe("true");
     expect(gutterCell.getAttribute("data-vetra-change")).toBe("added");
     expect(gutterCell.getAttribute("aria-label")).toContain("Line 2, added");
-    expect(number.getAttribute("data-vetra-blame")).toBe("You");
     expect(contentRow.getAttribute("data-vetra-active-line")).toBe("");
     expect(contentRow.getAttribute("data-vetra-blame-inline")).toContain("You ·");
+
+    stampFileLineDecorations(container as unknown as HTMLElement, index, false, 2);
+    expect(gutterCell.getAttribute("data-vetra-change")).toBe("added");
+    expect(contentRow.getAttribute("data-vetra-active-line")).toBeNull();
+    expect(contentRow.getAttribute("data-vetra-blame-inline")).toBeNull();
 
     stampFileLineDecorations(
       container as unknown as HTMLElement,
       buildFileLineDecorationIndex(6, null, null),
       false,
     );
-    expect(code.getAttribute("data-vetra-blame-column")).toBe("false");
     expect(gutterCell.getAttribute("data-vetra-change")).toBeNull();
     expect(gutterCell.getAttribute("aria-label")).toBeNull();
-    expect(number.getAttribute("data-vetra-blame")).toBeNull();
     expect(contentRow.getAttribute("data-vetra-active-line")).toBeNull();
     expect(contentRow.getAttribute("data-vetra-blame-inline")).toBeNull();
   });
@@ -211,6 +210,7 @@ describe("inline blame styling", () => {
     expect(FILE_LINE_DECORATIONS_UNSAFE_CSS).toContain("inset: auto !important");
     expect(FILE_LINE_DECORATIONS_UNSAFE_CSS).toContain("margin-inline-start: 3ch");
     expect(FILE_LINE_DECORATIONS_UNSAFE_CSS).not.toContain("[data-hovered]");
+    expect(FILE_LINE_DECORATIONS_UNSAFE_CSS).not.toContain("data-vetra-blame-column");
   });
 
   it("tracks focus and caret movement inside Pierre's shadow editor", () => {
