@@ -5,6 +5,9 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import type {
+  IssueActivity,
+  IssueAssigneeCandidateList,
+  IssueAssigneeChangeInput,
   IssueDetail,
   IssueInvalidateInput,
   IssueListEntry,
@@ -41,6 +44,11 @@ export class IssueService extends Context.Service<
   {
     readonly list: (input: IssueListInput) => Effect.Effect<IssueListResult, IssueError>;
     readonly detail: (input: IssueRef) => Effect.Effect<IssueDetail, IssueError>;
+    readonly activity: (input: IssueRef) => Effect.Effect<IssueActivity, IssueError>;
+    readonly assigneeCandidates: (
+      input: IssueRef,
+    ) => Effect.Effect<IssueAssigneeCandidateList, IssueError>;
+    readonly setAssignees: (input: IssueAssigneeChangeInput) => Effect.Effect<void, IssueError>;
     readonly invalidate: (input: IssueInvalidateInput) => Effect.Effect<void>;
   }
 >()("@vetra-code/server/issue/IssueService") {}
@@ -553,6 +561,53 @@ export const make = Effect.gen(function* () {
       };
     });
 
+  const activityUncached: IssueService["Service"]["activity"] = Effect.fn(
+    "IssueService.activityUncached",
+  )(function* (ref) {
+    const project = yield* requireProject(ref);
+    return yield* runProvider(
+      project,
+      project.api.getIssueActivity({
+        cwd: project.project.workspaceRoot,
+        host: project.host,
+        repository: project.repository,
+        number: ref.number,
+      }),
+    ).pipe(Effect.mapError(serviceError("activity")));
+  });
+
+  const assigneeCandidates: IssueService["Service"]["assigneeCandidates"] = Effect.fn(
+    "IssueService.assigneeCandidates",
+  )(function* (ref) {
+    const project = yield* requireProject(ref);
+    return yield* runProvider(
+      project,
+      project.api.listAssigneeCandidates({
+        cwd: project.project.workspaceRoot,
+        host: project.host,
+        repository: project.repository,
+        number: ref.number,
+      }),
+    ).pipe(Effect.mapError(serviceError("assigneeCandidates")));
+  });
+
+  const setAssigneesUncached: IssueService["Service"]["setAssignees"] = Effect.fn(
+    "IssueService.setAssigneesUncached",
+  )(function* (input) {
+    const project = yield* requireProject(input);
+    return yield* runProvider(
+      project,
+      project.api.setAssignees({
+        cwd: project.project.workspaceRoot,
+        host: project.host,
+        repository: project.repository,
+        number: input.number,
+        assignees: input.assignees,
+        assigned: input.assigned,
+      }),
+    ).pipe(Effect.mapError(serviceError("setAssignees")));
+  });
+
   let epoch = 0;
   let listEpoch = 0;
   const refEpochs = new Map<string, number>();
@@ -588,6 +643,16 @@ export const make = Effect.gen(function* () {
       timeToLive: (exit) => (Exit.isSuccess(exit) ? DETAIL_CACHE_TTL : Duration.zero),
     },
   );
+  const activityCache = yield* Cache.makeWith(
+    (key: string) => {
+      const [, ref] = JSON.parse(key) as [number, IssueRef];
+      return activityUncached(ref);
+    },
+    {
+      capacity: 128,
+      timeToLive: (exit) => (Exit.isSuccess(exit) ? DETAIL_CACHE_TTL : Duration.zero),
+    },
+  );
 
   const list: IssueService["Service"]["list"] = (input) =>
     Cache.get(
@@ -611,13 +676,32 @@ export const make = Effect.gen(function* () {
     );
   const detail: IssueService["Service"]["detail"] = (ref) =>
     Cache.get(detailCache, JSON.stringify([refEpochs.get(refKey(ref)) ?? 0, ref]));
+  const activity: IssueService["Service"]["activity"] = (ref) =>
+    Cache.get(activityCache, JSON.stringify([refEpochs.get(refKey(ref)) ?? 0, ref]));
   const invalidate: IssueService["Service"]["invalidate"] = (input) =>
     Effect.sync(() => {
       if (input.reference === undefined) listEpoch = ++epoch;
       else bumpRefEpoch(input.reference);
     });
 
-  return IssueService.of({ list, detail, invalidate });
+  const setAssignees: IssueService["Service"]["setAssignees"] = (input) =>
+    setAssigneesUncached(input).pipe(
+      Effect.tap(() =>
+        Effect.sync(() => {
+          bumpRefEpoch(input);
+          listEpoch = epoch;
+        }),
+      ),
+    );
+
+  return IssueService.of({
+    list,
+    detail,
+    activity,
+    assigneeCandidates,
+    setAssignees,
+    invalidate,
+  });
 });
 
 export const layer = Layer.effect(IssueService, make);

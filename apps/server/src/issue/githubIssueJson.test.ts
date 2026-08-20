@@ -2,7 +2,12 @@ import { expect, it } from "vite-plus/test";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 
-import { decodeIssueDetailJson, decodeIssueListJson } from "./githubIssueJson.ts";
+import {
+  decodeIssueAssigneeCandidatesJson,
+  decodeIssueDetailJson,
+  decodeIssueListJson,
+  decodeIssueTimelineJson,
+} from "./githubIssueJson.ts";
 
 const encodeJson = Schema.encodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
 
@@ -59,4 +64,142 @@ it("bounds a detail conversation and reports that more comments exist", () => {
   expect(decoded.success.comments).toHaveLength(100);
   expect(decoded.success.commentCount).toBe(101);
   expect(decoded.success.commentsTruncated).toBe(true);
+});
+
+it("normalizes comments and contextual events from GitHub's issue timeline", () => {
+  const decoded = decodeIssueTimelineJson(
+    encodeJson([
+      {
+        id: 1,
+        event: "commented",
+        actor: {
+          login: "octocat",
+          avatar_url: "https://avatars.githubusercontent.com/u/1?v=4",
+        },
+        body: "Confirmed",
+        created_at: "2026-08-02T00:00:00Z",
+        updated_at: "2026-08-02T01:00:00Z",
+        html_url: "https://github.com/acme/web/issues/7#issuecomment-1",
+      },
+      {
+        id: 2,
+        event: "labeled",
+        actor: { login: "hubot" },
+        label: { name: " bug ", color: "FF0000" },
+        created_at: "2026-08-03T00:00:00Z",
+      },
+      {
+        id: 3,
+        event: "cross-referenced",
+        actor: { login: "monalisa" },
+        created_at: "2026-08-04T00:00:00Z",
+        source: {
+          issue: {
+            number: 9,
+            title: "Related work",
+            html_url: "https://github.com/acme/api/pull/9",
+            pull_request: {},
+          },
+        },
+      },
+    ]),
+    "github.com",
+  );
+
+  expect(Result.isSuccess(decoded)).toBe(true);
+  if (!Result.isSuccess(decoded)) return;
+  expect(decoded.success.rawCount).toBe(3);
+  expect(decoded.success.items[0]).toMatchObject({
+    type: "comment",
+    actor: { login: "octocat", avatarUrl: "https://avatars.githubusercontent.com/u/1?v=4" },
+    body: "Confirmed",
+  });
+  expect(decoded.success.items[1]).toMatchObject({
+    type: "event",
+    kind: "labeled",
+    label: { name: "bug", color: "ff0000" },
+  });
+  expect(decoded.success.items[2]).toMatchObject({
+    type: "event",
+    source: {
+      repository: "acme/api",
+      number: 9,
+      isPullRequest: true,
+    },
+  });
+});
+
+it("keeps a cross-reference from another host out of the timeline context", () => {
+  const decoded = decodeIssueTimelineJson(
+    encodeJson([
+      {
+        event: "cross-referenced",
+        created_at: "2026-08-04T00:00:00Z",
+        source: {
+          issue: {
+            number: 9,
+            title: "Spoofed work",
+            html_url: "https://example.com/acme/api/issues/9",
+          },
+        },
+      },
+    ]),
+    "github.com",
+  );
+
+  expect(Result.isSuccess(decoded)).toBe(true);
+  if (!Result.isSuccess(decoded)) return;
+  expect(decoded.success.items[0]).toMatchObject({ type: "event", source: null });
+});
+
+it("marks the viewer and current assignees in the issue candidate list", () => {
+  const decoded = decodeIssueAssigneeCandidatesJson(
+    encodeJson({
+      data: {
+        viewer: { login: "octocat" },
+        repository: {
+          assignableUsers: {
+            pageInfo: { hasNextPage: true },
+            nodes: [
+              { login: "octocat", name: "The Octocat", avatarUrl: "https://avatars.test/o" },
+              { login: "hubot" },
+            ],
+          },
+          issue: {
+            assignees: { nodes: [{ login: "octocat" }, { login: "outside" }] },
+          },
+        },
+      },
+    }),
+  );
+
+  expect(Result.isSuccess(decoded)).toBe(true);
+  if (!Result.isSuccess(decoded)) return;
+  expect(decoded.success.candidates).toEqual([
+    {
+      id: "octocat",
+      login: "octocat",
+      name: "The Octocat",
+      avatarUrl: "https://avatars.test/o",
+      isAssigned: true,
+      isViewer: true,
+    },
+    {
+      id: "outside",
+      login: "outside",
+      name: null,
+      avatarUrl: null,
+      isAssigned: true,
+      isViewer: false,
+    },
+    {
+      id: "hubot",
+      login: "hubot",
+      name: null,
+      avatarUrl: null,
+      isAssigned: false,
+      isViewer: false,
+    },
+  ]);
+  expect(decoded.success.truncated).toBe(true);
 });

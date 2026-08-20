@@ -132,6 +132,9 @@ import {
   PullRequestUpdateInput,
 } from "./pullRequest.ts";
 import {
+  IssueActivity,
+  IssueAssigneeCandidateList,
+  IssueAssigneeChangeInput,
   IssueDetail,
   IssueInvalidateInput,
   IssueListInput,
@@ -377,6 +380,9 @@ export const WS_METHODS = {
   // Issue methods
   issuesList: "issues.list",
   issuesDetail: "issues.detail",
+  issuesActivity: "issues.activity",
+  issuesAssigneeCandidates: "issues.assigneeCandidates",
+  issuesSetAssignees: "issues.setAssignees",
   issuesInvalidate: "issues.invalidate",
 
   // Source control methods
@@ -727,6 +733,25 @@ export const WsIssuesListRpc = Rpc.make(WS_METHODS.issuesList, {
 export const WsIssuesDetailRpc = Rpc.make(WS_METHODS.issuesDetail, {
   payload: IssueRef,
   success: IssueDetail,
+  error: IssueRpcError,
+});
+
+export const WsIssuesActivityRpc = Rpc.make(WS_METHODS.issuesActivity, {
+  payload: IssueRef,
+  success: IssueActivity,
+  error: IssueRpcError,
+});
+
+/** Loaded only when the assignee picker opens; repository member lists can be large. */
+export const WsIssuesAssigneeCandidatesRpc = Rpc.make(WS_METHODS.issuesAssigneeCandidates, {
+  payload: IssueRef,
+  success: IssueAssigneeCandidateList,
+  error: IssueRpcError,
+});
+
+export const WsIssuesSetAssigneesRpc = Rpc.make(WS_METHODS.issuesSetAssignees, {
+  payload: IssueAssigneeChangeInput,
+  success: Schema.Void,
   error: IssueRpcError,
 });
 
@@ -1313,6 +1338,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsPullRequestsRequestReviewersRpc,
   WsIssuesListRpc,
   WsIssuesDetailRpc,
+  WsIssuesActivityRpc,
+  WsIssuesAssigneeCandidatesRpc,
+  WsIssuesSetAssigneesRpc,
   WsIssuesInvalidateRpc,
   WsSourceControlLookupRepositoryRpc,
   WsSourceControlCloneRepositoryRpc,

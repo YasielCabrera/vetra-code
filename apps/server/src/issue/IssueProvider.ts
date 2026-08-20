@@ -2,6 +2,8 @@ import * as Schema from "effect/Schema";
 import type * as Effect from "effect/Effect";
 import {
   type IssueActor,
+  type IssueActivity,
+  type IssueAssigneeCandidateList,
   type IssueComment,
   type IssueLabel,
   type IssueListState,
@@ -84,4 +86,25 @@ export interface IssueProviderApi {
     readonly repository: string;
     readonly number: number;
   }) => Effect.Effect<ProviderIssueDetail, IssueProviderError>;
+  readonly getIssueActivity: (input: {
+    readonly cwd: string;
+    readonly host: string;
+    readonly repository: string;
+    readonly number: number;
+  }) => Effect.Effect<IssueActivity, IssueProviderError>;
+  /** People the host permits this issue to be assigned to. Read only when the picker opens. */
+  readonly listAssigneeCandidates: (input: {
+    readonly cwd: string;
+    readonly host: string;
+    readonly repository: string;
+    readonly number: number;
+  }) => Effect.Effect<IssueAssigneeCandidateList, IssueProviderError>;
+  readonly setAssignees: (input: {
+    readonly cwd: string;
+    readonly host: string;
+    readonly repository: string;
+    readonly number: number;
+    readonly assignees: ReadonlyArray<string>;
+    readonly assigned: boolean;
+  }) => Effect.Effect<void, IssueProviderError>;
 }

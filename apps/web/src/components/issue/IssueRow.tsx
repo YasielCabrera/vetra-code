@@ -5,6 +5,7 @@ import type { EnvironmentIssueEntry } from "~/state/issues";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
 import { cn } from "~/lib/utils";
 
+import { SourceControlActorAvatar } from "../SourceControlActorAvatar";
 import { IssueLabel } from "./IssueLabel";
 
 function IssueRowImpl({
@@ -38,7 +39,7 @@ function IssueRowImpl({
         aria-label={entry.state === "open" ? "Open issue" : "Closed issue"}
         className={cn(
           "mt-0.5 size-4.5",
-          entry.state === "open" ? "text-success" : "text-muted-foreground",
+          entry.state === "open" ? "text-success" : "text-violet-600 dark:text-violet-300/90",
         )}
       />
       <span className="min-w-0">
@@ -60,7 +61,10 @@ function IssueRowImpl({
           <span>
             {entry.state === "open" ? "opened" : "closed"} {formatRelativeTimeLabel(activityTime)}
           </span>
-          {entry.author ? <span>by {entry.author.login}</span> : null}
+          <span className="flex min-w-0 items-center gap-1">
+            <SourceControlActorAvatar actor={entry.author} />
+            <span className="truncate">by {entry.author?.login ?? "Unknown author"}</span>
+          </span>
         </span>
       </span>
       <span className="flex min-w-8 items-center justify-end gap-1 text-xs tabular-nums text-muted-foreground">

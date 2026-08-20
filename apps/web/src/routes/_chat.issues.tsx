@@ -1,12 +1,15 @@
-import type {
-  EnvironmentId,
-  IssueListCursors,
-  IssueListInput,
-  IssueListState,
-  IssueRef,
-  ProjectId,
+import {
+  EnvironmentId as EnvironmentIdSchema,
+  ProjectId as ProjectIdSchema,
+  type EnvironmentId,
+  type IssueListCursors,
+  type IssueListInput,
+  type IssueListState,
+  type IssueRef,
+  type ProjectId,
 } from "@vetra-code/contracts";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import * as Schema from "effect/Schema";
 import {
   CheckCircle2Icon,
   ChevronDownIcon,
@@ -24,6 +27,7 @@ import { IssueDetail } from "../components/issue/IssueDetail";
 import { normalizeIssueExternalUrl } from "../components/issue/issueExternalUrl";
 import { mergeIssueListPage } from "../components/issue/issueListPagination";
 import { IssueRow } from "../components/issue/IssueRow";
+import { ProjectFavicon } from "../components/ProjectFavicon";
 import { assignProjectsToEnvironments } from "../components/pullRequest/pullRequestProjectAssignment.logic";
 import { WorkspaceBreadcrumb, WorkspaceBreadcrumbItem } from "../components/WorkspaceBreadcrumb";
 import { Badge } from "../components/ui/badge";
@@ -48,6 +52,7 @@ import {
 } from "../components/ui/menu";
 import { SidebarInset } from "../components/ui/sidebar";
 import { Skeleton } from "../components/ui/skeleton";
+import { useLocalStorage } from "../hooks/useLocalStorage";
 import { readLocalApi } from "../localApi";
 import { useAllEnvironmentShellsBootstrapped, useProjects } from "../state/entities";
 import { useEnvironments } from "../state/environments";
@@ -97,6 +102,13 @@ const SEARCH_DEBOUNCE_MS = 250;
 const ISSUE_PAGE_SIZE = 99;
 const EMPTY_ENVIRONMENT_CURSORS: Readonly<Record<string, IssueListCursors>> = {};
 const EMPTY_ISSUE_ENTRIES: ReadonlyArray<EnvironmentIssueEntry> = [];
+const ISSUES_PROJECT_SCOPE_STORAGE_KEY = "vetra:issues-project-scope:v1";
+const IssuesProjectScope = Schema.NullOr(
+  Schema.Struct({
+    environmentId: EnvironmentIdSchema,
+    projectId: ProjectIdSchema,
+  }),
+);
 
 export const Route = createFileRoute("/_chat/issues")({
   validateSearch: (raw: Record<string, unknown>): IssuesSearch => ({
@@ -143,12 +155,30 @@ function IssueListGhost() {
 
 function DetailGhost() {
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-6 pt-6">
-      <Skeleton className="h-9 w-3/5" />
-      <Skeleton className="h-5 w-72" />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
-        <Skeleton className="h-72 rounded-lg" />
-        <Skeleton className="h-64 rounded-lg" />
+    <div className="mx-auto w-full max-w-6xl">
+      <div className="flex h-11 items-center gap-2 border-b border-border/60 px-4">
+        <Skeleton className="size-6 rounded-md" />
+        <Skeleton className="h-3 w-40" />
+        <Skeleton className="ml-auto size-6 rounded-md" />
+      </div>
+      <div className="space-y-2 px-4 pt-3 pb-4">
+        <Skeleton className="h-5 w-3/5" />
+        <Skeleton className="h-3.5 w-52" />
+      </div>
+      <div className="flex gap-2 border-y border-border/60 px-4 py-2">
+        <Skeleton className="h-7 w-20 rounded-md" />
+        <Skeleton className="h-7 w-20 rounded-md" />
+      </div>
+      <div className="space-y-3 px-4 py-4">
+        <Skeleton className="h-3.5 w-2/5" />
+        <Skeleton className="h-3.5 w-1/3" />
+        <Skeleton className="h-3.5 w-1/2" />
+      </div>
+      <div className="space-y-3 border-t border-border/60 px-4 py-4">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-3.5 w-full" />
+        <Skeleton className="h-3.5 w-5/6" />
+        <Skeleton className="h-3.5 w-2/3" />
       </div>
     </div>
   );
@@ -160,6 +190,11 @@ function IssuesRouteView() {
   const { environments } = useEnvironments();
   const allProjects = useProjects();
   const projectsKnown = useAllEnvironmentShellsBootstrapped();
+  const [rememberedProjectScope, setRememberedProjectScope] = useLocalStorage(
+    ISSUES_PROJECT_SCOPE_STORAGE_KEY,
+    null,
+    IssuesProjectScope,
+  );
   const capableEnvironments = useMemo(
     () =>
       environments
@@ -183,10 +218,13 @@ function IssuesRouteView() {
       ),
     [capableEnvironments],
   );
+  const requestedProjectId = search.projectId ?? rememberedProjectScope?.projectId;
+  const requestedEnvironmentId =
+    search.projectId === undefined ? rememberedProjectScope?.environmentId : search.environmentId;
   const scopedProject = projects.find(
     (project) =>
-      project.id === search.projectId &&
-      (search.environmentId === undefined || project.environmentId === search.environmentId),
+      project.id === requestedProjectId &&
+      (requestedEnvironmentId === undefined || project.environmentId === requestedEnvironmentId),
   );
   const queryEnvironmentIds = useMemo(
     () =>
@@ -332,7 +370,12 @@ function IssuesRouteView() {
     () => (selectedRef === null ? null : issueEnvironment.detail(selectedRef)),
     [selectedRef],
   );
+  const activityAtom = useMemo(
+    () => (selectedRef === null ? null : issueEnvironment.activity(selectedRef)),
+    [selectedRef],
+  );
   const detailQuery = useEnvironmentQuery(detailAtom);
+  const activityQuery = useEnvironmentQuery(activityAtom);
   const invalidate = useAtomCommand(issueEnvironment.invalidate, { reportFailure: false });
   const [invalidating, setInvalidating] = useState(false);
 
@@ -353,7 +396,10 @@ function IssuesRouteView() {
       setInvalidating(false);
     }
     baselineQuery.refresh();
-    if (selectedRef !== null) detailQuery.refresh();
+    if (selectedRef !== null) {
+      detailQuery.refresh();
+      activityQuery.refresh();
+    }
   };
 
   const retryCurrentPage = async () => {
@@ -488,22 +534,34 @@ function IssuesRouteView() {
             </WorkspaceBreadcrumbItem>
           </WorkspaceBreadcrumb>
           <div className="min-w-0 flex-1" />
-          <Button
-            aria-label="Refresh issues"
-            size="icon-sm"
-            variant="ghost"
-            onClick={() => void refreshFromHost()}
-          >
-            <RefreshCwIcon
-              className={cn("size-4", (invalidating || listQuery.isPending) && "animate-spin")}
-            />
-          </Button>
+          {showingDetail ? null : (
+            <Button
+              aria-label="Refresh issues"
+              size="icon-sm"
+              variant="ghost"
+              onClick={() => void refreshFromHost()}
+            >
+              <RefreshCwIcon
+                className={cn("size-4", (invalidating || listQuery.isPending) && "animate-spin")}
+              />
+            </Button>
+          )}
         </header>
 
         <main className="topbar-scroll-fade min-h-0 flex-1 overflow-y-auto">
           {selectedRef !== null ? (
             detailQuery.data !== null ? (
-              <IssueDetail detail={detailQuery.data} onBack={clearSelection} />
+              <IssueDetail
+                detail={detailQuery.data}
+                environmentId={selectedRef.environmentId}
+                activity={activityQuery.data}
+                activityPending={activityQuery.isPending && activityQuery.data === null}
+                activityError={activityQuery.data === null ? activityQuery.error : null}
+                refreshing={invalidating}
+                onBack={clearSelection}
+                onRefresh={() => void refreshFromHost()}
+                onRetryActivity={activityQuery.refresh}
+              />
             ) : detailQuery.error !== null ? (
               <Empty className="min-h-96">
                 <EmptyMedia variant="icon">
@@ -545,6 +603,14 @@ function IssuesRouteView() {
                 <Menu>
                   <MenuTrigger render={<Button variant="outline" />}>
                     <ListFilterIcon aria-hidden />
+                    {scopedProject ? (
+                      <ProjectFavicon
+                        environmentId={scopedProject.environmentId}
+                        cwd={scopedProject.workspaceRoot}
+                        faviconPath={scopedProject.faviconPath}
+                        className="size-4"
+                      />
+                    ) : null}
                     {scopedProject?.title ?? "All projects"}
                     <ChevronDownIcon aria-hidden />
                   </MenuTrigger>
@@ -557,6 +623,7 @@ function IssuesRouteView() {
                       }
                       onValueChange={(value) => {
                         if (value === "*") {
+                          setRememberedProjectScope(null);
                           updateSearch({ projectId: undefined, environmentId: undefined });
                           return;
                         }
@@ -564,6 +631,7 @@ function IssuesRouteView() {
                           EnvironmentId,
                           ProjectId,
                         ];
+                        setRememberedProjectScope({ environmentId, projectId });
                         updateSearch({ projectId, environmentId });
                       }}
                     >
@@ -574,13 +642,21 @@ function IssuesRouteView() {
                           key={`${project.environmentId}:${project.id}`}
                           value={JSON.stringify([project.environmentId, project.id])}
                         >
-                          <span className="min-w-0">
-                            <span className="block truncate">{project.title}</span>
-                            {capableEnvironments.length > 1 ? (
-                              <span className="block truncate text-xs text-muted-foreground">
-                                {environmentLabels.get(project.environmentId)}
-                              </span>
-                            ) : null}
+                          <span className="flex min-w-0 items-center gap-2">
+                            <ProjectFavicon
+                              environmentId={project.environmentId}
+                              cwd={project.workspaceRoot}
+                              faviconPath={project.faviconPath}
+                              className="size-4"
+                            />
+                            <span className="min-w-0">
+                              <span className="block truncate">{project.title}</span>
+                              {capableEnvironments.length > 1 ? (
+                                <span className="block truncate text-xs text-muted-foreground">
+                                  {environmentLabels.get(project.environmentId)}
+                                </span>
+                              ) : null}
+                            </span>
                           </span>
                         </MenuRadioItem>
                       ))}
@@ -608,7 +684,16 @@ function IssuesRouteView() {
                       variant={search.state === state ? "secondary" : "ghost-muted"}
                       onClick={() => updateSearch({ state })}
                     >
-                      <Icon aria-hidden className={state === "open" ? "text-success" : undefined} />
+                      <Icon
+                        aria-hidden
+                        className={
+                          state === "open"
+                            ? "text-success"
+                            : state === "closed"
+                              ? "text-violet-600 dark:text-violet-300/90"
+                              : undefined
+                        }
+                      />
                       {label}
                     </Button>
                   ))}

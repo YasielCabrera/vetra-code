@@ -9,6 +9,7 @@ import * as GitHubIssueCli from "./GitHubIssueCli.ts";
 
 const execute = vi.fn<GitHubCli.GitHubCli["Service"]["execute"]>();
 const encodeJson = Schema.encodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
+const decodeJson = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
 const layer = it.layer(
   GitHubIssueCli.layer.pipe(Layer.provide(Layer.mock(GitHubCli.GitHubCli)({ execute }))),
 );
@@ -151,6 +152,144 @@ layer("GitHubIssueCli.layer", (it) => {
       );
 
       expect(exit._tag).toBe("Failure");
+    }),
+  );
+
+  it.effect("walks issue timeline pages until GitHub returns a partial page", () =>
+    Effect.gen(function* () {
+      const firstPage = Array.from({ length: 100 }, (_, index) => ({
+        id: index + 1,
+        event: "labeled",
+        created_at: "2026-08-02T00:00:00Z",
+        label: { name: `label-${index}`, color: "ff0000" },
+      }));
+      execute
+        .mockReturnValueOnce(Effect.succeed(output(encodeJson(firstPage))))
+        .mockReturnValueOnce(
+          Effect.succeed(
+            output(
+              encodeJson([
+                {
+                  id: 101,
+                  event: "commented",
+                  actor: { login: "octocat" },
+                  body: "Finished",
+                  created_at: "2026-08-03T00:00:00Z",
+                },
+              ]),
+            ),
+          ),
+        );
+      const cli = yield* GitHubIssueCli.GitHubIssueCli;
+
+      const activity = yield* cli.getIssueActivity({
+        cwd: "/w",
+        host: "github.com",
+        repository: "acme/web",
+        number: 7,
+      });
+
+      expect(activity.items).toHaveLength(101);
+      expect(activity.items.at(-1)).toMatchObject({ type: "comment", body: "Finished" });
+      expect(activity.truncated).toBe(false);
+      expect(execute).toHaveBeenCalledTimes(2);
+      expect(execute.mock.calls[0]?.[0].args).toContain(
+        "repos/acme/web/issues/7/timeline?per_page=100&page=1",
+      );
+      expect(execute.mock.calls[1]?.[0].args).toContain(
+        "repos/acme/web/issues/7/timeline?per_page=100&page=2",
+      );
+    }),
+  );
+
+  it.effect("marks a timeline truncated when its bounded page walk fills", () =>
+    Effect.gen(function* () {
+      const fullPage = Array.from({ length: 100 }, (_, index) => ({
+        id: index + 1,
+        event: "reopened",
+        created_at: "2026-08-02T00:00:00Z",
+      }));
+      execute.mockReturnValue(Effect.succeed(output(encodeJson(fullPage))));
+      const cli = yield* GitHubIssueCli.GitHubIssueCli;
+
+      const activity = yield* cli.getIssueActivity({
+        cwd: "/w",
+        host: "github.com",
+        repository: "acme/web",
+        number: 7,
+      });
+
+      expect(activity.items).toHaveLength(500);
+      expect(activity.truncated).toBe(true);
+      expect(execute).toHaveBeenCalledTimes(5);
+    }),
+  );
+
+  it.effect("reads assignable people, current assignees, and the viewer in one request", () =>
+    Effect.gen(function* () {
+      execute.mockReturnValueOnce(
+        Effect.succeed(
+          output(
+            encodeJson({
+              data: {
+                viewer: { login: "octocat" },
+                repository: {
+                  assignableUsers: {
+                    pageInfo: { hasNextPage: false },
+                    nodes: [{ login: "octocat" }, { login: "hubot" }],
+                  },
+                  issue: { assignees: { nodes: [{ login: "octocat" }] } },
+                },
+              },
+            }),
+          ),
+        ),
+      );
+      const cli = yield* GitHubIssueCli.GitHubIssueCli;
+
+      const result = yield* cli.listAssigneeCandidates({
+        cwd: "/w",
+        host: "github.com",
+        repository: "acme/web",
+        number: 7,
+      });
+
+      expect(
+        result.candidates.map(({ login, isAssigned, isViewer }) => [login, isAssigned, isViewer]),
+      ).toEqual([
+        ["octocat", true, true],
+        ["hubot", false, false],
+      ]);
+      const call = execute.mock.calls[0]?.[0];
+      assert.isDefined(call);
+      expect(call.args).toEqual(["api", "graphql", "--hostname", "github.com", "--input", "-"]);
+      expect(decodeJson(call.stdin ?? "")).toMatchObject({
+        variables: { owner: "acme", name: "web", number: 7 },
+      });
+    }),
+  );
+
+  it.effect("adds and removes assignees through GitHub's issue collection", () =>
+    Effect.gen(function* () {
+      execute.mockReturnValue(Effect.succeed(output("{}")));
+      const cli = yield* GitHubIssueCli.GitHubIssueCli;
+      const input = {
+        cwd: "/w",
+        host: "github.com",
+        repository: "acme/web",
+        number: 7,
+        assignees: ["octocat"],
+      } as const;
+
+      yield* cli.setAssignees({ ...input, assigned: true });
+      yield* cli.setAssignees({ ...input, assigned: false });
+
+      expect(execute.mock.calls[0]?.[0].args).toContain("POST");
+      expect(execute.mock.calls[1]?.[0].args).toContain("DELETE");
+      expect(execute.mock.calls[0]?.[0].args).toContain("repos/acme/web/issues/7/assignees");
+      expect(decodeJson(execute.mock.calls[0]?.[0].stdin ?? "")).toEqual({
+        assignees: ["octocat"],
+      });
     }),
   );
 });

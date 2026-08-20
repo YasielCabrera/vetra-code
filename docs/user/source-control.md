@@ -72,12 +72,16 @@ workspace.
 - Filter open, closed, or all issues, narrow to one project, and search GitHub's issue index
 - Keep scrolling to load older issues automatically until every matching repository is complete
 - Open an issue to read its description, comments, assignees, labels, and milestone
-- Use **Open on GitHub** or **New issue** when you need to write or change issue data
+- Add or remove assignees from the issue summary, including a shortcut to assign yourself
+- Switch to **Timeline** to follow comments and history such as labels, assignments, milestones,
+  title changes, references, closes, and reopens in either newest-first or oldest-first order
+- Use **Attach to new thread** to open the issue's project with its details in the composer, or
+  **Explain issue** to prefill a read-only investigation for the agent
+- Use **Open on GitHub** or **New issue** for issue changes that are not available in the app yet
 - Hosts that are not supported yet are reported as unavailable instead of being silently omitted
 
-Issue browsing is currently read-only in Vetra Code and supports GitHub repositories. It uses the
-GitHub CLI authentication on the environment that owns each project, including remote and relay
-environments.
+Issue browsing and assignment currently support GitHub repositories. They use the GitHub CLI
+authentication on the environment that owns each project, including remote and relay environments.
 
 ## Getting Started
 

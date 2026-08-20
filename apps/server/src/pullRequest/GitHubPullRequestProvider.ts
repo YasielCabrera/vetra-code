@@ -6,6 +6,7 @@ import type {
   PullRequestViewerPermissions,
 } from "@vetra-code/contracts";
 
+import { gitHubLoginAvatarUrl } from "../sourceControl/GitHubActor.ts";
 import * as GitHubPullRequestCli from "./GitHubPullRequestCli.ts";
 import {
   PullRequestProviderError,
@@ -119,7 +120,7 @@ function withAvatar(
  * names no page, and a guessed URL that 404s is worse than the initials it would replace.
  */
 export function loginAvatarUrl(login: string, host: string): string | null {
-  return /^[a-z0-9][a-z0-9-]{0,38}$/iu.test(login) ? `https://${host}/${login}.png?size=80` : null;
+  return gitHubLoginAvatarUrl(login, host);
 }
 
 /** True where markdown would render nothing: whitespace, or only HTML comments. */

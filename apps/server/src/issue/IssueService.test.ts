@@ -62,6 +62,9 @@ function githubProvider(overrides: Partial<IssueProviderApi> = {}): IssueProvide
         truncated: false,
       }),
     getIssue: () => Effect.die("unused"),
+    getIssueActivity: () => Effect.die("unused"),
+    listAssigneeCandidates: () => Effect.die("unused"),
+    setAssignees: () => Effect.die("unused"),
     ...overrides,
   };
 }
@@ -296,5 +299,139 @@ it.effect("caches issue details until their exact reference is invalidated", () 
     expect(cached).toStrictEqual(first);
     expect(refreshed).toStrictEqual(first);
     expect(calls).toBe(2);
+  }),
+);
+
+it.effect("caches issue activity until its exact reference is invalidated", () =>
+  Effect.gen(function* () {
+    let calls = 0;
+    const reference = {
+      projectId: "p1" as ProjectId,
+      repository: "acme/web",
+      number: 7,
+    } as const;
+    const service = yield* makeService(
+      [project("p1", "github", "acme/web")],
+      [
+        githubProvider({
+          getIssueActivity: () =>
+            Effect.sync(() => {
+              calls += 1;
+              return { items: [], truncated: false };
+            }),
+        }),
+      ],
+    );
+
+    const first = yield* service.activity(reference);
+    const cached = yield* service.activity(reference);
+    yield* service.invalidate({ reference });
+    const refreshed = yield* service.activity(reference);
+
+    expect(first).toStrictEqual({ items: [], truncated: false });
+    expect(cached).toStrictEqual(first);
+    expect(refreshed).toStrictEqual(first);
+    expect(calls).toBe(2);
+  }),
+);
+
+it.effect("reads assignee candidates only for the selected repository", () =>
+  Effect.gen(function* () {
+    const seen: Array<unknown> = [];
+    const service = yield* makeService(
+      [project("p1", "github", "acme/web")],
+      [
+        githubProvider({
+          listAssigneeCandidates: (input) => {
+            seen.push(input);
+            return Effect.succeed({
+              candidates: [
+                {
+                  id: "octocat",
+                  login: "octocat",
+                  name: null,
+                  avatarUrl: null,
+                  isAssigned: false,
+                  isViewer: true,
+                },
+              ],
+              truncated: false,
+            });
+          },
+        }),
+      ],
+    );
+
+    const result = yield* service.assigneeCandidates({
+      projectId: "p1" as ProjectId,
+      repository: "acme/web",
+      number: 7,
+    });
+
+    expect(result.candidates[0]).toMatchObject({ login: "octocat", isViewer: true });
+    expect(seen).toEqual([
+      {
+        cwd: "/work/p1",
+        host: "github.com",
+        repository: "acme/web",
+        number: 7,
+      },
+    ]);
+  }),
+);
+
+it.effect("updates assignees and invalidates both detail and list caches", () =>
+  Effect.gen(function* () {
+    let assigned = false;
+    let detailCalls = 0;
+    let listCalls = 0;
+    const provider = githubProvider({
+      listIssues: () =>
+        Effect.sync(() => {
+          listCalls += 1;
+          return {
+            issues: [
+              {
+                ...listedIssue(7),
+                assignees: assigned ? [{ login: "octocat", name: null, avatarUrl: null }] : [],
+              },
+            ],
+            truncated: false,
+          };
+        }),
+      getIssue: () =>
+        Effect.sync(() => {
+          detailCalls += 1;
+          return {
+            ...listedIssue(7),
+            assignees: assigned ? [{ login: "octocat", name: null, avatarUrl: null }] : [],
+            body: "Steps to reproduce",
+            comments: [],
+            commentCount: 0,
+            commentsTruncated: false,
+          };
+        }),
+      setAssignees: (input) =>
+        Effect.sync(() => {
+          expect(input.assignees).toEqual(["octocat"]);
+          assigned = input.assigned;
+        }),
+    });
+    const service = yield* makeService([project("p1", "github", "acme/web")], [provider]);
+    const reference = {
+      projectId: "p1" as ProjectId,
+      repository: "acme/web",
+      number: 7,
+    } as const;
+
+    expect((yield* service.detail(reference)).assignees).toEqual([]);
+    expect((yield* service.list({ state: "open" })).entries[0]?.assignees).toEqual([]);
+    yield* service.setAssignees({ ...reference, assignees: ["octocat"], assigned: true });
+    expect((yield* service.detail(reference)).assignees[0]?.login).toBe("octocat");
+    expect((yield* service.list({ state: "open" })).entries[0]?.assignees[0]?.login).toBe(
+      "octocat",
+    );
+    expect(detailCalls).toBe(2);
+    expect(listCalls).toBe(2);
   }),
 );

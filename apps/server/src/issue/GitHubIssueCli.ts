@@ -3,17 +3,30 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
+import type { IssueActivity, IssueAssigneeCandidateList } from "@vetra-code/contracts";
 
 import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 import type { ProviderIssueListCursor } from "./IssueProvider.ts";
-import { decodeIssueDetailJson, decodeIssueListJson, type GitHubIssue } from "./githubIssueJson.ts";
+import {
+  decodeIssueAssigneeCandidatesJson,
+  decodeIssueDetailJson,
+  decodeIssueListJson,
+  decodeIssueTimelineJson,
+  ISSUE_ASSIGNEE_CANDIDATES_GRAPHQL_QUERY,
+  type GitHubIssue,
+} from "./githubIssueJson.ts";
 
 const LIST_FIELDS =
   "assignees,author,closedAt,createdAt,labels,milestone,number,state,title,updatedAt,url";
 const DETAIL_FIELDS = `${LIST_FIELDS},body,comments`;
 const MAX_LIST_OUTPUT_BYTES = 2 * 1024 * 1024;
 const MAX_DETAIL_OUTPUT_BYTES = 4 * 1024 * 1024;
+const MAX_TIMELINE_PAGE_OUTPUT_BYTES = 4 * 1024 * 1024;
+const MAX_ASSIGNEE_CANDIDATES_OUTPUT_BYTES = 2 * 1024 * 1024;
+const TIMELINE_PAGE_SIZE = 100;
+const MAX_TIMELINE_PAGES = 5;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/u;
+const encodeJson = Schema.encodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
 
 export class GitHubIssueReadError extends Schema.TaggedErrorClass<GitHubIssueReadError>()(
   "GitHubIssueReadError",
@@ -50,6 +63,26 @@ export class GitHubIssueCli extends Context.Service<
       readonly repository: string;
       readonly number: number;
     }) => Effect.Effect<GitHubIssue, GitHubIssueCliError>;
+    readonly getIssueActivity: (input: {
+      readonly cwd: string;
+      readonly host: string;
+      readonly repository: string;
+      readonly number: number;
+    }) => Effect.Effect<IssueActivity, GitHubIssueCliError>;
+    readonly listAssigneeCandidates: (input: {
+      readonly cwd: string;
+      readonly host: string;
+      readonly repository: string;
+      readonly number: number;
+    }) => Effect.Effect<IssueAssigneeCandidateList, GitHubIssueCliError>;
+    readonly setAssignees: (input: {
+      readonly cwd: string;
+      readonly host: string;
+      readonly repository: string;
+      readonly number: number;
+      readonly assignees: ReadonlyArray<string>;
+      readonly assigned: boolean;
+    }) => Effect.Effect<void, GitHubIssueCliError>;
   }
 >()("@vetra-code/server/issue/GitHubIssueCli") {}
 
@@ -111,6 +144,50 @@ export const make = Effect.gen(function* () {
         detail: "A repository was named that GitHub cannot address.",
       }),
     );
+
+  const getIssueActivity: GitHubIssueCli["Service"]["getIssueActivity"] = Effect.fn(
+    "GitHubIssueCli.getIssueActivity",
+  )(function* (input) {
+    if (!validRepository(input.repository)) {
+      return yield* rejectRepository(input.cwd, "getIssueActivity");
+    }
+    const items: IssueActivity["items"][number][] = [];
+    for (let page = 1; page <= MAX_TIMELINE_PAGES; page += 1) {
+      const output = yield* github.execute({
+        cwd: input.cwd,
+        args: [
+          "api",
+          "--hostname",
+          input.host,
+          "-H",
+          "Accept: application/vnd.github+json",
+          `repos/${input.repository}/issues/${input.number}/timeline?per_page=${TIMELINE_PAGE_SIZE}&page=${page}`,
+        ],
+        maxOutputBytes: MAX_TIMELINE_PAGE_OUTPUT_BYTES,
+      });
+      if (output.stdoutTruncated) {
+        return yield* new GitHubIssueReadError({
+          cwd: input.cwd,
+          operation: "getIssueActivity",
+          detail: `GitHub returned timeline page ${page} larger than the safe response limit.`,
+        });
+      }
+      const decoded = decodeIssueTimelineJson(output.stdout.trim() || "[]", input.host);
+      if (!Result.isSuccess(decoded)) {
+        return yield* new GitHubIssueReadError({
+          cwd: input.cwd,
+          operation: "getIssueActivity",
+          detail: "GitHub CLI returned an unreadable issue timeline.",
+          cause: decoded.failure,
+        });
+      }
+      items.push(...decoded.success.items);
+      if (decoded.success.rawCount < TIMELINE_PAGE_SIZE) {
+        return { items, truncated: false };
+      }
+    }
+    return { items, truncated: true };
+  });
 
   return GitHubIssueCli.of({
     listIssues: (input) => {
@@ -225,6 +302,66 @@ export const make = Effect.gen(function* () {
           }),
         );
     },
+    listAssigneeCandidates: (input) => {
+      if (!validRepository(input.repository)) {
+        return rejectRepository(input.cwd, "listAssigneeCandidates");
+      }
+      const [owner, name] = input.repository.split("/");
+      return github
+        .execute({
+          cwd: input.cwd,
+          args: ["api", "graphql", "--hostname", input.host, "--input", "-"],
+          stdin: encodeJson({
+            query: ISSUE_ASSIGNEE_CANDIDATES_GRAPHQL_QUERY,
+            variables: { owner, name, number: input.number },
+          }),
+          maxOutputBytes: MAX_ASSIGNEE_CANDIDATES_OUTPUT_BYTES,
+        })
+        .pipe(
+          Effect.flatMap((output) => {
+            if (output.stdoutTruncated) {
+              return Effect.fail(
+                new GitHubIssueReadError({
+                  cwd: input.cwd,
+                  operation: "listAssigneeCandidates",
+                  detail: "GitHub returned an assignee list larger than the safe response limit.",
+                }),
+              );
+            }
+            const decoded = decodeIssueAssigneeCandidatesJson(output.stdout.trim());
+            return Result.isSuccess(decoded)
+              ? Effect.succeed(decoded.success)
+              : Effect.fail(
+                  new GitHubIssueReadError({
+                    cwd: input.cwd,
+                    operation: "listAssigneeCandidates",
+                    detail: "GitHub CLI returned an unreadable assignee list.",
+                    cause: decoded.failure,
+                  }),
+                );
+          }),
+        );
+    },
+    setAssignees: (input) => {
+      if (!validRepository(input.repository)) return rejectRepository(input.cwd, "setAssignees");
+      return github
+        .execute({
+          cwd: input.cwd,
+          args: [
+            "api",
+            "--method",
+            input.assigned ? "POST" : "DELETE",
+            "--hostname",
+            input.host,
+            `repos/${input.repository}/issues/${input.number}/assignees`,
+            "--input",
+            "-",
+          ],
+          stdin: encodeJson({ assignees: input.assignees }),
+        })
+        .pipe(Effect.asVoid);
+    },
+    getIssueActivity,
   });
 });
 

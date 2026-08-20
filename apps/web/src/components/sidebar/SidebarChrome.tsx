@@ -185,24 +185,6 @@ export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
                 <TooltipPopup side="top">Settings</TooltipPopup>
               </Tooltip>
             </SidebarMenuItem>
-            {pullRequestsSupported ? (
-              <SidebarMenuItem className="shrink-0">
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <SidebarMenuButton
-                        aria-label="Pull Requests"
-                        onClick={handlePullRequestsClick}
-                        size="icon"
-                      >
-                        <GitPullRequestIcon />
-                      </SidebarMenuButton>
-                    }
-                  />
-                  <TooltipPopup side="top">Pull Requests</TooltipPopup>
-                </Tooltip>
-              </SidebarMenuItem>
-            ) : null}
             {issuesSupported ? (
               <SidebarMenuItem className="shrink-0">
                 <Tooltip>
@@ -218,6 +200,24 @@ export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
                     }
                   />
                   <TooltipPopup side="top">Issues</TooltipPopup>
+                </Tooltip>
+              </SidebarMenuItem>
+            ) : null}
+            {pullRequestsSupported ? (
+              <SidebarMenuItem className="shrink-0">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <SidebarMenuButton
+                        aria-label="Pull Requests"
+                        onClick={handlePullRequestsClick}
+                        size="icon"
+                      >
+                        <GitPullRequestIcon />
+                      </SidebarMenuButton>
+                    }
+                  />
+                  <TooltipPopup side="top">Pull Requests</TooltipPopup>
                 </Tooltip>
               </SidebarMenuItem>
             ) : null}

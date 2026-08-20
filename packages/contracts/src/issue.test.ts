@@ -1,7 +1,13 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
-import { IssueListInput, IssueListResult, type ProjectId } from "./index.ts";
+import {
+  IssueActivity,
+  IssueAssigneeChangeInput,
+  IssueListInput,
+  IssueListResult,
+  type ProjectId,
+} from "./index.ts";
 
 const decodeInput = Schema.decodeUnknownSync(IssueListInput);
 
@@ -81,5 +87,79 @@ describe("IssueListResult", () => {
     expect(Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(result))).toStrictEqual(
       result,
     );
+  });
+});
+
+describe("IssueActivity", () => {
+  it("round-trips comments and host events through the RPC JSON codec", () => {
+    const activity = {
+      items: [
+        {
+          type: "comment" as const,
+          id: "IC_1",
+          actor: { login: "octocat", name: null, avatarUrl: null },
+          body: "Confirmed",
+          createdAt: "2026-08-02T00:00:00Z",
+          updatedAt: null,
+          url: "https://github.com/acme/web/issues/7#issuecomment-1",
+        },
+        {
+          type: "event" as const,
+          id: "LE_1",
+          kind: "labeled",
+          actor: { login: "hubot", name: null, avatarUrl: null },
+          createdAt: "2026-08-03T00:00:00Z",
+          label: { name: "bug", color: "ff0000", description: null },
+          assignee: null,
+          milestoneTitle: null,
+          rename: null,
+          source: null,
+          commitId: null,
+          lockReason: null,
+          projectColumnName: null,
+          previousProjectColumnName: null,
+        },
+      ],
+      truncated: false,
+    };
+    const codec = Schema.toCodecJson(IssueActivity);
+
+    expect(
+      Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(activity)),
+    ).toStrictEqual(activity);
+  });
+});
+
+describe("IssueAssigneeChangeInput", () => {
+  const decode = Schema.decodeUnknownSync(IssueAssigneeChangeInput);
+
+  it("accepts a bounded provider identity list", () => {
+    expect(
+      decode({
+        projectId: "p1",
+        repository: "acme/web",
+        number: 7,
+        assignees: [" octocat "],
+        assigned: true,
+      }).assignees,
+    ).toEqual(["octocat"]);
+    expect(() =>
+      decode({
+        projectId: "p1",
+        repository: "acme/web",
+        number: 7,
+        assignees: [],
+        assigned: true,
+      }),
+    ).toThrow();
+    expect(() =>
+      decode({
+        projectId: "p1",
+        repository: "acme/web",
+        number: 7,
+        assignees: Array.from({ length: 11 }, (_, index) => `user-${index}`),
+        assigned: true,
+      }),
+    ).toThrow();
   });
 });

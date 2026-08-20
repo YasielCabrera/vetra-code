@@ -84,14 +84,19 @@ describe("RPC authorization scopes", () => {
     );
   });
 
-  it("keeps the issue workspace read-only, including explicit refresh", () => {
+  it("reads the issue assignee menu but requires operate access to change it", () => {
     for (const method of [
       WS_METHODS.issuesList,
       WS_METHODS.issuesDetail,
+      WS_METHODS.issuesActivity,
+      WS_METHODS.issuesAssigneeCandidates,
       WS_METHODS.issuesInvalidate,
     ]) {
       expect(requiredScopeForRpcMethod(method)).toBe(AuthOrchestrationReadScope);
     }
+    expect(requiredScopeForRpcMethod(WS_METHODS.issuesSetAssignees)).toBe(
+      AuthOrchestrationOperateScope,
+    );
   });
 
   it("rejects unknown RPC method names", () => {
