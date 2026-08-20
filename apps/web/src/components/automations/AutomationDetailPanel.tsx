@@ -681,6 +681,7 @@ export function AutomationDetailPanel(props: {
                   onPromptChange={() => {}}
                   modelOptions={resolvedModelSelection.options ?? []}
                   allowPromptInjectedEffort={false}
+                  planModeEnabled={settings.planModeEnabled}
                   triggerVariant="outline"
                   triggerClassName="min-w-0 max-w-none shrink-0 text-foreground/90 hover:text-foreground"
                   onModelOptionsChange={(nextOptions) => {

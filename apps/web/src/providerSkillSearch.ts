@@ -1,11 +1,10 @@
 import type { ServerProviderSkill } from "@vetra-code/contracts";
+import { formatProviderSkillDisplayName } from "@vetra-code/client-runtime/providerSkills";
 import {
   insertRankedSearchResult,
   normalizeSearchQuery,
   scoreQueryMatch,
 } from "@vetra-code/shared/searchRanking";
-
-import { formatProviderSkillDisplayName } from "./providerSkillPresentation";
 
 function scoreProviderSkill(skill: ServerProviderSkill, query: string): number | null {
   const normalizedName = skill.name.toLowerCase();
