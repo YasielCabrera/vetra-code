@@ -9,7 +9,7 @@ import {
   ProjectId,
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
-import { SourceControlProviderKind } from "./sourceControl.ts";
+import { SourceControlProviderKind, sourceControlHostOf } from "./sourceControl.ts";
 
 export const PullRequestInvolvement = Schema.Literals(["all", "reviewing", "authored"]);
 export type PullRequestInvolvement = typeof PullRequestInvolvement.Type;
@@ -1020,8 +1020,7 @@ export function pullRequestHostOf(
   identity: { readonly canonicalKey?: string | undefined } | null | undefined,
   kind: SourceControlProviderKind,
 ): string {
-  const host = identity?.canonicalKey?.split("/")[0]?.trim();
-  return host === undefined || host.length === 0 ? kind : host.toLowerCase();
+  return sourceControlHostOf(identity, kind);
 }
 
 /**

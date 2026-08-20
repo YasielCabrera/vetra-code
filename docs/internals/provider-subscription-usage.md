@@ -60,9 +60,10 @@ parsing into the UI.
 
 The Usage page and thread subscription popover both render that same card. The thread control keys
 the client report by the active environment and exact composer-selected provider instance, then
-summarizes the first window with the highest raw `usedPercent`. It never infers a model-to-window
-mapping or merges accounts. Missing values and environment-level failures use a static neutral ring;
-the control consumes the existing client refresh monitor and does not issue reads on hover.
+summarizes the first provider-ordered window and fills its ring with the remaining percentage. It
+never infers a model-to-window mapping or merges accounts. Missing values and environment-level
+failures use a static neutral ring; the control consumes the existing client refresh monitor and
+does not issue reads on hover.
 
 Only network, timeout, rate-limit, and provider-server failures may reuse last-good data. Adapters
 return a probe envelope rather than a bare result, and its `transient` flag is the only thing that

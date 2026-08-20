@@ -21,7 +21,7 @@ type ResolvedThreadSubscriptionUsage =
   | {
       readonly kind: "instance";
       readonly instance: ProviderSubscriptionUsageInstanceResult;
-      readonly summaryWindow: ProviderSubscriptionUsageWindow | null;
+      readonly primaryWindow: ProviderSubscriptionUsageWindow | null;
     }
   | {
       readonly kind: "status";
@@ -30,18 +30,11 @@ type ResolvedThreadSubscriptionUsage =
 
 const percentFormatter = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
 
-function highestUsedWindow(
+function primaryUsageWindow(
   instance: ProviderSubscriptionUsageInstanceResult,
 ): ProviderSubscriptionUsageWindow | null {
   if (instance.state !== "ready") return null;
-  let highest: ProviderSubscriptionUsageWindow | null = null;
-  for (const window of instance.windows) {
-    if (!Number.isFinite(window.usedPercent)) continue;
-    if (highest === null || window.usedPercent > highest.usedPercent) {
-      highest = window;
-    }
-  }
-  return highest;
+  return instance.windows.find((window) => Number.isFinite(window.usedPercent)) ?? null;
 }
 
 export function resolveThreadSubscriptionUsage(
@@ -71,7 +64,7 @@ export function resolveThreadSubscriptionUsage(
     return {
       kind: "instance",
       instance,
-      summaryWindow: highestUsedWindow(instance),
+      primaryWindow: primaryUsageWindow(instance),
     };
   }
   if (environment.isPending) return { kind: "status", status: "loading" };
@@ -150,15 +143,16 @@ export const ThreadSubscriptionUsageIndicator = memo(function ThreadSubscription
       : providerDisplayName?.trim() || fallbackDisplayName(providerInstanceId);
   const readyInstance =
     resolved.kind === "instance" && resolved.instance.state === "ready" ? resolved.instance : null;
-  const summaryWindow = resolved.kind === "instance" ? resolved.summaryWindow : null;
-  const value = summaryWindow?.usedPercent ?? null;
+  const primaryWindow = resolved.kind === "instance" ? resolved.primaryWindow : null;
+  const remainingPercent = primaryWindow ? Math.max(0, 100 - primaryWindow.usedPercent) : null;
   const indicatorColor =
-    readyInstance && summaryWindow
-      ? threadSubscriptionUsageRingColor(readyInstance, summaryWindow)
+    readyInstance && primaryWindow
+      ? threadSubscriptionUsageRingColor(readyInstance, primaryWindow)
       : "color-mix(in oklab, var(--color-muted-foreground) 42%, transparent)";
-  const ariaLabel = summaryWindow
-    ? `${displayName} subscription usage: ${summaryWindow.label} ${percentFormatter.format(summaryWindow.usedPercent)}% used${readyInstance?.freshness === "stale" ? ", stale reading" : ""}`
-    : neutralAriaLabel(displayName, resolved);
+  const ariaLabel =
+    primaryWindow && remainingPercent !== null
+      ? `${displayName} subscription usage: ${primaryWindow.label} ${percentFormatter.format(remainingPercent)}% left, ${percentFormatter.format(primaryWindow.usedPercent)}% used${readyInstance?.freshness === "stale" ? ", stale reading" : ""}`
+      : neutralAriaLabel(displayName, resolved);
   const handleTriggerFocus = (event: FocusEvent<HTMLButtonElement>) => {
     if (event.relatedTarget instanceof Node && popupRef.current?.contains(event.relatedTarget)) {
       return;
@@ -174,7 +168,7 @@ export const ThreadSubscriptionUsageIndicator = memo(function ThreadSubscription
         closeDelay={150}
         render={
           <CircularUsageMeterButton
-            value={value}
+            value={remainingPercent}
             indicatorColor={indicatorColor}
             aria-label={ariaLabel}
             className="pointer-events-auto"

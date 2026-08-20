@@ -6,6 +6,7 @@ import {
   EMPTY_POWERHOUSE_DOCUMENT_FILTERS,
   type PowerhouseDocumentFilters,
 } from "./documentFilters";
+import { documentTypeOptions } from "./documentTypeOptions";
 
 const renderBar = (input?: {
   filters?: PowerhouseDocumentFilters;
@@ -16,6 +17,8 @@ const renderBar = (input?: {
       query=""
       filters={input?.filters ?? EMPTY_POWERHOUSE_DOCUMENT_FILTERS}
       currentParentId={input?.currentParentId ?? null}
+      documentTypeOptions={documentTypeOptions([])}
+      documentTypeCatalogStatus="ready"
       onQueryChange={vi.fn()}
       onFiltersChange={vi.fn()}
     />,
@@ -28,7 +31,7 @@ describe("DocumentFilterBar", () => {
     expect(markup).toContain('placeholder="Search drives…"');
   });
 
-  it("shows active API filters and switches the root search to document results", () => {
+  it("shows field, operator, and value controls for active API filters", () => {
     const markup = renderBar({
       filters: {
         ...EMPTY_POWERHOUSE_DOCUMENT_FILTERS,
@@ -37,8 +40,10 @@ describe("DocumentFilterBar", () => {
       },
     });
     expect(markup).toContain('aria-label="Search loaded Powerhouse documents"');
-    expect(markup).toContain("Type: powerhouse/todo");
-    expect(markup).toContain("1 scope");
+    expect(markup).toContain('aria-label="Edit Document type filter, is powerhouse/todo"');
+    expect(markup).toContain('aria-label="Remove Document type filter"');
+    expect(markup).toContain('aria-label="Edit Scopes filter, uses global"');
+    expect(markup).toContain('aria-label="Remove Scopes filter"');
     expect(markup).toContain("Document filters, 2 active");
   });
 

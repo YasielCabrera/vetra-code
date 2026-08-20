@@ -257,11 +257,29 @@ The document-list RPC mirrors both filter inputs accepted by `findDocuments`:
 cursor remain internal to the bounded auto-paging path; offset is not sent because the resolver
 ignores it.
 
-The exact API filters live behind the Explorer's filter popover. Parent defaults to the open drive
-or folder unless the user supplies an override. At reactor root, type, parent, or identifiers can
-start a document result set; branch and scopes alone wait until navigation supplies a parent. The
-selected view is also passed to `document` and folded into the matching branch/scope fields on
-`documentOperations`, so opening a result does not silently switch back to the default view.
+The exact API filters live behind the Explorer's filter builder. It progressively reveals only the
+fields the user selects, presents the API's fixed matching semantics as field/operator/value
+conditions, and keeps applied conditions individually editable and removable below search. Parent
+defaults to the open drive or folder unless the user supplies an override. At reactor root, type,
+parent, or identifiers can start a document result set; branch and scopes alone wait until
+navigation supplies a parent. The selected view is also passed to `document` and folded into the
+matching branch/scope fields on `documentOperations`, so opening a result does not silently switch
+back to the default view.
+
+The document-type condition reuses the environment-scoped document-model listing that backs the
+Models tab, then adds the built-in `powerhouse/document-drive`, `powerhouse/reactor-drive`, and
+`powerhouse/folder` identifiers. Built-ins remain selectable when the project catalog cannot load,
+and an explicit custom-value option preserves access to reactor types not declared by the current
+project.
+
+Branch and scope conditions expose Powerhouse's canonical values instead of requiring recall.
+`main` is the document header default and the reactor's fallback branch. `global` and `local` are
+the model-state scopes every document starts with; `document`, `auth`, and `header` are grouped
+separately as engine-owned scopes. Branch remains single-select, scopes use a multi-select chip
+control, and both accept an explicit custom value for project-specific behavior. An absent scope
+condition intentionally means all scopes, so adding the condition never silently preselects a
+subset. The model-list summary and reactor API expose no branch/scope catalog, which is why the
+canonical choices are local UI metadata rather than another network request.
 
 The schema/resolver mismatch around identifiers needs a compatibility path:
 
@@ -296,12 +314,19 @@ model files at 2 MB before their contents cross the websocket.
 
 ### State schema diagrams
 
-Global and local state SDL default to the existing highlighted source view. Selecting **Diagram**
-crosses a lazy boundary that loads GraphQL.js, React Flow, and Dagre only for that view. GraphQL.js
-provides the specification parser; the local projection merges type extensions and records field,
-field-argument, interface, and union-member relationships. Dagre calculates a left-to-right
-directed layout, then React Flow supplies the read-only pan and zoom canvas. Nodes and controls use
-the same semantic CSS variables as the rest of the panel, including custom light and dark themes.
+Global and local state SDL default to the existing highlighted source view, now numbered so a type
+or field can be cited by line. The gutter is a single sticky, non-selectable text node holding every
+number rather than an element per line, so a several-thousand-line schema adds no per-line layout
+work and copying the schema never picks the numbers up. Counting newline separators matches Shiki,
+which keeps a trailing empty line for source that ends in a newline. Numbering is opt-in per code
+surface, so the compact operation-input and document-state previews stay unnumbered.
+
+Selecting **Diagram** crosses a lazy boundary that loads GraphQL.js, React Flow, and Dagre only for
+that view. GraphQL.js provides the specification parser; the local projection merges type extensions
+and records field, field-argument, interface, and union-member relationships. Dagre calculates a
+left-to-right directed layout, then React Flow supplies the read-only pan and zoom canvas. Nodes and
+controls use the same semantic CSS variables as the rest of the panel, including custom light and
+dark themes.
 
 The projection excludes undeclared built-in scalars, bundles every source/target pair into one
 labeled edge, and keeps the source view as the canonical textual representation. Work is bounded
@@ -534,7 +559,7 @@ No running Powerhouse project is needed anywhere:
 | Reference grammar          | `packages/shared/src/composerInlineTokens.test.ts`, round-trip over every fact combination                       |
 | Reference chip and cursors | `apps/web/src/composer-logic.test.ts`, `apps/web/src/components/ComposerPromptEditor.test.ts`                    |
 | Auto-paging guard          | `apps/web/src/components/powerhouse/powerhouseQuery.test.ts`                                                     |
-| Document filter logic      | `apps/web/src/components/powerhouse/explorer/documentFilters.test.ts`                                            |
+| Document filter logic      | `apps/web/src/components/powerhouse/explorer/*.test.*`                                                           |
 | Panel entry points         | `apps/web/src/rightPanelStore.test.ts`, `RightPanelTabs.test.tsx`                                                |
 
 For a manual pass, open a monorepo whose Powerhouse app lives under `apps/`, inspect at least one

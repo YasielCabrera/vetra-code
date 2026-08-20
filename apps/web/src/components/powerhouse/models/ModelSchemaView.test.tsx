@@ -2,7 +2,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("../SdlBlock", () => ({
-  SdlBlock: ({ code }: { code: string }) => <pre data-testid="sdl-block">{code}</pre>,
+  SdlBlock: ({ code, lineNumbers }: { code: string; lineNumbers?: boolean }) => (
+    <pre data-testid="sdl-block" data-line-numbers={lineNumbers === true ? "true" : "false"}>
+      {code}
+    </pre>
+  ),
 }));
 
 import { ModelSchemaView } from "./ModelSchemaView";
@@ -19,6 +23,7 @@ describe("ModelSchemaView", () => {
     expect(html).toContain('aria-label="Show Diagram"');
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("type Todo { id: ID! }");
+    expect(html).toContain('data-line-numbers="true"');
   });
 
   it("does not offer an unusable diagram action for an empty schema", () => {

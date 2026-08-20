@@ -102,7 +102,7 @@ export function ModelSchemaView({
       {!hasSchema ? (
         <p className="p-3 text-xs text-muted-foreground">No {title.toLocaleLowerCase()} schema.</p>
       ) : view === "sdl" ? (
-        <SdlBlock code={code} language="graphql" className="rounded-none border-0" />
+        <SdlBlock code={code} language="graphql" className="rounded-none border-0" lineNumbers />
       ) : (
         <Suspense fallback={<DiagramFallback />}>
           <LazySchemaDiagram source={code} label={title} />

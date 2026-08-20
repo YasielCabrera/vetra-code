@@ -6,7 +6,7 @@ Vetra Code connects to your Git hosting provider so you can create pull requests
 
 Vetra Code works with the platforms your team already uses:
 
-- **GitHub** – Pull requests, repository creation, and clone integration
+- **GitHub** – Pull requests, issues, repository creation, and clone integration
 - **GitLab** – Merge requests, repository publishing, and hosted clones
 - **Bitbucket** – Pull request workflows (via API token authentication)
 - **Azure DevOps** – Pull request support for Microsoft-hosted repositories
@@ -62,6 +62,22 @@ The **Source Control settings** page shows you exactly what's connected:
 - 👤 Which account is signed in (when available)
 
 Run a quick **Rescan** after setting up a new machine or changing credentials.
+
+### Browse Project Issues
+
+Open **Issues** from the bottom of the project sidebar to see issues across your connected
+projects. The page follows the same project and environment connections as the pull request
+workspace.
+
+- Filter open, closed, or all issues, narrow to one project, and search GitHub's issue index
+- Keep scrolling to load older issues automatically until every matching repository is complete
+- Open an issue to read its description, comments, assignees, labels, and milestone
+- Use **Open on GitHub** or **New issue** when you need to write or change issue data
+- Hosts that are not supported yet are reported as unavailable instead of being silently omitted
+
+Issue browsing is currently read-only in Vetra Code and supports GitHub repositories. It uses the
+GitHub CLI authentication on the environment that owns each project, including remote and relay
+environments.
 
 ## Getting Started
 

@@ -11,6 +11,18 @@ export const SourceControlProviderKind = Schema.Literals([
 ]);
 export type SourceControlProviderKind = typeof SourceControlProviderKind.Type;
 
+/**
+ * The host below which a normalized repository identity is addressed. Older identities may not
+ * have a canonical key, so the provider kind remains their stable host bucket.
+ */
+export function sourceControlHostOf(
+  identity: { readonly canonicalKey?: string | undefined } | null | undefined,
+  kind: SourceControlProviderKind,
+): string {
+  const host = identity?.canonicalKey?.split("/")[0]?.trim();
+  return host === undefined || host.length === 0 ? kind : host.toLowerCase();
+}
+
 export const SourceControlProviderInfo = Schema.Struct({
   kind: SourceControlProviderKind,
   name: TrimmedNonEmptyString,

@@ -9,6 +9,26 @@ import type {
 
 const CHAT_CONTEXT_CHARACTER_LIMIT = 12_000;
 
+type PowerhouseChatComposer = {
+  readonly insertTextAtEnd: (
+    text: string,
+    options?: { readonly ensureLeadingBoundary?: boolean },
+  ) => boolean;
+};
+
+export function insertPowerhouseChatContext(
+  composer: PowerhouseChatComposer | null | undefined,
+  context: string,
+) {
+  if (composer === null || composer === undefined) return "unavailable";
+
+  // Insertion schedules focus after the controlled editor commits. Refocusing
+  // synchronously here would read its previous snapshot and restore stale text.
+  return composer.insertTextAtEnd(context, { ensureLeadingBoundary: true })
+    ? "inserted"
+    : "rejected";
+}
+
 export function makePowerhouseSqlCompletionSchema(catalog: PowerhouseDatabaseCatalogResult) {
   return Object.fromEntries(
     catalog.schemas.map((schema) => [

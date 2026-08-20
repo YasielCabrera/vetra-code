@@ -1,8 +1,9 @@
 import type { EnvironmentId } from "@vetra-code/contracts";
 import { ChevronRight } from "lucide-react";
-import { useDeferredValue, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 
 import { powerhouseEnvironment } from "~/state/powerhouse";
+import { useEnvironmentQuery } from "~/state/query";
 
 import { displayReactorUrl } from "../PowerhousePanel.logic";
 import { PowerhousePanelLoading } from "../PowerhousePanelPrimitives";
@@ -11,6 +12,11 @@ import type { PowerhouseExplorerCrumb, PowerhouseExplorerSelection } from "../po
 import { DocumentDetail } from "./DocumentDetail";
 import { DocumentFilterBar } from "./DocumentFilterBar";
 import { DocumentList } from "./DocumentList";
+import {
+  documentTypeOptions,
+  type PowerhouseDocumentTypeCatalogStatus,
+  type PowerhouseDocumentTypeOption,
+} from "./documentTypeOptions";
 import { DriveList } from "./DriveList";
 import { ReactorConnectionCard } from "./ReactorConnectionCard";
 import {
@@ -62,6 +68,24 @@ export function ExplorerView({
       },
     }),
   );
+  const modelCatalog = useEnvironmentQuery(
+    powerhouseEnvironment.documentModels({
+      environmentId,
+      input: { cwd, ...(projectPath.length === 0 ? {} : { projectPath }) },
+    }),
+  );
+  const knownDocumentTypeOptions = useMemo(
+    () => documentTypeOptions(modelCatalog.data?.models ?? []),
+    [modelCatalog.data],
+  );
+  const documentTypeCatalogStatus: PowerhouseDocumentTypeCatalogStatus =
+    modelCatalog.data !== null
+      ? modelCatalog.data.truncated || modelCatalog.data.failures.length > 0
+        ? "partial"
+        : "ready"
+      : modelCatalog.error !== null
+        ? "error"
+        : "loading";
   const connection = probe.isFailure ? null : probe.data;
 
   if (connection === null && probe.isPending) {
@@ -95,6 +119,8 @@ export function ExplorerView({
       environmentId={environmentId}
       url={url}
       selection={selection}
+      documentTypeOptions={knownDocumentTypeOptions}
+      documentTypeCatalogStatus={documentTypeCatalogStatus}
       onSelectDrive={onSelectDrive}
       onEnterFolder={onEnterFolder}
       onPopToDepth={onPopToDepth}
@@ -107,6 +133,8 @@ interface ConnectedExplorerProps {
   environmentId: EnvironmentId;
   url: string;
   selection: PowerhouseExplorerSelection;
+  documentTypeOptions: ReadonlyArray<PowerhouseDocumentTypeOption>;
+  documentTypeCatalogStatus: PowerhouseDocumentTypeCatalogStatus;
   onSelectDrive: (drive: PowerhouseExplorerCrumb) => void;
   onEnterFolder: (folder: PowerhouseExplorerCrumb) => void;
   onPopToDepth: (depth: number) => void;
@@ -118,6 +146,8 @@ function ConnectedExplorer({
   environmentId,
   url,
   selection,
+  documentTypeOptions,
+  documentTypeCatalogStatus,
   onSelectDrive,
   onEnterFolder,
   onPopToDepth,
@@ -184,6 +214,8 @@ function ConnectedExplorer({
         query={query}
         filters={filters}
         currentParentId={currentParent?.id ?? null}
+        documentTypeOptions={documentTypeOptions}
+        documentTypeCatalogStatus={documentTypeCatalogStatus}
         onQueryChange={setQuery}
         onFiltersChange={setFilters}
       />

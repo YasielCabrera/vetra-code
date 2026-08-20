@@ -18,6 +18,16 @@ export interface PowerhouseDocumentFilters {
   readonly scopes: ReadonlyArray<string>;
 }
 
+export const POWERHOUSE_DOCUMENT_FILTER_FIELDS = [
+  "type",
+  "parentId",
+  "identifiers",
+  "branch",
+  "scopes",
+] as const;
+
+export type PowerhouseDocumentFilterField = (typeof POWERHOUSE_DOCUMENT_FILTER_FIELDS)[number];
+
 export interface PowerhouseDocumentFilterDraft {
   readonly type: string;
   readonly parentId: string;
@@ -69,6 +79,13 @@ export function documentFilterDraft(
   };
 }
 
+export function emptyDocumentFilterDraftFields(
+  draft: PowerhouseDocumentFilterDraft,
+  fields: ReadonlyArray<PowerhouseDocumentFilterField>,
+): ReadonlyArray<PowerhouseDocumentFilterField> {
+  return fields.filter((field) => draft[field].trim().length === 0);
+}
+
 function listFilterError(values: ReadonlyArray<string>, noun: string, maxValueLength: number) {
   if (values.length > POWERHOUSE_REACTOR_FILTER_VALUE_MAX_COUNT) {
     return `Enter at most ${POWERHOUSE_REACTOR_FILTER_VALUE_MAX_COUNT} ${noun}.`;
@@ -100,14 +117,33 @@ export function parseDocumentFilterDraft(draft: PowerhouseDocumentFilterDraft): 
   };
 }
 
+export function activeDocumentFilterFields(
+  filters: PowerhouseDocumentFilters,
+): ReadonlyArray<PowerhouseDocumentFilterField> {
+  return POWERHOUSE_DOCUMENT_FILTER_FIELDS.filter((field) => filters[field].length > 0);
+}
+
+/** Remove one applied condition without disturbing the other filter fields. */
+export function clearDocumentFilterField(
+  filters: PowerhouseDocumentFilters,
+  field: PowerhouseDocumentFilterField,
+): PowerhouseDocumentFilters {
+  switch (field) {
+    case "type":
+      return { ...filters, type: "" };
+    case "parentId":
+      return { ...filters, parentId: "" };
+    case "identifiers":
+      return { ...filters, identifiers: [] };
+    case "branch":
+      return { ...filters, branch: "" };
+    case "scopes":
+      return { ...filters, scopes: [] };
+  }
+}
+
 export function documentFilterCount(filters: PowerhouseDocumentFilters): number {
-  return (
-    Number(filters.type.length > 0) +
-    Number(filters.parentId.length > 0) +
-    Number(filters.identifiers.length > 0) +
-    Number(filters.branch.length > 0) +
-    Number(filters.scopes.length > 0)
-  );
+  return activeDocumentFilterFields(filters).length;
 }
 
 /** Search fields that can make `findDocuments` return a set at reactor root. */
@@ -176,20 +212,4 @@ export function filterDocumentsByTextSearch(
     if (documentMatchesTerms(document, terms)) matching.push(document);
   }
   return matching;
-}
-
-export function documentFilterBadges(filters: PowerhouseDocumentFilters): ReadonlyArray<string> {
-  const badges: Array<string> = [];
-  if (filters.type.length > 0) badges.push(`Type: ${filters.type}`);
-  if (filters.parentId.length > 0) badges.push(`Parent: ${filters.parentId}`);
-  if (filters.identifiers.length > 0) {
-    badges.push(
-      `${filters.identifiers.length} identifier${filters.identifiers.length === 1 ? "" : "s"}`,
-    );
-  }
-  if (filters.branch.length > 0) badges.push(`Branch: ${filters.branch}`);
-  if (filters.scopes.length > 0) {
-    badges.push(`${filters.scopes.length} scope${filters.scopes.length === 1 ? "" : "s"}`);
-  }
-  return badges;
 }

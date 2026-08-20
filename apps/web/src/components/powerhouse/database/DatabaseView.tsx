@@ -37,6 +37,7 @@ import { DatabaseResultTable } from "./DatabaseResultTable";
 import {
   formatPowerhouseDatabaseTargetStatus,
   formatPowerhouseRelationChatContext,
+  insertPowerhouseChatContext,
   makePowerhouseRelationSelectSql,
   selectPowerhouseDatabaseRelation,
 } from "./databaseViewLogic";
@@ -267,27 +268,20 @@ export function DatabaseView({
 
   const addSchemaToChat = () => {
     if (relation.data === null) return;
-    const composer = composerRef?.current;
-    if (composer === undefined || composer === null) {
-      toastManager.add({
-        type: "error",
-        title: "Unable to add database schema",
-        description: "Open a chat for this project and try again.",
-      });
-      return;
-    }
-    const inserted = composer.insertTextAtEnd(
+    const insertion = insertPowerhouseChatContext(
+      composerRef?.current,
       formatPowerhouseRelationChatContext(session.target, relation.data.relation),
-      { ensureLeadingBoundary: true },
     );
-    if (inserted) {
-      composer.focusAtEnd();
+    if (insertion === "inserted") {
       toastManager.add({ type: "success", title: "Database schema added to chat" });
     } else {
       toastManager.add({
         type: "error",
         title: "Unable to add database schema",
-        description: "The active composer could not accept database context.",
+        description:
+          insertion === "unavailable"
+            ? "Open a chat for this project and try again."
+            : "The active composer could not accept database context.",
       });
     }
   };

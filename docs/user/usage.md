@@ -14,12 +14,12 @@ equivalent** tabs:
 The chat composer’s context-window popover continues to show the API-equivalent cost for the current
 thread.
 
-On wider thread views, a small ring in the bottom-left corner shows subscription usage for the exact
-provider instance selected in the composer. The ring fills with the most-used allowance window that
-account reported; hover, focus, or click it to open the same complete card used on the Subscriptions
-tab. Switching models within one provider instance keeps the same account limits, while switching
-provider instances changes the card. Narrow thread columns hide the ring so it does not overlap the
-composer.
+On wider thread views, a small ring in the bottom-left corner shows the remaining subscription
+allowance for the exact provider instance selected in the composer. The ring uses the account's
+primary window (the current session window when one is available); hover, focus, or click it to open
+the same complete card used on the Subscriptions tab. Switching models within one provider instance
+keeps the same account limits, while switching provider instances changes the card. Narrow thread
+columns hide the ring so it does not overlap the composer.
 
 ## Subscription limits
 

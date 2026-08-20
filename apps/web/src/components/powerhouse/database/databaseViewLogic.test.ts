@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import {
   formatPowerhouseDatabaseTargetStatus,
   formatPowerhouseRelationChatContext,
   formatPowerhouseResultChatContext,
+  insertPowerhouseChatContext,
   makePowerhouseSqlCompletionSchema,
   makePowerhouseRelationSelectSql,
   selectPowerhouseDatabaseRelation,
@@ -119,5 +120,22 @@ describe("database panel presentation", () => {
     expect(result).toContain("NULL");
     expect(result).toContain("result context truncated by Vetra");
     expect(result.length).toBeLessThan(12_100);
+  });
+
+  it("lets chat insertion own deferred composer focus", () => {
+    const composer = {
+      insertTextAtEnd: vi.fn(() => true),
+      focusAtEnd: vi.fn(),
+    };
+
+    expect(insertPowerhouseChatContext(composer, "database context")).toBe("inserted");
+    expect(composer.insertTextAtEnd).toHaveBeenCalledWith("database context", {
+      ensureLeadingBoundary: true,
+    });
+    expect(composer.focusAtEnd).not.toHaveBeenCalled();
+    expect(insertPowerhouseChatContext(null, "database context")).toBe("unavailable");
+
+    composer.insertTextAtEnd.mockReturnValue(false);
+    expect(insertPowerhouseChatContext(composer, "database context")).toBe("rejected");
   });
 });

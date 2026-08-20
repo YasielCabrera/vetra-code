@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
-  documentFilterBadges,
+  activeDocumentFilterFields,
+  clearDocumentFilterField,
   documentFilterCount,
   documentFilterDraft,
   documentMatchesTextSearch,
+  emptyDocumentFilterDraftFields,
   filterDocumentsByTextSearch,
   hasExplicitDocumentSearch,
   parseDocumentFilterDraft,
@@ -47,6 +49,14 @@ describe("Powerhouse document filters", () => {
     expect(parsed.errors).toEqual({ identifiers: null, scopes: null });
   });
 
+  it("keeps selected fields with no value from disappearing on apply", () => {
+    const draft = documentFilterDraft(filters({ type: "powerhouse/todo" }));
+    expect(emptyDocumentFilterDraftFields(draft, ["type", "parentId", "scopes"])).toEqual([
+      "parentId",
+      "scopes",
+    ]);
+  });
+
   it("uses an explicit parent before the current explorer folder", () => {
     expect(reactorDocumentSearch(filters({ type: "powerhouse/todo" }), "drive-1")).toEqual({
       type: "powerhouse/todo",
@@ -85,17 +95,16 @@ describe("Powerhouse document filters", () => {
     expect(filterDocumentsByTextSearch([document], "invoice")).toEqual([]);
   });
 
-  it("counts and describes non-empty API filter groups", () => {
+  it("lists active API fields and clears one condition without disturbing the others", () => {
     const applied = filters({
       type: "finance/report",
       identifiers: ["a", "b"],
       scopes: ["global"],
     });
     expect(documentFilterCount(applied)).toBe(3);
-    expect(documentFilterBadges(applied)).toEqual([
-      "Type: finance/report",
-      "2 identifiers",
-      "1 scope",
-    ]);
+    expect(activeDocumentFilterFields(applied)).toEqual(["type", "identifiers", "scopes"]);
+    expect(clearDocumentFilterField(applied, "identifiers")).toEqual(
+      filters({ type: "finance/report", scopes: ["global"] }),
+    );
   });
 });

@@ -21,6 +21,7 @@ import { useAtomCommand } from "~/state/use-atom-command";
 import { DatabaseResultTable } from "./DatabaseResultTable";
 import {
   formatPowerhouseResultChatContext,
+  insertPowerhouseChatContext,
   makePowerhouseSqlCompletionSchema,
 } from "./databaseViewLogic";
 
@@ -103,27 +104,20 @@ export default function DatabaseSqlConsole({
 
   const addResultToChat = () => {
     if (execution === null) return;
-    const composer = composerRef?.current;
-    if (composer === undefined || composer === null) {
-      toastManager.add({
-        type: "error",
-        title: "Unable to add query result",
-        description: "Open a chat for this project and try again.",
-      });
-      return;
-    }
-    const inserted = composer.insertTextAtEnd(
+    const insertion = insertPowerhouseChatContext(
+      composerRef?.current,
       formatPowerhouseResultChatContext({ target, ...execution }),
-      { ensureLeadingBoundary: true },
     );
-    if (inserted) {
-      composer.focusAtEnd();
+    if (insertion === "inserted") {
       toastManager.add({ type: "success", title: "Query result added to chat" });
     } else {
       toastManager.add({
         type: "error",
         title: "Unable to add query result",
-        description: "The active composer could not accept database context.",
+        description:
+          insertion === "unavailable"
+            ? "Open a chat for this project and try again."
+            : "The active composer could not accept database context.",
       });
     }
   };

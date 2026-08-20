@@ -26,4 +26,17 @@ describe("ExecutionEnvironmentDescriptor", () => {
       }).capabilities.pullRequests,
     ).toBe(true);
   });
+
+  it("treats a missing issues capability as unsupported under version skew", () => {
+    expect(decodeDescriptor(descriptor).capabilities.issues).toBeUndefined();
+  });
+
+  it("preserves an advertised issues capability", () => {
+    expect(
+      decodeDescriptor({
+        ...descriptor,
+        capabilities: { ...descriptor.capabilities, issues: true },
+      }).capabilities.issues,
+    ).toBe(true);
+  });
 });

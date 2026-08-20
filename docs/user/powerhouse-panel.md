@@ -22,6 +22,9 @@ and how many modules and operations that version defines.
 Open a model to inspect its definition:
 
 - Its GraphQL schema for global state, and for local state when it declares one.
+- Line numbers beside the SDL for each state schema, so a type or field can be cited by line in
+  chat or a review. The numbers stay in place while long lines scroll sideways, and they are left
+  out when you copy the schema.
 - An **SDL / Diagram** switch for each state schema. Diagram view lays out types, inputs,
   interfaces, enums, unions, and custom scalars, with labeled connections for fields, arguments,
   implemented interfaces, and union members. Drag the canvas to pan and use its controls to zoom
@@ -60,19 +63,28 @@ The search field narrows the rows already loaded by name, slug, identifier, or d
 the reactor root it searches the drive rows; after you open a drive or apply a document filter it
 searches document rows. Multiple words all have to match, but they can match different fields.
 
-Open **Filters** for the exact fields supported by Switchboard:
+Open **Filters**, choose the fields you need, enter their values, and press **Apply filters**. Each
+applied condition stays visible below search with its field, operator, and value; select one to edit
+it, remove conditions individually, or clear them all together. Explorer offers the exact fields
+supported by Switchboard:
 
-- **Document type** — for example `powerhouse/todo`.
+- **Document type** — choose a known project model or a built-in document drive, reactor drive, or
+  folder type. You can still enter a custom type ID when it is not listed.
 - **Parent identifier** — overrides the open drive or folder; at the root it can address a parent
   directly.
 - **Identifiers** — exact document IDs or slugs, separated by commas or new lines.
-- **Branch** and **Scopes** — choose the document view Switchboard returns. That same view follows
-  into document state and operation history.
+- **Branch** — choose **Main branch** (`main`), Powerhouse's default, or search for and use a custom
+  branch name.
+- **Scopes** — choose one or more standard document scopes (`global` and `local`) or system scopes
+  (`document`, `auth`, and `header`). Selected scopes appear as removable chips, and custom scope
+  names remain available. Remove the Scopes condition entirely to include every scope.
+
+Branch and scope selections choose the document view Switchboard returns. That same view follows
+into document state and operation history.
 
 At the reactor root, a document type, parent identifier, or identifier search opens document
 results across the reactor. Branch and scope alone take effect after you enter a drive, because
-Switchboard requires at least one document search criterion. Applied filters stay visible below the
-search field and can be cleared together.
+Switchboard requires at least one document search criterion.
 
 A drive or folder lists all of its documents at once, up to 500. Past that the reactor gives Explorer
 no way to ask for more, so the list says it is showing the first 500 rather than presenting a partial

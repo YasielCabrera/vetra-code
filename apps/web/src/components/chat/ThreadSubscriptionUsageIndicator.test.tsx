@@ -125,10 +125,10 @@ describe("resolveThreadSubscriptionUsage", () => {
     expect(resolved.kind).toBe("instance");
     if (resolved.kind !== "instance") return;
     expect(resolved.instance).toBe(remote);
-    expect(resolved.summaryWindow?.usedPercent).toBe(92);
+    expect(resolved.primaryWindow?.usedPercent).toBe(92);
   });
 
-  it("selects the highest used window and preserves provider order for ties", () => {
+  it("selects the first reported window instead of the most-used window", () => {
     const instance = readyInstance({ usedPercents: [40, 127.5, 127.5] });
     const resolved = resolveThreadSubscriptionUsage(
       [environment({ report: report([instance]) })],
@@ -138,7 +138,7 @@ describe("resolveThreadSubscriptionUsage", () => {
 
     expect(resolved.kind).toBe("instance");
     if (resolved.kind !== "instance") return;
-    expect(resolved.summaryWindow).toBe(instance.windows[1]);
+    expect(resolved.primaryWindow).toBe(instance.windows[0]);
   });
 
   it.each([
@@ -172,7 +172,7 @@ describe("resolveThreadSubscriptionUsage", () => {
       codexInstanceId,
     );
 
-    expect(resolved).toEqual({ kind: "instance", instance, summaryWindow: null });
+    expect(resolved).toEqual({ kind: "instance", instance, primaryWindow: null });
   });
 });
 
@@ -210,9 +210,9 @@ describe("thread subscription usage presentation", () => {
       />,
     );
 
-    expect(html).toContain('data-usage-meter-value="95"');
-    expect(html).toContain('stroke="var(--color-warning)"');
-    expect(html).toContain("Codex Work subscription usage: Window 2 95% used");
+    expect(html).toContain('data-usage-meter-value="75"');
+    expect(html).toContain('stroke="#49a3b0"');
+    expect(html).toContain("Codex Work subscription usage: Session 75% left, 25% used");
     expect(html).toContain("Pro 20x");
     expect(html).toContain("Session");
     expect(html).toContain("Window 2");
