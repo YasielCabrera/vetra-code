@@ -2,16 +2,25 @@
 
 > For maintainers. Using Vetra Code? See [docs/user](../user/).
 
-[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) runs three jobs on pull requests and
-pushes to `main`:
+[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) runs these quality gates on pull
+requests and pushes to `main`:
 
 - **Check**: `vp check` (format and lint; this repo sets `typeCheck: false` in its lint options),
   then `vpr typecheck` for the workspace type check. The same job
   builds the desktop pipeline (`vp run build:desktop`) and verifies the preload bundle exists and
   still exports its expected symbols.
-- **Test**: `vp run test` across the workspace.
+- **Test**: every workspace package except `@vetra-code/server`, run in parallel with a concurrency
+  limit of 4. This job also installs the Electron runtime, which `@vetra-code/desktop` tests need.
+- **Test Server 1-3**: `@vetra-code/server` only, sharded across three runners. `apps/server` sets
+  `fileParallelism: false`, so sharding is how its suite gets parallelism without ever putting two
+  server test files on one machine.
+- **Rust**: `cargo fmt --check` and `cargo test` for `native/resource-monitor`, split out so the
+  Check and Test jobs no longer install a Rust toolchain on the critical path of every PR.
 - **Release Smoke**: exercises local packaging helpers through `scripts/release-smoke.ts`. It does
   not publish or deploy anything.
+
+Mobile native static analysis exists upstream and is not part of this fork; `apps/mobile` was
+removed.
 
 The fork does not currently include a production release or relay-deployment workflow. They were
 removed so CI cannot publish to legacy upstream infrastructure while Vetra-owned package, signing,

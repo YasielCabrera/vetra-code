@@ -146,9 +146,9 @@ const make = Effect.gen(function* () {
                   threadId: command.threadId,
                 }),
               ),
-              Effect.ignoreCause({ log: true }),
+              Effect.as(true),
             )
-          : Effect.void;
+          : Effect.succeed(false);
 
       const recordSetupScriptLaunchFailure = (input: {
         readonly error: ProjectSetupScriptRunner.ProjectSetupScriptRunnerError;
@@ -341,7 +341,27 @@ const make = Effect.gen(function* () {
           if (Cause.hasInterruptsOnly(cause)) {
             return Effect.fail(dispatchError);
           }
-          return cleanupCreatedThread().pipe(Effect.flatMap(() => Effect.fail(dispatchError)));
+          return Effect.uninterruptible(cleanupCreatedThread()).pipe(
+            Effect.matchCauseEffect({
+              onFailure: (cleanupCause) =>
+                Effect.logWarning("bootstrap thread cleanup failed", {
+                  threadId: command.threadId,
+                  detail: Cause.pretty(cleanupCause),
+                }).pipe(Effect.flatMap(() => Effect.fail(dispatchError))),
+              onSuccess: (threadDeleted) =>
+                Effect.fail(
+                  threadDeleted
+                    ? new OrchestrationDispatchCommandError({
+                        message: dispatchError.message,
+                        ...(dispatchError.cause !== undefined
+                          ? { cause: dispatchError.cause }
+                          : {}),
+                        bootstrapThreadDisposition: "deleted",
+                      })
+                    : dispatchError,
+                ),
+            }),
+          );
         }),
       );
     });
