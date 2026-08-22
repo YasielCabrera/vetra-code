@@ -92,7 +92,6 @@ import {
   deriveTimelineEntries,
   deriveActiveWorkStartedAt,
   deriveActivePlanState,
-  deriveTaskControlState,
   deriveTurnPlans,
   findLatestProposedPlan,
   deriveWorkLogEntries,
@@ -2335,7 +2334,6 @@ function ChatViewContent(props: ChatViewProps) {
     () => deriveActivePlanState(threadActivities, activeLatestTurn?.turnId ?? undefined),
     [activeLatestTurn?.turnId, threadActivities],
   );
-  const taskControlState = useMemo(() => deriveTaskControlState(activePlan), [activePlan]);
   // Header Agents chip: the same roster the panel renders, flattened to groups.
   const agentControlState = useMemo(
     () => deriveAgentControlState(agentPanelModel),
@@ -6477,7 +6475,6 @@ function ChatViewContent(props: ChatViewProps) {
             availableEditors={availableEditors}
             rightPanelOpen={rightPanelOpen}
             gitCwd={gitCwd}
-            taskControlState={taskControlState}
             agentControlState={agentControlState}
             onNewThreadInProject={handleNewThreadInActiveProject}
             onOpenAgents={addAgentsSurface}

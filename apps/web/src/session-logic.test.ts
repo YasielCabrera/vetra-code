@@ -11,7 +11,6 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   deriveActiveWorkStartedAt,
   deriveActivePlanState,
-  deriveTaskControlState,
   deriveTurnPlans,
   derivePendingApprovals,
   derivePendingUserInputs,
@@ -20,7 +19,6 @@ import {
   findLatestProposedPlan,
   hasActionableProposedPlan,
   isLatestTurnSettled,
-  taskControlAriaLabel,
   workEntryIndicatesToolFailure,
   workEntryIndicatesToolNeutralStatus,
   workEntryIndicatesToolSuccess,
@@ -463,72 +461,6 @@ describe("deriveActivePlanState", () => {
     expect(deriveActivePlanState(activities, TurnId.make("turn-1"))?.steps).toEqual([
       { durationMs: 3_000, step: "Check", status: "completed" },
     ]);
-  });
-});
-
-describe("deriveTaskControlState", () => {
-  const plan = (
-    steps: Array<{ step: string; status: "pending" | "inProgress" | "completed" }>,
-  ) => ({
-    createdAt: "2026-02-23T00:00:01.000Z",
-    turnId: TurnId.make("turn-1"),
-    steps,
-  });
-
-  it("hides the header control when there is no checklist", () => {
-    expect(deriveTaskControlState(null)).toBeNull();
-    expect(deriveTaskControlState(plan([]))).toBeNull();
-  });
-
-  it("counts completed steps without hiding an unfinished list", () => {
-    const steps = [
-      { step: "Inspect code", status: "completed" as const },
-      { step: "Write tests", status: "inProgress" as const },
-      { step: "Open a PR", status: "pending" as const },
-    ];
-    expect(deriveTaskControlState(plan(steps))).toEqual({
-      completed: 1,
-      total: 3,
-      allDone: false,
-      steps,
-    });
-  });
-
-  it("keeps a finished list visible with the all-done mark", () => {
-    const steps = [
-      { step: "Inspect code", status: "completed" as const },
-      { step: "Write tests", status: "completed" as const },
-    ];
-    expect(deriveTaskControlState(plan(steps))).toEqual({
-      completed: 2,
-      total: 2,
-      allDone: true,
-      steps,
-    });
-  });
-});
-
-describe("taskControlAriaLabel", () => {
-  it("names an in-progress checklist by completed of total", () => {
-    expect(
-      taskControlAriaLabel({
-        completed: 2,
-        total: 5,
-        allDone: false,
-        steps: [],
-      }),
-    ).toBe("Tasks 2 of 5");
-  });
-
-  it("names a finished checklist", () => {
-    expect(
-      taskControlAriaLabel({
-        completed: 3,
-        total: 3,
-        allDone: true,
-        steps: [],
-      }),
-    ).toBe("All tasks completed");
   });
 });
 

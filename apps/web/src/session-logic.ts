@@ -131,31 +131,6 @@ export interface ActivePlanState {
   }>;
 }
 
-export interface TaskControlState {
-  completed: number;
-  total: number;
-  allDone: boolean;
-  steps: ActivePlanState["steps"];
-}
-
-/** Header Tasks button: hide when there is no checklist. */
-export function deriveTaskControlState(plan: ActivePlanState | null): TaskControlState | null {
-  if (plan === null || plan.steps.length === 0) {
-    return null;
-  }
-  const completed = plan.steps.filter((step) => step.status === "completed").length;
-  return {
-    completed,
-    total: plan.steps.length,
-    allDone: completed === plan.steps.length,
-    steps: plan.steps,
-  };
-}
-
-export function taskControlAriaLabel(state: TaskControlState): string {
-  return state.allDone ? "All tasks completed" : `Tasks ${state.completed} of ${state.total}`;
-}
-
 export interface LatestProposedPlanState {
   id: OrchestrationProposedPlanId;
   createdAt: string;

@@ -24,7 +24,6 @@ import {
 } from "react";
 import GitActionsControl from "../GitActionsControl";
 import { type DraftId } from "~/composerDraftStore";
-import type { TaskControlState } from "~/session-logic";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { toastManager } from "../ui/toast";
 import ProjectScriptsControl, {
@@ -33,7 +32,6 @@ import ProjectScriptsControl, {
 } from "../ProjectScriptsControl";
 import { OpenInPicker } from "./OpenInPicker";
 import { ThreadAgentsControl } from "./ThreadAgentsControl";
-import { ThreadTasksControl } from "./ThreadTasksControl";
 import { useRemoteOpenState, type RemoteOpenMode } from "../../remoteOpen";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useVetraProjectFileScripts } from "~/hooks/useVetraProjectFileScripts";
@@ -67,8 +65,6 @@ interface ChatHeaderProps {
   availableEditors: ReadonlyArray<EditorId>;
   rightPanelOpen: boolean;
   gitCwd: string | null;
-  /** Current provider todo list; omitted from the header when null. */
-  taskControlState: TaskControlState | null;
   /** This thread's subagent roster; omitted from the header when null. */
   agentControlState: AgentControlState | null;
   readonly onOpenPullRequest?: ((number: number) => void) | undefined;
@@ -133,7 +129,6 @@ export const ChatHeader = memo(function ChatHeader({
   availableEditors,
   rightPanelOpen,
   gitCwd,
-  taskControlState,
   agentControlState,
   onOpenPullRequest,
   onNewThreadInProject,
@@ -215,7 +210,7 @@ export const ChatHeader = memo(function ChatHeader({
   const handleHeaderContextMenu = useCallback(
     (event: ReactMouseEvent) => {
       if (!isServerThread || renamingTitle !== null) return;
-      // The right-side controls (git, scripts, tasks, open-in) keep their own
+      // The right-side controls (git, scripts, agents, open-in) keep their own
       // behavior; only the breadcrumb area opens the thread menu.
       if ((event.target as HTMLElement).closest("[data-chat-header-actions]")) return;
       event.preventDefault();
@@ -345,7 +340,6 @@ export const ChatHeader = memo(function ChatHeader({
         {agentControlState ? (
           <ThreadAgentsControl state={agentControlState} onOpenAgents={onOpenAgents} />
         ) : null}
-        {taskControlState ? <ThreadTasksControl state={taskControlState} /> : null}
         {showOpenInPicker && (
           <OpenInPicker
             environmentId={activeThreadEnvironmentId}
