@@ -157,6 +157,7 @@ import * as NativeTelemetryClient from "./resourceTelemetry/NativeTelemetryClien
 import * as ResourceAttribution from "./resourceTelemetry/ResourceAttribution.ts";
 import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
 import * as UsageService from "./usage/UsageService.ts";
+import * as AnalyticsService from "./telemetry/AnalyticsService.ts";
 import * as Data from "effect/Data";
 
 import { makeOrchestrationIntegrationHarness } from "../integration/OrchestrationEngineHarness.integration.ts";
@@ -410,6 +411,7 @@ const buildAppUnderTest = (options?: {
     >;
     terminalManager?: Partial<TerminalManager.TerminalManager["Service"]>;
     orchestrationEngine?: Partial<OrchestrationEngine.OrchestrationEngineService["Service"]>;
+    analyticsService?: Partial<AnalyticsService.AnalyticsService["Service"]>;
     projectionSnapshotQuery?: Partial<ProjectionSnapshotQuery.ProjectionSnapshotQuery["Service"]>;
     checkpointDiffQuery?: Partial<CheckpointDiffQuery.CheckpointDiffQuery["Service"]>;
     browserTraceCollector?: Partial<BrowserTraceCollector.BrowserTraceCollector["Service"]>;
@@ -871,6 +873,13 @@ const buildAppUnderTest = (options?: {
     const appLayer = servedRoutesLayer.pipe(
       Layer.provide(resourceTelemetryLayer),
       Layer.provide(UsageService.layerTest),
+      Layer.provide(
+        Layer.mock(AnalyticsService.AnalyticsService)({
+          record: () => Effect.void,
+          flush: Effect.void,
+          ...options?.layers?.analyticsService,
+        }),
+      ),
       Layer.provide(
         Layer.mock(BrowserTraceCollector.BrowserTraceCollector)({
           record: () => Effect.void,
@@ -5308,6 +5317,93 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
+  it.effect("records thread analytics only after a client command succeeds", () =>
+    Effect.gen(function* () {
+      const effects: string[] = [];
+      const analyticsProperties: Array<Readonly<Record<string, unknown>> | undefined> = [];
+      const failedCommandId = CommandId.make("cmd-thread-create-failed");
+
+      yield* buildAppUnderTest({
+        layers: {
+          analyticsService: {
+            record: (event, properties) =>
+              Effect.sync(() => {
+                effects.push(`analytics:${event}`);
+                analyticsProperties.push(properties);
+              }),
+          },
+          orchestrationEngine: {
+            dispatch: (command) =>
+              Effect.sync(() => effects.push(`dispatch:${command.commandId}`)).pipe(
+                Effect.flatMap(() =>
+                  command.commandId === failedCommandId
+                    ? Effect.fail(
+                        new OrchestrationListenerCallbackError({
+                          listener: "domain-event",
+                          detail: "thread creation failed",
+                        }),
+                      )
+                    : Effect.succeed({ sequence: 1 }),
+                ),
+              ),
+          },
+        },
+      });
+
+      const createThreadCommand = (commandId: CommandId, threadId: ThreadId) =>
+        ({
+          type: "thread.create",
+          commandId,
+          threadId,
+          projectId: defaultProjectId,
+          title: "Analytics test",
+          modelSelection: defaultModelSelection,
+          runtimeMode: "full-access",
+          interactionMode: "default",
+          branch: null,
+          worktreePath: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+        }) as const;
+
+      const wsUrl = yield* getWsServerUrl("/ws?clientSurface=mobile&clientAppVersion=1.2.3");
+      yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          Effect.gen(function* () {
+            const failed = yield* client[ORCHESTRATION_WS_METHODS.dispatchCommand](
+              createThreadCommand(failedCommandId, ThreadId.make("thread-create-failed")),
+            ).pipe(Effect.result);
+
+            assert.equal(failed._tag, "Failure");
+            assert.deepEqual(effects, [
+              "analytics:client.connected",
+              "dispatch:cmd-thread-create-failed",
+            ]);
+
+            const succeeded = yield* client[ORCHESTRATION_WS_METHODS.dispatchCommand](
+              createThreadCommand(
+                CommandId.make("cmd-thread-create-succeeded"),
+                ThreadId.make("thread-create-succeeded"),
+              ),
+            );
+
+            assert.equal(succeeded.sequence, 1);
+          }),
+        ),
+      );
+
+      assert.deepEqual(effects, [
+        "analytics:client.connected",
+        "dispatch:cmd-thread-create-failed",
+        "dispatch:cmd-thread-create-succeeded",
+        "analytics:client.thread.started",
+      ]);
+      assert.deepEqual(analyticsProperties, [
+        { surface: "mobile", appVersion: "1.2.3" },
+        { surface: "mobile", appVersion: "1.2.3" },
+      ]);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
   it.effect("routes websocket rpc projects.writeFile errors", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
@@ -7579,6 +7675,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
     () =>
       Effect.gen(function* () {
         const dispatchedCommands: Array<OrchestrationCommand> = [];
+        const dispatchedOrigins: Array<unknown> = [];
         const bootstrapGitOperations: string[] = [];
         const refreshStatus = vi.fn((_: string) =>
           Effect.succeed({
@@ -7661,9 +7758,10 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
               refreshStatus,
             },
             orchestrationEngine: {
-              dispatch: (command) =>
+              dispatch: (command, options) =>
                 Effect.sync(() => {
                   dispatchedCommands.push(command);
+                  dispatchedOrigins.push(options?.origin);
                   return { sequence: dispatchedCommands.length };
                 }),
               readEvents: () => Stream.empty,
@@ -7675,7 +7773,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         });
 
         const createdAt = "2026-01-01T00:00:00.000Z";
-        const wsUrl = yield* getWsServerUrl("/ws");
+        const wsUrl = yield* getWsServerUrl("/ws?clientSurface=desktop&clientAppVersion=1.2.3");
         const response = yield* Effect.scoped(
           withWsRpcClient(wsUrl, (client) =>
             client[ORCHESTRATION_WS_METHODS.dispatchCommand]({
@@ -7725,6 +7823,10 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
             "thread.activity.append",
             "thread.turn.start",
           ],
+        );
+        assert.deepEqual(
+          dispatchedOrigins,
+          Array.from({ length: 5 }, () => ({ surface: "desktop", appVersion: "1.2.3" })),
         );
         assert.deepEqual(createWorktree.mock.calls[0]?.[0], {
           cwd: "/tmp/project",

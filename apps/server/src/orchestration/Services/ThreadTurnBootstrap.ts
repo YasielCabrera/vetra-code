@@ -12,11 +12,16 @@
  * @module ThreadTurnBootstrap
  */
 import type {
+  OrchestrationClientOrigin,
   OrchestrationCommand,
   OrchestrationDispatchCommandError,
 } from "@vetra-code/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
+
+export interface ThreadTurnBootstrapDispatchOptions {
+  readonly origin?: OrchestrationClientOrigin;
+}
 
 export interface ThreadTurnBootstrapShape {
   /**
@@ -27,6 +32,7 @@ export interface ThreadTurnBootstrapShape {
    */
   readonly dispatchBootstrapTurnStart: (
     command: Extract<OrchestrationCommand, { type: "thread.turn.start" }>,
+    options?: ThreadTurnBootstrapDispatchOptions,
   ) => Effect.Effect<{ readonly sequence: number }, OrchestrationDispatchCommandError>;
 }
 

@@ -1,10 +1,14 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { threadHasStarted } from "~/components/ChatView.logic";
+import {
+  resolveDraftPromotionNavigationTarget,
+  threadHasStarted,
+} from "~/components/ChatView.logic";
 import {
   type DraftId,
   markPromotedDraftThreadByRef,
+  useBackgroundDraftSubmissionPending,
   useComposerDraftStore,
 } from "~/composerDraftStore";
 import { waitForDraftHeroTransition } from "~/components/chat/draftHeroTransition";
@@ -29,7 +33,12 @@ export function useDraftPromotionNavigation(draftId: DraftId) {
     : null;
   const serverThreadRef = draftSession?.promotedTo ?? inferredThreadRef;
   const serverThread = useThread(serverThreadRef);
-  const canonicalThreadRef = threadHasStarted(serverThread) ? serverThreadRef : null;
+  const backgroundSubmissionPending = useBackgroundDraftSubmissionPending(serverThreadRef);
+  const canonicalThreadRef = resolveDraftPromotionNavigationTarget({
+    serverThreadRef,
+    serverThreadStarted: threadHasStarted(serverThread),
+    backgroundSubmissionPending,
+  });
 
   useEffect(() => {
     if (!inferredThreadRef || draftSession?.promotedTo) {

@@ -1306,17 +1306,24 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   </button>
                 )
               ) : !props.settlementSupported ? null : variantAction === "unsettle" ? (
-                <button
-                  type="button"
-                  aria-label="Un-settle thread"
-                  onClick={handleUnsettleClick}
-                  className={cn(
-                    "pointer-events-none absolute inset-y-0 right-0 -mr-1 inline-flex cursor-pointer items-center gap-1 rounded-md bg-transparent px-1.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover/sidebar-row:pointer-events-auto group-hover/sidebar-row:opacity-100",
-                    isWoke && "group-hover/sidebar-row:static",
-                  )}
-                >
-                  <Undo2Icon className="mb-px size-3.5" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        aria-label="Un-settle thread"
+                        onClick={handleUnsettleClick}
+                        className={cn(
+                          "pointer-events-none absolute inset-y-0 right-0 -mr-1 inline-flex cursor-pointer items-center gap-1 rounded-md bg-transparent px-1.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover/sidebar-row:pointer-events-auto group-hover/sidebar-row:opacity-100",
+                          isWoke && "group-hover/sidebar-row:static",
+                        )}
+                      />
+                    }
+                  >
+                    <Undo2Icon className="mb-px size-3.5" />
+                  </TooltipTrigger>
+                  <TooltipPopup side="top">Un-settle thread</TooltipPopup>
+                </Tooltip>
               ) : (
                 <button
                   type="button"
@@ -3573,13 +3580,19 @@ export default function Sidebar() {
               {/* Emerald, like a thread's Done pill: same meaning, same hue
                   wherever a finished-and-unread result surfaces. */}
               {unreadAutomationRunCount > 0 ? (
-                <span
-                  className="shrink-0 rounded-full bg-emerald-500/12 px-1.5 py-px text-[11px] font-medium text-emerald-700 tabular-nums dark:bg-emerald-400/12 dark:text-emerald-300"
-                  title={unreadRunCountLabel(unreadAutomationRunCount)}
-                >
-                  <span aria-hidden>{unreadRunBadgeLabel(unreadAutomationRunCount)}</span>
-                  <span className="sr-only">{unreadRunCountLabel(unreadAutomationRunCount)}</span>
-                </span>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <span className="shrink-0 rounded-full bg-emerald-500/12 px-1.5 py-px text-[11px] font-medium text-emerald-700 tabular-nums dark:bg-emerald-400/12 dark:text-emerald-300" />
+                    }
+                  >
+                    <span aria-hidden>{unreadRunBadgeLabel(unreadAutomationRunCount)}</span>
+                    <span className="sr-only">{unreadRunCountLabel(unreadAutomationRunCount)}</span>
+                  </TooltipTrigger>
+                  <TooltipPopup side="right">
+                    {unreadRunCountLabel(unreadAutomationRunCount)}
+                  </TooltipPopup>
+                </Tooltip>
               ) : null}
             </SidebarMenuButton>
             {/* The workspace's projects as a page of their own, above the scope

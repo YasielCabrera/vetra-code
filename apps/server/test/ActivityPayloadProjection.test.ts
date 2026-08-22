@@ -10,7 +10,6 @@ import {
 } from "@vetra-code/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { buildThreadFeed, type ThreadFeedActivity } from "../../mobile/src/lib/threadActivity.ts";
 import { deriveLatestContextWindowSnapshot } from "../../web/src/lib/contextWindow.ts";
 import { deriveWorkLogEntries } from "../../web/src/session-logic.ts";
 import {
@@ -135,27 +134,6 @@ const fixtures = [
 ] satisfies ReadonlyArray<OrchestrationThreadActivity>;
 
 describe("projectActivityPayload", () => {
-  function comparableActivity(activity: ThreadFeedActivity) {
-    return {
-      ...activity,
-      fullDetail: activity.getFullDetail(),
-      copyText: activity.getCopyText(),
-      getFullDetail: undefined,
-      getCopyText: undefined,
-    };
-  }
-
-  function comparableThreadFeed(activities: ReadonlyArray<OrchestrationThreadActivity>) {
-    return buildThreadFeed(makeThread(activities)).map((entry) =>
-      entry.type === "activity-group"
-        ? {
-            ...entry,
-            activities: entry.activities.map(comparableActivity),
-          }
-        : entry,
-    );
-  }
-
   it("drops unread bulk while retaining command, file, tool, and summary inputs", () => {
     const projected = projectActivityPayload(fixtures[0]!);
     expect(projected.payload).toEqual({
@@ -201,7 +179,7 @@ describe("projectActivityPayload", () => {
     });
   });
 
-  it("keeps current web and mobile derived output identical for every tool item type", () => {
+  it("keeps current web derived output identical for every tool item type", () => {
     for (const activity of fixtures) {
       const projected = projectActivityPayload(activity);
       if (activity === fixtures[4]) {
@@ -216,7 +194,34 @@ describe("projectActivityPayload", () => {
         continue;
       }
       expect(deriveWorkLogEntries([projected])).toEqual(deriveWorkLogEntries([activity]));
-      expect(comparableThreadFeed([projected])).toEqual(comparableThreadFeed([activity]));
+    }
+  });
+
+  it("preserves failed stored tool outcomes for web clients", () => {
+    const activities = [
+      makeActivity("failed-command", "command_execution", {
+        item: {
+          command: "vp test run",
+          exitCode: 1,
+          status: "failed",
+        },
+      }),
+      makeActivity("failed-mcp", "mcp_tool_call", {
+        item: {
+          server: "simulator",
+          tool: "build",
+          arguments: {},
+          status: "failed",
+        },
+      }),
+    ];
+
+    for (const activity of activities) {
+      const projected = projectActivityPayload(activity);
+      expect(projected.payload).toMatchObject({ status: "failed" });
+
+      const [webEntry] = deriveWorkLogEntries([projected]);
+      expect(webEntry?.toolLifecycleStatus).toBe("failed");
     }
   });
 

@@ -83,6 +83,7 @@ import { readLocalApi } from "../localApi";
 import { useDiffPanelStore } from "../diffPanelStore";
 import {
   collapseExpandedComposerCursor,
+  type ComposerSubmissionIntent,
   parseStandaloneComposerSlashCommand,
 } from "../composer-logic";
 import {
@@ -216,11 +217,15 @@ import {
   selectProjectGroupingSettings,
 } from "../logicalProject";
 import { buildPhysicalToLogicalProjectKeyMap } from "../sidebarProjectGrouping";
-import { buildDraftThreadRouteParams } from "../threadRoutes";
+import { buildDraftThreadRouteParams, buildThreadRouteParams } from "../threadRoutes";
 import {
+  beginBackgroundDraftSubmissionByRef,
+  clearBackgroundDraftSubmissionByRef,
   type ComposerImageAttachment,
   type DraftId,
   type DraftThreadEnvMode,
+  finalizePromotedDraftThreadByRef,
+  markPromotedDraftThreadByRef,
   useComposerDraftStore,
 } from "../composerDraftStore";
 import {
@@ -322,6 +327,7 @@ import {
   scheduleEnvironmentReconnectWarning,
   hasServerAcknowledgedLocalDispatch,
   isBranchMismatchDismissedForSession,
+  shouldDockDraftHeroForSubmission,
   shouldShowBranchMismatchBanner,
   getStartedThreadModelChangeBlockReason,
   LAST_INVOKED_SCRIPT_BY_PROJECT_KEY,
@@ -332,6 +338,8 @@ import {
   deriveLockedProvider,
   readFileAsDataUrl,
   reconcileMountedTerminalThreadIds,
+  resolveBackgroundDraftWorkspaceOptions,
+  resolveDraftHeroState,
   resolveThreadMetadataUpdateForNextTurn,
   resolveSendEnvMode,
   revokeBlobPreviewUrl,
@@ -607,14 +615,16 @@ function useLocalDispatchState(input: {
   );
   const activeLocalDispatch = serverAcknowledgedLocalDispatch ? null : localDispatch;
   const beginLocalDispatch = useCallback(
-    (options?: { preparingWorktree?: boolean }) => {
+    (options?: { preparingWorktree?: boolean; submissionIntent?: ComposerSubmissionIntent }) => {
       const preparingWorktree = Boolean(options?.preparingWorktree);
       setLocalDispatch((current) => {
         const active = serverAcknowledgedLocalDispatch ? null : current;
         if (active) {
-          return active.preparingWorktree === preparingWorktree
+          const submissionIntent = options?.submissionIntent ?? active.submissionIntent;
+          return active.preparingWorktree === preparingWorktree &&
+            active.submissionIntent === submissionIntent
             ? active
-            : { ...active, preparingWorktree };
+            : { ...active, preparingWorktree, submissionIntent };
         }
         return createLocalDispatchSnapshot(input.activeThread, options);
       });
@@ -629,6 +639,7 @@ function useLocalDispatchState(input: {
     latestUserMessageAt: latestUserMessage?.createdAt ?? null,
     isPreparingWorktree: activeLocalDispatch?.preparingWorktree ?? false,
     isSendBusy: activeLocalDispatch !== null,
+    backgroundSubmissionPending: localDispatch?.submissionIntent === "background",
   };
 }
 
@@ -2367,6 +2378,7 @@ function ChatViewContent(props: ChatViewProps) {
     latestUserMessageAt,
     isPreparingWorktree,
     isSendBusy,
+    backgroundSubmissionPending,
   } = useLocalDispatchState({
     activeThread,
     activeLatestTurn,
@@ -2635,8 +2647,13 @@ function ChatViewContent(props: ChatViewProps) {
   const [dockedDraftHeroThreadKey, setDockedDraftHeroThreadKey] = useState<string | null>(null);
   const draftHeroDockRequested =
     activeThreadKey !== null && dockedDraftHeroThreadKey === activeThreadKey;
-  const isDraftHeroState =
-    isLocalDraftThread && timelineEntries.length === 0 && !isWorking && !draftHeroDockRequested;
+  const isDraftHeroState = resolveDraftHeroState({
+    isLocalDraftThread,
+    hasTimelineEntries: timelineEntries.length > 0,
+    isWorking,
+    draftHeroDockRequested,
+    backgroundSubmissionPending,
+  });
   const [
     attachDraftHeroTransitionGroupRef,
     attachDraftHeroComposerAnchorRef,
@@ -5069,6 +5086,7 @@ function ChatViewContent(props: ChatViewProps) {
 
   const onSend = async (
     e?: { preventDefault: () => void },
+    submissionIntent: ComposerSubmissionIntent = "foreground",
     directAnnotation?: {
       annotation: PreviewAnnotationPayload;
       image: ComposerImageAttachment | null;
@@ -5277,8 +5295,17 @@ function ChatViewContent(props: ChatViewProps) {
       return;
     }
 
+    const resolvedSubmissionIntent =
+      submissionIntent === "background" && isLocalDraftThread ? "background" : "foreground";
     sendInFlightRef.current = true;
-    if (isDraftHeroState && activeThreadKey) {
+    if (
+      shouldDockDraftHeroForSubmission({
+        isDraftHeroState,
+        activeThreadKey,
+        submissionIntent: resolvedSubmissionIntent,
+      }) &&
+      activeThreadKey
+    ) {
       let resolveDockStarted: (() => void) | undefined;
       const dockStarted = new Promise<void>((resolve) => {
         resolveDockStarted = resolve;
@@ -5293,7 +5320,10 @@ function ChatViewContent(props: ChatViewProps) {
       void dockTransition.catch(() => resolveDockStarted?.());
       await dockStarted;
     }
-    beginLocalDispatch({ preparingWorktree: Boolean(baseBranchForWorktree) });
+    beginLocalDispatch({
+      preparingWorktree: Boolean(baseBranchForWorktree),
+      submissionIntent: resolvedSubmissionIntent,
+    });
 
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
@@ -5314,21 +5344,25 @@ function ChatViewContent(props: ChatViewProps) {
       sizeBytes: image.sizeBytes,
       previewUrl: image.previewUrl,
     }));
-    // Sending always returns to the live edge. The new row becomes the
-    // anchored end-space target so it lands near the top while the response
-    // streams into the reserved space below it.
-    isAtEndRef.current = true;
-    timelineScrollModeRef.current = "anchoring-new-turn";
-    liveFollowUserScrollGenerationRef.current = anchorUserScrollGenerationRef.current;
-    setTimelineLiveFollowEnabled(true);
-    pendingTimelineAnchorRef.current = messageIdForSend;
-    activeTimelineAnchorIndexRef.current = null;
-    showScrollDebouncer.current.cancel();
-    setShowScrollToBottom(false);
-    setTimelineAnchor({
-      threadKey: scopedThreadKey(scopeThreadRef(activeThread.environmentId, threadIdForSend)),
-      messageId: messageIdForSend,
-    });
+    const shouldAnchorFirstMessage =
+      activeThread.latestTurn === null &&
+      !timelineMessages.some((message) => message.role === "user");
+    if (shouldAnchorFirstMessage) {
+      isAtEndRef.current = true;
+      timelineScrollModeRef.current = "anchoring-new-turn";
+      liveFollowUserScrollGenerationRef.current = anchorUserScrollGenerationRef.current;
+      setTimelineLiveFollowEnabled(true);
+      pendingTimelineAnchorRef.current = messageIdForSend;
+      activeTimelineAnchorIndexRef.current = null;
+      showScrollDebouncer.current.cancel();
+      setShowScrollToBottom(false);
+      setTimelineAnchor({
+        threadKey: scopedThreadKey(scopeThreadRef(activeThread.environmentId, threadIdForSend)),
+        messageId: messageIdForSend,
+      });
+    } else {
+      scrollToEnd();
+    }
     setOptimisticUserMessages((existing) => [
       ...existing,
       {
@@ -5455,6 +5489,13 @@ function ChatViewContent(props: ChatViewProps) {
             }
           : undefined;
       beginLocalDispatch({ preparingWorktree: false });
+      const backgroundThreadRef =
+        resolvedSubmissionIntent === "background"
+          ? scopeThreadRef(activeThread.environmentId, threadIdForSend)
+          : null;
+      if (backgroundThreadRef) {
+        beginBackgroundDraftSubmissionByRef(backgroundThreadRef);
+      }
       const startResult = await startThreadTurn({
         environmentId,
         input: {
@@ -5474,10 +5515,60 @@ function ChatViewContent(props: ChatViewProps) {
         },
       });
       if (startResult._tag === "Failure") {
+        if (backgroundThreadRef) {
+          clearBackgroundDraftSubmissionByRef(backgroundThreadRef);
+        }
         failure = startResult;
       } else {
         turnStartSucceeded = true;
         acknowledgeActiveThreadWoke();
+        if (backgroundThreadRef) {
+          markPromotedDraftThreadByRef(backgroundThreadRef);
+          try {
+            const nextDraft = await handleNewThread(
+              scopeProjectRef(activeProject.environmentId, activeProject.id),
+              resolveBackgroundDraftWorkspaceOptions({
+                envMode: sendEnvMode,
+                branch: activeThreadBranch,
+                startFromOrigin,
+              }),
+            );
+            if (nextDraft) {
+              finalizePromotedDraftThreadByRef(backgroundThreadRef);
+              toastManager.add(
+                stackedThreadToast({
+                  type: "success",
+                  title: "Started in background",
+                  timeout: 5_000,
+                  actionProps: {
+                    children: "Open",
+                    onClick: () => {
+                      void navigate({
+                        to: "/$environmentId/$threadId",
+                        params: buildThreadRouteParams(backgroundThreadRef),
+                      });
+                    },
+                  },
+                }),
+              );
+            } else {
+              clearBackgroundDraftSubmissionByRef(backgroundThreadRef);
+            }
+          } catch (error) {
+            clearBackgroundDraftSubmissionByRef(backgroundThreadRef);
+            resetLocalDispatch();
+            toastManager.add(
+              stackedThreadToast({
+                type: "warning",
+                title: "Task started in the background",
+                description:
+                  error instanceof Error
+                    ? `Could not open a fresh composer: ${error.message}`
+                    : "Could not open a fresh composer.",
+              }),
+            );
+          }
+        }
       }
     }
 
@@ -5826,19 +5917,7 @@ function ChatViewContent(props: ChatViewProps) {
       beginLocalDispatch({ preparingWorktree: false });
       setThreadError(threadIdForSend, null);
 
-      // Position this sent row once LegendList has measured the anchored tail.
-      isAtEndRef.current = true;
-      timelineScrollModeRef.current = "anchoring-new-turn";
-      liveFollowUserScrollGenerationRef.current = anchorUserScrollGenerationRef.current;
-      setTimelineLiveFollowEnabled(true);
-      pendingTimelineAnchorRef.current = messageIdForSend;
-      activeTimelineAnchorIndexRef.current = null;
-      showScrollDebouncer.current.cancel();
-      setShowScrollToBottom(false);
-      setTimelineAnchor({
-        threadKey: scopedThreadKey(scopeThreadRef(activeThread.environmentId, threadIdForSend)),
-        messageId: messageIdForSend,
-      });
+      scrollToEnd();
 
       setOptimisticUserMessages((existing) => [
         ...existing,
@@ -5933,6 +6012,7 @@ function ChatViewContent(props: ChatViewProps) {
       persistThreadSettingsForNextTurn,
       resetLocalDispatch,
       runtimeMode,
+      scrollToEnd,
       setComposerDraftInteractionMode,
       setThreadError,
       startThreadTurn,
@@ -6318,7 +6398,7 @@ function ChatViewContent(props: ChatViewProps) {
           configuredUrls={configuredPreviewUrls}
           visible
           onSendAnnotation={(annotation, image) => {
-            void onSend(undefined, { annotation, image });
+            void onSend(undefined, "foreground", { annotation, image });
           }}
         />
       </Suspense>
