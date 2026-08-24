@@ -387,6 +387,13 @@ it.layer(
             shortDescription: "Debug failing GitHub Actions checks",
           },
         ]);
+        assert.deepStrictEqual(status.slashCommands, [
+          {
+            name: "feedback",
+            description: "Send this thread and Codex logs to OpenAI",
+            input: { hint: "Describe the issue (optional)" },
+          },
+        ]);
       }),
     );
 
@@ -498,7 +505,7 @@ it.layer(
         assert.strictEqual(status.status, "error");
         assert.strictEqual(status.installed, false);
         assert.strictEqual(status.auth.status, "unknown");
-        assert.strictEqual(status.message, "Codex CLI (`codex`) is not installed or not on PATH.");
+        assert.strictEqual(status.message, "Codex CLI (`codex`) was not found on PATH.");
       }),
     );
 
@@ -1459,7 +1466,7 @@ it.layer(
           assert.strictEqual(codexPersonal?.installed, false);
           assert.strictEqual(
             codexPersonal?.message,
-            "Codex CLI (`codex`) is not installed or not on PATH.",
+            "Codex CLI (`codex`) was not found on PATH.",
           );
         }).pipe(Effect.provide(runtimeServices));
       }),
@@ -2242,10 +2249,7 @@ it.layer(
         assert.strictEqual(status.status, "error");
         assert.strictEqual(status.installed, false);
         assert.strictEqual(status.auth.status, "unknown");
-        assert.strictEqual(
-          status.message,
-          "Claude Agent CLI (`claude`) is not installed or not on PATH.",
-        );
+        assert.strictEqual(status.message, "Claude Agent CLI (`claude`) was not found on PATH.");
       }).pipe(Effect.provide(failingSpawnerLayer("spawn claude ENOENT"))),
     );
 

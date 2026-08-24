@@ -414,7 +414,7 @@ export default function FileBrowserPanel({
           className="min-h-0 flex-1 overflow-hidden"
           style={{
             colorScheme: resolvedTheme,
-            ["--trees-fg-override" as string]: "var(--foreground)",
+            ["--trees-fg-override" as string]: "var(--contrast-foreground)",
           }}
         />
       )}

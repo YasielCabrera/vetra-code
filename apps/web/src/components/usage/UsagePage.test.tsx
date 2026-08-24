@@ -56,13 +56,16 @@ vi.mock("../WorkspacePageHeader", () => ({ WorkspacePageHeader: "header" }));
 // need a RouterProvider this static-markup test does not stand up.
 vi.mock("./SubscriptionLimitsSection", () => ({ SubscriptionLimitsSection: "div" }));
 vi.mock("./UsageProviderChart", () => ({ UsageProviderChart: "div" }));
-vi.mock("./usageProviders", () => ({
-  PROVIDER_ORDER: ["codex", "claude"],
-  PROVIDER_PRESENTATION: {
-    codex: { color: "white", label: "Codex", mark: "span" },
-    claude: { color: "orange", label: "Claude Code", mark: "span" },
-  },
-}));
+vi.mock("./usageProviders", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./usageProviders")>();
+  return {
+    ...actual,
+    PROVIDER_PRESENTATION: {
+      codex: { color: "white", label: "Codex", mark: "span" },
+      claude: { color: "orange", label: "Claude Code", mark: "span" },
+    },
+  };
+});
 
 import { UsagePage } from "./UsagePage";
 

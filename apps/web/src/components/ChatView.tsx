@@ -35,6 +35,12 @@ import {
   threadWokeAt,
 } from "@vetra-code/client-runtime/state/thread-settled";
 import {
+  codexFeedbackMessage,
+  parseCodexFeedbackCommand,
+  submitCodexFeedback,
+  type CodexFeedbackSubmission,
+} from "@vetra-code/client-runtime/state/threads";
+import {
   parseScopedThreadKey,
   scopedThreadKey,
   scopeProjectRef,
@@ -125,6 +131,7 @@ import {
   type TurnDiffSummary,
 } from "../types";
 import { useTheme } from "../hooks/useTheme";
+import { writeTextToClipboard } from "../hooks/useCopyToClipboard";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
 import {
   isCommandPaletteOpen,
@@ -328,6 +335,7 @@ import {
   hasServerAcknowledgedLocalDispatch,
   isBranchMismatchDismissedForSession,
   shouldDockDraftHeroForSubmission,
+  shouldReleaseTimelineAnchorForToolActivity,
   shouldShowBranchMismatchBanner,
   getStartedThreadModelChangeBlockReason,
   LAST_INVOKED_SCRIPT_BY_PROJECT_KEY,
@@ -354,6 +362,12 @@ import { usePowerhouseProjects } from "./powerhouse/usePowerhouseProject";
 import { PowerhousePanelLoading } from "./powerhouse/PowerhousePanelPrimitives";
 import { useComposerHandleContext } from "../composerHandleContext";
 import { ProjectSelectorControl } from "./chat/ProjectSelectorControl";
+import {
+  awaitAttachmentUploads,
+  getUploadedAttachments,
+  releaseAttachmentUploads,
+  startAttachmentUpload,
+} from "../lib/attachmentUploadQueue";
 import { sanitizeThreadErrorMessage } from "~/rpc/transportError";
 import { RightPanelSheet } from "./RightPanelSheet";
 import { previewEnvironment } from "../state/preview";
@@ -1279,6 +1293,9 @@ function ChatViewContent(props: ChatViewProps) {
     reportFailure: false,
   });
   const startThreadTurn = useAtomCommand(threadEnvironment.startTurn, { reportFailure: false });
+  const uploadThreadFeedback = useAtomCommand(threadEnvironment.uploadFeedback, {
+    reportFailure: false,
+  });
   const interruptThreadTurn = useAtomCommand(threadEnvironment.interruptTurn, {
     reportFailure: false,
   });
@@ -1395,6 +1412,16 @@ function ChatViewContent(props: ChatViewProps) {
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [expandedImage, setExpandedImage] = useState<ExpandedImagePreview | null>(null);
   const [optimisticUserMessages, setOptimisticUserMessages] = useState<ChatMessage[]>([]);
+  const [feedbackSubmissionsByThreadKey, setFeedbackSubmissionsByThreadKey] = useState<
+    Record<string, ReadonlyArray<CodexFeedbackSubmission>>
+  >({});
+  const feedbackSubmissions = useMemo(
+    () => feedbackSubmissionsByThreadKey[routeThreadKey] ?? [],
+    [feedbackSubmissionsByThreadKey, routeThreadKey],
+  );
+  const feedbackUploading = feedbackSubmissions.some(
+    (submission) => submission.status === "uploading",
+  );
   const optimisticUserMessagesRef = useRef(optimisticUserMessages);
   optimisticUserMessagesRef.current = optimisticUserMessages;
   const [localDraftErrorsByDraftId, setLocalDraftErrorsByDraftId] = useState<
@@ -1460,6 +1487,7 @@ function ChatViewContent(props: ChatViewProps) {
   const attachmentPreviewHandoffByMessageIdRef = useRef<Record<string, string[]>>({});
   const attachmentPreviewPromotionInFlightByMessageIdRef = useRef<Record<string, true>>({});
   const sendInFlightRef = useRef(false);
+  const feedbackUploadsInFlightRef = useRef(new Set<string>());
   const terminalUiOpenByThreadRef = useRef<Record<string, boolean>>({});
 
   useLayoutEffect(() => {
@@ -1751,6 +1779,9 @@ function ChatViewContent(props: ChatViewProps) {
     return openTerminalThreadKeys.filter((nextThreadKey) => existingThreadKeys.has(nextThreadKey));
   }, [draftThreadKeys, openTerminalThreadKeys, serverThreadKeys]);
   const activeLatestTurn = activeThread?.latestTurn ?? null;
+  const activeRunningTurnId =
+    (activeThread?.session?.status === "running" ? activeThread.session.activeTurnId : null) ??
+    (activeLatestTurn?.state === "running" ? activeLatestTurn.turnId : null);
   // Reading a finished thread clears the sidebar's Done badge. The visit is
   // stamped at the turn's completion time — not now/updatedAt — so it clears
   // exactly the completion the user is looking at: a wake or completion that
@@ -2085,6 +2116,10 @@ function ChatViewContent(props: ChatViewProps) {
     : (primaryEnvironment?.serverConfig ?? null);
   const pullRequestsCapabilityKnown = serverConfig !== null;
   const supportsPullRequests = serverConfig?.environment.capabilities.pullRequests === true;
+  const attachmentEnvironmentConfig = environmentById.get(environmentId)?.serverConfig ?? null;
+  const attachmentUploadsCapabilityKnown = attachmentEnvironmentConfig !== null;
+  const supportsAttachmentUploads =
+    attachmentEnvironmentConfig?.environment.capabilities.attachmentUploads === true;
   const versionMismatch = resolveServerConfigVersionMismatch(serverConfig);
   const versionMismatchDismissKey =
     versionMismatch && activeThread
@@ -2624,16 +2659,29 @@ function ChatViewContent(props: ChatViewProps) {
             return changed ? { ...message, attachments } : message;
           });
 
-    if (optimisticUserMessages.length === 0) {
+    const localMessages = [
+      ...optimisticUserMessages,
+      ...feedbackSubmissions.flatMap((submission) =>
+        submission.status === "interrupted"
+          ? []
+          : [codexFeedbackMessage(submission), codexFeedbackMessage(submission, "assistant")],
+      ),
+    ];
+    if (localMessages.length === 0) {
       return serverMessagesWithPreviewHandoff;
     }
     const serverIds = new Set(serverMessagesWithPreviewHandoff.map((message) => message.id));
-    const pendingMessages = optimisticUserMessages.filter((message) => !serverIds.has(message.id));
+    const pendingMessages = localMessages.filter((message) => !serverIds.has(message.id));
     if (pendingMessages.length === 0) {
       return serverMessagesWithPreviewHandoff;
     }
     return [...serverMessagesWithPreviewHandoff, ...pendingMessages];
-  }, [attachmentPreviewHandoffByMessageId, displayServerMessages, optimisticUserMessages]);
+  }, [
+    attachmentPreviewHandoffByMessageId,
+    displayServerMessages,
+    feedbackSubmissions,
+    optimisticUserMessages,
+  ]);
   const timelineEntries = useMemo(
     () =>
       deriveTimelineEntries(
@@ -3898,6 +3946,8 @@ function ChatViewContent(props: ChatViewProps) {
     liveFollowUserScrollGenerationRef.current = anchorUserScrollGenerationRef.current;
     setTimelineLiveFollowEnabled(true);
     pendingTimelineAnchorRef.current = null;
+    positionedTimelineAnchorRef.current = null;
+    settledTimelineAnchorRef.current = null;
     activeTimelineAnchorIndexRef.current = null;
     showScrollDebouncer.current.cancel();
     setShowScrollToBottom(false);
@@ -3906,6 +3956,28 @@ function ChatViewContent(props: ChatViewProps) {
       void legendListRef.current?.scrollToEnd?.({ animated });
     });
   }, []);
+  useLayoutEffect(() => {
+    if (timelineScrollModeRef.current !== "anchoring-new-turn") {
+      return;
+    }
+
+    if (
+      shouldReleaseTimelineAnchorForToolActivity({
+        anchorMessageId: timelineAnchorMessageId,
+        liveFollowEnabled: timelineLiveFollowEnabled,
+        runningTurnId: activeRunningTurnId,
+        timelineEntries,
+      })
+    ) {
+      scrollToEnd();
+    }
+  }, [
+    activeRunningTurnId,
+    scrollToEnd,
+    timelineAnchorMessageId,
+    timelineEntries,
+    timelineLiveFollowEnabled,
+  ]);
   useEffect(() => {
     let removeListeners: (() => void) | null = null;
     let frame: number | null = null;
@@ -5108,7 +5180,8 @@ function ChatViewContent(props: ChatViewProps) {
       isSendBusy ||
       isConnecting ||
       threadDetailLoading ||
-      sendInFlightRef.current
+      sendInFlightRef.current ||
+      feedbackUploadsInFlightRef.current.has(routeThreadKey)
     ) {
       notifyDirectAnnotationAttached();
       return;
@@ -5183,6 +5256,101 @@ function ChatViewContent(props: ChatViewProps) {
         composerPreviewAnnotations.length +
         composerReviewComments.length,
     });
+    const feedbackCommand =
+      ctxSelectedProvider === "codex" &&
+      composerImages.length === 0 &&
+      sendableComposerTerminalContexts.length === 0 &&
+      composerElementContexts.length === 0 &&
+      composerPreviewAnnotations.length === 0 &&
+      composerReviewComments.length === 0
+        ? parseCodexFeedbackCommand(trimmed)
+        : null;
+    if (feedbackCommand) {
+      if (!isServerThread || activeThread.session === null) {
+        toastManager.add(
+          stackedThreadToast({
+            type: "warning",
+            title: "Start a Codex thread first",
+            description: "Send a message before you submit feedback.",
+          }),
+        );
+        return;
+      }
+      feedbackUploadsInFlightRef.current.add(routeThreadKey);
+      const result = await submitCodexFeedback({
+        submission: {
+          id: newMessageId(),
+          command: trimmed,
+          createdAt: new Date().toISOString(),
+        },
+        clearDraft: () => {
+          promptRef.current = "";
+          clearComposerDraftContent(composerDraftTarget);
+          composerRef.current?.resetCursorState();
+          scrollToEnd();
+        },
+        onUpdate: (submission) => {
+          setFeedbackSubmissionsByThreadKey((current) => {
+            const existing = current[routeThreadKey] ?? [];
+            const found = existing.some((entry) => entry.id === submission.id);
+            return {
+              ...current,
+              [routeThreadKey]: found
+                ? existing.map((entry) => (entry.id === submission.id ? submission : entry))
+                : [...existing, submission],
+            };
+          });
+        },
+        upload: () =>
+          uploadThreadFeedback({
+            environmentId,
+            input: {
+              threadId: activeThread.id,
+              ...feedbackCommand,
+            },
+          }),
+      }).finally(() => {
+        feedbackUploadsInFlightRef.current.delete(routeThreadKey);
+      });
+      if (result._tag === "Failure") {
+        if (!isAtomCommandInterrupted(result)) {
+          toastManager.add(
+            stackedThreadToast({
+              type: "error",
+              title: "Could not send feedback to OpenAI",
+              description: chatActionErrorMessage(squashAtomCommandFailure(result)),
+            }),
+          );
+        }
+        return;
+      }
+      const feedbackId = result.value.feedbackId;
+      toastManager.add(
+        stackedThreadToast({
+          type: "success",
+          title: "Feedback sent to OpenAI",
+          description: `Thread ID: ${feedbackId}`,
+          timeout: 0,
+          actionProps: {
+            children: "Copy ID",
+            onClick: () => {
+              void writeTextToClipboard(feedbackId, "Codex feedback thread ID").catch(
+                (error: unknown) => {
+                  toastManager.add(
+                    stackedThreadToast({
+                      type: "error",
+                      title: "Could not copy thread ID",
+                      description: chatActionErrorMessage(error),
+                    }),
+                  );
+                },
+              );
+            },
+          },
+        }),
+      );
+      return;
+    }
     if (!directAnnotation && showPlanFollowUpPrompt && activeProposedPlan) {
       const followUp = resolvePlanFollowUpSubmission({
         draftText: trimmed,
@@ -5295,9 +5463,21 @@ function ChatViewContent(props: ChatViewProps) {
       return;
     }
 
+    sendInFlightRef.current = true;
+    if (supportsAttachmentUploads && composerImagesSnapshot.length > 0) {
+      for (const image of composerImagesSnapshot) {
+        startAttachmentUpload({ environmentId, image });
+      }
+      await awaitAttachmentUploads(composerImagesSnapshot.map((image) => image.id));
+      if (getUploadedAttachments({ environmentId, images: composerImagesSnapshot }) === null) {
+        sendInFlightRef.current = false;
+        setThreadError(threadIdForSend, "Retry or remove failed image uploads before sending.");
+        return;
+      }
+    }
+
     const resolvedSubmissionIntent =
       submissionIntent === "background" && isLocalDraftThread ? "background" : "foreground";
-    sendInFlightRef.current = true;
     if (
       shouldDockDraftHeroForSubmission({
         isDraftHeroState,
@@ -5328,13 +5508,22 @@ function ChatViewContent(props: ChatViewProps) {
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
     const turnAttachmentsPromise = Promise.all(
-      composerImagesSnapshot.map(async (image) => ({
-        type: "image" as const,
-        name: image.name,
-        mimeType: image.mimeType,
-        sizeBytes: image.sizeBytes,
-        dataUrl: await readFileAsDataUrl(image.file),
-      })),
+      composerImagesSnapshot.map(async (image) => {
+        if (supportsAttachmentUploads) {
+          const uploaded = getUploadedAttachments({ environmentId, images: [image] })?.[0];
+          if (!uploaded) {
+            throw new Error(`Image '${image.name}' did not finish uploading.`);
+          }
+          return uploaded;
+        }
+        return {
+          type: "image" as const,
+          name: image.name,
+          mimeType: image.mimeType,
+          sizeBytes: image.sizeBytes,
+          dataUrl: await readFileAsDataUrl(image.file),
+        };
+      }),
     );
     const optimisticAttachments = composerImagesSnapshot.map((image) => ({
       type: "image" as const,
@@ -5521,6 +5710,9 @@ function ChatViewContent(props: ChatViewProps) {
         failure = startResult;
       } else {
         turnStartSucceeded = true;
+        if (supportsAttachmentUploads) {
+          releaseAttachmentUploads(composerImagesSnapshot);
+        }
         acknowledgeActiveThreadWoke();
         if (backgroundThreadRef) {
           markPromotedDraftThreadByRef(backgroundThreadRef);
@@ -6618,11 +6810,7 @@ function ChatViewContent(props: ChatViewProps) {
                 listRef={legendListRef}
                 timelineEntries={timelineEntries}
                 latestTurn={activeLatestTurn}
-                runningTurnId={
-                  activeThread.session?.status === "running"
-                    ? activeThread.session.activeTurnId
-                    : null
-                }
+                runningTurnId={activeRunningTurnId}
                 turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
                 activeThreadEnvironmentId={activeThread.environmentId}
                 routeThreadKey={routeThreadKey}
@@ -6729,6 +6917,8 @@ function ChatViewContent(props: ChatViewProps) {
                             composerRef={composerRef}
                             composerDraftTarget={composerDraftTarget}
                             environmentId={environmentId}
+                            attachmentUploadsCapabilityKnown={attachmentUploadsCapabilityKnown}
+                            supportsAttachmentUploads={supportsAttachmentUploads}
                             routeKind={routeKind}
                             routeThreadRef={routeThreadRef}
                             draftId={draftId}
@@ -6742,7 +6932,13 @@ function ChatViewContent(props: ChatViewProps) {
                             phase={phase}
                             isConnecting={isConnecting}
                             isSendBusy={isSendBusy}
-                            sendDisabledReason={threadDetailLoading ? "Messages loading" : null}
+                            sendDisabledReason={
+                              feedbackUploading
+                                ? "Sending feedback"
+                                : threadDetailLoading
+                                  ? "Messages loading"
+                                  : null
+                            }
                             isPreparingWorktree={isPreparingWorktree}
                             externalDrawerAttached={externalComposerDrawerAttached}
                             environmentUnavailable={activeEnvironmentUnavailableState}
