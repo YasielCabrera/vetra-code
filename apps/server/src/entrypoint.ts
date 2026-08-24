@@ -29,9 +29,14 @@ export const isEntrypoint = (input: {
   }
   // npm and npx install the CLI as a symlink. Without `--preserve-symlinks` the
   // module URL is the resolved real path while `process.argv[1]` keeps the link
-  // path, so the comparison above misses.
+  // path, so the comparison above misses. Resolve both sides: on macOS the
+  // temp and Homebrew prefixes are themselves symlinks (`/var` -> `/private/var`),
+  // so realpath-ing only the entry path leaves the two spellings unequal.
   try {
-    return input.moduleUrl === NodeURL.pathToFileURL(NodeFS.realpathSync(input.entryPath)).href;
+    return (
+      NodeFS.realpathSync(NodeURL.fileURLToPath(input.moduleUrl)) ===
+      NodeFS.realpathSync(input.entryPath)
+    );
   } catch {
     return false;
   }
