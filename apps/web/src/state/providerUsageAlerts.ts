@@ -22,6 +22,8 @@ export interface ProviderUsageAlertEvaluation {
   readonly changed: boolean;
 }
 
+export const PROVIDER_USAGE_ALERT_COOLDOWN_MS = 10 * 60_000;
+
 export const providerUsageAlertMarkerKey = (
   environmentId: EnvironmentId,
   instanceId: ProviderInstanceId,
@@ -46,6 +48,45 @@ const parsedMarkerKey = (
     return undefined;
   }
 };
+
+/**
+ * Applies one device-local cooldown across every environment that reports the
+ * same provider instance ID. The timestamp lives on existing window markers,
+ * so normal marker pruning also bounds cooldown state.
+ */
+export function applyProviderUsageAlertCooldown(input: {
+  readonly markers: ProviderUsageAlertMarkers;
+  readonly instanceId: ProviderInstanceId;
+  readonly now: number;
+}): { readonly markers: ProviderUsageAlertMarkers; readonly shouldNotify: boolean } {
+  const matchingKeys: string[] = [];
+  let lastNotifiedAt: number | undefined;
+
+  for (const [key, marker] of Object.entries(input.markers)) {
+    const parsed = parsedMarkerKey(key);
+    if (parsed?.instanceId !== input.instanceId) continue;
+    matchingKeys.push(key);
+    if (marker.lastNotifiedAt !== undefined) {
+      lastNotifiedAt = Math.max(lastNotifiedAt ?? marker.lastNotifiedAt, marker.lastNotifiedAt);
+    }
+  }
+
+  const elapsed = lastNotifiedAt === undefined ? undefined : input.now - lastNotifiedAt;
+  if (elapsed !== undefined && elapsed >= 0 && elapsed < PROVIDER_USAGE_ALERT_COOLDOWN_MS) {
+    return { markers: input.markers, shouldNotify: false };
+  }
+
+  if (matchingKeys.length === 0) {
+    return { markers: input.markers, shouldNotify: true };
+  }
+
+  const next = { ...input.markers };
+  for (const key of matchingKeys) {
+    const marker = next[key];
+    if (marker) next[key] = { ...marker, lastNotifiedAt: input.now };
+  }
+  return { markers: next, shouldNotify: true };
+}
 
 /**
  * Retires markers for environments the client no longer knows about. Callers
@@ -81,7 +122,8 @@ const sameMarker = (
   left.lowNotified === right.lowNotified &&
   left.exhausted === right.exhausted &&
   left.restorationNotified === right.restorationNotified &&
-  left.lastUsedPercent === right.lastUsedPercent;
+  left.lastUsedPercent === right.lastUsedPercent &&
+  left.lastNotifiedAt === right.lastNotifiedAt;
 
 /**
  * Advances alert transitions only from fresh, successful provider snapshots.
@@ -178,6 +220,9 @@ export function evaluateProviderUsageAlerts(input: {
         exhausted,
         restorationNotified,
         lastUsedPercent: window.usedPercent,
+        ...(previous?.lastNotifiedAt !== undefined
+          ? { lastNotifiedAt: previous.lastNotifiedAt }
+          : {}),
       };
       if (!sameMarker(previous, marker)) {
         next[key] = marker;

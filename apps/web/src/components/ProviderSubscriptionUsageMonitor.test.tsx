@@ -1,17 +1,36 @@
 import type { ReactElement } from "react";
-import { EnvironmentId } from "@vetra-code/contracts";
+import {
+  EnvironmentId,
+  ProviderDriverKind,
+  ProviderInstanceId,
+  type ProviderSubscriptionUsageReport,
+} from "@vetra-code/contracts";
+import type { ClientSettingsPatch } from "@vetra-code/contracts/settings";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { EnvironmentProviderSubscriptionUsageStatus } from "../state/providerSubscriptionUsage";
+import type { ProviderUsageAlertMarkers } from "../state/providerUsageAlerts";
+
+type TestSettings = {
+  providerUsageRefreshIntervalMinutes: 5;
+  providerUsageAlertsEnabled: boolean;
+  providerUsageAlertTransitions: ProviderUsageAlertMarkers;
+};
 
 const testState = vi.hoisted(() => ({
   environments: [] as EnvironmentProviderSubscriptionUsageStatus[],
   forceRefresh: vi.fn(),
+  updateClientSettings: vi.fn<(patch: ClientSettingsPatch) => void>(),
   settings: {
     providerUsageRefreshIntervalMinutes: 5 as const,
     providerUsageAlertsEnabled: false,
     providerUsageAlertTransitions: {},
-  },
+  } as TestSettings,
+}));
+
+const toastMocks = vi.hoisted(() => ({
+  add: vi.fn(),
+  stackedThreadToast: vi.fn((input: unknown) => input),
 }));
 
 const hooks = vi.hoisted(() => {
@@ -134,7 +153,7 @@ vi.mock("../hooks/useSettings", () => ({
   useClientSettings: (select: (settings: typeof testState.settings) => unknown) =>
     select(testState.settings),
   useClientSettingsHydrated: () => true,
-  useUpdateClientSettings: () => vi.fn(),
+  useUpdateClientSettings: () => testState.updateClientSettings,
 }));
 
 vi.mock("../state/providerSubscriptionUsage", () => ({
@@ -149,14 +168,9 @@ vi.mock("../state/use-atom-command", () => ({
   useAtomCommand: () => testState.forceRefresh,
 }));
 
-vi.mock("../state/providerUsageAlerts", () => ({
-  evaluateProviderUsageAlerts: vi.fn(),
-  pruneProviderUsageAlertEnvironments: vi.fn(),
-}));
-
 vi.mock("./ui/toast", () => ({
-  stackedThreadToast: vi.fn(),
-  toastManager: { add: vi.fn() },
+  stackedThreadToast: toastMocks.stackedThreadToast,
+  toastManager: { add: toastMocks.add },
 }));
 
 import { ProviderSubscriptionUsageMonitor } from "./ProviderSubscriptionUsageMonitor";
@@ -171,6 +185,49 @@ const connectedEnvironment = (): EnvironmentProviderSubscriptionUsageStatus => (
   isPending: false,
   error: null,
   report: null,
+});
+
+const lowUsageReport = (cycle: number): ProviderSubscriptionUsageReport => ({
+  contractVersion: 1,
+  readAt: `2026-08-19T12:0${cycle}:00.000Z`,
+  instances: [
+    {
+      instanceId: ProviderInstanceId.make("claude"),
+      driver: ProviderDriverKind.make("claude"),
+      displayName: "Claude",
+      state: "ready",
+      freshness: "fresh",
+      fetchedAt: `2026-08-19T12:0${cycle}:00.000Z`,
+      source: "provider-cli",
+      windows: [
+        {
+          id: "session",
+          label: "Session",
+          usedPercent: 96 + cycle,
+          resetsAt: `2026-08-${20 + cycle}T12:00:00.000Z`,
+        },
+      ],
+      details: [],
+    },
+    {
+      instanceId: ProviderInstanceId.make("codex"),
+      driver: ProviderDriverKind.make("codex"),
+      displayName: "Codex",
+      state: "ready",
+      freshness: "fresh",
+      fetchedAt: `2026-08-19T12:0${cycle}:00.000Z`,
+      source: "provider-cli",
+      windows: [
+        {
+          id: "session",
+          label: "Session",
+          usedPercent: 96 + cycle,
+          resetsAt: `2026-08-${20 + cycle}T12:00:00.000Z`,
+        },
+      ],
+      details: [],
+    },
+  ],
 });
 
 const installBrowserTimers = () => {
@@ -214,6 +271,17 @@ describe("ProviderSubscriptionUsageMonitor", () => {
     installBrowserTimers();
     hooks.reset();
     testState.forceRefresh.mockReset();
+    testState.updateClientSettings.mockReset();
+    testState.updateClientSettings.mockImplementation((patch) => {
+      testState.settings = { ...testState.settings, ...patch } as TestSettings;
+    });
+    toastMocks.add.mockReset();
+    toastMocks.stackedThreadToast.mockClear();
+    testState.settings = {
+      providerUsageRefreshIntervalMinutes: 5,
+      providerUsageAlertsEnabled: false,
+      providerUsageAlertTransitions: {},
+    };
     testState.environments = [connectedEnvironment()];
   });
 
@@ -280,5 +348,24 @@ describe("ProviderSubscriptionUsageMonitor", () => {
       environmentId,
       input: { forceRefresh: true },
     });
+  });
+
+  it("waits 10 minutes before showing another usage alert for each provider", () => {
+    testState.settings.providerUsageAlertsEnabled = true;
+    testState.environments = [{ ...connectedEnvironment(), report: lowUsageReport(0) }];
+    const Monitor = hydratedMonitor();
+    renderMonitor(Monitor);
+
+    expect(toastMocks.add).toHaveBeenCalledTimes(2);
+
+    vi.advanceTimersByTime(5 * 60_000);
+    testState.environments = [{ ...connectedEnvironment(), report: lowUsageReport(1) }];
+    renderMonitor(Monitor);
+    expect(toastMocks.add).toHaveBeenCalledTimes(2);
+
+    vi.advanceTimersByTime(5 * 60_000);
+    testState.environments = [{ ...connectedEnvironment(), report: lowUsageReport(2) }];
+    renderMonitor(Monitor);
+    expect(toastMocks.add).toHaveBeenCalledTimes(4);
   });
 });

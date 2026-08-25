@@ -7,7 +7,9 @@ import {
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  applyProviderUsageAlertCooldown,
   evaluateProviderUsageAlerts,
+  PROVIDER_USAGE_ALERT_COOLDOWN_MS,
   providerUsageAlertMarkerKey,
   pruneProviderUsageAlertEnvironments,
   type ProviderUsageAlertMarkers,
@@ -202,6 +204,66 @@ describe("evaluateProviderUsageAlerts", () => {
       failing.markers,
     );
     expect(recovered.groups.map((group) => group.kind)).toEqual(["restored"]);
+  });
+});
+
+describe("applyProviderUsageAlertCooldown", () => {
+  it("allows one alert per provider instance every 10 minutes", () => {
+    const now = Date.parse("2026-08-13T12:00:00.000Z");
+    const seeded = evaluate(report({ usedPercent: 96 })).markers;
+
+    const first = applyProviderUsageAlertCooldown({ markers: seeded, instanceId, now });
+    expect(first.shouldNotify).toBe(true);
+    expect(
+      first.markers[providerUsageAlertMarkerKey(environmentId, instanceId, "weekly")],
+    ).toMatchObject({ lastNotifiedAt: now });
+
+    const insideCooldown = applyProviderUsageAlertCooldown({
+      markers: first.markers,
+      instanceId,
+      now: now + PROVIDER_USAGE_ALERT_COOLDOWN_MS - 1,
+    });
+    expect(insideCooldown).toEqual({ markers: first.markers, shouldNotify: false });
+
+    const afterCooldown = applyProviderUsageAlertCooldown({
+      markers: first.markers,
+      instanceId,
+      now: now + PROVIDER_USAGE_ALERT_COOLDOWN_MS,
+    });
+    expect(afterCooldown.shouldNotify).toBe(true);
+    expect(
+      afterCooldown.markers[providerUsageAlertMarkerKey(environmentId, instanceId, "weekly")]
+        ?.lastNotifiedAt,
+    ).toBe(now + PROVIDER_USAGE_ALERT_COOLDOWN_MS);
+  });
+
+  it("shares the cooldown across environments but not provider instances", () => {
+    const now = Date.parse("2026-08-13T12:00:00.000Z");
+    const local = evaluate(report({ usedPercent: 96 })).markers;
+    const first = applyProviderUsageAlertCooldown({ markers: local, instanceId, now });
+    const remoteEnvironment = EnvironmentId.make("environment-remote");
+    const remote = evaluate(report({ usedPercent: 96 }), first.markers, remoteEnvironment);
+
+    expect(
+      applyProviderUsageAlertCooldown({
+        markers: remote.markers,
+        instanceId,
+        now: now + 60_000,
+      }).shouldNotify,
+    ).toBe(false);
+
+    const otherInstanceId = ProviderInstanceId.make("claude-personal");
+    const withOtherInstance = evaluate(
+      report({ usedPercent: 96, instance: otherInstanceId }),
+      remote.markers,
+    );
+    expect(
+      applyProviderUsageAlertCooldown({
+        markers: withOtherInstance.markers,
+        instanceId: otherInstanceId,
+        now: now + 60_000,
+      }).shouldNotify,
+    ).toBe(true);
   });
 });
 

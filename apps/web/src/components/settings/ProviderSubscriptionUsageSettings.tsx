@@ -84,7 +84,7 @@ export function ProviderSubscriptionUsageSettings() {
 
       <SettingsRow
         {...searchableSetting("subscription-limit-alerts")}
-        description="Show an in-app alert when a subscription window first drops to 5% or less remaining, and again when an exhausted window becomes available."
+        description="Show an in-app alert when a subscription window first drops to 5% or less remaining, and again when an exhausted window becomes available. Alerts for the same provider instance are at least 10 minutes apart."
         resetAction={
           alertsEnabled !== DEFAULT_ALERTS_ENABLED ? (
             <SettingResetButton

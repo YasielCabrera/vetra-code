@@ -84,6 +84,9 @@ instances its report no longer lists, and the monitor retires markers for enviro
 no longer knows. Prune by instance presence rather than window presence — an unavailable instance
 reports zero windows, and dropping its markers there would re-alert as soon as it recovers.
 
+The same markers store the last toast time. A provider instance has a device-wide 10-minute
+cooldown across environments, so rapid report transitions cannot stack several usage alerts.
+
 ## Credential and HTTP safety
 
 Manual quota credentials exist only for Cursor fallback and OpenCode Go. They are stored by provider

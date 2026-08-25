@@ -89,7 +89,9 @@ or use **On load only** to stop background polling.
 With **Subscription limit alerts** enabled, connected clients show an in-app alert when a fresh
 window first has 5% or less remaining in its reset cycle. A second alert appears when a window
 previously observed at 0% becomes available again. Stale readings and failures never advance alert
-state. Alerts are not OS notifications and are not queued while the client is offline.
+state. After showing an alert for a provider instance, the client waits at least 10 minutes before
+showing another alert for that instance. Alerts are not OS notifications and are not queued while
+the client is offline.
 
 ## API-equivalent activity
 

@@ -18,6 +18,7 @@ import {
   shouldCatchUpProviderUsage,
 } from "../state/providerSubscriptionUsageScheduling";
 import {
+  applyProviderUsageAlertCooldown,
   evaluateProviderUsageAlerts,
   pruneProviderUsageAlertEnvironments,
 } from "../state/providerUsageAlerts";
@@ -158,6 +159,16 @@ function HydratedProviderSubscriptionUsageMonitor() {
       changed ||= evaluation.changed;
 
       for (const group of evaluation.groups) {
+        const markersBeforeCooldown = markers;
+        const cooldown = applyProviderUsageAlertCooldown({
+          markers,
+          instanceId: group.instanceId,
+          now: Date.now(),
+        });
+        markers = cooldown.markers;
+        changed ||= markers !== markersBeforeCooldown;
+        if (!cooldown.shouldNotify) continue;
+
         const windows = new Intl.ListFormat("en", { style: "short", type: "conjunction" }).format(
           group.windowLabels,
         );

@@ -141,6 +141,8 @@ export const ProviderUsageAlertTransitionMarker = Schema.Struct({
   exhausted: Schema.Boolean,
   restorationNotified: Schema.Boolean,
   lastUsedPercent: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+  /** Epoch milliseconds for the last usage toast shown for this provider instance. */
+  lastNotifiedAt: Schema.optionalKey(Schema.Number.check(Schema.isGreaterThanOrEqualTo(0))),
 });
 export type ProviderUsageAlertTransitionMarker = typeof ProviderUsageAlertTransitionMarker.Type;
 

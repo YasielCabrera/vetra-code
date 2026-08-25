@@ -216,4 +216,20 @@ describe("provider subscription usage client settings", () => {
   it("rejects unsupported polling intervals", () => {
     expect(() => decodeClientSettings({ providerUsageRefreshIntervalMinutes: 10 })).toThrow();
   });
+
+  it("persists an optional provider alert cooldown timestamp", () => {
+    const marker = {
+      cycleKey: "2026-08-20T12:00:00.000Z",
+      lowNotified: true,
+      exhausted: false,
+      restorationNotified: false,
+      lastUsedPercent: 96,
+      lastNotifiedAt: 1_787_140_800_000,
+    };
+    const settings = decodeClientSettings({
+      providerUsageAlertTransitions: { '["local","claude","weekly"]': marker },
+    });
+
+    expect(settings.providerUsageAlertTransitions['["local","claude","weekly"]']).toEqual(marker);
+  });
 });
