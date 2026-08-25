@@ -335,6 +335,7 @@ export const ThreadTokenUsageSnapshot = Schema.Struct({
    * instead so the client can hide the row.
    */
   costSource: Schema.optional(Schema.Literals(["providerReported", "modelPriced"])),
+  autoCompactThreshold: Schema.optional(PositiveInt),
 });
 export type ThreadTokenUsageSnapshot = typeof ThreadTokenUsageSnapshot.Type;
 

@@ -20,6 +20,7 @@ import {
   DESKTOP_ELECTRON_LANGUAGES,
   DESKTOP_FILE_EXCLUSIONS,
   DESKTOP_EXTRA_RESOURCES,
+  MAC_FILE_EXCLUSIONS,
   InvalidMacPasskeyRpDomainError,
   InvalidMacPasskeyPublishableKeyError,
   InvalidMockUpdateServerPortError,
@@ -33,6 +34,7 @@ import {
   resolveClerkPasskeyNativeArtifacts,
   resolveMacPasskeySigningConfiguration,
   resolveDesktopRuntimeDependencies,
+  resolveMacStageDependencies,
   resolveFffNativeDependencies,
   resolveBuildOptions,
   resolveDesktopBuildIconAssets,
@@ -219,6 +221,72 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         channel: "nightly",
       });
     }),
+  );
+
+  it.effect("omits update feeds for pull request preview builds", () =>
+    Effect.gen(function* () {
+      const preview = yield* createBuildConfig(
+        "mac",
+        "dmg",
+        "0.0.33-pr.8182.1",
+        false,
+        false,
+        undefined,
+        undefined,
+      );
+      const release = yield* createBuildConfig(
+        "mac",
+        "dmg",
+        "0.0.33",
+        false,
+        false,
+        undefined,
+        undefined,
+      );
+
+      assert.notProperty(preview, "publish");
+      assert.deepStrictEqual(release.publish, [
+        {
+          provider: "github",
+          owner: "vetra-code",
+          repo: "vetra-code",
+          releaseType: "release",
+        },
+      ]);
+    }).pipe(
+      Effect.provide(
+        ConfigProvider.layer(
+          ConfigProvider.fromEnv({
+            env: { VETRA_DESKTOP_UPDATE_REPOSITORY: "vetra-code/vetra-code" },
+          }),
+        ),
+      ),
+    ),
+  );
+
+  // The updater feed comes only from an explicitly configured Vetra repository.
+  // Upstream infers it from GITHUB_REPOSITORY, which would point desktop builds
+  // at T3's releases; this fork must never do that.
+  it.effect("never infers an update feed from the ambient GitHub repository", () =>
+    Effect.gen(function* () {
+      const release = yield* createBuildConfig(
+        "mac",
+        "dmg",
+        "0.0.33",
+        false,
+        false,
+        undefined,
+        undefined,
+      );
+
+      assert.notProperty(release, "publish");
+    }).pipe(
+      Effect.provide(
+        ConfigProvider.layer(
+          ConfigProvider.fromEnv({ env: { GITHUB_REPOSITORY: "pingdotgg/t3code" } }),
+        ),
+      ),
+    ),
   );
 
   it("omits bundled workspace packages from staged desktop dependencies", () => {
@@ -483,12 +551,51 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.deepStrictEqual((linux.linux as Record<string, unknown>).protocols, [
         { name: "Vetra Code", schemes: ["vetra", "vetra-dev"] },
       ]);
-      for (const config of [mac, linux, win]) {
+      assert.deepStrictEqual(mac.files, [...DESKTOP_FILE_EXCLUSIONS, ...MAC_FILE_EXCLUSIONS]);
+      assert.notProperty(mac.mac as Record<string, unknown>, "sign");
+      for (const config of [linux, win]) {
         assert.deepStrictEqual(config.electronLanguages, DESKTOP_ELECTRON_LANGUAGES);
         assert.deepStrictEqual(config.files, DESKTOP_FILE_EXCLUSIONS);
       }
+      assert.deepStrictEqual(mac.electronLanguages, DESKTOP_ELECTRON_LANGUAGES);
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
+
+  it("excludes Windows terminal binaries only from macOS packages", () => {
+    assert.deepStrictEqual(MAC_FILE_EXCLUSIONS, [
+      "!**/node_modules/node-pty/prebuilds/win32-*/**/*",
+      "!**/node_modules/node-pty/third_party/conpty/**/*",
+    ]);
+  });
+
+  it("stages only server runtime externals in macOS packages", () => {
+    assert.deepStrictEqual(
+      resolveMacStageDependencies({
+        serverDependencies: {
+          "@anthropic-ai/claude-agent-sdk": "^0.3.170",
+          "@ff-labs/fff-node": "0.9.4",
+          "@opencode-ai/sdk": "^1.3.15",
+          "@pierre/diffs": "1.3.0",
+          "msgpackr-extract": "3.0.4",
+          "node-pty": "1.1.0",
+        },
+        desktopDependencies: {
+          "@clerk/electron": "0.0.34",
+          effect: "4.0.0-beta.103",
+        },
+        arch: "arm64",
+        fffNodeVersion: "0.9.4",
+      }),
+      {
+        "@ff-labs/fff-node": "0.9.4",
+        "msgpackr-extract": "3.0.4",
+        "node-pty": "1.1.0",
+        "@clerk/electron": "0.0.34",
+        effect: "4.0.0-beta.103",
+        "@ff-labs/fff-bin-darwin-arm64": "0.9.4",
+      },
+    );
+  });
 
   it("excludes node-pty binaries for the other Windows architecture", () => {
     assert.deepStrictEqual(resolveWindowsServerAsarIgnoreGlobs("x64"), [
@@ -1112,6 +1219,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.equal(config.appId, "com.vetra.code");
       assert.equal(mac.entitlements, "/tmp/entitlements.mac.plist");
       assert.equal(mac.provisioningProfile, "/tmp/vetra-code.provisionprofile");
+      assert.match(String(mac.sign), /\/scripts\/sign-macos\.ts$/);
       assert.deepStrictEqual(mac.protocols, [
         { name: "Vetra Code", schemes: ["vetra", "vetra-dev"] },
       ]);

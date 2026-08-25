@@ -1464,10 +1464,7 @@ it.layer(
             "Real Codex probe against a missing binary should surface as 'error' in the aggregator",
           );
           assert.strictEqual(codexPersonal?.installed, false);
-          assert.strictEqual(
-            codexPersonal?.message,
-            "Codex CLI (`codex`) was not found on PATH.",
-          );
+          assert.strictEqual(codexPersonal?.message, "Codex CLI (`codex`) was not found on PATH.");
         }).pipe(Effect.provide(runtimeServices));
       }),
     );
@@ -1657,98 +1654,100 @@ it.layer(
       }),
     );
 
-    it.effect("keeps cursor disabled and skips probing when the provider setting is disabled", () =>
-      Effect.gen(function* () {
-        const serverSettings = yield* makeMutableServerSettingsService(
-          decodeServerSettings(
-            deepMerge(encodedDefaultServerSettings, {
-              providers: {
-                codex: {
-                  enabled: false,
+    it.effect(
+      "keeps Cursor disabled and skips provider probing when settings use their defaults",
+      () =>
+        Effect.gen(function* () {
+          const serverSettings = yield* makeMutableServerSettingsService(
+            decodeServerSettings(
+              deepMerge(encodedDefaultServerSettings, {
+                providers: {
+                  codex: {
+                    enabled: false,
+                  },
+                  grok: {
+                    enabled: false,
+                  },
                 },
-                cursor: {
-                  enabled: false,
-                },
-                grok: {
-                  enabled: false,
-                },
-              },
-            }),
-          ),
-        );
-        let cursorSpawned = false;
-        const scope = yield* Scope.make();
-        yield* Effect.addFinalizer(() => Scope.close(scope, Exit.void));
-        const providerRegistryLayer = ProviderRegistryLive.pipe(
-          Layer.provideMerge(ProviderInstanceRegistryHydrationLive),
-          Layer.provideMerge(
-            Layer.succeed(ServerSettingsModule.ServerSettingsService, serverSettings),
-          ),
-          Layer.provideMerge(
-            ServerConfig.layerTest(process.cwd(), {
-              prefix: "vetra-provider-registry-",
-            }),
-          ),
-          Layer.provideMerge(TestHttpClientLive),
-          Layer.provideMerge(
-            Layer.succeed(
-              ProviderEventLoggers.ProviderEventLoggers,
-              ProviderEventLoggers.NoOpProviderEventLoggers,
+              }),
             ),
-          ),
-          Layer.provideMerge(OpenCodeRuntime.OpenCodeRuntimeLive),
-          Layer.provideMerge(BackgroundPolicyAlwaysRunLayer),
-          Layer.provideMerge(
-            mockCommandSpawnerLayer((command, args) => {
-              if (command === "cursor-agent") {
-                cursorSpawned = true;
-              }
-              const joined = args.join(" ");
-              if (joined === "--version") {
-                return {
-                  stdout: `${command} 1.0.0\n`,
-                  stderr: "",
-                  code: 0,
-                };
-              }
-              if (joined === "auth status") {
-                return {
-                  stdout: '{"authenticated":true}\n',
-                  stderr: "",
-                  code: 0,
-                };
-              }
-              throw new Error(`Unexpected args: ${command} ${joined}`);
-            }),
-          ),
-        );
-        const runtimeServices = yield* Layer.build(
-          Layer.mergeAll(
-            Layer.succeed(ServerSettingsModule.ServerSettingsService, serverSettings),
-            providerRegistryLayer,
-          ),
-        ).pipe(Scope.provide(scope));
-
-        yield* Effect.gen(function* () {
-          const registry = yield* ProviderRegistry.ProviderRegistry;
-          const providers = yield* registry.getProviders;
-          const cursorProvider = providers.find(
-            (provider) => provider.instanceId === ProviderInstanceId.make("cursor"),
           );
+          let cursorSpawned = false;
+          const scope = yield* Scope.make();
+          yield* Effect.addFinalizer(() => Scope.close(scope, Exit.void));
+          const providerRegistryLayer = ProviderRegistryLive.pipe(
+            Layer.provideMerge(ProviderInstanceRegistryHydrationLive),
+            Layer.provideMerge(
+              Layer.succeed(ServerSettingsModule.ServerSettingsService, serverSettings),
+            ),
+            Layer.provideMerge(
+              ServerConfig.layerTest(process.cwd(), {
+                prefix: "vetra-provider-registry-",
+              }),
+            ),
+            Layer.provideMerge(TestHttpClientLive),
+            Layer.provideMerge(
+              Layer.succeed(
+                ProviderEventLoggers.ProviderEventLoggers,
+                ProviderEventLoggers.NoOpProviderEventLoggers,
+              ),
+            ),
+            Layer.provideMerge(OpenCodeRuntime.OpenCodeRuntimeLive),
+            Layer.provideMerge(BackgroundPolicyAlwaysRunLayer),
+            Layer.provideMerge(
+              mockCommandSpawnerLayer((command, args) => {
+                if (command === "cursor-agent") {
+                  cursorSpawned = true;
+                }
+                const joined = args.join(" ");
+                if (joined === "--version") {
+                  return {
+                    stdout: `${command} 1.0.0\n`,
+                    stderr: "",
+                    code: 0,
+                  };
+                }
+                if (joined === "auth status") {
+                  return {
+                    stdout: '{"authenticated":true}\n',
+                    stderr: "",
+                    code: 0,
+                  };
+                }
+                throw new Error(`Unexpected args: ${command} ${joined}`);
+              }),
+            ),
+          );
+          const runtimeServices = yield* Layer.build(
+            Layer.mergeAll(
+              Layer.succeed(ServerSettingsModule.ServerSettingsService, serverSettings),
+              providerRegistryLayer,
+            ),
+          ).pipe(Scope.provide(scope));
 
-          assert.deepStrictEqual(providers.map((provider) => provider.instanceId).toSorted(), [
-            "claudeAgent",
-            "codex",
-            "cursor",
-            "grok",
-            "opencode",
-          ]);
-          assert.strictEqual(cursorProvider?.enabled, false);
-          assert.strictEqual(cursorProvider?.status, "disabled");
-          assert.strictEqual(cursorProvider?.message, "Cursor is disabled in Vetra Code settings.");
-          assert.strictEqual(cursorSpawned, false);
-        }).pipe(Effect.provide(runtimeServices));
-      }),
+          yield* Effect.gen(function* () {
+            const registry = yield* ProviderRegistry.ProviderRegistry;
+            const providers = yield* registry.getProviders;
+            const cursorProvider = providers.find(
+              (provider) => provider.instanceId === ProviderInstanceId.make("cursor"),
+            );
+
+            assert.deepStrictEqual(providers.map((provider) => provider.instanceId).toSorted(), [
+              "claudeAgent",
+              "codex",
+              "cursor",
+              "grok",
+              "opencode",
+            ]);
+            assert.strictEqual(cursorProvider?.enabled, false);
+            assert.strictEqual(cursorProvider?.status, "disabled");
+            assert.strictEqual(
+              cursorProvider?.message,
+              "Cursor is disabled in Vetra Code settings.",
+            );
+            assert.strictEqual(cursorSpawned, false);
+          }).pipe(Effect.provide(runtimeServices));
+        }),
     );
 
     it.effect("skips codex probes entirely when the provider is disabled", () =>
@@ -2148,6 +2147,10 @@ it.layer(
 
         assert.deepStrictEqual(status.slashCommands, [
           {
+            name: "compact",
+            description: "Summarize the conversation and reduce context usage",
+          },
+          {
             name: "review",
             description: "Review a pull request",
             input: { hint: "pr-or-branch" },
@@ -2190,6 +2193,10 @@ it.layer(
         );
 
         assert.deepStrictEqual(status.slashCommands, [
+          {
+            name: "compact",
+            description: "Summarize the conversation and reduce context usage",
+          },
           {
             name: "ui",
             description: "Explore and refine UI",

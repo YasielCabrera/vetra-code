@@ -3,11 +3,13 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import {
   changeRequestRepositoryUrl,
   findProjectForChangeRequest,
+  matchesLinkedPullRequestUrl,
   openPullRequestLink,
   parseChangeRequestUrl,
   PullRequestLinkOpenError,
   shouldOpenPullRequestExternally,
 } from "./openPullRequestLink";
+import { ProjectId } from "@vetra-code/contracts";
 
 describe("changeRequestRepositoryUrl", () => {
   it("preserves repository path casing", () => {
@@ -24,6 +26,39 @@ describe("changeRequestRepositoryUrl", () => {
         "https://gitlab.example.test/group/pull/123/repo/-/merge_requests/42",
       ),
     ).toBe("https://gitlab.example.test/group/pull/123/repo");
+  });
+});
+
+describe("matchesLinkedPullRequestUrl", () => {
+  const linkedPullRequest = {
+    projectId: ProjectId.make("project-1"),
+    repository: "vetra-code/vetra-code",
+    number: 42,
+    url: "https://github.com/vetra-code/vetra-code/pull/42",
+  };
+
+  it("matches the same pull request without looking up its project", () => {
+    expect(
+      matchesLinkedPullRequestUrl(
+        linkedPullRequest,
+        "https://github.com/Vetra-Code/Vetra-Code/pull/42/files",
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects a different pull request or host", () => {
+    expect(
+      matchesLinkedPullRequestUrl(
+        linkedPullRequest,
+        "https://github.com/vetra-code/vetra-code/pull/43",
+      ),
+    ).toBe(false);
+    expect(
+      matchesLinkedPullRequestUrl(
+        linkedPullRequest,
+        "https://github.example.com/vetra-code/vetra-code/pull/42",
+      ),
+    ).toBe(false);
   });
 });
 

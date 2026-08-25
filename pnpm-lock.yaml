@@ -335,7 +335,7 @@ importers:
         version: link:../../packages/web3
       '@web3icons/react':
         specifier: ^4.1.20
-        version: 4.1.20(react@19.2.6)
+        version: 4.1.21(react@19.2.6)
       '@xyflow/react':
         specifier: ^12.11.3
         version: 12.11.3(@types/react-dom@19.2.3(@types/react@19.2.16))(@types/react@19.2.16)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -351,6 +351,9 @@ importers:
       graphql:
         specifier: ^16.14.1
         version: 16.14.1
+      heic-to:
+        specifier: ^1.5.2
+        version: 1.5.2
       html-to-image:
         specifier: 1.11.11
         version: 1.11.11
@@ -716,6 +719,9 @@ importers:
       '@electron/asar':
         specifier: ^3.4.1
         version: 3.4.1
+      '@electron/osx-sign':
+        specifier: 2.7.0
+        version: 2.7.0
       '@vetra-code/contracts':
         specifier: workspace:*
         version: link:../packages/contracts
@@ -1667,6 +1673,11 @@ packages:
     engines: {node: '>=12.0.0'}
     hasBin: true
 
+  '@electron/osx-sign@2.7.0':
+    resolution: {integrity: sha512-9DGhNqKMl6ibkhUoXbN7OHX2gZznfY10L3ZwG0u6r667Kfb6kec4JEfFTXftoqzmOfZ+OzwDbr4p/nKBMHnz0g==}
+    engines: {node: '>=22.12.0'}
+    hasBin: true
+
   '@electron/rebuild@4.0.4':
     resolution: {integrity: sha512-Rzc39XPdk/+/wBG8MfwAHohXflep0ITUfulb6Rgz3R0NeSB1noE+E9/M/cb8ftCAiyDD9PPhLuuWgE1GaInbKg==}
     engines: {node: '>=22.12.0'}
@@ -2531,8 +2542,8 @@ packages:
     resolution: {integrity: sha512-9QOtNffcOF/c1seMCDnjckb3R9WHcG34tky+FHpNKKCW0wc/scYLwMtO+ptyGUfMW0/b/n4qRiALlaFHc9Oj7Q==}
     engines: {node: '>= 10.0.0'}
 
-  '@marijn/find-cluster-break@1.0.3':
-    resolution: {integrity: sha512-FY+MKLBoTsLNJF/eLWaOsXGdz6uh3Iu1axjPf6TUq92IYumcTcXWHoS747JARLkcdlJ/Waiaxc5wQfFO8jC6NA==}
+  '@marijn/find-cluster-break@1.0.4':
+    resolution: {integrity: sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ==}
 
   '@modelcontextprotocol/sdk@1.29.0':
     resolution: {integrity: sha512-zo37mZA9hJWpULgkRpowewez1y6ML5GsXJPY8FI0tBBCd77HEvza4jDqRKOXgHNn867PVGCyTdzqpz0izu5ZjQ==}
@@ -4307,21 +4318,23 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@web3icons/common@0.11.49':
-    resolution: {integrity: sha512-hQOvBWe8GIrUTSvwhBejEC9/Nlt5KWt2oVDgviM5NZxLs3H7ubwrmYQadZuHsD0d+RUcb2LOX/FNJrwci4hMCw==}
+  '@web3icons/common@0.11.50':
+    resolution: {integrity: sha512-mq3Pv4Paq5ikNRR7Yg5ywhLTuQZeseyaGPuAVEUCph+ssn7J6SWPRf8Ze3T2T7TVXy2YpljmVONasBs0+NKX2w==}
 
-  '@web3icons/react@4.1.20':
-    resolution: {integrity: sha512-8Hn5VZo3hdJQymc3636JxxpF8a1dk5pCvwd6rHMa633Ae+UmUpP2AAAsiVLQp/C+1AZSUCWaziWh+3FMJwRHVw==}
+  '@web3icons/react@4.1.21':
+    resolution: {integrity: sha512-MqL6wIy280RQwErHXGboWKzom61iSA4wQKLKIlu03T4pqjBGLa+O++chgihwSblyKCQtEuNBwgkutOvoaDs+jA==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
 
   '@xmldom/xmldom@0.8.13':
     resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xmldom/xmldom@0.9.10':
     resolution: {integrity: sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==}
     engines: {node: '>=14.6'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xyflow/react@12.11.3':
     resolution: {integrity: sha512-G3jogHz2GWUtIOkhavUGno2YzY9u6fILIJBttfsBendb0/HWB90JG+sOTAvlIMEwyvq9zgy9V9ZQSwyQjR5QzQ==}
@@ -6036,6 +6049,9 @@ packages:
   headers-polyfill@4.0.3:
     resolution: {integrity: sha512-IScLbePpkvO846sIwOtOTDjutRMWdXdJmXdMvk6gCBHxFO8d+QKOQedyZSxFTTFYRSmlgSTDtXqqq4pcenBXLQ==}
 
+  heic-to@1.5.2:
+    resolution: {integrity: sha512-8Fns+lZHAWmz5U5IUxDeXKwIf3foBoKNPLxxFY4B0MkLjNuomEIHCoDbDE+x/llFK3NCEO1cu4+n3iUKY+Svmw==}
+
   hermes-compiler@250829098.0.10:
     resolution: {integrity: sha512-TcRlZ0/TlyfJqquRFAWoyElVNnkdYRi/sEp4/Qy8/GYxjg8j2cS9D4MjuaQ+qimkmLN7AmO+44IznRf06mAr0w==}
 
@@ -7281,11 +7297,6 @@ packages:
   pg-connection-string@2.14.0:
     resolution: {integrity: sha512-XwWDGcLRGCXAR8F/AM5bG7Q+A3Wm2s6QeEjlOKZLlH3UYcguiqCWKyWXVag5TLTIjR7oOJUY8kcADaZgWPyLeg==}
 
-  pg-cursor@2.21.0:
-    resolution: {integrity: sha512-IYvk/j+Suhtbo/C3uOf4JLsLK/gWxOTUOmYbDsbKnLaVJDq+KwhwK6ngpRfiCk8eDMS3AmGQABZCv0cREEzHQw==}
-    peerDependencies:
-      pg: ^8
-
   pg-cursor@2.22.0:
     resolution: {integrity: sha512-knzXLKqarTjOvb3qDSW0JiGsazmxwEKXrqHfWRte7XUsOYccQRafn3BLnQobWwInkzFJSyOej8y8cQRh2z3kGw==}
     peerDependencies:
@@ -7304,6 +7315,9 @@ packages:
     peerDependencies:
       pg: '>=8.0'
 
+  pg-protocol@1.15.0:
+    resolution: {integrity: sha512-cq9sECI5s0+uPUXjbz8ioyPJni6RzsRib0US67i5IoTZKw8fNeYlVE7u8F4dG7vEJJtc5wdD1K189lCCUwqWTQ==}
+
   pg-protocol@1.16.0:
     resolution: {integrity: sha512-sILXutLVjCLjcDuOmvhX5e2Z4cS5qG/6Bu3VkpFwdf/633ElGLpEh9bgmuI5I4sqKqkifQiGyiCcx1HdtrK7tg==}
 
@@ -7314,15 +7328,6 @@ packages:
   pg-types@4.1.0:
     resolution: {integrity: sha512-o2XFanIMy/3+mThw69O8d4n1E5zsLhdO+OPqswezu7Z5ekP4hYDqlDjlmOpYMbzY2Br0ufCwJLdDIXeNVwcWFg==}
     engines: {node: '>=10'}
-
-  pg@8.22.0:
-    resolution: {integrity: sha512-8wih1vVIBMxoUM2oB4soJsD9tDnDpLv4OXBJ+EJzFsvycD+lfyIreC2gGHq78f8jbLLt+bvlPTFdFZfJkOuzAA==}
-    engines: {node: '>= 16.0.0'}
-    peerDependencies:
-      pg-native: '>=3.0.1'
-    peerDependenciesMeta:
-      pg-native:
-        optional: true
 
   pg@8.23.0:
     resolution: {integrity: sha512-Ip2EQCngowJLGOfCwkFhPXU7/ljlhn6Rxlmy4XYfL2Y+vyRM59+8uR2xqRWKdYmbXmxCFOAmKxBuSUCdF34qLg==}
@@ -9801,7 +9806,7 @@ snapshots:
 
   '@codemirror/state@6.7.1':
     dependencies:
-      '@marijn/find-cluster-break': 1.0.3
+      '@marijn/find-cluster-break': 1.0.4
 
   '@codemirror/theme-one-dark@6.1.3':
     dependencies:
@@ -9980,10 +9985,10 @@ snapshots:
   '@effect/sql-pg@4.0.0-beta.103(effect@4.0.0-beta.103(patch_hash=af36b7948b6f9c56623074662b51dade5699880c1a7c71245de73e13c3185fb6))':
     dependencies:
       effect: 4.0.0-beta.103(patch_hash=af36b7948b6f9c56623074662b51dade5699880c1a7c71245de73e13c3185fb6)
-      pg: 8.22.0
+      pg: 8.23.0
       pg-connection-string: 2.14.0
-      pg-cursor: 2.21.0(pg@8.22.0)
-      pg-pool: 3.14.0(pg@8.22.0)
+      pg-cursor: 2.22.0(pg@8.23.0)
+      pg-pool: 3.14.0(pg@8.23.0)
       pg-types: 4.1.0
     transitivePeerDependencies:
       - pg-native
@@ -10088,6 +10093,15 @@ snapshots:
       isbinaryfile: 4.0.10
       minimist: 1.2.8
       plist: 3.1.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@electron/osx-sign@2.7.0':
+    dependencies:
+      debug: 4.4.3
+      isbinaryfile: 4.0.10
+      plist: 3.1.1
+      semver: 7.8.5
     transitivePeerDependencies:
       - supports-color
 
@@ -11136,7 +11150,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@marijn/find-cluster-break@1.0.3': {}
+  '@marijn/find-cluster-break@1.0.4': {}
 
   '@modelcontextprotocol/sdk@1.29.0(zod@4.4.3)':
     dependencies:
@@ -12529,7 +12543,7 @@ snapshots:
   '@types/pg@8.23.1':
     dependencies:
       '@types/node': 24.12.4
-      pg-protocol: 1.16.0
+      pg-protocol: 1.15.0
       pg-types: 2.2.0
 
   '@types/pngjs@6.0.5':
@@ -12787,11 +12801,11 @@ snapshots:
   '@voidzero-dev/vite-plus-win32-x64-msvc@0.2.2':
     optional: true
 
-  '@web3icons/common@0.11.49': {}
+  '@web3icons/common@0.11.50': {}
 
-  '@web3icons/react@4.1.20(react@19.2.6)':
+  '@web3icons/react@4.1.21(react@19.2.6)':
     dependencies:
-      '@web3icons/common': 0.11.49
+      '@web3icons/common': 0.11.50
       react: 19.2.6
 
   '@xmldom/xmldom@0.8.13': {}
@@ -12956,7 +12970,7 @@ snapshots:
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.1062.0)
       mysql2: 3.22.4(@types/node@24.12.4)
       pathe: 2.0.3
-      pg: 8.22.0
+      pg: 8.23.0
       picomatch: 4.0.4
       react: 19.2.6
       rolldown: 1.1.5
@@ -14781,6 +14795,8 @@ snapshots:
 
   headers-polyfill@4.0.3: {}
 
+  heic-to@1.5.2: {}
+
   hermes-compiler@250829098.0.10:
     optional: true
 
@@ -16355,10 +16371,6 @@ snapshots:
 
   pg-connection-string@2.14.0: {}
 
-  pg-cursor@2.21.0(pg@8.22.0):
-    dependencies:
-      pg: 8.22.0
-
   pg-cursor@2.22.0(pg@8.23.0):
     dependencies:
       pg: 8.23.0
@@ -16367,13 +16379,11 @@ snapshots:
 
   pg-numeric@1.0.2: {}
 
-  pg-pool@3.14.0(pg@8.22.0):
-    dependencies:
-      pg: 8.22.0
-
   pg-pool@3.14.0(pg@8.23.0):
     dependencies:
       pg: 8.23.0
+
+  pg-protocol@1.15.0: {}
 
   pg-protocol@1.16.0: {}
 
@@ -16394,16 +16404,6 @@ snapshots:
       postgres-date: 2.1.0
       postgres-interval: 3.0.0
       postgres-range: 1.1.4
-
-  pg@8.22.0:
-    dependencies:
-      pg-connection-string: 2.14.0
-      pg-pool: 3.14.0(pg@8.22.0)
-      pg-protocol: 1.16.0
-      pg-types: 2.2.0
-      pgpass: 1.0.5
-    optionalDependencies:
-      pg-cloudflare: 1.4.0
 
   pg@8.23.0:
     dependencies:

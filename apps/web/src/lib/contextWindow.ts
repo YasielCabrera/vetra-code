@@ -78,6 +78,7 @@ function readContextWindowOccupancy(
     toolUses: asFiniteNumber(payload?.toolUses),
     durationMs: asFiniteNumber(payload?.durationMs),
     compactsAutomatically: asBoolean(payload?.compactsAutomatically) ?? false,
+    autoCompactThreshold: asFiniteNumber(payload?.autoCompactThreshold),
     costUsd: null,
     costSource: null,
     updatedAt: activity.createdAt,
