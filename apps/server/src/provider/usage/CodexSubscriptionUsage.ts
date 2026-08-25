@@ -17,7 +17,10 @@ import type * as ChildProcessSpawner from "effect/unstable/process/ChildProcessS
 
 import { expandHomePath } from "../../pathExpansion.ts";
 import type { ProviderSubscriptionUsageCapability, ProviderInstance } from "../ProviderDriver.ts";
-import { codexAppServerArgs, resolveCodexLaunchArgs } from "../Layers/codexLaunchArgs.ts";
+import {
+  codexSubscriptionUsageAppServerArgs,
+  resolveCodexLaunchArgs,
+} from "../Layers/codexLaunchArgs.ts";
 import {
   configFingerprint,
   durationWindowLabel,
@@ -31,7 +34,6 @@ import {
 } from "./providerSubscriptionUsageHelpers.ts";
 
 const FORCE_KILL_AFTER = "2 seconds" as const;
-const CODEXBAR_PROBE_PREFIX = ["-s", "read-only", "-a", "untrusted"] as const;
 
 type RateLimitsResponse = CodexSchema.V2GetAccountRateLimitsResponse;
 type RateLimitSnapshot = RateLimitsResponse["rateLimits"];
@@ -323,7 +325,7 @@ export const makeCodexSubscriptionUsageCapability = (input: {
     const fetchedAt = DateTime.formatIso(yield* DateTime.now);
     const spawnCommand = yield* resolveSpawnCommand(
       input.settings.binaryPath,
-      [...CODEXBAR_PROBE_PREFIX, ...codexAppServerArgs(launchArgs)],
+      codexSubscriptionUsageAppServerArgs(launchArgs),
       { env: environment, extendEnv: true },
     );
     const child = yield* input.spawner.spawn(

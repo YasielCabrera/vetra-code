@@ -1,5 +1,6 @@
 import type { EnvironmentId, PowerhouseReactorDocumentViewFilter } from "@vetra-code/contracts";
 import { ArrowLeft, ChevronRight, FileText, RefreshCw } from "lucide-react";
+import { lazy, Suspense } from "react";
 
 import { Button } from "~/components/ui/button";
 import { ScrollArea } from "~/components/ui/scroll-area";
@@ -16,6 +17,10 @@ import {
 import { useReactorQuery } from "../powerhouseQuery";
 import { SdlBlock } from "../SdlBlock";
 import { OperationsList } from "./OperationsList";
+
+const LazyJsonStateView = lazy(() =>
+  import("./JsonStateView").then(({ JsonStateView }) => ({ default: JsonStateView })),
+);
 
 interface DocumentDetailProps {
   environmentId: EnvironmentId;
@@ -58,6 +63,10 @@ export function DocumentDetail({
   }
 
   const document = query.data;
+  const stateCode =
+    document.state === null || document.state === undefined
+      ? null
+      : JSON.stringify(document.state, null, 2);
 
   return (
     <ScrollArea className="h-full">
@@ -126,14 +135,21 @@ export function DocumentDetail({
             <p className="p-3 text-xs text-muted-foreground">
               This document's state is too large to display safely.
             </p>
-          ) : document.state === null || document.state === undefined ? (
+          ) : stateCode === null ? (
             <p className="p-3 text-xs text-muted-foreground">No state.</p>
           ) : (
-            <SdlBlock
-              code={JSON.stringify(document.state, null, 2)}
-              language="json"
-              className="rounded-none border-0"
-            />
+            <Suspense
+              fallback={
+                <SdlBlock
+                  code={stateCode}
+                  language="json"
+                  className="rounded-none border-0"
+                  lineNumbers
+                />
+              }
+            >
+              <LazyJsonStateView code={stateCode} />
+            </Suspense>
           )}
         </PowerhouseDisclosure>
 

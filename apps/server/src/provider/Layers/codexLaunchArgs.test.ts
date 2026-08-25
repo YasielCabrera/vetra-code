@@ -5,6 +5,7 @@ import { describe, it } from "vite-plus/test";
 import {
   codexAppServerArgs,
   codexExecLaunchArgs,
+  codexSubscriptionUsageAppServerArgs,
   resolveCodexLaunchArgs,
 } from "./codexLaunchArgs.ts";
 
@@ -39,6 +40,19 @@ describe("codexAppServerArgs", () => {
       "--strict-config",
       "--enable",
       "foo",
+    ]);
+  });
+});
+
+describe("codexSubscriptionUsageAppServerArgs", () => {
+  it("uses the non-interactive approval policy supported by current Codex CLIs", () => {
+    NodeAssert.deepStrictEqual(codexSubscriptionUsageAppServerArgs("--strict-config"), [
+      "-s",
+      "read-only",
+      "-a",
+      "never",
+      "app-server",
+      "--strict-config",
     ]);
   });
 });

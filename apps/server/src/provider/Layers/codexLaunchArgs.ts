@@ -15,6 +15,14 @@ export const codexAppServerArgs = (launchArgs?: string) => [
   ...codexLaunchArgv(launchArgs),
 ];
 
+export const codexSubscriptionUsageAppServerArgs = (launchArgs?: string) => [
+  "-s",
+  "read-only",
+  "-a",
+  "never",
+  ...codexAppServerArgs(launchArgs),
+];
+
 export const codexExecLaunchArgs = (launchArgs?: string) => {
   const args = codexLaunchArgv(launchArgs);
   const execArgs: Array<string> = [];
