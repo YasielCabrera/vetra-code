@@ -261,7 +261,7 @@ export function ModelDetail({
           </div>
         ) : (
           <>
-            <ModelSchemaView title="Global state" code={specification.globalSchema} />
+            <ModelSchemaView title="Global state" code={specification.globalSchema} collapsible />
             {specification.localSchema.trim().length > 0 ? (
               <ModelSchemaView
                 title="Local state"

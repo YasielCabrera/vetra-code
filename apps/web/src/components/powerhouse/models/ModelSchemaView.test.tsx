@@ -2,8 +2,20 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("../SdlBlock", () => ({
-  SdlBlock: ({ code, lineNumbers }: { code: string; lineNumbers?: boolean }) => (
-    <pre data-testid="sdl-block" data-line-numbers={lineNumbers === true ? "true" : "false"}>
+  SdlBlock: ({
+    code,
+    lineNumbers,
+    collapsible,
+  }: {
+    code: string;
+    lineNumbers?: boolean;
+    collapsible?: boolean;
+  }) => (
+    <pre
+      data-testid="sdl-block"
+      data-line-numbers={lineNumbers === true ? "true" : "false"}
+      data-collapsible={collapsible === true ? "true" : "false"}
+    >
       {code}
     </pre>
   ),
@@ -14,7 +26,7 @@ import { ModelSchemaView } from "./ModelSchemaView";
 describe("ModelSchemaView", () => {
   it("keeps SDL as the default and offers the diagram as an alternate presentation", () => {
     const html = renderToStaticMarkup(
-      <ModelSchemaView title="Global state" code="type Todo { id: ID! }" />,
+      <ModelSchemaView title="Global state" code="type Todo { id: ID! }" collapsible />,
     );
 
     expect(html).toContain("Global state");
@@ -24,6 +36,7 @@ describe("ModelSchemaView", () => {
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("type Todo { id: ID! }");
     expect(html).toContain('data-line-numbers="true"');
+    expect(html).toContain('data-collapsible="true"');
   });
 
   it("does not offer an unusable diagram action for an empty schema", () => {

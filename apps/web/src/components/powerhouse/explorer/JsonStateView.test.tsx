@@ -7,7 +7,9 @@ const testState = vi.hoisted(() => ({
   darkSyntaxExtension: { name: "one-dark-syntax-extension" },
   darkSyntaxHighlightStyle: null as unknown,
   editorThemeRules: null as Record<string, Record<string, string>> | null,
+  foldGutterExtension: { name: "fold-gutter-extension" },
   jsonExtension: { name: "json-extension" },
+  lineNumbersExtension: { name: "line-numbers-extension" },
   lightEditorTheme: { name: "vetra-code-mirror-light-theme" },
   oneDarkHighlightStyle: { name: "one-dark-highlight-style" },
   resolvedTheme: "dark" as "light" | "dark",
@@ -18,6 +20,7 @@ vi.mock("@codemirror/lang-json", () => ({
 }));
 
 vi.mock("@codemirror/language", () => ({
+  foldGutter: () => testState.foldGutterExtension,
   syntaxHighlighting: (style: unknown) => {
     testState.darkSyntaxHighlightStyle = style;
     return testState.darkSyntaxExtension;
@@ -35,6 +38,7 @@ vi.mock("@uiw/react-codemirror", () => ({
       return options.dark ? testState.darkEditorTheme : testState.lightEditorTheme;
     },
   },
+  lineNumbers: () => testState.lineNumbersExtension,
   oneDarkHighlightStyle: testState.oneDarkHighlightStyle,
 }));
 
@@ -57,12 +61,17 @@ describe("JsonStateView", () => {
     expect(testState.codeMirrorProps).toMatchObject({
       value: code,
       theme: testState.darkEditorTheme,
-      extensions: [testState.jsonExtension, testState.darkSyntaxExtension],
+      extensions: [
+        testState.foldGutterExtension,
+        testState.lineNumbersExtension,
+        testState.jsonExtension,
+        testState.darkSyntaxExtension,
+      ],
       editable: false,
       readOnly: true,
       basicSetup: {
-        lineNumbers: true,
-        foldGutter: true,
+        lineNumbers: false,
+        foldGutter: false,
         highlightActiveLine: false,
         highlightActiveLineGutter: false,
         drawSelection: false,
@@ -79,7 +88,11 @@ describe("JsonStateView", () => {
 
     expect(testState.codeMirrorProps).toMatchObject({
       theme: testState.lightEditorTheme,
-      extensions: [testState.jsonExtension],
+      extensions: [
+        testState.foldGutterExtension,
+        testState.lineNumbersExtension,
+        testState.jsonExtension,
+      ],
     });
     expect(testState.codeMirrorProps?.theme).not.toBe("light");
     expect(testState.codeMirrorProps?.theme).not.toBe("dark");

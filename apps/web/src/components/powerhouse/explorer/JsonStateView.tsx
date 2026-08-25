@@ -1,6 +1,6 @@
 import { json } from "@codemirror/lang-json";
-import { syntaxHighlighting } from "@codemirror/language";
-import CodeMirror, { EditorView, oneDarkHighlightStyle } from "@uiw/react-codemirror";
+import { foldGutter, syntaxHighlighting } from "@codemirror/language";
+import CodeMirror, { EditorView, lineNumbers, oneDarkHighlightStyle } from "@uiw/react-codemirror";
 
 import { useTheme } from "~/hooks/useTheme";
 
@@ -60,9 +60,10 @@ const VETRA_CODE_MIRROR_THEMES = {
 };
 
 const JSON_LANGUAGE = json();
+const JSON_GUTTERS = [foldGutter(), lineNumbers()];
 const JSON_EXTENSIONS = {
-  light: [JSON_LANGUAGE],
-  dark: [JSON_LANGUAGE, syntaxHighlighting(oneDarkHighlightStyle)],
+  light: [...JSON_GUTTERS, JSON_LANGUAGE],
+  dark: [...JSON_GUTTERS, JSON_LANGUAGE, syntaxHighlighting(oneDarkHighlightStyle)],
 };
 
 export function JsonStateView({ code }: { code: string }) {
@@ -76,8 +77,8 @@ export function JsonStateView({ code }: { code: string }) {
       editable={false}
       readOnly
       basicSetup={{
-        lineNumbers: true,
-        foldGutter: true,
+        lineNumbers: false,
+        foldGutter: false,
         highlightActiveLine: false,
         highlightActiveLineGutter: false,
         drawSelection: false,

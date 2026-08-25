@@ -84,10 +84,12 @@ export function ModelSchemaView({
   title,
   code,
   defaultOpen = true,
+  collapsible = false,
 }: {
   title: string;
   code: string;
   defaultOpen?: boolean;
+  collapsible?: boolean;
 }) {
   const [view, setView] = useState<SchemaViewMode>("sdl");
   const hasSchema = code.trim().length > 0;
@@ -102,7 +104,13 @@ export function ModelSchemaView({
       {!hasSchema ? (
         <p className="p-3 text-xs text-muted-foreground">No {title.toLocaleLowerCase()} schema.</p>
       ) : view === "sdl" ? (
-        <SdlBlock code={code} language="graphql" className="rounded-none border-0" lineNumbers />
+        <SdlBlock
+          code={code}
+          language="graphql"
+          className="rounded-none border-0"
+          lineNumbers
+          collapsible={collapsible}
+        />
       ) : (
         <Suspense fallback={<DiagramFallback />}>
           <LazySchemaDiagram source={code} label={title} />
