@@ -210,15 +210,17 @@ function ConnectedExplorer({
         </nav>
       ) : null}
 
-      <DocumentFilterBar
-        query={query}
-        filters={filters}
-        currentParentId={currentParent?.id ?? null}
-        documentTypeOptions={documentTypeOptions}
-        documentTypeCatalogStatus={documentTypeCatalogStatus}
-        onQueryChange={setQuery}
-        onFiltersChange={setFilters}
-      />
+      {selection.documentId === null ? (
+        <DocumentFilterBar
+          query={query}
+          filters={filters}
+          currentParentId={currentParent?.id ?? null}
+          documentTypeOptions={documentTypeOptions}
+          documentTypeCatalogStatus={documentTypeCatalogStatus}
+          onQueryChange={setQuery}
+          onFiltersChange={setFilters}
+        />
+      ) : null}
 
       <div className="min-h-0 flex-1">
         {selection.documentId !== null ? (
