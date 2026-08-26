@@ -43,6 +43,23 @@ Live provider-owned allowance windows are a separate, optional capability on eac
 instance. See [Provider subscription usage](./provider-subscription-usage.md) for its adapter,
 caching, identity, and credential boundaries.
 
+## Model manifest
+
+The model picker's legacy section is driven by `apps/server/src/provider/model-manifest.json`, which
+lists the current (non-legacy) model slugs per driver kind. The `ModelManifest` service
+(`apps/server/src/provider/ModelManifest.ts`) reads that bundled copy, so moving a model in or out
+of the legacy section is a commit to that file. The Codex and Claude drivers apply the
+classification to every snapshot with `applyModelManifest`; driver kinds absent from the manifest
+have no legacy concept.
+
+The service can also refresh the classification over HTTP, which turns a model reclassification into
+a manifest edit rather than a release. That refresh is off unless `VETRA_MODEL_MANIFEST_URL` is set:
+upstream defaults it to its own repository, and this fork keeps hosted destinations unset until we
+own one (see [upstream sync](./upstream-sync.md)). With a URL configured the preference order is
+remote fetch, then the on-disk copy of the last successful fetch (in the state directory), then the
+bundled copy; fetches are TTL-gated, run concurrently with provider probes, respect the
+`enableProviderUpdateChecks` setting, and never fail a provider check.
+
 ## How provider work is requested
 
 Clients never call a provider directly. They dispatch orchestration commands over the RPC method

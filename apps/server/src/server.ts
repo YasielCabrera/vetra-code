@@ -34,6 +34,7 @@ import * as AnalyticsService from "./telemetry/AnalyticsService.ts";
 import { ProviderSessionDirectoryLive } from "./provider/Layers/ProviderSessionDirectory.ts";
 import * as ProviderSessionRuntime from "./persistence/ProviderSessionRuntime.ts";
 import { ProviderAdapterRegistryLive } from "./provider/Layers/ProviderAdapterRegistry.ts";
+import * as ModelManifest from "./provider/ModelManifest.ts";
 import * as ProviderEventLoggers from "./provider/Layers/ProviderEventLoggers.ts";
 import { ProviderServiceLive } from "./provider/Layers/ProviderService.ts";
 import { ProviderSessionReaperLive } from "./provider/Layers/ProviderSessionReaper.ts";
@@ -429,7 +430,10 @@ const RuntimeCoreDependenciesBaseLive = ReactorLayerLive.pipe(
   // `ProviderService` (canonical stream, written after event normalization).
   // Provided once at the runtime level so every consumer sees the same
   // logger instances.
-  Layer.provideMerge(ProviderEventLoggers.layer),
+  // `ModelManifest.layer` is the legacy-model classification data applied by
+  // the Codex/Claude drivers. Vetra serves it from the bundled copy; the remote
+  // refresh stays off until `VETRA_MODEL_MANIFEST_URL` names a host we own.
+  Layer.provideMerge(Layer.mergeAll(ProviderEventLoggers.layer, ModelManifest.layer)),
 );
 
 const RuntimeCoreDependenciesLive = RuntimeCoreDependenciesBaseLive.pipe(

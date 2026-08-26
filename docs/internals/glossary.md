@@ -144,6 +144,10 @@ Controls how assistant text reaches the thread timeline. In [the contracts][1], 
 
 A point-in-time view of state. The word is used in multiple layers, including orchestration, provider, and checkpointing. See [ProjectionSnapshotQuery.ts][10], [ProviderAdapter.ts][15], and [CheckpointStore.ts][19].
 
+#### Model manifest
+
+The per-driver list of current model slugs that decides which models land in the model picker's legacy section. Bundled at `apps/server/src/provider/model-manifest.json` and refreshed at runtime from the same file on `main`, so classification updates ship as commits instead of releases. See the [provider architecture][16] model manifest section.
+
 ### Checkpointing
 
 Checkpointing captures workspace state over time so the app can diff turns and restore earlier points. The main pieces are [CheckpointStore.ts][19], [CheckpointDiffQuery.ts][20], and [CheckpointReactor.ts][6].
@@ -196,7 +200,7 @@ Powerhouse's own brand for its authoring toolchain — the `@powerhousedao/vetra
 
 #### Upstream
 
-The original T3 Code repository, [pingdotgg/t3code](https://github.com/pingdotgg/t3code), configured as Git remote `upstream`. Local `main` is a mirror of `upstream/main`. Product work does not land on `main`. See [upstream-sync.md][26].
+The original Vetra Code repository, [pingdotgg/t3code](https://github.com/pingdotgg/t3code), configured as Git remote `upstream`. Local `main` is a mirror of `upstream/main`. Product work does not land on `main`. See [upstream-sync.md][26].
 
 #### Fork identity
 
@@ -217,7 +221,7 @@ The Vetra-owned names that must survive every upstream merge: product name, `@ve
 - [Provider architecture][16]
 - [Permission modes][18]
 - [Workspace layout][2]
-- [Syncing upstream T3 Code][26]
+- [Syncing upstream Vetra Code][26]
 
 [1]: ../../packages/contracts/src/orchestration.ts
 [2]: ./workspace-layout.md

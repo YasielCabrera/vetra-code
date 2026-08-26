@@ -63,6 +63,13 @@ RENAMES=(
   # does not match an underscore, so only typecheck catches a miss.
   'T3_=VETRA_'
   't3tools=vetra-code'
+  # Upstream's oxlint plugin is named `t3code`, ours is `vetra`, so a rule
+  # reference must not go through the generic `t3code` pair below (it would
+  # yield `vetra-code/<rule>` and silently stop matching). Keyed on the rule
+  # name prefixes rather than a bare `t3code/` so repository URLs such as
+  # `pingdotgg/t3code/main/...` are left alone.
+  't3code/no-=vetra/no-'
+  't3code/namespace-=vetra/namespace-'
   # All-caps wordmark used in the DMG installer artwork. Neither `T3 Code` nor
   # the leftover grep below matches it (the space defeats `T3CODE`, the case
   # defeats `T3 Code`), so without this pair it ships T3 branding silently.
@@ -167,7 +174,10 @@ fi
 say "Leftover t3 references (review each -- upstream URLs and t3.codes domains are expected)"
 # Excluded, all pure noise: vendored reference checkouts and lockfiles match on
 # base64 `sha512-` integrity hashes, and this script matches on its own table.
-git grep -nIE 't3tools|t3code|T3 Code|T3CODE|T3_|T3[A-Z][a-z]' -- . \
+# `t3-[a-z]` is report-only on purpose: these are usually temp-dir prefixes that
+# are safe to rebrand, but some are real asset filenames where rewriting the
+# string without renaming the file breaks the lookup. Decide per hit.
+git grep -nIE 't3tools|t3code|T3 Code|T3CODE|T3_|T3[A-Z][a-z]|t3-[a-z]' -- . \
   ':!.repos' ':!*lock*' ":!${BASH_SOURCE[0]#./}" | grep -v 'pingdotgg/' | head -40 || echo "none"
 
 cat <<'EOF'
