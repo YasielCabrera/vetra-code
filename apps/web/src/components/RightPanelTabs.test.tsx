@@ -98,6 +98,7 @@ function renderTabs(
       {...(previewRuntimeTabId ? { previewRuntimeTabId } : {})}
       terminalLabelsById={new Map()}
       onActivate={() => undefined}
+      onReorder={() => undefined}
       onCloseSurface={() => undefined}
       onCloseOtherSurfaces={() => undefined}
       onCloseSurfacesToRight={() => undefined}
@@ -160,6 +161,7 @@ function renderLauncher(powerhouseAvailable: boolean) {
       desktopByTabId={{}}
       terminalLabelsById={new Map()}
       onActivate={() => undefined}
+      onReorder={() => undefined}
       onCloseSurface={() => undefined}
       onCloseOtherSurfaces={() => undefined}
       onCloseSurfacesToRight={() => undefined}

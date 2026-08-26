@@ -3824,6 +3824,13 @@ function ChatViewContent(props: ChatViewProps) {
       syncActivePreviewSurface,
     ],
   );
+  const reorderRightPanelSurfaces = useCallback(
+    (surfaceId: string, targetSurfaceId: string) => {
+      if (!activeThreadRef) return;
+      useRightPanelStore.getState().moveSurface(activeThreadRef, surfaceId, targetSurfaceId);
+    },
+    [activeThreadRef],
+  );
   const closeAllRightPanelSurfaces = useCallback(() => {
     if (!activeThreadRef) return;
     cleanupRightPanelSurfaces(rightPanelState.surfaces);
@@ -7387,6 +7394,7 @@ function ChatViewContent(props: ChatViewProps) {
           previewRuntimeTabId={resolvePreviewRuntimeTabId}
           terminalLabelsById={activeTerminalLabelsById}
           onActivate={activateRightPanelSurface}
+          onReorder={reorderRightPanelSurfaces}
           onCloseSurface={closeRightPanelSurface}
           onCloseOtherSurfaces={closeOtherRightPanelSurfaces}
           onCloseSurfacesToRight={closeRightPanelSurfacesToRight}
@@ -7429,6 +7437,7 @@ function ChatViewContent(props: ChatViewProps) {
             previewRuntimeTabId={resolvePreviewRuntimeTabId}
             terminalLabelsById={activeTerminalLabelsById}
             onActivate={activateRightPanelSurface}
+            onReorder={reorderRightPanelSurfaces}
             onCloseSurface={closeRightPanelSurface}
             onCloseOtherSurfaces={closeOtherRightPanelSurfaces}
             onCloseSurfacesToRight={closeRightPanelSurfacesToRight}

@@ -1546,6 +1546,10 @@ function PullRequestsRouteView() {
     useRightPanelStore.getState().closeAllSurfaces(rightPanelRef);
     selectSurfaceInUrl(null);
   };
+  const moveSurface = (surfaceId: string, targetSurfaceId: string) => {
+    if (rightPanelRef === null) return;
+    useRightPanelStore.getState().moveSurface(rightPanelRef, surfaceId, targetSurfaceId);
+  };
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
@@ -1570,6 +1574,7 @@ function PullRequestsRouteView() {
             onActivate={(surface) => {
               if (surface.kind === "pull-request") activateSurface(surface);
             }}
+            onReorder={moveSurface}
             onCloseSurface={(surface) => {
               if (surface.kind === "pull-request") closeSurface(surface);
             }}

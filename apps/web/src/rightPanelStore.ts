@@ -106,6 +106,7 @@ interface RightPanelStoreState {
   activateTerminal: (ref: ScopedThreadRef, surfaceId: string, terminalId: string) => void;
   closeTerminal: (ref: ScopedThreadRef, surfaceId: string, terminalId: string) => void;
   activateSurface: (ref: ScopedThreadRef, surfaceId: string) => void;
+  moveSurface: (ref: ScopedThreadRef, surfaceId: string, targetSurfaceId: string) => void;
   closeSurface: (ref: ScopedThreadRef, surfaceId: string) => void;
   closeOtherSurfaces: (ref: ScopedThreadRef, surfaceId: string) => void;
   closeSurfacesToRight: (ref: ScopedThreadRef, surfaceId: string) => void;
@@ -508,6 +509,18 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
               : current,
           ),
         })),
+      moveSurface: (ref, surfaceId, targetSurfaceId) =>
+        set((state) => ({
+          byThreadKey: updateThread(state.byThreadKey, scopedThreadKey(ref), (current) => {
+            const from = current.surfaces.findIndex((surface) => surface.id === surfaceId);
+            const to = current.surfaces.findIndex((surface) => surface.id === targetSurfaceId);
+            if (from < 0 || to < 0 || from === to) return current;
+            const surfaces = [...current.surfaces];
+            const [moved] = surfaces.splice(from, 1);
+            surfaces.splice(to, 0, moved!);
+            return { ...current, surfaces };
+          }),
+        })),
       closeSurface: (ref, surfaceId) =>
         set((state) => ({
           byThreadKey: updateThread(state.byThreadKey, scopedThreadKey(ref), (current) => {
@@ -567,18 +580,19 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
         set((state) => ({
           byThreadKey: updateThread(state.byThreadKey, scopedThreadKey(ref), (current) => {
             const validIds = new Set(tabIds.map((tabId) => `browser:${tabId}`));
-            const nonBrowser = current.surfaces.filter((surface) => surface.kind !== "preview");
-            const existingBrowser = current.surfaces.filter(
-              (surface): surface is Extract<RightPanelSurface, { kind: "preview" }> =>
-                surface.kind === "preview" &&
-                surface.id !== "browser:new" &&
-                validIds.has(surface.id),
+            // Filter in place rather than regrouping by kind: tabs are
+            // user-orderable, so surviving surfaces must keep their positions.
+            const kept = current.surfaces.filter(
+              (surface) =>
+                surface.kind !== "preview" ||
+                (surface.id !== "browser:new" && validIds.has(surface.id)),
             );
-            const knownIds = new Set(existingBrowser.map((surface) => surface.id));
+            const knownIds = new Set(kept.map((surface) => surface.id));
             const added = tabIds
               .filter((tabId) => !knownIds.has(`browser:${tabId}`))
               .map((tabId) => browserSurface(tabId));
-            const surfaces = [...nonBrowser, ...existingBrowser, ...added];
+            if (kept.length === current.surfaces.length && added.length === 0) return current;
+            const surfaces = [...kept, ...added];
             const activeStillExists = surfaces.some(
               (surface) => surface.id === current.activeSurfaceId,
             );

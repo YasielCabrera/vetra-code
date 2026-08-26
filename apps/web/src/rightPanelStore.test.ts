@@ -699,6 +699,46 @@ describe("rightPanelStore", () => {
       ),
     ).toEqual(["terminal:term-1", "browser:tab-b", "browser:tab-c"]);
   });
+  it("moves a surface to another surface's slot", () => {
+    useRightPanelStore.getState().openTerminal(refA, "term-1");
+    useRightPanelStore.getState().openBrowser(refA, "tab-a");
+    useRightPanelStore.getState().openFile(refA, "src/index.ts");
+
+    useRightPanelStore.getState().moveSurface(refA, "file:src/index.ts", "terminal:term-1");
+
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).surfaces.map(
+        (surface) => surface.id,
+      ),
+    ).toEqual(["file:src/index.ts", "terminal:term-1", "browser:tab-a"]);
+  });
+
+  it("ignores a move whose source or target surface is gone", () => {
+    useRightPanelStore.getState().openBrowser(refA, "tab-a");
+    const before = selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA);
+
+    useRightPanelStore.getState().moveSurface(refA, "browser:tab-a", "browser:closed");
+    useRightPanelStore.getState().moveSurface(refA, "browser:closed", "browser:tab-a");
+
+    expect(selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA)).toBe(
+      before,
+    );
+  });
+
+  it("keeps a dragged order when reconciling browser surfaces", () => {
+    useRightPanelStore.getState().openTerminal(refA, "term-1");
+    useRightPanelStore.getState().openBrowser(refA, "tab-a");
+    useRightPanelStore.getState().moveSurface(refA, "browser:tab-a", "terminal:term-1");
+
+    useRightPanelStore.getState().reconcileBrowserSurfaces(refA, ["tab-a", "tab-b"]);
+
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).surfaces.map(
+        (surface) => surface.id,
+      ),
+    ).toEqual(["browser:tab-a", "terminal:term-1", "browser:tab-b"]);
+  });
+
   it("opens and closes the powerhouse surface as a singleton", () => {
     useRightPanelStore.getState().toggle(refA, "powerhouse");
     expect(
