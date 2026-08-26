@@ -1,6 +1,6 @@
 import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
 import { type EnvironmentId, ThreadId } from "@vetra-code/contracts";
-import { beforeEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
   migratePersistedRightPanelState,
@@ -19,6 +19,13 @@ const refB = scopeThreadRef("env-1" as EnvironmentId, ThreadId.make("thread-B"))
 beforeEach(() => {
   useRightPanelStore.setState({ byThreadKey: {} });
 });
+afterEach(() => vi.restoreAllMocks());
+
+function spyOnPersistWrites() {
+  const storage = useRightPanelStore.persist.getOptions().storage;
+  if (!storage) throw new Error("Right panel persistence storage is unavailable.");
+  return vi.spyOn(storage, "setItem");
+}
 
 describe("rightPanelStore", () => {
   it("drops the legacy singleton terminal surface during migration", () => {
@@ -313,6 +320,108 @@ describe("rightPanelStore", () => {
         },
       ],
     });
+  });
+
+  it("reuses the preview tab's slot for the next preview open", () => {
+    useRightPanelStore.getState().openFile(refA, "src/index.ts");
+    useRightPanelStore.getState().openFile(refA, "docs/a.md", undefined, { preview: true });
+    useRightPanelStore.getState().openFile(refA, "README.md");
+    useRightPanelStore.getState().openFile(refA, "docs/b.md", undefined, { preview: true });
+
+    expect(selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA)).toEqual({
+      isOpen: true,
+      activeSurfaceId: "file:docs/b.md",
+      surfaces: [
+        {
+          id: "file:src/index.ts",
+          kind: "file",
+          relativePath: "src/index.ts",
+          revealLine: null,
+          revealRequestId: 1,
+        },
+        {
+          id: "file:docs/b.md",
+          kind: "file",
+          relativePath: "docs/b.md",
+          revealLine: null,
+          revealRequestId: 1,
+          preview: true,
+        },
+        {
+          id: "file:README.md",
+          kind: "file",
+          relativePath: "README.md",
+          revealLine: null,
+          revealRequestId: 1,
+        },
+      ],
+    });
+  });
+
+  it("promotes the preview tab when its file is opened as a dedicated tab", () => {
+    useRightPanelStore.getState().openFile(refA, "docs/a.md", undefined, { preview: true });
+    useRightPanelStore.getState().openFile(refA, "docs/a.md");
+    useRightPanelStore.getState().openFile(refA, "docs/b.md", undefined, { preview: true });
+
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).surfaces,
+    ).toEqual([
+      {
+        id: "file:docs/a.md",
+        kind: "file",
+        relativePath: "docs/a.md",
+        revealLine: null,
+        revealRequestId: 2,
+      },
+      {
+        id: "file:docs/b.md",
+        kind: "file",
+        relativePath: "docs/b.md",
+        revealLine: null,
+        revealRequestId: 1,
+        preview: true,
+      },
+    ]);
+  });
+
+  it("never demotes a dedicated tab on a preview open of the same file", () => {
+    useRightPanelStore.getState().openFile(refA, "docs/a.md");
+    useRightPanelStore.getState().openFile(refA, "docs/a.md", undefined, { preview: true });
+
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).surfaces,
+    ).toEqual([
+      {
+        id: "file:docs/a.md",
+        kind: "file",
+        relativePath: "docs/a.md",
+        revealLine: null,
+        revealRequestId: 2,
+      },
+    ]);
+  });
+
+  it("pinFile promotes the preview tab in place and is otherwise a no-op", () => {
+    useRightPanelStore.getState().openFile(refA, "docs/a.md", undefined, { preview: true });
+    useRightPanelStore.getState().pinFile(refA, "docs/a.md");
+
+    const pinned = selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA);
+    expect(pinned.surfaces).toEqual([
+      {
+        id: "file:docs/a.md",
+        kind: "file",
+        relativePath: "docs/a.md",
+        revealLine: null,
+        revealRequestId: 1,
+      },
+    ]);
+
+    const persistWrites = spyOnPersistWrites();
+    const before = useRightPanelStore.getState();
+    useRightPanelStore.getState().pinFile(refA, "docs/a.md");
+    useRightPanelStore.getState().pinFile(refA, "missing.md");
+    expect(useRightPanelStore.getState()).toBe(before);
+    expect(persistWrites).not.toHaveBeenCalled();
   });
 
   it("removes persisted file surfaces when their workspace no longer exists", () => {

@@ -4,6 +4,12 @@ Open **Files** in a thread's right panel to browse and edit the files in that th
 The search field filters the tree, and the refresh button reloads both the project listing and its
 local Git status.
 
+Clicking a file opens it in a preview tab, shown with an italic name. There is only ever one
+preview tab: clicking the next file reuses it, so skimming through a project does not fill the tab
+strip. To keep a file in its own tab, double-click it in the tree, double-click its preview tab,
+or choose **Keep open** from the tab's context menu. Editing a previewed file also keeps it open,
+and files opened from search, chat links, or the diff always get their own tab.
+
 In Git projects, the explorer decorates uncommitted files relative to `HEAD`:
 
 - `A` is a staged addition.

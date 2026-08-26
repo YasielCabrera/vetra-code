@@ -1862,6 +1862,11 @@ function ChatViewContent(props: ChatViewProps) {
   const handleFilePendingChange = useCallback(
     (relativePath: string, pending: boolean) => {
       if (!activeProjectKey) return;
+      // Edits must not sit in a preview tab that the next single-click open
+      // would replace, so an edited file gets its dedicated tab immediately.
+      if (pending && activeThreadRef) {
+        useRightPanelStore.getState().pinFile(activeThreadRef, relativePath);
+      }
       setPendingFileSurfaceIdsByProject((currentByProject) => {
         const current = currentByProject.get(activeProjectKey) ?? EMPTY_PENDING_FILE_SURFACE_IDS;
         const surfaceId = `file:${relativePath}`;
@@ -1875,7 +1880,7 @@ function ChatViewContent(props: ChatViewProps) {
         return nextByProject;
       });
     },
-    [activeProjectKey],
+    [activeProjectKey, activeThreadRef],
   );
   const configuredPreviewUrls = useMemo(
     () => getConfiguredPreviewUrls(activeProject?.scripts),
@@ -3504,9 +3509,9 @@ function ChatViewContent(props: ChatViewProps) {
     useRightPanelStore.getState().toggle(activeThreadRef, "powerhouse");
   }, [activeThreadRef, powerhouseAvailable]);
   const openFileSurface = useCallback(
-    (relativePath: string) => {
+    (relativePath: string, options?: { preview?: boolean }) => {
       if (!activeThreadRef || !activeProject) return;
-      useRightPanelStore.getState().openFile(activeThreadRef, relativePath);
+      useRightPanelStore.getState().openFile(activeThreadRef, relativePath, undefined, options);
     },
     [activeProject, activeThreadRef],
   );
@@ -3828,6 +3833,13 @@ function ChatViewContent(props: ChatViewProps) {
     (surfaceId: string, targetSurfaceId: string) => {
       if (!activeThreadRef) return;
       useRightPanelStore.getState().moveSurface(activeThreadRef, surfaceId, targetSurfaceId);
+    },
+    [activeThreadRef],
+  );
+  const pinRightPanelSurface = useCallback(
+    (surface: RightPanelSurface) => {
+      if (!activeThreadRef || surface.kind !== "file") return;
+      useRightPanelStore.getState().pinFile(activeThreadRef, surface.relativePath);
     },
     [activeThreadRef],
   );
@@ -7394,6 +7406,7 @@ function ChatViewContent(props: ChatViewProps) {
           previewRuntimeTabId={resolvePreviewRuntimeTabId}
           terminalLabelsById={activeTerminalLabelsById}
           onActivate={activateRightPanelSurface}
+          onPinSurface={pinRightPanelSurface}
           onReorder={reorderRightPanelSurfaces}
           onCloseSurface={closeRightPanelSurface}
           onCloseOtherSurfaces={closeOtherRightPanelSurfaces}
@@ -7437,6 +7450,7 @@ function ChatViewContent(props: ChatViewProps) {
             previewRuntimeTabId={resolvePreviewRuntimeTabId}
             terminalLabelsById={activeTerminalLabelsById}
             onActivate={activateRightPanelSurface}
+            onPinSurface={pinRightPanelSurface}
             onReorder={reorderRightPanelSurfaces}
             onCloseSurface={closeRightPanelSurface}
             onCloseOtherSurfaces={closeOtherRightPanelSurfaces}

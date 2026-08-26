@@ -85,6 +85,11 @@ interface RightPanelTabsProps {
   previewRuntimeTabId?: ((tabId: string) => string) | undefined;
   terminalLabelsById: ReadonlyMap<string, string>;
   onActivate: (surface: RightPanelSurface) => void;
+  /**
+   * Promote a preview file tab into a dedicated tab (double-click or context
+   * menu). Optional: hosts whose surfaces never open as previews leave it out.
+   */
+  onPinSurface?: (surface: RightPanelSurface) => void;
   /** Drop handler for tab drag-sorting; moves a tab to the hovered tab's slot. */
   onReorder: (surfaceId: string, targetSurfaceId: string) => void;
   onCloseSurface: (surface: RightPanelSurface) => void;
@@ -176,6 +181,7 @@ const SURFACE_UNAVAILABLE_HINTS = {
 } as const;
 
 type TabContextMenuAction =
+  | "keep-open"
   | "copy-path"
   | "toggle-mute"
   | "close"
@@ -759,6 +765,9 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
 
       const items: ContextMenuItem<TabContextMenuAction>[] = [];
       if (surface.kind === "file") {
+        if (surface.preview === true && props.onPinSurface) {
+          items.push({ id: "keep-open", label: "Keep open" });
+        }
         items.push({ id: "copy-path", label: "Copy path" });
       }
       const menuPreviewTabId = previewTabIdOf(surface, props.previewSessions);
@@ -801,6 +810,9 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
 
       const action = await api.contextMenu.show(items, { x: event.clientX, y: event.clientY });
       switch (action) {
+        case "keep-open":
+          props.onPinSurface?.(surface);
+          break;
         case "copy-path":
           if (surface.kind === "file") props.onCopyFilePath(surface.relativePath);
           break;
@@ -906,6 +918,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                 {props.surfaces.map((surface) => {
                   const active = surface.id === props.activeSurfaceId;
                   const pending = props.pendingSurfaceIds.has(surface.id);
+                  const filePreview = surface.kind === "file" && surface.preview === true;
                   const title = surfaceTitle(
                     surface,
                     props.previewSessions,
@@ -933,6 +946,9 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                           data-active-tab={active}
                           onMouseDown={handleTabMouseDown}
                           onAuxClick={(event) => handleTabAuxClick(event, surface)}
+                          onDoubleClick={
+                            filePreview ? () => props.onPinSurface?.(surface) : undefined
+                          }
                           onContextMenu={(event) => void handleTabContextMenu(event, surface)}
                           className={cn(
                             "cursor-pointer group/tab flex h-6 max-w-36 shrink-0 items-center gap-0.5 rounded-md pr-2 pl-1.5 text-xs",
@@ -1004,7 +1020,10 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                                   className="cursor-pointer flex min-w-0 items-center"
                                   onClick={() => props.onActivate(surface)}
                                 >
-                                  <span className="truncate">{title}</span>
+                                  {/* Italic marks a preview tab: the next single-click open reuses it. */}
+                                  <span className={cn("truncate", filePreview && "italic")}>
+                                    {title}
+                                  </span>
                                 </button>
                               }
                             />

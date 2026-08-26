@@ -100,7 +100,7 @@ interface FilePreviewPanelProps {
   availableEditors: ReadonlyArray<EditorId>;
   revealLine: number | null;
   revealRequestId: number;
-  onOpenFile: (relativePath: string) => void;
+  onOpenFile: (relativePath: string, options?: { preview?: boolean }) => void;
   onPendingChange: (relativePath: string, pending: boolean) => void;
 }
 

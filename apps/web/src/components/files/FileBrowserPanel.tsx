@@ -22,7 +22,7 @@ import { useEnvironmentQuery } from "~/state/query";
 import { vcsEnvironment } from "~/state/vcs";
 
 import { fileTreeAncestorDirectoryPaths } from "./filePath";
-import { createFileTreeDragMentionController } from "./fileTreeDragMention";
+import { createFileTreeDragMentionController, fileTreeEventItemPath } from "./fileTreeDragMention";
 import { buildFileTreeGitStatus } from "./fileTreeGitStatus";
 import { useProjectEntriesQuery } from "./projectFilesQueryState";
 
@@ -34,7 +34,8 @@ interface FileBrowserPanelProps {
   selectedPath: string | null;
   /** Bumped when the same path should be revealed again (e.g. re-opened from search). */
   selectedPathRevealId: number;
-  onOpenFile: (relativePath: string) => void;
+  /** Single click and keyboard selection open a preview tab; double click a dedicated one. */
+  onOpenFile: (relativePath: string, options?: { preview?: boolean }) => void;
   onRefreshSelectedFile?: () => void;
 }
 
@@ -274,7 +275,7 @@ export default function FileBrowserPanel({
       const selectedPath = selectedPaths.at(-1)?.replace(/\/$/, "");
       if (selectedPath && entryKindsRef.current.get(selectedPath) === "file") {
         treeSelectionPathRef.current = selectedPath;
-        onOpenFile(selectedPath);
+        onOpenFile(selectedPath, { preview: true });
       }
     },
     paths: [],
@@ -368,6 +369,10 @@ export default function FileBrowserPanel({
   // The capture phase runs before the tree's own dragstart handler selects
   // the dragged row, so the drag flag is up before that selection emits.
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const onOpenFileRef = useRef(onOpenFile);
+  useEffect(() => {
+    onOpenFileRef.current = onOpenFile;
+  });
   useEffect(() => {
     treeModelRef.current = model;
   }, [model]);
@@ -378,11 +383,23 @@ export default function FileBrowserPanel({
     }
     const handleDragStart = (event: DragEvent) => dragMention.handleDragStart(event);
     const handleDragEnd = () => dragMention.handleDragEnd();
+    // The tree exposes no double-click callback, so the gesture is read from
+    // the composed event like drags are. The first click already opened the
+    // file as a preview tab; the double click promotes it to a dedicated tab.
+    const handleDoubleClick = (event: MouseEvent) => {
+      const itemPath = fileTreeEventItemPath(event.composedPath());
+      const relativePath = itemPath?.replace(/\/$/, "");
+      if (relativePath && entryKindsRef.current.get(relativePath) === "file") {
+        onOpenFileRef.current(relativePath);
+      }
+    };
     panel.addEventListener("dragstart", handleDragStart, true);
     panel.addEventListener("dragend", handleDragEnd);
+    panel.addEventListener("dblclick", handleDoubleClick, true);
     return () => {
       panel.removeEventListener("dragstart", handleDragStart, true);
       panel.removeEventListener("dragend", handleDragEnd);
+      panel.removeEventListener("dblclick", handleDoubleClick, true);
     };
   }, [dragMention]);
 

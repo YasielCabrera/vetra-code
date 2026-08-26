@@ -39,6 +39,20 @@ const itemPathOf = (node: unknown): string | null => {
 };
 
 /**
+ * Tree path of the row an event originated on, or null off-row. Rows render in
+ * the tree's open shadow DOM, so callers must read the composed event path.
+ */
+export const fileTreeEventItemPath = (eventPath: ReadonlyArray<unknown>): string | null => {
+  for (const node of eventPath) {
+    const itemPath = itemPathOf(node);
+    if (itemPath !== null) {
+      return itemPath;
+    }
+  }
+  return null;
+};
+
+/**
  * Tags file-tree drags with the composer mention payload and keeps the drag
  * from acting like a click: while the drag runs, selection changes are
  * suppressed, and when it ends the dragged rows are deselected so nothing is
@@ -60,13 +74,7 @@ export function createFileTreeDragMentionController(
       }
       // Only drags that originate on a tree row are mentions; a text/plain
       // fallback would also tag drags of selected text from the panel chrome.
-      let itemPath: string | null = null;
-      for (const node of event.composedPath()) {
-        itemPath = itemPathOf(node);
-        if (itemPath !== null) {
-          break;
-        }
-      }
+      const itemPath = fileTreeEventItemPath(event.composedPath());
       if (itemPath === null) {
         return;
       }

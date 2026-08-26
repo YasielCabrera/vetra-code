@@ -45,6 +45,11 @@ export type RightPanelSurface =
       relativePath: string;
       revealLine: number | null;
       revealRequestId: number;
+      /**
+       * A single-click preview tab: the next preview open replaces it instead
+       * of adding a tab. Absent on dedicated tabs (double-click, pinned).
+       */
+      preview?: boolean;
     }
   | {
       /**
@@ -91,7 +96,14 @@ interface RightPanelStoreState {
     kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request">,
   ) => void;
   openBrowser: (ref: ScopedThreadRef, tabId: string | null) => void;
-  openFile: (ref: ScopedThreadRef, relativePath: string, line?: number) => void;
+  openFile: (
+    ref: ScopedThreadRef,
+    relativePath: string,
+    line?: number,
+    options?: { preview?: boolean },
+  ) => void;
+  /** Promote a preview file tab into a dedicated tab. No-op on anything else. */
+  pinFile: (ref: ScopedThreadRef, relativePath: string) => void;
   openPullRequest: (
     ref: ScopedThreadRef,
     target: { environmentId?: string; projectId: string; repository: string; number: number },
@@ -153,12 +165,14 @@ const fileSurface = (
   relativePath: string,
   revealLine: number | null,
   revealRequestId: number,
+  preview = false,
 ): RightPanelSurface => ({
   id: `file:${relativePath}`,
   kind: "file",
   relativePath,
   revealLine,
   revealRequestId,
+  ...(preview ? { preview: true } : {}),
 });
 
 const terminalSurface = (terminalId: string): RightPanelSurface => ({
@@ -283,7 +297,15 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                         surface.revealRequestId >= 0
                           ? surface.revealRequestId
                           : 0;
-                      return [{ ...surface, revealLine, revealRequestId }];
+                      const { preview, ...rest } = surface;
+                      return [
+                        {
+                          ...rest,
+                          revealLine,
+                          revealRequestId,
+                          ...(preview === true ? { preview: true } : {}),
+                        },
+                      ];
                     }
                     if (surface.kind === "pull-request") {
                       if (
@@ -367,7 +389,7 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
 
 export const useRightPanelStore = create<RightPanelStoreState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       byThreadKey: {},
       open: (ref, kind) =>
         set((state) => ({
@@ -395,7 +417,7 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
             return upsertSurface(current, pullRequestSurface(target));
           }),
         })),
-      openFile: (ref, relativePath, line) =>
+      openFile: (ref, relativePath, line, options) =>
         set((state) => ({
           byThreadKey: updateThread(state.byThreadKey, scopedThreadKey(ref), (current) => {
             const withoutStandaloneExplorer = current.surfaces.filter(
@@ -406,22 +428,62 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
               (surface): surface is Extract<RightPanelSurface, { kind: "file" }> =>
                 surface.id === surfaceId && surface.kind === "file",
             );
+            // A preview open never demotes a dedicated tab, while a dedicated
+            // open promotes the preview tab it lands on.
+            const preview = options?.preview === true && (!existing || existing.preview === true);
             const surface = fileSurface(
               relativePath,
               normalizeRevealLine(line),
               (existing?.revealRequestId ?? 0) + 1,
+              preview,
             );
+            // A preview open reuses the previous preview tab's slot instead of
+            // growing the tab strip; there is at most one preview tab.
+            const replaced = existing
+              ? existing
+              : preview
+                ? withoutStandaloneExplorer.find(
+                    (entry) => entry.kind === "file" && entry.preview === true,
+                  )
+                : undefined;
             return {
               isOpen: true,
               activeSurfaceId: surface.id,
-              surfaces: existing
-                ? withoutStandaloneExplorer.map((entry) =>
-                    entry.id === surface.id ? surface : entry,
-                  )
+              surfaces: replaced
+                ? withoutStandaloneExplorer.map((entry) => (entry === replaced ? surface : entry))
                 : [...withoutStandaloneExplorer, surface],
             };
           }),
         })),
+      pinFile: (ref, relativePath) => {
+        const threadKey = scopedThreadKey(ref);
+        const surfaceId = `file:${relativePath}`;
+        const previewExists = get().byThreadKey[threadKey]?.surfaces.some(
+          (surface) =>
+            surface.id === surfaceId && surface.kind === "file" && surface.preview === true,
+        );
+        // Persist wraps every set call with a storage write, even when the
+        // state updater returns the same object. Edits report pending on every
+        // change, so skip set entirely after the preview has been promoted.
+        if (!previewExists) return;
+        set((state) => ({
+          byThreadKey: updateThread(state.byThreadKey, scopedThreadKey(ref), (current) => {
+            const existing = current.surfaces.find(
+              (surface) =>
+                surface.id === surfaceId && surface.kind === "file" && surface.preview === true,
+            );
+            if (!existing) return current;
+            return {
+              ...current,
+              surfaces: current.surfaces.map((surface) => {
+                if (surface !== existing || surface.kind !== "file") return surface;
+                const { preview: _preview, ...pinned } = surface;
+                return pinned;
+              }),
+            };
+          }),
+        }));
+      },
       openTerminal: (ref, terminalId) =>
         set((state) => ({
           byThreadKey: updateThread(state.byThreadKey, scopedThreadKey(ref), (current) =>
