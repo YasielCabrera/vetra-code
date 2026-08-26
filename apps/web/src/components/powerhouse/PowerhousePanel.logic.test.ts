@@ -120,6 +120,13 @@ describe("describeReactorFailure", () => {
     ).toContain("503");
   });
 
+  it("gives malformed Switchboard payloads an actionable message", () => {
+    expect(describeReactorFailure({ failure: "invalid_request" })).toEqual({
+      title: "That request cannot be sent",
+      detail: "Check the operation, variables, and request headers, then try again.",
+    });
+  });
+
   it("falls back to a generic address when nothing was recorded", () => {
     expect(describeReactorFailure({ failure: "timeout" }).detail).toContain(
       "the configured address",

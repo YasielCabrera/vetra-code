@@ -2,6 +2,9 @@ import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  POWERHOUSE_GRAPHQL_DOCUMENT_MAX_LENGTH,
+  POWERHOUSE_GRAPHQL_HEADER_MAX_COUNT,
+  POWERHOUSE_GRAPHQL_VARIABLES_MAX_LENGTH,
   POWERHOUSE_REACTOR_FILTER_VALUE_MAX_COUNT,
   parsePowerhouseConfig,
   PowerhouseDatabaseError,
@@ -11,6 +14,8 @@ import {
   PowerhouseProjectError,
   PowerhouseReactorDocument,
   PowerhouseReactorError,
+  PowerhouseReactorExecuteGraphqlInput,
+  PowerhouseReactorExecuteGraphqlResult,
   PowerhouseReactorGetDocumentInput,
   PowerhouseReactorListDocumentsInput,
   PowerhouseReactorOperation,
@@ -32,6 +37,8 @@ const encodeDatabaseError = Schema.encodeUnknownSync(PowerhouseDatabaseError);
 const decodeDatabaseError = Schema.decodeUnknownSync(PowerhouseDatabaseError);
 const decodeDatabaseQueryResult = Schema.decodeUnknownSync(PowerhouseDatabaseQueryResult);
 const decodeDatabaseTarget = Schema.decodeUnknownSync(PowerhouseDatabaseTarget);
+const decodeExecuteGraphqlInput = Schema.decodeUnknownSync(PowerhouseReactorExecuteGraphqlInput);
+const decodeExecuteGraphqlResult = Schema.decodeUnknownSync(PowerhouseReactorExecuteGraphqlResult);
 
 describe("parsePowerhouseConfig", () => {
   it("reads the fields the panel needs", () => {
@@ -241,6 +248,77 @@ describe("payload schemas", () => {
             (_, index) => `doc-${index}`,
           ),
         },
+      }),
+    ).toThrow();
+  });
+
+  it("decodes a bounded Switchboard GraphQL request", () => {
+    expect(
+      decodeExecuteGraphqlInput({
+        url: "http://127.0.0.1:4001",
+        query: "query Todo($id: ID!) { document(identifier: $id) { document { id } } }",
+        operationName: "Todo",
+        variablesJson: '{"id":"doc-1"}',
+        headers: { Authorization: "Bearer token", "X-Powerhouse-User": "0x123" },
+      }),
+    ).toEqual({
+      url: "http://127.0.0.1:4001",
+      query: "query Todo($id: ID!) { document(identifier: $id) { document { id } } }",
+      operationName: "Todo",
+      variablesJson: '{"id":"doc-1"}',
+      headers: { Authorization: "Bearer token", "X-Powerhouse-User": "0x123" },
+    });
+  });
+
+  it("bounds Switchboard documents, variables, and headers at the websocket", () => {
+    const base = { url: "http://127.0.0.1:4001", query: "query { system { version } }" };
+
+    expect(() =>
+      decodeExecuteGraphqlInput({
+        ...base,
+        query: "x".repeat(POWERHOUSE_GRAPHQL_DOCUMENT_MAX_LENGTH + 1),
+      }),
+    ).toThrow();
+    expect(() =>
+      decodeExecuteGraphqlInput({
+        ...base,
+        variablesJson: "x".repeat(POWERHOUSE_GRAPHQL_VARIABLES_MAX_LENGTH + 1),
+      }),
+    ).toThrow();
+    expect(() =>
+      decodeExecuteGraphqlInput({
+        ...base,
+        headers: Object.fromEntries(
+          Array.from({ length: POWERHOUSE_GRAPHQL_HEADER_MAX_COUNT + 1 }, (_, index) => [
+            `X-Switchboard-${index}`,
+            "value",
+          ]),
+        ),
+      }),
+    ).toThrow();
+    expect(() =>
+      decodeExecuteGraphqlInput({
+        ...base,
+        headers: { Authorization: "Bearer token\r\nInjected: 1" },
+      }),
+    ).toThrow();
+  });
+
+  it("keeps a bounded GraphQL response envelope opaque for GraphiQL", () => {
+    const response = {
+      data: { system: { version: "6.2.0" } },
+      errors: [{ message: "A field was denied", extensions: { code: "FORBIDDEN" } }],
+      extensions: { tracing: { duration: 12 } },
+    };
+    expect(decodeExecuteGraphqlResult({ status: 403, response })).toEqual({
+      status: 403,
+      response,
+    });
+    expect(() => decodeExecuteGraphqlResult({ status: 99, response })).toThrow();
+    expect(() =>
+      decodeExecuteGraphqlResult({
+        status: 200,
+        response: Object.fromEntries(Array.from({ length: 65 }, (_, index) => [`k${index}`, null])),
       }),
     ).toThrow();
   });

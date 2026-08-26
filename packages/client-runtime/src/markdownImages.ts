@@ -1,3 +1,5 @@
+import { parseSourceControlAttachmentUrl } from "@vetra-code/shared/sourceControlAttachments";
+
 const DIRECT_IMAGE_SOURCE_PATTERN = /^(?:https?:|data:|blob:|\/\/)/i;
 const URI_SCHEME_PATTERN = /^[A-Za-z][A-Za-z0-9+.-]*:/;
 const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:[\\/]/;
@@ -5,6 +7,8 @@ const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:[\\/]/;
 export type MarkdownImageSource =
   | { readonly _tag: "Direct"; readonly uri: string }
   | { readonly _tag: "WorkspaceFile"; readonly path: string }
+  /** An upload only the environment's source control login can fetch. */
+  | { readonly _tag: "SourceControlAttachment"; readonly url: string }
   | { readonly _tag: "Blocked" };
 
 function safeDecode(value: string): string {
@@ -74,6 +78,10 @@ export function classifyMarkdownImageSource(
   const source = normalizeSource(value);
   if (source.length === 0 || source.startsWith("#") || source.startsWith("?")) {
     return { _tag: "Blocked" };
+  }
+  const attachmentUrl = parseSourceControlAttachmentUrl(source);
+  if (attachmentUrl !== null) {
+    return { _tag: "SourceControlAttachment", url: attachmentUrl };
   }
   if (DIRECT_IMAGE_SOURCE_PATTERN.test(source)) {
     return { _tag: "Direct", uri: source };

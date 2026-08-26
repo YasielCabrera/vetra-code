@@ -163,6 +163,39 @@ export const IssueListCursors = Schema.Record(
 );
 export type IssueListCursors = typeof IssueListCursors.Type;
 
+/**
+ * Who an issue is assigned to, as the host's own `assignee:` qualifier reads it.
+ *
+ * `@me` is whoever the environment is signed in as, left for the host to resolve rather than
+ * looked up here — GitHub answers it against the same credentials that read the list, which is
+ * the only account that could be meant. `@none` asks for the rows nobody is assigned to.
+ * Neither sentinel can collide with an account name, since no host lets one start with `@`.
+ *
+ * Anything else is one account name, bounded to characters a host can call an account by: no
+ * colon, quote, space or leading dash, so a value cannot carry a second qualifier — or a
+ * negation of the one it is in — into the search expression it is written to.
+ */
+const ISSUE_ASSIGNEE_FILTER_PATTERN = /^(?:@me|@none|[A-Za-z0-9][A-Za-z0-9._-]{0,63})$/;
+export const IssueAssigneeFilter = TrimmedNonEmptyString.check(
+  Schema.isMaxLength(64),
+  Schema.isPattern(ISSUE_ASSIGNEE_FILTER_PATTERN),
+);
+export type IssueAssigneeFilter = typeof IssueAssigneeFilter.Type;
+
+/** The signed-in account, whoever the host says that is. */
+export const ISSUE_ASSIGNEE_VIEWER = "@me";
+/** The rows nobody is assigned to. */
+export const ISSUE_ASSIGNEE_NOBODY = "@none";
+
+/**
+ * Whether a value is one the listing would accept, for callers that must drop a bad one rather
+ * than fail on it — a link carrying a hand-edited query string reaches the page before it
+ * reaches the schema.
+ */
+export function isIssueAssigneeFilter(value: string): boolean {
+  return ISSUE_ASSIGNEE_FILTER_PATTERN.test(value.trim());
+}
+
 export const IssueListInput = Schema.Struct({
   state: IssueListState,
   projectId: Schema.optional(ProjectId),
@@ -177,6 +210,12 @@ export const IssueListInput = Schema.Struct({
   cursors: Schema.optional(IssueListCursors),
   /** Bounded before it is escaped into the host's own search expression. */
   query: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(200))),
+  /**
+   * Narrows to the issues one person is assigned to. Narrowed by the host rather than over the
+   * rows it returns: a page holds one slice of each repository, and judging the slice would
+   * answer "nobody" for somebody whose issues are two pages down.
+   */
+  assignee: Schema.optional(IssueAssigneeFilter),
 });
 export type IssueListInput = typeof IssueListInput.Type;
 

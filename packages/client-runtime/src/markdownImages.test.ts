@@ -44,6 +44,18 @@ describe("classifyMarkdownImageSource", () => {
     });
   });
 
+  it("routes a source control upload through the environment", () => {
+    expect(
+      classifyMarkdownImageSource(
+        "https://github.com/user-attachments/assets/45b6dcb9-2bb8-4f91-8ad6-b8af19d03883",
+        "/workspace/project",
+      ),
+    ).toEqual({
+      _tag: "SourceControlAttachment",
+      url: "https://github.com/user-attachments/assets/45b6dcb9-2bb8-4f91-8ad6-b8af19d03883",
+    });
+  });
+
   it.each([
     null,
     "",

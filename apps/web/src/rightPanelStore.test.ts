@@ -3,12 +3,14 @@ import { type EnvironmentId, ThreadId } from "@vetra-code/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
+  issueSurfaceId,
   migratePersistedRightPanelState,
   pullRequestSurfaceId,
   selectActiveRightPanel,
   selectActiveRightPanelSurface,
   selectSelectedRightPanelSurface,
   selectThreadRightPanelState,
+  updateIssueTabStatus,
   updatePullRequestTabStatus,
   useRightPanelStore,
 } from "./rightPanelStore";
@@ -182,6 +184,40 @@ describe("rightPanelStore", () => {
         },
       }),
     ).toEqual({ byThreadKey: { "env-1:thread-A": panelState } });
+  });
+
+  it("drops the issue list's shared panel and any issue surface missing its reference", () => {
+    const id = issueSurfaceId({
+      environmentId: "env-1",
+      projectId: "project-a",
+      repository: "vetra-code/vetra-code",
+      number: 148,
+    });
+    const surface = {
+      id,
+      kind: "issue" as const,
+      environmentId: "env-1",
+      projectId: "project-a",
+      repository: "vetra-code/vetra-code",
+      number: 148,
+    };
+    expect(
+      migratePersistedRightPanelState({
+        byThreadKey: {
+          "env-1:issues-panel": { isOpen: true, activeSurfaceId: id, surfaces: [surface] },
+          "env-1:thread-A": {
+            isOpen: true,
+            activeSurfaceId: id,
+            // A stored issue tab with no number can never be read again, so it is not kept.
+            surfaces: [surface, { id: "issue:broken", kind: "issue", projectId: "project-a" }],
+          },
+        },
+      }),
+    ).toEqual({
+      byThreadKey: {
+        "env-1:thread-A": { isOpen: true, activeSurfaceId: id, surfaces: [surface] },
+      },
+    });
   });
 
   it("drops persisted plan surfaces and does not reopen an empty panel", () => {
@@ -533,6 +569,46 @@ describe("rightPanelStore", () => {
     expect(state.activeSurfaceId).toBe(pullRequestSurfaceId(first));
   });
 
+  it("tracks one surface per issue and keeps two servers' copies apart", () => {
+    const first = {
+      environmentId: "local",
+      projectId: "project-a",
+      repository: "vetra-code/vetra-code",
+      number: 148,
+    };
+    const second = { ...first, number: 149 };
+    const remote = { ...first, environmentId: "remote" };
+    useRightPanelStore.getState().openIssue(refA, first);
+    useRightPanelStore.getState().openIssue(refA, second);
+    useRightPanelStore.getState().openIssue(refA, remote);
+    useRightPanelStore.getState().openIssue(refA, first);
+
+    const state = selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA);
+    expect(state.surfaces.map((surface) => surface.id)).toEqual([
+      issueSurfaceId(first),
+      issueSurfaceId(second),
+      issueSurfaceId(remote),
+    ]);
+    expect(state.activeSurfaceId).toBe(issueSurfaceId(first));
+  });
+
+  it("keeps an issue and a pull request of the same number as separate tabs", () => {
+    const target = {
+      environmentId: "local",
+      projectId: "project-a",
+      repository: "vetra-code/vetra-code",
+      number: 148,
+    };
+    useRightPanelStore.getState().openPullRequest(refA, target);
+    useRightPanelStore.getState().openIssue(refA, target);
+
+    const state = selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA);
+    expect(state.surfaces.map((surface) => surface.id)).toEqual([
+      pullRequestSurfaceId(target),
+      issueSurfaceId(target),
+    ]);
+  });
+
   it("keeps one pull request read from two servers as two tabs", () => {
     const local = {
       environmentId: "local",
@@ -651,6 +727,32 @@ describe("rightPanelStore", () => {
       const second = updatePullRequestTabStatus(first, "pull-request:1", status(true));
       expect(second).not.toBe(first);
       expect(second["pull-request:1"]).toEqual(status(true));
+    });
+  });
+
+  describe("issue tab statuses", () => {
+    it("returns the identical map when the tab's state is unchanged", () => {
+      const status = {
+        projectId: "project-a",
+        repository: "vetra-code/vetra-code",
+        number: 148,
+        state: "open" as const,
+      };
+      const first = updateIssueTabStatus({}, "issue:1", status);
+      expect(updateIssueTabStatus(first, "issue:1", status)).toBe(first);
+    });
+
+    it("replaces the entry when the issue closes", () => {
+      const open: { projectId: string; repository: string; number: number; state: string } = {
+        projectId: "project-a",
+        repository: "vetra-code/vetra-code",
+        number: 148,
+        state: "open",
+      };
+      const first = updateIssueTabStatus({}, "issue:1", open);
+      const second = updateIssueTabStatus(first, "issue:1", { ...open, state: "closed" });
+      expect(second).not.toBe(first);
+      expect(second["issue:1"]?.state).toBe("closed");
     });
   });
 
@@ -854,6 +956,8 @@ describe("rightPanelStore", () => {
     store.openPowerhouse(refA, "powerhouse-models");
     store.openPowerhouse(refA, "powerhouse-explorer");
     store.openPowerhouse(refA, "powerhouse-database");
+    store.openPowerhouse(refA, "powerhouse-switchboard");
+    store.openPowerhouse(refA, "powerhouse-switchboard");
 
     const panel = selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA);
     expect(panel.isOpen).toBe(true);
@@ -862,9 +966,11 @@ describe("rightPanelStore", () => {
       "powerhouse-models",
       "powerhouse-explorer",
       "powerhouse-database",
+      "powerhouse-switchboard",
+      "powerhouse-switchboard",
     ]);
-    expect(new Set(panel.surfaces.map((surface) => surface.id)).size).toBe(4);
-    expect(panel.activeSurfaceId).toBe(panel.surfaces[3]?.id);
+    expect(new Set(panel.surfaces.map((surface) => surface.id)).size).toBe(6);
+    expect(panel.activeSurfaceId).toBe(panel.surfaces[5]?.id);
   });
 
   it("migrates the old singleton Powerhouse surface to Document models", () => {

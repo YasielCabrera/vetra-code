@@ -180,6 +180,11 @@ export default defineConfig(() => {
         "effect/Order",
         "react-dom/client",
       ],
+      // GraphiQL's Vite bootstrap imports Monaco workers with `?worker`.
+      // Vite+ handles those imports during normal transforms and production
+      // builds, but its dependency optimizer currently tries to open the
+      // query-suffixed path as a literal file.
+      exclude: ["graphiql/setup-workers/vite"],
     },
     define: {
       // In dev mode, tell the web app where the WebSocket server lives

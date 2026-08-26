@@ -39,6 +39,10 @@
       "types": "./src/sourceControl.ts",
       "import": "./src/sourceControl.ts"
     },
+    "./sourceControlAttachments": {
+      "types": "./src/sourceControlAttachments.ts",
+      "import": "./src/sourceControlAttachments.ts"
+    },
     "./logging": {
       "types": "./src/logging.ts",
       "import": "./src/logging.ts"

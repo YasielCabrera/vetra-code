@@ -3,6 +3,7 @@ import { CircleIcon } from "lucide-react";
 import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vite-plus/test";
 
+import { ListFilterProjectGroup } from "../sourceControl/ListFilterMenu";
 import { PullRequestFiltersMenu, pullRequestProjectKey } from "./PullRequestListFilters";
 
 function findValueChange(
@@ -24,6 +25,19 @@ function findValueChange(
     }
     const nested = findValueChange(props.children);
     if (nested) return nested;
+  }
+  return undefined;
+}
+
+/** The shared project group, invoked so the radio group it renders can be reached. */
+function findProjectGroup(node: ReactNode): ReactNode {
+  for (const child of Children.toArray(node)) {
+    if (!isValidElement(child)) continue;
+    if (child.type === ListFilterProjectGroup) {
+      return ListFilterProjectGroup(child.props as Parameters<typeof ListFilterProjectGroup>[0]);
+    }
+    const nested = findProjectGroup((child.props as { readonly children?: ReactNode }).children);
+    if (nested !== undefined) return nested;
   }
   return undefined;
 }
@@ -126,7 +140,7 @@ describe("pull request filters menu", () => {
       projectEnvironmentId: environmentId,
       onProject,
     });
-    const radioGroup = findValueChange(view);
+    const radioGroup = findValueChange(findProjectGroup(view));
     expect(radioGroup).toBeDefined();
 
     radioGroup?.props.onValueChange(pullRequestProjectKey({ id: projectId, environmentId }));
@@ -156,7 +170,7 @@ describe("pull request filters menu", () => {
       ],
       onProject,
     });
-    const radioGroup = findValueChange(view);
+    const radioGroup = findValueChange(findProjectGroup(view));
     expect(radioGroup).toBeDefined();
 
     radioGroup?.props.onValueChange(

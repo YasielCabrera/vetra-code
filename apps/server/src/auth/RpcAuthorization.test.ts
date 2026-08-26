@@ -30,7 +30,7 @@ describe("RPC authorization scopes", () => {
     );
   });
 
-  it("keeps every powerhouse method read-only, including the reactor calls", () => {
+  it("keeps Powerhouse inspectors read-only and Switchboard mutation-capable", () => {
     for (const method of [
       WS_METHODS.powerhouseListProjects,
       WS_METHODS.powerhouseListDocumentModels,
@@ -49,6 +49,9 @@ describe("RPC authorization scopes", () => {
     ]) {
       expect(requiredScopeForRpcMethod(method)).toBe(AuthOrchestrationReadScope);
     }
+    expect(requiredScopeForRpcMethod(WS_METHODS.powerhouseReactorExecuteGraphql)).toBe(
+      AuthOrchestrationOperateScope,
+    );
   });
 
   it("separates subscription usage reads from credential writes", () => {

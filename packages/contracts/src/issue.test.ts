@@ -23,6 +23,23 @@ describe("IssueListInput", () => {
     expect(() => decodeInput({ state: "all", limit: 100 })).toThrow();
   });
 
+  it("accepts the assignee sentinels and account names, and nothing that could add a qualifier", () => {
+    expect(decodeInput({ state: "open", assignee: "@me" }).assignee).toBe("@me");
+    expect(decodeInput({ state: "open", assignee: "@none" }).assignee).toBe("@none");
+    expect(decodeInput({ state: "open", assignee: "  gpuente  " }).assignee).toBe("gpuente");
+    // Each of these would end the qualifier it is written into and start another.
+    for (const assignee of [
+      "gpuente sort:created-asc",
+      "gpuente state:closed",
+      'gpuente"',
+      "-gpuente",
+      "@someone",
+      "x".repeat(65),
+    ]) {
+      expect(() => decodeInput({ state: "open", assignee })).toThrow();
+    }
+  });
+
   it("bounds opaque continuation cursors before they reach the service", () => {
     expect(
       decodeInput({ state: "open", cursors: { "github.com acme/web": "cursor-1" } }).cursors,

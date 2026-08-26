@@ -93,8 +93,8 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.projectsWriteFile]: AuthOrchestrationOperateScope,
   [WS_METHODS.shellOpenInEditor]: AuthOrchestrationOperateScope,
   [WS_METHODS.filesystemBrowse]: AuthOrchestrationReadScope,
-  // Powerhouse is read-only throughout, including reactor calls made on the
-  // client's behalf.
+  // The inspectors are read-only. Switchboard can run arbitrary mutations, so
+  // its general GraphQL execution boundary requires operate access.
   [WS_METHODS.powerhouseListProjects]: AuthOrchestrationReadScope,
   [WS_METHODS.powerhouseListDocumentModels]: AuthOrchestrationReadScope,
   [WS_METHODS.powerhouseGetDocumentModel]: AuthOrchestrationReadScope,
@@ -103,6 +103,7 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.powerhouseReactorListDocuments]: AuthOrchestrationReadScope,
   [WS_METHODS.powerhouseReactorGetDocument]: AuthOrchestrationReadScope,
   [WS_METHODS.powerhouseReactorGetOperations]: AuthOrchestrationReadScope,
+  [WS_METHODS.powerhouseReactorExecuteGraphql]: AuthOrchestrationOperateScope,
   [WS_METHODS.powerhouseDatabaseDiscover]: AuthOrchestrationReadScope,
   [WS_METHODS.powerhouseDatabaseCatalog]: AuthOrchestrationReadScope,
   [WS_METHODS.powerhouseDatabaseGetRelation]: AuthOrchestrationReadScope,

@@ -1,13 +1,10 @@
 /**
- * PowerhouseReactorClient - read-only GraphQL client for a Powerhouse reactor.
+ * PowerhouseReactorClient - server-side GraphQL client for a Powerhouse reactor.
  *
- * The client half of the panel's Explorer mode. It runs on the server rather
- * than in the browser because the reactor listens on the machine that hosts the
- * Vetra server, which on a remote, relay, or tunnel connection is not the
- * machine the browser is on.
- *
- * The queries are fixed and the `/graphql` path is appended here, so a caller
- * can only choose which host answers, never what is asked of it.
+ * Explorer uses its bounded fixed queries; Switchboard uses the general
+ * execution method. Both run here because the reactor listens on the machine
+ * that hosts the Vetra server, which on a remote, relay, or tunnel connection
+ * is not the machine the browser is on.
  *
  * @module PowerhouseReactorClient
  */
@@ -19,6 +16,7 @@ import * as Schema from "effect/Schema";
 import { HttpBody, HttpClient } from "effect/unstable/http";
 
 import {
+  type PowerhouseGraphqlHeaders,
   type PowerhouseReactorConnection,
   PowerhouseReactorDocument,
   PowerhouseReactorDocumentRevision,
@@ -26,6 +24,7 @@ import {
   PowerhouseReactorDocumentSummary,
   type PowerhouseReactorDocumentViewFilter,
   PowerhouseReactorError,
+  PowerhouseReactorExecuteGraphqlResult,
   type PowerhouseReactorGetOperationsResult,
   PowerhouseReactorOperation,
   type PowerhouseReactorListDrivesResult,
@@ -41,6 +40,7 @@ import { collectUint8StreamText } from "../stream/collectUint8StreamText.ts";
 const DRIVE_DOCUMENT_TYPES = ["powerhouse/document-drive", "powerhouse/reactor-drive"] as const;
 
 const REQUEST_TIMEOUT = Duration.seconds(10);
+const SWITCHBOARD_REQUEST_TIMEOUT = Duration.seconds(30);
 /** A probe races the panel's first paint, so it gives up well before a data call would. */
 const PROBE_TIMEOUT = Duration.seconds(3);
 const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
@@ -70,7 +70,7 @@ export interface PowerhouseReactorCandidate {
   readonly source: PowerhouseReactorConnection["source"];
 }
 
-/** Service tag for read-only reactor access. */
+/** Service tag for reactor access. General execution is operate-scoped at the RPC boundary. */
 export class PowerhouseReactorClient extends Context.Service<
   PowerhouseReactorClient,
   {
@@ -104,6 +104,13 @@ export class PowerhouseReactorClient extends Context.Service<
       readonly cursor?: string | undefined;
       readonly limit?: number | undefined;
     }) => Effect.Effect<PowerhouseReactorGetOperationsResult, PowerhouseReactorError>;
+    readonly executeGraphql: (input: {
+      readonly url: string;
+      readonly query: string;
+      readonly operationName?: string | undefined;
+      readonly variablesJson?: string | undefined;
+      readonly headers?: PowerhouseGraphqlHeaders | undefined;
+    }) => Effect.Effect<PowerhouseReactorExecuteGraphqlResult, PowerhouseReactorError>;
   }
 >()("@vetra-code/server/powerhouse/PowerhouseReactorClient") {}
 
@@ -322,22 +329,59 @@ const toSummary = (raw: typeof RawDocument.Type): PowerhouseReactorDocumentSumma
   lastModifiedAtUtcIso: raw.lastModifiedAtUtcIso ?? null,
 });
 
+const NON_FORWARDABLE_GRAPHQL_HEADERS = new Set([
+  "accept",
+  "connection",
+  "content-length",
+  "content-type",
+  "host",
+  "keep-alive",
+  "proxy-connection",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+]);
+
+/** Keep authentication headers while retaining control of the HTTP transport itself. */
+function forwardGraphqlHeaders(
+  headers: PowerhouseGraphqlHeaders | undefined,
+): Record<string, string> {
+  const forwarded: Record<string, string> = {};
+  for (const [rawName, value] of Object.entries(headers ?? {})) {
+    const name = rawName.trim().toLowerCase();
+    if (NON_FORWARDABLE_GRAPHQL_HEADERS.has(name)) continue;
+    forwarded[name] = value;
+  }
+  return forwarded;
+}
+
+const GraphqlVariablesJson = Schema.fromJsonString(Schema.Unknown);
+const GraphqlResponseJson = Schema.fromJsonString(
+  PowerhouseReactorExecuteGraphqlResult.fields.response,
+);
+const decodeGraphqlVariablesJson = Schema.decodeEffect(GraphqlVariablesJson);
+const decodeGraphqlResponseJson = Schema.decodeEffect(GraphqlResponseJson);
+
 export const make = Effect.gen(function* () {
   const httpClient = yield* HttpClient.HttpClient;
 
   /**
-   * Run one GraphQL document against a reactor and decode the payload.
-   *
+   * Post one GraphQL document and collect its bounded response body.
    * `timeout` covers the body as well as the connection: a reactor can send
    * headers and then stall on a large document.
    */
-  const gql = <A extends Schema.Codec<unknown, unknown, never, never>>(input: {
+  const postGraphql = (input: {
     readonly url: string;
     readonly query: string;
-    readonly variables: Record<string, unknown>;
-    readonly schema: A;
+    readonly operationName?: string | undefined;
+    readonly variables?: unknown;
+    readonly headers?: PowerhouseGraphqlHeaders | undefined;
     readonly timeout: Duration.Duration;
-  }): Effect.Effect<A["Type"], PowerhouseReactorError> =>
+  }): Effect.Effect<
+    { readonly safeUrl: string; readonly status: number; readonly text: string },
+    PowerhouseReactorError
+  > =>
     Effect.gen(function* () {
       const safeUrl = normalizeReactorBaseUrl(input.url);
       const endpoint = resolveGraphqlEndpoint(input.url);
@@ -348,8 +392,15 @@ export const make = Effect.gen(function* () {
       }
       const response = yield* httpClient
         .post(endpoint, {
-          headers: { accept: "application/json" },
-          body: HttpBody.jsonUnsafe({ query: input.query, variables: input.variables }),
+          headers: {
+            ...forwardGraphqlHeaders(input.headers),
+            accept: "application/graphql-response+json, application/json",
+          },
+          body: HttpBody.jsonUnsafe({
+            query: input.query,
+            ...(input.operationName === undefined ? {} : { operationName: input.operationName }),
+            ...(input.variables === undefined ? {} : { variables: input.variables }),
+          }),
         })
         .pipe(
           Effect.mapError(
@@ -367,35 +418,10 @@ export const make = Effect.gen(function* () {
           (cause) => new PowerhouseReactorError({ failure: "decode_failed", url: safeUrl, cause }),
         ),
       );
-      if (response.status < 200 || response.status >= 300) {
-        return yield* new PowerhouseReactorError({
-          failure: "http_error",
-          url: safeUrl,
-          status: response.status,
-        });
-      }
       if (collected.truncated || collected.invalidUtf8) {
         return yield* new PowerhouseReactorError({ failure: "decode_failed", url: safeUrl });
       }
-      const envelope = yield* Schema.decodeEffect(
-        Schema.fromJsonString(graphqlEnvelope(input.schema)),
-      )(collected.text).pipe(
-        Effect.mapError(
-          (cause) => new PowerhouseReactorError({ failure: "decode_failed", url: safeUrl, cause }),
-        ),
-      );
-      const errors = envelope.errors ?? [];
-      if (errors.length > 0) {
-        return yield* new PowerhouseReactorError({
-          failure: "graphql_error",
-          url: safeUrl,
-          graphqlMessages: errors.slice(0, 10).map((error) => error.message ?? "Unknown error"),
-        });
-      }
-      if (envelope.data === undefined || envelope.data === null) {
-        return yield* new PowerhouseReactorError({ failure: "decode_failed", url: safeUrl });
-      }
-      return envelope.data;
+      return { safeUrl, status: response.status, text: collected.text };
     }).pipe(
       Effect.timeoutOrElse({
         duration: input.timeout,
@@ -410,6 +436,52 @@ export const make = Effect.gen(function* () {
         },
       }),
     );
+
+  /** Run a fixed inspector query and decode its successful data payload. */
+  const gql = <A extends Schema.Codec<unknown, unknown, never, never>>(input: {
+    readonly url: string;
+    readonly query: string;
+    readonly variables: Record<string, unknown>;
+    readonly schema: A;
+    readonly timeout: Duration.Duration;
+  }): Effect.Effect<A["Type"], PowerhouseReactorError> =>
+    Effect.gen(function* () {
+      const result = yield* postGraphql(input);
+      if (result.status < 200 || result.status >= 300) {
+        return yield* new PowerhouseReactorError({
+          failure: "http_error",
+          url: result.safeUrl,
+          status: result.status,
+        });
+      }
+      const envelope = yield* Schema.decodeEffect(
+        Schema.fromJsonString(graphqlEnvelope(input.schema)),
+      )(result.text).pipe(
+        Effect.mapError(
+          (cause) =>
+            new PowerhouseReactorError({
+              failure: "decode_failed",
+              url: result.safeUrl,
+              cause,
+            }),
+        ),
+      );
+      const errors = envelope.errors ?? [];
+      if (errors.length > 0) {
+        return yield* new PowerhouseReactorError({
+          failure: "graphql_error",
+          url: result.safeUrl,
+          graphqlMessages: errors.slice(0, 10).map((error) => error.message ?? "Unknown error"),
+        });
+      }
+      if (envelope.data === undefined || envelope.data === null) {
+        return yield* new PowerhouseReactorError({
+          failure: "decode_failed",
+          url: result.safeUrl,
+        });
+      }
+      return envelope.data;
+    });
 
   const probeCandidate = (
     candidate: PowerhouseReactorCandidate,
@@ -805,12 +877,48 @@ export const make = Effect.gen(function* () {
     };
   });
 
+  const executeGraphql: PowerhouseReactorClient["Service"]["executeGraphql"] = Effect.fn(
+    "PowerhouseReactorClient.executeGraphql",
+  )(function* (input) {
+    const variables =
+      input.variablesJson === undefined
+        ? undefined
+        : yield* decodeGraphqlVariablesJson(input.variablesJson).pipe(
+            Effect.mapError(
+              (cause) =>
+                new PowerhouseReactorError({
+                  failure: "invalid_request",
+                  cause,
+                }),
+            ),
+          );
+    const result = yield* postGraphql({
+      url: input.url,
+      query: input.query,
+      ...(input.operationName === undefined ? {} : { operationName: input.operationName }),
+      ...(variables === undefined ? {} : { variables }),
+      ...(input.headers === undefined ? {} : { headers: input.headers }),
+      timeout: SWITCHBOARD_REQUEST_TIMEOUT,
+    });
+    const decoded = yield* Effect.result(decodeGraphqlResponseJson(result.text));
+    if (decoded._tag === "Failure") {
+      return yield* new PowerhouseReactorError({
+        failure: result.status < 200 || result.status >= 300 ? "http_error" : "decode_failed",
+        url: result.safeUrl,
+        ...(result.status < 200 || result.status >= 300 ? { status: result.status } : {}),
+        cause: decoded.failure,
+      });
+    }
+    return { status: result.status, response: decoded.success };
+  });
+
   return PowerhouseReactorClient.of({
     probe,
     listDrives,
     listDocuments,
     getDocument,
     getOperations,
+    executeGraphql,
   });
 });
 

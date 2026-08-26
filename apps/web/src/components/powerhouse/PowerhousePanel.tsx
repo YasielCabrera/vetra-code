@@ -1,9 +1,9 @@
 /**
  * Powerhouse right-panel surface.
  *
- * Shared shell for the three Powerhouse right-panel tools: document models
- * read from the working tree, a live reactor explorer, and a database
- * inspector backed by server-side snapshot/live adapters.
+ * Shared shell for the Powerhouse right-panel tools: document models read from
+ * the working tree, a live reactor explorer, a database inspector, and the
+ * Switchboard GraphQL client.
  *
  * The Powerhouse project is not always the workspace root. In a monorepo it is
  * usually an app directory, and there can be more than one, so the panel picks
@@ -14,7 +14,7 @@
  */
 import type { EnvironmentId } from "@vetra-code/contracts";
 import { FolderCog, Settings2 } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { Popover, PopoverPopup, PopoverTitle, PopoverTrigger } from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
@@ -43,6 +43,8 @@ import {
 } from "./powerhousePanelStore";
 import { useReactorQuery } from "./powerhouseQuery";
 import { resolveSelectedProject, usePowerhouseProjects } from "./usePowerhouseProject";
+
+const SwitchboardView = lazy(() => import("./switchboard/SwitchboardView"));
 
 interface PowerhousePanelProps {
   environmentId: EnvironmentId;
@@ -119,7 +121,7 @@ function ConnectionChip({
       >
         <PopoverTitle className="text-sm">Reactor connection</PopoverTitle>
         <p className="mt-1 mb-4 text-xs leading-relaxed text-muted-foreground">
-          {connected ? `Connected to ${label}.` : "Choose where Explorer reads reactor data."}
+          {connected ? `Connected to ${label}.` : "Choose the reactor address for this project."}
         </p>
         <ReactorUrlForm
           overrideUrl={overrideUrl}
@@ -163,7 +165,7 @@ export default function PowerhousePanel({
   );
 
   const preferences = usePowerhousePanelStore((state) =>
-    kind === "powerhouse-explorer"
+    kind === "powerhouse-explorer" || kind === "powerhouse-switchboard"
       ? selectPowerhousePreferences(state.byProjectKey, projectKey)
       : DEFAULT_PREFERENCES,
   );
@@ -239,7 +241,7 @@ export default function PowerhousePanel({
             )}
           </div>
 
-          {kind === "powerhouse-explorer" ? (
+          {kind === "powerhouse-explorer" || kind === "powerhouse-switchboard" ? (
             <ConnectionChip
               environmentId={environmentId}
               cwd={cwd}
@@ -291,7 +293,7 @@ export default function PowerhousePanel({
             onPopToDepth={(depth) => popToDepth(panelProjectKey, depth)}
             onSelectDocument={(documentId) => selectDocument(panelProjectKey, documentId)}
           />
-        ) : (
+        ) : kind === "powerhouse-database" ? (
           <DatabaseView
             key={panelProjectKey}
             environmentId={environmentId}
@@ -299,6 +301,19 @@ export default function PowerhousePanel({
             projectPath={projectPath}
             panelProjectKey={panelProjectKey}
           />
+        ) : (
+          <Suspense fallback={<PowerhousePanelLoading label="Loading Switchboard…" />}>
+            <SwitchboardView
+              key={panelProjectKey}
+              environmentId={environmentId}
+              cwd={cwd}
+              projectPath={projectPath}
+              surfaceId={surfaceId}
+              panelProjectKey={panelProjectKey}
+              overrideUrl={preferences.reactorUrlOverride}
+              onSetOverride={(url) => setReactorUrlOverride(projectKey, url)}
+            />
+          </Suspense>
         )}
       </div>
     </div>

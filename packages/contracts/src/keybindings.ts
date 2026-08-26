@@ -61,6 +61,7 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "powerhouse.openModels",
   "powerhouse.openExplorer",
   "powerhouse.openDatabase",
+  "powerhouse.openSwitchboard",
   "preview.toggle",
   "preview.refresh",
   "preview.focusUrl",
@@ -81,7 +82,7 @@ export const STATIC_KEYBINDING_COMMANDS = [
 
 // Existing custom keybinding files may still contain this command. It opens a
 // new Document models panel, but is omitted from the command picker so new
-// configurations use one of the three explicit Powerhouse commands.
+// configurations use one of the explicit Powerhouse commands.
 const LEGACY_KEYBINDING_COMMANDS = ["powerhouse.toggle"] as const;
 
 export const SCRIPT_RUN_COMMAND_PATTERN = Schema.TemplateLiteral([

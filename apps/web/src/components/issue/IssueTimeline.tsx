@@ -1,4 +1,5 @@
 import type {
+  EnvironmentId,
   IssueActivity,
   IssueTimelineComment,
   IssueTimelineEvent,
@@ -96,9 +97,11 @@ function CommentMarker({ comment }: { readonly comment: IssueTimelineComment }) 
 
 function ConversationItem({
   item,
+  environmentId,
   onOpen,
 }: {
   readonly item: IssueTimelineComment;
+  readonly environmentId: EnvironmentId;
   readonly onOpen: (url: string) => void;
 }) {
   return (
@@ -109,6 +112,7 @@ function ConversationItem({
         actor={item.actor}
         body={item.body}
         createdAt={item.createdAt}
+        environmentId={environmentId}
         url={item.url}
         onOpen={onOpen}
       />
@@ -165,10 +169,12 @@ function EventItem({
 
 export function IssueTimeline({
   activity,
+  environmentId,
   order,
   onOpen,
 }: {
   readonly activity: IssueActivity;
+  readonly environmentId: EnvironmentId;
   readonly order: "newest" | "oldest";
   readonly onOpen: (url: string) => void;
 }) {
@@ -188,7 +194,12 @@ export function IssueTimeline({
             item.type === "event" ? (
               <EventItem key={`event:${item.id}`} event={item} onOpen={onOpen} />
             ) : (
-              <ConversationItem key={`comment:${item.id}`} item={item} onOpen={onOpen} />
+              <ConversationItem
+                key={`comment:${item.id}`}
+                item={item}
+                environmentId={environmentId}
+                onOpen={onOpen}
+              />
             ),
           )}
         </div>

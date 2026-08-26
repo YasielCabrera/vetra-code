@@ -135,6 +135,11 @@ peerDependencyRules:
     - vite
   allowedVersions:
     vite: "*"
+    # The official GraphiQL explorer wrapper supports this workspace's peers,
+    # while its unchanged graphiql-explorer@0.9 manifest predates both versions.
+    "graphiql-explorer>graphql": "16"
+    "graphiql-explorer>react": "19"
+    "graphiql-explorer>react-dom": "19"
 
 supportedArchitectures:
   cpu: [current, x64]

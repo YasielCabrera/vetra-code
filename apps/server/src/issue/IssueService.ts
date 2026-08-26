@@ -425,6 +425,7 @@ export const make = Effect.gen(function* () {
               state: input.state,
               limit,
               ...(input.query === undefined ? {} : { query: input.query }),
+              ...(input.assignee === undefined ? {} : { assignee: input.assignee }),
               ...(cursor === undefined
                 ? {}
                 : { cursor: { updatedBefore: cursor.updatedBefore, seenAt: cursor.seenAt } }),

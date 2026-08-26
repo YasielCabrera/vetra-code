@@ -8,6 +8,7 @@ import {
 } from "./orchestration.ts";
 
 const ASSET_PATH_MAX_LENGTH = 1024;
+const SOURCE_CONTROL_ATTACHMENT_URL_MAX_LENGTH = 512;
 
 export const AssetResource = Schema.Union([
   Schema.TaggedStruct("workspace-file", {
@@ -22,6 +23,11 @@ export const AssetResource = Schema.Union([
     // A cache-key hint only. The server reads the authoritative path from the
     // project projection before it issues the signed URL.
     path: Schema.optional(ProjectFaviconPath),
+  }),
+  // An image embedded in an issue or pull request body. Only the environment holds a GitHub
+  // login, so it fetches the upload and the client points its `<img>` at the environment.
+  Schema.TaggedStruct("source-control-attachment", {
+    url: TrimmedNonEmptyString.check(Schema.isMaxLength(SOURCE_CONTROL_ATTACHMENT_URL_MAX_LENGTH)),
   }),
 ]);
 export type AssetResource = typeof AssetResource.Type;
@@ -214,6 +220,17 @@ export class AssetProjectFaviconNotFoundError extends Schema.TaggedErrorClass<As
   }
 }
 
+export class AssetSourceControlAttachmentUrlValidationError extends Schema.TaggedErrorClass<AssetSourceControlAttachmentUrlValidationError>()(
+  "AssetSourceControlAttachmentUrlValidationError",
+  {
+    resource: AssetResource,
+  },
+) {
+  override get message(): string {
+    return "Only a source control attachment URL can be served as an asset.";
+  }
+}
+
 export class AssetSigningKeyLoadError extends Schema.TaggedErrorClass<AssetSigningKeyLoadError>()(
   "AssetSigningKeyLoadError",
   {
@@ -239,6 +256,7 @@ export const AssetAccessError = Schema.Union([
   AssetProjectFaviconResolutionError,
   AssetProjectFaviconInspectionError,
   AssetProjectFaviconNotFoundError,
+  AssetSourceControlAttachmentUrlValidationError,
   AssetSigningKeyLoadError,
 ]);
 export type AssetAccessError = typeof AssetAccessError.Type;

@@ -3,7 +3,12 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import type { IssueActivity, IssueAssigneeCandidateList } from "@vetra-code/contracts";
+import {
+  ISSUE_ASSIGNEE_NOBODY,
+  ISSUE_ASSIGNEE_VIEWER,
+  type IssueActivity,
+  type IssueAssigneeCandidateList,
+} from "@vetra-code/contracts";
 
 import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 import type { ProviderIssueListCursor } from "./IssueProvider.ts";
@@ -55,6 +60,7 @@ export class GitHubIssueCli extends Context.Service<
       readonly state: "all" | "open" | "closed";
       readonly limit: number;
       readonly query?: string;
+      readonly assignee?: string;
       readonly cursor?: ProviderIssueListCursor;
     }) => Effect.Effect<GitHubIssueBatch, GitHubIssueCliError>;
     readonly getIssue: (input: {
@@ -99,13 +105,27 @@ function searchPhrase(query: string): string {
   return `"${query.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }
 
+/**
+ * The assignee narrowing as GitHub spells it. The two sentinels are written literally because
+ * that is the only way GitHub reads them: quoted, `@me` is an account nobody has, and there is
+ * no `assignee:` value at all for "nobody" — that one is its own `no:` qualifier. An account
+ * name is quoted, which the contract's pattern has already made redundant.
+ */
+function assigneeQualifier(assignee: string): string {
+  if (assignee === ISSUE_ASSIGNEE_VIEWER) return "assignee:@me";
+  if (assignee === ISSUE_ASSIGNEE_NOBODY) return "no:assignee";
+  return `assignee:"${assignee.replaceAll('"', "").trim()}"`;
+}
+
 function searchQuery(input: {
   readonly query?: string;
+  readonly assignee?: string;
   readonly cursor?: ProviderIssueListCursor;
 }): string {
   const query = input.query?.trim() ?? "";
   return [
     ...(query.length === 0 ? [] : [searchPhrase(query)]),
+    ...(input.assignee === undefined ? [] : [assigneeQualifier(input.assignee)]),
     // Inclusive so issues sharing the boundary instant remain reachable; the service drops the
     // numbers it has already delivered at that instant.
     ...(input.cursor === undefined ? [] : [`updated:<=${input.cursor.updatedBefore}`]),

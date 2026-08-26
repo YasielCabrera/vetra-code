@@ -17,6 +17,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type {
   ContextMenuItem,
+  IssueState,
   PreviewSessionSnapshot,
   PullRequestState,
 } from "@vetra-code/contracts";
@@ -24,6 +25,7 @@ import { getTerminalLabel } from "@vetra-code/shared/terminalLabels";
 import {
   Bot,
   Braces,
+  CircleDot,
   Database,
   FileDiff,
   Files,
@@ -34,6 +36,7 @@ import {
   TerminalSquare,
   Volume2,
   VolumeOff,
+  Waypoints,
 } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -112,9 +115,10 @@ interface RightPanelTabsProps {
   filesAvailable: boolean;
   pullRequestAvailable: boolean;
   agentsAvailable: boolean;
-  /** Powerhouse projects only; all three tool surfaces are hidden everywhere else. */
+  /** Powerhouse projects only; Powerhouse tool surfaces are hidden everywhere else. */
   powerhouseAvailable: boolean;
   pullRequestStatuses?: Readonly<Record<string, PullRequestTabStatus>>;
+  issueStatuses?: Readonly<Record<string, IssueTabStatus>>;
   /** Running + waiting subagents; badges the Agents card in the empty state. */
   liveAgentCount: number;
   children: ReactNode;
@@ -126,6 +130,13 @@ export interface PullRequestTabStatus {
   number: number;
   state: PullRequestState;
   isDraft: boolean;
+}
+
+export interface IssueTabStatus {
+  projectId: string;
+  repository: string;
+  number: number;
+  state: IssueState;
 }
 
 // Replay tab layout animations only while sorting so a drop does not
@@ -418,6 +429,16 @@ function RightPanelEmptyState(props: {
             onClick: () => props.onAddPowerhouse("powerhouse-database"),
             badgeCount: 0,
           },
+          {
+            label: "Switchboard",
+            description: "Explore and run reactor GraphQL operations.",
+            icon: Waypoints,
+            shortcut: "S",
+            available: true,
+            disabledReason: "",
+            onClick: () => props.onAddPowerhouse("powerhouse-switchboard"),
+            badgeCount: 0,
+          },
         ]
       : []),
   ];
@@ -601,6 +622,7 @@ function surfaceTitle(
         getTerminalLabel(surface.activeTerminalId)
       );
     case "pull-request":
+    case "issue":
       return `#${surface.number}`;
     case "agents":
       return "Agents";
@@ -610,6 +632,8 @@ function surfaceTitle(
       return "Document explorer";
     case "powerhouse-database":
       return "Powerhouse Database";
+    case "powerhouse-switchboard":
+      return "Switchboard";
     case "preview": {
       const snapshot = surface.resourceId ? sessions[surface.resourceId] : null;
       if (!snapshot || snapshot.navStatus._tag === "Idle") return "Browser";
@@ -648,12 +672,14 @@ function SurfaceIcon({
   desktopByTabId,
   theme,
   pullRequestStatuses,
+  issueStatuses,
 }: {
   surface: RightPanelSurface;
   sessions: Readonly<Record<string, PreviewSessionSnapshot>>;
   desktopByTabId: Readonly<Record<string, DesktopPreviewOverlay>>;
   theme: "light" | "dark";
   pullRequestStatuses: Readonly<Record<string, PullRequestTabStatus>> | undefined;
+  issueStatuses: Readonly<Record<string, IssueTabStatus>> | undefined;
 }) {
   switch (surface.kind) {
     case "preview": {
@@ -693,6 +719,23 @@ function SurfaceIcon({
                 : "text-muted-foreground";
       return <GitPullRequest className={cn("size-3 shrink-0", toneClassName)} />;
     }
+    case "issue": {
+      // The same vocabulary the issue rows use: open is green, closed is the violet a merged
+      // change request wears. Unknown until the panel has read it, so muted until then.
+      const state = issueStatuses?.[surface.id]?.state ?? null;
+      return (
+        <CircleDot
+          className={cn(
+            "size-3 shrink-0",
+            state === "open"
+              ? "text-emerald-600 dark:text-emerald-300/90"
+              : state === "closed"
+                ? "text-violet-600 dark:text-violet-300/90"
+                : "text-muted-foreground",
+          )}
+        />
+      );
+    }
     case "agents":
       return <Bot className="size-3 shrink-0" />;
     case "powerhouse-models":
@@ -701,6 +744,8 @@ function SurfaceIcon({
       return <HardDrive className="size-3 shrink-0" />;
     case "powerhouse-database":
       return <Database className="size-3 shrink-0" />;
+    case "powerhouse-switchboard":
+      return <Waypoints className="size-3 shrink-0" />;
   }
 }
 
@@ -784,6 +829,14 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             available: true,
             disabledReason: "",
             onClick: () => props.onAddPowerhouse("powerhouse-database"),
+          },
+          {
+            label: "Switchboard",
+            icon: Waypoints,
+            shortcut: "S",
+            available: true,
+            disabledReason: "",
+            onClick: () => props.onAddPowerhouse("powerhouse-switchboard"),
           },
         ] as const)
       : []),
@@ -1018,6 +1071,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                               desktopByTabId={props.desktopByTabId}
                               theme={resolvedTheme}
                               pullRequestStatuses={props.pullRequestStatuses}
+                              issueStatuses={props.issueStatuses}
                             />
                             {pending ? (
                               <span

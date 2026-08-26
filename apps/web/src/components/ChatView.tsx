@@ -428,6 +428,8 @@ function powerhousePanelKindForCommand(command: KeybindingCommand): PowerhousePa
       return "powerhouse-explorer";
     case "powerhouse.openDatabase":
       return "powerhouse-database";
+    case "powerhouse.openSwitchboard":
+      return "powerhouse-switchboard";
     default:
       return null;
   }

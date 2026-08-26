@@ -64,6 +64,7 @@ it.effect("parses keybinding rules", () =>
       "powerhouse.openModels",
       "powerhouse.openExplorer",
       "powerhouse.openDatabase",
+      "powerhouse.openSwitchboard",
     ] as const) {
       const parsedPowerhouseCommand = yield* decode(KeybindingRule, {
         key: "mod+shift+p",

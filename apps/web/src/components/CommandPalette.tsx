@@ -52,6 +52,7 @@ import {
   SettingsIcon,
   SquarePenIcon,
   TextSearchIcon,
+  WaypointsIcon,
 } from "lucide-react";
 import {
   useCallback,
@@ -1672,6 +1673,17 @@ function OpenCommandPaletteDialog(props: {
         shortcutCommand: "powerhouse.openDatabase",
         run: async () => {
           useRightPanelStore.getState().openPowerhouse(currentThreadRef, "powerhouse-database");
+        },
+      },
+      {
+        kind: "action",
+        value: "action:open-powerhouse-switchboard",
+        searchTerms: ["powerhouse", "switchboard", "graphql", "api", "reactor", "right panel"],
+        title: "Open Switchboard",
+        icon: <WaypointsIcon className={ITEM_ICON_CLASS} />,
+        shortcutCommand: "powerhouse.openSwitchboard",
+        run: async () => {
+          useRightPanelStore.getState().openPowerhouse(currentThreadRef, "powerhouse-switchboard");
         },
       },
     );

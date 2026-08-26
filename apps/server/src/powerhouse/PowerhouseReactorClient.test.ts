@@ -2,6 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
+import * as Schema from "effect/Schema";
 import * as TestClock from "effect/testing/TestClock";
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/unstable/http";
 
@@ -11,7 +12,10 @@ import { resolveGraphqlEndpoint } from "./PowerhouseReactorClient.ts";
 interface RecordedRequest {
   readonly url: string;
   readonly body: string;
+  readonly headers: Readonly<Record<string, string | undefined>>;
 }
+
+const decodeUnknownJson = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
 
 /**
  * A reactor stand-in. `respond` sees the request URL and the GraphQL body, so a
@@ -31,7 +35,7 @@ const reactorLayer = (
             : typeof (request.body as { body?: unknown }).body === "string"
               ? String((request.body as { body?: unknown }).body)
               : "";
-        const entry = { url: request.url, body };
+        const entry = { url: request.url, body, headers: request.headers };
         recorded?.push(entry);
         return HttpClientResponse.fromWeb(request, await respond(entry));
       }),
@@ -785,6 +789,90 @@ describe("PowerhouseReactorClient.getOperations", () => {
         false,
         true,
       ]);
+    }),
+  );
+});
+
+describe("PowerhouseReactorClient.executeGraphql", () => {
+  it.effect(
+    "forwards operation data and authentication headers without hiding GraphQL errors",
+    () =>
+      Effect.gen(function* () {
+        const recorded: Array<RecordedRequest> = [];
+        const result = yield* withClient(
+          reactorLayer(
+            () => json({ data: { updateDocument: null }, errors: [{ message: "Rejected" }] }),
+            recorded,
+          ),
+          (client) =>
+            client.executeGraphql({
+              url: "http://127.0.0.1:4001",
+              query: "mutation Rename($name: String!) { updateDocument(name: $name) }",
+              operationName: "Rename",
+              variablesJson: JSON.stringify({ name: "Roadmap" }),
+              headers: {
+                Authorization: "Bearer renown-token",
+                "X-Powerhouse-Client": "Switchboard",
+              },
+            }),
+        );
+
+        expect(result).toEqual({
+          status: 200,
+          response: { data: { updateDocument: null }, errors: [{ message: "Rejected" }] },
+        });
+        expect(decodeUnknownJson(recorded[0]?.body ?? "{}")).toEqual({
+          query: "mutation Rename($name: String!) { updateDocument(name: $name) }",
+          operationName: "Rename",
+          variables: { name: "Roadmap" },
+        });
+        expect(recorded[0]?.headers.authorization).toBe("Bearer renown-token");
+        expect(recorded[0]?.headers["x-powerhouse-client"]).toBe("Switchboard");
+      }),
+  );
+
+  it.effect("retains control of transport headers", () =>
+    Effect.gen(function* () {
+      const recorded: Array<RecordedRequest> = [];
+      yield* withClient(
+        reactorLayer(() => json({ data: { system: {} } }), recorded),
+        (client) =>
+          client.executeGraphql({
+            url: "http://127.0.0.1:4001",
+            query: "{ system { version } }",
+            headers: {
+              Accept: "text/html",
+              Host: "elsewhere.example",
+              "Content-Type": "text/plain",
+              Cookie: "session=renown",
+            },
+          }),
+      );
+
+      expect(recorded[0]?.headers.accept).toBe(
+        "application/graphql-response+json, application/json",
+      );
+      expect(recorded[0]?.headers.host).toBeUndefined();
+      expect(recorded[0]?.headers["content-type"]).toBe("application/json");
+      expect(recorded[0]?.headers.cookie).toBe("session=renown");
+    }),
+  );
+
+  it.effect("rejects malformed variables before contacting the reactor", () =>
+    Effect.gen(function* () {
+      const recorded: Array<RecordedRequest> = [];
+      const error = yield* withClient(
+        reactorLayer(() => json({ data: {} }), recorded),
+        (client) =>
+          client.executeGraphql({
+            url: "http://127.0.0.1:4001",
+            query: "{ system { version } }",
+            variablesJson: "{broken",
+          }),
+      ).pipe(Effect.flip);
+
+      expect(error.failure).toBe("invalid_request");
+      expect(recorded).toEqual([]);
     }),
   );
 });

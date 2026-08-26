@@ -6,6 +6,7 @@ import {
   AssetProjectFaviconNotFoundError,
   AssetProjectFaviconResolutionError,
   AssetSigningKeyLoadError,
+  AssetSourceControlAttachmentUrlValidationError,
   AssetWorkspaceAssetInspectionError,
   AssetWorkspaceAssetNotFoundError,
   AssetWorkspaceContextNotFoundError,
@@ -20,6 +21,7 @@ import {
   WORKSPACE_IMAGE_PREVIEW_EXTENSIONS,
 } from "@vetra-code/shared/filePreview";
 import { PROJECT_FAVICON_FALLBACK_MARKER } from "@vetra-code/shared/projectFavicon";
+import { parseSourceControlAttachmentUrl } from "@vetra-code/shared/sourceControlAttachments";
 import * as Clock from "effect/Clock";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
@@ -94,6 +96,12 @@ const AssetClaimsSchema = Schema.Union([
     filePath: Schema.String,
     expiresAt: Schema.Number,
   }),
+  Schema.Struct({
+    version: Schema.Literal(1),
+    kind: Schema.Literal("source-control-attachment"),
+    url: Schema.String,
+    expiresAt: Schema.Number,
+  }),
 ]);
 type AssetClaims = typeof AssetClaimsSchema.Type;
 
@@ -101,7 +109,10 @@ const AssetClaimsJson = Schema.fromJsonString(AssetClaimsSchema);
 const decodeAssetClaims = Schema.decodeUnknownOption(AssetClaimsJson);
 const encodeAssetClaims = Schema.encodeSync(AssetClaimsJson);
 
-export type ResolvedAsset = { readonly kind: "file"; readonly path: string };
+export type ResolvedAsset =
+  | { readonly kind: "file"; readonly path: string }
+  /** Bytes the environment must ask its source control host for, on the viewer's behalf. */
+  | { readonly kind: "source-control-attachment"; readonly url: string };
 
 function decodeClaims(encodedPayload: string): AssetClaims | null {
   try {
@@ -275,6 +286,23 @@ export const issueAssetUrl = Effect.fn("AssetAccess.issueAssetUrl")(function* (i
       fileName = path.basename(resolved.relativePath);
       break;
     }
+    case "source-control-attachment": {
+      const attachmentUrl = parseSourceControlAttachmentUrl(input.resource.url);
+      if (attachmentUrl === null) {
+        return yield* new AssetSourceControlAttachmentUrlValidationError({
+          resource: input.resource,
+        });
+      }
+      claims = {
+        version: 1,
+        kind: "source-control-attachment",
+        url: attachmentUrl,
+        expiresAt,
+      };
+      // The upload id, so one signed URL per attachment stays legible in a network log.
+      fileName = path.basename(new URL(attachmentUrl).pathname);
+      break;
+    }
     case "attachment": {
       const config = yield* ServerConfig.ServerConfig;
       const attachmentPath = resolveAttachmentPathById({
@@ -444,6 +472,10 @@ export const resolveAsset = Effect.fn("AssetAccess.resolveAsset")(function* (
 
   const claims = decodeClaims(encodedPayload);
   if (!claims || claims.expiresAt <= (yield* Clock.currentTimeMillis)) return null;
+
+  if (claims.kind === "source-control-attachment") {
+    return { kind: "source-control-attachment", url: claims.url } satisfies ResolvedAsset;
+  }
 
   if (claims.kind === "attachment") {
     const config = yield* ServerConfig.ServerConfig;

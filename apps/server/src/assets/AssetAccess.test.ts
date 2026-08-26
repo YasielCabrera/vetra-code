@@ -409,6 +409,40 @@ describe("AssetAccess", () => {
     }).pipe(Effect.provide(testLayer)),
   );
 
+  it.effect("issues a source control attachment URL that resolves back to the upload", () =>
+    Effect.gen(function* () {
+      const url = "https://github.com/user-attachments/assets/45b6dcb9-2bb8-4f91-8ad6-b8af19d03883";
+
+      const result = yield* issueAssetUrl({
+        resource: { _tag: "source-control-attachment", url },
+      });
+      const suffix = result.relativeUrl.slice(`${ASSET_ROUTE_PREFIX}/`.length);
+      const separatorIndex = suffix.indexOf("/");
+      const token = suffix.slice(0, separatorIndex);
+
+      expect(result.relativeUrl).toMatch(/\/45b6dcb9-2bb8-4f91-8ad6-b8af19d03883$/);
+      // The path segment is a label, not a capability: the URL lives in the signed claims.
+      expect(yield* resolveAsset(token, "anything.png")).toEqual({
+        kind: "source-control-attachment",
+        url,
+      });
+      expect(yield* resolveAsset(`${token}tampered`, "anything.png")).toBeNull();
+    }).pipe(Effect.provide(testLayer)),
+  );
+
+  it.effect("refuses to sign a URL that is not a source control attachment", () =>
+    Effect.gen(function* () {
+      const error = yield* issueAssetUrl({
+        resource: {
+          _tag: "source-control-attachment",
+          url: "https://evil.example/user-attachments/assets/abc",
+        },
+      }).pipe(Effect.flip);
+
+      expect(error._tag).toBe("AssetSourceControlAttachmentUrlValidationError");
+    }).pipe(Effect.provide(testLayer)),
+  );
+
   it.effect("preserves structured project favicon resolution causes", () =>
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;

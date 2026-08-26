@@ -78,6 +78,8 @@ export interface IssueProviderApi {
     readonly state: IssueListState;
     readonly limit: number;
     readonly query?: string;
+    /** One `assignee:` narrowing, applied by the host. See `IssueAssigneeFilter`. */
+    readonly assignee?: string;
     readonly cursor?: ProviderIssueListCursor;
   }) => Effect.Effect<ProviderIssueBatch, IssueProviderError>;
   readonly getIssue: (input: {

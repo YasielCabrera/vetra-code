@@ -14,6 +14,7 @@ import {
   WrapTextIcon,
 } from "lucide-react";
 import type {
+  AssetResource,
   EnvironmentId,
   ScopedThreadRef,
   ServerProviderSkill,
@@ -1070,11 +1071,49 @@ const ChatMarkdownWorkspaceImage = memo(function ChatMarkdownWorkspaceImage(prop
   readonly path: string;
   readonly alt: string;
 }) {
-  const assetUrl = useAssetUrlState(props.threadRef.environmentId, {
-    _tag: "workspace-file",
-    threadId: props.threadRef.threadId,
-    path: props.path,
-  });
+  const resource = useMemo(
+    () =>
+      ({ _tag: "workspace-file", threadId: props.threadRef.threadId, path: props.path }) as const,
+    [props.threadRef.threadId, props.path],
+  );
+  return (
+    <ChatMarkdownAssetImage
+      environmentId={props.threadRef.environmentId}
+      resource={resource}
+      alt={props.alt}
+    />
+  );
+});
+
+/** Uploads GitHub only serves to a signed-in viewer, fetched by the environment instead. */
+const ChatMarkdownSourceControlImage = memo(function ChatMarkdownSourceControlImage(props: {
+  readonly environmentId: EnvironmentId;
+  readonly url: string;
+  readonly alt: string;
+}) {
+  const resource = useMemo(
+    () => ({ _tag: "source-control-attachment", url: props.url }) as const,
+    [props.url],
+  );
+  return (
+    <ChatMarkdownAssetImage
+      environmentId={props.environmentId}
+      resource={resource}
+      alt={props.alt}
+    />
+  );
+});
+
+/**
+ * The shared body of both: bytes only the environment can reach, loaded through a signed asset
+ * URL. Its callers keep the resource stable so a markdown re-render costs no new atom lookup.
+ */
+function ChatMarkdownAssetImage(props: {
+  readonly environmentId: EnvironmentId;
+  readonly resource: AssetResource;
+  readonly alt: string;
+}) {
+  const assetUrl = useAssetUrlState(props.environmentId, props.resource);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
   if (assetUrl._tag === "Failure" || (assetUrl._tag === "Success" && failedUrl === assetUrl.url)) {
@@ -1099,7 +1138,7 @@ const ChatMarkdownWorkspaceImage = memo(function ChatMarkdownWorkspaceImage(prop
       onError={() => setFailedUrl(assetUrl.url)}
     />
   );
-});
+}
 
 function leadingExternalLinkTextLength(text: string): number {
   const protocol = /^(?:https?:\/\/)/i.exec(text)?.[0];
@@ -2161,6 +2200,15 @@ function ChatMarkdown({
             />
           );
         }
+        if (imageSource._tag === "SourceControlAttachment" && environmentId !== null) {
+          return (
+            <ChatMarkdownSourceControlImage
+              environmentId={environmentId}
+              url={imageSource.url}
+              alt={altText}
+            />
+          );
+        }
         if (imageSource._tag === "WorkspaceFile" && threadRef) {
           return (
             <ChatMarkdownWorkspaceImage
@@ -2211,6 +2259,7 @@ function ChatMarkdown({
     canUseShellActions,
     cwd,
     diffThemeName,
+    environmentId,
     fileLinkParentSuffixByPath,
     inlineCodeFileLinkMetaByText,
     isStreaming,

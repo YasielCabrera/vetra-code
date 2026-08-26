@@ -66,12 +66,20 @@ Run a quick **Rescan** after setting up a new machine or changing credentials.
 ### Browse Project Issues
 
 Open **Issues** from the bottom of the project sidebar to see issues across your connected
-projects. The page follows the same project and environment connections as the pull request
-workspace.
+projects. The page reads and behaves like the pull request workspace: a list on the left, and the
+issue you pick open in a side panel beside it.
 
-- Filter open, closed, or all issues, narrow to one project, and search GitHub's issue index
+- Search the issue index, and use the filter button to narrow by state, assignee, host, server,
+  or project
+- **Assignee** starts with **Me**, so your own issues are one press away, and offers
+  **Unassigned** plus everyone the loaded issues are assigned to
 - Keep scrolling to load older issues automatically until every matching repository is complete
-- Open an issue to read its description, comments, assignees, labels, and milestone
+- Select an issue to open it in the side panel, where you can read its description, comments,
+  assignees, labels, and milestone
+- Open several issues at once: each one becomes a tab in the panel, and the tabs can be
+  reordered, closed individually, or closed together
+- Use the panel toggle in the top right to hide the panel and give the list the full width; it
+  reopens on the issue you last had selected
 - Add or remove assignees from the issue summary, including a shortcut to assign yourself
 - Switch to **Timeline** to follow comments and history such as labels, assignments, milestones,
   title changes, references, closes, and reopens in either newest-first or oldest-first order
@@ -79,6 +87,11 @@ workspace.
   **Explain issue** to prefill a read-only investigation for the agent
 - Use **Open on GitHub** or **New issue** for issue changes that are not available in the app yet
 - Hosts that are not supported yet are reported as unavailable instead of being silently omitted
+
+Screenshots pasted into an issue or a pull request show up inline, including in private
+repositories. GitHub serves those uploads only to a signed-in viewer, so the environment that owns
+the project fetches them with its own GitHub login. An image the environment cannot fetch is
+labelled as unavailable rather than left as a broken tile.
 
 Issue browsing and assignment currently support GitHub repositories. They use the GitHub CLI
 authentication on the environment that owns each project, including remote and relay environments.

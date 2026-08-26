@@ -58,6 +58,9 @@ function renderWithoutThread(markdown: string): string {
   return renderToStaticMarkup(<ChatMarkdown cwd={"C:\\Users\\shawn\\project"} text={markdown} />);
 }
 
+const ATTACHMENT_URL =
+  "https://github.com/user-attachments/assets/45b6dcb9-2bb8-4f91-8ad6-b8af19d03883";
+
 describe("ChatMarkdown workspace images", () => {
   beforeEach(() => {
     testState.resources = [];
@@ -143,5 +146,47 @@ describe("ChatMarkdown workspace images", () => {
     expect(html).toContain("max-w-[min(100%,30rem)]");
     expect(html).toContain("max-h-[30rem]");
     expect(html).not.toContain("Image unavailable");
+  });
+});
+
+describe("ChatMarkdown source control attachments", () => {
+  beforeEach(() => {
+    testState.resources = [];
+    testState.assetState = "success";
+  });
+
+  it("loads an issue upload written as raw HTML through the environment", () => {
+    const html = renderToStaticMarkup(
+      <ChatMarkdown
+        cwd={undefined}
+        environmentId={threadRef.environmentId}
+        text={`<img width="1258" alt="Image" src="${ATTACHMENT_URL}" />`}
+      />,
+    );
+
+    expect(testState.resources).toEqual([
+      { _tag: "source-control-attachment", url: ATTACHMENT_URL },
+    ]);
+    expect(html).toContain("https://signed.test/workspace-image.svg");
+    expect(html).not.toContain(ATTACHMENT_URL);
+  });
+
+  it("loads a comment upload written as markdown through the thread's environment", () => {
+    const html = render(`![Image](${ATTACHMENT_URL})`);
+
+    expect(testState.resources).toEqual([
+      { _tag: "source-control-attachment", url: ATTACHMENT_URL },
+    ]);
+    expect(html).toContain("https://signed.test/workspace-image.svg");
+  });
+
+  it("says the image is unavailable when no environment can fetch it", () => {
+    const html = renderToStaticMarkup(
+      <ChatMarkdown cwd={undefined} text={`![Image](${ATTACHMENT_URL})`} />,
+    );
+
+    expect(testState.resources).toEqual([]);
+    expect(html).toContain("Image unavailable");
+    expect(html).not.toContain(ATTACHMENT_URL);
   });
 });

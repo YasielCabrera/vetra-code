@@ -66,6 +66,33 @@ layer("GitHubIssueCli.layer", (it) => {
     }),
   );
 
+  it.effect("writes each assignee narrowing as the qualifier GitHub reads it", () =>
+    Effect.gen(function* () {
+      const cli = yield* GitHubIssueCli.GitHubIssueCli;
+      const searchFor = (assignee: string) =>
+        Effect.gen(function* () {
+          execute.mockReturnValueOnce(Effect.succeed(output(encodeJson([]))));
+          yield* cli.listIssues({
+            cwd: "/w",
+            host: "github.com",
+            repository: "acme/web",
+            state: "open",
+            limit: 2,
+            assignee,
+          });
+          const call = execute.mock.calls.at(-1)?.[0];
+          assert.isDefined(call);
+          return call.args[call.args.indexOf("--search") + 1];
+        });
+
+      // Unquoted, because quoted it is an account nobody has rather than the signed-in one.
+      expect(yield* searchFor("@me")).toBe("assignee:@me sort:updated-desc");
+      // "Nobody" has no `assignee:` value of its own; it is a different qualifier entirely.
+      expect(yield* searchFor("@none")).toBe("no:assignee sort:updated-desc");
+      expect(yield* searchFor("gpuente")).toBe('assignee:"gpuente" sort:updated-desc');
+    }),
+  );
+
   it.effect("reads past rows already delivered at an inclusive cursor boundary", () =>
     Effect.gen(function* () {
       execute.mockReturnValueOnce(

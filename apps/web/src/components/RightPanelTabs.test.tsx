@@ -203,6 +203,8 @@ describe("RightPanelTabs powerhouse launcher", () => {
     expect(html).toContain("Browse reactor drives and documents.");
     expect(html).toContain("Powerhouse Database");
     expect(html).toContain("Inspect Powerhouse database schemas.");
+    expect(html).toContain("Switchboard");
+    expect(html).toContain("Explore and run reactor GraphQL operations.");
   });
 
   it("shows nothing at all outside a Powerhouse project", () => {
@@ -211,6 +213,7 @@ describe("RightPanelTabs powerhouse launcher", () => {
     expect(html).not.toContain("Document models");
     expect(html).not.toContain("Document explorer");
     expect(html).not.toContain("Powerhouse Database");
+    expect(html).not.toContain("Switchboard");
   });
 
   it("titles each Powerhouse tool tab independently", () => {
@@ -218,12 +221,14 @@ describe("RightPanelTabs powerhouse launcher", () => {
       { id: "powerhouse-models:models", kind: "powerhouse-models" },
       { id: "powerhouse-explorer:explorer", kind: "powerhouse-explorer" },
       { id: "powerhouse-database:database", kind: "powerhouse-database" },
+      { id: "powerhouse-switchboard:switchboard", kind: "powerhouse-switchboard" },
     ] as const satisfies readonly RightPanelSurface[];
     const html = renderLauncher(true, surfaces, surfaces[0].id);
 
     expect(html).toContain('aria-label="Close Document models"');
     expect(html).toContain('aria-label="Close Document explorer"');
     expect(html).toContain('aria-label="Close Powerhouse Database"');
+    expect(html).toContain('aria-label="Close Switchboard"');
   });
 });
 

@@ -19,6 +19,7 @@ import {
   type PowerhouseDatabasePreviewRelationInput,
   type PowerhouseDatabaseRefreshSnapshotInput,
   type PowerhouseReactorGetDocumentInput,
+  type PowerhouseReactorExecuteGraphqlInput,
   type PowerhouseReactorGetOperationsInput,
   type PowerhouseReactorListDocumentsInput,
   WS_METHODS,
@@ -147,6 +148,12 @@ export const makePowerhouseWsHandlers = (observeRpcEffect: ObserveRpcEffect) =>
         observeRpcEffect(
           WS_METHODS.powerhouseReactorGetOperations,
           reactor.getOperations(input),
+          TRACE,
+        ),
+      [WS_METHODS.powerhouseReactorExecuteGraphql]: (input: PowerhouseReactorExecuteGraphqlInput) =>
+        observeRpcEffect(
+          WS_METHODS.powerhouseReactorExecuteGraphql,
+          reactor.executeGraphql(input),
           TRACE,
         ),
       [WS_METHODS.powerhouseDatabaseDiscover]: (input: PowerhouseDatabaseDiscoverInput) =>

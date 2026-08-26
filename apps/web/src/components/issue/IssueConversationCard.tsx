@@ -1,4 +1,4 @@
-import type { IssueActor } from "@vetra-code/contracts";
+import type { EnvironmentId, IssueActor } from "@vetra-code/contracts";
 import { ExternalLinkIcon } from "lucide-react";
 
 import { formatRelativeTimeLabel } from "~/timestampFormat";
@@ -12,6 +12,7 @@ export function IssueConversationCard({
   createdAt,
   body,
   action,
+  environmentId,
   url = null,
   onOpen,
 }: {
@@ -19,6 +20,8 @@ export function IssueConversationCard({
   readonly createdAt: string;
   readonly body: string;
   readonly action: "opened" | "commented";
+  /** Whose GitHub login fetches the uploads embedded in the comment. */
+  readonly environmentId: EnvironmentId;
   readonly url?: string | null;
   readonly onOpen?: (url: string) => void;
 }) {
@@ -46,7 +49,12 @@ export function IssueConversationCard({
       </header>
       <div className="mt-2">
         {body.trim() ? (
-          <ChatMarkdown className="max-w-none text-sm" cwd={undefined} text={body} />
+          <ChatMarkdown
+            className="max-w-none text-sm"
+            cwd={undefined}
+            environmentId={environmentId}
+            text={body}
+          />
         ) : (
           <p className="text-xs italic text-muted-foreground">No comment provided.</p>
         )}

@@ -107,6 +107,11 @@ export function describeReactorFailure(error: {
         title: "That address cannot be used",
         detail: "Enter an http or https URL, for example http://127.0.0.1:4001.",
       };
+    case "invalid_request":
+      return {
+        title: "That request cannot be sent",
+        detail: "Check the operation, variables, and request headers, then try again.",
+      };
     case "http_error":
       return {
         title: "The reactor rejected the request",

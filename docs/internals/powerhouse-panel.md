@@ -6,7 +6,7 @@ Status: implemented
 
 ## Purpose
 
-A set of read-only right-panel surfaces for developers working in
+A set of right-panel surfaces for developers working in
 [Powerhouse](https://github.com/powerhouse-inc/powerhouse) projects. Each tool has its own panel:
 
 - **Document models** reads document model definitions from the project's working tree. It needs
@@ -15,10 +15,12 @@ A set of read-only right-panel surfaces for developers working in
   (switchboard) over GraphQL.
 - **Powerhouse Database** reads generated read-model and reactor database shape, using a
   point-in-time PGlite snapshot or a live local Postgres connection.
+- **Switchboard** embeds a customizable GraphiQL 5 workspace and sends user-authored GraphQL
+  queries and mutations to a live reactor through the environment server.
 
 Each open action creates a new right-panel surface. The user can keep several instances of any tool
-open at once, and each instance keeps its own selected project, model, explorer path, and database
-session state.
+open at once, and each instance keeps its own selected project, model, explorer path, database
+session state, or GraphiQL workspace.
 
 The panel is deliberately confined to modules that can be lifted out in one pass; see
 [Removal map](#removal-map) below. Everything outside those modules is a short, named edit.
@@ -27,8 +29,9 @@ The panel is deliberately confined to modules that can be lifted out in one pass
 
 Powerhouse ships its own unrelated package called `@powerhousedao/vetra` and a `ph vetra` CLI
 command. Nothing in these panels is named "Vetra". Their right-panel kinds are
-`powerhouse-models`, `powerhouse-explorer`, and `powerhouse-database`; their titles are "Document
-models", "Document explorer", and "Powerhouse Database".
+`powerhouse-models`, `powerhouse-explorer`, `powerhouse-database`, and
+`powerhouse-switchboard`; their titles are "Document models", "Document explorer", "Powerhouse
+Database", and "Switchboard".
 
 ## Discovery
 
@@ -63,8 +66,8 @@ Two traps are handled in `parsePowerhouseConfig` (`packages/contracts/src/powerh
   lenient: fields of the wrong type are dropped, not rejected. A file that is not JSON at all is
   still a Powerhouse project — the panel says so in its header and uses defaults.
 
-When no project is found, the three launcher cards and `+` menu entries are omitted, not dimmed,
-and the three `powerhouse.open*` keybindings are no-ops. This differs from the surrounding
+When no project is found, the four launcher cards and `+` menu entries are omitted, not dimmed,
+and the four `powerhouse.open*` keybindings are no-ops. This differs from the surrounding
 convention because a Powerhouse card in a non-Powerhouse repo is never actionable.
 
 `rightPanelStore` owns only the repeatable surface descriptors. Their ids use
@@ -83,15 +86,17 @@ All reactor traffic therefore goes through typed RPCs. There is no generic HTTP 
 codebase and this feature does not add one:
 
 - The client passes a **base URL only**; `PowerhouseReactorClient` appends `/graphql` itself.
-- The queries are fixed strings in the server module. A caller chooses which host answers, never
-  what is asked of it.
+- Explorer queries are fixed strings in the server module. Switchboard can send a user-authored
+  GraphQL document, variables, operation name, and bounded request headers, but only as a GraphQL
+  POST to the selected reactor endpoint.
 - Only `http` and `https` are accepted; credentials, fragments, and query strings are stripped
   before an override is persisted or returned to the client.
-- Every call has a timeout (3s per probe candidate, 10s for data) and a response size ceiling.
-- Reactor identifiers, list-valued filters, and paging cursors are length-bounded at the RPC
-  boundary.
-- Every method requires the same read scope as `projectsReadFile`, which is strictly more
-  sensitive than anything here.
+- Every call has a timeout (3s per probe candidate, 10s for inspector data, 30s for Switchboard)
+  and an 8 MiB response ceiling.
+- Reactor identifiers, list-valued filters, paging cursors, GraphQL documents, variables, and
+  headers are length-bounded at the RPC boundary.
+- Inspector methods require the same read scope as `projectsReadFile`. General GraphQL execution
+  requires orchestration operate scope because a document may contain a mutation.
 
 ## Connection discovery
 
@@ -114,6 +119,45 @@ did not answer in time_ (`timeout`), and _something listening that is not a reac
 The connection chip remains interactive after a successful probe. Its popover uses the same URL
 form as the offline state, so an override is a reversible choice: users can replace it, retry it,
 or return to autodetection without first stopping the reactor.
+
+## Switchboard GraphQL client
+
+`SwitchboardView` is a nested lazy import below `PowerhousePanel`. GraphiQL, Monaco, and the visual
+explorer plugin are therefore absent from the shared Powerhouse panel chunk and load only when a
+Switchboard tab is rendered. The packages are pinned exactly (`graphiql@5.3.0`,
+`@graphiql/react@0.38.0`, and `@graphiql/plugin-explorer@5.1.4`) because the narrow-panel CSS has a
+small, documented dependency on GraphiQL's DOM structure. The scoped `pnpm-workspace.yaml` peer
+exceptions cover only the plugin's unchanged `graphiql-explorer@0.9` manifest; the current official
+wrapper declares support for this workspace's React 19 and GraphQL 16 versions.
+
+The `graphiql/setup-workers/vite` bootstrap stays in normal Vite transforms through an
+`optimizeDeps.exclude` entry. Vite+ 0.2.2's dependency optimizer otherwise treats the bootstrap's
+`?worker` imports as literal filenames and aborts `dev` and `dev:desktop`, even though its normal
+transform pipeline and production build handle them correctly.
+
+GraphiQL's fetcher calls `powerhouse.reactorExecuteGraphql`, not browser `fetch`. The typed command
+accepts the resolved reactor base URL, a GraphQL document, optional operation name, variables as
+bounded JSON text, and a bounded header record. The server parses variables, controls the endpoint
+and content negotiation headers, removes hop-by-hop and HTTP framing headers, and forwards useful
+authentication headers. It returns the GraphQL envelope intact even on an HTTP error or when the
+envelope has GraphQL errors, allowing GraphiQL to render the real response. Invalid JSON and
+non-GraphQL responses become structured failures.
+
+GraphiQL storage is wrapped by `switchboardStorage` under a versioned namespace containing both
+the right-panel surface id and selected project key. Two tabs therefore never share operations or
+layout state. Removing a right-panel surface deletes all storage for that surface. GraphiQL header
+persistence is disabled independently, so secrets remain session-only.
+
+Theme integration maps the selected theme's semantic CSS roles — code background and foreground,
+card, muted foreground, border, primary, accent, and status colors — into GraphiQL's HSL variables
+and a custom Monaco theme. `forcedTheme` follows Vetra Code's resolved appearance, while a small
+body-level bridge gives GraphiQL's portalled dialogs and menus the same tokens. This mapping is the
+customization boundary for future Powerhouse-specific UI; authentication such as Renown can be
+added in a custom toolbar and fetcher adapter without forking the editor.
+
+The current RPC is unary. The fetcher rejects GraphQL subscriptions with a direct explanation;
+supporting them requires a separately authorized, cancellable streaming contract rather than
+holding an RPC request open.
 
 ## Database inspector
 
@@ -428,15 +472,15 @@ Two deliberate limits:
 
 ## Live updates
 
-The panels do not subscribe. The reactor exposes `documentChanges` over graphql-ws
-(`/graphql/subscriptions`) and SSE (`/graphql/stream`), but relaying that reactor → server → client
-websocket would multiply traffic for a read-only diagnostic surface, and websocket volume is this
-repo's most common performance regression. The panel uses unary RPCs behind the shared SWR atom
-layer: 30s stale time for disk data, 15s for the probe, 10s for reactor data, plus explicit refresh
-controls. A failed refresh retains the most recent successful result and labels it as stale instead
-of blanking the panel. Database catalog reads are similarly manual; refreshing a PGlite target is
-the explicit moment a new atomic snapshot is restored. Subscriptions can be added later without
-changing the contract.
+The inspectors do not subscribe, and Switchboard currently supports queries and mutations only.
+The reactor exposes `documentChanges` over graphql-ws (`/graphql/subscriptions`) and SSE
+(`/graphql/stream`), but relaying either reactor → server → client websocket would multiply traffic
+and needs explicit cancellation, authorization, and backpressure semantics. The inspector uses
+unary RPCs behind the shared SWR atom layer: 30s stale time for disk data, 15s for the probe, 10s
+for reactor data, plus explicit refresh controls. A failed refresh retains the most recent
+successful result and labels it as stale instead of blanking the panel. Database catalog reads are
+similarly manual; refreshing a PGlite target is the explicit moment a new atomic snapshot is
+restored.
 
 ## Paging
 
@@ -500,6 +544,9 @@ Document `state` and operation `input` are unbounded JSON that crosses the clien
   clamp to 500 instead, since they cannot be paged.
 - `listDrives` walks at most 10 pages per drive type.
 - Response bodies are capped at 8 MB before decoding.
+- Switchboard GraphQL documents are capped at 256K characters, serialized variables at 512K
+  characters, and request headers at 64 entries with 16K-character values. Header names use the
+  HTTP token grammar and values reject line breaks before they cross the websocket.
 - Database snapshots are capped at 512 MiB, SQL at 64 KiB, results at 200 rows and 2 MiB, restored
   sessions at two, and statements at 10 seconds.
 
@@ -518,23 +565,24 @@ Then remove these small integration edits:
 
 | File                                                  | Edit                                                                                                         |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `packages/contracts/src/rpc.ts`                       | import block, 14 `WS_METHODS` entries, 14 `Rpc.make` consts, 14 `WsRpcGroup` entries                         |
+| `packages/contracts/src/rpc.ts`                       | import block, 15 `WS_METHODS` entries, 15 `Rpc.make` consts, 15 `WsRpcGroup` entries                         |
 | `packages/contracts/src/index.ts`                     | one re-export                                                                                                |
-| `packages/contracts/src/keybindings.ts`               | three `powerhouse.open*` commands plus the legacy `powerhouse.toggle` decoder                                |
-| `apps/server/src/auth/RpcAuthorization.ts`            | 14 entries in `RPC_REQUIRED_SCOPES`                                                                          |
+| `packages/contracts/src/keybindings.ts`               | four `powerhouse.open*` commands plus the legacy `powerhouse.toggle` decoder                                 |
+| `apps/server/src/auth/RpcAuthorization.ts`            | 15 entries in `RPC_REQUIRED_SCOPES`                                                                          |
 | `apps/server/src/ws.ts`                               | import plus one `...powerhouseHandlers` spread                                                               |
 | `apps/server/src/server.ts`                           | imports, `PowerhouseLayerLive`, one `Layer.provideMerge`                                                     |
 | `apps/server/src/server.test.ts`                      | layer entries in `buildAppUnderTest`, one e2e test                                                           |
 | `apps/server/src/auth/RpcAuthorization.test.ts`       | one scope test                                                                                               |
-| `apps/web/src/rightPanelStore.ts`                     | three kinds, repeatable surface factory, open action, type guard, and v12 migration                          |
-| `apps/web/src/components/RightPanelTabs.tsx`          | Powerhouse icons, prop, three launcher cards and `+` items, title and icon switch arms                       |
+| `apps/web/src/rightPanelStore.ts`                     | four kinds, repeatable surface factory, open action, type guard, and v12 migration                           |
+| `apps/web/src/components/RightPanelTabs.tsx`          | Powerhouse icons, prop, four launcher cards and `+` items, title and icon switch arms                        |
 | `apps/web/src/components/RightPanelTabs.test.tsx`     | fixture props, launcher visibility tests                                                                     |
 | `apps/web/src/components/ChatView.tsx`                | lazy import, detection hook, repeatable opener, cleanup, keybinding arm, render branch, and mount-site props |
-| `apps/web/src/components/CommandPalette.tsx`          | availability query and three open actions                                                                    |
+| `apps/web/src/components/CommandPalette.tsx`          | availability query and four open actions                                                                     |
+| `apps/web/vite.config.ts`                             | GraphiQL worker bootstrap exclusion from dependency optimization                                             |
 | `apps/web/src/routes/_chat.pull-requests.tsx`         | two no-op props                                                                                              |
 | `apps/web/src/rightPanelStore.test.ts`                | two tests                                                                                                    |
 | `packages/client-runtime/package.json`                | one subpath export                                                                                           |
-| `apps/server/package.json`, `apps/web/package.json`   | database adapter and lazy SQL-editor dependencies                                                            |
+| `apps/server/package.json`, `apps/web/package.json`   | database adapter, lazy SQL-editor, and GraphiQL dependencies                                                 |
 | `packages/shared/src/composerInlineTokens.ts`         | the `powerhouse` token variant, its grammar, and its serializer                                              |
 | `apps/web/src/composer-editor-mentions.ts`            | one `ComposerPromptSegment` variant and its arm                                                              |
 | `apps/web/src/composer-logic.ts`                      | `"powerhouse"` in the two cursor arms                                                                        |
@@ -547,7 +595,8 @@ Then remove these small integration edits:
 default and fallback. New surfaces use random 128-bit ids and survive layout persistence as separate
 tabs. `POWERHOUSE_PANEL_STORAGE_VERSION` is 4; it removes the persisted inner mode and adds
 per-panel project choices. Model, explorer, and database selections remain session-only, now keyed
-by both the panel surface and project.
+by both the panel surface and project. Switchboard's separate local-storage namespace is versioned
+as `vetra:switchboard:v1`, keyed the same way, and cleared when its surface closes.
 
 ## Testing
 
@@ -566,6 +615,7 @@ No running Powerhouse project is needed anywhere:
 | SQL guard                  | `powerhouseDatabaseSql.test.ts`, statement classes, quoting, multiple statements, size                           |
 | Panel state and copy       | `apps/web/src/components/powerhouse/*.test.ts`                                                                   |
 | Database panel logic       | `apps/web/src/components/powerhouse/database/databaseViewLogic.test.ts`                                          |
+| Switchboard theme/storage  | `apps/web/src/components/powerhouse/switchboard/*.test.ts`                                                       |
 | Schema diagram projection  | `apps/web/src/components/powerhouse/models/graphqlSchemaDiagram.test.ts`                                         |
 | Composer drag payloads     | `apps/web/src/components/powerhouse/powerhouseDragMention.test.ts`                                               |
 | Reference grammar          | `packages/shared/src/composerInlineTokens.test.ts`, round-trip over every fact combination                       |
@@ -580,4 +630,6 @@ tabs preserves both selections. Run `ph reactor` or `ph switchboard` in that app
 document, operation, and state in Document explorer. Open a second explorer tab on another
 document. In Powerhouse Database, inspect both targets, refresh a snapshot, walk every relation
 tab, run a bounded query, and add schema/result context to the composer without sending. Check both
-themes and both the inline and maximized panel widths.
+themes and both the inline and maximized panel widths. Open two Switchboard tabs, confirm their
+operations remain independent, run one query and one disposable mutation against a test reactor,
+and confirm header values disappear after a reload.

@@ -1,0 +1,98 @@
+body.switchboard-theme-bridge .switchboard-graphiql.graphiql-container,
+body.switchboard-theme-bridge .graphiql-dialog,
+body.switchboard-theme-bridge .graphiql-tooltip,
+body.switchboard-theme-bridge .graphiql-dropdown-content,
+body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
+  --color-base: var(--switchboard-color-base);
+  --color-neutral: var(--switchboard-color-neutral);
+  --color-primary: var(--switchboard-color-primary);
+  --color-secondary: var(--switchboard-color-secondary);
+  --color-tertiary: var(--switchboard-color-tertiary);
+  --color-info: var(--switchboard-color-info);
+  --color-success: var(--switchboard-color-success);
+  --color-warning: var(--switchboard-color-warning);
+  --color-error: var(--switchboard-color-error);
+  --font-family: var(--font-sans);
+  --font-family-mono: var(--font-mono);
+  --font-size-body: 0.8125rem;
+  --font-size-h4: 0.875rem;
+  --font-size-h3: 1rem;
+  --font-size-h2: 1.125rem;
+  --border-radius-4: calc(var(--radius) - 4px);
+  --border-radius-8: calc(var(--radius) - 2px);
+  --border-radius-12: var(--radius);
+  --popover-box-shadow: none;
+  --popover-border: 1px solid hsl(var(--color-neutral), var(--alpha-background-heavy));
+}
+
+.switchboard-graphiql.graphiql-container {
+  --sidebar-width: 48px;
+  --toolbar-width: 36px;
+  --session-header-height: 36px;
+}
+
+.switchboard-graphiql .graphiql-sessions {
+  border: 1px solid hsl(var(--color-neutral), var(--alpha-background-heavy));
+  box-shadow: none;
+}
+
+.switchboard-graphiql .graphiql-editors {
+  box-shadow: none;
+}
+
+.switchboard-graphiql .graphiql-logo {
+  min-width: 0;
+  max-width: 9rem;
+  overflow: hidden;
+  font-size: 0.6875rem;
+  font-family: var(--font-family-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@container powerhouse (max-width: 32rem) {
+  .switchboard-graphiql .graphiql-sessions {
+    margin: 8px;
+    margin-left: 0;
+  }
+
+  .switchboard-graphiql .graphiql-query-editor,
+  .switchboard-graphiql .graphiql-editor-tool,
+  .switchboard-graphiql .graphiql-plugin {
+    padding: 8px;
+  }
+
+  .switchboard-graphiql .graphiql-query-editor {
+    column-gap: 8px;
+  }
+
+  .switchboard-graphiql .graphiql-response {
+    padding-top: 8px;
+  }
+
+  /* At panel widths the explorer becomes an overlay instead of taking half of
+     the already narrow operation editor. These selectors are pinned to
+     GraphiQL 5.3.0 alongside the exact package version. */
+  .switchboard-graphiql .graphiql-main {
+    position: relative;
+  }
+
+  .switchboard-graphiql .graphiql-main > .graphiql-horizontal-drag-bar {
+    display: none;
+  }
+
+  .switchboard-graphiql .graphiql-plugin {
+    position: absolute !important;
+    z-index: 10;
+    inset: 0 0 0 0 !important;
+    min-width: 0 !important;
+    border-left: 0;
+    background: hsl(var(--color-base));
+  }
+
+  .switchboard-graphiql .graphiql-plugin[style*="opacity: 0"] {
+    right: auto !important;
+    left: -1000px !important;
+    pointer-events: none;
+  }
+}

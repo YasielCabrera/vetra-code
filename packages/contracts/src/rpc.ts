@@ -42,6 +42,8 @@ import {
   PowerhouseReactorConnection,
   PowerhouseReactorDocument,
   PowerhouseReactorError,
+  PowerhouseReactorExecuteGraphqlInput,
+  PowerhouseReactorExecuteGraphqlResult,
   PowerhouseReactorGetDocumentInput,
   PowerhouseReactorGetOperationsInput,
   PowerhouseReactorGetOperationsResult,
@@ -296,6 +298,7 @@ export const WS_METHODS = {
   powerhouseReactorListDocuments: "powerhouse.reactorListDocuments",
   powerhouseReactorGetDocument: "powerhouse.reactorGetDocument",
   powerhouseReactorGetOperations: "powerhouse.reactorGetOperations",
+  powerhouseReactorExecuteGraphql: "powerhouse.reactorExecuteGraphql",
   powerhouseDatabaseDiscover: "powerhouse.databaseDiscover",
   powerhouseDatabaseCatalog: "powerhouse.databaseCatalog",
   powerhouseDatabaseGetRelation: "powerhouse.databaseGetRelation",
@@ -908,6 +911,15 @@ export const WsPowerhouseReactorGetOperationsRpc = Rpc.make(
   },
 );
 
+export const WsPowerhouseReactorExecuteGraphqlRpc = Rpc.make(
+  WS_METHODS.powerhouseReactorExecuteGraphql,
+  {
+    payload: PowerhouseReactorExecuteGraphqlInput,
+    success: PowerhouseReactorExecuteGraphqlResult,
+    error: Schema.Union([PowerhouseReactorError, EnvironmentAuthorizationError]),
+  },
+);
+
 export const WsPowerhouseDatabaseDiscoverRpc = Rpc.make(WS_METHODS.powerhouseDatabaseDiscover, {
   payload: PowerhouseDatabaseDiscoverInput,
   success: PowerhouseDatabaseDiscoverResult,
@@ -1449,6 +1461,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsPowerhouseReactorListDocumentsRpc,
   WsPowerhouseReactorGetDocumentRpc,
   WsPowerhouseReactorGetOperationsRpc,
+  WsPowerhouseReactorExecuteGraphqlRpc,
   WsPowerhouseDatabaseDiscoverRpc,
   WsPowerhouseDatabaseCatalogRpc,
   WsPowerhouseDatabaseGetRelationRpc,

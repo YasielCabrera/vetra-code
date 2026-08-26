@@ -45,6 +45,7 @@ import * as AzureDevOpsCli from "./sourceControl/AzureDevOpsCli.ts";
 import * as BitbucketApi from "./sourceControl/BitbucketApi.ts";
 import * as GitHubCli from "./sourceControl/GitHubCli.ts";
 import * as GitLabCli from "./sourceControl/GitLabCli.ts";
+import * as SourceControlAttachmentResolver from "./sourceControl/SourceControlAttachmentResolver.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
 import { ProviderInstanceRegistryHydrationLive } from "./provider/Layers/ProviderInstanceRegistryHydration.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
@@ -499,6 +500,11 @@ const IssueServiceLive = IssueService.layer.pipe(
   Layer.provide(VcsProcess.layer),
 );
 
+const SourceControlAttachmentResolverLive = SourceControlAttachmentResolver.layer.pipe(
+  Layer.provide(GitHubCli.layer),
+  Layer.provide(VcsProcess.layer),
+);
+
 export const makeRoutesLayer = Layer.mergeAll(
   Layer.mergeAll(
     HttpApiBuilder.layer(EnvironmentHttpApi).pipe(
@@ -510,7 +516,7 @@ export const makeRoutesLayer = Layer.mergeAll(
       Layer.provide(environmentAuthenticatedAuthLayer),
     ),
     otlpTracesProxyRouteLayer,
-    assetRouteLayer,
+    assetRouteLayer.pipe(HttpRouter.provideRequest(SourceControlAttachmentResolverLive)),
     attachmentUploadRouteLayer,
     staticAndDevRouteLayer,
     websocketRpcRouteLayer,

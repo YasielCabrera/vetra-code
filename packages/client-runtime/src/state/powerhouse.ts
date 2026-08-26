@@ -1,10 +1,10 @@
 /**
  * Query atoms for the Powerhouse panel.
  *
- * Everything here is a plain unary query behind the shared SWR layer — no
- * subscriptions. The reactor can push document changes, but relaying them
- * reactor→server→client websocket would multiply traffic for a read-only
- * diagnostic surface; refresh-on-demand is honest and cheap.
+ * Inspector reads are plain unary queries behind the shared SWR layer.
+ * Switchboard execution and database queries are explicit commands. Reactor
+ * subscriptions are not relayed: adding a second streaming protocol over the
+ * environment websocket needs a separate transport design.
  */
 import { WS_METHODS } from "@vetra-code/contracts";
 import { Atom } from "effect/unstable/reactivity";
@@ -72,6 +72,10 @@ export function createPowerhouseEnvironmentAtoms<R, E>(
       label: "environment-data:powerhouse:reactor-operations",
       tag: WS_METHODS.powerhouseReactorGetOperations,
       staleTimeMs: 10_000,
+    }),
+    reactorExecuteGraphql: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:powerhouse:reactor-execute-graphql",
+      tag: WS_METHODS.powerhouseReactorExecuteGraphql,
     }),
     databaseDiscover: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:powerhouse:database-discover",

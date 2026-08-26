@@ -1,10 +1,11 @@
 # Inspect Powerhouse projects
 
-Open **Document models**, **Document explorer**, or **Powerhouse Database** in a thread's right
-panel. These tools let you read a Powerhouse project's document models, browse a running reactor,
-and inspect the generated database shape. They are read-only. Editing documents stays in Connect.
+Open **Document models**, **Document explorer**, **Powerhouse Database**, or **Switchboard** in a
+thread's right panel. The first three tools inspect a Powerhouse project's models, live reactor
+data, and generated database shape. Switchboard is a full GraphQL workspace for sending queries
+and mutations to the project's reactor.
 
-The three tools appear only in workspaces that contain a Powerhouse project with a
+The four tools appear only in workspaces that contain a Powerhouse project with a
 `powerhouse.config.json`. That project does not have to be the workspace root. In a monorepo it is
 usually an app directory such as `apps/connect`, and the tools find it there. Workspaces without
 one never show them.
@@ -118,6 +119,29 @@ dimensions to avoid browser canvas failures on unusually large graphs. Copying d
 clipboard access in a secure browser connection; the panel reports when the browser cannot provide
 it, while PNG download remains available.
 
+## Switchboard
+
+**Switchboard** is the project's GraphQL client, built on GraphiQL 5. It includes schema
+documentation, a visual operation explorer, operation tabs, variables, request headers, and the
+response viewer. Its colors, typography, borders, editor syntax colors, and light or dark
+appearance follow the selected Vetra Code theme.
+
+Queries and mutations travel through the Vetra Code environment server to the selected reactor,
+so Switchboard works in local, desktop, remote, relay, and tunnel connections. The server always
+targets that reactor's `/graphql` endpoint; the browser does not need direct access to its loopback
+port.
+
+Use the **Headers** editor for reactor authentication, including an `Authorization` header when
+needed. Header values remain in the current panel session and are not persisted to browser
+storage. Transport-owned headers such as `Host`, `Content-Length`, and `Content-Type` cannot be
+overridden. Queries, variables, headers, and responses have explicit transfer-size limits so an
+accidental large operation does not stall the environment connection.
+
+Each Switchboard panel has an independent GraphiQL workspace. You can keep different operations,
+projects, or reactors open side by side; closing a panel clears the workspace saved for that panel.
+Queries and mutations are supported. Subscriptions need a streaming reactor-to-environment
+transport and are not supported yet.
+
 ## Powerhouse Database
 
 **Database** inspects the two stores Powerhouse builds:
@@ -173,31 +197,31 @@ Powerhouse project.
 
 ## Connecting to a reactor
 
-Document explorer finds the reactor by itself. It tries the port from `powerhouse.config.json` when
-one is set, then the standard ports. The status chip in the panel header shows the address it
-connected to and the reactor's version. Select that chip at any time to retry, use a different
-address, or return to automatic detection.
+Document explorer and Switchboard find the reactor by themselves. They try the port from
+`powerhouse.config.json` when one is set, then the standard ports. The status chip in the panel
+header shows the address it connected to and the reactor's version. Select that chip at any time
+to retry, use a different address, or return to automatic detection.
 
 When no reactor answers, the panel says which addresses it tried and offers two ways forward: start
 one with `ph reactor`, or enter the address of a reactor to use. An address you enter is remembered
 for that project and is used as the only candidate — clear the field to go back to automatic
-detection. URL credentials and query fragments are discarded because Explorer does not use them
-for authentication.
+detection. URL credentials and query fragments are discarded. For Switchboard authentication,
+enter credentials in its **Headers** editor instead.
 
 A reactor that requires authentication may answer without showing any drives. The empty drive list
 says so rather than claiming the reactor is empty.
 
-Explorer works over remote and tunnelled connections: your Vetra Code server reaches the reactor,
-so the reactor does not have to be reachable from your browser.
+Explorer and Switchboard work over remote and tunnelled connections: your Vetra Code server
+reaches the reactor, so the reactor does not have to be reachable from your browser.
 
 ## Opening and closing panels
 
-Open any of the three tools from the right panel's launcher, the **+** menu in the panel's tab bar,
+Open any of the four tools from the right panel's launcher, the **+** menu in the panel's tab bar,
 or its **Open** action in the command palette. Every action adds a new tab. You can open the same
 tool more than once, such as two Document models panels on different models or two Document
-explorer panels on different documents. Close each tab with its close button like any other
-surface.
+explorer panels on different documents, or separate Switchboard workspaces for unrelated
+operations. Close each tab with its close button like any other surface.
 
 To open one with a shortcut, assign a binding to **Powerhouse: Open Models**, **Powerhouse: Open
-Explorer**, or **Powerhouse: Open Database** in **Settings → Keybindings**. They ship without
-default bindings.
+Explorer**, **Powerhouse: Open Database**, or **Powerhouse: Open Switchboard** in **Settings →
+Keybindings**. They ship without default bindings.

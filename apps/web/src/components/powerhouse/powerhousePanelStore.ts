@@ -16,6 +16,7 @@ import * as Predicate from "effect/Predicate";
 import { resolveStorage } from "~/lib/storage";
 
 import { normalizeReactorUrl } from "./PowerhousePanel.logic";
+import { clearSwitchboardPanelStorage } from "./switchboard/switchboardStorage";
 
 export interface PowerhouseProjectPreferences {
   /** `null` means autodetect. */
@@ -363,7 +364,8 @@ export const usePowerhousePanelStore = create<PowerhousePanelStoreState>()(
             relation: null,
           })),
         ),
-      removePanel: (surfaceId) =>
+      removePanel: (surfaceId) => {
+        clearSwitchboardPanelStorage(surfaceId);
         set((state) => ({
           selectedProjectByPanelKey: removePanelEntries(state.selectedProjectByPanelKey, surfaceId),
           modelSelectionByPanelProjectKey: removePanelEntries(
@@ -378,7 +380,8 @@ export const usePowerhousePanelStore = create<PowerhousePanelStoreState>()(
             state.databaseSessionByPanelProjectKey,
             surfaceId,
           ),
-        })),
+        }));
+      },
     }),
     {
       name: POWERHOUSE_PANEL_STORAGE_KEY,

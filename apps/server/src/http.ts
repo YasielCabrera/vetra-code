@@ -47,6 +47,7 @@ import {
   failEnvironmentInternal,
 } from "./auth/http.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
+import * as SourceControlAttachmentResolver from "./sourceControl/SourceControlAttachmentResolver.ts";
 import { browserApiCorsAllowedHeaders, browserApiCorsAllowedMethods } from "./httpCors.ts";
 
 const OTLP_TRACES_PROXY_PATH = "/api/observability/v1/traces";
@@ -232,6 +233,18 @@ export const assetRouteLayer = HttpRouter.add(
     );
     if (!asset) {
       return HttpServerResponse.text("Not Found", { status: 404 });
+    }
+    if (asset.kind === "source-control-attachment") {
+      const attachments = yield* SourceControlAttachmentResolver.SourceControlAttachmentResolver;
+      const downloadUrl = yield* attachments.resolveDownloadUrl(asset.url);
+      return downloadUrl === null
+        ? HttpServerResponse.text("Not Found", { status: 404 })
+        : // The signed URL outlives this redirect by minutes, so the browser is told to ask
+          // again rather than to remember one that will have expired by the next render.
+          HttpServerResponse.redirect(downloadUrl, {
+            status: 302,
+            headers: { "Cache-Control": "private, no-store" },
+          });
     }
     return yield* HttpServerResponse.file(asset.path, {
       status: 200,

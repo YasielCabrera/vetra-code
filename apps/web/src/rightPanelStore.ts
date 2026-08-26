@@ -18,6 +18,7 @@ export const POWERHOUSE_PANEL_KINDS = [
   "powerhouse-models",
   "powerhouse-explorer",
   "powerhouse-database",
+  "powerhouse-switchboard",
 ] as const;
 export type PowerhousePanelKind = (typeof POWERHOUSE_PANEL_KINDS)[number];
 
@@ -28,6 +29,7 @@ export const RIGHT_PANEL_KINDS = [
   "preview",
   "terminal",
   "pull-request",
+  "issue",
   "agents",
   ...POWERHOUSE_PANEL_KINDS,
 ] as const;
@@ -75,6 +77,19 @@ export type RightPanelSurface =
       repository: string;
       number: number;
     }
+  | {
+      /**
+       * An issue opened from the issues list's shared panel. Keyed by its reference the same
+       * way a change request is, so several issues stay open as peer tabs.
+       */
+      id: `issue:${string}`;
+      kind: "issue";
+      /** Which server the issue was read from; the list spans every connected one. */
+      environmentId?: string;
+      projectId: string;
+      repository: string;
+      number: number;
+    }
   | { id: "agents"; kind: "agents" }
   | {
       id: `${PowerhousePanelKind}:${string}`;
@@ -86,13 +101,16 @@ const RIGHT_PANEL_STORAGE_KEY = "vetra:right-panel-state:v2";
 // v10 keys pull-request surfaces by reference instead of a singleton tab.
 // v11 stops persisting the pull-request list's shared panel, so a restart opens the page fresh.
 // v12 replaces the singleton Powerhouse surface with repeatable tool-specific surfaces.
-const RIGHT_PANEL_STORAGE_VERSION = 12;
+// v13 adds issue surfaces, whose list panel is session state like the pull-request one.
+const RIGHT_PANEL_STORAGE_VERSION = 13;
 
 /**
- * The pull-request list's shared panel (see PULL_REQUESTS_PANEL_ID in the route) is session
- * state: reopening the app should show the list, not last session's tabs and detail fetches.
+ * A list page's shared panel (see PULL_REQUESTS_PANEL_ID and ISSUES_PANEL_ID in the routes) is
+ * session state: reopening the app should show the list, not last session's tabs and detail
+ * fetches.
  */
-const isPullRequestsPanelKey = (threadKey: string) => threadKey.endsWith(":pull-requests-panel");
+const isListPagePanelKey = (threadKey: string) =>
+  threadKey.endsWith(":pull-requests-panel") || threadKey.endsWith(":issues-panel");
 
 export interface ThreadRightPanelState {
   isOpen: boolean;
@@ -104,7 +122,10 @@ interface RightPanelStoreState {
   byThreadKey: Record<string, ThreadRightPanelState>;
   open: (
     ref: ScopedThreadRef,
-    kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request" | PowerhousePanelKind>,
+    kind: Exclude<
+      RightPanelKind,
+      "file" | "terminal" | "pull-request" | "issue" | PowerhousePanelKind
+    >,
   ) => void;
   openPowerhouse: (ref: ScopedThreadRef, kind: PowerhousePanelKind) => void;
   openBrowser: (ref: ScopedThreadRef, tabId: string | null) => void;
@@ -117,6 +138,10 @@ interface RightPanelStoreState {
   /** Promote a preview file tab into a dedicated tab. No-op on anything else. */
   pinFile: (ref: ScopedThreadRef, relativePath: string) => void;
   openPullRequest: (
+    ref: ScopedThreadRef,
+    target: { environmentId?: string; projectId: string; repository: string; number: number },
+  ) => void;
+  openIssue: (
     ref: ScopedThreadRef,
     target: { environmentId?: string; projectId: string; repository: string; number: number },
   ) => void;
@@ -142,7 +167,10 @@ interface RightPanelStoreState {
   toggleVisibility: (ref: ScopedThreadRef) => void;
   toggle: (
     ref: ScopedThreadRef,
-    kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request" | PowerhousePanelKind>,
+    kind: Exclude<
+      RightPanelKind,
+      "file" | "terminal" | "pull-request" | "issue" | PowerhousePanelKind
+    >,
   ) => void;
   removeThread: (ref: ScopedThreadRef) => void;
 }
@@ -156,7 +184,7 @@ const EMPTY_THREAD_STATE: ThreadRightPanelState = {
 const singletonSurface = (
   kind: Exclude<
     RightPanelKind,
-    "file" | "preview" | "terminal" | "pull-request" | PowerhousePanelKind
+    "file" | "preview" | "terminal" | "pull-request" | "issue" | PowerhousePanelKind
   >,
 ): RightPanelSurface => {
   switch (kind) {
@@ -177,7 +205,8 @@ export function isPowerhousePanelSurface(
   return (
     surface?.kind === "powerhouse-models" ||
     surface?.kind === "powerhouse-explorer" ||
-    surface?.kind === "powerhouse-database"
+    surface?.kind === "powerhouse-database" ||
+    surface?.kind === "powerhouse-switchboard"
   );
 }
 
@@ -253,6 +282,37 @@ export function pullRequestSurface(target: {
   };
 }
 
+export type IssueSurface = Extract<RightPanelSurface, { kind: "issue" }>;
+
+export function issueSurfaceId(target: {
+  environmentId?: string;
+  projectId: string;
+  repository: string;
+  number: number;
+}): IssueSurface["id"] {
+  // Scoped by server the same way a change request is: the same issue read from two servers is
+  // two tabs rather than one tab that changes its mind about which server it is on.
+  const scope =
+    target.environmentId === undefined ? "" : `${encodeURIComponent(target.environmentId)}:`;
+  return `issue:${scope}${encodeURIComponent(target.projectId)}:${encodeURIComponent(target.repository)}:${target.number}`;
+}
+
+export function issueSurface(target: {
+  environmentId?: string;
+  projectId: string;
+  repository: string;
+  number: number;
+}): IssueSurface {
+  return {
+    id: issueSurfaceId(target),
+    kind: "issue",
+    ...(target.environmentId === undefined ? {} : { environmentId: target.environmentId }),
+    projectId: target.projectId,
+    repository: target.repository,
+    number: target.number,
+  };
+}
+
 /**
  * A pull-request tab's status map with one entry set. Keyed by the surface the panel is showing
  * rather than by a key rebuilt from the status, so the tab is found again whether or not that
@@ -266,6 +326,20 @@ export function updatePullRequestTabStatus<Status extends { state: unknown; isDr
 ): Readonly<Record<string, Status>> {
   return statuses[surfaceId]?.state === status.state &&
     statuses[surfaceId]?.isDraft === status.isDraft
+    ? statuses
+    : { ...statuses, [surfaceId]: status };
+}
+
+/**
+ * The same for an issue tab, whose state is the whole of what its glyph shows. Separate from the
+ * pull-request helper because an issue has no draft to compare.
+ */
+export function updateIssueTabStatus<Status extends { state: unknown }>(
+  statuses: Readonly<Record<string, Status>>,
+  surfaceId: string,
+  status: Status,
+): Readonly<Record<string, Status>> {
+  return statuses[surfaceId]?.state === status.state
     ? statuses
     : { ...statuses, [surfaceId]: status };
 }
@@ -315,7 +389,7 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
     typeof persistedState.byThreadKey === "object"
       ? Object.fromEntries(
           Object.entries(persistedState.byThreadKey as Record<string, ThreadRightPanelState>)
-            .filter(([threadKey]) => !isPullRequestsPanelKey(threadKey))
+            .filter(([threadKey]) => !isListPagePanelKey(threadKey))
             .map(([threadKey, threadState]) => {
               const validThreadState =
                 threadState && typeof threadState === "object" ? threadState : null;
@@ -352,7 +426,7 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                         },
                       ];
                     }
-                    if (surface.kind === "pull-request") {
+                    if (surface.kind === "pull-request" || surface.kind === "issue") {
                       if (
                         typeof surface.projectId !== "string" ||
                         typeof surface.repository !== "string" ||
@@ -362,14 +436,13 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                       ) {
                         return [];
                       }
-                      const { environmentId, ...rest } = surface;
+                      const { environmentId, kind, ...rest } = surface;
                       // Anything else stored under that name is not an environment.
-                      return [
-                        pullRequestSurface({
-                          ...rest,
-                          ...(typeof environmentId === "string" ? { environmentId } : {}),
-                        }),
-                      ];
+                      const target = {
+                        ...rest,
+                        ...(typeof environmentId === "string" ? { environmentId } : {}),
+                      };
+                      return [kind === "issue" ? issueSurface(target) : pullRequestSurface(target)];
                     }
                     if (surface.kind !== "terminal") return [surface];
                     if (
@@ -470,6 +543,12 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
         set((state) => ({
           byThreadKey: updateThread(state.byThreadKey, scopedThreadKey(ref), (current) => {
             return upsertSurface(current, pullRequestSurface(target));
+          }),
+        })),
+      openIssue: (ref, target) =>
+        set((state) => ({
+          byThreadKey: updateThread(state.byThreadKey, scopedThreadKey(ref), (current) => {
+            return upsertSurface(current, issueSurface(target));
           }),
         })),
       openFile: (ref, relativePath, line, options) =>
@@ -795,9 +874,7 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
       ),
       partialize: (state) => ({
         byThreadKey: Object.fromEntries(
-          Object.entries(state.byThreadKey).filter(
-            ([threadKey]) => !isPullRequestsPanelKey(threadKey),
-          ),
+          Object.entries(state.byThreadKey).filter(([threadKey]) => !isListPagePanelKey(threadKey)),
         ),
       }),
       migrate: migratePersistedRightPanelState,

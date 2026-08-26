@@ -1,10 +1,11 @@
 /**
  * Powerhouse panel contracts.
  *
- * Two independent read-only surfaces share this module: document models parsed
- * from a project's working tree, and reactor data the Vetra server fetches over
- * GraphQL on the client's behalf (browsers on a remote/relay connection cannot
- * reach the reactor's loopback port themselves).
+ * Four Powerhouse panel surfaces share this module: document models parsed from
+ * a project's working tree; reactor data and general GraphQL operations the
+ * Vetra server carries on the client's behalf; and bounded database inspection.
+ * Remote and relay browsers cannot reach the environment's loopback ports
+ * themselves, so every live operation crosses a typed RPC.
  *
  * Everything the panel puts on the wire lives here so the whole surface can be
  * lifted out in one deletion — see `docs/internals/powerhouse-panel.md`.
@@ -25,6 +26,10 @@ const POWERHOUSE_TIMESTAMP_MAX_LENGTH = 128;
 export const POWERHOUSE_REACTOR_OPERATION_TEXT_MAX_LENGTH = 8192;
 const POWERHOUSE_REACTOR_METADATA_MAX_LENGTH = 4096;
 export const POWERHOUSE_DATABASE_SQL_MAX_LENGTH = 64 * 1024;
+export const POWERHOUSE_GRAPHQL_DOCUMENT_MAX_LENGTH = 256 * 1024;
+export const POWERHOUSE_GRAPHQL_VARIABLES_MAX_LENGTH = 512 * 1024;
+export const POWERHOUSE_GRAPHQL_HEADER_MAX_COUNT = 64;
+export const POWERHOUSE_GRAPHQL_HEADER_VALUE_MAX_LENGTH = 16 * 1024;
 export const POWERHOUSE_DATABASE_ROW_LIMITS = [50, 100, 200] as const;
 const POWERHOUSE_DATABASE_IDENTIFIER_MAX_LENGTH = 255;
 const POWERHOUSE_DATABASE_TYPE_MAX_LENGTH = 1024;
@@ -590,9 +595,9 @@ export class PowerhouseDatabaseError extends Schema.TaggedErrorClass<PowerhouseD
 // ---------------------------------------------------------------------------
 
 /**
- * Base URL of a reactor, without a path. The server appends `/graphql` itself
- * and only ever sends its own fixed queries, so this cannot be steered into a
- * general-purpose HTTP proxy.
+ * Base URL of a reactor, without a path. The server appends `/graphql` itself.
+ * Explorer sends fixed queries; the operate-scoped Switchboard RPC can send a
+ * user-authored GraphQL operation and selected request headers to this endpoint.
  */
 export const PowerhouseReactorUrl = TrimmedNonEmptyString.check(
   Schema.isMaxLength(POWERHOUSE_URL_MAX_LENGTH),
@@ -792,8 +797,55 @@ export const PowerhouseReactorGetOperationsResult = Schema.Struct({
 });
 export type PowerhouseReactorGetOperationsResult = typeof PowerhouseReactorGetOperationsResult.Type;
 
+const PowerhouseGraphqlHeaderName = TrimmedNonEmptyString.check(Schema.isMaxLength(256)).check(
+  Schema.isPattern(/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/),
+);
+
+const PowerhouseGraphqlHeaderValue = Schema.String.check(
+  Schema.isMaxLength(POWERHOUSE_GRAPHQL_HEADER_VALUE_MAX_LENGTH),
+).check(Schema.isPattern(/^[^\r\n]*$/));
+
+export const PowerhouseGraphqlHeaders = Schema.Record(
+  PowerhouseGraphqlHeaderName,
+  PowerhouseGraphqlHeaderValue,
+).check(Schema.isMaxProperties(POWERHOUSE_GRAPHQL_HEADER_MAX_COUNT));
+export type PowerhouseGraphqlHeaders = typeof PowerhouseGraphqlHeaders.Type;
+
+/**
+ * One GraphiQL operation. Variables travel as JSON text so the websocket has a
+ * concrete size bound before the server decodes them for the reactor request.
+ */
+export const PowerhouseReactorExecuteGraphqlInput = Schema.Struct({
+  url: PowerhouseReactorUrl,
+  query: Schema.String.check(Schema.isNonEmpty()).check(
+    Schema.isMaxLength(POWERHOUSE_GRAPHQL_DOCUMENT_MAX_LENGTH),
+  ),
+  operationName: Schema.optional(
+    TrimmedNonEmptyString.check(Schema.isMaxLength(POWERHOUSE_REACTOR_LABEL_MAX_LENGTH)),
+  ),
+  variablesJson: Schema.optional(
+    Schema.String.check(Schema.isMaxLength(POWERHOUSE_GRAPHQL_VARIABLES_MAX_LENGTH)),
+  ),
+  headers: Schema.optional(PowerhouseGraphqlHeaders),
+});
+export type PowerhouseReactorExecuteGraphqlInput = typeof PowerhouseReactorExecuteGraphqlInput.Type;
+
+const PowerhouseGraphqlResponse = Schema.Record(
+  Schema.String.check(Schema.isMaxLength(256)),
+  Schema.Unknown,
+).check(Schema.isMaxProperties(64));
+
+/** The GraphQL envelope is intentionally opaque so GraphiQL can render extensions and errors. */
+export const PowerhouseReactorExecuteGraphqlResult = Schema.Struct({
+  status: Schema.Int.check(Schema.isBetween({ minimum: 100, maximum: 599 })),
+  response: PowerhouseGraphqlResponse,
+});
+export type PowerhouseReactorExecuteGraphqlResult =
+  typeof PowerhouseReactorExecuteGraphqlResult.Type;
+
 export const PowerhouseReactorFailure = Schema.Literals([
   "invalid_url",
+  "invalid_request",
   /** Nothing accepted a connection on any candidate. */
   "unreachable",
   /** Something answered, but not with a reactor's system fingerprint. */
@@ -807,6 +859,7 @@ export type PowerhouseReactorFailure = typeof PowerhouseReactorFailure.Type;
 
 const POWERHOUSE_REACTOR_FAILURE_MESSAGES: Record<PowerhouseReactorFailure, string> = {
   invalid_url: "The reactor URL must be an http or https address.",
+  invalid_request: "The GraphQL request could not be encoded.",
   unreachable: "No reactor is listening.",
   not_a_reactor: "Something is listening, but it is not a Powerhouse reactor.",
   http_error: "The reactor rejected the request.",
