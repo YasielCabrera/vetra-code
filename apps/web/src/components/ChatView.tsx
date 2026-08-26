@@ -143,9 +143,11 @@ import { buildTemporaryWorktreeBranchName } from "@vetra-code/shared/git";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY } from "../rightPanelLayout";
 import {
+  isPowerhousePanelSurface,
   selectActiveRightPanel,
   selectActiveRightPanelSurface,
   selectThreadRightPanelState,
+  type PowerhousePanelKind,
   type RightPanelSurface,
   updatePullRequestTabStatus,
   useRightPanelStore,
@@ -374,6 +376,7 @@ import {
 import type { ThreadSyncPhase } from "../threadSync";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { usePowerhouseProjects } from "./powerhouse/usePowerhouseProject";
+import { usePowerhousePanelStore } from "./powerhouse/powerhousePanelStore";
 import { PowerhousePanelLoading } from "./powerhouse/PowerhousePanelPrimitives";
 import { useComposerHandleContext } from "../composerHandleContext";
 import { ProjectSelectorControl } from "./chat/ProjectSelectorControl";
@@ -415,6 +418,21 @@ const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
 const EMPTY_PROVIDERS: ServerProvider[] = [];
 const EMPTY_PROVIDER_SKILLS: ServerProvider["skills"] = [];
 const EMPTY_PENDING_USER_INPUT_ANSWERS: Record<string, PendingUserInputDraftAnswer> = {};
+
+function powerhousePanelKindForCommand(command: KeybindingCommand): PowerhousePanelKind | null {
+  switch (command) {
+    case "powerhouse.openModels":
+    case "powerhouse.toggle":
+      return "powerhouse-models";
+    case "powerhouse.openExplorer":
+      return "powerhouse-explorer";
+    case "powerhouse.openDatabase":
+      return "powerhouse-database";
+    default:
+      return null;
+  }
+}
+
 function useDraftHeroLayoutTransition(isDraftHeroState: boolean) {
   const transitionGroupRef = useRef<HTMLDivElement | null>(null);
   const composerAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -1736,6 +1754,9 @@ function ChatViewContent(props: ChatViewProps) {
   );
   const activeFileSurface =
     activeRightPanelSurface?.kind === "file" ? activeRightPanelSurface : null;
+  const activePowerhouseSurface = isPowerhousePanelSurface(activeRightPanelSurface)
+    ? activeRightPanelSurface
+    : null;
   const activePreviewState = useThreadPreviewState(activeThreadRef);
   const activePreviewServerEpoch = activePreviewState.serverEpoch;
   const resolvePreviewRuntimeTabId = useMemo(
@@ -3500,14 +3521,13 @@ function ChatViewContent(props: ChatViewProps) {
     if (!activeThreadRef) return;
     useRightPanelStore.getState().open(activeThreadRef, "agents");
   }, [activeThreadRef]);
-  const addPowerhouseSurface = useCallback(() => {
-    if (!activeThreadRef || !powerhouseAvailable) return;
-    useRightPanelStore.getState().open(activeThreadRef, "powerhouse");
-  }, [activeThreadRef, powerhouseAvailable]);
-  const togglePowerhouseSurface = useCallback(() => {
-    if (!activeThreadRef || !powerhouseAvailable) return;
-    useRightPanelStore.getState().toggle(activeThreadRef, "powerhouse");
-  }, [activeThreadRef, powerhouseAvailable]);
+  const addPowerhouseSurface = useCallback(
+    (kind: PowerhousePanelKind) => {
+      if (!activeThreadRef || !powerhouseAvailable) return;
+      useRightPanelStore.getState().openPowerhouse(activeThreadRef, kind);
+    },
+    [activeThreadRef, powerhouseAvailable],
+  );
   const openFileSurface = useCallback(
     (relativePath: string, options?: { preview?: boolean }) => {
       if (!activeThreadRef || !activeProject) return;
@@ -3745,6 +3765,9 @@ function ChatViewContent(props: ChatViewProps) {
               input: { threadId: activeThreadRef.threadId, terminalId, deleteHistory: true },
             });
           }
+        }
+        if (isPowerhousePanelSurface(surface)) {
+          usePowerhousePanelStore.getState().removePanel(surface.id);
         }
       }
     },
@@ -5278,11 +5301,12 @@ function ChatViewContent(props: ChatViewProps) {
         return;
       }
 
-      if (command === "powerhouse.toggle") {
+      const powerhousePanelKind = powerhousePanelKindForCommand(command);
+      if (powerhousePanelKind !== null) {
         if (!powerhouseAvailable) return;
         event.preventDefault();
         event.stopPropagation();
-        togglePowerhouseSurface();
+        addPowerhouseSurface(powerhousePanelKind);
         return;
       }
 
@@ -5323,8 +5347,8 @@ function ChatViewContent(props: ChatViewProps) {
     handleUnsettleActiveThread,
     isServerThread,
     onToggleDiff,
+    addPowerhouseSurface,
     powerhouseAvailable,
-    togglePowerhouseSurface,
     settleThread,
     supportsSettlement,
     toggleRightPanel,
@@ -6926,12 +6950,14 @@ function ChatViewContent(props: ChatViewProps) {
           onPendingChange={handleFilePendingChange}
         />
       </Suspense>
-    ) : activeRightPanelSurface?.kind === "powerhouse" && activeProject && activeWorkspaceRoot ? (
+    ) : activePowerhouseSurface && activeProject && activeWorkspaceRoot ? (
       <Suspense fallback={<PowerhousePanelLoading />}>
         <PowerhousePanel
-          key={`${activeProject.environmentId}:${activeWorkspaceRoot}`}
+          key={activePowerhouseSurface.id}
           environmentId={activeProject.environmentId}
           cwd={activeWorkspaceRoot}
+          surfaceId={activePowerhouseSurface.id}
+          kind={activePowerhouseSurface.kind}
         />
       </Suspense>
     ) : null

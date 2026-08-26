@@ -1,19 +1,19 @@
 # Inspect Powerhouse projects
 
-Open **Powerhouse** in a thread's right panel to read a Powerhouse project's document models,
-browse a running reactor, and inspect the generated database shape. The panel is read-only;
-editing documents stays in Connect.
+Open **Document models**, **Document explorer**, or **Powerhouse Database** in a thread's right
+panel. These tools let you read a Powerhouse project's document models, browse a running reactor,
+and inspect the generated database shape. They are read-only. Editing documents stays in Connect.
 
-The surface appears only in workspaces that contain a Powerhouse project — one with a
-`powerhouse.config.json`. That project does not have to be the workspace root: in a monorepo it is
-usually an app directory such as `apps/connect`, and the panel finds it there. Workspaces without
-one never show the panel.
+The three tools appear only in workspaces that contain a Powerhouse project with a
+`powerhouse.config.json`. That project does not have to be the workspace root. In a monorepo it is
+usually an app directory such as `apps/connect`, and the tools find it there. Workspaces without
+one never show them.
 
 When a workspace holds more than one Powerhouse project, a **Project** picker appears at the top of
-the panel; your choice is remembered per workspace, and each project keeps its own mode and reactor
-address.
+each panel. Every panel instance remembers its own project choice, and each project keeps its own
+reactor address.
 
-## Models
+## Document models
 
 **Models** lists the document models declared in the project's models directory — `./document-models`
 unless the config says otherwise. Each row shows the model's name, file extension, newest version,
@@ -40,14 +40,14 @@ A model file that cannot be read does not hide the rest. The list names the file
 with it — invalid JSON, a missing `<name>/<name>.json`, an unreadable or oversized file, or a file
 that is not a document model — above the models that loaded normally.
 
-Models come from the working tree, so this mode works with nothing else running. Press the refresh
+Models come from the working tree, so this panel works with nothing else running. Press the refresh
 button after changing a model on disk.
 
 Drag a model row onto the chat composer to reference it in a prompt. It arrives as a link to the
 model's directory, not just its `<name>.json`, so the agent sees the specification, the generated
 types, and the reducers together.
 
-## Explorer
+## Document explorer
 
 **Explorer** shows live data from the project's reactor: its drives, the documents inside them, and
 each document's operation history.
@@ -118,7 +118,7 @@ dimensions to avoid browser canvas failures on unusually large graphs. Copying d
 clipboard access in a secure browser connection; the panel reports when the browser cannot provide
 it, while PNG download remains available.
 
-## Database
+## Powerhouse Database
 
 **Database** inspects the two stores Powerhouse builds:
 
@@ -173,10 +173,10 @@ Powerhouse project.
 
 ## Connecting to a reactor
 
-Explorer finds the reactor by itself: the port from `powerhouse.config.json` if it sets one, then
-the standard ports. The status chip beside the mode toggle shows the address it connected to and
-the reactor's version. Select that chip at any time to retry, use a different address, or return to
-automatic detection.
+Document explorer finds the reactor by itself. It tries the port from `powerhouse.config.json` when
+one is set, then the standard ports. The status chip in the panel header shows the address it
+connected to and the reactor's version. Select that chip at any time to retry, use a different
+address, or return to automatic detection.
 
 When no reactor answers, the panel says which addresses it tried and offers two ways forward: start
 one with `ph reactor`, or enter the address of a reactor to use. An address you enter is remembered
@@ -190,11 +190,14 @@ says so rather than claiming the reactor is empty.
 Explorer works over remote and tunnelled connections: your Vetra Code server reaches the reactor,
 so the reactor does not have to be reachable from your browser.
 
-## Opening and closing the panel
+## Opening and closing panels
 
-Open it from the right panel's launcher, the **+** menu in the panel's tab bar, or **Toggle
-Powerhouse panel** in the command palette. It closes from the tab's close button like any other
+Open any of the three tools from the right panel's launcher, the **+** menu in the panel's tab bar,
+or its **Open** action in the command palette. Every action adds a new tab. You can open the same
+tool more than once, such as two Document models panels on different models or two Document
+explorer panels on different documents. Close each tab with its close button like any other
 surface.
 
-To open and close it with a shortcut, assign one to the **Powerhouse: Toggle** command in
-**Settings → Keybindings**. It ships without a default binding.
+To open one with a shortcut, assign a binding to **Powerhouse: Open Models**, **Powerhouse: Open
+Explorer**, or **Powerhouse: Open Database** in **Settings → Keybindings**. They ship without
+default bindings.

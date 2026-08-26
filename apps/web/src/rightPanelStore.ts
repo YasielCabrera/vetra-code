@@ -14,6 +14,13 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import { resolveStorage } from "./lib/storage";
 
+export const POWERHOUSE_PANEL_KINDS = [
+  "powerhouse-models",
+  "powerhouse-explorer",
+  "powerhouse-database",
+] as const;
+export type PowerhousePanelKind = (typeof POWERHOUSE_PANEL_KINDS)[number];
+
 export const RIGHT_PANEL_KINDS = [
   "diff",
   "files",
@@ -22,7 +29,7 @@ export const RIGHT_PANEL_KINDS = [
   "terminal",
   "pull-request",
   "agents",
-  "powerhouse",
+  ...POWERHOUSE_PANEL_KINDS,
 ] as const;
 export type RightPanelKind = (typeof RIGHT_PANEL_KINDS)[number];
 
@@ -69,13 +76,17 @@ export type RightPanelSurface =
       number: number;
     }
   | { id: "agents"; kind: "agents" }
-  | { id: "powerhouse"; kind: "powerhouse" };
+  | {
+      id: `${PowerhousePanelKind}:${string}`;
+      kind: PowerhousePanelKind;
+    };
 
 const RIGHT_PANEL_STORAGE_KEY = "vetra:right-panel-state:v2";
 // v9 removed the "plan" surface kind (plans render inline in the transcript).
 // v10 keys pull-request surfaces by reference instead of a singleton tab.
 // v11 stops persisting the pull-request list's shared panel, so a restart opens the page fresh.
-const RIGHT_PANEL_STORAGE_VERSION = 11;
+// v12 replaces the singleton Powerhouse surface with repeatable tool-specific surfaces.
+const RIGHT_PANEL_STORAGE_VERSION = 12;
 
 /**
  * The pull-request list's shared panel (see PULL_REQUESTS_PANEL_ID in the route) is session
@@ -93,8 +104,9 @@ interface RightPanelStoreState {
   byThreadKey: Record<string, ThreadRightPanelState>;
   open: (
     ref: ScopedThreadRef,
-    kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request">,
+    kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request" | PowerhousePanelKind>,
   ) => void;
+  openPowerhouse: (ref: ScopedThreadRef, kind: PowerhousePanelKind) => void;
   openBrowser: (ref: ScopedThreadRef, tabId: string | null) => void;
   openFile: (
     ref: ScopedThreadRef,
@@ -130,7 +142,7 @@ interface RightPanelStoreState {
   toggleVisibility: (ref: ScopedThreadRef) => void;
   toggle: (
     ref: ScopedThreadRef,
-    kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request">,
+    kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request" | PowerhousePanelKind>,
   ) => void;
   removeThread: (ref: ScopedThreadRef) => void;
 }
@@ -142,7 +154,10 @@ const EMPTY_THREAD_STATE: ThreadRightPanelState = {
 };
 
 const singletonSurface = (
-  kind: Exclude<RightPanelKind, "file" | "preview" | "terminal" | "pull-request">,
+  kind: Exclude<
+    RightPanelKind,
+    "file" | "preview" | "terminal" | "pull-request" | PowerhousePanelKind
+  >,
 ): RightPanelSurface => {
   switch (kind) {
     case "diff":
@@ -151,10 +166,34 @@ const singletonSurface = (
       return { id: "files", kind };
     case "agents":
       return { id: "agents", kind };
-    case "powerhouse":
-      return { id: "powerhouse", kind };
   }
 };
+
+export type PowerhousePanelSurface = Extract<RightPanelSurface, { kind: PowerhousePanelKind }>;
+
+export function isPowerhousePanelSurface(
+  surface: RightPanelSurface | null | undefined,
+): surface is PowerhousePanelSurface {
+  return (
+    surface?.kind === "powerhouse-models" ||
+    surface?.kind === "powerhouse-explorer" ||
+    surface?.kind === "powerhouse-database"
+  );
+}
+
+function newPowerhousePanelInstanceId(): string {
+  return Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
+const powerhouseSurface = (
+  kind: PowerhousePanelKind,
+  instanceId = newPowerhousePanelInstanceId(),
+): PowerhousePanelSurface => ({
+  id: `${kind}:${instanceId}`,
+  kind,
+});
 
 const browserSurface = (tabId: string | null): RightPanelSurface =>
   tabId
@@ -285,6 +324,12 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                     // Dropped surface kind: plans now render inline in the
                     // transcript (v9).
                     if ((surface as { kind?: string }).kind === "plan") return [];
+                    // The old panel held all three tools behind an inner tab.
+                    // Keep it as one Models instance, which was also its
+                    // default and fallback view.
+                    if ((surface as { kind?: string }).kind === "powerhouse") {
+                      return [powerhouseSurface("powerhouse-models", "legacy")];
+                    }
                     if (surface.kind === "file") {
                       const revealLine =
                         typeof surface.revealLine === "number" &&
@@ -361,10 +406,14 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                   })
                 : [];
               const rawActiveSurfaceId = validThreadState?.activeSurfaceId;
+              const normalizedActiveSurfaceId =
+                rawActiveSurfaceId === "powerhouse"
+                  ? powerhouseSurface("powerhouse-models", "legacy").id
+                  : rawActiveSurfaceId;
               const persistedActiveSurfaceId = surfaces.some(
-                (surface) => surface.id === rawActiveSurfaceId,
+                (surface) => surface.id === normalizedActiveSurfaceId,
               )
-                ? (rawActiveSurfaceId ?? null)
+                ? (normalizedActiveSurfaceId ?? null)
                 : rawActiveSurfaceId === "pull-request"
                   ? (surfaces.find((surface) => surface.kind === "pull-request")?.id ?? null)
                   : null;
@@ -400,6 +449,12 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
             }
             return upsertSurface(current, singletonSurface(kind));
           }),
+        })),
+      openPowerhouse: (ref, kind) =>
+        set((state) => ({
+          byThreadKey: updateThread(state.byThreadKey, scopedThreadKey(ref), (current) =>
+            upsertSurface(current, powerhouseSurface(kind)),
+          ),
         })),
       openBrowser: (ref, tabId) =>
         set((state) => ({

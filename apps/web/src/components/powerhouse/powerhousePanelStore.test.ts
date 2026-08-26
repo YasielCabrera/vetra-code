@@ -5,6 +5,8 @@ import {
   EMPTY_DATABASE_SESSION,
   EMPTY_EXPLORER_SELECTION,
   migratePersistedPowerhousePanelState,
+  powerhousePanelProjectKey,
+  powerhousePanelWorkspaceKey,
   powerhouseProjectKey,
   powerhouseWorkspaceKey,
   selectPowerhousePreferences,
@@ -15,23 +17,35 @@ import {
 const workspace = powerhouseWorkspaceKey("env-1", "/work/mono");
 const keyA = powerhouseProjectKey("env-1", "/work/mono", "apps/connect");
 const keyB = powerhouseProjectKey("env-1", "/work/mono", "apps/studio");
+const surfaceA = "powerhouse-models:panel-a";
+const surfaceB = "powerhouse-models:panel-b";
+const panelWorkspaceA = powerhousePanelWorkspaceKey(surfaceA, "env-1", "/work/mono");
+const panelWorkspaceB = powerhousePanelWorkspaceKey(surfaceB, "env-1", "/work/mono");
+const panelKeyA = powerhousePanelProjectKey(surfaceA, "env-1", "/work/mono", "apps/connect");
+const panelKeyASecond = powerhousePanelProjectKey(surfaceB, "env-1", "/work/mono", "apps/connect");
+const panelKeyB = powerhousePanelProjectKey(surfaceA, "env-1", "/work/mono", "apps/studio");
 
 beforeEach(() => {
   usePowerhousePanelStore.setState({
     byProjectKey: {},
     selectedProjectByWorkspaceKey: {},
-    modelSelectionByProjectKey: {},
-    explorerSelectionByProjectKey: {},
-    databaseSessionByProjectKey: {},
+    selectedProjectByPanelKey: {},
+    modelSelectionByPanelProjectKey: {},
+    explorerSelectionByPanelProjectKey: {},
+    databaseSessionByPanelProjectKey: {},
   });
 });
 
 describe("project selection", () => {
-  it("remembers which project of a workspace the panel shows", () => {
-    usePowerhousePanelStore.getState().selectProject(workspace, "apps/studio");
-    expect(usePowerhousePanelStore.getState().selectedProjectByWorkspaceKey[workspace]).toBe(
-      "apps/studio",
-    );
+  it("keeps the selected project separate for each panel instance", () => {
+    const store = usePowerhousePanelStore.getState();
+    store.selectProject(panelWorkspaceA, "apps/connect");
+    store.selectProject(panelWorkspaceB, "apps/studio");
+
+    expect(usePowerhousePanelStore.getState().selectedProjectByPanelKey).toMatchObject({
+      [panelWorkspaceA]: "apps/connect",
+      [panelWorkspaceB]: "apps/studio",
+    });
   });
 
   it("keeps reactor overrides apart for two projects in one workspace", () => {
@@ -45,29 +59,19 @@ describe("project selection", () => {
 });
 
 describe("preferences", () => {
-  it("defaults to the mode that works without a reactor", () => {
+  it("defaults to reactor autodetection", () => {
     expect(selectPowerhousePreferences({}, keyA)).toEqual(DEFAULT_PREFERENCES);
-    expect(DEFAULT_PREFERENCES.mode).toBe("models");
+    expect(DEFAULT_PREFERENCES.reactorUrlOverride).toBeNull();
   });
 
-  it("keeps mode and reactor override separate per project", () => {
+  it("keeps the reactor override separate per project", () => {
     const store = usePowerhousePanelStore.getState();
-    store.setMode(keyA, "explorer");
     store.setReactorUrlOverride(keyA, "http://10.0.0.5:4001");
-    store.setMode(keyB, "models");
+    store.setReactorUrlOverride(keyB, "http://10.0.0.5:4002");
 
     const { byProjectKey } = usePowerhousePanelStore.getState();
-    expect(byProjectKey[keyA]).toEqual({
-      mode: "explorer",
-      reactorUrlOverride: "http://10.0.0.5:4001",
-    });
-    expect(byProjectKey[keyB]).toEqual({ mode: "models", reactorUrlOverride: null });
-  });
-
-  it("persists Database as a project mode without changing the Models default", () => {
-    usePowerhousePanelStore.getState().setMode(keyA, "database");
-    expect(usePowerhousePanelStore.getState().byProjectKey[keyA]?.mode).toBe("database");
-    expect(DEFAULT_PREFERENCES.mode).toBe("models");
+    expect(byProjectKey[keyA]).toEqual({ reactorUrlOverride: "http://10.0.0.5:4001" });
+    expect(byProjectKey[keyB]).toEqual({ reactorUrlOverride: "http://10.0.0.5:4002" });
   });
 
   it("clears the override back to autodetection", () => {
@@ -79,20 +83,20 @@ describe("preferences", () => {
 
   it("resets explorer navigation when the reactor address changes", () => {
     const store = usePowerhousePanelStore.getState();
-    store.selectDrive(keyA, { id: "drive-1", name: "Drive" });
-    store.selectDocument(keyA, "doc-1");
+    store.selectDrive(panelKeyA, { id: "drive-1", name: "Drive" });
+    store.selectDocument(panelKeyA, "doc-1");
 
     usePowerhousePanelStore.getState().setReactorUrlOverride(keyA, "http://127.0.0.1:5001");
 
-    expect(usePowerhousePanelStore.getState().explorerSelectionByProjectKey[keyA]).toEqual(
-      EMPTY_EXPLORER_SELECTION,
-    );
+    expect(
+      usePowerhousePanelStore.getState().explorerSelectionByPanelProjectKey[panelKeyA],
+    ).toEqual(EMPTY_EXPLORER_SELECTION);
   });
 
   it("keeps navigation when the same normalized address is submitted again", () => {
     const store = usePowerhousePanelStore.getState();
     store.setReactorUrlOverride(keyA, "http://127.0.0.1:5001");
-    usePowerhousePanelStore.getState().selectDrive(keyA, { id: "drive-1", name: "Drive" });
+    usePowerhousePanelStore.getState().selectDrive(panelKeyA, { id: "drive-1", name: "Drive" });
 
     usePowerhousePanelStore
       .getState()
@@ -101,9 +105,9 @@ describe("preferences", () => {
     expect(usePowerhousePanelStore.getState().byProjectKey[keyA]?.reactorUrlOverride).toBe(
       "http://127.0.0.1:5001",
     );
-    expect(usePowerhousePanelStore.getState().explorerSelectionByProjectKey[keyA]?.driveId).toBe(
-      "drive-1",
-    );
+    expect(
+      usePowerhousePanelStore.getState().explorerSelectionByPanelProjectKey[panelKeyA]?.driveId,
+    ).toBe("drive-1");
   });
 });
 
@@ -114,22 +118,24 @@ describe("migratePersistedPowerhousePanelState", () => {
         byProjectKey: { [keyA]: { mode: "explorer", reactorUrlOverride: "http://x:4001" } },
       }),
     ).toEqual({
-      byProjectKey: { [keyA]: { mode: "explorer", reactorUrlOverride: "http://x:4001" } },
+      byProjectKey: { [keyA]: { reactorUrlOverride: "http://x:4001" } },
       selectedProjectByWorkspaceKey: {},
+      selectedProjectByPanelKey: {},
     });
   });
 
-  it("migrates the Database mode and drops session-only SQL", () => {
+  it("drops the old inner mode and session-only SQL", () => {
     expect(
       migratePersistedPowerhousePanelState({
         byProjectKey: { [keyA]: { mode: "database", reactorUrlOverride: null } },
-        databaseSessionByProjectKey: {
+        databaseSessionByPanelProjectKey: {
           [keyA]: { ...EMPTY_DATABASE_SESSION, draft: "SELECT secret FROM credentials" },
         },
       }),
     ).toEqual({
-      byProjectKey: { [keyA]: { mode: "database", reactorUrlOverride: null } },
+      byProjectKey: { [keyA]: { reactorUrlOverride: null } },
       selectedProjectByWorkspaceKey: {},
+      selectedProjectByPanelKey: {},
     });
   });
 
@@ -156,10 +162,11 @@ describe("migratePersistedPowerhousePanelState", () => {
       }),
     ).toEqual({
       byProjectKey: {
-        [keyA]: { mode: "models", reactorUrlOverride: null },
-        [keyB]: { mode: "explorer", reactorUrlOverride: null },
+        [keyA]: { reactorUrlOverride: null },
+        [keyB]: { reactorUrlOverride: null },
       },
       selectedProjectByWorkspaceKey: {},
+      selectedProjectByPanelKey: {},
     });
   });
 
@@ -172,6 +179,22 @@ describe("migratePersistedPowerhousePanelState", () => {
     ).toEqual({
       byProjectKey: {},
       selectedProjectByWorkspaceKey: { [workspace]: "apps/connect" },
+      selectedProjectByPanelKey: {},
+    });
+  });
+
+  it("keeps project choices for repeatable panel instances", () => {
+    expect(
+      migratePersistedPowerhousePanelState({
+        selectedProjectByPanelKey: {
+          [panelWorkspaceA]: "apps/connect",
+          [panelWorkspaceB]: "apps/studio",
+          bogus: 7,
+        },
+      }).selectedProjectByPanelKey,
+    ).toEqual({
+      [panelWorkspaceA]: "apps/connect",
+      [panelWorkspaceB]: "apps/studio",
     });
   });
 
@@ -181,6 +204,7 @@ describe("migratePersistedPowerhousePanelState", () => {
       expect(migratePersistedPowerhousePanelState(persisted)).toEqual({
         byProjectKey: {},
         selectedProjectByWorkspaceKey: {},
+        selectedProjectByPanelKey: {},
       });
     },
   );
@@ -189,13 +213,15 @@ describe("migratePersistedPowerhousePanelState", () => {
 describe("selection", () => {
   it("keeps database target, draft, and bounded history in session state", () => {
     const store = usePowerhousePanelStore.getState();
-    store.setDatabaseTarget(keyA, "reactor");
-    store.selectDatabaseRelation(keyA, "public", "documents");
-    store.setDatabaseDraft(keyA, "SELECT * FROM public.documents");
-    store.recordDatabaseQuery(keyA, "SELECT * FROM public.documents");
-    store.recordDatabaseQuery(keyA, "SELECT count(*) FROM public.documents");
+    store.setDatabaseTarget(panelKeyA, "reactor");
+    store.selectDatabaseRelation(panelKeyA, "public", "documents");
+    store.setDatabaseDraft(panelKeyA, "SELECT * FROM public.documents");
+    store.recordDatabaseQuery(panelKeyA, "SELECT * FROM public.documents");
+    store.recordDatabaseQuery(panelKeyA, "SELECT count(*) FROM public.documents");
 
-    expect(usePowerhousePanelStore.getState().databaseSessionByProjectKey[keyA]).toMatchObject({
+    expect(
+      usePowerhousePanelStore.getState().databaseSessionByPanelProjectKey[panelKeyA],
+    ).toMatchObject({
       target: "reactor",
       schema: "public",
       relation: "documents",
@@ -206,9 +232,11 @@ describe("selection", () => {
 
   it("resets relation selection when the database target changes", () => {
     const store = usePowerhousePanelStore.getState();
-    store.selectDatabaseRelation(keyA, "public", "documents");
-    usePowerhousePanelStore.getState().setDatabaseTarget(keyA, "reactor");
-    expect(usePowerhousePanelStore.getState().databaseSessionByProjectKey[keyA]).toMatchObject({
+    store.selectDatabaseRelation(panelKeyA, "public", "documents");
+    usePowerhousePanelStore.getState().setDatabaseTarget(panelKeyA, "reactor");
+    expect(
+      usePowerhousePanelStore.getState().databaseSessionByPanelProjectKey[panelKeyA],
+    ).toMatchObject({
       target: "reactor",
       schema: null,
       relation: null,
@@ -217,27 +245,40 @@ describe("selection", () => {
 
   it("resets the version picker when a different model is selected", () => {
     const store = usePowerhousePanelStore.getState();
-    store.selectModel(keyA, "todo");
-    store.selectSpec(keyA, 2);
-    expect(usePowerhousePanelStore.getState().modelSelectionByProjectKey[keyA]).toEqual({
+    store.selectModel(panelKeyA, "todo");
+    store.selectSpec(panelKeyA, 2);
+    expect(usePowerhousePanelStore.getState().modelSelectionByPanelProjectKey[panelKeyA]).toEqual({
       directoryName: "todo",
       specIndex: 2,
     });
 
-    usePowerhousePanelStore.getState().selectModel(keyA, "invoice");
-    expect(usePowerhousePanelStore.getState().modelSelectionByProjectKey[keyA]).toEqual({
+    usePowerhousePanelStore.getState().selectModel(panelKeyA, "invoice");
+    expect(usePowerhousePanelStore.getState().modelSelectionByPanelProjectKey[panelKeyA]).toEqual({
       directoryName: "invoice",
       specIndex: null,
     });
   });
 
+  it("keeps two model panels on different document models", () => {
+    const store = usePowerhousePanelStore.getState();
+    store.selectModel(panelKeyA, "invoice");
+    store.selectModel(panelKeyASecond, "todo");
+
+    expect(usePowerhousePanelStore.getState().modelSelectionByPanelProjectKey).toMatchObject({
+      [panelKeyA]: { directoryName: "invoice", specIndex: null },
+      [panelKeyASecond]: { directoryName: "todo", specIndex: null },
+    });
+  });
+
   it("walks into folders and back out again", () => {
     const store = usePowerhousePanelStore.getState();
-    store.selectDrive(keyA, { id: "drive-1", name: "Main" });
-    usePowerhousePanelStore.getState().enterFolder(keyA, { id: "folder-1", name: "Invoices" });
-    usePowerhousePanelStore.getState().selectDocument(keyA, "doc-1");
+    store.selectDrive(panelKeyA, { id: "drive-1", name: "Main" });
+    usePowerhousePanelStore.getState().enterFolder(panelKeyA, { id: "folder-1", name: "Invoices" });
+    usePowerhousePanelStore.getState().selectDocument(panelKeyA, "doc-1");
 
-    expect(usePowerhousePanelStore.getState().explorerSelectionByProjectKey[keyA]).toEqual({
+    expect(
+      usePowerhousePanelStore.getState().explorerSelectionByPanelProjectKey[panelKeyA],
+    ).toEqual({
       driveId: "drive-1",
       path: [
         { id: "drive-1", name: "Main" },
@@ -246,8 +287,9 @@ describe("selection", () => {
       documentId: "doc-1",
     });
 
-    usePowerhousePanelStore.getState().popToDepth(keyA, 1);
-    const selection = usePowerhousePanelStore.getState().explorerSelectionByProjectKey[keyA];
+    usePowerhousePanelStore.getState().popToDepth(panelKeyA, 1);
+    const selection =
+      usePowerhousePanelStore.getState().explorerSelectionByPanelProjectKey[panelKeyA];
     expect(selection?.path).toEqual([{ id: "drive-1", name: "Main" }]);
     // Going up closes the document that was open below.
     expect(selection?.documentId).toBeNull();
@@ -255,11 +297,13 @@ describe("selection", () => {
 
   it("starts a new drive from an empty path", () => {
     const store = usePowerhousePanelStore.getState();
-    store.selectDrive(keyA, { id: "drive-1", name: "Main" });
-    usePowerhousePanelStore.getState().enterFolder(keyA, { id: "folder-1", name: "Invoices" });
-    usePowerhousePanelStore.getState().selectDrive(keyA, { id: "drive-2", name: "Other" });
+    store.selectDrive(panelKeyA, { id: "drive-1", name: "Main" });
+    usePowerhousePanelStore.getState().enterFolder(panelKeyA, { id: "folder-1", name: "Invoices" });
+    usePowerhousePanelStore.getState().selectDrive(panelKeyA, { id: "drive-2", name: "Other" });
 
-    expect(usePowerhousePanelStore.getState().explorerSelectionByProjectKey[keyA]).toEqual({
+    expect(
+      usePowerhousePanelStore.getState().explorerSelectionByPanelProjectKey[panelKeyA],
+    ).toEqual({
       driveId: "drive-2",
       path: [{ id: "drive-2", name: "Other" }],
       documentId: null,
@@ -268,7 +312,23 @@ describe("selection", () => {
 
   it("leaves other projects' selections alone", () => {
     const store = usePowerhousePanelStore.getState();
-    store.selectDrive(keyA, { id: "drive-1", name: "Main" });
-    expect(usePowerhousePanelStore.getState().explorerSelectionByProjectKey[keyB]).toBeUndefined();
+    store.selectDrive(panelKeyA, { id: "drive-1", name: "Main" });
+    expect(
+      usePowerhousePanelStore.getState().explorerSelectionByPanelProjectKey[panelKeyB],
+    ).toBeUndefined();
+  });
+
+  it("removes a closed panel's persisted and session state", () => {
+    const store = usePowerhousePanelStore.getState();
+    store.selectProject(panelWorkspaceA, "apps/connect");
+    store.selectModel(panelKeyA, "invoice");
+    store.selectModel(panelKeyASecond, "todo");
+
+    usePowerhousePanelStore.getState().removePanel(surfaceA);
+
+    const state = usePowerhousePanelStore.getState();
+    expect(state.selectedProjectByPanelKey[panelWorkspaceA]).toBeUndefined();
+    expect(state.modelSelectionByPanelProjectKey[panelKeyA]).toBeUndefined();
+    expect(state.modelSelectionByPanelProjectKey[panelKeyASecond]?.directoryName).toBe("todo");
   });
 });

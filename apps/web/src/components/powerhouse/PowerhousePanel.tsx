@@ -1,9 +1,9 @@
 /**
  * Powerhouse right-panel surface.
  *
- * Three modes behind one toggle: document models read from the working tree,
- * a live reactor explorer, and a database inspector backed by server-side
- * snapshot/live adapters. Models remains the default and fallback.
+ * Shared shell for the three Powerhouse right-panel tools: document models
+ * read from the working tree, a live reactor explorer, and a database
+ * inspector backed by server-side snapshot/live adapters.
  *
  * The Powerhouse project is not always the workspace root. In a monorepo it is
  * usually an app directory, and there can be more than one, so the panel picks
@@ -18,6 +18,7 @@ import { useState } from "react";
 
 import { Popover, PopoverPopup, PopoverTitle, PopoverTrigger } from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
+import type { PowerhousePanelKind } from "~/rightPanelStore";
 import { powerhouseEnvironment } from "~/state/powerhouse";
 
 import { describeConnection } from "./PowerhousePanel.logic";
@@ -31,12 +32,14 @@ import { ReactorUrlForm } from "./explorer/ReactorUrlForm";
 import { ModelsView } from "./models/ModelsView";
 import { DatabaseView } from "./database/DatabaseView";
 import {
+  DEFAULT_PREFERENCES,
   EMPTY_EXPLORER_SELECTION,
+  powerhousePanelProjectKey,
+  powerhousePanelWorkspaceKey,
   powerhouseProjectKey,
   powerhouseWorkspaceKey,
   selectPowerhousePreferences,
   usePowerhousePanelStore,
-  type PowerhouseMode,
 } from "./powerhousePanelStore";
 import { useReactorQuery } from "./powerhouseQuery";
 import { resolveSelectedProject, usePowerhouseProjects } from "./usePowerhouseProject";
@@ -44,13 +47,9 @@ import { resolveSelectedProject, usePowerhouseProjects } from "./usePowerhousePr
 interface PowerhousePanelProps {
   environmentId: EnvironmentId;
   cwd: string;
+  surfaceId: string;
+  kind: PowerhousePanelKind;
 }
-
-const MODES: ReadonlyArray<{ readonly id: PowerhouseMode; readonly label: string }> = [
-  { id: "models", label: "Models" },
-  { id: "explorer", label: "Explorer" },
-  { id: "database", label: "Database" },
-];
 
 /**
  * Connection state for the header. Reads the same probe atom the explorer does,
@@ -134,8 +133,14 @@ function ConnectionChip({
   );
 }
 
-export default function PowerhousePanel({ environmentId, cwd }: PowerhousePanelProps) {
+export default function PowerhousePanel({
+  environmentId,
+  cwd,
+  surfaceId,
+  kind,
+}: PowerhousePanelProps) {
   const workspaceKey = powerhouseWorkspaceKey(environmentId, cwd);
+  const panelWorkspaceKey = powerhousePanelWorkspaceKey(surfaceId, environmentId, cwd);
   const {
     projects,
     status,
@@ -143,22 +148,36 @@ export default function PowerhousePanel({ environmentId, cwd }: PowerhousePanelP
     refresh,
   } = usePowerhouseProjects(environmentId, cwd);
   const selectedPath = usePowerhousePanelStore(
-    (state) => state.selectedProjectByWorkspaceKey[workspaceKey] ?? null,
+    (state) =>
+      state.selectedProjectByPanelKey[panelWorkspaceKey] ??
+      state.selectedProjectByWorkspaceKey[workspaceKey] ??
+      null,
   );
   const project = resolveSelectedProject(projects, selectedPath);
   const projectKey = powerhouseProjectKey(environmentId, cwd, project?.path ?? "");
+  const panelProjectKey = powerhousePanelProjectKey(
+    surfaceId,
+    environmentId,
+    cwd,
+    project?.path ?? "",
+  );
 
   const preferences = usePowerhousePanelStore((state) =>
-    selectPowerhousePreferences(state.byProjectKey, projectKey),
+    kind === "powerhouse-explorer"
+      ? selectPowerhousePreferences(state.byProjectKey, projectKey)
+      : DEFAULT_PREFERENCES,
   );
-  const modelSelection = usePowerhousePanelStore(
-    (state) => state.modelSelectionByProjectKey[projectKey] ?? null,
+  const modelSelection = usePowerhousePanelStore((state) =>
+    kind === "powerhouse-models"
+      ? (state.modelSelectionByPanelProjectKey[panelProjectKey] ?? null)
+      : null,
   );
-  const explorerSelection = usePowerhousePanelStore(
-    (state) => state.explorerSelectionByProjectKey[projectKey] ?? EMPTY_EXPLORER_SELECTION,
+  const explorerSelection = usePowerhousePanelStore((state) =>
+    kind === "powerhouse-explorer"
+      ? (state.explorerSelectionByPanelProjectKey[panelProjectKey] ?? EMPTY_EXPLORER_SELECTION)
+      : EMPTY_EXPLORER_SELECTION,
   );
   const selectProject = usePowerhousePanelStore((state) => state.selectProject);
-  const setMode = usePowerhousePanelStore((state) => state.setMode);
   const setReactorUrlOverride = usePowerhousePanelStore((state) => state.setReactorUrlOverride);
   const selectModel = usePowerhousePanelStore((state) => state.selectModel);
   const selectSpec = usePowerhousePanelStore((state) => state.selectSpec);
@@ -203,7 +222,7 @@ export default function PowerhousePanel({ environmentId, cwd }: PowerhousePanelP
                 <span className="sr-only">Powerhouse project</span>
                 <select
                   value={projectPath}
-                  onChange={(event) => selectProject(workspaceKey, event.target.value)}
+                  onChange={(event) => selectProject(panelWorkspaceKey, event.target.value)}
                   className="h-7 max-w-60 min-w-0 rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/24 dark:bg-input/32"
                 >
                   {projects.map((entry) => (
@@ -220,39 +239,15 @@ export default function PowerhousePanel({ environmentId, cwd }: PowerhousePanelP
             )}
           </div>
 
-          <div className="flex min-w-0 items-center gap-2">
-            {preferences.mode === "explorer" ? (
-              <ConnectionChip
-                environmentId={environmentId}
-                cwd={cwd}
-                projectPath={projectPath}
-                overrideUrl={preferences.reactorUrlOverride}
-                onSetOverride={(url) => setReactorUrlOverride(projectKey, url)}
-              />
-            ) : null}
-            <div
-              className="flex shrink-0 items-center gap-0.5 rounded-lg border border-border/60 bg-muted/40 p-0.5"
-              role="group"
-              aria-label="Powerhouse view"
-            >
-              {MODES.map((mode) => (
-                <button
-                  key={mode.id}
-                  type="button"
-                  onClick={() => setMode(projectKey, mode.id)}
-                  aria-pressed={preferences.mode === mode.id}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    preferences.mode === mode.id
-                      ? "bg-background text-foreground shadow-xs dark:bg-input/64"
-                      : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
-                  )}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          {kind === "powerhouse-explorer" ? (
+            <ConnectionChip
+              environmentId={environmentId}
+              cwd={cwd}
+              projectPath={projectPath}
+              overrideUrl={preferences.reactorUrlOverride}
+              onSetOverride={(url) => setReactorUrlOverride(projectKey, url)}
+            />
+          ) : null}
         </div>
       </header>
 
@@ -272,37 +267,37 @@ export default function PowerhousePanel({ environmentId, cwd }: PowerhousePanelP
       )}
 
       <div className="min-h-0 flex-1">
-        {preferences.mode === "models" ? (
+        {kind === "powerhouse-models" ? (
           <ModelsView
             environmentId={environmentId}
             cwd={cwd}
             projectPath={projectPath}
             selectedModel={modelSelection?.directoryName ?? null}
             selectedSpecIndex={modelSelection?.specIndex ?? null}
-            onSelectModel={(directoryName) => selectModel(projectKey, directoryName)}
-            onSelectSpec={(index) => selectSpec(projectKey, index)}
+            onSelectModel={(directoryName) => selectModel(panelProjectKey, directoryName)}
+            onSelectSpec={(index) => selectSpec(panelProjectKey, index)}
           />
-        ) : preferences.mode === "explorer" ? (
+        ) : kind === "powerhouse-explorer" ? (
           <ExplorerView
-            key={projectKey}
+            key={panelProjectKey}
             environmentId={environmentId}
             cwd={cwd}
             projectPath={projectPath}
             overrideUrl={preferences.reactorUrlOverride}
             selection={explorerSelection}
             onSetOverride={(url) => setReactorUrlOverride(projectKey, url)}
-            onSelectDrive={(drive) => selectDrive(projectKey, drive)}
-            onEnterFolder={(folder) => enterFolder(projectKey, folder)}
-            onPopToDepth={(depth) => popToDepth(projectKey, depth)}
-            onSelectDocument={(documentId) => selectDocument(projectKey, documentId)}
+            onSelectDrive={(drive) => selectDrive(panelProjectKey, drive)}
+            onEnterFolder={(folder) => enterFolder(panelProjectKey, folder)}
+            onPopToDepth={(depth) => popToDepth(panelProjectKey, depth)}
+            onSelectDocument={(documentId) => selectDocument(panelProjectKey, documentId)}
           />
         ) : (
           <DatabaseView
-            key={projectKey}
+            key={panelProjectKey}
             environmentId={environmentId}
             cwd={cwd}
             projectPath={projectPath}
-            projectKey={projectKey}
+            panelProjectKey={panelProjectKey}
           />
         )}
       </div>

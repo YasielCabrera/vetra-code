@@ -155,15 +155,15 @@ export function DatabaseView({
   environmentId,
   cwd,
   projectPath,
-  projectKey,
+  panelProjectKey,
 }: {
   environmentId: EnvironmentId;
   cwd: string;
   projectPath: string;
-  projectKey: string;
+  panelProjectKey: string;
 }) {
   const session = usePowerhousePanelStore(
-    (state) => state.databaseSessionByProjectKey[projectKey] ?? EMPTY_DATABASE_SESSION,
+    (state) => state.databaseSessionByPanelProjectKey[panelProjectKey] ?? EMPTY_DATABASE_SESSION,
   );
   const setTarget = usePowerhousePanelStore((state) => state.setDatabaseTarget);
   const selectRelation = usePowerhousePanelStore((state) => state.selectDatabaseRelation);
@@ -288,7 +288,7 @@ export function DatabaseView({
 
   const openRelationInSql = () => {
     if (activeRelation === null) return;
-    setDraft(projectKey, makePowerhouseRelationSelectSql(activeRelation));
+    setDraft(panelProjectKey, makePowerhouseRelationSelectSql(activeRelation));
     setSqlOpen(true);
   };
 
@@ -329,7 +329,7 @@ export function DatabaseView({
               key={target}
               type="button"
               aria-pressed={session.target === target}
-              onClick={() => setTarget(projectKey, target)}
+              onClick={() => setTarget(panelProjectKey, target)}
               className={cn(
                 "rounded-md px-2.5 py-1 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 session.target === target
@@ -402,9 +402,9 @@ export function DatabaseView({
               draft={session.draft}
               history={session.history}
               rowLimit={session.rowLimit}
-              onDraftChange={(value) => setDraft(projectKey, value)}
-              onRecordQuery={(value) => recordQuery(projectKey, value)}
-              onRowLimitChange={(value) => setRowLimit(projectKey, value)}
+              onDraftChange={(value) => setDraft(panelProjectKey, value)}
+              onRecordQuery={(value) => recordQuery(panelProjectKey, value)}
+              onRowLimitChange={(value) => setRowLimit(panelProjectKey, value)}
               onClose={() => setSqlOpen(false)}
             />
           </Suspense>
@@ -431,7 +431,7 @@ export function DatabaseView({
                 <input
                   type="checkbox"
                   checked={session.includeSystemSchemas}
-                  onChange={(event) => setIncludeSystem(projectKey, event.target.checked)}
+                  onChange={(event) => setIncludeSystem(panelProjectKey, event.target.checked)}
                   className="size-3 rounded border-input accent-primary"
                 />
                 Show system schemas
@@ -442,7 +442,7 @@ export function DatabaseView({
               search={search}
               active={activeRelation}
               onSelect={(next) => {
-                selectRelation(projectKey, next.schema, next.name);
+                selectRelation(panelProjectKey, next.schema, next.name);
                 setTab("data");
               }}
             />

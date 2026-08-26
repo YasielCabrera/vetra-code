@@ -6,15 +6,19 @@ Status: implemented
 
 ## Purpose
 
-A read-only right-panel surface for developers working in [Powerhouse](https://github.com/powerhouse-inc/powerhouse)
-projects. It has three modes behind one toggle:
+A set of read-only right-panel surfaces for developers working in
+[Powerhouse](https://github.com/powerhouse-inc/powerhouse) projects. Each tool has its own panel:
 
-- **Models** — document model definitions read from the project's working tree. Needs nothing
-  running, and is the default and the fallback.
-- **Explorer** — drives, documents, and operation history from a live reactor (switchboard) over
-  GraphQL.
-- **Database** — generated read-model and reactor database shape, using a point-in-time PGlite
-  snapshot or a live local Postgres connection.
+- **Document models** reads document model definitions from the project's working tree. It needs
+  nothing running.
+- **Document explorer** reads drives, documents, and operation history from a live reactor
+  (switchboard) over GraphQL.
+- **Powerhouse Database** reads generated read-model and reactor database shape, using a
+  point-in-time PGlite snapshot or a live local Postgres connection.
+
+Each open action creates a new right-panel surface. The user can keep several instances of any tool
+open at once, and each instance keeps its own selected project, model, explorer path, and database
+session state.
 
 The panel is deliberately confined to modules that can be lifted out in one pass; see
 [Removal map](#removal-map) below. Everything outside those modules is a short, named edit.
@@ -22,8 +26,9 @@ The panel is deliberately confined to modules that can be lifted out in one pass
 ## Naming
 
 Powerhouse ships its own unrelated package called `@powerhousedao/vetra` and a `ph vetra` CLI
-command. Nothing in this surface is named "Vetra". The panel kind is `powerhouse` and the title is
-"Powerhouse".
+command. Nothing in these panels is named "Vetra". Their right-panel kinds are
+`powerhouse-models`, `powerhouse-explorer`, and `powerhouse-database`; their titles are "Document
+models", "Document explorer", and "Powerhouse Database".
 
 ## Discovery
 
@@ -44,8 +49,8 @@ canonical paths, so a path or symlink that escapes the workspace is rejected rat
 The same canonical containment check protects the config, models directory, model directories, and
 model files.
 
-When a workspace has several projects the panel shows a picker in its header and remembers the
-choice per workspace; mode and reactor address are remembered per _project_, since two projects run
+When a workspace has several projects each panel shows a picker in its header and remembers that
+choice by panel instance. The reactor address remains a project preference, since two projects run
 two different reactors.
 
 Two traps are handled in `parsePowerhouseConfig` (`packages/contracts/src/powerhouse.ts`):
@@ -58,10 +63,15 @@ Two traps are handled in `parsePowerhouseConfig` (`packages/contracts/src/powerh
   lenient: fields of the wrong type are dropped, not rejected. A file that is not JSON at all is
   still a Powerhouse project — the panel says so in its header and uses defaults.
 
-When no project is found, the launcher card and the `+` menu entry are **omitted**, not dimmed, and
-the `powerhouse.toggle` keybinding is a no-op. This deviates from the surrounding convention (other
-surfaces render a disabled card with a hint) because a Powerhouse card in a non-Powerhouse repo is
-never actionable.
+When no project is found, the three launcher cards and `+` menu entries are omitted, not dimmed,
+and the three `powerhouse.open*` keybindings are no-ops. This differs from the surrounding
+convention because a Powerhouse card in a non-Powerhouse repo is never actionable.
+
+`rightPanelStore` owns only the repeatable surface descriptors. Their ids use
+`<powerhouse-kind>:<random-id>`, so opening the same kind twice appends two tabs. `powerhousePanelStore`
+keys session selections with the surface id plus the selected project key. Closing a surface
+removes those instance records. Reactor URL overrides remain keyed by project and reset explorer
+navigation for every panel pointed at that project when changed.
 
 ## Why the server proxies the reactor
 
@@ -241,7 +251,7 @@ Verified against `packages/reactor-api` in the Powerhouse repo. These are the no
 - **The reactor's own `documentModels` query is a poor Models source** and is deliberately unused:
   its adapter returns `specifications[0]` — the _oldest_ spec — hardcodes `version: null`, and
   derives `namespace` by splitting the display name. Disk is the source of truth for Models. Do not
-  "simplify" Models mode onto it.
+  "simplify" the Document models panel onto it.
 - **Auth is opt-in and off by default.** When it is on, an unauthenticated POST yields an anonymous
   context rather than a 401, so the Explorer can be connected and still see nothing. The empty
   drive list says so instead of claiming the reactor is empty.
@@ -360,7 +370,7 @@ the end of the prompt, discriminating only on MIME type. So this is a source-onl
 entirely in `powerhouseDragMention.ts`, which imports that one constant — a one-way dependency, so
 the removal map below is unchanged.
 
-Two payload shapes, because the two modes address different things:
+Two payload shapes, because the two tools address different things:
 
 - **Models get a mention of their directory**, not of the `<name>.json` inside it. The JSON is only
   the specification; the generated types and the reducers beside it are part of the same model, and
@@ -418,7 +428,7 @@ Two deliberate limits:
 
 ## Live updates
 
-The panel does not subscribe. The reactor exposes `documentChanges` over graphql-ws
+The panels do not subscribe. The reactor exposes `documentChanges` over graphql-ws
 (`/graphql/subscriptions`) and SSE (`/graphql/stream`), but relaying that reactor → server → client
 websocket would multiply traffic for a read-only diagnostic surface, and websocket volume is this
 repo's most common performance regression. The panel uses unary RPCs behind the shared SWR atom
@@ -506,36 +516,38 @@ Delete these six units and the feature is gone:
 
 Then remove these small integration edits:
 
-| File                                                  | Edit                                                                                                          |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `packages/contracts/src/rpc.ts`                       | import block, 14 `WS_METHODS` entries, 14 `Rpc.make` consts, 14 `WsRpcGroup` entries                          |
-| `packages/contracts/src/index.ts`                     | one re-export                                                                                                 |
-| `packages/contracts/src/keybindings.ts`               | `"powerhouse.toggle"` in `STATIC_KEYBINDING_COMMANDS`                                                         |
-| `apps/server/src/auth/RpcAuthorization.ts`            | 14 entries in `RPC_REQUIRED_SCOPES`                                                                           |
-| `apps/server/src/ws.ts`                               | import plus one `...powerhouseHandlers` spread                                                                |
-| `apps/server/src/server.ts`                           | imports, `PowerhouseLayerLive`, one `Layer.provideMerge`                                                      |
-| `apps/server/src/server.test.ts`                      | layer entries in `buildAppUnderTest`, one e2e test                                                            |
-| `apps/server/src/auth/RpcAuthorization.test.ts`       | one scope test                                                                                                |
-| `apps/web/src/rightPanelStore.ts`                     | kind, surface variant, `singletonSurface` arm                                                                 |
-| `apps/web/src/components/RightPanelTabs.tsx`          | `Zap` import, 2 props, launcher card, `+` menu item, title and icon switch arms                               |
-| `apps/web/src/components/RightPanelTabs.test.tsx`     | fixture props, launcher visibility tests                                                                      |
-| `apps/web/src/components/ChatView.tsx`                | lazy import, detection hook, `addPowerhouseSurface`, keybinding arm, render branch, props at both mount sites |
-| `apps/web/src/components/CommandPalette.tsx`          | availability query and one toggle action                                                                      |
-| `apps/web/src/routes/_chat.pull-requests.tsx`         | two no-op props                                                                                               |
-| `apps/web/src/rightPanelStore.test.ts`                | two tests                                                                                                     |
-| `packages/client-runtime/package.json`                | one subpath export                                                                                            |
-| `apps/server/package.json`, `apps/web/package.json`   | database adapter and lazy SQL-editor dependencies                                                             |
-| `packages/shared/src/composerInlineTokens.ts`         | the `powerhouse` token variant, its grammar, and its serializer                                               |
-| `apps/web/src/composer-editor-mentions.ts`            | one `ComposerPromptSegment` variant and its arm                                                               |
-| `apps/web/src/composer-logic.ts`                      | `"powerhouse"` in the two cursor arms                                                                         |
-| `apps/web/src/components/ComposerPromptEditor.tsx`    | `ComposerPowerhouseNode`, its decorator, and its registration                                                 |
-| `apps/web/src/components/composerInlineTokenPaste.ts` | the `createPowerhouseNode` option                                                                             |
-| `apps/web/src/components/chat/PowerhouseTagChip.tsx`  | delete                                                                                                        |
+| File                                                  | Edit                                                                                                         |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `packages/contracts/src/rpc.ts`                       | import block, 14 `WS_METHODS` entries, 14 `Rpc.make` consts, 14 `WsRpcGroup` entries                         |
+| `packages/contracts/src/index.ts`                     | one re-export                                                                                                |
+| `packages/contracts/src/keybindings.ts`               | three `powerhouse.open*` commands plus the legacy `powerhouse.toggle` decoder                                |
+| `apps/server/src/auth/RpcAuthorization.ts`            | 14 entries in `RPC_REQUIRED_SCOPES`                                                                          |
+| `apps/server/src/ws.ts`                               | import plus one `...powerhouseHandlers` spread                                                               |
+| `apps/server/src/server.ts`                           | imports, `PowerhouseLayerLive`, one `Layer.provideMerge`                                                     |
+| `apps/server/src/server.test.ts`                      | layer entries in `buildAppUnderTest`, one e2e test                                                           |
+| `apps/server/src/auth/RpcAuthorization.test.ts`       | one scope test                                                                                               |
+| `apps/web/src/rightPanelStore.ts`                     | three kinds, repeatable surface factory, open action, type guard, and v12 migration                          |
+| `apps/web/src/components/RightPanelTabs.tsx`          | Powerhouse icons, prop, three launcher cards and `+` items, title and icon switch arms                       |
+| `apps/web/src/components/RightPanelTabs.test.tsx`     | fixture props, launcher visibility tests                                                                     |
+| `apps/web/src/components/ChatView.tsx`                | lazy import, detection hook, repeatable opener, cleanup, keybinding arm, render branch, and mount-site props |
+| `apps/web/src/components/CommandPalette.tsx`          | availability query and three open actions                                                                    |
+| `apps/web/src/routes/_chat.pull-requests.tsx`         | two no-op props                                                                                              |
+| `apps/web/src/rightPanelStore.test.ts`                | two tests                                                                                                    |
+| `packages/client-runtime/package.json`                | one subpath export                                                                                           |
+| `apps/server/package.json`, `apps/web/package.json`   | database adapter and lazy SQL-editor dependencies                                                            |
+| `packages/shared/src/composerInlineTokens.ts`         | the `powerhouse` token variant, its grammar, and its serializer                                              |
+| `apps/web/src/composer-editor-mentions.ts`            | one `ComposerPromptSegment` variant and its arm                                                              |
+| `apps/web/src/composer-logic.ts`                      | `"powerhouse"` in the two cursor arms                                                                        |
+| `apps/web/src/components/ComposerPromptEditor.tsx`    | `ComposerPowerhouseNode`, its decorator, and its registration                                                |
+| `apps/web/src/components/composerInlineTokenPaste.ts` | the `createPowerhouseNode` option                                                                            |
+| `apps/web/src/components/chat/PowerhouseTagChip.tsx`  | delete                                                                                                       |
 
-`RIGHT_PANEL_STORAGE_VERSION` was **not** bumped. The right-panel migration is a normalizer that
-passes unknown kinds through, and no persisted state could contain `powerhouse` before this change.
-An older client reading state that contains the surface renders a blank-titled tab — degenerate but
-not a crash.
+`RIGHT_PANEL_STORAGE_VERSION` is 12. Migration turns the old `{ id: "powerhouse", kind:
+"powerhouse" }` singleton into a `powerhouse-models:legacy` surface because Models was the old
+default and fallback. New surfaces use random 128-bit ids and survive layout persistence as separate
+tabs. `POWERHOUSE_PANEL_STORAGE_VERSION` is 4; it removes the persisted inner mode and adds
+per-panel project choices. Model, explorer, and database selections remain session-only, now keyed
+by both the panel surface and project.
 
 ## Testing
 
@@ -563,7 +575,9 @@ No running Powerhouse project is needed anywhere:
 | Panel entry points         | `apps/web/src/rightPanelStore.test.ts`, `RightPanelTabs.test.tsx`                                                |
 
 For a manual pass, open a monorepo whose Powerhouse app lives under `apps/`, inspect at least one
-model detail, then run `ph reactor` or `ph switchboard` in that app and walk a drive, document,
-operation, and state in Explorer. In Database, inspect both targets, refresh a snapshot, walk every
-relation tab, run a bounded query, and add schema/result context to the composer without sending.
-Check both themes and both the inline and maximized panel widths.
+model detail, then open a second Document models tab on another model and confirm that switching
+tabs preserves both selections. Run `ph reactor` or `ph switchboard` in that app and walk a drive,
+document, operation, and state in Document explorer. Open a second explorer tab on another
+document. In Powerhouse Database, inspect both targets, refresh a snapshot, walk every relation
+tab, run a bounded query, and add schema/result context to the composer without sending. Check both
+themes and both the inline and maximized panel widths.

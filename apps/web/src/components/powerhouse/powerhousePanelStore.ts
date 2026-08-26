@@ -1,13 +1,12 @@
 /**
  * Powerhouse panel state, split by how long it should live.
  *
- * Persisted per project: which mode the panel opens in, and an explicit reactor
- * URL when autodetection is not what the user wants — both are choices, and a
- * choice that evaporates on reload is a bug.
+ * Persisted per project: an explicit reactor URL when autodetection is not what
+ * the user wants. Persisted per panel: which project that panel shows.
  *
- * Session-only: what is currently selected. Restoring a document selection
- * across a reload would re-fetch data from a reactor that may no longer be
- * running, so selection resets instead.
+ * Session-only: what each panel instance currently has selected. Restoring a
+ * document selection across a reload would re-fetch data from a reactor that
+ * may no longer be running, so selection resets instead.
  */
 import type { PowerhouseDatabaseRowLimit, PowerhouseDatabaseTargetId } from "@vetra-code/contracts";
 import { create } from "zustand";
@@ -18,10 +17,7 @@ import { resolveStorage } from "~/lib/storage";
 
 import { normalizeReactorUrl } from "./PowerhousePanel.logic";
 
-export type PowerhouseMode = "models" | "explorer" | "database";
-
 export interface PowerhouseProjectPreferences {
-  readonly mode: PowerhouseMode;
   /** `null` means autodetect. */
   readonly reactorUrlOverride: string | null;
 }
@@ -54,7 +50,6 @@ export interface PowerhouseDatabaseSession {
 }
 
 export const DEFAULT_PREFERENCES: PowerhouseProjectPreferences = {
-  mode: "models",
   reactorUrlOverride: null,
 };
 
@@ -79,28 +74,30 @@ export const EMPTY_DATABASE_SESSION: PowerhouseDatabaseSession = {
 interface PowerhousePanelStoreState {
   /** Persisted, keyed by `powerhouseProjectKey`. */
   byProjectKey: Record<string, PowerhouseProjectPreferences>;
-  /** Persisted, keyed by `powerhouseWorkspaceKey`: which project the panel shows. */
+  /** Legacy/default project choice, keyed by `powerhouseWorkspaceKey`. */
   selectedProjectByWorkspaceKey: Record<string, string>;
-  /** Session-only, keyed by `powerhouseProjectKey`. */
-  modelSelectionByProjectKey: Record<string, PowerhouseModelSelection>;
-  explorerSelectionByProjectKey: Record<string, PowerhouseExplorerSelection>;
-  databaseSessionByProjectKey: Record<string, PowerhouseDatabaseSession>;
-  selectProject: (workspaceKey: string, projectPath: string) => void;
-  setMode: (projectKey: string, mode: PowerhouseMode) => void;
+  /** Persisted, keyed by `powerhousePanelWorkspaceKey`. */
+  selectedProjectByPanelKey: Record<string, string>;
+  /** Session-only, keyed by `powerhousePanelProjectKey`. */
+  modelSelectionByPanelProjectKey: Record<string, PowerhouseModelSelection>;
+  explorerSelectionByPanelProjectKey: Record<string, PowerhouseExplorerSelection>;
+  databaseSessionByPanelProjectKey: Record<string, PowerhouseDatabaseSession>;
+  selectProject: (panelWorkspaceKey: string, projectPath: string) => void;
   setReactorUrlOverride: (projectKey: string, url: string | null) => void;
-  selectModel: (projectKey: string, directoryName: string | null) => void;
-  selectSpec: (projectKey: string, specIndex: number | null) => void;
-  selectDrive: (projectKey: string, drive: PowerhouseExplorerCrumb | null) => void;
-  enterFolder: (projectKey: string, folder: PowerhouseExplorerCrumb) => void;
+  selectModel: (panelProjectKey: string, directoryName: string | null) => void;
+  selectSpec: (panelProjectKey: string, specIndex: number | null) => void;
+  selectDrive: (panelProjectKey: string, drive: PowerhouseExplorerCrumb | null) => void;
+  enterFolder: (panelProjectKey: string, folder: PowerhouseExplorerCrumb) => void;
   /** Truncate the path to `depth` crumbs — how a breadcrumb click navigates back. */
-  popToDepth: (projectKey: string, depth: number) => void;
-  selectDocument: (projectKey: string, documentId: string | null) => void;
-  setDatabaseTarget: (projectKey: string, target: PowerhouseDatabaseTargetId) => void;
-  selectDatabaseRelation: (projectKey: string, schema: string, relation: string) => void;
-  setDatabaseDraft: (projectKey: string, draft: string) => void;
-  recordDatabaseQuery: (projectKey: string, sql: string) => void;
-  setDatabaseRowLimit: (projectKey: string, rowLimit: PowerhouseDatabaseRowLimit) => void;
-  setDatabaseIncludeSystemSchemas: (projectKey: string, include: boolean) => void;
+  popToDepth: (panelProjectKey: string, depth: number) => void;
+  selectDocument: (panelProjectKey: string, documentId: string | null) => void;
+  setDatabaseTarget: (panelProjectKey: string, target: PowerhouseDatabaseTargetId) => void;
+  selectDatabaseRelation: (panelProjectKey: string, schema: string, relation: string) => void;
+  setDatabaseDraft: (panelProjectKey: string, draft: string) => void;
+  recordDatabaseQuery: (panelProjectKey: string, sql: string) => void;
+  setDatabaseRowLimit: (panelProjectKey: string, rowLimit: PowerhouseDatabaseRowLimit) => void;
+  setDatabaseIncludeSystemSchemas: (panelProjectKey: string, include: boolean) => void;
+  removePanel: (surfaceId: string) => void;
 }
 
 /** One workspace. A monorepo can hold several Powerhouse projects under it. */
@@ -108,29 +105,49 @@ export const powerhouseWorkspaceKey = (environmentId: string, cwd: string) =>
   `${environmentId}:${cwd}`;
 
 /**
- * One Powerhouse project. Mode and reactor address belong here, not to the
+ * One Powerhouse project. The reactor address belongs here, not to the
  * workspace: two projects in a monorepo run two different reactors.
  */
 export const powerhouseProjectKey = (environmentId: string, cwd: string, projectPath: string) =>
   `${environmentId}:${cwd}:${projectPath}`;
 
+const powerhousePanelScopedKey = (surfaceId: string, scopeKey: string) =>
+  JSON.stringify([surfaceId, scopeKey]);
+
+export const powerhousePanelWorkspaceKey = (
+  surfaceId: string,
+  environmentId: string,
+  cwd: string,
+) => powerhousePanelScopedKey(surfaceId, powerhouseWorkspaceKey(environmentId, cwd));
+
+export const powerhousePanelProjectKey = (
+  surfaceId: string,
+  environmentId: string,
+  cwd: string,
+  projectPath: string,
+) => powerhousePanelScopedKey(surfaceId, powerhouseProjectKey(environmentId, cwd, projectPath));
+
 const POWERHOUSE_PANEL_STORAGE_KEY = "vetra:powerhouse-panel:v1";
 // v2 keys preferences by project rather than by workspace, so a monorepo's
 // projects stop sharing one reactor address.
-const POWERHOUSE_PANEL_STORAGE_VERSION = 3;
-
-const isMode = (value: unknown): value is PowerhouseMode =>
-  value === "models" || value === "explorer" || value === "database";
+// v4 removes the inner mode and gives each repeatable panel its own project choice.
+const POWERHOUSE_PANEL_STORAGE_VERSION = 4;
 
 /**
  * Drop anything that does not read back as a preference rather than failing the
- * whole store: a bad entry costs the user one project's mode, not the panel.
+ * whole store: a bad entry costs the user one project's reactor preference,
+ * not the panel.
  */
 export function migratePersistedPowerhousePanelState(persisted: unknown): {
   byProjectKey: Record<string, PowerhouseProjectPreferences>;
   selectedProjectByWorkspaceKey: Record<string, string>;
+  selectedProjectByPanelKey: Record<string, string>;
 } {
-  const empty = { byProjectKey: {}, selectedProjectByWorkspaceKey: {} };
+  const empty = {
+    byProjectKey: {},
+    selectedProjectByWorkspaceKey: {},
+    selectedProjectByPanelKey: {},
+  };
   if (!Predicate.isObject(persisted)) return empty;
   const rawSelected = persisted.selectedProjectByWorkspaceKey;
   const selectedProjectByWorkspaceKey: Record<string, string> = {};
@@ -139,9 +156,16 @@ export function migratePersistedPowerhousePanelState(persisted: unknown): {
       if (typeof value === "string") selectedProjectByWorkspaceKey[key] = value;
     }
   }
+  const rawPanelSelected = persisted.selectedProjectByPanelKey;
+  const selectedProjectByPanelKey: Record<string, string> = {};
+  if (Predicate.isObject(rawPanelSelected)) {
+    for (const [key, value] of Object.entries(rawPanelSelected)) {
+      if (typeof value === "string") selectedProjectByPanelKey[key] = value;
+    }
+  }
   const raw = persisted.byProjectKey;
   if (!Predicate.isObject(raw)) {
-    return { byProjectKey: {}, selectedProjectByWorkspaceKey };
+    return { byProjectKey: {}, selectedProjectByWorkspaceKey, selectedProjectByPanelKey };
   }
   const byProjectKey: Record<string, PowerhouseProjectPreferences> = {};
   for (const [key, entry] of Object.entries(raw)) {
@@ -151,11 +175,10 @@ export function migratePersistedPowerhousePanelState(persisted: unknown): {
         ? normalizeReactorUrl(entry.reactorUrlOverride)
         : null;
     byProjectKey[key] = {
-      mode: isMode(entry.mode) ? entry.mode : DEFAULT_PREFERENCES.mode,
       reactorUrlOverride: override,
     };
   }
-  return { byProjectKey, selectedProjectByWorkspaceKey };
+  return { byProjectKey, selectedProjectByWorkspaceKey, selectedProjectByPanelKey };
 }
 
 const updatePreferences = (
@@ -171,42 +194,64 @@ const updatePreferences = (
 
 const updateExplorer = (
   state: PowerhousePanelStoreState,
-  projectKey: string,
+  panelProjectKey: string,
   next: (previous: PowerhouseExplorerSelection) => PowerhouseExplorerSelection,
 ) => ({
-  explorerSelectionByProjectKey: {
-    ...state.explorerSelectionByProjectKey,
-    [projectKey]: next(state.explorerSelectionByProjectKey[projectKey] ?? EMPTY_EXPLORER_SELECTION),
+  explorerSelectionByPanelProjectKey: {
+    ...state.explorerSelectionByPanelProjectKey,
+    [panelProjectKey]: next(
+      state.explorerSelectionByPanelProjectKey[panelProjectKey] ?? EMPTY_EXPLORER_SELECTION,
+    ),
   },
 });
 
 const updateDatabase = (
   state: PowerhousePanelStoreState,
-  projectKey: string,
+  panelProjectKey: string,
   next: (previous: PowerhouseDatabaseSession) => PowerhouseDatabaseSession,
 ) => ({
-  databaseSessionByProjectKey: {
-    ...state.databaseSessionByProjectKey,
-    [projectKey]: next(state.databaseSessionByProjectKey[projectKey] ?? EMPTY_DATABASE_SESSION),
+  databaseSessionByPanelProjectKey: {
+    ...state.databaseSessionByPanelProjectKey,
+    [panelProjectKey]: next(
+      state.databaseSessionByPanelProjectKey[panelProjectKey] ?? EMPTY_DATABASE_SESSION,
+    ),
   },
 });
+
+function panelScopedKeyBelongsToSurface(key: string, surfaceId: string): boolean {
+  try {
+    const parsed: unknown = JSON.parse(key);
+    return Array.isArray(parsed) && parsed[0] === surfaceId;
+  } catch {
+    return false;
+  }
+}
+
+function removePanelEntries<Value>(
+  entries: Record<string, Value>,
+  surfaceId: string,
+): Record<string, Value> {
+  return Object.fromEntries(
+    Object.entries(entries).filter(([key]) => !panelScopedKeyBelongsToSurface(key, surfaceId)),
+  );
+}
 
 export const usePowerhousePanelStore = create<PowerhousePanelStoreState>()(
   persist(
     (set) => ({
       byProjectKey: {},
       selectedProjectByWorkspaceKey: {},
-      modelSelectionByProjectKey: {},
-      explorerSelectionByProjectKey: {},
-      databaseSessionByProjectKey: {},
-      selectProject: (workspaceKey, projectPath) =>
+      selectedProjectByPanelKey: {},
+      modelSelectionByPanelProjectKey: {},
+      explorerSelectionByPanelProjectKey: {},
+      databaseSessionByPanelProjectKey: {},
+      selectProject: (panelWorkspaceKey, projectPath) =>
         set((state) => ({
-          selectedProjectByWorkspaceKey: {
-            ...state.selectedProjectByWorkspaceKey,
-            [workspaceKey]: projectPath,
+          selectedProjectByPanelKey: {
+            ...state.selectedProjectByPanelKey,
+            [panelWorkspaceKey]: projectPath,
           },
         })),
-      setMode: (projectKey, mode) => set((state) => updatePreferences(state, projectKey, { mode })),
       setReactorUrlOverride: (projectKey, url) =>
         set((state) => {
           const normalized = url === null ? null : normalizeReactorUrl(url);
@@ -217,94 +262,123 @@ export const usePowerhousePanelStore = create<PowerhousePanelStoreState>()(
             ...updatePreferences(state, projectKey, { reactorUrlOverride: normalized }),
             // A path belongs to one reactor. Carrying it to another address can
             // silently open an unrelated document with the same identifier.
-            explorerSelectionByProjectKey: {
-              ...state.explorerSelectionByProjectKey,
-              [projectKey]: EMPTY_EXPLORER_SELECTION,
-            },
+            explorerSelectionByPanelProjectKey: Object.fromEntries(
+              Object.entries(state.explorerSelectionByPanelProjectKey).map(([key, selection]) => {
+                try {
+                  const parsed: unknown = JSON.parse(key);
+                  return [
+                    key,
+                    Array.isArray(parsed) && parsed[1] === projectKey
+                      ? EMPTY_EXPLORER_SELECTION
+                      : selection,
+                  ];
+                } catch {
+                  return [key, selection];
+                }
+              }),
+            ),
           };
         }),
-      selectModel: (projectKey, directoryName) =>
+      selectModel: (panelProjectKey, directoryName) =>
         set((state) => ({
-          modelSelectionByProjectKey: {
-            ...state.modelSelectionByProjectKey,
+          modelSelectionByPanelProjectKey: {
+            ...state.modelSelectionByPanelProjectKey,
             // A different model resets the version picker; the old index means
             // nothing against a different specification list.
-            [projectKey]: { directoryName, specIndex: null },
+            [panelProjectKey]: { directoryName, specIndex: null },
           },
         })),
-      selectSpec: (projectKey, specIndex) =>
+      selectSpec: (panelProjectKey, specIndex) =>
         set((state) => ({
-          modelSelectionByProjectKey: {
-            ...state.modelSelectionByProjectKey,
-            [projectKey]: {
-              ...(state.modelSelectionByProjectKey[projectKey] ?? EMPTY_MODEL_SELECTION),
+          modelSelectionByPanelProjectKey: {
+            ...state.modelSelectionByPanelProjectKey,
+            [panelProjectKey]: {
+              ...(state.modelSelectionByPanelProjectKey[panelProjectKey] ?? EMPTY_MODEL_SELECTION),
               specIndex,
             },
           },
         })),
-      selectDrive: (projectKey, drive) =>
+      selectDrive: (panelProjectKey, drive) =>
         set((state) =>
-          updateExplorer(state, projectKey, () =>
+          updateExplorer(state, panelProjectKey, () =>
             drive === null
               ? EMPTY_EXPLORER_SELECTION
               : { driveId: drive.id, path: [drive], documentId: null },
           ),
         ),
-      enterFolder: (projectKey, folder) =>
+      enterFolder: (panelProjectKey, folder) =>
         set((state) =>
-          updateExplorer(state, projectKey, (previous) => ({
+          updateExplorer(state, panelProjectKey, (previous) => ({
             ...previous,
             path: [...previous.path, folder],
             documentId: null,
           })),
         ),
-      popToDepth: (projectKey, depth) =>
+      popToDepth: (panelProjectKey, depth) =>
         set((state) =>
-          updateExplorer(state, projectKey, (previous) => ({
+          updateExplorer(state, panelProjectKey, (previous) => ({
             ...previous,
             path: previous.path.slice(0, Math.max(0, depth)),
             documentId: null,
           })),
         ),
-      selectDocument: (projectKey, documentId) =>
+      selectDocument: (panelProjectKey, documentId) =>
         set((state) =>
-          updateExplorer(state, projectKey, (previous) => ({ ...previous, documentId })),
+          updateExplorer(state, panelProjectKey, (previous) => ({ ...previous, documentId })),
         ),
-      setDatabaseTarget: (projectKey, target) =>
+      setDatabaseTarget: (panelProjectKey, target) =>
         set((state) =>
-          updateDatabase(state, projectKey, (previous) => ({
+          updateDatabase(state, panelProjectKey, (previous) => ({
             ...previous,
             target,
             schema: null,
             relation: null,
           })),
         ),
-      selectDatabaseRelation: (projectKey, schema, relation) =>
+      selectDatabaseRelation: (panelProjectKey, schema, relation) =>
         set((state) =>
-          updateDatabase(state, projectKey, (previous) => ({ ...previous, schema, relation })),
+          updateDatabase(state, panelProjectKey, (previous) => ({ ...previous, schema, relation })),
         ),
-      setDatabaseDraft: (projectKey, draft) =>
-        set((state) => updateDatabase(state, projectKey, (previous) => ({ ...previous, draft }))),
-      recordDatabaseQuery: (projectKey, sql) =>
+      setDatabaseDraft: (panelProjectKey, draft) =>
         set((state) =>
-          updateDatabase(state, projectKey, (previous) => ({
+          updateDatabase(state, panelProjectKey, (previous) => ({ ...previous, draft })),
+        ),
+      recordDatabaseQuery: (panelProjectKey, sql) =>
+        set((state) =>
+          updateDatabase(state, panelProjectKey, (previous) => ({
             ...previous,
             history: [sql, ...previous.history.filter((entry) => entry !== sql)].slice(0, 20),
           })),
         ),
-      setDatabaseRowLimit: (projectKey, rowLimit) =>
+      setDatabaseRowLimit: (panelProjectKey, rowLimit) =>
         set((state) =>
-          updateDatabase(state, projectKey, (previous) => ({ ...previous, rowLimit })),
+          updateDatabase(state, panelProjectKey, (previous) => ({ ...previous, rowLimit })),
         ),
-      setDatabaseIncludeSystemSchemas: (projectKey, includeSystemSchemas) =>
+      setDatabaseIncludeSystemSchemas: (panelProjectKey, includeSystemSchemas) =>
         set((state) =>
-          updateDatabase(state, projectKey, (previous) => ({
+          updateDatabase(state, panelProjectKey, (previous) => ({
             ...previous,
             includeSystemSchemas,
             schema: null,
             relation: null,
           })),
         ),
+      removePanel: (surfaceId) =>
+        set((state) => ({
+          selectedProjectByPanelKey: removePanelEntries(state.selectedProjectByPanelKey, surfaceId),
+          modelSelectionByPanelProjectKey: removePanelEntries(
+            state.modelSelectionByPanelProjectKey,
+            surfaceId,
+          ),
+          explorerSelectionByPanelProjectKey: removePanelEntries(
+            state.explorerSelectionByPanelProjectKey,
+            surfaceId,
+          ),
+          databaseSessionByPanelProjectKey: removePanelEntries(
+            state.databaseSessionByPanelProjectKey,
+            surfaceId,
+          ),
+        })),
     }),
     {
       name: POWERHOUSE_PANEL_STORAGE_KEY,
@@ -317,6 +391,7 @@ export const usePowerhousePanelStore = create<PowerhousePanelStoreState>()(
       partialize: (state) => ({
         byProjectKey: state.byProjectKey,
         selectedProjectByWorkspaceKey: state.selectedProjectByWorkspaceKey,
+        selectedProjectByPanelKey: state.selectedProjectByPanelKey,
       }),
       migrate: migratePersistedPowerhousePanelState,
     },

@@ -60,6 +60,24 @@ it.effect("parses keybinding rules", () =>
     });
     assert.strictEqual(parsedDiffToggle.command, "diff.toggle");
 
+    for (const command of [
+      "powerhouse.openModels",
+      "powerhouse.openExplorer",
+      "powerhouse.openDatabase",
+    ] as const) {
+      const parsedPowerhouseCommand = yield* decode(KeybindingRule, {
+        key: "mod+shift+p",
+        command,
+      });
+      assert.strictEqual(parsedPowerhouseCommand.command, command);
+    }
+
+    const parsedLegacyPowerhouseToggle = yield* decode(KeybindingRule, {
+      key: "mod+shift+p",
+      command: "powerhouse.toggle",
+    });
+    assert.strictEqual(parsedLegacyPowerhouseToggle.command, "powerhouse.toggle");
+
     const parsedCommandPalette = yield* decode(KeybindingRule, {
       key: "mod+k",
       command: "commandPalette.toggle",

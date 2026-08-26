@@ -58,7 +58,9 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "rightPanel.toggle",
   "rightPanel.toggleMaximized",
   "diff.toggle",
-  "powerhouse.toggle",
+  "powerhouse.openModels",
+  "powerhouse.openExplorer",
+  "powerhouse.openDatabase",
   "preview.toggle",
   "preview.refresh",
   "preview.focusUrl",
@@ -77,6 +79,11 @@ export const STATIC_KEYBINDING_COMMANDS = [
   ...THREAD_KEYBINDING_COMMANDS,
 ] as const;
 
+// Existing custom keybinding files may still contain this command. It opens a
+// new Document models panel, but is omitted from the command picker so new
+// configurations use one of the three explicit Powerhouse commands.
+const LEGACY_KEYBINDING_COMMANDS = ["powerhouse.toggle"] as const;
+
 export const SCRIPT_RUN_COMMAND_PATTERN = Schema.TemplateLiteral([
   Schema.Literal("script."),
   Schema.NonEmptyString.check(
@@ -88,6 +95,7 @@ export const SCRIPT_RUN_COMMAND_PATTERN = Schema.TemplateLiteral([
 
 export const KeybindingCommand = Schema.Union([
   Schema.Literals(STATIC_KEYBINDING_COMMANDS),
+  Schema.Literals(LEGACY_KEYBINDING_COMMANDS),
   SCRIPT_RUN_COMMAND_PATTERN,
 ]);
 export type KeybindingCommand = typeof KeybindingCommand.Type;

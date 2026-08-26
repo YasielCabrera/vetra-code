@@ -23,15 +23,17 @@ import type {
 import { getTerminalLabel } from "@vetra-code/shared/terminalLabels";
 import {
   Bot,
+  Braces,
+  Database,
   FileDiff,
   Files,
   GitPullRequest,
   Globe2,
+  HardDrive,
   Plus,
   TerminalSquare,
   Volume2,
   VolumeOff,
-  Zap,
 } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -46,7 +48,7 @@ import {
 
 import { isElectron } from "~/env";
 import type { DesktopPreviewOverlay } from "~/previewStateStore";
-import type { RightPanelSurface } from "~/rightPanelStore";
+import type { PowerhousePanelKind, RightPanelSurface } from "~/rightPanelStore";
 import { publicFaviconUrlForOrigin } from "~/lib/favicon";
 import { cn } from "~/lib/utils";
 import { readLocalApi } from "~/localApi";
@@ -103,14 +105,14 @@ interface RightPanelTabsProps {
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddAgents: () => void;
-  onAddPowerhouse: () => void;
+  onAddPowerhouse: (kind: PowerhousePanelKind) => void;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
   filesAvailable: boolean;
   pullRequestAvailable: boolean;
   agentsAvailable: boolean;
-  /** Powerhouse projects only; the surface is hidden everywhere else. */
+  /** Powerhouse projects only; all three tool surfaces are hidden everywhere else. */
   powerhouseAvailable: boolean;
   pullRequestStatuses?: Readonly<Record<string, PullRequestTabStatus>>;
   /** Running + waiting subagents; badges the Agents card in the empty state. */
@@ -308,7 +310,7 @@ function RightPanelEmptyState(props: {
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddAgents: () => void;
-  onAddPowerhouse: () => void;
+  onAddPowerhouse: (kind: PowerhousePanelKind) => void;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -387,13 +389,33 @@ function RightPanelEmptyState(props: {
     ...(props.powerhouseAvailable
       ? [
           {
-            label: "Powerhouse",
-            description: "Inspect document models and reactor data.",
-            icon: Zap,
+            label: "Document models",
+            description: "Inspect document model definitions.",
+            icon: Braces,
+            shortcut: "M",
+            available: true,
+            disabledReason: "",
+            onClick: () => props.onAddPowerhouse("powerhouse-models"),
+            badgeCount: 0,
+          },
+          {
+            label: "Document explorer",
+            description: "Browse reactor drives and documents.",
+            icon: HardDrive,
+            shortcut: "E",
+            available: true,
+            disabledReason: "",
+            onClick: () => props.onAddPowerhouse("powerhouse-explorer"),
+            badgeCount: 0,
+          },
+          {
+            label: "Powerhouse Database",
+            description: "Inspect Powerhouse database schemas.",
+            icon: Database,
             shortcut: "H",
             available: true,
             disabledReason: "",
-            onClick: props.onAddPowerhouse,
+            onClick: () => props.onAddPowerhouse("powerhouse-database"),
             badgeCount: 0,
           },
         ]
@@ -582,8 +604,12 @@ function surfaceTitle(
       return `#${surface.number}`;
     case "agents":
       return "Agents";
-    case "powerhouse":
-      return "Powerhouse";
+    case "powerhouse-models":
+      return "Document models";
+    case "powerhouse-explorer":
+      return "Document explorer";
+    case "powerhouse-database":
+      return "Powerhouse Database";
     case "preview": {
       const snapshot = surface.resourceId ? sessions[surface.resourceId] : null;
       if (!snapshot || snapshot.navStatus._tag === "Idle") return "Browser";
@@ -669,8 +695,12 @@ function SurfaceIcon({
     }
     case "agents":
       return <Bot className="size-3 shrink-0" />;
-    case "powerhouse":
-      return <Zap className="size-3 shrink-0" />;
+    case "powerhouse-models":
+      return <Braces className="size-3 shrink-0" />;
+    case "powerhouse-explorer":
+      return <HardDrive className="size-3 shrink-0" />;
+    case "powerhouse-database":
+      return <Database className="size-3 shrink-0" />;
   }
 }
 
@@ -732,12 +762,28 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
     ...(props.powerhouseAvailable
       ? ([
           {
-            label: "Powerhouse",
-            icon: Zap,
+            label: "Document models",
+            icon: Braces,
+            shortcut: "M",
+            available: true,
+            disabledReason: "",
+            onClick: () => props.onAddPowerhouse("powerhouse-models"),
+          },
+          {
+            label: "Document explorer",
+            icon: HardDrive,
+            shortcut: "E",
+            available: true,
+            disabledReason: "",
+            onClick: () => props.onAddPowerhouse("powerhouse-explorer"),
+          },
+          {
+            label: "Powerhouse Database",
+            icon: Database,
             shortcut: "H",
             available: true,
             disabledReason: "",
-            onClick: props.onAddPowerhouse,
+            onClick: () => props.onAddPowerhouse("powerhouse-database"),
           },
         ] as const)
       : []),

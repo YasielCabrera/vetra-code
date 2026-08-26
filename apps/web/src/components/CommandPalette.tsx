@@ -36,12 +36,15 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import * as Option from "effect/Option";
 import {
   ArrowLeftIcon,
+  BracesIcon,
   CalendarClockIcon,
   CornerLeftUpIcon,
+  DatabaseIcon,
   FileSearchIcon,
   FolderIcon,
   FolderPlusIcon,
   FolderTreeIcon,
+  HardDriveIcon,
   LinkIcon,
   MessageSquareIcon,
   PaletteIcon,
@@ -49,7 +52,6 @@ import {
   SettingsIcon,
   SquarePenIcon,
   TextSearchIcon,
-  ZapIcon,
 } from "lucide-react";
 import {
   useCallback,
@@ -1638,17 +1640,41 @@ function OpenCommandPaletteDialog(props: {
   });
 
   if (powerhouseAvailable && currentThreadRef !== null) {
-    actionItems.push({
-      kind: "action",
-      value: "action:toggle-powerhouse",
-      searchTerms: ["powerhouse", "document models", "reactor", "explorer", "right panel"],
-      title: "Toggle Powerhouse panel",
-      icon: <ZapIcon className={ITEM_ICON_CLASS} />,
-      shortcutCommand: "powerhouse.toggle",
-      run: async () => {
-        useRightPanelStore.getState().toggle(currentThreadRef, "powerhouse");
+    actionItems.push(
+      {
+        kind: "action",
+        value: "action:open-powerhouse-models",
+        searchTerms: ["powerhouse", "document models", "schema", "right panel"],
+        title: "Open Document models",
+        icon: <BracesIcon className={ITEM_ICON_CLASS} />,
+        shortcutCommand: "powerhouse.openModels",
+        run: async () => {
+          useRightPanelStore.getState().openPowerhouse(currentThreadRef, "powerhouse-models");
+        },
       },
-    });
+      {
+        kind: "action",
+        value: "action:open-powerhouse-explorer",
+        searchTerms: ["powerhouse", "document explorer", "reactor", "drives", "right panel"],
+        title: "Open Document explorer",
+        icon: <HardDriveIcon className={ITEM_ICON_CLASS} />,
+        shortcutCommand: "powerhouse.openExplorer",
+        run: async () => {
+          useRightPanelStore.getState().openPowerhouse(currentThreadRef, "powerhouse-explorer");
+        },
+      },
+      {
+        kind: "action",
+        value: "action:open-powerhouse-database",
+        searchTerms: ["powerhouse", "database", "postgres", "sql", "right panel"],
+        title: "Open Powerhouse Database",
+        icon: <DatabaseIcon className={ITEM_ICON_CLASS} />,
+        shortcutCommand: "powerhouse.openDatabase",
+        run: async () => {
+          useRightPanelStore.getState().openPowerhouse(currentThreadRef, "powerhouse-database");
+        },
+      },
+    );
   }
 
   actionItems.push({

@@ -848,30 +848,26 @@ describe("rightPanelStore", () => {
     ).toEqual(["browser:tab-a", "terminal:term-1", "browser:tab-b"]);
   });
 
-  it("opens and closes the powerhouse surface as a singleton", () => {
-    useRightPanelStore.getState().toggle(refA, "powerhouse");
-    expect(
-      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA),
-    ).toMatchObject({
-      isOpen: true,
-      activeSurfaceId: "powerhouse",
-      surfaces: [{ id: "powerhouse", kind: "powerhouse" }],
-    });
+  it("opens repeatable, tool-specific Powerhouse surfaces", () => {
+    const store = useRightPanelStore.getState();
+    store.openPowerhouse(refA, "powerhouse-models");
+    store.openPowerhouse(refA, "powerhouse-models");
+    store.openPowerhouse(refA, "powerhouse-explorer");
+    store.openPowerhouse(refA, "powerhouse-database");
 
-    useRightPanelStore.getState().open(refA, "powerhouse");
-    expect(
-      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).surfaces,
-    ).toHaveLength(1);
-
-    useRightPanelStore.getState().toggle(refA, "powerhouse");
-    expect(
-      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).isOpen,
-    ).toBe(false);
+    const panel = selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA);
+    expect(panel.isOpen).toBe(true);
+    expect(panel.surfaces.map((surface) => surface.kind)).toEqual([
+      "powerhouse-models",
+      "powerhouse-models",
+      "powerhouse-explorer",
+      "powerhouse-database",
+    ]);
+    expect(new Set(panel.surfaces.map((surface) => surface.id)).size).toBe(4);
+    expect(panel.activeSurfaceId).toBe(panel.surfaces[3]?.id);
   });
 
-  // No storage version bump was needed, so this pins the normalizer passing
-  // the surface through untouched.
-  it("keeps a persisted powerhouse surface through migration", () => {
+  it("migrates the old singleton Powerhouse surface to Document models", () => {
     expect(
       migratePersistedRightPanelState({
         byThreadKey: {
@@ -886,8 +882,8 @@ describe("rightPanelStore", () => {
       byThreadKey: {
         "env-1:thread-A": {
           isOpen: true,
-          activeSurfaceId: "powerhouse",
-          surfaces: [{ id: "powerhouse", kind: "powerhouse" }],
+          activeSurfaceId: "powerhouse-models:legacy",
+          surfaces: [{ id: "powerhouse-models:legacy", kind: "powerhouse-models" }],
         },
       },
     });

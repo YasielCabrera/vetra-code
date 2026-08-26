@@ -2,6 +2,8 @@ import type { DesktopPreviewFavicon, PreviewSessionSnapshot } from "@vetra-code/
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vite-plus/test";
 
+import type { RightPanelSurface } from "~/rightPanelStore";
+
 import {
   RightPanelTabs,
   surfaceShortcutActionForKey,
@@ -150,12 +152,16 @@ describe("RightPanelTabs preview favicon", () => {
   });
 });
 
-function renderLauncher(powerhouseAvailable: boolean) {
+function renderLauncher(
+  powerhouseAvailable: boolean,
+  surfaces: readonly RightPanelSurface[] = [],
+  activeSurfaceId: string | null = null,
+) {
   return renderToStaticMarkup(
     <RightPanelTabs
       mode="inline"
-      surfaces={[]}
-      activeSurfaceId={null}
+      surfaces={surfaces}
+      activeSurfaceId={activeSurfaceId}
       pendingSurfaceIds={new Set()}
       previewSessions={{}}
       desktopByTabId={{}}
@@ -189,15 +195,35 @@ function renderLauncher(powerhouseAvailable: boolean) {
 }
 
 describe("RightPanelTabs powerhouse launcher", () => {
-  it("offers the surface in a Powerhouse project", () => {
+  it("offers each Powerhouse tool as a separate surface", () => {
     const html = renderLauncher(true);
-    expect(html).toContain("Powerhouse");
-    expect(html).toContain("Inspect document models and reactor data.");
+    expect(html).toContain("Document models");
+    expect(html).toContain("Inspect document model definitions.");
+    expect(html).toContain("Document explorer");
+    expect(html).toContain("Browse reactor drives and documents.");
+    expect(html).toContain("Powerhouse Database");
+    expect(html).toContain("Inspect Powerhouse database schemas.");
   });
 
   it("shows nothing at all outside a Powerhouse project", () => {
-    // Not a dimmed card either: a surface that can never open is noise.
-    expect(renderLauncher(false)).not.toContain("Powerhouse");
+    const html = renderLauncher(false);
+    // Not dimmed cards either: surfaces that can never open are noise.
+    expect(html).not.toContain("Document models");
+    expect(html).not.toContain("Document explorer");
+    expect(html).not.toContain("Powerhouse Database");
+  });
+
+  it("titles each Powerhouse tool tab independently", () => {
+    const surfaces = [
+      { id: "powerhouse-models:models", kind: "powerhouse-models" },
+      { id: "powerhouse-explorer:explorer", kind: "powerhouse-explorer" },
+      { id: "powerhouse-database:database", kind: "powerhouse-database" },
+    ] as const satisfies readonly RightPanelSurface[];
+    const html = renderLauncher(true, surfaces, surfaces[0].id);
+
+    expect(html).toContain('aria-label="Close Document models"');
+    expect(html).toContain('aria-label="Close Document explorer"');
+    expect(html).toContain('aria-label="Close Powerhouse Database"');
   });
 });
 
