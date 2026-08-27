@@ -6,10 +6,10 @@ equivalent** tabs:
 - **Subscription limits** are live allowance windows reported by Codex, Claude, Cursor, Grok, and
   OpenCode Go. These are the limits attached to your provider subscription, such as a 5-hour,
   weekly, or monthly allowance.
-- **API-equivalent activity** reads local Codex and Claude Code session history and estimates what
-  those tokens would cost at full API rates. It also shows processed tokens, cache savings,
-  provider shares, and model breakdowns. This estimate does not reduce or predict your subscription
-  allowance.
+- **API-equivalent activity** reads local Codex, Claude Code, and Grok Build session history and
+  estimates what those tokens would cost at full API rates. It also shows processed tokens, cache
+  savings, provider shares, and model breakdowns. This estimate does not reduce or predict your
+  subscription allowance.
 
 The chat composer’s context-window popover continues to show the API-equivalent cost for the current
 thread.
@@ -94,6 +94,9 @@ showing another alert for that instance. Alerts are not OS notifications and are
 the client is offline.
 
 ## API-equivalent activity
+
+Grok Build totals come from persisted session updates, so interactive turns that never wrote a
+completed-turn record do not appear.
 
 Use **Past 24h** for an hourly chart covering the exact rolling 24-hour period. The **7 days**,
 **30 days**, and **90 days** ranges use daily resolution. Cost and token toggles update both the
