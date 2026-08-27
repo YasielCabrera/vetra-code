@@ -17,7 +17,7 @@
 - [Source control integrations](./user/source-control.md)
 - [Preview wallet (Web3)](./user/preview-wallet.md)
 - [Background service (Linux)](./user/background-service.md)
-- Providers: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md)
+- Providers: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [Cursor](./user/providers-cursor.md)
 
 ---
 

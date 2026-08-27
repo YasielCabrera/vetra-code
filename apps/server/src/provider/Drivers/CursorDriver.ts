@@ -113,6 +113,7 @@ export const CursorDriver: ProviderDriver<CursorSettings, CursorDriverEnv> = {
       const eventLoggers = yield* ProviderEventLoggers;
       const subscriptionCredentials = yield* ProviderSubscriptionCredentialStore;
       const platform = yield* HostProcessPlatform;
+      const { cwd } = yield* ServerConfig;
       const processEnv = mergeProviderInstanceEnvironment(environment);
       const continuationIdentity = defaultProviderContinuationIdentity({
         driverKind: DRIVER_KIND,
@@ -144,7 +145,7 @@ export const CursorDriver: ProviderDriver<CursorSettings, CursorDriverEnv> = {
         credentials: subscriptionCredentials,
       });
 
-      const checkProvider = checkCursorProviderStatus(effectiveConfig, processEnv).pipe(
+      const checkProvider = checkCursorProviderStatus(effectiveConfig, processEnv, cwd).pipe(
         Effect.map(stampIdentity),
         Effect.provideService(Crypto.Crypto, crypto),
         Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),

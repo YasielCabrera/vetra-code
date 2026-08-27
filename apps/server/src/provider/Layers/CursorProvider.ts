@@ -6,6 +6,7 @@ import type {
   ServerProvider,
   ServerProviderAuth,
   ServerProviderModel,
+  ServerProviderSkill,
   ServerProviderState,
 } from "@vetra-code/contracts";
 import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
@@ -30,6 +31,7 @@ import {
 } from "@vetra-code/shared/model";
 import { resolveSpawnCommand } from "@vetra-code/shared/shell";
 
+import { discoverCursorSkills } from "../Drivers/CursorSkills.ts";
 import {
   buildBooleanOptionDescriptor,
   buildSelectOptionDescriptor,
@@ -628,6 +630,7 @@ export function buildCursorProviderSnapshot(input: {
   readonly parsed: CursorAboutResult;
   readonly discoveredModels?: ReadonlyArray<ServerProviderModel>;
   readonly discoveryWarning?: string;
+  readonly skills?: ReadonlyArray<ServerProviderSkill>;
 }): ServerProviderDraft {
   const message = joinProviderMessages(input.parsed.message, input.discoveryWarning);
   return buildServerProvider({
@@ -639,6 +642,7 @@ export function buildCursorProviderSnapshot(input: {
       input.cursorSettings.customModels,
       EMPTY_CAPABILITIES,
     ),
+    ...(input.skills ? { skills: input.skills } : {}),
     probe: {
       installed: true,
       version: input.parsed.version,
@@ -987,6 +991,7 @@ const runCursorAboutCommand = (cursorSettings: CursorSettings, environment?: Nod
 export const checkCursorProviderStatus = Effect.fn("checkCursorProviderStatus")(function* (
   cursorSettings: CursorSettings,
   environment?: NodeJS.ProcessEnv,
+  cwd?: string,
 ): Effect.fn.Return<
   ServerProviderDraft,
   never,
@@ -1056,6 +1061,7 @@ export const checkCursorProviderStatus = Effect.fn("checkCursorProviderStatus")(
   }
 
   const parsed = parseCursorAboutOutput(aboutProbe.success.value);
+  const skills = yield* discoverCursorSkills(environment ?? process.env, cwd);
   const cursorCliConfigChannel = yield* readCursorCliConfigChannel();
   const parameterizedModelPickerUnsupportedMessage =
     getCursorParameterizedModelPickerUnsupportedMessage({
@@ -1068,6 +1074,7 @@ export const checkCursorProviderStatus = Effect.fn("checkCursorProviderStatus")(
       enabled: cursorSettings.enabled,
       checkedAt,
       models: fallbackModels,
+      skills,
       probe: {
         installed: true,
         version: parsed.version,
@@ -1105,6 +1112,7 @@ export const checkCursorProviderStatus = Effect.fn("checkCursorProviderStatus")(
     checkedAt,
     cursorSettings,
     parsed,
+    skills,
     discoveredModels: Option.getOrElse(
       Option.filter(discoveredModels, (models) => models.length > 0),
       () => [] as const,
