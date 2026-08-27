@@ -1,4 +1,4 @@
-import { useMonaco } from "@graphiql/react";
+import { useGraphiQL, useMonaco } from "@graphiql/react";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
 import type { EnvironmentId } from "@vetra-code/contracts";
@@ -7,7 +7,16 @@ import { GraphiQL, type GraphiQLProps } from "graphiql";
 import "graphiql/setup-workers/vite";
 import "graphiql/style.css";
 import "@graphiql/plugin-explorer/style.css";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Braces } from "lucide-react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 
 import { useTheme } from "~/hooks/useTheme";
 import { powerhouseEnvironment } from "~/state/powerhouse";
@@ -20,9 +29,11 @@ import { ReactorConnectionCard } from "../explorer/ReactorConnectionCard";
 import {
   applySwitchboardPortalTheme,
   defaultSwitchboardTheme,
+  isSwitchboardSettingsShortcut,
   normalizeGraphqlHeaders,
   readSwitchboardTheme,
   serializeGraphqlVariables,
+  shouldShowSwitchboardResponsePlaceholder,
   type SwitchboardThemeTokens,
 } from "./SwitchboardView.logic";
 import { createSwitchboardStorage } from "./switchboardStorage";
@@ -97,6 +108,50 @@ function SwitchboardMonacoTheme({
   }, [appearance, monaco, tokens]);
 
   return null;
+}
+
+function SwitchboardMonacoTypography({
+  typography,
+}: {
+  typography: SwitchboardThemeTokens["typography"];
+}) {
+  const headerEditor = useGraphiQL((state) => state.headerEditor);
+  const queryEditor = useGraphiQL((state) => state.queryEditor);
+  const responseEditor = useGraphiQL((state) => state.responseEditor);
+  const variableEditor = useGraphiQL((state) => state.variableEditor);
+
+  useLayoutEffect(() => {
+    for (const editor of [headerEditor, queryEditor, responseEditor, variableEditor]) {
+      editor?.updateOptions(typography);
+    }
+  }, [headerEditor, queryEditor, responseEditor, typography, variableEditor]);
+
+  return null;
+}
+
+function SwitchboardResponsePlaceholder() {
+  const visible = useGraphiQL((state) =>
+    shouldShowSwitchboardResponsePlaceholder({
+      response: state.tabs[state.activeTabIndex]?.response ?? null,
+      isFetching: state.isFetching,
+      fetchError: state.fetchError,
+      validationErrorCount: state.validationErrors.length,
+    }),
+  );
+
+  if (!visible) return null;
+  return (
+    <div className="switchboard-response-placeholder" role="status">
+      <span className="switchboard-response-placeholder-icon">
+        <Braces aria-hidden />
+      </span>
+      <span>Run an operation to view its response</span>
+    </div>
+  );
+}
+
+function suppressSwitchboardSettingsShortcut(event: ReactKeyboardEvent<HTMLDivElement>) {
+  if (isSwitchboardSettingsShortcut(event)) event.stopPropagation();
 }
 
 interface SwitchboardViewProps {
@@ -243,6 +298,7 @@ function ConnectedSwitchboard({
       ref={rootRef}
       className="h-full min-h-0 bg-background"
       style={themeTokens.css as CSSProperties}
+      onKeyDownCapture={suppressSwitchboardSettingsShortcut}
     >
       <GraphiQL
         fetcher={fetcher}
@@ -256,10 +312,12 @@ function ConnectedSwitchboard({
         editorTheme={SWITCHBOARD_MONACO_THEMES}
         className="switchboard-graphiql"
       >
-        <GraphiQL.Logo>
-          <span>Switchboard</span>
-        </GraphiQL.Logo>
+        <GraphiQL.Logo>{null}</GraphiQL.Logo>
+        <GraphiQL.Footer>
+          <SwitchboardResponsePlaceholder />
+        </GraphiQL.Footer>
         <SwitchboardMonacoTheme appearance={resolvedTheme} tokens={themeTokens.monaco} />
+        <SwitchboardMonacoTypography typography={themeTokens.typography} />
       </GraphiQL>
     </div>
   );

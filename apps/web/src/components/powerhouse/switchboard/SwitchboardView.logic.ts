@@ -1,5 +1,14 @@
 import "culori/css";
+import { DEFAULT_CODE_FONT_SIZE } from "@vetra-code/contracts";
 import { converter, formatHex, parse } from "culori/fn";
+
+import { DEFAULT_CODE_FONT_STACK, clampCodeFontSize } from "~/appearanceFonts";
+
+export interface SwitchboardEditorTypography {
+  readonly fontFamily: string;
+  readonly fontSize: number;
+  readonly lineHeight: number;
+}
 
 export interface SwitchboardThemeTokens {
   readonly css: Readonly<Record<string, string>>;
@@ -17,6 +26,7 @@ export interface SwitchboardThemeTokens {
     error: string;
     selection: string;
   }>;
+  readonly typography: SwitchboardEditorTypography;
 }
 
 interface SwitchboardColors {
@@ -35,6 +45,10 @@ interface SwitchboardColors {
 }
 
 const toHsl = converter("hsl");
+const DEFAULT_EDITOR_TYPOGRAPHY = resolveSwitchboardEditorTypography({
+  fontFamily: DEFAULT_CODE_FONT_STACK,
+  fontSize: DEFAULT_CODE_FONT_SIZE,
+});
 
 const DEFAULT_THEME_COLORS = {
   light: {
@@ -94,7 +108,10 @@ function resolveCssColor(element: HTMLElement, property: string, fallback: strin
 
 export function defaultSwitchboardTheme(appearance: "light" | "dark"): SwitchboardThemeTokens {
   const colors = DEFAULT_THEME_COLORS[appearance];
-  return switchboardThemeFromColors(colors, colors);
+  return {
+    ...switchboardThemeFromColors(colors, colors),
+    typography: DEFAULT_EDITOR_TYPOGRAPHY,
+  };
 }
 
 export function readSwitchboardTheme(
@@ -102,6 +119,7 @@ export function readSwitchboardTheme(
   appearance: "light" | "dark",
 ): SwitchboardThemeTokens {
   const fallback = DEFAULT_THEME_COLORS[appearance];
+  const styles = getComputedStyle(element);
   const colors = {
     background: resolveCssColor(element, "--code-background", fallback.background),
     foreground: resolveCssColor(element, "--code-foreground", fallback.foreground),
@@ -116,13 +134,31 @@ export function readSwitchboardTheme(
     error: resolveCssColor(element, "--error", fallback.error),
     selection: resolveCssColor(element, "--accent", fallback.selection),
   };
-  return switchboardThemeFromColors(colors, fallback);
+  return {
+    ...switchboardThemeFromColors(colors, fallback),
+    typography: resolveSwitchboardEditorTypography({
+      fontFamily: styles.getPropertyValue("--font-mono"),
+      fontSize: styles.getPropertyValue("--font-size-code"),
+    }),
+  };
+}
+
+export function resolveSwitchboardEditorTypography(input: {
+  readonly fontFamily: string;
+  readonly fontSize: string | number;
+}): SwitchboardEditorTypography {
+  const fontSize = clampCodeFontSize(Number.parseFloat(String(input.fontSize)));
+  return {
+    fontFamily: input.fontFamily.trim() || DEFAULT_CODE_FONT_STACK,
+    fontSize,
+    lineHeight: Math.round(fontSize * 1.5),
+  };
 }
 
 function switchboardThemeFromColors(
   colors: SwitchboardColors,
   fallback: SwitchboardColors,
-): SwitchboardThemeTokens {
+): Pick<SwitchboardThemeTokens, "css" | "monaco"> {
   const hex = {
     background: colorToHex(colors.background, fallback.background),
     foreground: colorToHex(colors.foreground, fallback.foreground),
@@ -158,6 +194,28 @@ export function applySwitchboardPortalTheme(tokens: SwitchboardThemeTokens): voi
   for (const [name, value] of Object.entries(tokens.css)) {
     document.body.style.setProperty(name, value);
   }
+}
+
+export function isSwitchboardSettingsShortcut(event: {
+  readonly key: string;
+  readonly metaKey: boolean;
+  readonly ctrlKey: boolean;
+}): boolean {
+  return event.key === "," && (event.metaKey || event.ctrlKey);
+}
+
+export function shouldShowSwitchboardResponsePlaceholder(input: {
+  readonly response: string | null;
+  readonly isFetching: boolean;
+  readonly fetchError: string | null;
+  readonly validationErrorCount: number;
+}): boolean {
+  return (
+    !input.isFetching &&
+    input.fetchError === null &&
+    input.validationErrorCount === 0 &&
+    (input.response ?? "").trim().length === 0
+  );
 }
 
 export function normalizeGraphqlHeaders(

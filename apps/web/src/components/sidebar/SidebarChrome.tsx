@@ -14,6 +14,10 @@ import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
 import { useEnvironments } from "../../state/environments";
 import {
+  rememberedIssueFilters,
+  rememberedPullRequestFilters,
+} from "../sourceControl/listFilterMemory";
+import {
   resolveEnvironmentIdentificationPillLabel,
   resolveSidebarStageBackdropVariant,
   resolveSidebarStageFocusRingOffsetClass,
@@ -159,13 +163,16 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
       setOpenMobile(false);
     }
   }, [isMobile, setOpenMobile]);
+  // Both open on the narrowings the page was last left with, so a workspace filtered to one
+  // project's open issues is still that when the reader comes back rather than the whole index
+  // again. Read at the press rather than held here: the page writes them as they are picked.
   const handlePullRequestsClick = useCallback(() => {
     closeMobileSidebar();
-    void navigate({ to: "/pull-requests", search: { involvement: "all", state: "open" } });
+    void navigate({ to: "/pull-requests", search: rememberedPullRequestFilters() });
   }, [closeMobileSidebar, navigate]);
   const handleIssuesClick = useCallback(() => {
     closeMobileSidebar();
-    void navigate({ to: "/issues", search: { state: "open" } });
+    void navigate({ to: "/issues", search: rememberedIssueFilters() });
   }, [closeMobileSidebar, navigate]);
   const handleSettingsClick = useCallback(() => {
     closeMobileSidebar();

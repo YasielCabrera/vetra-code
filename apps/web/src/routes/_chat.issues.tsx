@@ -1,10 +1,8 @@
 import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
 import {
-  EnvironmentId as EnvironmentIdSchema,
   ISSUE_ASSIGNEE_NOBODY,
   ISSUE_ASSIGNEE_VIEWER,
   isIssueAssigneeFilter,
-  ProjectId as ProjectIdSchema,
   ThreadId,
   type EnvironmentId,
   type IssueActor,
@@ -15,7 +13,6 @@ import {
   type SourceControlProviderKind,
 } from "@vetra-code/contracts";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import * as Schema from "effect/Schema";
 import {
   CheckCircle2Icon,
   ChevronDownIcon,
@@ -59,6 +56,7 @@ import {
   sourceControlHostLabel,
   type ListFilterOption,
 } from "../components/sourceControl/ListFilterMenu";
+import { rememberIssueFilters } from "../components/sourceControl/listFilterMemory";
 import {
   WorkspaceBreadcrumb,
   WorkspaceBreadcrumbItem,
@@ -71,7 +69,6 @@ import { Menu, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger } from "../compo
 import { SidebarInset } from "../components/ui/sidebar";
 import { isElectron } from "../env";
 import { useLiveRefresh } from "../hooks/useLiveRefresh";
-import { useLocalStorage } from "../hooks/useLocalStorage";
 import { readLocalApi } from "../localApi";
 import {
   selectActiveRightPanelSurface,
@@ -147,13 +144,6 @@ const SEARCH_DEBOUNCE_MS = 250;
 const ISSUE_PAGE_SIZE = 99;
 const EMPTY_ENVIRONMENT_CURSORS: Readonly<Record<string, IssueListCursors>> = {};
 const EMPTY_ISSUE_ENTRIES: ReadonlyArray<EnvironmentIssueEntry> = [];
-const ISSUES_PROJECT_SCOPE_STORAGE_KEY = "vetra:issues-project-scope:v1";
-const IssuesProjectScope = Schema.NullOr(
-  Schema.Struct({
-    environmentId: EnvironmentIdSchema,
-    projectId: ProjectIdSchema,
-  }),
-);
 
 /** The list owns one workspace-level right panel rather than borrowing a real thread's. */
 const ISSUES_PANEL_ID = ThreadId.make("issues-panel");
@@ -223,11 +213,6 @@ function IssuesRouteView() {
   const { environments } = useEnvironments();
   const allProjects = useProjects();
   const projectsKnown = useAllEnvironmentShellsBootstrapped();
-  const [rememberedProjectScope, setRememberedProjectScope] = useLocalStorage(
-    ISSUES_PROJECT_SCOPE_STORAGE_KEY,
-    null,
-    IssuesProjectScope,
-  );
   const capableEnvironments = useMemo(
     () =>
       environments
@@ -267,13 +252,10 @@ function IssuesRouteView() {
       ),
     [capableEnvironments],
   );
-  const requestedProjectId = search.projectId ?? rememberedProjectScope?.projectId;
-  const requestedEnvironmentId =
-    search.projectId === undefined ? rememberedProjectScope?.environmentId : search.environmentId;
   const scopedProject = projects.find(
     (project) =>
-      project.id === requestedProjectId &&
-      (requestedEnvironmentId === undefined || project.environmentId === requestedEnvironmentId),
+      project.id === search.projectId &&
+      (search.environmentId === undefined || project.environmentId === search.environmentId),
   );
   const queryEnvironmentIds = useMemo(
     () =>
@@ -742,6 +724,10 @@ function IssuesRouteView() {
       // list: narrowing the list is not a reason to throw away what is open beside it.
       useRightPanelStore.getState().close(rightPanelRef);
     }
+    // Deliberate narrowings only, which is why this sits here rather than on the search itself:
+    // a link that opens one issue names its own filters, and following it should not rewrite
+    // what the reader last chose to see.
+    rememberIssueFilters(withSearchPatch(search, patch));
     updateSearch({ ...patch, ...CLEARED_SELECTION });
   };
 
@@ -767,26 +753,18 @@ function IssuesRouteView() {
       serverOptions={serverMenuOptions}
       // Narrowing to one server drops a project scope belonging to another, which would
       // otherwise narrow the list to nothing with no visible filter to explain it.
-      onServer={(server) => {
-        setRememberedProjectScope(null);
-        updateListScope({ environmentId: server, projectId: undefined });
-      }}
+      onServer={(server) => updateListScope({ environmentId: server, projectId: undefined })}
       projects={scopedProjects}
       projectId={scopedProject?.id}
       projectEnvironmentId={scopedProject?.environmentId}
       unavailable={unavailableProjects}
-      onProject={(projectId, environmentId) => {
-        setRememberedProjectScope(
-          projectId === undefined || environmentId === undefined
-            ? null
-            : { environmentId, projectId },
-        );
+      onProject={(projectId, environmentId) =>
         updateListScope(
           projectId === undefined
             ? { projectId: undefined, environmentId: scopedEnvironmentId ?? undefined }
             : { projectId, environmentId },
-        );
-      }}
+        )
+      }
     />
   );
 

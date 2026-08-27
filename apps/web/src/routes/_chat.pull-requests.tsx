@@ -73,6 +73,7 @@ import {
   WorkspaceBreadcrumbSeparator,
 } from "../components/WorkspaceBreadcrumb";
 import { CompactFilterMenu, ExpandableSearch } from "../components/sourceControl/ListPageChrome";
+import { rememberPullRequestFilters } from "../components/sourceControl/listFilterMemory";
 import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { isElectron } from "../env";
@@ -448,6 +449,16 @@ function PullRequestsRouteView() {
       // Hide the old selection while retaining peer PR tabs for parallel reviews.
       useRightPanelStore.getState().close(rightPanelRef);
     }
+    // Deliberate narrowings only, which is why this sits here rather than on the search itself:
+    // a link that opens one review names its own filters, and following it should not rewrite
+    // what the reader last chose to see.
+    const next = { ...search, ...patch };
+    rememberPullRequestFilters({
+      ...next,
+      // The rule the URL itself follows: a patch that clears a required field leaves it as it was.
+      state: next.state ?? search.state,
+      involvement: next.involvement ?? search.involvement,
+    });
     updateSearch({ ...patch, ...clearedSelection });
   };
 

@@ -125,10 +125,12 @@ or return to autodetection without first stopping the reactor.
 `SwitchboardView` is a nested lazy import below `PowerhousePanel`. GraphiQL, Monaco, and the visual
 explorer plugin are therefore absent from the shared Powerhouse panel chunk and load only when a
 Switchboard tab is rendered. The packages are pinned exactly (`graphiql@5.3.0`,
-`@graphiql/react@0.38.0`, and `@graphiql/plugin-explorer@5.1.4`) because the narrow-panel CSS has a
-small, documented dependency on GraphiQL's DOM structure. The scoped `pnpm-workspace.yaml` peer
-exceptions cover only the plugin's unchanged `graphiql-explorer@0.9` manifest; the current official
-wrapper declares support for this workspace's React 19 and GraphQL 16 versions.
+`@graphiql/react@0.38.0`, and `@graphiql/plugin-explorer@5.1.4`) because the native panel chrome
+depends on GraphiQL's sidebar, main, plugin, sessions, session header, tabs, session, editors,
+editor tools, response, footer, and horizontal drag-bar class names. The scoped
+`pnpm-workspace.yaml` peer exceptions cover only the plugin's unchanged
+`graphiql-explorer@0.9` manifest; the current official wrapper declares support for this
+workspace's React 19 and GraphQL 16 versions.
 
 The `graphiql/setup-workers/vite` bootstrap stays in normal Vite transforms through an
 `optimizeDeps.exclude` entry. Vite+ 0.2.2's dependency optimizer otherwise treats the bootstrap's
@@ -154,6 +156,20 @@ and a custom Monaco theme. `forcedTheme` follows Vetra Code's resolved appearanc
 body-level bridge gives GraphiQL's portalled dialogs and menus the same tokens. This mapping is the
 customization boundary for future Powerhouse-specific UI; authentication such as Renown can be
 added in a custom toolbar and fetcher adapter without forking the editor.
+
+Typography follows the same Appearance boundary. GraphiQL chrome and its portalled UI inherit the
+configured interface family, while every operation, response, variables, and headers Monaco editor
+uses the configured code family and code size with a proportional line height. The editor options
+are updated when root Appearance variables change so Monaco remeasures glyphs rather than relying
+on a visual-only CSS override.
+
+Vetra replaces GraphiQL's enclosing card with a full-bleed workspace, hides its empty logo plus the
+local settings and shortcut-help triggers, and derives an empty-response cue from the active tab,
+fetch, and error state. The 40px tool rail, 36px operation strip, editor panes, controls, overlays,
+and focus states use Vetra's semantic tokens. Above 32rem, query and response stay side by side and
+GraphiQL persists their resize ratio. At 32rem and below they stack at an equal split, while the
+schema and visual explorers retain their full-surface overlay behavior. The outer right-panel title
+remains "Switchboard".
 
 The current RPC is unary. The fetcher rejects GraphQL subscriptions with a direct explanation;
 supporting them requires a separately authorized, cancellable streaming contract rather than
