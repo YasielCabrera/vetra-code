@@ -77,6 +77,7 @@ issue you pick open in a side panel beside it.
   kept, so you always come back to the full list of whatever you filtered to
 - **Assignee** starts with **Me**, so your own issues are one press away, and offers
   **Unassigned** plus everyone the loaded issues are assigned to
+- Each issue row names its assignees when it has any, so you can see ownership without opening it
 - Keep scrolling to load older issues automatically until every matching repository is complete
 - Select an issue to open it in the side panel, where you can read its description, comments,
   assignees, labels, and milestone

@@ -7,6 +7,7 @@ import { cn } from "~/lib/utils";
 
 import { PullRequestMetaLine } from "../pullRequest/pullRequestPresentation";
 import { SourceControlActorAvatar } from "../SourceControlActorAvatar";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { IssueLabel } from "./IssueLabel";
 
 function IssueRowImpl({
@@ -25,6 +26,7 @@ function IssueRowImpl({
   const StateIcon = entry.state === "open" ? CircleDotIcon : CheckCircle2Icon;
   const activityTime =
     entry.state === "open" ? entry.createdAt : (entry.closedAt ?? entry.updatedAt);
+  const assigneeLogins = entry.assignees.map((assignee) => assignee.login).join(", ");
   return (
     <button
       type="button"
@@ -70,6 +72,28 @@ function IssueRowImpl({
             <SourceControlActorAvatar actor={entry.author} />
             <span className="truncate">{entry.author?.login ?? "ghost"}</span>
           </span>
+          {entry.assignees.length > 0 ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={<span className="flex min-w-0 max-w-64 items-center gap-1.5" />}
+              >
+                <span className="shrink-0">assigned to</span>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="flex shrink-0 -space-x-1">
+                    {entry.assignees.map((assignee) => (
+                      <SourceControlActorAvatar
+                        key={assignee.login}
+                        actor={assignee}
+                        className="ring-1 ring-background"
+                      />
+                    ))}
+                  </span>
+                  <span className="truncate">{assigneeLogins}</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipPopup side="top">Assigned to {assigneeLogins}</TooltipPopup>
+            </Tooltip>
+          ) : null}
           <span className="shrink-0">
             {entry.state === "open" ? "opened" : "closed"} {formatRelativeTimeLabel(activityTime)}
           </span>
