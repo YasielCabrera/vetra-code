@@ -6,24 +6,33 @@ Cursor CLI, including the `agent login` step that catches people out, see
 
 ## Where Cursor Skills Are Loaded
 
-Vetra Code looks for Cursor skills in three folders, each holding one directory per skill with a
+Vetra Code looks for Cursor skills in four places, each holding one directory per skill with a
 `SKILL.md` file:
 
 - `~/.cursor/skills-cursor` — Cursor's own built-in skills, which the Cursor CLI installs and
   keeps up to date.
+- Installed plugins — each plugin's manifest names the folder its skills live in. On a machine
+  with a few plugins these are usually the majority of your skills.
 - `~/.cursor/skills` — your personal skills, available in every project.
 - `<workspace>/.cursor/skills` — project skills, shared with anyone using the repository.
 
-If the same skill name exists in more than one folder, the more specific folder wins: project beats
-personal, and personal beats built-in. Personal skills that are symbolic links to a shared folder
-are followed.
+If the same skill name exists in more than one place, the more specific one wins: project beats
+personal, personal beats plugin, and plugin beats built-in, so a plugin can never shadow a skill you
+wrote yourself. Personal skills that are symbolic links to a shared folder are followed, and skills
+grouped into subfolders are found.
+
+A plugin contributes only the skills its manifest declares. Files a plugin keeps elsewhere — such
+as instructions bundled with an automation — are not offered as skills, matching how Cursor treats
+them. A skill marked as not user-invocable stays hidden from the picker, since it is meant to be
+applied automatically rather than chosen.
 
 Skills are read on the machine running the Vetra Code server, so a remote environment contributes
 its own skills rather than the ones on the device you browse from. A skill whose `SKILL.md` has
 broken frontmatter is skipped, matching what Cursor itself does.
 
-Type `$` in the composer to find and add a skill. Cursor's built-in skills appear with a
-**Provider** badge. See [Message composer](./composer.md) for the rest of the picker's behavior.
+Type `$` in the composer to find and add a skill. Each row shows where the skill came from, so
+plugin skills are distinguishable from your own. See [Message composer](./composer.md) for the rest
+of the picker's behavior.
 
 ## When A Cursor Turn Ends Early
 

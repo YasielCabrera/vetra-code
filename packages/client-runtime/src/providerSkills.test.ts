@@ -77,6 +77,15 @@ describe("resolveProviderSkillSourceKind", () => {
     ).toBe("app");
   });
 
+  it("marks a reported plugin scope as an app install", () => {
+    expect(
+      resolveProviderSkillSourceKind({
+        path: "/Users/julius/.cursor/plugins/cache/cursor-public/pstack/hash/skills/tdd/SKILL.md",
+        scope: "plugin",
+      }),
+    ).toBe("app");
+  });
+
   it("maps standard scopes to source kinds", () => {
     expect(
       resolveProviderSkillSourceKind({

@@ -50,6 +50,10 @@ export function resolveProviderSkillSourceKind(
 
   const normalizedScope = skill.scope?.trim().toLowerCase();
   switch (normalizedScope) {
+    // Providers that report a plugin scope directly — Cursor and Grok — rather
+    // than through one of the plugin cache paths matched above.
+    case "plugin":
+      return "app";
     case "repo":
     case "repository":
       return "repo";
