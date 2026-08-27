@@ -96,6 +96,13 @@ RENAMES=(
   't3-env=vetra-env'
   't3-test=vetra-test'
   't3code=vetra-code'
+  # Upstream publishes this workspace package unscoped as `effect-acp`; the
+  # fork renamed it to `@vetra-code/effect-acp`. Handled as a special case
+  # below because it needs lookbehinds: a `packages/effect-acp` *path* must
+  # stay unscoped, and an already-scoped specifier must not double-scope.
+  # Without this pair, an upstream file that adds `from "effect-acp/errors"`
+  # merges cleanly and then fails to resolve.
+  'effect-acp=@vetra-code/effect-acp'
 )
 
 say() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
@@ -145,13 +152,15 @@ while IFS= read -r file; do
   [[ -L "$file" ]] && continue
   [[ -f "$file" ]] || continue
   grep -Iq . "$file" 2>/dev/null || continue   # skip binaries
-  grep -qE 't3|T3' "$file" 2>/dev/null || continue
+  grep -qE 't3|T3|effect-acp' "$file" 2>/dev/null || continue
   before=$(shasum "$file" | cut -d' ' -f1)
   for pair in "${RENAMES[@]}"; do
     from="${pair%%=*}"
     to="${pair#*=}"
     if [[ "$from" == "t3code" ]]; then
       perl -pi -e 's{(?<!pingdotgg/)\Qt3code\E}{vetra-code}g' "$file"
+    elif [[ "$from" == "effect-acp" ]]; then
+      perl -pi -e 's{(?<!\@vetra-code/)(?<!packages/)\Qeffect-acp\E}{\@vetra-code/effect-acp}g' "$file"
     else
       FROM="$from" TO="$to" perl -pi -e 's{\Q$ENV{FROM}\E}{$ENV{TO}}g' "$file"
     fi

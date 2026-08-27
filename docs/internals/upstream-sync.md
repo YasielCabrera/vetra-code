@@ -363,6 +363,7 @@ substrings of earlier ones. Current pairs (see the script for the live list):
 | `T3Tools` / `T3Code`                                                  | `VetraTools` / `VetraCode`                         |
 | `t3-resource-monitor` / `t3-relay` / `t3-chat` / `t3-env` / `t3-test` | `vetra-*`                                          |
 | `t3code` (not preceded by `pingdotgg/`)                               | `vetra-code`                                       |
+| `effect-acp` (not already scoped, not a `packages/` path)             | `@vetra-code/effect-acp`                           |
 
 Runtime constants that must not drift, even if a merge conflict "resolves" them back:
 
