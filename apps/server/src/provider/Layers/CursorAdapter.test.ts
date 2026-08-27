@@ -28,7 +28,7 @@ import {
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
 import type { CursorAdapterShape } from "../Services/CursorAdapter.ts";
-import { makeCursorAdapter } from "./CursorAdapter.ts";
+import { cursorStopReasonWarning, makeCursorAdapter } from "./CursorAdapter.ts";
 const decodeCursorSettings = Schema.decodeSync(CursorSettings);
 
 // Test-local service tag so the rest of the file can keep using `yield* CursorAdapter`.
@@ -146,6 +146,18 @@ const makeResolveCursorSettings = Effect.gen(function* () {
       Effect.orDie,
     ),
   );
+});
+
+const makeTestAdapter = (binaryPath: string, options?: Parameters<typeof makeCursorAdapter>[1]) =>
+  makeCursorAdapter(decodeCursorSettings({ binaryPath }), options).pipe(Effect.orDie);
+
+it("explains only the stop reasons that end a turn with work outstanding", () => {
+  assert.isUndefined(cursorStopReasonWarning("end_turn"));
+  assert.isUndefined(cursorStopReasonWarning("cancelled"));
+  assert.isUndefined(cursorStopReasonWarning(undefined));
+  assert.include(cursorStopReasonWarning("max_turn_requests") ?? "", "per-turn limit");
+  assert.include(cursorStopReasonWarning("max_tokens") ?? "", "token limit");
+  assert.include(cursorStopReasonWarning("refusal") ?? "", "declined");
 });
 
 const cursorAdapterTestLayer = it.layer(
@@ -1495,6 +1507,82 @@ cursorAdapterTestLayer("CursorAdapterLive", (it) => {
       // Live clock so the timeouts above are real: under the default test clock
       // they wait on virtual time that never advances, and a regression would
       // hang until the suite timeout instead of failing here.
+    }).pipe(TestClock.withLive),
+  );
+
+  it.effect("fails a Cursor turn whose ACP prompt never returns", () =>
+    Effect.gen(function* () {
+      const threadId = ThreadId.make("cursor-watchdog-silent-turn");
+      const wrapperPath = yield* Effect.promise(() =>
+        makeMockAgentWrapper({ VETRA_ACP_HANG_PROMPT_FOREVER: "1" }),
+      );
+      const adapter = yield* makeTestAdapter(wrapperPath, { turnInactivityTimeoutMs: 1_000 });
+      const turnCompleted =
+        yield* Deferred.make<Extract<ProviderRuntimeEvent, { type: "turn.completed" }>>();
+      const runtimeEventsFiber = yield* Stream.runForEach(adapter.streamEvents, (event) =>
+        event.type === "turn.completed" && String(event.threadId) === String(threadId)
+          ? Deferred.succeed(turnCompleted, event).pipe(Effect.ignore)
+          : Effect.void,
+      ).pipe(Effect.forkChild);
+
+      yield* adapter.startSession({
+        threadId,
+        provider: ProviderDriverKind.make("cursor"),
+        cwd: process.cwd(),
+        runtimeMode: "full-access",
+      });
+      const sendTurnFiber = yield* adapter
+        .sendTurn({ threadId, input: "silence forever", attachments: [] })
+        .pipe(Effect.forkChild);
+
+      const completed = yield* Deferred.await(turnCompleted).pipe(Effect.timeout("20 seconds"));
+      yield* Fiber.join(sendTurnFiber).pipe(Effect.timeout("20 seconds"));
+
+      assert.equal(completed.payload.state, "failed");
+      assert.include(completed.payload.errorMessage ?? "", "stopped sending updates");
+
+      const session = (yield* adapter.listSessions()).find(
+        (candidate) => candidate.threadId === threadId,
+      );
+      assert.isUndefined(session?.activeTurnId);
+
+      yield* Fiber.interrupt(runtimeEventsFiber);
+      yield* adapter.stopSession(threadId);
+      // Live clock: the guard sleeps on a real deadline, and under the default
+      // virtual clock a regression would hang until the suite timeout.
+    }).pipe(TestClock.withLive),
+  );
+
+  it.effect("does not fail a Cursor turn that is still streaming progress", () =>
+    Effect.gen(function* () {
+      const threadId = ThreadId.make("cursor-watchdog-live-turn");
+      const wrapperPath = yield* Effect.promise(() => makeMockAgentWrapper());
+      // A deadline far longer than the mock's prompt so a healthy turn must
+      // finish on its own; the guard firing here would flip state to failed.
+      const adapter = yield* makeTestAdapter(wrapperPath, { turnInactivityTimeoutMs: 30_000 });
+      const turnCompleted =
+        yield* Deferred.make<Extract<ProviderRuntimeEvent, { type: "turn.completed" }>>();
+      const runtimeEventsFiber = yield* Stream.runForEach(adapter.streamEvents, (event) =>
+        event.type === "turn.completed" && String(event.threadId) === String(threadId)
+          ? Deferred.succeed(turnCompleted, event).pipe(Effect.ignore)
+          : Effect.void,
+      ).pipe(Effect.forkChild);
+
+      yield* adapter.startSession({
+        threadId,
+        provider: ProviderDriverKind.make("cursor"),
+        cwd: process.cwd(),
+        runtimeMode: "full-access",
+      });
+      yield* adapter
+        .sendTurn({ threadId, input: "hello", attachments: [] })
+        .pipe(Effect.timeout("20 seconds"));
+
+      const completed = yield* Deferred.await(turnCompleted).pipe(Effect.timeout("20 seconds"));
+      assert.equal(completed.payload.state, "completed");
+
+      yield* Fiber.interrupt(runtimeEventsFiber);
+      yield* adapter.stopSession(threadId);
     }).pipe(TestClock.withLive),
   );
 });

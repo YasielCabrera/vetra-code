@@ -24,3 +24,18 @@ broken frontmatter is skipped, matching what Cursor itself does.
 
 Type `$` in the composer to find and add a skill. Cursor's built-in skills appear with a
 **Provider** badge. See [Message composer](./composer.md) for the rest of the picker's behavior.
+
+## When A Cursor Turn Ends Early
+
+Cursor can stop before the work is finished — most often after reaching its own
+per-turn limit on agent requests, or its token limit. Vetra Code records the reason in
+the thread's work log, so a turn that quit partway is distinguishable from one that
+finished. The turn still keeps its checkpoint, so you can review or restore whatever
+the agent changed before it stopped. Send another message to continue from where it
+left off.
+
+Separately, if the Cursor CLI goes completely silent — no output and no tool progress
+for ten minutes, or thirty while a tool is still running — Vetra Code cancels the turn
+and marks it failed instead of leaving it running forever. A turn waiting on your
+approval or on an answer to a question is not counted as silent and will wait
+indefinitely.

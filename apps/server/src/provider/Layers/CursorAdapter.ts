@@ -21,7 +21,9 @@ import {
   type ThreadId,
   TurnId,
 } from "@vetra-code/contracts";
+import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
+import * as Duration from "effect/Duration";
 import * as Crypto from "effect/Crypto";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -85,6 +87,18 @@ const ACP_PLAN_MODE_ALIASES = ["plan", "architect"];
 const ACP_IMPLEMENT_MODE_ALIASES = ["code", "agent", "default", "chat", "implement"];
 const ACP_APPROVAL_MODE_ALIASES = ["ask"];
 
+// Cursor can leave `session/prompt` pending forever: the CLI stops streaming
+// but never returns a stop reason, so the turn stays "running" with no way
+// out but a manual interrupt. These bound that wait. They are deliberately
+// generous — a turn that is merely thinking must never be mistaken for a
+// stalled one — and measured from the last ACP event of any kind, not from
+// the start of the turn.
+const DEFAULT_CURSOR_TURN_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1_000;
+// A running tool reports nothing until it finishes, so a long build or test
+// run looks identical to a stall. Give an in-flight tool call much longer.
+const DEFAULT_CURSOR_ACTIVE_TOOL_INACTIVITY_TIMEOUT_MS = 30 * 60 * 1_000;
+const NANOS_PER_MILLI = 1_000_000n;
+
 function encodeJsonStringForDiagnostics(input: unknown): string | undefined {
   const result = encodeUnknownJsonStringExit(input);
   return Exit.isSuccess(result) ? result.value : undefined;
@@ -111,6 +125,10 @@ export interface CursorAdapterLiveOptions {
    * the latest snapshot so the closure isn't stale.
    */
   readonly resolveSettings?: Effect.Effect<CursorSettings>;
+  /** Override the ACP turn inactivity timeout in focused tests. */
+  readonly turnInactivityTimeoutMs?: number;
+  /** Override the longer in-flight-tool inactivity timeout in focused tests. */
+  readonly activeToolInactivityTimeoutMs?: number;
 }
 
 interface PendingApproval {
@@ -120,6 +138,29 @@ interface PendingApproval {
 
 interface PendingUserInput {
   readonly answers: Deferred.Deferred<ProviderUserInputAnswers>;
+}
+
+/**
+ * Explain an ACP stop reason that ended a turn before the agent was finished.
+ *
+ * `end_turn` is an ordinary completion and `cancelled` is the user interrupting;
+ * both return undefined. The other three mean Cursor stopped on its own while
+ * work was still outstanding, which is indistinguishable from a normal finish
+ * in the turn record — the turn is reported completed, with a checkpoint, and
+ * nothing says why it stopped. Surfacing the reason is what turns "it just
+ * stopped after a few tool calls" into something a user can act on.
+ */
+export function cursorStopReasonWarning(stopReason: string | undefined): string | undefined {
+  switch (stopReason) {
+    case "max_turn_requests":
+      return "Cursor ended this turn early: it reached its per-turn limit on agent requests. Send another message to continue where it stopped.";
+    case "max_tokens":
+      return "Cursor ended this turn early: it reached its token limit. Send another message to continue where it stopped.";
+    case "refusal":
+      return "Cursor declined to continue this turn.";
+    default:
+      return undefined;
+  }
 }
 
 interface CursorSessionContext {
@@ -137,6 +178,14 @@ interface CursorSessionContext {
    * >0 means a turn is actively running, so a new sendTurn is a steer that
    * continues it, and only the last remaining prompt settles the turn. */
   promptsInFlight: number;
+  /**
+   * Monotonic timestamp of the last ACP event for this session, used by the
+   * turn inactivity guard. Monotonic rather than wall clock so a system clock
+   * change cannot make a live turn look stalled.
+   */
+  lastTurnActivityAtNanos: bigint | undefined;
+  /** Tool calls Cursor has started but not yet completed or failed. */
+  readonly activeToolCallIds: Set<string>;
   stopped: boolean;
 }
 
@@ -350,6 +399,55 @@ export function makeCursorAdapter(
     );
     const nextEventId = Effect.map(randomUUIDv4, (id) => EventId.make(id));
     const makeEventStamp = () => Effect.all({ eventId: nextEventId, createdAt: nowIso });
+    const positiveMsOr = (requested: number | undefined, fallback: number) =>
+      typeof requested === "number" && Number.isFinite(requested)
+        ? Math.max(1, Math.floor(requested))
+        : fallback;
+    const turnInactivityTimeoutMs = positiveMsOr(
+      options?.turnInactivityTimeoutMs,
+      DEFAULT_CURSOR_TURN_INACTIVITY_TIMEOUT_MS,
+    );
+    const activeToolInactivityTimeoutMs = positiveMsOr(
+      options?.activeToolInactivityTimeoutMs,
+      DEFAULT_CURSOR_ACTIVE_TOOL_INACTIVITY_TIMEOUT_MS,
+    );
+    const inactivityTimeoutFor = (ctx: CursorSessionContext) =>
+      ctx.activeToolCallIds.size > 0
+        ? activeToolInactivityTimeoutMs
+        : turnInactivityTimeoutMs;
+
+    /**
+     * Resolves once the session has produced no ACP event for its inactivity
+     * timeout. Deadline-driven rather than polled: each wake either finds that
+     * activity moved the deadline out and sleeps again, or fires.
+     *
+     * A turn blocked on an approval or a user-input request is waiting on a
+     * person, not stalled, so the guard holds while either is outstanding.
+     */
+    const awaitTurnInactivity = Effect.fn("CursorAdapter.awaitTurnInactivity")(function* (
+      ctx: CursorSessionContext,
+    ) {
+      while (true) {
+        const timeoutMs = inactivityTimeoutFor(ctx);
+        const lastActivityAtNanos = ctx.lastTurnActivityAtNanos;
+        if (
+          ctx.stopped ||
+          ctx.pendingApprovals.size > 0 ||
+          ctx.pendingUserInputs.size > 0 ||
+          lastActivityAtNanos === undefined
+        ) {
+          yield* Effect.sleep(Duration.millis(timeoutMs));
+          continue;
+        }
+        const remainingNanos =
+          BigInt(timeoutMs) * NANOS_PER_MILLI -
+          ((yield* Clock.monotonicTimeNanos) - lastActivityAtNanos);
+        if (remainingNanos <= 0n) {
+          return timeoutMs;
+        }
+        yield* Effect.sleep(Duration.nanos(remainingNanos));
+      }
+    });
     const mapExtensionFailure = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
       effect.pipe(
         Effect.mapError(
@@ -779,12 +877,17 @@ export function makeCursorAdapter(
             lastPlanFingerprint: undefined,
             activeTurnId: undefined,
             promptsInFlight: 0,
+            lastTurnActivityAtNanos: undefined,
+            activeToolCallIds: new Set<string>(),
             stopped: false,
           };
 
           const nf = yield* Stream.runDrain(
             Stream.mapEffect(acp.getEvents(), (event) =>
               Effect.gen(function* () {
+                if (event._tag !== "EventStreamBarrier") {
+                  ctx.lastTurnActivityAtNanos = yield* Clock.monotonicTimeNanos;
+                }
                 switch (event._tag) {
                   case "EventStreamBarrier":
                     yield* Deferred.succeed(event.acknowledge, undefined);
@@ -831,6 +934,14 @@ export function makeCursorAdapter(
                     );
                     return;
                   case "ToolCallUpdated":
+                    if (
+                      event.toolCall.status === "completed" ||
+                      event.toolCall.status === "failed"
+                    ) {
+                      ctx.activeToolCallIds.delete(event.toolCall.toolCallId);
+                    } else {
+                      ctx.activeToolCallIds.add(event.toolCall.toolCallId);
+                    }
                     yield* logNative(
                       ctx.threadId,
                       "session/update",
@@ -1010,15 +1121,69 @@ export function makeCursorAdapter(
             });
           }
 
-          const result = yield* ctx.acp
-            .prompt({
-              prompt: promptParts,
-            })
-            .pipe(
-              Effect.mapError((error) =>
-                mapAcpToAdapterError(PROVIDER, input.threadId, "session/prompt", error),
+          // Start the turn's activity clock before prompting: without this a
+          // session that never emits a single event would leave the guard with
+          // no deadline to measure from.
+          ctx.lastTurnActivityAtNanos = yield* Clock.monotonicTimeNanos;
+          const promptOutcome = yield* Effect.raceFirst(
+            ctx.acp
+              .prompt({
+                prompt: promptParts,
+              })
+              .pipe(
+                Effect.mapError((error) =>
+                  mapAcpToAdapterError(PROVIDER, input.threadId, "session/prompt", error),
+                ),
+                Effect.map((value) => ({ kind: "prompt" as const, value })),
+              ),
+            awaitTurnInactivity(ctx).pipe(
+              Effect.map((timeoutMs) => ({ kind: "stalled" as const, timeoutMs })),
+            ),
+          );
+
+          if (promptOutcome.kind === "stalled") {
+            // Cancel so the CLI stops working against a turn nobody is waiting
+            // on, then settle the turn as failed. Without this the turn stays
+            // "running" until someone interrupts it by hand.
+            yield* settlePendingApprovalsAsCancelled(ctx.pendingApprovals);
+            yield* settlePendingUserInputsAsEmptyAnswers(ctx.pendingUserInputs);
+            yield* Effect.ignore(
+              ctx.acp.cancel.pipe(
+                Effect.mapError((error) =>
+                  mapAcpToAdapterError(PROVIDER, input.threadId, "session/cancel", error),
+                ),
               ),
             );
+            ctx.activeToolCallIds.clear();
+            ctx.session = {
+              ...ctx.session,
+              activeTurnId: undefined,
+              updatedAt: yield* nowIso,
+            };
+            // Only the last remaining prompt settles the turn, matching the
+            // success path: a steer still in flight keeps the turn running.
+            if (ctx.promptsInFlight === 1) {
+              yield* offerRuntimeEvent({
+                type: "turn.completed",
+                ...(yield* makeEventStamp()),
+                provider: PROVIDER,
+                threadId: input.threadId,
+                turnId,
+                payload: {
+                  state: "failed",
+                  stopReason: null,
+                  errorMessage: `Cursor stopped sending updates for ${promptOutcome.timeoutMs}ms and the turn never finished. The turn was cancelled.`,
+                },
+              });
+            }
+            return {
+              threadId: input.threadId,
+              turnId,
+              resumeCursor: ctx.session.resumeCursor,
+            };
+          }
+
+          const result = promptOutcome.value;
 
           const turnRecord = ctx.turns.find((turn) => turn.id === turnId);
           if (turnRecord) {
@@ -1037,6 +1202,20 @@ export function makeCursorAdapter(
           // superseded prompt resolving (usually cancelled) while another is
           // in flight or pending must leave the merged turn running.
           if (ctx.promptsInFlight === 1) {
+            const stopReasonWarning = cursorStopReasonWarning(result.stopReason);
+            if (stopReasonWarning) {
+              yield* offerRuntimeEvent({
+                type: "runtime.warning",
+                ...(yield* makeEventStamp()),
+                provider: PROVIDER,
+                threadId: input.threadId,
+                turnId,
+                payload: {
+                  message: stopReasonWarning,
+                  detail: { stopReason: result.stopReason },
+                },
+              });
+            }
             yield* offerRuntimeEvent({
               type: "turn.completed",
               ...(yield* makeEventStamp()),
