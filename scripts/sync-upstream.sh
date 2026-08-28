@@ -88,6 +88,10 @@ RENAMES=(
   't3Home=vetraHome'
   'T3Tools=VetraTools'
   'T3Code=VetraCode'
+  # Lower-camel form used in analytics property names (`t3CodeVersion`). Neither
+  # `T3Code` nor the leftover grep's `T3[A-Z][a-z]` matches it, so without this
+  # pair a merged property name silently keeps T3 identity.
+  't3Code=vetraCode'
   't3-resource-monitor=vetra-resource-monitor'
   't3-relay=vetra-relay'
   # Prose form of the theme name, which `t3-chat` below does not match.

@@ -412,9 +412,7 @@ export function makeCursorAdapter(
       DEFAULT_CURSOR_ACTIVE_TOOL_INACTIVITY_TIMEOUT_MS,
     );
     const inactivityTimeoutFor = (ctx: CursorSessionContext) =>
-      ctx.activeToolCallIds.size > 0
-        ? activeToolInactivityTimeoutMs
-        : turnInactivityTimeoutMs;
+      ctx.activeToolCallIds.size > 0 ? activeToolInactivityTimeoutMs : turnInactivityTimeoutMs;
 
     /**
      * Resolves once the session has produced no ACP event for its inactivity
@@ -1083,6 +1081,11 @@ export function makeCursorAdapter(
           }
           if (input.attachments && input.attachments.length > 0) {
             for (const attachment of input.attachments) {
+              // Cursor ingests images only. Generic files reach the agent
+              // through the path line ProviderService puts in the prompt.
+              if (attachment.type !== "image") {
+                continue;
+              }
               const attachmentPath = resolveAttachmentPath({
                 attachmentsDir: serverConfig.attachmentsDir,
                 attachment,

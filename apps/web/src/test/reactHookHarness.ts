@@ -20,6 +20,7 @@ import type { Dispatch, SetStateAction } from "react";
  *   return {
  *     ...actual,
  *     useCallback: reactHookHarness.useCallback,
+ *     useEffect: reactHookHarness.useEffect,
  *     useMemo: reactHookHarness.useMemo,
  *     useRef: reactHookHarness.useRef,
  *     useState: reactHookHarness.useState,
@@ -50,6 +51,13 @@ export function createReactHookHarness() {
     useCallback<T>(callback: T): T {
       nextIndex();
       return callback;
+    },
+    /**
+     * Effects never commit when a component is called as a plain function, so
+     * this only consumes a slot to keep the call-order cursor aligned.
+     */
+    useEffect(_effect: () => void | (() => void), _deps?: ReadonlyArray<unknown>): void {
+      nextIndex();
     },
     useMemo<T>(factory: () => T): T {
       nextIndex();

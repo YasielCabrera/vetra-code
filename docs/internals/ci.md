@@ -8,7 +8,8 @@ requests and pushes to `main`:
 - **Check**: `vp check` (format and lint; this repo sets `typeCheck: false` in its lint options),
   then `vpr typecheck` for the workspace type check. The same job
   builds the desktop pipeline (`vp run build:desktop`) and verifies the preload bundle exists and
-  still exports its expected symbols.
+  uses only imports that Electron's sandbox can load. The verifier parses imports, then executes the
+  trusted artifact with controlled bridge stubs to confirm that its required APIs are callable.
 - **Test**: every workspace package except `@vetra-code/server`, run in parallel with a concurrency
   limit of 4. This job also installs the Electron runtime, which `@vetra-code/desktop` tests need.
 - **Test Server 1-3**: `@vetra-code/server` only, sharded across three runners. `apps/server` sets
