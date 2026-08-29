@@ -59,6 +59,7 @@ import * as PowerhouseDatabaseInspector from "./powerhouse/PowerhouseDatabaseIns
 import * as PowerhouseReactorClient from "./powerhouse/PowerhouseReactorClient.ts";
 import * as ProcessRunner from "./processRunner.ts";
 import * as GitManager from "./git/GitManager.ts";
+import * as EnvironmentTheme from "./environmentTheme.ts";
 import * as Keybindings from "./keybindings.ts";
 import * as ServerRuntimeStartup from "./serverRuntimeStartup.ts";
 import { OrchestrationReactorLive } from "./orchestration/Layers/OrchestrationReactor.ts";
@@ -263,11 +264,13 @@ const ReactorLayerLive = Layer.empty.pipe(
   Layer.provideMerge(ProviderRuntimeIngestionLive),
   Layer.provideMerge(ProviderCommandReactorLive),
   Layer.provideMerge(CheckpointReactorLive),
-  Layer.provideMerge(ThreadDeletionReactorLive),
   // The scheduler starts runs through the bootstrap service, so the bootstrap
   // has to come after it in this chain: later entries provide to earlier ones.
   Layer.provideMerge(AutomationSchedulerLive),
   Layer.provideMerge(ThreadTurnBootstrapLive),
+  // The bootstrap fences a reused thread id on the deletion reactor's drain,
+  // so the reactor has to come after it for the same reason.
+  Layer.provideMerge(ThreadDeletionReactorLive),
   Layer.provideMerge(AgentAwarenessRelay.layer.pipe(Layer.provide(ServerSecretStore.layer))),
   Layer.provideMerge(RuntimeReceiptBusLive),
 );
@@ -417,7 +420,9 @@ const RuntimeCoreDependenciesBaseLive = ReactorLayerLive.pipe(
   Layer.provideMerge(ProviderRuntimeLayerLive),
   Layer.provideMerge(Layer.mergeAll(TerminalLayerLive, PreviewLayerLive)),
   Layer.provideMerge(PersistenceLayerLive),
-  Layer.provideMerge(Keybindings.layer),
+  // Both read a user-owned file out of the state directory and stream changes
+  // to clients; neither depends on the other.
+  Layer.provideMerge(Layer.mergeAll(Keybindings.layer, EnvironmentTheme.layer)),
   Layer.provideMerge(ProviderRegistryLive),
   Layer.provideMerge(ProviderSubscriptionUsageService.layer),
   // The instance registry is the new routing keystone — text generation,

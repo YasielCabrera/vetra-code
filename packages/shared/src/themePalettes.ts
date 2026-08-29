@@ -10,6 +10,35 @@ export const MOBILE_DEFAULT_THEME_ID = "vetra-code";
  */
 export const MOBILE_THEME_IDS = [MOBILE_DEFAULT_THEME_ID, ...BUILT_IN_THEME_IDS] as const;
 
+/**
+ * Ids a theme may not take: the appearance keywords a stored preference uses,
+ * every built-in, and the legacy aliases older saves still carry. Taking one
+ * would either be shadowed by the built-in or capture clients that never chose
+ * it, so the client library and the publish path both consult this set.
+ */
+export const RESERVED_THEME_IDS: ReadonlySet<string> = new Set([
+  "system",
+  "light",
+  "dark",
+  ...BUILT_IN_THEME_IDS,
+  "vetra-chat-dark",
+  "vetra-grove",
+  "vetra-ocean",
+  "vetra-ember",
+  "vetra-iris",
+]);
+
+/**
+ * Additionally closed to a machine publishing a theme: the mobile default is
+ * not a web or desktop built-in, so a saved theme may legitimately carry that
+ * id, but no client that follows published themes can resolve it -- publishing
+ * it would report success and change nothing.
+ */
+export const UNPUBLISHABLE_THEME_IDS: ReadonlySet<string> = new Set([
+  ...RESERVED_THEME_IDS,
+  MOBILE_DEFAULT_THEME_ID,
+]);
+
 export type BuiltInThemeId = (typeof BUILT_IN_THEME_IDS)[number];
 export type MobileThemeId = (typeof MOBILE_THEME_IDS)[number];
 export type ThemeAppearance = "light" | "dark";
@@ -94,7 +123,7 @@ export type ThemeDefinition = Readonly<{
 
 export const VETRA_CHAT_THEME: ThemeDefinition = {
   id: "vetra-chat",
-  label: "T3 Chat",
+  label: "Vetra Chat",
   appearance: "light",
   colors: {
     canvas: "oklch(0.982446 0.010114 325.653)",

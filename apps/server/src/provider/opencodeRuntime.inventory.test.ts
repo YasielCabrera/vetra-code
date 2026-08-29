@@ -18,6 +18,34 @@ import { OpenCodeRuntime, OpenCodeRuntimeLive } from "./opencodeRuntime.ts";
 const testLayer = OpenCodeRuntimeLive.pipe(Layer.provideMerge(NodeServices.layer));
 
 it.layer(testLayer)("OpenCodeRuntime inventory", (it) => {
+  it.effect("keeps provider inventory when agent discovery fails", () =>
+    Effect.gen(function* () {
+      const runtime = yield* OpenCodeRuntime;
+      const client = {
+        provider: {
+          list: () =>
+            Promise.resolve({
+              data: {
+                connected: ["openai"],
+                all: [],
+                default: {},
+              },
+            }),
+        },
+        app: {
+          agents: () => Promise.reject(new Error("agents endpoint unavailable")),
+          skills: () => Promise.resolve({ data: [] }),
+        },
+      } as unknown as OpencodeClient;
+
+      const inventory = yield* runtime.loadOpenCodeInventory(client);
+
+      NodeAssert.deepEqual(inventory.providerList.connected, ["openai"]);
+      NodeAssert.deepEqual(inventory.agents, []);
+      NodeAssert.deepEqual(inventory.skills, []);
+    }),
+  );
+
   it.effect("keeps provider inventory when skill discovery fails", () =>
     Effect.gen(function* () {
       const runtime = yield* OpenCodeRuntime;
@@ -95,7 +123,7 @@ it.layer(testLayer)("OpenCodeRuntime inventory", (it) => {
       const hostEnvironment = yield* HostProcessEnvironment;
       const executablePath = yield* HostProcessExecutablePath;
       const hostPlatform = yield* HostProcessPlatform;
-      const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-opencode-inventory-" });
+      const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-opencode-inventory-" });
       const isWindows = hostPlatform === "win32";
       const binaryPath = path.join(tempDir, isWindows ? "opencode.cmd" : "opencode");
       const scriptPath = path.join(tempDir, "opencode.mjs");

@@ -16,6 +16,7 @@ import * as GitWorkflowService from "../../git/GitWorkflowService.ts";
 import * as ProjectSetupScriptRunner from "../../project/ProjectSetupScriptRunner.ts";
 import * as VcsStatusBroadcaster from "../../vcs/VcsStatusBroadcaster.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
+import { ThreadDeletionReactor } from "../Services/ThreadDeletionReactor.ts";
 import {
   ThreadTurnBootstrap,
   type ThreadTurnBootstrapDispatchOptions,
@@ -60,6 +61,7 @@ const make = Effect.gen(function* () {
   const gitWorkflow = yield* GitWorkflowService.GitWorkflowService;
   const projectSetupScriptRunner = yield* ProjectSetupScriptRunner.ProjectSetupScriptRunner;
   const vcsStatusBroadcaster = yield* VcsStatusBroadcaster.VcsStatusBroadcaster;
+  const threadDeletionReactor = yield* ThreadDeletionReactor;
   const crypto = yield* Crypto.Crypto;
 
   const toDispatchCommandError = (cause: unknown, fallbackMessage: string) =>
@@ -287,7 +289,7 @@ const make = Effect.gen(function* () {
 
       const bootstrapProgram = Effect.gen(function* () {
         if (bootstrap?.createThread) {
-          yield* orchestrationEngine.dispatch(
+          const created = yield* orchestrationEngine.dispatch(
             {
               type: "thread.create",
               commandId: yield* serverCommandId("bootstrap-thread-create"),
@@ -309,6 +311,11 @@ const make = Effect.gen(function* () {
             },
             dispatchOptions,
           );
+          // The successful create is a fence in the engine command queue:
+          // every delete for the prior incarnation committed before it.
+          // Drain through that event before setup or turn start can own
+          // terminals and provider sessions under the reused thread id.
+          yield* threadDeletionReactor.drainThrough(created.sequence);
           createdThread = true;
         }
 

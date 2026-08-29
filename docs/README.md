@@ -12,12 +12,13 @@
 - [Inspect Powerhouse projects](./user/powerhouse-panel.md)
 - [Run work on a schedule](./user/automations.md)
 - [Customize a project icon](./user/project-settings.md)
+- [Environment themes](./user/environment-theme.md)
 - [Remote access](./user/remote-access.md)
 - [Keeping app and server in sync](./user/updating.md)
 - [Source control integrations](./user/source-control.md)
 - [Preview wallet (Web3)](./user/preview-wallet.md)
 - [Background service (Linux)](./user/background-service.md)
-- Providers: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [Cursor](./user/providers-cursor.md)
+- Providers: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [Cursor](./user/providers-cursor.md) · [OpenCode](./user/providers-opencode.md)
 
 ---
 

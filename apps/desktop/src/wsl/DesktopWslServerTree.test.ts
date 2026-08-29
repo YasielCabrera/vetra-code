@@ -54,7 +54,7 @@ const withTempDir = <A, E, R>(
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const tempDir = yield* fileSystem.makeTempDirectoryScoped({
-      prefix: "t3-wsl-server-tree-test-",
+      prefix: "vetra-wsl-server-tree-test-",
     });
     return yield* run(tempDir);
   }).pipe(Effect.scoped);
@@ -293,6 +293,93 @@ describe("DesktopWslServerTree", () => {
         // The previous version's tree is gone.
         const treeRoot = path.dirname(root);
         assert.isFalse(yield* fileSystem.exists(path.join(treeRoot, "1.2.3")));
+      }),
+    ).pipe(Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect("removes the legacy Windows extraction tree without preparing a fallback", () =>
+    withTempDir((tempDir) =>
+      Effect.gen(function* () {
+        const fileSystem = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const resourcesPath = path.join(tempDir, "resources");
+        const treeRoot = path.join(tempDir, "userdata", "wsl-server-tree");
+        yield* fileSystem.makeDirectory(path.join(treeRoot, "1.2.3"), { recursive: true });
+        yield* fileSystem.writeFileString(path.join(treeRoot, "1.2.3", "legacy"), "old");
+
+        yield* Effect.gen(function* () {
+          const tree = yield* DesktopWslServerTree.DesktopWslServerTree;
+          yield* tree.cleanupLegacy;
+        }).pipe(
+          Effect.provide(
+            DesktopWslServerTree.layer.pipe(
+              Layer.provideMerge(environmentLayer({ baseDir: tempDir, resourcesPath })),
+            ),
+          ),
+        );
+
+        assert.isFalse(yield* fileSystem.exists(treeRoot));
+      }),
+    ).pipe(Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect("re-extracts after legacy cleanup partially deletes the completed tree", () =>
+    withTempDir((tempDir) =>
+      Effect.gen(function* () {
+        const fileSystem = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const resourcesPath = path.join(tempDir, "resources");
+        const serverRoot = path.join(resourcesPath, "server.asar");
+        const sourceEntryPath = path.join(serverRoot, "apps/server/dist/bin.mjs");
+        yield* fileSystem.makeDirectory(path.dirname(sourceEntryPath), { recursive: true });
+        yield* fileSystem.writeFileString(sourceEntryPath, "fresh-server-entry");
+
+        const initial = yield* ensureWith({ baseDir: tempDir, resourcesPath });
+        assert.isTrue(initial.ok);
+        const versionDir = initial.ok ? initial.root : "";
+        const treeRoot = path.dirname(versionDir);
+        const extractedEntryPath = path.join(versionDir, "apps/server/dist/bin.mjs");
+        let cleanupFailed = false;
+        const partialCleanupFileSystem = Layer.effect(
+          FileSystem.FileSystem,
+          Effect.gen(function* () {
+            const realFileSystem = yield* FileSystem.FileSystem;
+            return {
+              ...realFileSystem,
+              remove: (target, options) =>
+                String(target) === treeRoot && options?.recursive === true && !cleanupFailed
+                  ? Effect.gen(function* () {
+                      cleanupFailed = true;
+                      yield* realFileSystem.remove(extractedEntryPath);
+                      return yield* PlatformError.systemError({
+                        _tag: "PermissionDenied",
+                        module: "FileSystem",
+                        method: "remove",
+                        pathOrDescriptor: treeRoot,
+                        description: "simulated partial legacy cleanup",
+                      });
+                    })
+                  : realFileSystem.remove(target, options),
+            } satisfies FileSystem.FileSystem;
+          }),
+        ).pipe(Layer.provide(NodeServices.layer));
+
+        const result = yield* Effect.gen(function* () {
+          const tree = yield* DesktopWslServerTree.DesktopWslServerTree;
+          yield* tree.cleanupLegacy;
+          return yield* tree.ensure;
+        }).pipe(
+          Effect.provide(
+            DesktopWslServerTree.layer.pipe(
+              Layer.provideMerge(environmentLayer({ baseDir: tempDir, resourcesPath })),
+              Layer.provideMerge(partialCleanupFileSystem),
+            ),
+          ),
+        );
+
+        assert.isTrue(cleanupFailed);
+        assert.isTrue(result.ok);
+        assert.equal(yield* fileSystem.readFileString(extractedEntryPath), "fresh-server-entry");
       }),
     ).pipe(Effect.provide(NodeServices.layer)),
   );
