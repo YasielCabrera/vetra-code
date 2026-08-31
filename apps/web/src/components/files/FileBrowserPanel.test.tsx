@@ -87,6 +87,7 @@ describe("FileBrowserPanel", () => {
         projectName="Project"
         selectedPath={null}
         selectedPathRevealId={0}
+        workspaceMutationId={null}
         onOpenFile={() => {}}
       />,
     );

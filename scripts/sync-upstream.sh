@@ -36,6 +36,12 @@ PRUNE_PATHS=(
   scripts/mobile-native-static-check.ts
   scripts/mobile-native-static-check.test.ts
   't3.json'
+  # Mobile-only internals docs. The fork ships no mobile client, so these
+  # describe trees the prune pass deletes.
+  docs/internals/mobile-development.md
+  docs/internals/mobile-navigation.md
+  docs/internals/voice-input.md
+  docs/user/mobile-appearance.md
   # Upstream's AUR publishing pipeline. The fork owns no AUR package, and
   # publish-aur.yml is only reachable from the release.yml we deleted. The
   # PKGBUILD directories also carry T3 identity in their *paths*, which the
@@ -48,6 +54,8 @@ PRUNE_GLOBS=(
   'patches/*react-navigation*'
   'patches/*react-native*'
   'patches/*expo*'
+  # Mobile-only styling library; the fork ships no mobile app.
+  'patches/uniwind*'
 )
 
 # Ordered: most specific first, since later patterns are substrings of earlier

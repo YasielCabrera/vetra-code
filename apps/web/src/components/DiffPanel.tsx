@@ -43,6 +43,7 @@ import {
 import { areAllDiffFilesCollapsed, toggleAllDiffFiles } from "../lib/diffCollapse";
 import type { DiffFileTreeEntry } from "../lib/diffFileTree";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
+import { useWorkspaceMutationRefresh } from "../hooks/useWorkspaceMutationRefresh";
 import { useProject, useThread } from "../state/entities";
 import { resolveThreadRouteRef } from "../threadRoutes";
 import { useClientSettings } from "../hooks/useSettings";
@@ -104,6 +105,7 @@ interface DiffPanelProps {
   mode?: DiffPanelMode;
   composerDraftTarget: ScopedThreadRef | DraftId;
   initialGitScope: "branch" | "unstaged";
+  workspaceMutationId: string | null;
 }
 
 export { DiffWorkerPoolProvider } from "./DiffWorkerPoolProvider";
@@ -112,6 +114,7 @@ export default function DiffPanel({
   mode = "inline",
   composerDraftTarget,
   initialGitScope: initialGitScopeProp,
+  workspaceMutationId,
 }: DiffPanelProps) {
   const { resolvedTheme } = useTheme();
   const settings = useClientSettings();
@@ -136,10 +139,6 @@ export default function DiffPanel({
     readonly requestId: number;
   } | null>(null);
   const codeViewRef = useRef<AnnotatableCodeViewHandle>(null);
-  const lastCompletedTurnRefreshRef = useRef<{
-    readonly threadKey: string | null;
-    readonly turnId: TurnId | null;
-  } | null>(null);
 
   const routeThreadRef = useParams({
     strict: false,
@@ -313,23 +312,12 @@ export default function DiffPanel({
     return () => window.removeEventListener("focus", refreshOnFocus);
   }, [canRefreshGitDiff, refreshBranchDiffPreview]);
 
-  useEffect(() => {
-    const current = {
-      threadKey: activeThreadRefreshKey,
-      turnId: latestTurn?.turnId ?? null,
-    };
-    const previous = lastCompletedTurnRefreshRef.current;
-    if (!canRefreshGitDiff) {
-      return;
-    }
-    if (previous === null || previous.threadKey !== current.threadKey) {
-      lastCompletedTurnRefreshRef.current = current;
-      return;
-    }
-    if (previous.turnId === current.turnId) return;
-    refreshBranchDiffPreview();
-    lastCompletedTurnRefreshRef.current = current;
-  }, [activeThreadRefreshKey, canRefreshGitDiff, latestTurn?.turnId, refreshBranchDiffPreview]);
+  useWorkspaceMutationRefresh({
+    enabled: canRefreshGitDiff,
+    mutationId: workspaceMutationId,
+    refresh: refreshBranchDiffPreview,
+    resourceKey: `diff:${activeThreadRefreshKey ?? ""}`,
+  });
 
   const selectedGitSource = branchDiffPreview.data?.sources.find(
     (source) => source.kind === (selectedGitScope === "unstaged" ? "working-tree" : "branch-range"),

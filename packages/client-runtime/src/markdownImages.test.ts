@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { classifyMarkdownImageSource } from "./markdownImages.js";
+import { classifyMarkdownImageSource, markdownImageSourceFragment } from "./markdownImages.js";
 
 describe("classifyMarkdownImageSource", () => {
   it.each([
@@ -70,5 +70,14 @@ describe("classifyMarkdownImageSource", () => {
     "file://%",
   ])("blocks unsupported or unresolved source %s", (source) => {
     expect(classifyMarkdownImageSource(source)).toEqual({ _tag: "Blocked" });
+  });
+});
+
+describe("markdownImageSourceFragment", () => {
+  it.each([
+    ["<icons.svg?version=2#logo>", "#logo"],
+    ["icons.svg?version=2", ""],
+  ])("extracts %s as %s", (source, fragment) => {
+    expect(markdownImageSourceFragment(source)).toBe(fragment);
   });
 });

@@ -15,6 +15,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useComposerHandleContext } from "~/composerHandleContext";
 import { writeTextToClipboard } from "~/hooks/useCopyToClipboard";
 import { useTheme } from "~/hooks/useTheme";
+import { useWorkspaceMutationRefresh } from "~/hooks/useWorkspaceMutationRefresh";
 import { cn } from "~/lib/utils";
 import { readLocalApi } from "~/localApi";
 import { VETRA_PIERRE_FOLDER_ICON_CSS, VETRA_PIERRE_ICONS } from "~/pierre-icons";
@@ -37,6 +38,7 @@ interface FileBrowserPanelProps {
   /** Single click and keyboard selection open a preview tab; double click a dedicated one. */
   onOpenFile: (relativePath: string, options?: { preview?: boolean }) => void;
   onRefreshSelectedFile?: () => void;
+  workspaceMutationId: string | null;
 }
 
 const TREE_UNSAFE_CSS = `
@@ -131,6 +133,7 @@ export default function FileBrowserPanel({
   selectedPathRevealId,
   onOpenFile,
   onRefreshSelectedFile,
+  workspaceMutationId,
 }: FileBrowserPanelProps) {
   const { resolvedTheme } = useTheme();
   const composerRef = useComposerHandleContext();
@@ -294,6 +297,11 @@ export default function FileBrowserPanel({
     entriesQuery.refresh();
     onRefreshSelectedFile?.();
   };
+  useWorkspaceMutationRefresh({
+    mutationId: workspaceMutationId,
+    refresh: entriesQuery.refresh,
+    resourceKey: `files:${environmentId}:${cwd}`,
+  });
 
   useEffect(() => {
     model.setGitStatus(gitStatus);

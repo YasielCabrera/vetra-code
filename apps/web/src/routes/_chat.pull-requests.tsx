@@ -13,6 +13,7 @@ import type {
 } from "@vetra-code/contracts";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
+  ChevronDownIcon,
   EyeIcon,
   MonitorIcon,
   ServerIcon,
@@ -23,6 +24,7 @@ import {
   PenLineIcon,
   LoaderIcon,
   RefreshCwIcon,
+  SearchIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -1701,6 +1703,7 @@ function PullRequestsColumn({
   const inFlowSearchRef = useRef<HTMLDivElement | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchFocusToken, setSearchFocusToken] = useState(0);
+  const searchExpanded = searchOpen || searchValue.length > 0;
   // Mod+F belongs to this page's own search: the desktop shell binds no find-in-page, so the
   // shortcut would otherwise do nothing. Condensed, it unfolds the topbar search; at the top,
   // it focuses the in-flow bar and selects the query the way a find field would.
@@ -1753,20 +1756,20 @@ function PullRequestsColumn({
       >
         {titlebarControls}
         {condensed ? (
-          <WorkspaceBreadcrumb ariaLabel="Pull request scope">
-            {/* The page name remains the foreground anchor in both states; the live filters are
-                its compact scope, grouped as the second crumb rather than pretending each menu
-                is a separate page in the hierarchy. */}
-            <WorkspaceBreadcrumbItem current>
+          <WorkspaceBreadcrumb ariaLabel="Pull request scope" className="overflow-hidden">
+            {/* An expanded search owns the scarce horizontal space. The page title stays
+                available to readers while the live filters remain available in both states. */}
+            <WorkspaceBreadcrumbItem current className={cn(searchExpanded && "sr-only")}>
               <h1 className="truncate">Pull Requests</h1>
             </WorkspaceBreadcrumbItem>
-            <WorkspaceBreadcrumbSeparator />
-            <WorkspaceBreadcrumbItem className="gap-1.5 overflow-hidden">
+            {searchExpanded ? null : <WorkspaceBreadcrumbSeparator />}
+            <WorkspaceBreadcrumbItem className="shrink gap-1.5">
               <CompactFilterMenu
                 label="Filter by state"
                 value={state}
                 options={STATE_TABS}
                 onChange={onState}
+                className="shrink-0"
               />
               <CompactFilterMenu
                 label="Filter by involvement"
@@ -1793,7 +1796,7 @@ function PullRequestsColumn({
         )}
         <div className="min-w-0 flex-1" />
         {condensed ? (
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink items-center gap-1.5">
             <ExpandableSearch
               label="Search pull requests"
               searchInput={searchInput}
@@ -1813,9 +1816,9 @@ function PullRequestsColumn({
 
       <div
         ref={scrollRef}
-        className="topbar-scroll-fade scrollbar-gutter-both min-h-0 flex-1 overflow-y-auto [--topbar-scroll-fade-height:1.5rem] sm:[--topbar-scroll-fade-height:1.5rem]"
+        className="topbar-scroll-fade scrollbar-gutter-both min-h-0 flex-1 overflow-y-auto"
       >
-        {/* The top padding is the fade band's own height (1.5rem here), the same pairing the
+        {/* The top padding is the shared fade band's height, the same pairing the
             settings page makes: at rest the controls sit fully below the mask, and only
             content actually passing under the chrome fades. */}
         <WorkspacePageContainer className="gap-4">

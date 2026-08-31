@@ -8,6 +8,7 @@
 import { ChevronDownIcon, SearchIcon } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 
+import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -19,11 +20,13 @@ export function CompactFilterMenu<Value extends string>({
   value,
   options,
   onChange,
+  className,
 }: {
   label: string;
   value: Value;
   options: ReadonlyArray<ListFilterOption<Value>>;
   onChange: (value: Value) => void;
+  className?: string;
 }) {
   const current = options.find((option) => option.value === value) ?? options[0];
   if (!current) return null;
@@ -31,10 +34,13 @@ export function CompactFilterMenu<Value extends string>({
     <Menu>
       <MenuTrigger
         aria-label={label}
-        className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+        className={cn(
+          "inline-flex h-7 min-w-0 items-center gap-1 rounded-md px-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
+          className,
+        )}
       >
-        {current.label}
-        <ChevronDownIcon aria-hidden className="size-3 text-muted-foreground/70" />
+        <span className="truncate">{current.label}</span>
+        <ChevronDownIcon aria-hidden className="size-3 shrink-0 text-muted-foreground/70" />
       </MenuTrigger>
       <MenuPopup align="start" side="bottom" className="min-w-40">
         <MenuRadioGroup value={value} onValueChange={(next) => onChange(next as Value)}>
@@ -115,7 +121,7 @@ export function ExpandableSearch({
     return (
       <div
         ref={containerRef}
-        className="w-56 shrink-0"
+        className="w-56 min-w-24 shrink"
         onFocus={() => onFocusWithin?.(true)}
         onBlur={() => {
           onFocusWithin?.(false);
