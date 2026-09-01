@@ -1,4 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import { EnvironmentId } from "@vetra-code/contracts";
 import { expect, it } from "@effect/vitest";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -7,15 +8,14 @@ import * as TestClock from "effect/testing/TestClock";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import * as ServerConfig from "../config.ts";
+import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
 import { PersistenceSqlError } from "../persistence/Errors.ts";
 import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite.ts";
 import * as AuthSessions from "../persistence/AuthSessions.ts";
 import * as SessionStore from "./SessionStore.ts";
 import * as ServerSecretStore from "./ServerSecretStore.ts";
 
-const makeServerConfigLayer = (
-  overrides?: Partial<Pick<ServerConfig.ServerConfig["Service"], "desktopBootstrapToken">>,
-) =>
+const makeServerConfigLayer = (overrides?: Partial<ServerConfig.ServerConfig["Service"]>) =>
   Layer.effect(
     ServerConfig.ServerConfig,
     Effect.gen(function* () {
@@ -29,12 +29,19 @@ const makeServerConfigLayer = (
     Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "vetra-auth-session-test-" })),
   );
 
+const makeServerEnvironmentLayer = (environmentId: EnvironmentId) =>
+  Layer.succeed(ServerEnvironment.ServerEnvironmentIdentity, {
+    getEnvironmentId: Effect.succeed(environmentId),
+  });
+
 const makeSessionStoreLayer = (
-  overrides?: Partial<Pick<ServerConfig.ServerConfig["Service"], "desktopBootstrapToken">>,
+  overrides?: Partial<ServerConfig.ServerConfig["Service"]>,
+  environmentId = EnvironmentId.make("test-environment"),
 ) =>
   SessionStore.layer.pipe(
     Layer.provide(SqlitePersistenceMemory),
     Layer.provide(ServerSecretStore.layer),
+    Layer.provide(makeServerEnvironmentLayer(environmentId)),
     Layer.provide(makeServerConfigLayer(overrides)),
   );
 
@@ -60,10 +67,32 @@ const failingSessionLookupCredentialLayer = Layer.effect(
   Layer.provide(failingSessionLookupRepositoryLayer),
   Layer.provide(ServerSecretStore.layer),
   Layer.provide(SqlitePersistenceMemory),
+  Layer.provide(makeServerEnvironmentLayer(EnvironmentId.make("test-environment"))),
   Layer.provide(makeServerConfigLayer()),
 );
 
 it.layer(NodeServices.layer)("SessionStore.layer", (it) => {
+  it.effect("keys remote cookies by environment identity instead of state directory", () =>
+    Effect.gen(function* () {
+      const cookieName = (stateDir: string, environmentId: EnvironmentId) =>
+        Effect.gen(function* () {
+          const sessions = yield* SessionStore.SessionStore;
+          return sessions.cookieName;
+        }).pipe(
+          Effect.provide(
+            makeSessionStoreLayer({ mode: "web", host: "192.168.1.50", stateDir }, environmentId),
+          ),
+        );
+
+      const original = yield* cookieName("/srv/vetra-one", EnvironmentId.make("environment-one"));
+      const moved = yield* cookieName("/srv/vetra-moved", EnvironmentId.make("environment-one"));
+      const other = yield* cookieName("/srv/vetra-one", EnvironmentId.make("environment-two"));
+
+      expect(moved).toBe(original);
+      expect(other).not.toBe(original);
+    }),
+  );
+
   it.effect("issues and verifies signed browser session tokens", () =>
     Effect.gen(function* () {
       const sessions = yield* SessionStore.SessionStore;

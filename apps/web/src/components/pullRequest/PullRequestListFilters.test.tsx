@@ -3,7 +3,6 @@ import { CircleIcon } from "lucide-react";
 import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { ListFilterProjectGroup } from "../sourceControl/ListFilterMenu";
 import { PullRequestFiltersMenu, pullRequestProjectKey } from "./PullRequestListFilters";
 
 function findValueChange(
@@ -29,26 +28,14 @@ function findValueChange(
   return undefined;
 }
 
-/** The shared project group, invoked so the radio group it renders can be reached. */
-function findProjectGroup(node: ReactNode): ReactNode {
-  for (const child of Children.toArray(node)) {
-    if (!isValidElement(child)) continue;
-    if (child.type === ListFilterProjectGroup) {
-      return ListFilterProjectGroup(child.props as Parameters<typeof ListFilterProjectGroup>[0]);
-    }
-    const nested = findProjectGroup((child.props as { readonly children?: ReactNode }).children);
-    if (nested !== undefined) return nested;
-  }
-  return undefined;
-}
-
 /** The nested radio-group component element carrying this label, invoked so its group shows. */
 function findLabeledGroup(node: ReactNode, label: string): ReactNode {
   for (const child of Children.toArray(node)) {
     if (!isValidElement(child)) continue;
     const props = child.props as { readonly children?: ReactNode; readonly label?: string };
     if (props.label === label && typeof child.type === "function") {
-      return (child.type as (properties: unknown) => ReactNode)(child.props);
+      const rendered = (child.type as (properties: unknown) => ReactNode)(child.props);
+      return findLabeledGroup(rendered, label) ?? rendered;
     }
     const nested = findLabeledGroup(props.children, label);
     if (nested !== undefined) return nested;
@@ -140,7 +127,7 @@ describe("pull request filters menu", () => {
       projectEnvironmentId: environmentId,
       onProject,
     });
-    const radioGroup = findValueChange(findProjectGroup(view));
+    const radioGroup = findValueChange(findLabeledGroup(view, "Project"));
     expect(radioGroup).toBeDefined();
 
     radioGroup?.props.onValueChange(pullRequestProjectKey({ id: projectId, environmentId }));
@@ -170,7 +157,7 @@ describe("pull request filters menu", () => {
       ],
       onProject,
     });
-    const radioGroup = findValueChange(findProjectGroup(view));
+    const radioGroup = findValueChange(findLabeledGroup(view, "Project"));
     expect(radioGroup).toBeDefined();
 
     radioGroup?.props.onValueChange(

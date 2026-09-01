@@ -44,8 +44,6 @@ const clientSettings: ClientSettings = {
   providerUsageAlertTransitions: {},
   providerUsageAlertsEnabled: true,
   providerUsageRefreshIntervalMinutes: 5,
-  sidebarAutoSettleAfterDays: 3,
-  sidebarAutoSettleOnMerge: true,
   sidebarProjectGroupingMode: "repository_path",
   sidebarProjectGroupingOverrides: {
     "environment-1:/tmp/project-a": "separate",

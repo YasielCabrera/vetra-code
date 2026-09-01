@@ -17,12 +17,20 @@ import type { ListFilterOption } from "./ListFilterMenu";
 /** A compact stand-in for one pill group when the header is narrow. */
 export function CompactFilterMenu<Value extends string>({
   label,
+  triggerIcon,
+  triggerLabel,
+  outlined = false,
   value,
   options,
   onChange,
   className,
 }: {
   label: string;
+  /** Shown instead of the current option when the trigger names the group, not the choice. */
+  triggerIcon?: ReactNode;
+  triggerLabel?: string;
+  /** Renders the trigger as a button, for a control that sits outside the breadcrumb row. */
+  outlined?: boolean;
   value: Value;
   options: ReadonlyArray<ListFilterOption<Value>>;
   onChange: (value: Value) => void;
@@ -33,14 +41,28 @@ export function CompactFilterMenu<Value extends string>({
   return (
     <Menu>
       <MenuTrigger
-        aria-label={label}
-        className={cn(
-          "inline-flex h-7 min-w-0 items-center gap-1 rounded-md px-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
-          className,
-        )}
+        aria-label={triggerLabel ? `${label}: ${current.label}` : label}
+        render={outlined ? <Button variant="outline" /> : undefined}
+        className={
+          outlined
+            ? className
+            : cn(
+                "inline-flex h-7 min-w-0 items-center gap-1 rounded-md px-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
+                className,
+              )
+        }
       >
-        <span className="truncate">{current.label}</span>
-        <ChevronDownIcon aria-hidden className="size-3 shrink-0 text-muted-foreground/70" />
+        {triggerLabel ? (
+          <>
+            {triggerIcon}
+            <span>{triggerLabel}</span>
+          </>
+        ) : (
+          <>
+            <span className="truncate">{current.label}</span>
+            <ChevronDownIcon aria-hidden className="size-3 shrink-0 text-muted-foreground/70" />
+          </>
+        )}
       </MenuTrigger>
       <MenuPopup align="start" side="bottom" className="min-w-40">
         <MenuRadioGroup value={value} onValueChange={(next) => onChange(next as Value)}>

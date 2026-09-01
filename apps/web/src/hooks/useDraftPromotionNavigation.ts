@@ -1,10 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import {
-  resolveDraftPromotionNavigationTarget,
-  threadHasStarted,
-} from "~/components/ChatView.logic";
+import { resolveDraftPromotionNavigationTarget } from "~/components/ChatView.logic";
 import {
   type DraftId,
   markPromotedDraftThreadByRef,
@@ -36,7 +33,7 @@ export function useDraftPromotionNavigation(draftId: DraftId) {
   const backgroundSubmissionPending = useBackgroundDraftSubmissionPending(serverThreadRef);
   const canonicalThreadRef = resolveDraftPromotionNavigationTarget({
     serverThreadRef,
-    serverThreadStarted: threadHasStarted(serverThread),
+    serverThread,
     backgroundSubmissionPending,
   });
 

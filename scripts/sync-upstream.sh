@@ -70,6 +70,11 @@ RENAMES=(
   # VETRA_*. Note the leftover grep below cannot see these: `T3[A-Z][a-z]`
   # does not match an underscore, so only typecheck catches a miss.
   'T3_=VETRA_'
+  # Upstream's session cookie name is the lowercase literal `t3_session`, which
+  # no other pair matches (`T3_` is uppercase). The fork serves this name from
+  # PRODUCT_SESSION_COOKIE_NAME, so without this pair a merge that touches auth
+  # leaks `t3_session` into cookie assertions and legacy-cookie fixtures.
+  't3_session=vetra_session'
   't3tools=vetra-code'
   # Upstream's oxlint plugin is named `t3code`, ours is `vetra`, so a rule
   # reference must not go through the generic `t3code` pair below (it would

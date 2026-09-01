@@ -95,10 +95,12 @@ import {
   SettingsRow,
   SettingsSection,
   useRelativeTimeTick,
+  useSettingsSearchTargetId,
 } from "./settingsLayout";
 import {
   buildProviderEnvironmentOptions,
   classifyProviderEnvironmentAccess,
+  isProviderSettingsEnvironmentAvailable,
   type ProviderEnvironmentAccess,
   type ProviderOperateAccess,
   resolvePrimaryOperateAccess,
@@ -191,7 +193,7 @@ function EnvironmentUnavailableRow({
   // No spinner: this state can persist indefinitely for a wedged device, and a
   // continuously repainting animation would run the whole time.
   return (
-    <SettingsSection title="Providers">
+    <SettingsSection {...searchableSetting("providers")}>
       {deviceTabs}
       <SettingsRow title={title} description={description} />
     </SettingsSection>
@@ -205,8 +207,26 @@ export function ProviderSettingsPanel({
   readonly targetEnvironmentId?: EnvironmentId | undefined;
   readonly targetInstanceId?: ProviderInstanceId | undefined;
 } = {}) {
+  return (
+    <SettingsPageContainer className="gap-8">
+      <ProviderSettingsPanelContent
+        targetEnvironmentId={targetEnvironmentId}
+        targetInstanceId={targetInstanceId}
+      />
+    </SettingsPageContainer>
+  );
+}
+
+function ProviderSettingsPanelContent({
+  targetEnvironmentId,
+  targetInstanceId,
+}: {
+  readonly targetEnvironmentId?: EnvironmentId | undefined;
+  readonly targetInstanceId?: ProviderInstanceId | undefined;
+}) {
   const { environments, isReady } = useEnvironments();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const searchTargetId = useSettingsSearchTargetId();
   const options = useMemo(
     () => buildProviderEnvironmentOptions(environments, primaryEnvironmentId),
     [environments, primaryEnvironmentId],
@@ -224,6 +244,27 @@ export function ProviderSettingsPanel({
   );
   const selectedEnvironment =
     options.find((environment) => environment.environmentId === effectiveEnvironmentId) ?? null;
+  const selectedEnvironmentCanRenderSettings =
+    selectedEnvironment !== null &&
+    isProviderSettingsEnvironmentAvailable({
+      connectionPhase: selectedEnvironment.connection.phase,
+      hasServerConfig: selectedEnvironment.serverConfig !== null,
+    });
+  const searchableEnvironmentId = options.find((environment) =>
+    isProviderSettingsEnvironmentAvailable({
+      connectionPhase: environment.connection.phase,
+      hasServerConfig: environment.serverConfig !== null,
+    }),
+  )?.environmentId;
+  useEffect(() => {
+    if (
+      searchTargetId === searchableSetting("provider-health-check-interval").id &&
+      !selectedEnvironmentCanRenderSettings &&
+      searchableEnvironmentId !== undefined
+    ) {
+      setSelectedEnvironmentId(searchableEnvironmentId);
+    }
+  }, [searchTargetId, searchableEnvironmentId, selectedEnvironmentCanRenderSettings]);
   const onlyPrimaryDevice =
     options.length === 1 && options[0]?.entry.target._tag === "PrimaryConnectionTarget";
   const deviceTabs =
@@ -274,9 +315,9 @@ export function ProviderSettingsPanel({
     ) : null;
 
   return (
-    <SettingsPageContainer className="gap-8">
+    <>
       {options.length === 0 ? (
-        <SettingsSection title="Providers">
+        <SettingsSection {...searchableSetting("providers")}>
           <SettingsRow
             title={isReady ? "No connected devices" : "Loading devices"}
             description={
@@ -300,7 +341,7 @@ export function ProviderSettingsPanel({
       ) : null}
 
       <ProviderSubscriptionUsageSettings />
-    </SettingsPageContainer>
+    </>
   );
 }
 
@@ -466,6 +507,7 @@ export function EnvironmentProviderSettings({
   const [isAddInstanceDialogOpen, setIsAddInstanceDialogOpen] = useState(false);
   const [selectedInstanceId, setSelectedInstanceId] = useState<ProviderInstanceId | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const searchTargetId = useSettingsSearchTargetId();
   const [updatingProviderDrivers, setUpdatingProviderDrivers] = useState<
     ReadonlySet<ProviderDriverKind>
   >(() => new Set());
@@ -478,6 +520,12 @@ export function EnvironmentProviderSettings({
     if (!targetInstanceId) return;
     setSelectedInstanceId(targetInstanceId);
   }, [targetInstanceId]);
+
+  useEffect(() => {
+    if (searchTargetId === searchableSetting("provider-health-check-interval").id) {
+      setAdvancedOpen(true);
+    }
+  }, [searchTargetId]);
 
   const providerUpdateCandidates = useMemo(
     () => collectProviderUpdateCandidates(serverProviders),
@@ -969,9 +1017,10 @@ export function EnvironmentProviderSettings({
                 className={readOnly ? "opacity-50 select-none" : undefined}
               >
                 <SettingsRow
+                  id={searchableSetting("provider-health-check-interval").id}
                   title={
                     <span className="inline-flex items-center gap-1.5">
-                      Health check interval
+                      {searchableSetting("provider-health-check-interval").title}
                       <PolicyTooltip>
                         This interval is configured here, then the shared Background activity policy
                         decides whether provider probes may run when the timer fires. Custom
