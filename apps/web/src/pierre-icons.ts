@@ -3,6 +3,7 @@ import {
   getBuiltInSpriteSheet,
   type FileTreeIcons,
 } from "@pierre/trees";
+import { VIDEO_FILE_EXTENSIONS } from "@vetra-code/shared/video";
 
 import {
   pierreFolderIconSpriteSheet,
@@ -19,6 +20,13 @@ const PIERRE_ICON_SPRITE_ID = "vetra-code-pierre-file-icon-sprite";
 
 const VETRA_FILE_ICON_SPRITE = `
 <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true">
+  <!-- Lucide Film icon, ISC license. -->
+  <symbol id="vetra-file-icon-video" viewBox="0 0 24 24">
+    <g fill="none" stroke="#a631be" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M7 3v18M3 7.5h4M3 12h18M3 16.5h4M17 3v18M17 7.5h4M17 16.5h4" />
+    </g>
+  </symbol>
   <symbol id="vetra-file-icon-package-json" viewBox="0 0 32 32">
     <path d="M2 2H30V30H2" fill="#c12127" />
     <path d="M7.25 7.25h17.5v17.5h-3.5v-14H16v14H7.25" fill="#fff" />
@@ -58,6 +66,9 @@ export const VETRA_PIERRE_ICONS = {
     "pnpm-lock.yaml": "vetra-file-icon-pnpm",
     "pnpm-workspace.yaml": "vetra-file-icon-pnpm",
   },
+  byFileExtension: Object.fromEntries(
+    VIDEO_FILE_EXTENSIONS.map((extension) => [extension, "vetra-file-icon-video"]),
+  ),
 } satisfies FileTreeIcons;
 
 const completeIconResolver = createFileTreeIconResolver(VETRA_PIERRE_ICONS);

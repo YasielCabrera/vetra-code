@@ -13,7 +13,6 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@effect/platform-node": "catalog:",
     "@vetra-code/shared": "workspace:*",
     "effect": "catalog:"
   },

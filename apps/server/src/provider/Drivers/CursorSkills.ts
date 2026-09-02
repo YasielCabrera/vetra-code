@@ -281,7 +281,8 @@ export const discoverCursorSkills = Effect.fn("discoverCursorSkills")(function* 
         continue;
       }
 
-      const name = (frontmatter.kind === "parsed" ? frontmatter.name : undefined) ?? found.directoryName;
+      const name =
+        (frontmatter.kind === "parsed" ? frontmatter.name : undefined) ?? found.directoryName;
       if (!name) {
         continue;
       }

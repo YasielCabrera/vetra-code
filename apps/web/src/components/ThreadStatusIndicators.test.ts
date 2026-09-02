@@ -10,6 +10,7 @@ import {
   resolveDisplayedThreadPrProvider,
   resolveThreadPr,
   settledPrHoverColorClass,
+  threadPullRequestRefreshSource,
   threadChangeRequestSnapshotsAtom,
   type ThreadChangeRequestSnapshot,
 } from "./ThreadStatusIndicators";
@@ -56,6 +57,86 @@ function snapshotFor(
   return { branch, pr, sourceControlProvider };
 }
 
+describe("threadPullRequestRefreshSource", () => {
+  const panel = { repository: "powerhouse-inc/vetra-code", number: 42, state: "merged" as const };
+
+  it("refreshes the VCS stream when the open panel is newer than an inferred sidebar PR", () => {
+    expect(
+      threadPullRequestRefreshSource({
+        panel,
+        thread: {
+          repository: "powerhouse-inc/vetra-code",
+          number: 42,
+          state: "open",
+          linked: false,
+        },
+      }),
+    ).toBe("vcs");
+  });
+
+  it("refreshes linked detail when the open panel is newer than a linked sidebar PR", () => {
+    expect(
+      threadPullRequestRefreshSource({
+        panel,
+        thread: {
+          repository: "powerhouse-inc/vetra-code",
+          number: 42,
+          state: "open",
+          linked: true,
+        },
+      }),
+    ).toBe("linked-detail");
+  });
+
+  it("refreshes when the sidebar has not resolved state yet", () => {
+    expect(
+      threadPullRequestRefreshSource({
+        panel,
+        thread: { repository: "powerhouse-inc/vetra-code", number: 42, state: null, linked: false },
+      }),
+    ).toBe("vcs");
+  });
+
+  it("does nothing once sidebar state matches or the panel shows another PR", () => {
+    expect(
+      threadPullRequestRefreshSource({
+        panel,
+        thread: {
+          repository: "powerhouse-inc/vetra-code",
+          number: 42,
+          state: "merged",
+          linked: false,
+        },
+      }),
+    ).toBeNull();
+    expect(
+      threadPullRequestRefreshSource({
+        panel,
+        thread: {
+          repository: "powerhouse-inc/vetra-code",
+          number: 41,
+          state: "open",
+          linked: false,
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it("matches repository identity without case sensitivity", () => {
+    expect(
+      threadPullRequestRefreshSource({
+        panel: { ...panel, repository: "Powerhouse-Inc/Vetra-Code" },
+        thread: {
+          repository: "powerhouse-inc/vetra-code",
+          number: 42,
+          state: "open",
+          linked: false,
+        },
+      }),
+    ).toBe("vcs");
+  });
+});
+
 describe("resolveThreadPr", () => {
   it("keeps local-checkout PR indicators scoped to the stored thread branch", () => {
     expect(
@@ -101,7 +182,7 @@ describe("resolveDisplayedThreadPr + nextThreadChangeRequestSnapshot", () => {
   const mergedPr = mergedFeaturePr();
   const linkedPullRequest = {
     projectId: ProjectId.make("project-1"),
-    repository: "pingdotgg/t3code",
+    repository: "powerhouse-inc/vetra-code",
     number: 42,
     url: "https://github.com/pingdotgg/t3code/pull/42",
   };

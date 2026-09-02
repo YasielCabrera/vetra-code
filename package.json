@@ -26,7 +26,6 @@
     "test:desktop-smoke": "vp run --filter @vetra-code/desktop smoke-test",
     "fmt": "vp fmt",
     "fmt:check": "vp fmt --check",
-    "build:contracts": "vp run --filter @vetra-code/contracts build",
     "dist:desktop:artifact": "node scripts/build-desktop-artifact.ts",
     "dist:desktop:dmg": "node scripts/build-desktop-artifact.ts --platform mac --target dmg",
     "dist:desktop:dmg:arm64": "node scripts/build-desktop-artifact.ts --platform mac --target dmg --arch arm64",
@@ -50,10 +49,5 @@
   "engines": {
     "node": "^24.13.1"
   },
-  "packageManager": "pnpm@11.10.0",
-  "msw": {
-    "workerDirectory": [
-      "apps/web/public"
-    ]
-  }
+  "packageManager": "pnpm@11.10.0"
 }

@@ -89,11 +89,30 @@ RENAMES=(
   'T3 CODE=VETRA CODE'
   'T3 Code=Vetra Code'
   'T3-Code=Vetra-Code'
+  'T3-code=vetra-code'
   't3-code=vetra-code'
   't3.json=vetra.json'
   'T3 Connect=Vetra Connect'
   't3-connect=vetra-connect'
   'T3Connect=VetraConnect'
+  # Upstream's MCP work-log presentation helper and its lowercase server-name
+  # spelling. `t3_code` survives the uppercase `T3_` pair, and `T3Mcp*` matches
+  # no other pair, so without these a sync leaks both into the work log.
+  'T3McpToolPresentation=VetraMcpToolPresentation'
+  't3_code=vetra_code'
+  # Persisted client keys and CSS highlight registry names the fork owns. The
+  # generic `t3code` pair would map these to `vetra-code.*`, orphaning a user's
+  # stored preference and desynchronising the CSS name from its JS registration.
+  # Keyed on the opening quote so the `pingdotgg/t3code.git` remote is untouched.
+  '"t3code.="vetra.'
+  't3-assistant-citation=vetra-assistant-citation'
+  # The assistant-citation URL scheme. It rides in prompts sent to providers and
+  # in persisted messages, so it is product identity, not an internal name.
+  't3-citation=vetra-citation'
+  # Test temp-directory and worktree-identity prefixes. `t3-code` does not match
+  # a bare `t3-<word>`, so these otherwise survive as T3 identity in fixtures.
+  't3-provider-registry-=vetra-provider-registry-'
+  't3-desktop-updates-=vetra-desktop-updates-'
   'T3ProjectFile=VetraProjectFile'
   'T3Project=VetraProject'
   'T3Server=VetraServer'

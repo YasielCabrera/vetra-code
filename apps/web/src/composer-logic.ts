@@ -1,3 +1,8 @@
+import type { AssistantCitation } from "@vetra-code/contracts";
+import {
+  serializeAssistantCitation,
+  withAssistantCitationComment,
+} from "@vetra-code/shared/assistantCitations";
 import {
   splitPromptIntoComposerSegments,
   type ComposerPromptSegment,
@@ -13,6 +18,10 @@ export interface ComposerTrigger {
   query: string;
   rangeStart: number;
   rangeEnd: number;
+}
+
+export function formatAssistantCitationForComposer(citation: AssistantCitation, comment = "") {
+  return `${serializeAssistantCitation(withAssistantCitationComment(citation, comment))} `;
 }
 
 export function composerSubmissionIntentForEnter(input: {
@@ -63,7 +72,11 @@ export function expandCollapsedComposerCursor(text: string, cursorInput: number)
   let expandedCursor = 0;
 
   for (const segment of segments) {
-    if (segment.type === "mention" || segment.type === "powerhouse") {
+    if (
+      segment.type === "mention" ||
+      segment.type === "powerhouse" ||
+      segment.type === "citation"
+    ) {
       const expandedLength = segment.source.length;
       if (remaining <= 1) {
         return expandedCursor + (remaining === 0 ? 0 : expandedLength);
@@ -140,7 +153,11 @@ export function collapseExpandedComposerCursor(text: string, cursorInput: number
   let collapsedCursor = 0;
 
   for (const segment of segments) {
-    if (segment.type === "mention" || segment.type === "powerhouse") {
+    if (
+      segment.type === "mention" ||
+      segment.type === "powerhouse" ||
+      segment.type === "citation"
+    ) {
       const expandedLength = segment.source.length;
       if (remaining === 0) {
         return collapsedCursor;
@@ -211,8 +228,6 @@ export function isCollapsedCursorAdjacentToInlineToken(
 
   return false;
 }
-
-export const isCollapsedCursorAdjacentToMention = isCollapsedCursorAdjacentToInlineToken;
 
 export function detectComposerTrigger(text: string, cursorInput: number): ComposerTrigger | null {
   const cursor = clampCursor(text, cursorInput);

@@ -39,6 +39,27 @@ The explicit repository-local home is recommended for the first run. It prevents
 projects, threads, settings, and secrets from mixing with any other Vetra checkout. Never use
 another application's data directory as a Vetra home.
 
+## Open a project in the desktop app
+
+When the Vetra Code desktop app is running on the same machine, open the current directory in it
+from the checkout:
+
+```bash
+node apps/server/src/bin.ts app
+```
+
+Pass a path to open another directory:
+
+```bash
+node apps/server/src/bin.ts app ../my-project
+```
+
+The command adds the directory as a project when needed, focuses the desktop app, and opens a new
+thread. It does not launch the desktop app, open a browser, or start a Vetra Code server. A
+background server does not count as the desktop app. The command also rejects SSH sessions, because
+a remote shell cannot focus a local desktop window. Until Vetra publishes a CLI package, run it
+from the same checkout that runs the desktop app.
+
 ## Desktop development
 
 ```bash

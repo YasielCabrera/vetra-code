@@ -32,6 +32,10 @@ Updating the service briefly restarts Vetra Code, so active agent work and termi
 finish first. If a remote update is already in progress, wait for it to finish before retrying a
 local update.
 
+The install and update paths refuse to replace a newer service with an older version, so a
+Vetra Connect setup leaves a newer service unchanged. Downgrading is deliberate: it requires the
+exact older version and `--allow-downgrade`.
+
 ## Vetra Connect
 
 Vetra Connect remains unavailable until Vetra-owned cloud configuration is present. Once enabled,

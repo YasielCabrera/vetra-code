@@ -105,7 +105,7 @@ describe.runIf(process.env.VETRA_GROK_ACP_PROBE === "1")("Grok ACP CLI probe", (
           childProcessSpawner,
           cwd,
           runtimeMode: "approval-required",
-          clientInfo: { name: "t3-grok-probe", version: "0.0.0" },
+          clientInfo: { name: "vetra-grok-probe", version: "0.0.0" },
         });
         yield* runtime.start();
         const chunks: string[] = [];

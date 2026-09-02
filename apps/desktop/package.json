@@ -1,6 +1,6 @@
 {
   "name": "@vetra-code/desktop",
-  "version": "0.0.37",
+  "version": "0.0.38",
   "private": true,
   "type": "module",
   "main": "dist-electron/main.cjs",

@@ -16,7 +16,7 @@ const LIGHT_THEME = {
 } as const satisfies EnvironmentTheme;
 
 async function setupThemeSync(mode: "dark" | "system" = "dark") {
-  const storage = new Map<string, string>([["vetra-code:theme", NIGHTFALL_THEME.id]]);
+  const storage = new Map<string, string>([["vetra:theme", NIGHTFALL_THEME.id]]);
   const styles = new Map<string, string>();
   const classes = new Set<string>();
   const root = {

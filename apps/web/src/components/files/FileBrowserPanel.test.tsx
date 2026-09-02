@@ -12,6 +12,7 @@ vi.mock("@pierre/trees/react", () => ({
     fileTreeConfig = config;
     return {
       model: {
+        batch: () => {},
         closeSearch: () => {},
         getItem: () => null,
         getSelectedPaths: () => [],
@@ -26,6 +27,7 @@ vi.mock("@pierre/trees/react", () => ({
     setValue: () => {},
     value: "",
   }),
+  useFileTreeSelector: (model: unknown, select: (model: unknown) => unknown) => select(model),
 }));
 
 vi.mock("~/composerHandleContext", () => ({

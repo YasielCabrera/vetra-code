@@ -19,6 +19,16 @@ export function getDesktopUpdateReleaseUrl(version: string | null): string | nul
   return `${releaseTagUrl}/v${encodeURIComponent(normalizedVersion)}`;
 }
 
+/**
+ * Release history for the configured feed. Vetra publishes no releases during
+ * bootstrap, so this is null unless a Vetra-owned tag URL is configured.
+ */
+export function getDesktopUpdateReleaseHistoryUrl(): string | null {
+  const releaseTagUrl = import.meta.env.VITE_DESKTOP_RELEASE_TAG_URL?.trim().replace(/\/+$/, "");
+  if (!releaseTagUrl) return null;
+  return releaseTagUrl.replace(/\/tag$/, "");
+}
+
 export function resolveDesktopUpdateButtonAction(
   state: DesktopUpdateState,
 ): DesktopUpdateButtonAction {
@@ -117,11 +127,6 @@ export function getDesktopUpdateActionError(result: DesktopUpdateActionResult): 
 
 export function shouldToastDesktopUpdateActionResult(result: DesktopUpdateActionResult): boolean {
   return getDesktopUpdateActionError(result) !== null;
-}
-
-export function shouldHighlightDesktopUpdateError(state: DesktopUpdateState | null): boolean {
-  if (!state || state.status !== "error") return false;
-  return state.errorContext === "download" || state.errorContext === "install";
 }
 
 export function canCheckForUpdate(state: DesktopUpdateState | null): boolean {

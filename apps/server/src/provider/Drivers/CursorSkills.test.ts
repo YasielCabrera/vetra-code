@@ -208,7 +208,11 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
 
       const cached = path.join(plugins, "cache", "cursor-public", "pstack", "revision-hash");
       yield* writePlugin(cached, { name: "pstack", skills: "./skills/" });
-      yield* writeSkill(path.join(cached, "skills"), "architect", frontmatter("architect", "Plan."));
+      yield* writeSkill(
+        path.join(cached, "skills"),
+        "architect",
+        frontmatter("architect", "Plan."),
+      );
 
       // Claude-format plugin manifest, which Cursor also accepts.
       const claudeStyle = path.join(plugins, "cache", "cursor-public", "context7", "revision-hash");
@@ -310,14 +314,28 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       yield* writeSkill(
         cursorSkills,
         "auto-guidance",
-        ["---", "name: auto-guidance", "description: Applied automatically.", "user-invocable: false", "---", ""].join("\n"),
+        [
+          "---",
+          "name: auto-guidance",
+          "description: Applied automatically.",
+          "user-invocable: false",
+          "---",
+          "",
+        ].join("\n"),
       );
       // Most Cursor skills set this; it blocks the model from auto-triggering a
       // skill the user is still meant to invoke, so it must stay enabled.
       yield* writeSkill(
         cursorSkills,
         "user-command",
-        ["---", "name: user-command", "description: Invoked by the user.", "disable-model-invocation: true", "---", ""].join("\n"),
+        [
+          "---",
+          "name: user-command",
+          "description: Invoked by the user.",
+          "disable-model-invocation: true",
+          "---",
+          "",
+        ].join("\n"),
       );
 
       const skills = yield* discoverCursorSkills({ HOME: home });
@@ -347,7 +365,11 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
         frontmatter("review", "Built-in."),
       );
       yield* writePlugin(pluginRoot, { name: "p", skills: "./skills/" });
-      yield* writeSkill(path.join(pluginRoot, "skills"), "review", frontmatter("review", "Plugin."));
+      yield* writeSkill(
+        path.join(pluginRoot, "skills"),
+        "review",
+        frontmatter("review", "Plugin."),
+      );
 
       const pluginWins = yield* discoverCursorSkills({ HOME: home }, workspace);
       assert.deepEqual(

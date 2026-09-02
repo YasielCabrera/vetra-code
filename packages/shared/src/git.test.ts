@@ -57,7 +57,9 @@ describe("parseGitHubRepositoryNameWithOwnerFromRemoteUrl", () => {
       parseGitHubRepositoryNameWithOwnerFromRemoteUrl("git@github.com:Vetra-Code/Vetra-Code.git"),
     ).toBe("Vetra-Code/Vetra-Code");
     expect(
-      parseGitHubRepositoryNameWithOwnerFromRemoteUrl("https://github.com/Vetra-Code/Vetra-Code.git"),
+      parseGitHubRepositoryNameWithOwnerFromRemoteUrl(
+        "https://github.com/Vetra-Code/Vetra-Code.git",
+      ),
     ).toBe("Vetra-Code/Vetra-Code");
   });
 });

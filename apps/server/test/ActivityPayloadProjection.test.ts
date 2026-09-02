@@ -162,6 +162,44 @@ describe("projectActivityPayload", () => {
     });
   });
 
+  it("projects a Claude Bash result for the web expanded row", () => {
+    const command = `printf 'first line\nsecond line'\n&& printf done`;
+    const source: OrchestrationThreadActivity = {
+      ...makeActivity("claude-bash", "command_execution", {}),
+      summary: "Command run",
+      payload: {
+        itemType: "command_execution",
+        title: "Command run",
+        detail: `Bash: ${command}`,
+        status: "completed",
+        data: {
+          toolName: "Bash",
+          input: { command },
+          result: {
+            type: "tool_result",
+            tool_use_id: "toolu_1",
+            content: [
+              { type: "text", text: "first output line" },
+              { type: "text", text: "x".repeat(5_000) },
+            ],
+          },
+        },
+      },
+    };
+    const projected = projectActivityPayload(source);
+
+    expect(projected.payload).toMatchObject({
+      data: {
+        toolName: "Bash",
+        command,
+        rawOutput: { content: "first output line" },
+      },
+    });
+
+    const [webEntry] = deriveWorkLogEntries([projected]);
+    expect(webEntry).toMatchObject({ command, detail: "first output line" });
+  });
+
   it("slims MCP tool data to the fields the expanded row renders", () => {
     expect(projectActivityPayload(fixtures[4]!).payload).toEqual({
       itemType: "mcp_tool_call",
@@ -182,6 +220,16 @@ describe("projectActivityPayload", () => {
   it("keeps current web derived output identical for every tool item type", () => {
     for (const activity of fixtures) {
       const projected = projectActivityPayload(activity);
+      if (activity === fixtures[0]) {
+        expect(deriveWorkLogEntries([projected])).toMatchObject([
+          {
+            command: "pnpm test",
+            rawCommand: 'bash -lc "pnpm test"',
+            detail: "first useful line",
+          },
+        ]);
+        continue;
+      }
       if (activity === fixtures[4]) {
         // MCP is the one deliberate difference: the expanded row's toolData
         // loses result bulk but keeps the rendered identity fields.

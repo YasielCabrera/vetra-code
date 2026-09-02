@@ -4,6 +4,10 @@ import type {
   ProjectListEntriesResult,
   ProjectReadFileResult,
 } from "@vetra-code/contracts";
+import {
+  isWorkspaceImagePreviewPath,
+  isWorkspaceVideoPreviewPath,
+} from "@vetra-code/shared/filePreview";
 import * as Cause from "effect/Cause";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
@@ -181,9 +185,15 @@ export function useProjectFileQuery(
   readonly confirmedData: ProjectReadFileResult | null;
   readonly confirmationToken: object | null;
 } {
-  const atom = enabled
-    ? getProjectFileQueryAtom(environmentId, cwd, relativePath)
-    : EMPTY_PROJECT_FILE_QUERY_ATOM;
+  // Media streams through a signed asset URL; reading its bytes here would
+  // pull the whole file over the socket for nothing.
+  const isMedia =
+    relativePath !== null &&
+    (isWorkspaceImagePreviewPath(relativePath) || isWorkspaceVideoPreviewPath(relativePath));
+  const atom =
+    enabled && !isMedia
+      ? getProjectFileQueryAtom(environmentId, cwd, relativePath)
+      : EMPTY_PROJECT_FILE_QUERY_ATOM;
   const result = useAtomValue(atom);
   const refreshAtom = useAtomRefresh(atom);
   const refresh = useCallback(() => refreshAtom(), [refreshAtom]);

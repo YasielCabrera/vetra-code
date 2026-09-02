@@ -19,3 +19,9 @@ registry-based update command is unavailable until the Vetra server package is p
 Versioned server updates and desktop auto-update can be enabled only after the release
 prerequisites in the [release runbook](../operations/release.md) are owned and configured by Vetra
 Code. See [Background service status](./background-service.md) for the currently supported path.
+
+**Settings** → **General** carries a **Continue threads after server updates** preference, off by
+default. It only takes effect once a versioned server update path exists: when enabled, a server
+update resumes supported provider threads after the replacement server is ready, using native
+promptless continuation where the provider has it and a short continue instruction otherwise.
+Terminal commands and other running work are still interrupted by the restart.

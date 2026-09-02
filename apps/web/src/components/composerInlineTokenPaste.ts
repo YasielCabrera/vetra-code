@@ -1,7 +1,5 @@
-import {
-  collectComposerInlineTokens,
-  type ComposerInlineToken,
-} from "@vetra-code/shared/composerInlineTokens";
+import type { AssistantCitation } from "@vetra-code/contracts";
+import type { ComposerInlineToken } from "@vetra-code/shared/composerInlineTokens";
 import {
   $createLineBreakNode,
   $createTextNode,
@@ -14,12 +12,25 @@ import {
   type LexicalNode,
 } from "lexical";
 
+import { collectComposerPromptInlineTokens } from "../composer-editor-mentions";
+
 interface ComposerInlineTokenPasteOptions {
   createMentionNode: (path: string) => LexicalNode;
   createPowerhouseNode: (
     token: Extract<ComposerInlineToken, { type: "powerhouse" }>,
   ) => LexicalNode;
+  createCitationNode: (citation: AssistantCitation, source: string) => LexicalNode;
   getExpandedAbsoluteOffsetForPoint: (node: LexicalNode, pointOffset: number) => number;
+}
+
+/**
+ * Mentions and Powerhouse references are recognised by their surrounding
+ * whitespace; a citation carries its own delimiters and needs no padding.
+ */
+function isWhitespaceBoundedToken<T extends { readonly type: string }>(
+  token: T | undefined,
+): token is Extract<T, { type: "mention" | "powerhouse" }> {
+  return token?.type === "mention" || token?.type === "powerhouse";
 }
 
 export function registerComposerInlineTokenPaste(
@@ -40,17 +51,18 @@ export function registerComposerInlineTokenPaste(
         return false;
       }
       // Token grammar requires trailing whitespace; a virtual newline lets a
-      // chip at the very end of the pasted text still parse.
-      const chips = collectComposerInlineTokens(`${text}\n`).filter(
+      // token at the very end of the pasted text still parse.
+      const tokens = collectComposerPromptInlineTokens(`${text}\n`).filter(
         (token) =>
-          (token.type === "mention" || token.type === "powerhouse") && token.end <= text.length,
+          (token.type === "mention" || token.type === "powerhouse" || token.type === "citation") &&
+          token.end <= text.length,
       );
-      if (chips.length === 0) {
+      if (tokens.length === 0) {
         return false;
       }
 
       // Lexical command listeners already run inside an editor update. Starting
-      // a nested update here queues the mention insertion until after this
+      // a nested update here queues the token insertion until after this
       // listener returns, which lets the plain-text paste handler run as well.
       const selection = $getSelection();
       if (!$isRangeSelection(selection)) {
@@ -69,8 +81,8 @@ export function registerComposerInlineTokenPaste(
           }
         }
       };
-      const firstChip = chips[0];
-      if (firstChip && firstChip.start === 0) {
+      const firstToken = tokens[0];
+      if (isWhitespaceBoundedToken(firstToken) && firstToken.start === 0) {
         const startPoint = selection.isBackward() ? selection.focus : selection.anchor;
         const insertionOffset = options.getExpandedAbsoluteOffsetForPoint(
           startPoint.getNode(),
@@ -84,25 +96,27 @@ export function registerComposerInlineTokenPaste(
         }
       }
       let cursor = 0;
-      for (const chip of chips) {
-        if (chip.start < cursor) {
+      for (const token of tokens) {
+        if (token.start < cursor) {
           continue;
         }
-        if (chip.start > cursor) {
-          appendText(text.slice(cursor, chip.start));
+        if (token.start > cursor) {
+          appendText(text.slice(cursor, token.start));
         }
-        nodes.push(
-          chip.type === "powerhouse"
-            ? options.createPowerhouseNode(chip)
-            : options.createMentionNode(chip.value),
-        );
-        cursor = chip.end;
+        if (token.type === "citation") {
+          nodes.push(options.createCitationNode(token.citation, token.source));
+        } else if (token.type === "powerhouse") {
+          nodes.push(options.createPowerhouseNode(token));
+        } else {
+          nodes.push(options.createMentionNode(token.value));
+        }
+        cursor = token.end;
       }
       if (cursor < text.length) {
         appendText(text.slice(cursor));
-      } else {
-        // Keep the serialized prompt valid: chip tokens need trailing
-        // whitespace, so a paste ending in one gets the same
+      } else if (isWhitespaceBoundedToken(tokens.at(-1))) {
+        // Keep the serialized prompt valid: whitespace-bounded tokens need
+        // trailing whitespace, so a paste ending in one gets the same
         // trailing space the autocomplete inserts.
         nodes.push($createTextNode(" "));
       }
