@@ -1181,14 +1181,12 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         });
 
         const primaryProbe = commands.find(
-          (command) => command.options.env?.ELECTRON_RUN_AS_NODE === "1",
+          (command) =>
+            command.command === path.join(fixture.packagedAppDir, fixture.appExecutableName),
         );
         if (primaryProbe === undefined) return assert.fail("Windows primary probe was not spawned");
 
-        assert.equal(
-          primaryProbe.command,
-          path.join(fixture.packagedAppDir, fixture.appExecutableName),
-        );
+        assert.equal(primaryProbe.options.env?.ELECTRON_RUN_AS_NODE, "1");
         assert.deepStrictEqual(primaryProbe.args.slice(0, 3), [
           "--no-global-search-paths",
           "--input-type=module",
@@ -1233,6 +1231,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
     return Effect.scoped(
       Effect.gen(function* () {
+        const path = yield* Path.Path;
         const fixture = yield* makeWindowsPayloadFixture({ copyUnpackedNatives: true });
         yield* validateWindowsPackagedPayload({
           stageDistDir: fixture.stageDistDir,
@@ -1241,7 +1240,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         });
 
         assert.isFalse(
-          commands.some((command) => command.options.env?.ELECTRON_RUN_AS_NODE === "1"),
+          commands.some(
+            (command) =>
+              command.command === path.join(fixture.packagedAppDir, fixture.appExecutableName),
+          ),
         );
         assert.isTrue(
           commands.some(

@@ -384,7 +384,7 @@ describe("DesktopBackendConfiguration", () => {
     }> = [];
     const observedNodePtyRoots: string[] = [];
     let legacyCleanupCount = 0;
-    const linuxAppRoot = "/home/test/.t3/wsl-runtime/1.2.3-x64";
+    const linuxAppRoot = "/home/test/.vetra-code/wsl-runtime/1.2.3-x64";
 
     return withPackagedWslHarness(
       {
@@ -501,7 +501,7 @@ describe("DesktopBackendConfiguration", () => {
 
   it.effect("resolveWsl retires a staged runtime that cannot load node-pty", () => {
     const archiveHash = "c".repeat(64);
-    const stagedAppRoot = `/home/test/.t3/wsl-runtime/sha256-${archiveHash}`;
+    const stagedAppRoot = `/home/test/.vetra-code/wsl-runtime/sha256-${archiveHash}`;
     const observedNodePtyRoots: string[] = [];
     const invalidatedRuntimeIds: string[] = [];
     return withPackagedWslHarness(
@@ -537,7 +537,7 @@ describe("DesktopBackendConfiguration", () => {
   });
 
   it.effect("resolveWsl keeps the staged runtime when the mounted tree fails too", () => {
-    const stagedAppRoot = "/home/test/.t3/wsl-runtime/cache";
+    const stagedAppRoot = "/home/test/.vetra-code/wsl-runtime/cache";
     const invalidatedRuntimeIds: string[] = [];
     return withPackagedWslHarness(
       {
@@ -572,7 +572,7 @@ describe("DesktopBackendConfiguration", () => {
   });
 
   it.effect("resolveWsl keeps WSL retryable when the mounted fallback fails transiently", () => {
-    const stagedAppRoot = "/home/test/.t3/wsl-runtime/cache";
+    const stagedAppRoot = "/home/test/.vetra-code/wsl-runtime/cache";
     const invalidatedRuntimeIds: string[] = [];
     return withPackagedWslHarness(
       {
@@ -617,7 +617,7 @@ describe("DesktopBackendConfiguration", () => {
         wsl: () => ({
           prepareRuntime: () => ({
             ok: true,
-            linuxAppRoot: "/home/test/.t3/wsl-runtime/cache",
+            linuxAppRoot: "/home/test/.vetra-code/wsl-runtime/cache",
           }),
           invalidateRuntime: (_distro, runtimeId) =>
             Effect.sync(() => {

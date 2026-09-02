@@ -10,6 +10,7 @@ import * as Stream from "effect/Stream";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 import { buildRemoteNodeEnvScript } from "@vetra-code/ssh/tunnel";
+import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-code/shared/productIdentity";
 import { satisfiesSemverRange } from "@vetra-code/shared/semver";
 
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
@@ -260,6 +261,11 @@ const shellQuote = (value: string): string => `'${value.replaceAll("'", "'\\''")
 // here; the digest is what lets a later launch prove the entry still is what
 // that install wrote.
 const WSL_RUNTIME_READY_MARKER = ".vetra-code-wsl-runtime-ready";
+/**
+ * The runtime cache lives under the Vetra home inside the distro. Derived from
+ * the product identity so it cannot drift from the marker file beside it.
+ */
+const WSL_RUNTIME_PARENT = `$HOME/${PRODUCT_HOME_DIRECTORY_NAME}/wsl-runtime`;
 const WSL_RUNTIME_SELECTED_MARKER = ".vetra-code-wsl-runtime-selected";
 const WSL_RUNTIME_SELECTION_GRACE_MINUTES = 5;
 
@@ -277,7 +283,7 @@ export const buildWslRuntimeInstallScript = (
   const safeRuntimeId = sanitizeWslRuntimeId(runtimeId);
   return [
     "set -eu",
-    'runtime_parent="$HOME/.t3/wsl-runtime"',
+    `runtime_parent="${WSL_RUNTIME_PARENT}"`,
     `runtime_root="$runtime_parent/${safeRuntimeId}"`,
     `ready_marker="$runtime_root/${WSL_RUNTIME_READY_MARKER}"`,
     // The native payload is the part of the tree the WSL backend actually
@@ -413,7 +419,7 @@ export const buildWslRuntimePruneScript = (runtimeId: string): string => {
   const safeRuntimeId = sanitizeWslRuntimeId(runtimeId);
   return [
     "set -eu",
-    'runtime_parent="$HOME/.t3/wsl-runtime"',
+    `runtime_parent="${WSL_RUNTIME_PARENT}"`,
     `current_runtime="$runtime_parent/${safeRuntimeId}"`,
     '[ -d "$runtime_parent" ] || exit 0',
     // Serialize the whole retention decision so two backends cannot select
@@ -477,7 +483,7 @@ export const buildWslRuntimeInvalidateScript = (runtimeId: string): string => {
   const safeRuntimeId = sanitizeWslRuntimeId(runtimeId);
   return [
     "set -eu",
-    `rm -f "$HOME/.t3/wsl-runtime/${safeRuntimeId}/${WSL_RUNTIME_READY_MARKER}"`,
+    `rm -f "${WSL_RUNTIME_PARENT}/${safeRuntimeId}/${WSL_RUNTIME_READY_MARKER}"`,
   ].join("\n");
 };
 

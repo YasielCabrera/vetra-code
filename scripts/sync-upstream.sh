@@ -118,7 +118,11 @@ RENAMES=(
   'T3Server=VetraServer'
   'T3Home=VetraHome'
   't3Home=vetraHome'
-  'T3Tools=VetraTools'
+  # Upstream's GitHub org / winget publisher, never a TypeScript identifier.
+  # Mapped onto the same identity as the pairs below so a repo-identity fixture
+  # cannot come out half-renamed (`VetraTools/vetra-code` lowercases to a
+  # different canonical key than `vetra-code/vetra-code`).
+  'T3Tools=Vetra-Code'
   'T3Code=VetraCode'
   # Lower-camel form used in analytics property names (`t3CodeVersion`). Neither
   # `T3Code` nor the leftover grep's `T3[A-Z][a-z]` matches it, so without this
@@ -222,7 +226,12 @@ say "Leftover t3 references (review each -- upstream URLs and t3.codes domains a
 # `t3-[a-z]` is report-only on purpose: these are usually temp-dir prefixes that
 # are safe to rebrand, but some are real asset filenames where rewriting the
 # string without renaming the file breaks the lookup. Decide per hit.
-git grep -nIE 't3tools|t3code|T3 Code|T3CODE|T3_|T3[A-Z][a-z]|t3-[a-z]' -- . \
+#
+# `\.t3/` is likewise report-only, and deliberately has no RENAMES pair: it is a
+# storage path, so a blind rewrite would also hit AGENTS.md, where `~/.t3/userdata`
+# names the developer's real legacy install on purpose. Rebrand the runtime and
+# fixture hits; leave that one.
+git grep -nIE 't3tools|t3code|T3 Code|T3CODE|T3_|T3[A-Z][a-z]|t3-[a-z]|\.t3/' -- . \
   ':!.repos' ':!*lock*' ":!${BASH_SOURCE[0]#./}" | grep -v 'pingdotgg/' | head -40 || echo "none"
 
 cat <<'EOF'

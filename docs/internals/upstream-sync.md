@@ -366,7 +366,7 @@ substrings of earlier ones. Current pairs (see the script for the live list):
 | `t3.json`                                                             | `vetra.json`                                       |
 | `T3 Connect` / `t3-connect` / `T3Connect`                             | `Vetra Connect` / `vetra-connect` / `VetraConnect` |
 | `T3ProjectFile` / `T3Project` / `T3Server` / `T3Home` / `t3Home`      | `Vetra*` / `vetraHome`                             |
-| `T3Tools` / `T3Code`                                                  | `VetraTools` / `VetraCode`                         |
+| `T3Tools` / `T3Code`                                                  | `Vetra-Code` / `VetraCode`                         |
 | `t3-resource-monitor` / `t3-relay` / `t3-chat` / `t3-env` / `t3-test` | `vetra-*`                                          |
 | `t3code` (not preceded by `pingdotgg/`)                               | `vetra-code`                                       |
 | `effect-acp` (not already scoped, not a `packages/` path)             | `@vetra-code/effect-acp`                           |

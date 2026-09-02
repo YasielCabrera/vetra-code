@@ -13,7 +13,7 @@ function shortHash(value: string): string {
 
 /**
  * Returns the local-only socket address shared by the desktop shell and CLI.
- * The state directory is hashed so custom T3 homes cannot exceed Unix socket
+ * The state directory is hashed so custom Vetra homes cannot exceed Unix socket
  * path limits.
  */
 export function resolveDesktopAppControlAddress(input: {

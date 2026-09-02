@@ -40,7 +40,7 @@ describe("connectAuth", () => {
 
   it("round-trips the loopback port through the authorize URL fragment", () => {
     const url = buildConnectAuthorizeRequestUrl({
-      hostedAppUrl: "https://app.t3.codes",
+      hostedAppUrl: "https://app.vetra.example",
       state: "state-1",
       challenge: "challenge-1",
       loopbackPort: 34338,
@@ -57,7 +57,7 @@ describe("connectAuth", () => {
   it("rejects authorize requests whose loopback port is corrupted", () => {
     for (const port of ["", "abc", "-1", "0", "65536", "34338x", "34 38"]) {
       const url = new URL(
-        `https://app.t3.codes/connect#state=state-1&challenge=challenge-1&port=${encodeURIComponent(port)}`,
+        `https://app.vetra.example/connect#state=state-1&challenge=challenge-1&port=${encodeURIComponent(port)}`,
       );
       expect(readConnectAuthorizeRequest(url), port).toBeNull();
     }

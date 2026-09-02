@@ -77,12 +77,16 @@ launch remain unavailable during bootstrap. Run the project from this source che
 ### Windows Subsystem for Linux
 
 When the desktop app runs a WSL backend, it installs the matching server runtime into
-`~/.t3/wsl-runtime` inside the selected distro. The first launch after installing or updating T3
+`~/.vetra-code/wsl-runtime` inside the selected distro. The first launch after installing or updating Vetra
 Code may take a little longer while that release's runtime is extracted. Later launches reuse the
 Linux-local copy so startup does not depend on reading application files through `/mnt/c`. After a
 successful launch, Vetra Code keeps the current runtime and one previous runtime for rollback and
 removes older caches automatically. If a cached runtime stops working, Vetra Code launches from the
 application files under `/mnt/c` instead and reinstalls the runtime on the next launch.
+
+Earlier builds cached this runtime under `~/.t3/wsl-runtime`. The first launch after updating
+extracts a fresh copy to the path above; automatic cleanup only covers the new location, so delete
+the old directory by hand if you want the space back.
 
 ## Providers
 

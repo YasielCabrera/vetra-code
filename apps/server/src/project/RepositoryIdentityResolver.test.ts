@@ -45,7 +45,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
           return {
             stdout: input.args.includes("rev-parse")
               ? "/repo\n"
-              : "origin\tgit@github.com:VetraTools/vetra-code.git (fetch)\n",
+              : "origin\tgit@github.com:Vetra-Code/vetra-code.git (fetch)\n",
             stderr: "",
             code: ChildProcessSpawner.ExitCode(0),
             timedOut: false,
@@ -89,7 +89,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
               ? failed
                 ? ""
                 : "/repo\n"
-              : "origin\tgit@github.com:VetraTools/vetra-code.git (fetch)\n",
+              : "origin\tgit@github.com:Vetra-Code/vetra-code.git (fetch)\n",
             stderr: failed ? "temporary Git failure" : "",
             code: ChildProcessSpawner.ExitCode(failed ? 1 : 0),
             timedOut: false,

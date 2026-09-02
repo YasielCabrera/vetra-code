@@ -61,7 +61,10 @@ When publishing is introduced:
 - make signing optional for local verification but explicit for public artifacts;
 - deploy hosted web only to Vetra-owned domains;
 - test install, update, rollback guidance, and app/server version skew;
-- keep production deployment in a separate, reviewable workflow from normal CI.
+- keep production deployment in a separate, reviewable workflow from normal CI;
+- pass the relay client tracing config between jobs as an uploaded artifact, never as a masked
+  cross-job output. `infra/relay/scripts/deploy.test.ts` asserted this against the inherited
+  `release.yml` and was removed with it; restore that assertion alongside the workflow.
 
 Until every prerequisite is satisfied, source checkout development is the supported distribution
 model described in [Install and first run](../user/install.md).

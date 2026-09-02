@@ -13,8 +13,8 @@ describe("resolveMarkdownMediaPreview", () => {
   });
 
   it.each([
-    ["vetra-code:", "https:"],
-    ["vetra-code-dev:", "https:"],
+    ["vetra:", "https:"],
+    ["vetra-dev:", "https:"],
     ["http:", "http:"],
     ["https:", "https:"],
   ])(
