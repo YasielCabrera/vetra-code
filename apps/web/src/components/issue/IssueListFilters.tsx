@@ -6,8 +6,8 @@ import { MenuSeparator } from "../ui/menu";
 import {
   ALL_VALUE,
   ListFilterMenu,
-  ListFilterProjectGroup,
-  ListFilterRadioGroup,
+  ListFilterProjectSubmenu,
+  ListFilterRadioSubmenu,
   listFilterProjectKey,
   type ListFilterOption,
 } from "../sourceControl/ListFilterMenu";
@@ -44,8 +44,9 @@ export function IssueSearchInput({
 }
 
 /**
- * Every issue-list filter behind one icon, the way the pull-request list does it: state, then
- * the host and server groups where a workspace has more than one of either, then the projects.
+ * Every issue-list filter behind one Filters button, the way the pull-request list does it:
+ * state and assignee, then the host and server groups where a workspace has more than one of
+ * either, then the projects. Each one is a row naming its current choice.
  */
 export function IssueFiltersMenu({
   state,
@@ -99,17 +100,23 @@ export function IssueFiltersMenu({
   unavailable: ReadonlyMap<string, string>;
   onProject: (projectId: ProjectId | undefined, environmentId: EnvironmentId | undefined) => void;
 }) {
-  const filtered =
-    state !== "open" ||
-    assignee !== undefined ||
-    host !== undefined ||
-    server !== undefined ||
-    projectId !== undefined;
+  const filterCount = [
+    state !== "open",
+    assignee !== undefined,
+    host !== undefined,
+    server !== undefined,
+    projectId !== undefined,
+  ].filter(Boolean).length;
   return (
-    <ListFilterMenu label="Filter issues" filtered={filtered}>
-      <ListFilterRadioGroup label="State" value={state} options={stateOptions} onChange={onState} />
+    <ListFilterMenu label="Filter issues" count={filterCount}>
+      <ListFilterRadioSubmenu
+        label="State"
+        value={state}
+        options={stateOptions}
+        onChange={onState}
+      />
       <MenuSeparator />
-      <ListFilterRadioGroup
+      <ListFilterRadioSubmenu
         label="Assignee"
         value={assignee ?? ALL_VALUE}
         options={assigneeOptions}
@@ -118,7 +125,7 @@ export function IssueFiltersMenu({
       {hostOptions.length > 2 ? (
         <>
           <MenuSeparator />
-          <ListFilterRadioGroup
+          <ListFilterRadioSubmenu
             label="Host"
             value={host ?? ALL_VALUE}
             options={hostOptions}
@@ -129,7 +136,7 @@ export function IssueFiltersMenu({
       {serverOptions.length > 2 ? (
         <>
           <MenuSeparator />
-          <ListFilterRadioGroup
+          <ListFilterRadioSubmenu
             label="Server"
             value={server ?? ALL_VALUE}
             options={serverOptions}
@@ -138,7 +145,7 @@ export function IssueFiltersMenu({
         </>
       ) : null}
       <MenuSeparator />
-      <ListFilterProjectGroup
+      <ListFilterProjectSubmenu
         projects={projects}
         projectId={projectId}
         projectEnvironmentId={projectEnvironmentId}
