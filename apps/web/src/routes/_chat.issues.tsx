@@ -972,6 +972,7 @@ function IssuesRouteView() {
         {rightPanelState.isOpen && activeIssueSurface && panelEnvironmentId !== null ? (
           <RightPanelTabs
             mode="inline"
+            environmentId={panelEnvironmentId}
             widthStorageKey="vetra:issue-panel-width"
             // Default to roughly half the viewport: the issue list needs more room than a chat,
             // so the 540px chat-preview default squashes it. SSR has no window, so fall back to
@@ -999,6 +1000,7 @@ function IssuesRouteView() {
             onCloseAllSurfaces={closeAllSurfaces}
             onCopyFilePath={() => undefined}
             onAddBrowser={() => undefined}
+            onAddBrowserInProfile={() => undefined}
             onAddTerminal={() => undefined}
             onAddDiff={() => undefined}
             onAddFiles={() => undefined}

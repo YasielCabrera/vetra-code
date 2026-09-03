@@ -1,35 +1,24 @@
 /**
- * CursorSkills — filesystem discovery of Cursor Agent skills for the `$` picker.
+ * CursorSkills — workspace-aware discovery and native invocation for Cursor.
  *
- * Unlike Grok, the Cursor CLI has no `skills` or `inspect` subcommand, so there
- * is nothing to ask: `cursor-agent --help` exposes only `mcp`, `plugin`,
- * `models`, and `rule`. Skills live on disk as one directory per skill with a
- * `SKILL.md` carrying YAML frontmatter, the same shape Claude Code uses. Cursor
- * documents two writable roots plus one it manages itself:
+ * Cursor discovers Agent Skills recursively from user and project roots but
+ * its ACP command catalog only appears after opening a real session. Scanning
+ * the same roots avoids starting an agent and its MCP servers just to populate
+ * a composer menu.
  *
- * - `~/.cursor/skills-cursor` — Cursor's built-ins, synced by the CLI. Cursor's
- *   own `create-skill` skill tells authors never to write here.
- * - `~/.cursor/skills` — personal skills, available across all projects.
- * - `<cwd>/.cursor/skills` — project skills, shared through the repository.
+ * Beyond those writable roots, two read-only sources carry most of the skills
+ * on a developed machine and are scanned too: `~/.cursor/skills-cursor`, which
+ * the CLI syncs and Cursor tells authors never to write to, and the skill
+ * folders declared by installed plugins under `~/.cursor/plugins`. A plugin is
+ * any directory holding `.cursor-plugin/plugin.json` or Claude's
+ * `.claude-plugin/plugin.json`; marketplace plugins are cached four levels down
+ * (`plugins/cache/<marketplace>/<plugin>/<revision>/`) while local ones sit at
+ * `plugins/local/<plugin>/`, so plugin roots are found by looking for a
+ * manifest rather than by assuming a fixed depth.
  *
- * Installed plugins carry skills too, and they are the bulk of them on a
- * developed machine. A plugin is any directory holding a plugin manifest, and
- * Cursor accepts both its own `.cursor-plugin/plugin.json` and Claude's
- * `.claude-plugin/plugin.json`. Marketplace plugins are cached four levels
- * down (`plugins/cache/<marketplace>/<plugin>/<revision>/`) while local ones
- * sit at `plugins/local/<plugin>/`, so plugin roots are located by looking for
- * a manifest rather than by assuming a fixed depth. The manifest's `skills`
- * field names the folder; plugins that declare no skills contribute none.
- *
- * Scanned so the more specific root wins a name collision: project beats
- * personal beats plugin beats built-in. A plugin skill never shadows a skill
+ * Roots are scanned most-specific first, so a name collision resolves as
+ * project > personal > plugin > built-in. A plugin skill never shadows a skill
  * the user wrote themselves.
- *
- * Personal skills are commonly symlinks into a shared `~/.agents/skills` tree,
- * so entries are probed by reading `<entry>/SKILL.md` rather than by testing
- * the entry's file type, which a symlink would report as a link and skip. The
- * same read also filters out the manifest files Cursor keeps beside the
- * built-ins (`.sync-manifest.json` and friends) without naming them.
  *
  * @module provider/Drivers/CursorSkills
  */
@@ -40,71 +29,202 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
+import * as PlatformError from "effect/PlatformError";
 import * as Schema from "effect/Schema";
 import { parse as parseYamlDocument } from "yaml";
 
 type CursorSkillScope = "builtin" | "plugin" | "user" | "project";
 
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
+const SKILL_MENTION_PATTERN = /(^|\s)\$([a-zA-Z][a-zA-Z0-9:_-]*)(?=\s|$)/g;
+const HAS_SKILL_MENTION_PATTERN = /(^|\s)\$[a-zA-Z][a-zA-Z0-9:_-]*(?=\s|$)/;
+const MAX_SKILL_DEPTH = 10;
+const MAX_SKILL_BYTES = FileSystem.Size(1_000_000);
+const MAX_SKILL_SCAN_ENTRIES = 10_000;
+const MAX_SKILL_SCAN_BYTES = FileSystem.Size(8_000_000);
 
-type SkillFrontmatter =
-  | { readonly kind: "missing" }
-  | { readonly kind: "malformed" }
-  | {
-      readonly kind: "parsed";
-      readonly name?: string;
-      readonly description?: string;
-      /**
-       * `user-invocable: false` marks a skill the agent applies on its own and
-       * that no picker should offer. Distinct from `disable-model-invocation`,
-       * which blocks the *model* from auto-triggering a skill the user is still
-       * meant to invoke — most of Cursor's skills set that, so treating it as
-       * "disabled" would empty the picker.
-       */
-      readonly userInvocable: boolean;
-    };
+interface CursorSkillFrontmatter {
+  readonly description?: string;
+  readonly displayName?: string;
+  readonly userInvocationOnly?: boolean;
+  readonly userInvocable?: boolean;
+  readonly cliVisible: boolean;
+}
 
-// Kept local rather than shared with `ClaudeSkills`, which holds an identical
-// parser: importing from there would edit a file upstream owns and add a
-// permanent conflict hunk to every sync. `SKILL.md` frontmatter is a stable
-// cross-provider convention, so the copy does not drift.
-function parseSkillFrontmatter(contents: string): SkillFrontmatter {
-  const match = FRONTMATTER_PATTERN.exec(contents);
-  if (!match) {
-    return { kind: "missing" };
+interface CursorSkillScanBudget {
+  remainingEntries: number;
+  remainingBytes: bigint;
+  exhausted: boolean;
+  incomplete: boolean;
+}
+
+class CursorSkillsProbeError extends Schema.TaggedErrorClass<CursorSkillsProbeError>()(
+  "CursorSkillsProbeError",
+  {
+    reason: Schema.Literals(["scan-budget-exhausted", "filesystem-error"]),
+    cwd: Schema.optional(Schema.String),
+  },
+) {
+  override get message(): string {
+    const location = this.cwd === undefined ? "" : ` for '${this.cwd}'`;
+    return `Cursor skill discovery${location} was incomplete (${this.reason}).`;
   }
+}
+
+const orUndefined = <A, R>(
+  effect: Effect.Effect<A, PlatformError.PlatformError, R>,
+  budget?: CursorSkillScanBudget,
+): Effect.Effect<A | undefined, never, R> =>
+  effect.pipe(
+    Effect.map((value): A | undefined => value),
+    Effect.catchTags({
+      PlatformError: (error) => {
+        if (error.reason._tag !== "NotFound" && budget) budget.incomplete = true;
+        return Effect.void.pipe(Effect.as(undefined));
+      },
+    }),
+  );
+
+function parseFrontmatterBoolean(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1 ? true : value === 0 ? false : undefined;
+  if (typeof value !== "string") return undefined;
+  switch (value.trim().toLowerCase()) {
+    case "true":
+    case "yes":
+    case "on":
+      return true;
+    case "false":
+    case "no":
+    case "off":
+      return false;
+    default:
+      return undefined;
+  }
+}
+
+function parseSkillFrontmatter(contents: string): CursorSkillFrontmatter | undefined {
+  const match = FRONTMATTER_PATTERN.exec(contents);
+  if (!match) return { cliVisible: true };
 
   let parsed: unknown;
   try {
     parsed = parseYamlDocument(match[1] ?? "");
   } catch {
-    return { kind: "malformed" };
+    return undefined;
   }
-  if (typeof parsed !== "object" || parsed === null) {
-    return { kind: "malformed" };
-  }
+  if (typeof parsed !== "object" || parsed === null) return undefined;
 
   const record = parsed as Record<string, unknown>;
-  const name = typeof record.name === "string" ? record.name.trim() : "";
+  const metadata =
+    typeof record.metadata === "object" && record.metadata !== null
+      ? (record.metadata as Record<string, unknown>)
+      : undefined;
+  const rawSurfaces = metadata?.surfaces;
+  const surfaces = Array.isArray(rawSurfaces)
+    ? rawSurfaces.filter((surface): surface is string => typeof surface === "string")
+    : typeof rawSurfaces === "string"
+      ? rawSurfaces.split(",")
+      : [];
   const description = typeof record.description === "string" ? record.description.trim() : "";
+  const displayName = typeof record.name === "string" ? record.name.trim() : "";
   return {
-    kind: "parsed",
-    userInvocable: record["user-invocable"] !== false,
-    ...(name ? { name } : {}),
+    cliVisible:
+      surfaces.length === 0 || surfaces.some((surface) => surface.trim().toLowerCase() === "cli"),
     ...(description ? { description } : {}),
+    ...(displayName ? { displayName } : {}),
+    ...(parseFrontmatterBoolean(record["disable-model-invocation"]) === true
+      ? { userInvocationOnly: true }
+      : {}),
+    ...(parseFrontmatterBoolean(record["user-invocable"]) === false
+      ? { userInvocable: false }
+      : {}),
   };
 }
 
-/**
- * Resolve the `.cursor` directory the spawned CLI would use. Cursor has no
- * config-directory override — the only lever is `HOME`, which the wrapper
- * script reads — so prefer the instance environment's `HOME` over the server
- * process's own. Getting this wrong yields zero skills rather than an error.
- */
-function resolveCursorHomeDirectory(environment: NodeJS.ProcessEnv): string {
-  const home = environment.HOME?.trim() ?? "";
-  return home.length > 0 ? home : NodeOS.homedir();
-}
+const discoverSkillsInRoot = Effect.fn("discoverCursorSkillsInRoot")(function* (input: {
+  readonly directory: string;
+  readonly scope: CursorSkillScope;
+  readonly budget: CursorSkillScanBudget;
+}): Effect.fn.Return<ReadonlyArray<ServerProviderSkill>, never, FileSystem.FileSystem | Path.Path> {
+  const fileSystem = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const skills: ServerProviderSkill[] = [];
+  if (input.budget.exhausted) return skills;
+  const rootDirectory = yield* orUndefined(fileSystem.realPath(input.directory), input.budget);
+  if (!rootDirectory) return skills;
+  const visitedDirectories = new Set<string>();
+
+  const visit = Effect.fn("visitCursorSkillDirectory")(function* (
+    directory: string,
+    depth: number,
+  ): Effect.fn.Return<void, never> {
+    if (input.budget.exhausted) return;
+    const resolvedDirectory = yield* orUndefined(fileSystem.realPath(directory), input.budget);
+    if (!resolvedDirectory) {
+      return;
+    }
+    if (
+      visitedDirectories.has(resolvedDirectory) ||
+      (resolvedDirectory !== rootDirectory &&
+        !resolvedDirectory.startsWith(`${rootDirectory}${path.sep}`))
+    ) {
+      return;
+    }
+    visitedDirectories.add(resolvedDirectory);
+
+    const skillPath = path.join(resolvedDirectory, "SKILL.md");
+    const skillInfo = yield* orUndefined(fileSystem.stat(skillPath), input.budget);
+    if (skillInfo?.type === "File") {
+      let frontmatter: CursorSkillFrontmatter | undefined = { cliVisible: true };
+      if (skillInfo.size <= MAX_SKILL_BYTES && skillInfo.size <= input.budget.remainingBytes) {
+        const contents = yield* orUndefined(fileSystem.readFileString(skillPath));
+        if (contents !== undefined) {
+          input.budget.remainingBytes -= skillInfo.size;
+          frontmatter = parseSkillFrontmatter(contents);
+        }
+      }
+      const name = path.basename(resolvedDirectory).trim();
+      if (frontmatter?.cliVisible && name) {
+        skills.push({
+          name,
+          path: skillPath,
+          scope: input.scope,
+          enabled: true,
+          ...(frontmatter.displayName && frontmatter.displayName !== name
+            ? { displayName: frontmatter.displayName }
+            : {}),
+          ...(frontmatter.description ? { description: frontmatter.description } : {}),
+          ...(frontmatter.userInvocationOnly ? { userInvocationOnly: true } : {}),
+          ...(frontmatter.userInvocable === false ? { userInvocable: false } : {}),
+        });
+      }
+    }
+
+    const entries = yield* orUndefined(fileSystem.readDirectory(resolvedDirectory), input.budget);
+    if (!entries) {
+      return;
+    }
+    for (const entry of [...entries].sort()) {
+      if (input.budget.remainingEntries === 0) {
+        input.budget.exhausted = true;
+        return;
+      }
+      input.budget.remainingEntries -= 1;
+      const child = path.join(resolvedDirectory, entry);
+      const info = yield* orUndefined(fileSystem.stat(child), input.budget);
+      if (info?.type !== "Directory") continue;
+      if (depth >= MAX_SKILL_DEPTH) {
+        input.budget.exhausted = true;
+        return;
+      }
+      yield* visit(child, depth + 1);
+    }
+  });
+
+  yield* visit(rootDirectory, 0);
+  return skills;
+});
 
 const decodeUnknownJsonStringExit = Schema.decodeUnknownExit(Schema.fromJsonString(Schema.Unknown));
 
@@ -190,116 +310,87 @@ const findPluginSkillRoots = Effect.fn("findPluginSkillRoots")(function* (
   return found;
 });
 
-// A skills root may group its skills in subfolders — pstack ships
-// `skills/grokbot/make-bot-ui/SKILL.md` — so a flat one-level scan misses them.
-// Two levels of grouping is well past anything observed.
-const SKILL_NESTING_MAX_DEPTH = 3;
-
-/**
- * Collect every skill under a skills root. A directory holding a `SKILL.md` is
- * a skill and is not descended into; anything else is treated as a grouping
- * folder and walked, up to the depth bound.
- *
- * Entries are probed by reading `<entry>/SKILL.md` rather than by testing the
- * entry's file type, because personal skills are routinely symlinks into a
- * shared tree that a directory check would skip.
- */
-const collectSkillsInRoot = Effect.fn("collectSkillsInRoot")(function* (
-  directory: string,
-  depthRemaining: number,
-): Effect.fn.Return<
-  ReadonlyArray<{
-    readonly skillPath: string;
-    readonly directoryName: string;
-    readonly contents: string;
-  }>,
-  never,
-  FileSystem.FileSystem | Path.Path
-> {
-  const fileSystem = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const entries = yield* fileSystem
-    .readDirectory(directory)
-    .pipe(Effect.orElseSucceed((): ReadonlyArray<string> => []));
-
-  const found: Array<{
-    readonly skillPath: string;
-    readonly directoryName: string;
-    readonly contents: string;
-  }> = [];
-  for (const entry of [...entries].sort()) {
-    if (entry.startsWith(".")) {
-      continue;
-    }
-    const skillPath = path.join(directory, entry, "SKILL.md");
-    const contents = yield* fileSystem
-      .readFileString(skillPath)
-      .pipe(Effect.orElseSucceed(() => undefined));
-    if (contents !== undefined) {
-      found.push({ skillPath, directoryName: entry.trim(), contents });
-      continue;
-    }
-    if (depthRemaining > 1) {
-      found.push(...(yield* collectSkillsInRoot(path.join(directory, entry), depthRemaining - 1)));
-    }
-  }
-  return found;
-});
-
-/**
- * Enumerate Cursor Agent skills from the built-in, plugin, personal, and
- * project roots. Discovery is best-effort: unreadable roots and malformed skill
- * entries are skipped so a broken skill never degrades the provider snapshot.
- */
-export const discoverCursorSkills = Effect.fn("discoverCursorSkills")(function* (
-  environment: NodeJS.ProcessEnv = process.env,
+const inspectCursorSkills = Effect.fn("inspectCursorSkills")(function* (
   cwd?: string,
-): Effect.fn.Return<ReadonlyArray<ServerProviderSkill>, never, FileSystem.FileSystem | Path.Path> {
+  environment: NodeJS.ProcessEnv = process.env,
+) {
   const path = yield* Path.Path;
-  const cursorHome = path.join(resolveCursorHomeDirectory(environment), ".cursor");
-
+  const userHome = environment.HOME?.trim() || environment.USERPROFILE?.trim() || NodeOS.homedir();
+  const rootsBelow = (base: string, scope: CursorSkillScope) => [
+    { directory: path.join(base, ".cursor", "skills"), scope },
+    { directory: path.join(base, ".agents", "skills"), scope },
+    { directory: path.join(base, ".codex", "skills"), scope },
+    { directory: path.join(base, ".claude", "skills"), scope },
+  ];
+  const cursorHome = path.join(userHome, ".cursor");
+  // Plugin roots are enumerated up front because, unlike the fixed roots above,
+  // their location depends on each plugin's manifest.
   const pluginSkillRoots = yield* findPluginSkillRoots(
     path.join(cursorHome, "plugins"),
     PLUGIN_SEARCH_MAX_DEPTH,
   );
-
-  const roots: ReadonlyArray<{ directory: string; scope: CursorSkillScope }> = [
-    { directory: path.join(cursorHome, "skills-cursor"), scope: "builtin" },
+  const roots = [
+    ...(cwd ? rootsBelow(cwd, "project") : []),
+    ...rootsBelow(userHome, "user"),
     ...pluginSkillRoots.map((directory) => ({ directory, scope: "plugin" as const })),
-    { directory: path.join(cursorHome, "skills"), scope: "user" },
-    ...(cwd ? [{ directory: path.join(cwd, ".cursor", "skills"), scope: "project" as const }] : []),
+    { directory: path.join(cursorHome, "skills-cursor"), scope: "builtin" as const },
   ];
 
   const skillsByName = new Map<string, ServerProviderSkill>();
+  const budget: CursorSkillScanBudget = {
+    remainingEntries: MAX_SKILL_SCAN_ENTRIES,
+    remainingBytes: MAX_SKILL_SCAN_BYTES,
+    exhausted: false,
+    incomplete: false,
+  };
   for (const root of roots) {
-    const collected = yield* collectSkillsInRoot(root.directory, SKILL_NESTING_MAX_DEPTH);
-    for (const found of collected) {
-      const frontmatter = parseSkillFrontmatter(found.contents);
-      // Malformed frontmatter means the skill will not load in Cursor either —
-      // skip it rather than surfacing a broken entry under its directory name.
-      if (frontmatter.kind === "malformed") {
-        continue;
-      }
-
-      const name =
-        (frontmatter.kind === "parsed" ? frontmatter.name : undefined) ?? found.directoryName;
-      if (!name) {
-        continue;
-      }
-
-      skillsByName.set(name, {
-        name,
-        path: found.skillPath,
-        // Cursor has no skill ignore list, so the skill's own frontmatter is
-        // the only thing that can withhold it from a picker.
-        enabled: frontmatter.kind !== "parsed" || frontmatter.userInvocable,
-        scope: root.scope,
-        ...(frontmatter.kind === "parsed" && frontmatter.description
-          ? { description: frontmatter.description }
-          : {}),
-      });
+    if (budget.exhausted) break;
+    const skills = yield* discoverSkillsInRoot({ ...root, budget });
+    for (const skill of skills) {
+      if (!skillsByName.has(skill.name)) skillsByName.set(skill.name, skill);
     }
   }
-
-  return [...skillsByName.values()].sort((left, right) => left.name.localeCompare(right.name));
+  return {
+    skills: [...skillsByName.values()].sort((left, right) => left.name.localeCompare(right.name)),
+    failureReason: budget.exhausted
+      ? ("scan-budget-exhausted" as const)
+      : budget.incomplete
+        ? ("filesystem-error" as const)
+        : undefined,
+  };
 });
+
+export const discoverCursorSkills = Effect.fn("discoverCursorSkills")(function* (
+  cwd?: string,
+  environment: NodeJS.ProcessEnv = process.env,
+) {
+  return (yield* inspectCursorSkills(cwd, environment)).skills;
+});
+
+export const probeCursorSkills = Effect.fn("probeCursorSkills")(function* (
+  cwd?: string,
+  environment: NodeJS.ProcessEnv = process.env,
+) {
+  const inspection = yield* inspectCursorSkills(cwd, environment);
+  if (inspection.failureReason) {
+    return yield* new CursorSkillsProbeError({
+      reason: inspection.failureReason,
+      ...(cwd ? { cwd } : {}),
+    });
+  }
+  return inspection.skills;
+});
+
+/** Cursor invokes Agent Skills with `/name`; Vetra composers insert `$name`. */
+export function hasCursorSkillMention(prompt: string): boolean {
+  return HAS_SKILL_MENTION_PATTERN.test(prompt);
+}
+
+export function rewriteCursorSkillMentions(
+  prompt: string,
+  skillNames: ReadonlySet<string>,
+): string {
+  return prompt.replace(SKILL_MENTION_PATTERN, (match, prefix: string, name: string) =>
+    skillNames.has(name) ? `${prefix}/${name}` : match,
+  );
+}

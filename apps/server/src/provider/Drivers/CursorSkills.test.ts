@@ -43,7 +43,9 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" });
+      const home = yield* fs
+        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .pipe(Effect.flatMap(fs.realPath));
       const workspace = path.join(home, "workspace");
       const cursorHome = path.join(home, ".cursor");
 
@@ -63,7 +65,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
         frontmatter("deploy", "Deploy the app."),
       );
 
-      const skills = yield* discoverCursorSkills({ HOME: home }, workspace);
+      const skills = yield* discoverCursorSkills(workspace, { HOME: home });
 
       assert.deepEqual(skills, [
         {
@@ -95,7 +97,9 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" });
+      const home = yield* fs
+        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .pipe(Effect.flatMap(fs.realPath));
       const workspace = path.join(home, "workspace");
       const cursorHome = path.join(home, ".cursor");
 
@@ -110,7 +114,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
         frontmatter("shell", "Personal shell skill."),
       );
 
-      const personalWins = yield* discoverCursorSkills({ HOME: home }, workspace);
+      const personalWins = yield* discoverCursorSkills(workspace, { HOME: home });
       assert.deepEqual(
         personalWins.map((skill) => [skill.scope, skill.description]),
         [["user", "Personal shell skill."]],
@@ -122,7 +126,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
         frontmatter("shell", "Project shell skill."),
       );
 
-      const projectWins = yield* discoverCursorSkills({ HOME: home }, workspace);
+      const projectWins = yield* discoverCursorSkills(workspace, { HOME: home });
       assert.deepEqual(
         projectWins.map((skill) => [skill.scope, skill.description]),
         [["project", "Project shell skill."]],
@@ -131,12 +135,15 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
   );
 
   // Personal skills are routinely symlinks into a shared `~/.agents/skills`
-  // tree, which a directory-type check would skip.
-  it.effect("follows a symlinked skill directory", () =>
+  // tree. The walk will not follow one out of the root it resolved, so the
+  // skill is reported from the shared tree, which is a scanned root itself.
+  it.effect("reports a symlinked personal skill from the tree it really lives in", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" });
+      const home = yield* fs
+        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .pipe(Effect.flatMap(fs.realPath));
       const shared = path.join(home, ".agents", "skills");
       const cursorSkills = path.join(home, ".cursor", "skills");
 
@@ -147,12 +154,13 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
         path.join(cursorSkills, "next-cache-components"),
       );
 
-      const skills = yield* discoverCursorSkills({ HOME: home });
+      const skills = yield* discoverCursorSkills(undefined, { HOME: home });
 
       assert.deepEqual(skills, [
         {
-          name: "next-cache",
-          path: path.join(cursorSkills, "next-cache-components", "SKILL.md"),
+          name: "next-cache-components",
+          displayName: "next-cache",
+          path: path.join(shared, "next-cache-components", "SKILL.md"),
           enabled: true,
           scope: "user",
           description: "Cache docs.",
@@ -161,17 +169,19 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
     }),
   );
 
-  it.effect("skips malformed frontmatter and falls back to the directory name", () =>
+  it.effect("skips malformed frontmatter and keeps skills that have none", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" });
+      const home = yield* fs
+        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .pipe(Effect.flatMap(fs.realPath));
       const cursorSkills = path.join(home, ".cursor", "skills");
 
       yield* writeSkill(cursorSkills, "broken", ["---", "name: [unclosed", "---", ""].join("\n"));
       yield* writeSkill(cursorSkills, "no-frontmatter", "# Just a heading\n");
 
-      const skills = yield* discoverCursorSkills({ HOME: home });
+      const skills = yield* discoverCursorSkills(undefined, { HOME: home });
 
       assert.deepEqual(
         skills.map((skill) => skill.name),
@@ -184,14 +194,16 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" });
+      const home = yield* fs
+        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .pipe(Effect.flatMap(fs.realPath));
       const builtins = path.join(home, ".cursor", "skills-cursor");
 
       yield* fs.makeDirectory(builtins, { recursive: true });
       yield* fs.writeFileString(path.join(builtins, ".sync-manifest.json"), '{"version":1}');
 
       // No `skills` root and no workspace: discovery must stay empty, not fail.
-      const skills = yield* discoverCursorSkills({ HOME: home });
+      const skills = yield* discoverCursorSkills(undefined, { HOME: home });
 
       assert.deepEqual(skills, []);
     }),
@@ -203,7 +215,9 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" });
+      const home = yield* fs
+        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .pipe(Effect.flatMap(fs.realPath));
       const plugins = path.join(home, ".cursor", "plugins");
 
       const cached = path.join(plugins, "cache", "cursor-public", "pstack", "revision-hash");
@@ -223,7 +237,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       yield* writePlugin(local, { name: "homegrown", skills: "./skills/" });
       yield* writeSkill(path.join(local, "skills"), "mine", frontmatter("mine", "Local."));
 
-      const skills = yield* discoverCursorSkills({ HOME: home });
+      const skills = yield* discoverCursorSkills(undefined, { HOME: home });
 
       assert.deepEqual(
         skills.map((skill) => [skill.name, skill.scope]),
@@ -240,7 +254,9 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" });
+      const home = yield* fs
+        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .pipe(Effect.flatMap(fs.realPath));
       const cursorSkills = path.join(home, ".cursor", "skills");
 
       // pstack ships `skills/grokbot/make-bot-ui/SKILL.md`: the outer folder is
@@ -252,11 +268,14 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       );
       yield* writeSkill(cursorSkills, "flat", frontmatter("flat", "Top level."));
 
-      const skills = yield* discoverCursorSkills({ HOME: home });
+      const skills = yield* discoverCursorSkills(undefined, { HOME: home });
 
       assert.deepEqual(
-        skills.map((skill) => skill.name),
-        ["flat", "Make Bot UI"],
+        skills.map((skill) => [skill.name, skill.displayName]),
+        [
+          ["flat", undefined],
+          ["make-bot-ui", "Make Bot UI"],
+        ],
       );
     }),
   );
@@ -265,7 +284,9 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" });
+      const home = yield* fs
+        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .pipe(Effect.flatMap(fs.realPath));
       const pluginRoot = path.join(home, ".cursor", "plugins", "local", "mcp-only");
 
       // The `github` plugin is shaped like this: a manifest and an mcp.json,
@@ -273,7 +294,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       yield* writePlugin(pluginRoot, { name: "mcp-only" });
       yield* fs.writeFileString(path.join(pluginRoot, "mcp.json"), "{}");
 
-      assert.deepEqual(yield* discoverCursorSkills({ HOME: home }), []);
+      assert.deepEqual(yield* discoverCursorSkills(undefined, { HOME: home }), []);
     }),
   );
 
@@ -284,7 +305,9 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" });
+      const home = yield* fs
+        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .pipe(Effect.flatMap(fs.realPath));
       const pluginRoot = path.join(home, ".cursor", "plugins", "local", "pstack");
 
       yield* writePlugin(pluginRoot, { name: "pstack", skills: "./skills/" });
@@ -295,7 +318,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
         frontmatter("setup-benny", "Not a slash skill."),
       );
 
-      const skills = yield* discoverCursorSkills({ HOME: home });
+      const skills = yield* discoverCursorSkills(undefined, { HOME: home });
 
       assert.deepEqual(
         skills.map((skill) => skill.name),
@@ -304,11 +327,13 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
     }),
   );
 
-  it.effect("withholds user-invocable:false from pickers but keeps model-invocation skills", () =>
+  it.effect("reports the invocation flags a skill's frontmatter sets", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" });
+      const home = yield* fs
+        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .pipe(Effect.flatMap(fs.realPath));
       const cursorSkills = path.join(home, ".cursor", "skills");
 
       yield* writeSkill(
@@ -338,13 +363,13 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
         ].join("\n"),
       );
 
-      const skills = yield* discoverCursorSkills({ HOME: home });
+      const skills = yield* discoverCursorSkills(undefined, { HOME: home });
 
       assert.deepEqual(
-        skills.map((skill) => [skill.name, skill.enabled]),
+        skills.map((skill) => [skill.name, skill.userInvocable, skill.userInvocationOnly]),
         [
-          ["auto-guidance", false],
-          ["user-command", true],
+          ["auto-guidance", false, undefined],
+          ["user-command", undefined, true],
         ],
       );
     }),
@@ -354,7 +379,9 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" });
+      const home = yield* fs
+        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .pipe(Effect.flatMap(fs.realPath));
       const workspace = path.join(home, "workspace");
       const cursorHome = path.join(home, ".cursor");
       const pluginRoot = path.join(cursorHome, "plugins", "local", "p");
@@ -371,14 +398,14 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
         frontmatter("review", "Plugin."),
       );
 
-      const pluginWins = yield* discoverCursorSkills({ HOME: home }, workspace);
+      const pluginWins = yield* discoverCursorSkills(workspace, { HOME: home });
       assert.deepEqual(
         pluginWins.map((skill) => [skill.scope, skill.description]),
         [["plugin", "Plugin."]],
       );
 
       yield* writeSkill(path.join(cursorHome, "skills"), "review", frontmatter("review", "Mine."));
-      const userWins = yield* discoverCursorSkills({ HOME: home }, workspace);
+      const userWins = yield* discoverCursorSkills(workspace, { HOME: home });
       assert.deepEqual(
         userWins.map((skill) => [skill.scope, skill.description]),
         [["user", "Mine."]],

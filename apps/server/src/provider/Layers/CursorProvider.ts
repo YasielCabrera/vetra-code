@@ -1061,7 +1061,7 @@ export const checkCursorProviderStatus = Effect.fn("checkCursorProviderStatus")(
   }
 
   const parsed = parseCursorAboutOutput(aboutProbe.success.value);
-  const skills = yield* discoverCursorSkills(environment ?? process.env, cwd);
+  const skills = yield* discoverCursorSkills(cwd, environment ?? process.env);
   const cursorCliConfigChannel = yield* readCursorCliConfigChannel();
   const parameterizedModelPickerUnsupportedMessage =
     getCursorParameterizedModelPickerUnsupportedMessage({

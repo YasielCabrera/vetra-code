@@ -14,10 +14,7 @@ import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { VetraMark } from "../VetraMark";
 import { cn } from "../../lib/utils";
 import { useEnvironments } from "../../state/environments";
-import {
-  rememberedIssueFilters,
-  rememberedPullRequestFilters,
-} from "../sourceControl/listFilterMemory";
+import { rememberedIssueFilters } from "../sourceControl/listFilterMemory";
 import {
   resolveEnvironmentIdentificationPillLabel,
   resolveSidebarStageBackdropVariant,
@@ -36,6 +33,7 @@ import {
   useSidebar,
 } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPreferences";
 import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
 
@@ -166,7 +164,10 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   // again. Read at the press rather than held here: the page writes them as they are picked.
   const handlePullRequestsClick = useCallback(() => {
     closeMobileSidebar();
-    void navigate({ to: "/pull-requests", search: rememberedPullRequestFilters() });
+    void navigate({
+      to: "/pull-requests",
+      search: readPullRequestListPreferences(),
+    });
   }, [closeMobileSidebar, navigate]);
   const handleIssuesClick = useCallback(() => {
     closeMobileSidebar();

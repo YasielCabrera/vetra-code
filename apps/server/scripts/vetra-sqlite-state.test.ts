@@ -5,7 +5,7 @@ import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
-import * as NodeSqliteClient from "../src/persistence/NodeSqliteClient.ts";
+import * as NodeSqliteClient from "@vetra-code/shared/nodeSqliteClient";
 import { runSqliteState } from "./vetra-sqlite-state.ts";
 
 const createFixtureDatabase = Effect.fn("createSqliteStateFixtureDatabase")(function* (

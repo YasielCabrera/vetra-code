@@ -1,6 +1,7 @@
 /**
- * What each source-control list page was last narrowed to, so coming back to it lands on the
- * view the reader chose rather than on the default one.
+ * What the issues list was last narrowed to, so coming back to it lands on the view the reader
+ * chose rather than on the default one. Pull requests keep their own scope in
+ * `pullRequestListPreferences`.
  *
  * Only the filter menu's own groups are kept. The search text and the open row belong to a
  * visit rather than to the page: text left in the box would come back as a list narrowed by
@@ -14,8 +15,6 @@ import {
   IssueAssigneeFilter,
   IssueListState,
   ProjectId as ProjectIdSchema,
-  PullRequestInvolvement,
-  PullRequestListState,
   TrimmedNonEmptyString,
   type EnvironmentId,
   type ProjectId,
@@ -25,7 +24,6 @@ import * as Schema from "effect/Schema";
 import { getLocalStorageItem, setLocalStorageItem } from "~/hooks/useLocalStorage";
 
 export const ISSUE_LIST_FILTERS_STORAGE_KEY = "vetra:issues-filters:v1";
-export const PULL_REQUEST_LIST_FILTERS_STORAGE_KEY = "vetra:pull-requests-filters:v1";
 
 /** Bounded the same way the pages bound a host read out of a URL. */
 const FilterHost = TrimmedNonEmptyString.check(Schema.isMaxLength(200));
@@ -39,26 +37,8 @@ const RememberedIssueFilters = Schema.Struct({
 });
 export type RememberedIssueFilters = typeof RememberedIssueFilters.Type;
 
-const RememberedPullRequestFilters = Schema.Struct({
-  state: PullRequestListState,
-  involvement: PullRequestInvolvement,
-  draft: Schema.optionalKey(Schema.Literals(["only", "hide"])),
-  review: Schema.optionalKey(
-    Schema.Literals(["approved", "changes-requested", "review-required", "none"]),
-  ),
-  checks: Schema.optionalKey(Schema.Literals(["passing", "failing"])),
-  host: Schema.optionalKey(FilterHost),
-  environmentId: Schema.optionalKey(EnvironmentIdSchema),
-  projectId: Schema.optionalKey(ProjectIdSchema),
-});
-export type RememberedPullRequestFilters = typeof RememberedPullRequestFilters.Type;
-
 /** What each page shows a reader who has never narrowed it. */
 const ISSUE_FILTER_DEFAULTS: RememberedIssueFilters = { state: "open" };
-const PULL_REQUEST_FILTER_DEFAULTS: RememberedPullRequestFilters = {
-  state: "open",
-  involvement: "all",
-};
 
 /**
  * A record that cannot be read is one nobody can act on: the page opens on its defaults rather
@@ -101,36 +81,4 @@ export function rememberIssueFilters(search: {
 /** The search a plain visit to the issues page opens with. */
 export function rememberedIssueFilters(): RememberedIssueFilters {
   return readFilters(ISSUE_LIST_FILTERS_STORAGE_KEY, RememberedIssueFilters, ISSUE_FILTER_DEFAULTS);
-}
-
-/** Keeps what the pull request filter menu narrows by, dropping the rest of the page's search. */
-export function rememberPullRequestFilters(search: {
-  readonly state: RememberedPullRequestFilters["state"];
-  readonly involvement: RememberedPullRequestFilters["involvement"];
-  readonly draft?: RememberedPullRequestFilters["draft"];
-  readonly review?: RememberedPullRequestFilters["review"];
-  readonly checks?: RememberedPullRequestFilters["checks"];
-  readonly host?: string | undefined;
-  readonly environmentId?: EnvironmentId | undefined;
-  readonly projectId?: ProjectId | undefined;
-}) {
-  writeFilters(PULL_REQUEST_LIST_FILTERS_STORAGE_KEY, RememberedPullRequestFilters, {
-    state: search.state,
-    involvement: search.involvement,
-    ...(search.draft === undefined ? {} : { draft: search.draft }),
-    ...(search.review === undefined ? {} : { review: search.review }),
-    ...(search.checks === undefined ? {} : { checks: search.checks }),
-    ...(search.host === undefined ? {} : { host: search.host }),
-    ...(search.environmentId === undefined ? {} : { environmentId: search.environmentId }),
-    ...(search.projectId === undefined ? {} : { projectId: search.projectId }),
-  });
-}
-
-/** The search a plain visit to the pull requests page opens with. */
-export function rememberedPullRequestFilters(): RememberedPullRequestFilters {
-  return readFilters(
-    PULL_REQUEST_LIST_FILTERS_STORAGE_KEY,
-    RememberedPullRequestFilters,
-    PULL_REQUEST_FILTER_DEFAULTS,
-  );
 }

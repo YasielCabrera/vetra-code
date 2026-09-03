@@ -19,6 +19,7 @@ import {
   UsageDay,
   type UsageProviderKind,
   type UsageSource,
+  type UsagePricing,
   type UsageSummary,
   type UsageSummaryInput,
   type UsageTokenTotals,
@@ -36,6 +37,7 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
+import * as Semaphore from "effect/Semaphore";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 
 import { ServerConfig } from "../config.ts";
@@ -64,6 +66,9 @@ const LITELLM_RATES_URL =
 
 /** Rates move rarely; a day-old table keeps the page working offline. */
 const RATES_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** An explicit refresh ignores the TTL, but not a table fetched this recently. */
+const RATES_REFRESH_FLOOR_MS = 60 * 1000;
 
 /**
  * Files are filtered by mtime before opening. The slack covers a session whose
@@ -121,8 +126,17 @@ export class UsageService extends Context.Service<
       totals: UsageTokenTotals,
       reportedCostUsd: number | null,
     ) => Effect.Effect<PricedUsage>;
+    /** Refetches the rate table ahead of its TTL. See `ensureRates`. */
+    readonly refreshRates: Effect.Effect<UsagePricing>;
   }
 >()("@vetra-code/server/usage/UsageService") {}
+
+const EMPTY_PRICING: UsagePricing = {
+  status: "unavailable",
+  source: LITELLM_RATES_URL,
+  fetchedAt: null,
+  knownModels: 0,
+};
 
 /** Empty summary, for suites that only need the RPC surface to resolve. */
 export const layerTest = Layer.succeed(
@@ -137,12 +151,7 @@ export const layerTest = Layer.succeed(
         untilDay: input.untilDay,
         buckets: [],
         sources: [],
-        pricing: {
-          status: "unavailable",
-          source: LITELLM_RATES_URL,
-          fetchedAt: null,
-          knownModels: 0,
-        },
+        pricing: EMPTY_PRICING,
         scanDurationMs: 0,
       }),
     readSubscriptionSummary: Effect.succeed({
@@ -153,16 +162,12 @@ export const layerTest = Layer.succeed(
       untilDay: UsageDay.make("1970-01-30"),
       buckets: [],
       sources: [],
-      pricing: {
-        status: "unavailable",
-        source: LITELLM_RATES_URL,
-        fetchedAt: null,
-        knownModels: 0,
-      },
+      pricing: EMPTY_PRICING,
       scanDurationMs: 0,
     }),
     price: (model, totals, reportedCostUsd) =>
       Effect.succeed(priceUsage(new Map(), model, totals, reportedCostUsd)),
+    refreshRates: Effect.succeed(EMPTY_PRICING),
   }),
 );
 
@@ -181,16 +186,29 @@ export const make = Effect.gen(function* () {
   const scanCachePath = path.join(config.stateDir, "usage-scan-cache.json");
   let rates: RateTable = new Map();
   let ratesFetchedAtMs: number | null = null;
-  let ratesStatus: UsageSummary["pricing"]["status"] = "unavailable";
+  let ratesStatus: UsagePricing["status"] = "unavailable";
+  // One fetch at a time. A burst of refreshes from several clients waits on
+  // the first fetch and then sees a table young enough to skip its own.
+  const ratesLock = yield* Semaphore.make(1);
+
+  const pricing = (): UsagePricing => ({
+    status: ratesStatus,
+    source: LITELLM_RATES_URL,
+    fetchedAt:
+      ratesFetchedAtMs === null ? null : DateTime.formatIso(DateTime.makeUnsafe(ratesFetchedAtMs)),
+    knownModels: rates.size,
+  });
 
   /**
    * Loads the LiteLLM rate table, preferring a fresh copy and falling back to
    * the on-disk snapshot. With neither, every model reports as unpriced rather
-   * than the page failing.
+   * than the page failing. `force` refetches inside the TTL so a model that
+   * LiteLLM added since the last fetch gets priced now.
    */
-  const ensureRates = Effect.fn("UsageService.ensureRates")(function* () {
+  const loadRates = Effect.fn("UsageService.loadRates")(function* (force: boolean) {
     const now = yield* Clock.currentTimeMillis;
-    if (ratesFetchedAtMs !== null && now - ratesFetchedAtMs < RATES_TTL_MS) return;
+    const maxAgeMs = force ? RATES_REFRESH_FLOOR_MS : RATES_TTL_MS;
+    if (ratesFetchedAtMs !== null && now - ratesFetchedAtMs < maxAgeMs) return;
 
     if (ratesFetchedAtMs === null) {
       const fromDisk = yield* fileSystem.readFileString(ratesCachePath).pipe(
@@ -203,7 +221,7 @@ export const make = Effect.gen(function* () {
           rates = parsed;
           ratesFetchedAtMs = fromDisk.fetchedAtMs;
           ratesStatus = "cached";
-          if (now - fromDisk.fetchedAtMs < RATES_TTL_MS) return;
+          if (now - fromDisk.fetchedAtMs < maxAgeMs) return;
         }
       }
     }
@@ -233,6 +251,26 @@ export const make = Effect.gen(function* () {
       Effect.catchCause(() => Effect.void),
     );
   });
+
+  const ensureRates = (force: boolean) => ratesLock.withPermit(loadRates(force));
+
+  const refreshRates = ensureRates(true).pipe(
+    Effect.map(pricing),
+    Effect.withSpan("UsageService.refreshRates"),
+  );
+
+  /**
+   * Claude's config dir is the home itself when overridden, but a default
+   * install nests transcripts under `~/.claude/projects`. Probe both.
+   */
+  const resolveClaudeTranscriptDir = (homePath: string) =>
+    Effect.gen(function* () {
+      const nested = path.join(homePath, ".claude", "projects");
+      const nestedExists = yield* fileSystem
+        .exists(nested)
+        .pipe(Effect.catchCause(() => Effect.succeed(false)));
+      return nestedExists ? nested : path.join(homePath, "projects");
+    });
 
   /** Resolves the transcript directory for each provider. */
   const resolveTranscriptDirs = Effect.fn("UsageService.resolveTranscriptDirs")(function* () {
@@ -460,7 +498,7 @@ export const make = Effect.gen(function* () {
     // Pricing only matters once records are aggregated, so the rate table
     // loads while transcripts stream instead of gating them: a cold rates
     // fetch on a slow network no longer delays the scan by its own timeout.
-    const [, scannedDirs] = yield* Effect.all([ensureRates(), collectDirs(windowStartMs)], {
+    const [, scannedDirs] = yield* Effect.all([ensureRates(false), collectDirs(windowStartMs)], {
       concurrency: 2,
     });
 
@@ -546,15 +584,7 @@ export const make = Effect.gen(function* () {
       untilDay: input.untilDay,
       buckets: aggregated.buckets,
       sources,
-      pricing: {
-        status: ratesStatus,
-        source: LITELLM_RATES_URL,
-        fetchedAt:
-          ratesFetchedAtMs === null
-            ? null
-            : DateTime.formatIso(DateTime.makeUnsafe(ratesFetchedAtMs)),
-        knownModels: rates.size,
-      },
+      pricing: pricing(),
       scanDurationMs: Math.max(0, finishedAtMs - startedAtMs),
     } satisfies UsageSummary;
   });
@@ -610,7 +640,7 @@ export const make = Effect.gen(function* () {
     totals: UsageTokenTotals,
     reportedCostUsd: number | null,
   ) {
-    yield* ensureRates();
+    yield* ensureRates(false);
     return priceUsage(rates, model, totals, reportedCostUsd);
   });
 
@@ -630,7 +660,7 @@ export const make = Effect.gen(function* () {
     "1 hour",
   );
 
-  return { readSummary, readSubscriptionSummary, price } as const;
+  return { readSummary, readSubscriptionSummary, price, refreshRates } as const;
 });
 
 export const layer = Layer.effect(UsageService, make);

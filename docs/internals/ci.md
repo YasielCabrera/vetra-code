@@ -27,7 +27,7 @@ The fork does not currently include a production release or relay-deployment wor
 removed so CI cannot publish to legacy upstream infrastructure while Vetra-owned package, signing,
 domain, authentication, and updater targets are still undecided. Upstream still has those workflows;
 a sync can restore them. Drop them again if they return. See
-[Syncing upstream T3 Code](./upstream-sync.md).
+[Syncing upstream Vetra Code](./upstream-sync.md).
 
 See [Release bootstrap status](../operations/release.md) for the prerequisites that must be met
 before publishing automation is introduced.

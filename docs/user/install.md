@@ -9,15 +9,8 @@ domains, and update infrastructure.
 - Node.js `24.13.1` or a compatible version from the root `package.json`
 - pnpm `11.10.0`
 - Git
-- at least one provider CLI installed and authenticated
-
-| Provider   | Default binary | Login command         |
-| ---------- | -------------- | --------------------- |
-| Codex      | `codex`        | `codex login`         |
-| Claude     | `claude`       | `claude auth login`   |
-| Cursor     | `cursor-agent` | `agent login`         |
-| Grok Build | `grok`         | `grok login`          |
-| OpenCode   | `opencode`     | `opencode auth login` |
+- at least one provider runtime installed and authenticated; Antigravity can be installed from
+  Vetra Code settings instead. See [Providers](#providers) below.
 
 Run provider login on the machine where the Vetra server runs. A CLI can instead be configured with
 an explicit binary path in **Settings** when it is not on that process's `PATH`.
@@ -90,19 +83,25 @@ the old directory by hand if you want the space back.
 
 ## Providers
 
-Vetra Code drives provider CLIs; it does not ship them. Install the CLI for each provider you want
-to use, then authenticate it.
+Vetra Code uses provider runtimes but does not bundle them. Install and authenticate each
+provider's CLI, or use Vetra Code's managed setup for Antigravity.
 
-| Provider   | CLI                                                   | Default binary | Log in with           |
-| ---------- | ----------------------------------------------------- | -------------- | --------------------- |
-| Codex      | [Codex CLI](https://developers.openai.com/codex/cli)  | `codex`        | `codex login`         |
-| Claude     | [Claude Code](https://claude.com/product/claude-code) | `claude`       | `claude auth login`   |
-| Cursor     | [Cursor CLI](https://cursor.com/cli)                  | `cursor-agent` | `agent login`         |
-| Grok Build | [Grok Build CLI](https://x.ai/cli)                    | `grok`         | `grok login`          |
-| OpenCode   | [OpenCode](https://opencode.ai)                       | `opencode`     | `opencode auth login` |
+| Provider    | CLI                                                                                                        | Default binary        | Log in with                           |
+| ----------- | ---------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------- |
+| Codex       | [Codex CLI](https://developers.openai.com/codex/cli)                                                       | `codex`               | `codex login`                         |
+| Claude      | [Claude Code](https://claude.com/product/claude-code)                                                      | `claude`              | `claude auth login`                   |
+| Cursor      | [Cursor CLI](https://cursor.com/cli)                                                                       | `cursor-agent`        | `agent login`                         |
+| Grok Build  | [Grok Build CLI](https://x.ai/cli)                                                                         | `grok`                | `grok login`                          |
+| OpenCode    | [OpenCode](https://opencode.ai)                                                                            | `opencode`            | `opencode auth login`                 |
+| Antigravity | [Official ACP agent](https://github.com/agentclientprotocol/registry/blob/main/antigravity-acp/agent.json) | Managed by Vetra Code | **Sign in with Google** in Vetra Code |
 
-Codex and Claude are on by default. Cursor, Grok Build, and OpenCode are off by default; turn
-them on in **Settings** → the provider's card when you want to use them.
+Codex and Claude are on by default. Cursor, Grok Build, OpenCode, and Antigravity are off by
+default. Turn them on in **Settings** > **Providers** when you want to use them.
+
+For Antigravity, select the environment in provider settings, then install and sign in there.
+The runtime and credentials stay on that environment, even when you use a phone or remote
+browser. See [Antigravity setup](./providers-antigravity.md) for Google sign-in, remote callback
+steps, and supported hosts.
 
 Cursor is the one to watch: install Cursor CLI, which provides the `cursor-agent` binary that
 Vetra Code looks for, but authenticate with `agent login`, not `cursor-agent login`.
@@ -111,8 +110,8 @@ Grok models that support adjustable reasoning show a **Reasoning** control besid
 The available levels and default come from the installed Grok Build CLI, so they can vary by model
 and CLI version.
 
-Run the login command on the machine running the Vetra Code server, not on the device you browse
-from.
+Run CLI login commands on the machine running the Vetra Code server, not on the device you browse
+from. Antigravity uses its sign-in controls in Vetra Code instead of a CLI login command.
 
 ### Binary Discovery
 
@@ -121,14 +120,17 @@ Each provider CLI must be on the server's `PATH`, or have an explicit binary pat
 manager or a non-standard install location keeps the CLI off the `PATH` of the shell that
 started Vetra Code.
 
+Antigravity can use its managed runtime without a `PATH` entry. Its optional **Binary path**
+overrides the managed runtime and must point to the official ACP executable.
+
 ### When Auth Is Needed
 
 Provider auth is required before you start a session with that provider, not before you start
 Vetra Code. You can install Vetra Code, open it, and add providers afterwards. A provider that is not
-authenticated shows its status in **Settings** and fails at session start with the login command
-to run.
+authenticated shows its status and setup instructions in **Settings**.
 
-For multi-account setups, see [Codex](./providers-codex.md) and [Claude](./providers-claude.md).
+For multi-account setups, see [Codex](./providers-codex.md), [Claude](./providers-claude.md), and
+[Antigravity](./providers-antigravity.md#accounts-and-removal).
 
 ## Next Steps
 

@@ -7,7 +7,12 @@
  * Those parts live here so the two menus read as one control rather than as two that happen to
  * look alike.
  */
-import type { EnvironmentId, ProjectId, SourceControlProviderKind } from "@vetra-code/contracts";
+import type {
+  EnvironmentId,
+  ProjectIconOverride,
+  ProjectId,
+  SourceControlProviderKind,
+} from "@vetra-code/contracts";
 import { FolderGit2Icon, LayersIcon, ListFilterIcon } from "lucide-react";
 import type { ElementType, ReactNode } from "react";
 
@@ -41,6 +46,8 @@ export interface ListFilterOption<Value extends string> {
   readonly favicon?: {
     readonly environmentId: EnvironmentId;
     readonly cwd: string;
+    readonly faviconPath?: string | null;
+    readonly projectIcon?: ProjectIconOverride | null;
   };
   /** Why it cannot be chosen, carried onto the item as its tooltip. */
   readonly unavailable?: string | undefined;
@@ -55,6 +62,9 @@ function ListFilterOptionIcon<Value extends string>({
     <ProjectFavicon
       environmentId={option.favicon.environmentId}
       cwd={option.favicon.cwd}
+      projectName={option.label}
+      faviconPath={option.favicon.faviconPath}
+      projectIcon={option.favicon.projectIcon}
       fallbackIcon={FolderGit2Icon}
       className="size-3.5 shrink-0"
     />
@@ -200,6 +210,8 @@ export function ListFilterProjectSubmenu({
     readonly environmentId: EnvironmentId;
     readonly title: string;
     readonly workspaceRoot: string;
+    readonly faviconPath?: string | null;
+    readonly projectIcon?: ProjectIconOverride | null;
   }>;
   projectId: ProjectId | undefined;
   /**
@@ -227,7 +239,12 @@ export function ListFilterProjectSubmenu({
           value: listFilterProjectKey(project),
           label: project.title,
           Icon: FolderGit2Icon,
-          favicon: { environmentId: project.environmentId, cwd: project.workspaceRoot },
+          favicon: {
+            environmentId: project.environmentId,
+            cwd: project.workspaceRoot,
+            faviconPath: project.faviconPath ?? null,
+            projectIcon: project.projectIcon ?? null,
+          },
           ...(reason === undefined ? {} : { unavailable: reason }),
         };
       }),

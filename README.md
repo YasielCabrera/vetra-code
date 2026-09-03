@@ -1,8 +1,10 @@
 # Vetra Code
 
-Vetra Code is a web and desktop workspace for building full-stack applications with coding agents. It preserves the established bring-your-own-subscription runtime—Codex, Claude Code, Cursor, Grok, and OpenCode adapters; event-sourced orchestration; terminals; Git; files; previews; and checkpoints—while the product and builder experience evolve independently.
+Vetra Code is a web and desktop workspace for building full-stack applications with coding agents. It preserves the established bring-your-own-subscription runtime—Codex, Claude Code, Cursor, Grok, OpenCode, and Antigravity adapters; event-sourced orchestration; terminals; Git; files; previews; and checkpoints—while the product and builder experience evolve independently.
 
 This repository is an early fork foundation. The marketing and mobile applications have been removed. Cloud execution and custom harnesses are planned, but the first runnable milestone is intentionally local web + desktop.
+
+Vetra Code works with your existing subscriptions. If a provider is set up on your computer, Vetra Code can drive it.
 
 ## Safe local development
 
@@ -24,12 +26,13 @@ Vetra Code runtime state is isolated under `~/.vetra-code` by default. Never poi
 
 - Node.js `24.13.1` or a compatible version from `package.json`
 - pnpm `11.10.0`
-- At least one installed and authenticated provider CLI:
-  - `codex login`
-  - `claude auth login`
-  - `agent login` for Cursor
-  - `grok login`
-  - `opencode auth login`
+- At least one installed and authenticated provider:
+  - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
+  - Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
+  - Cursor: install [Cursor CLI](https://cursor.com/cli) and run `agent login`
+  - Grok Build: install [Grok Build CLI](https://x.ai/cli) and run `grok login`
+  - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
+  - Antigravity: enable it in Settings, then use **Install Antigravity** and **Sign in with Google**. No CLI is required.
 
 Install dependencies. Vite+ is a workspace dependency, so a global `vp` installation is not
 required:
@@ -89,7 +92,7 @@ pnpm dev --dry-run
 - [Bootstrap progress and handoff](./re-making-plan/08-bootstrap-progress.md)
 - [Architecture overview](./docs/internals/overview.md)
 - [Workspace layout](./docs/internals/workspace-layout.md)
-- [Syncing upstream T3 Code](./docs/internals/upstream-sync.md)
+- [Syncing upstream Vetra Code](./docs/internals/upstream-sync.md)
 - [Contributing](./CONTRIBUTING.md)
 
 ## Origin and license

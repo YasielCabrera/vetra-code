@@ -105,14 +105,15 @@ RENAMES=(
   # stored preference and desynchronising the CSS name from its JS registration.
   # Keyed on the opening quote so the `pingdotgg/t3code.git` remote is untouched.
   '"t3code.="vetra.'
+  # Upstream's `localStorage` namespace for the pull request surfaces. Nothing
+  # else matches a bare `t3.` prefix, and a blanket pair cannot be added: it
+  # would also rewrite `t3.codes` hosts and the `t3.large` EC2 instance type a
+  # machine-detection fixture asserts on. Extend this list per namespace.
+  't3.pullRequests.=vetra.pullRequests.'
   't3-assistant-citation=vetra-assistant-citation'
   # The assistant-citation URL scheme. It rides in prompts sent to providers and
   # in persisted messages, so it is product identity, not an internal name.
   't3-citation=vetra-citation'
-  # Test temp-directory and worktree-identity prefixes. `t3-code` does not match
-  # a bare `t3-<word>`, so these otherwise survive as T3 identity in fixtures.
-  't3-provider-registry-=vetra-provider-registry-'
-  't3-desktop-updates-=vetra-desktop-updates-'
   'T3ProjectFile=VetraProjectFile'
   'T3Project=VetraProject'
   'T3Server=VetraServer'
@@ -135,14 +136,22 @@ RENAMES=(
   't3-chat=vetra-chat'
   't3-env=vetra-env'
   't3-test=vetra-test'
+  # Temp-directory and fixture-identity prefixes, in tests and in the runtime
+  # code that names a scratch directory. `t3-code` does not match a bare
+  # `t3-<word>`, so these otherwise survive as T3 identity. Keyed on the opening
+  # quote: the bare form would also rewrite `t3-code`-adjacent prose and the
+  # `t3-[a-z]` hits the leftover grep only reports, some of which are real asset
+  # filenames that must keep matching the file on disk.
+  '"t3-="vetra-'
   't3code=vetra-code'
-  # Upstream publishes this workspace package unscoped as `effect-acp`; the
-  # fork renamed it to `@vetra-code/effect-acp`. Handled as a special case
-  # below because it needs lookbehinds: a `packages/effect-acp` *path* must
-  # stay unscoped, and an already-scoped specifier must not double-scope.
-  # Without this pair, an upstream file that adds `from "effect-acp/errors"`
-  # merges cleanly and then fails to resolve.
+  # Upstream publishes these workspace packages unscoped; the fork scopes both
+  # under `@vetra-code/`. Handled as special cases below because they need
+  # lookbehinds: a `packages/<name>` *path* must stay unscoped, and an
+  # already-scoped specifier must not double-scope. Without these pairs, an
+  # upstream file that adds `from "effect-acp/errors"` merges cleanly and then
+  # fails to resolve.
   'effect-acp=@vetra-code/effect-acp'
+  'effect-codex-app-server=@vetra-code/effect-codex-app-server'
 )
 
 say() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
@@ -192,7 +201,7 @@ while IFS= read -r file; do
   [[ -L "$file" ]] && continue
   [[ -f "$file" ]] || continue
   grep -Iq . "$file" 2>/dev/null || continue   # skip binaries
-  grep -qE 't3|T3|effect-acp' "$file" 2>/dev/null || continue
+  grep -qE 't3|T3|effect-acp|effect-codex-app-server' "$file" 2>/dev/null || continue
   before=$(shasum "$file" | cut -d' ' -f1)
   for pair in "${RENAMES[@]}"; do
     from="${pair%%=*}"
@@ -201,6 +210,8 @@ while IFS= read -r file; do
       perl -pi -e 's{(?<!pingdotgg/)\Qt3code\E}{vetra-code}g' "$file"
     elif [[ "$from" == "effect-acp" ]]; then
       perl -pi -e 's{(?<!\@vetra-code/)(?<!packages/)\Qeffect-acp\E}{\@vetra-code/effect-acp}g' "$file"
+    elif [[ "$from" == "effect-codex-app-server" ]]; then
+      perl -pi -e 's{(?<!\@vetra-code/)(?<!packages/)\Qeffect-codex-app-server\E}{\@vetra-code/effect-codex-app-server}g' "$file"
     else
       FROM="$from" TO="$to" perl -pi -e 's{\Q$ENV{FROM}\E}{$ENV{TO}}g' "$file"
     fi

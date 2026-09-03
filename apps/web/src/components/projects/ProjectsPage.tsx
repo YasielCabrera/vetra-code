@@ -191,7 +191,9 @@ const ProjectRow = memo(function ProjectRow({
         <ProjectFavicon
           environmentId={group.environmentId}
           cwd={group.workspaceRoot}
+          projectName={group.displayName}
           faviconPath={group.faviconPath}
+          projectIcon={group.projectIcon}
           className="size-5 shrink-0"
         />
         <span className="min-w-0 flex-1">
