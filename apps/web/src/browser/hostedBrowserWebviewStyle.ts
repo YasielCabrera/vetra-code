@@ -24,6 +24,7 @@ export function resolveHostedBrowserWebviewWrapperStyle(input: {
   readonly keepPaintableWhenInactive?: boolean;
   readonly cornerRadius?: number;
   readonly interactable?: boolean;
+  readonly zIndex?: number;
   readonly rect: BrowserSurfaceRect | null;
   readonly hiddenSize: HostedBrowserWebviewSize;
 }): HostedBrowserWebviewWrapperStyle {
@@ -35,6 +36,7 @@ export function resolveHostedBrowserWebviewWrapperStyle(input: {
     keepPaintableWhenInactive = false,
     rect,
     renderingActive,
+    zIndex = 30,
   } = input;
   if (active && rect) {
     return {
@@ -42,7 +44,7 @@ export function resolveHostedBrowserWebviewWrapperStyle(input: {
       top: rect.y,
       width: rect.width,
       height: rect.height,
-      zIndex: 30,
+      zIndex,
       // Electron webviews receive clicks even under higher-z HTML overlays.
       // Callers set interactable=false while a renderer popover is open.
       pointerEvents: interactable ? "auto" : "none",

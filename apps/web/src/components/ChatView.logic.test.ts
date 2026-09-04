@@ -1,4 +1,5 @@
 import {
+  ANTIGRAVITY_DEFAULT_MODEL,
   CheckpointRef,
   EnvironmentId,
   MessageId,
@@ -50,6 +51,7 @@ import {
   shouldReleaseTimelineAnchorForToolActivity,
   shouldOpenProactivePullRequest,
   shouldOpenProactiveTurnDiff,
+  shouldRenderPreviewMiniPlayer,
   shouldShowBranchMismatchBanner,
   shouldShowPlanFollowUpPrompt,
   shouldWriteThreadErrorToCurrentServerThread,
@@ -90,6 +92,27 @@ describe("agent browser close confirmation", () => {
         "tab-2": { controller: "agent" },
       }),
     ).toContain("Close 2 browsers");
+  });
+});
+
+describe("floating browser preview", () => {
+  it("only hides the duplicate while the same browser is rendered in the panel", () => {
+    expect(shouldRenderPreviewMiniPlayer(null, null)).toBe(false);
+    expect(
+      shouldRenderPreviewMiniPlayer("tab-1", {
+        id: "browser:one",
+        kind: "preview",
+        resourceId: "tab-1",
+      }),
+    ).toBe(false);
+    expect(
+      shouldRenderPreviewMiniPlayer("tab-1", {
+        id: "browser:two",
+        kind: "preview",
+        resourceId: "tab-2",
+      }),
+    ).toBe(true);
+    expect(shouldRenderPreviewMiniPlayer("tab-1", { id: "diff", kind: "diff" })).toBe(true);
   });
 });
 
@@ -771,14 +794,20 @@ describe("resolveComposerProviderSelection", () => {
     );
   });
 
-  it("blocks sends until Antigravity confirms authentication", () => {
+  it("lets Antigravity check saved credentials when resuming after a restart", () => {
     const provider = entry("antigravity", "google_work", {
+      status: "warning",
       auth: { status: "unknown" },
-      models: catalogModels,
+      models: [],
     }).snapshot;
 
-    expect(getAntigravitySendBlockReason(provider, "gemini-pro")).toBe(
-      "Sign in to Antigravity in provider settings before sending.",
+    expect(getAntigravitySendBlockReason(provider, "gemini-pro")).toBeNull();
+    expect(getAntigravitySendBlockReason(provider, ANTIGRAVITY_DEFAULT_MODEL)).toBeNull();
+    expect(
+      getAntigravitySendBlockReason({ ...provider, models: catalogModels }, "gemini-pro"),
+    ).toBeNull();
+    expect(getAntigravitySendBlockReason(provider, "")).toBe(
+      "Choose an Antigravity model before sending.",
     );
   });
 
@@ -1544,6 +1573,42 @@ describe("hasServerAcknowledgedLocalDispatch", () => {
 
     expect(hasServerAcknowledgedLocalDispatch({ ...common, hasPendingApproval: true })).toBe(true);
     expect(hasServerAcknowledgedLocalDispatch({ ...common, hasPendingUserInput: true })).toBe(true);
+    expect(
+      hasServerAcknowledgedLocalDispatch({
+        ...common,
+        latestTurnStartFailureId: "turn-start-failure-1",
+      }),
+    ).toBe(true);
     expect(hasServerAcknowledgedLocalDispatch({ ...common, threadError: "failed" })).toBe(true);
+  });
+
+  it("acknowledges only a new turn-start failure", () => {
+    const localDispatch = {
+      ...createLocalDispatchSnapshot(makeThread()),
+      latestTurnStartFailureId: "turn-start-failure-old",
+    };
+    const common = {
+      localDispatch,
+      phase: "ready" as const,
+      latestTurn: null,
+      latestUserMessageId: localDispatch.latestUserMessageId,
+      session: null,
+      hasPendingApproval: false,
+      hasPendingUserInput: false,
+      threadError: null,
+    };
+
+    expect(
+      hasServerAcknowledgedLocalDispatch({
+        ...common,
+        latestTurnStartFailureId: "turn-start-failure-old",
+      }),
+    ).toBe(false);
+    expect(
+      hasServerAcknowledgedLocalDispatch({
+        ...common,
+        latestTurnStartFailureId: "turn-start-failure-new",
+      }),
+    ).toBe(true);
   });
 });

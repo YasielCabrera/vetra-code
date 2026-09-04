@@ -56,9 +56,6 @@ vi.mock("../WorkspaceBreadcrumb", () => ({
 }));
 vi.mock("../WorkspacePageContainer", () => ({ WorkspacePageContainer: "main" }));
 vi.mock("../WorkspacePageHeader", () => ({ WorkspacePageHeader: "header" }));
-// Fork-only sections. SubscriptionLimitsSection renders router Links, which
-// need a RouterProvider this static-markup test does not stand up.
-vi.mock("./SubscriptionLimitsSection", () => ({ SubscriptionLimitsSection: "div" }));
 vi.mock("./UsageProviderChart", () => ({ UsageProviderChart: "div" }));
 vi.mock("./usageProviders", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./usageProviders")>();

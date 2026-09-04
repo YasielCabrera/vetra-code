@@ -44,6 +44,7 @@ import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";
+import { buildRuntimeInstructions } from "../RuntimeInstructions.ts";
 import * as McpProviderSession from "../../mcp/McpProviderSession.ts";
 import {
   ProviderAdapterProcessError,
@@ -1159,7 +1160,15 @@ export function makeCursorAdapter(
           const promptOutcome = yield* Effect.raceFirst(
             ctx.acp
               .prompt({
-                prompt: promptParts,
+                // ACP has no system-message field; keep runtime context separate
+                // from the user's text.
+                prompt: [
+                  ...promptParts,
+                  {
+                    type: "text",
+                    text: buildRuntimeInstructions({ harness: "Cursor", model: resolvedModel }),
+                  },
+                ],
               })
               .pipe(
                 Effect.mapError((error) =>

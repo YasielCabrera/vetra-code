@@ -36,6 +36,26 @@ The install and update paths refuse to replace a newer service with an older ver
 Vetra Connect setup leaves a newer service unchanged. Downgrading is deliberate: it requires the
 exact older version and `--allow-downgrade`.
 
+## Service status problems
+
+`vetra service status` reports what is installed and, on Linux, whether the service is running,
+enabled at startup, and allowed to survive logout. It lists any problems it finds:
+
+| Code                       | What it means                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| `linger-disabled`          | The service stops after your last login session ends and does not start at boot. |
+| `linger-unavailable`       | Vetra Code could not verify the logout setting.                                  |
+| `user-manager-unavailable` | Vetra Code cannot reach your systemd user manager.                               |
+| `service-disabled`         | The service is not enabled to start automatically.                               |
+| `service-stopped`          | The service is installed but is not running.                                     |
+
+Status prints a repair command alongside these. It names the CLI version, or the installed service
+version when that is newer, so an older CLI never recommends a downgrade. Enabling lingering needs
+`sudo loginctl enable-linger "$(id -un)"`; run only that command with elevated permissions.
+
+While service distribution stays gated, these codes describe a source-built server you supervise
+yourself.
+
 ## Vetra Connect
 
 Vetra Connect remains unavailable until Vetra-owned cloud configuration is present. Once enabled,

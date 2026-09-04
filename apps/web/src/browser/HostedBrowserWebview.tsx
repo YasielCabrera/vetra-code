@@ -84,6 +84,7 @@ export function HostedBrowserWebview(props: {
         fittedSourceContent: current?.fittedSourceContent ?? null,
         rect: resolveBrowserSurfacePanelRect(state.byTabId, runtimeTabId),
         visible: current?.visible ?? false,
+        zIndex: current?.zIndex ?? 30,
       };
     }),
   );
@@ -262,6 +263,7 @@ export function HostedBrowserWebview(props: {
     keepPaintableWhenInactive: isMacPlatform(navigator.platform),
     cornerRadius: presentation.cornerRadius,
     interactable: !pointerLocked,
+    zIndex: presentation.zIndex,
     rect: lastRect,
     hiddenSize,
   });
@@ -318,7 +320,7 @@ export function HostedBrowserWebview(props: {
           }
           aria-hidden={active ? undefined : true}
           className={cn(
-            "absolute flex overflow-hidden bg-background",
+            "absolute flex overflow-hidden bg-white",
             active && !layout.fillsPanel && "ring-1 ring-border/70 shadow-sm",
           )}
           style={{

@@ -92,42 +92,37 @@ function activityWithAvatars(activity: IssueActivity, host: string): IssueActivi
   };
 }
 
-export const make = Effect.map(
-  GitHubIssueCli.GitHubIssueCli,
-  (github): IssueProviderApi => ({
-    kind: "github",
-    repositoryLinks: ({ host, repository }) => {
-      const origin = originOf(host);
-      if (origin === null || !REPOSITORY_PATTERN.test(repository)) return null;
-      const path = repository.split("/").map(encodeURIComponent).join("/");
-      return {
-        repositoryUrl: `${origin}/${path}`,
-        newIssueUrl: `${origin}/${path}/issues/new`,
-      };
-    },
-    listIssues: (input) =>
-      github.listIssues(input).pipe(
-        Effect.map(({ issues, truncated }) => ({
-          issues: issues.map((issue) => withAvatars(issue, input.host)),
-          truncated,
-        })),
-        Effect.mapError(providerError("list")),
-      ),
-    getIssue: (input) =>
-      github.getIssue(input).pipe(
-        Effect.map((issue) => withAvatars(issue, input.host)),
-        Effect.mapError(providerError("detail")),
-      ),
-    getIssueActivity: (input) =>
-      github.getIssueActivity(input).pipe(
-        Effect.map((activity) => activityWithAvatars(activity, input.host)),
-        Effect.mapError(providerError("activity")),
-      ),
-    listAssigneeCandidates: (input) =>
-      github
-        .listAssigneeCandidates(input)
-        .pipe(Effect.mapError(providerError("assigneeCandidates"))),
-    setAssignees: (input) =>
-      github.setAssignees(input).pipe(Effect.mapError(providerError("setAssignees"))),
-  }),
-);
+export const make = Effect.map(GitHubIssueCli.GitHubIssueCli, (github): IssueProviderApi => ({
+  kind: "github",
+  repositoryLinks: ({ host, repository }) => {
+    const origin = originOf(host);
+    if (origin === null || !REPOSITORY_PATTERN.test(repository)) return null;
+    const path = repository.split("/").map(encodeURIComponent).join("/");
+    return {
+      repositoryUrl: `${origin}/${path}`,
+      newIssueUrl: `${origin}/${path}/issues/new`,
+    };
+  },
+  listIssues: (input) =>
+    github.listIssues(input).pipe(
+      Effect.map(({ issues, truncated }) => ({
+        issues: issues.map((issue) => withAvatars(issue, input.host)),
+        truncated,
+      })),
+      Effect.mapError(providerError("list")),
+    ),
+  getIssue: (input) =>
+    github.getIssue(input).pipe(
+      Effect.map((issue) => withAvatars(issue, input.host)),
+      Effect.mapError(providerError("detail")),
+    ),
+  getIssueActivity: (input) =>
+    github.getIssueActivity(input).pipe(
+      Effect.map((activity) => activityWithAvatars(activity, input.host)),
+      Effect.mapError(providerError("activity")),
+    ),
+  listAssigneeCandidates: (input) =>
+    github.listAssigneeCandidates(input).pipe(Effect.mapError(providerError("assigneeCandidates"))),
+  setAssignees: (input) =>
+    github.setAssignees(input).pipe(Effect.mapError(providerError("setAssignees"))),
+}));

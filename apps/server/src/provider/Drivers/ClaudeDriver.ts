@@ -30,6 +30,7 @@ import { ServerSettingsService } from "../../serverSettings.ts";
 import * as UsageService from "../../usage/UsageService.ts";
 import { ProviderDriverError } from "../Errors.ts";
 import { makeClaudeAdapter } from "../Layers/ClaudeAdapter.ts";
+import { makeClaudeScopedLimitNames } from "../Layers/claudeUsageLimits.ts";
 import {
   checkClaudeProviderStatus,
   makePendingClaudeProvider,
@@ -146,10 +147,14 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv> = {
         continuationGroupKey,
       });
 
+      // One per instance: the status probe writes the model-scoped bucket
+      // names it saw, the adapter reads them to place turn-driven events.
+      const scopedLimitNames = yield* makeClaudeScopedLimitNames;
       const adapterOptions = {
         instanceId,
         environment: processEnv,
         modelCatalog,
+        scopedLimitNames,
         ...(eventLoggers.native ? { nativeEventLogger: eventLoggers.native } : {}),
       };
       const adapter = yield* makeClaudeAdapter(effectiveConfig, adapterOptions);
@@ -195,6 +200,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv> = {
                 processEnv,
                 cwd,
                 resolveClaudeModelCatalog(manifest),
+                scopedLimitNames,
               ),
             ),
             Effect.map(stampIdentity),

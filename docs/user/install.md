@@ -32,6 +32,9 @@ The explicit repository-local home is recommended for the first run. It prevents
 projects, threads, settings, and secrets from mixing with any other Vetra checkout. Never use
 another application's data directory as a Vetra home.
 
+If the web or desktop app shows "Vetra Code could not load", check your connection and select
+**Reload** to try again.
+
 ## Open a project in the desktop app
 
 When the Vetra Code desktop app is running on the same machine, open the current directory in it

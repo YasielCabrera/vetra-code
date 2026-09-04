@@ -23,6 +23,17 @@ requests and pushes to `main`:
 Mobile native static analysis exists upstream and is not part of this fork; `apps/mobile` was
 removed.
 
+[`.github/workflows/windows-tests.yml`](../../.github/workflows/windows-tests.yml) is a manual
+Windows lane (`workflow_dispatch` only) on a Blacksmith Windows 2025 runner. The suite does not
+pass on Windows yet, so it is not a required check; it exists so the work to get there can be
+iterated against a real Windows box without one on hand. Dispatch it with `gh workflow run
+windows-tests.yml --ref <branch>`, optionally with `-f package=<dir>` to run one workspace package
+and `-f files="<paths>"` to run specific test files inside it. Once it is green, fold it into
+`ci.yml`.
+
+Upstream's `release.yml` is not part of this fork; it stays deleted until Vetra owns every publish
+target. See [upstream-sync](upstream-sync.md).
+
 The fork does not currently include a production release or relay-deployment workflow. They were
 removed so CI cannot publish to legacy upstream infrastructure while Vetra-owned package, signing,
 domain, authentication, and updater targets are still undecided. Upstream still has those workflows;
