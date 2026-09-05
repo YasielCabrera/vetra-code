@@ -1,48 +1,56 @@
-# Environment Authentication Profile
+# Environment authentication
 
 > For maintainers. Using Vetra Code? See [docs/user](../user/).
 
-The environment server and the relay use separate credentials, issuers, and trust
-boundaries. They intentionally use a similar OAuth-shaped model so that permission
-checks and token exchange behavior can be audited against established concepts.
+## Authority survives transport changes
 
-## Authorization Model
+Pairing delegates a set of scopes. Exchanging a bootstrap credential can narrow
+that grant but cannot widen it. Ordinary pairing does not grant access-management
+or relay-management authority. Creating another pairing link requires both
+`access:write` and every scope being delegated. The
+[auth handlers](../../apps/server/src/auth/http.ts) enforce this at issuance;
+client labels and device metadata have no authorization role.
 
-Environment authorization is capability-based. A session carries zero or more
-OAuth-style scope strings:
+The access read model contains pairing metadata, never recoverable pairing
+secrets. Only the creation response returns the raw credential. Otherwise read
+access to the connections list would become a way to acquire another client's
+authority.
 
-| Scope                   | Permission                                                               |
-| ----------------------- | ------------------------------------------------------------------------ |
-| `orchestration:read`    | Read snapshots, status, events, configuration, and filesystem/VCS state. |
-| `orchestration:operate` | Dispatch user operations and mutate environment-side workspace state.    |
-| `terminal:operate`      | Create, attach, input, resize, clear, restart, and terminate terminals.  |
-| `review:write`          | Read review diff previews used to compose review feedback.               |
-| `access:read`           | Inspect pairing links and client sessions.                               |
-| `access:write`          | Create or revoke pairing links and client sessions.                      |
-| `relay:read`            | Inspect managed relay connectivity.                                      |
-| `relay:write`           | Link, configure, or unlink managed relay connectivity.                   |
+Browser cookies, bearer tokens, and DPoP tokens adapt the same scoped session
+model. DPoP binds a token to a client's proof key; an invalid proof must fail
+rather than fall back to bearer authentication. The OAuth token-exchange
+vocabulary gives these grants a familiar meaning, but the environment does not
+implement a general-purpose OAuth authorization server.
 
-Pairing-link lists and access-stream snapshots and updates contain metadata only.
-The raw credential is returned only by the creation request, after the server checks
-`access:write` and the delegated scopes. Web and desktop clients keep that response
-in memory for sharing. They do not recover credentials from access read models.
+Bearer and DPoP clients obtain short-lived WebSocket tickets through authenticated
+HTTP so long-lived tokens stay out of socket URLs. Browser sessions can
+authenticate the upgrade with their cookie. A successful handshake grants no
+extra authority: [every RPC declares a required
+scope](../../apps/server/src/auth/RpcAuthorization.ts).
 
-Ordinary pairing links grant the four client-operation scopes and read access to
-managed relay connectivity:
-`orchestration:read orchestration:operate terminal:operate review:write relay:read`.
-The desktop bootstrap credential and command-line administrative bootstrap
-credentials additionally grant `access:read access:write relay:write`.
+Desktop restarts forget the previous local bearer token, so its reusable
+bootstrap grant replaces earlier sessions for the same subject and method.
+Revocation and insertion share a [database
+transaction](../../apps/server/src/persistence/AuthSessions.ts); a failed
+replacement must leave the old credential usable. Pairing and browser sessions
+do not follow this replacement rule.
 
-## Host file access
+## The environment is the filesystem boundary
 
-Clients with `orchestration:read` can read files anywhere the environment's server account can
-read, following the environment-wide authorization model rather than introducing per-project
-filesystem permissions. `projects.readFile` accepts an absolute path and returns the text of that
-host file; only workspace-relative paths pass its root check, and `projects.writeFile` never
-accepts an absolute path. Clients use this to show files an agent wrote outside the workspace, such
-as a report in a temp directory, read-only.
+Projects are organizational boundaries, not filesystem sandboxes.
+`orchestration:read` permits reading files the server account can read, including
+absolute paths outside a project. This lets clients display artifacts that an
+agent writes in a temporary directory. Relative paths and writes still follow
+the [workspace path rules](../../apps/server/src/workspace/WorkspaceFileSystem.ts).
 
-## Media preview access
+Signed asset URLs are bearer credentials. A URL for media on the host grants
+access to one canonical file and its device/inode identity, not its containing directory.
+[Asset access](../../apps/server/src/assets/AssetAccess.ts) rechecks the opened
+file's identity when serving it, so atomic replacement requires a new URL while
+editing the same file in place does not. An HTML file authorized this way cannot
+load sibling assets; directory-scoped workspace previews are a separate grant.
+Clients should share the authored file reference so they do not disclose the
+temporary URL's credential.
 
 Clients with `orchestration:read` can request a `media-file` URL through `assets.createUrl` for
 supported images, videos, HTML, and PDF files anywhere the environment's server account can read.

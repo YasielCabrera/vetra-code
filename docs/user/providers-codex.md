@@ -3,32 +3,21 @@
 This guide is for people who want to use more than one Codex account in Vetra Code. For Claude, see
 [Claude](./providers-claude.md). For first-time setup, see [Install Vetra Code](./install.md).
 
-Common reasons:
+## Use multiple accounts
 
-- use a work account for work projects
-- use a personal account for personal projects
-- switch to another account when one account hits limits
-- keep one shared Codex history instead of maintaining two separate Codex setups
+A shared Codex home with a shadow home lets work and personal accounts continue
+the same threads. The accounts share Codex sessions and configuration while keeping
+their own login and available models.
 
-## I Only Use One Codex Account
-
-Use the default provider.
-
-In Settings, your Codex provider can stay like this:
-
-```text
-Display name: Codex
-CODEX_HOME path: ~/.codex
-Shadow home path: empty
-```
-
-Log in with Codex normally:
+Keep your first account in `~/.codex`. On the environment's machine, sign the
+second account into a fresh directory:
 
 ```bash
-codex login
+mkdir -p ~/.codex_personal
+CODEX_HOME=~/.codex_personal codex login
 ```
 
-## Send feedback to OpenAI
+Then add a second Codex instance in **Settings > Providers**:
 
 In an existing Codex thread, send `/feedback` or `/feedback` followed by a description of the
 issue. Vetra Code uploads the thread and Codex logs to OpenAI and shows a thread ID that you can copy
@@ -36,14 +25,17 @@ and share with OpenAI employees.
 
 ## Answer questions while Codex works
 
-Codex can ask questions without stopping its work. Choose a suggested answer or enter your own
-in the question panel. Questions without suggested answers accept text.
+Codex can ask a question and keep working. Answer it in the thread's question
+panel. The answer becomes a new message: it reaches the active turn, or starts
+another turn if Codex has finished. Unanswered questions survive reconnects.
+This requires a Codex version that supports async questions.
 
-Your answers are sent as a new message. They reach the current turn while Codex is working, or
-start a new turn if it has finished. Unanswered questions stay available after you reconnect.
-This works in the web, desktop, and mobile apps. Codex must support async questions.
+## Approve app access
 
-## Sub-agent models
+Codex tools can request access to another app. Respond to the named app's request
+in the thread on web, desktop, or mobile. Some tools offer access for one request,
+the current session, or permanently. See [Permission modes](./permission-modes.md)
+for command and file approvals.
 
 The web and desktop Agents panel shows each sub-agent's model and reasoning effort when Codex
 reports them. If Codex does not report either value, Vetra Code leaves it out instead of using the

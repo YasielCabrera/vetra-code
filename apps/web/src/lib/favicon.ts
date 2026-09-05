@@ -1,6 +1,4 @@
-import { isPublicFaviconHost } from "~/browser/browserTargetResolver";
-
-const FAVICON_PROVIDER = "https://www.google.com/s2/favicons";
+import { faviconUrlForOrigin as publicProviderFaviconUrl } from "@vetra-code/shared/favicon";
 
 /** Resolve the conventional root favicon for an HTTP(S) page URL. */
 export function faviconUrlForOrigin(rawUrl: string | null | undefined): string | null {
@@ -25,14 +23,5 @@ export function publicFaviconUrlForOrigin(
   rawUrl: string | null | undefined,
   size = 32,
 ): string | null {
-  if (!rawUrl) return null;
-  try {
-    const url = new URL(rawUrl);
-    if (!url.host) return null;
-    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    if (!isPublicFaviconHost(url.hostname)) return null;
-    return `${FAVICON_PROVIDER}?domain=${encodeURIComponent(url.host)}&sz=${size}`;
-  } catch {
-    return null;
-  }
+  return publicProviderFaviconUrl(rawUrl, size);
 }

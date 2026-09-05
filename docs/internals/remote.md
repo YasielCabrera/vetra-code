@@ -1,4 +1,4 @@
-# Remote Architecture
+# Remote architecture
 
 > Bootstrap note: direct development pairing is supported. Hosted Vetra, relay deployment,
 > package-based SSH launch, and mobile are unavailable until Vetra-owned infrastructure and package
@@ -9,7 +9,10 @@ from its foundation. This document describes the model they share and where each
 the currently supported user-facing setup see
 [remote access](../user/remote-access.md).
 
-## The model
+An environment keeps its ID across server restarts and endpoint changes. Saved
+connections are local to a client profile; the server's identity and state are
+not. A repository identity can correlate clones across environments, but never
+routes work between them. A project and its threads belong to one environment.
 
 Vetra has one runtime boundary: a client talks to a Vetra server over HTTP and WebSocket, and the server
 owns orchestration, providers, terminals, git, and filesystem operations. Remoteness is expressed at
@@ -34,25 +37,31 @@ the connection layer, never by splitting the runtime.
 └──────────────────────────────────────────────┘
 ```
 
-### ExecutionEnvironment
+## Hosted web is a client
 
 One running Vetra server instance. It owns provider availability and auth, model availability, projects
 and threads, terminal processes, filesystem access, git operations, and server settings.
 
-It is identified by a stable `environmentId`, persisted by the server at `<stateDir>/environment-id`
-and generated on first start (`apps/server/src/environment/ServerEnvironment.ts`). Desktop, mobile,
-and web all reason about the same concept.
+A [hosted pairing URL](../../apps/web/src/hostedPairing.ts) identifies the backend
+in its query and carries the pairing secret in its fragment. Fragments stay out
+of requests to the hosted origin. The browser exchanges the secret with the
+environment and strips it from its history. Moving the token into a query
+parameter would disclose it to the wrong origin.
 
-Initialization publishes a complete ID atomically. Empty or whitespace-only ID files are repaired
-using a retained `<stateDir>/environment-id.recovery` file so concurrent and delayed repairs choose
-the same ID. Existing nonempty ID files remain authoritative.
+## Access and process ownership are different
 
-### Known environments and connection targets
+Tailscale supplies an endpoint for ordinary pairing, so it needs no separate
+environment type. Authentication remains the environment's responsibility for
+every route. See [environment authentication](./environment-auth.md) and the
+[Vetra Connect trust boundary](./vetra-connect.md).
 
-A saved client-side entry for an environment the client knows how to reach. It is not
-server-authored; it is local to a device or client profile. In the hosted web app these entries are
-browser-local. A hosted pairing URL can create one, but it does not give the hosted app a server-side
-control plane or a copy of session state.
+SSH can launch a server as well as forward a port. Desktop main owns that
+lifecycle because it can spawn SSH and handle authentication prompts. The
+renderer uses the forwarded endpoint through the shared connection runtime.
+[SSH cleanup](../../packages/ssh/src/tunnel.ts) stops a remote server only if the
+launcher owns it; a server it discovered already running must survive a client
+disconnect. Reconnection restores the forward before opening the application
+transport.
 
 [`connection/model.ts`][model] defines four target tags, which are the real access taxonomy:
 

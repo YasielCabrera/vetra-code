@@ -1,34 +1,45 @@
-# Server Update Architecture
+# Server updates
 
 > Bootstrap note: the architecture is retained, but Vetra's server package is private and no
 > versioned service-update channel is available yet. See [Updates during bootstrap](../user/updating.md).
 
-Remote server updates use one stable launcher selected by the platform service manager (systemd on
-Linux, launchd on macOS). Foreground CLI processes do not self-update, and a running server never
-edits its service definition or durable service state.
+Exact-version installs keep restarts independent of npm cache eviction or a moving
+release tag. Installation and preflight happen in staging before publishing an
+immutable runtime. Preflight checks the launcher protocol because a target that
+needs new rollback guarantees cannot safely run under an older launcher. Upgrading
+that launcher requires a local service update.
 
-## Ownership
+## Commit boundary
 
-The service files under `<baseDir>/runtime` are:
+The launcher durably records the pending update before acknowledging it, then
+stops the old child and starts the target as a trial. Service-state writes use
+same-directory replacement with file and directory fsync. Invalid state stops
+startup rather than guessing which runtime to boot.
 
-- `service-launcher.mjs`, the stable process selected by the service manager;
-- `service-state.json`, the launcher's durable selection state;
-- `versions/<version>`, immutable exact-version npm installs.
+The trial must finish migrations, acquire dependencies, bind HTTP, and park every
+long-running root at the activation gate before reporting `prepared`. The launcher
+then commits the target version durably and replies `committed`. Only then may the
+child release its gates, accept commands, and publish ready. Keep fallible startup
+acquisitions before this boundary. A listener alone does not prove the runtime is
+ready to commit.
 
 The launcher is the only runtime writer of `service-state.json`. Future `vetra service install` and
 `vetra service update` commands may replace the launcher and state while the unit is stopped. Server children
 only communicate with the launcher over their inherited IPC channel.
 
-The state contains one active version and, at most, one update record:
+## Database rollback
 
-- `pending A → B` selects B as a retryable trial;
-- `committed A → B` selects B for ordinary restarts;
-- `rolled-back A → B` or `failed A → B` selects A;
-- invalid state fails closed so the service manager cannot guess at a runtime.
+After the old child exits, the launcher snapshots SQLite's main file, WAL, and
+shared-memory file. This makes trial migrations reversible without down
+migrations. The snapshot is made once per update and survives launcher restarts;
+replacing it during a retry could capture changes from the failed trial.
 
-Every write uses same-directory replacement plus file and directory fsync.
+Rollback stops the trial before restoring. A durable restore marker makes an
+interrupted restore finish before either version boots. Keep the snapshot until
+commit, or until both restoration and the terminal rollback state are durable.
+Attachments and other files outside SQLite are outside this rollback boundary.
 
-## Remote Update
+## Client acknowledgement
 
 1. The active server installs `@vetra-code/server@<target>` into a unique staging directory.
 2. The target runs `__service-preflight` and verifies that the stable launcher supports its update

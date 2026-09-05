@@ -1,4 +1,4 @@
-# Connection Runtime
+# Connection runtime
 
 > For maintainers. Using Vetra Code? See [docs/user](../user/).
 
@@ -10,55 +10,57 @@ The web renderer mounts this runtime once at the application root. Desktop hosts
 the same renderer and supplies its connection catalog through Electron IPC.
 There is no legacy connection owner or supported mixed mode.
 
-## Composition
+Foregrounding needs different treatment depending on the connection's state.
+It wakes a retry immediately, leaves an ordinary in-flight attempt alone, and
+probes an established session before replacing it. A long mobile background
+suspension forces replacement because the OS can kill a socket without reporting
+closure. Treating every foreground event as a reconnect delays healthy attempts;
+treating every resume as harmless leaves suspended sockets stuck.
 
-[`connection/layer.ts`][layer] assembles the runtime:
+The [registry](../../packages/client-runtime/src/connection/registry.ts) scopes
+connections by environment. An involuntary disconnect retains the registration
+and cached data. Explicit removal closes the scope and clears credentials,
+projections, and platform-owned state such as drafts. Cloud-account changes apply
+to relay registrations; they must not discard directly paired environments.
 
-- `ConnectionResolver` ([resolver.ts][resolver]) resolves a catalog entry into a
-  prepared, authenticated endpoint for primary, bearer, relay, or SSH targets.
-- `ConnectionDriver` ([driver.ts][driver]) prepares through the resolver, opens
-  one RPC session, and reports `preparing`, `opening`, and `synchronizing`.
-- `RpcSessionFactory` ([rpc/session.ts][session]) performs one transport
-  attempt. It does not retry. `RpcSession` is the interface it returns,
-  exposing `client`, `initialConfig`, `ready`, `probe`, and `closed`.
-- `EnvironmentRegistry` ([registry.ts][registry]) owns the catalog and the
-  per-environment scopes.
-- `ConnectionOnboarding` and `RelayEnvironmentDiscovery` sit alongside the
-  registry. Startup calls `EnvironmentRegistry.start` and streams platform
-  registrations into `reconcilePlatform`.
+## HTTP authorization
 
-The registry creates one environment-scoped supervisor per environment.
-`acquireSupervisor` serializes access per environment, reuses an existing
-supervisor when the catalog entry is unchanged, and closes and recreates the
-scope when it changed. `createServiceScope` builds an `EnvironmentSupervisor`
-bound to a closeable scope and connects it; `run` and `runStream` execute caller
-effects with that supervisor provided.
+RPC sessions authenticate at socket upgrade, while HTTP requests need current
+credentials from the
+[authorization service](../../packages/client-runtime/src/authorization/service.ts).
+Replacing a healthy socket for HTTP renewal would interrupt conversations and
+change the transport generation without a transport failure. Credential expiry
+does not close the socket, and refresh failure belongs to the HTTP operation.
 
-`EnvironmentSupervisor` owns desired state, retry scheduling, and the active
-session scope. React components do not create connections, transports, retry
-loops, or RPC clients.
+Session listings must retain unrevoked connected sessions after credential expiry
+so an open connection does not disappear from connection management. This does
+not extend the credential's lifetime. New HTTP requests and socket upgrades still
+require valid credentials.
 
-## Connection State
+## Transport health and data freshness are separate
 
-The supervisor is the only retry owner.
+A socket opening is insufficient evidence that the environment is usable. The
+[RPC session](../../packages/client-runtime/src/rpc/session.ts) waits for the
+initial server configuration before becoming ready. Shell and thread data then
+have their own synchronization state. A failed shell subscription can coexist
+with a healthy connection; labeling that state "reconnecting" promises a
+transport retry that will never happen.
 
-1. A persisted or platform registration marks an environment as desired.
-2. If the device is offline, the supervisor releases the active session and
-   waits for a signal without consuming retry attempts or running a timer.
-3. When online, it asks the driver for one prepared connection and one RPC
-   session.
-4. Transient failures retry forever with exponential backoff capped at 16
-   seconds (`RETRY_DELAYS_MS`). A connection stable for 30 seconds resets
-   accumulated backoff.
-5. Authentication or configuration failures remain blocked until an external
-   wakeup changes the relevant input.
-6. An involuntary session close keeps the registration and cache, then retries.
-7. Explicit removal closes the session and deletes the registration,
-   credentials, shell cache, and thread cache.
+Cached projections remain readable offline. They must neither imply a live
+connection nor overwrite newer live data during a reconnect. Loading and
+resuming snapshots belongs to the shared state services, so every view agrees
+on which data is current.
 
-### Wakeups
+[Thread detail](../../packages/client-runtime/src/state/threads.ts) separates
+subscription lifetime from cache lifetime. Mounted consumers share one live
+stream, which stops when the last consumer unmounts; hidden mounted routes still
+count. A registry-local cache retains state and its replay cursor for five idle
+minutes so back navigation can resume without another snapshot download.
 
-Wakeup handling differs by phase, in [supervisor.ts][supervisor]:
+Retain state and cursor together only after an update finishes. Cancellation must
+not advance the cached cursor beyond the applied data, and an old scope must not
+overwrite its successor's cache. Preserve pagination data on reuse, but clear
+canceled loading state.
 
 - During establishment, `waitForEstablishmentInterrupt` consumes and **ignores**
   plain application activation. Restarting an in-flight attempt because the app

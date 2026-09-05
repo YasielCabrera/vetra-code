@@ -2,7 +2,6 @@ import {
   fileBasename,
   formatFilePathPosition,
   inlineCodeFilePathCandidate,
-  isConventionalFilePosition,
   isRelativeFilePath,
   normalizeMarkdownLinkDestination,
   parseFileUrlHref,

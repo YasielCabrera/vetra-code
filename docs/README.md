@@ -2,39 +2,55 @@
 
 ## Using Vetra Code
 
-- [Install and first run](./user/install.md)
-- [Permission modes](./user/permission-modes.md)
-- [Keyboard shortcuts](./user/keybindings.md)
-- [Organizing threads](./user/thread-sidebar.md)
-- [Review usage](./user/usage.md)
+- [Install Vetra Code](./user/install.md)
+- [First-run setup](./user/welcome-wizard.md)
+- [Create a project](./user/creating-projects.md)
 - [Browse your projects](./user/browsing-projects.md)
+- [Messages and context](./user/composer.md)
+- [Organizing threads](./user/thread-sidebar.md)
+- [Permission modes](./user/permission-modes.md)
 - [Explore project files](./user/file-explorer.md)
+- [Terminal history](./user/terminal.md)
+- [Source control](./user/source-control.md)
 - [Inspect Powerhouse projects](./user/powerhouse-panel.md)
 - [Run work on a schedule](./user/automations.md)
-- [Customize a project icon](./user/project-settings.md)
+- [Project settings](./user/project-settings.md)
+- [Appearance and themes](./user/appearance.md)
 - [Environment themes](./user/environment-theme.md)
+- [Keyboard shortcuts](./user/keybindings.md)
+- [Keyboard focus](./user/keyboard-focus.md)
+- [Review usage](./user/usage.md)
+- [Import browser sessions](./user/browser-import.md)
 - [Remote access](./user/remote-access.md)
 - [Keeping app and server in sync](./user/updating.md)
-- [Source control integrations](./user/source-control.md)
 - [Preview wallet (Web3)](./user/preview-wallet.md)
 - [Background service (Linux)](./user/background-service.md)
-- Providers: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [Cursor](./user/providers-cursor.md) · [OpenCode](./user/providers-opencode.md)
+- [Product usage data](./user/telemetry.md)
+- Providers: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [Cursor](./user/providers-cursor.md) · [OpenCode](./user/providers-opencode.md) · [Antigravity](./user/providers-antigravity.md)
 
 ---
 
 ## Working on Vetra Code
 
-Everything below is for maintainers. Setup lives in the [root README](../README.md);
-policy in [CONTRIBUTING.md](../CONTRIBUTING.md); agent rules in [AGENTS.md](../AGENTS.md).
+Start with the [workspace layout](./internals/workspace-layout.md), [scripts](./internals/scripts.md),
+and [contribution policy](../CONTRIBUTING.md).
+
+Internal notes preserve architectural decisions, constraints, and implementation traps that the
+source alone does not explain. Most code changes do not need an internal documentation update. Follow the
+[documentation rules](../AGENTS.md#documentation) before adding one.
 
 - [Architecture overview](./internals/overview.md)
-- [Workspace layout](./internals/workspace-layout.md)
 - [Glossary](./internals/glossary.md)
+- [Workspace layout](./internals/workspace-layout.md)
 - [Scripts](./internals/scripts.md)
-- [Syncing upstream Vetra Code](./internals/upstream-sync.md)
 - [Connection runtime](./internals/connection-runtime.md)
 - [Providers](./internals/providers.md)
+- [Model classification](./internals/model-manifest.md)
+- [Provider subscription usage](./internals/provider-subscription-usage.md)
 - [Remote environments](./internals/remote.md)
+- [Terminal runtime](./internals/terminal-runtime.md)
+- [Terminal renderers](./architecture/terminal-renderers.md)
+- [Assistant citations](./internals/assistant-citations.md)
 - [Preview wallet](./internals/preview-wallet.md)
 - [Powerhouse panel](./internals/powerhouse-panel.md)
 - [Server updates](./internals/server-updates.md)
@@ -47,7 +63,7 @@ policy in [CONTRIBUTING.md](../CONTRIBUTING.md); agent rules in [AGENTS.md](../A
 
 ### Runbooks
 
-- [Syncing upstream Vetra Code](./internals/upstream-sync.md)
+- [Syncing upstream T3 Code](./internals/upstream-sync.md)
 - [Release](./operations/release.md)
 - [Observability](./operations/observability.md)
 - [Relay observability](./operations/relay-observability.md)

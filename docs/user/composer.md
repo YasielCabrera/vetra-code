@@ -1,17 +1,13 @@
-# Message composer
+# Messages and context
 
 Messages can contain up to 120,000 characters. If a draft is longer, Vetra Code keeps it in the
 composer and shows how many characters need to be removed. Shorten the draft or split it into
 multiple messages, then send again in the same thread.
 
-On mobile, an empty composer shows an interrupt button while the agent is working. Adding text
-or an attachment replaces it with the send button. This applies to both compact and expanded
-composers.
+Messages can contain up to 120,000 characters. Longer drafts stay in the composer
+so you can shorten them or split them into several messages.
 
-You can attach images up to 10 MB. On servers that support file uploads, you can also
-attach videos, text files, PDFs, ZIP archives, and other files. Each file can be up to the limit advertised
-by the server, capped at 50 MB. Each message can contain up to eight attachments in total. Files
-upload directly to the environment, where your agent can read, copy, or edit them by their file path.
+## Attach files
 
 Attachments upload as soon as you add them while connected to a server that supports uploads.
 The send button becomes available after every upload finishes. Failed uploads can be retried or
@@ -23,49 +19,29 @@ Vetra Code from other apps through the system share sheet. Mobile uploads happen
 sends, so queued messages keep their files until they deliver. Select a received file on mobile
 to save it or open it in another app through the system share sheet.
 
-Tap an image or PDF before or after sending to open it. On iOS, images zoom from their thumbnail
-into the native viewer. Pinch or double-tap to zoom, and swipe down or tap Close to return.
-Use Share to save a copy or send it to another app. PDFs support page navigation and search.
-PDF links in assistant responses open the same preview. On Android, images open in the image
-viewer and PDFs open the system chooser.
+Uploads begin when you add an attachment. All uploads must finish before the
+message can send. Retry or remove a failed upload. On web and desktop, reloading
+before an upload finishes requires you to attach that file again.
 
-On web and desktop, select a sent PDF or HTML attachment to open it in the file viewer, or use the
-download button beside it to save a copy. Other attached files download when selected.
+You can drag or paste images into the web or desktop composer. HEIC and HEIF
+photos are converted to JPEG there and when selected from the iOS photo library;
+the image limit applies after conversion. On mobile, you can also send files to
+Vetra Code through another app's system share sheet.
 
-Select a video attachment before or after sending to play it. Web and desktop use the browser's
-built-in controls. On mobile, videos open in a full-screen player with native playback controls.
-Supported videos show a thumbnail in the conversation and composer.
-Received videos stream from their environment as they play on every platform. Supported formats and
-codecs depend on the browser or device; you can save an unsupported video to open it in another app.
+See [images and videos](#images-and-videos-in-messages) for previewing and saving media.
 
-On iOS, the system player zooms from the attachment. Swipe down or tap Close to return to the
-conversation or draft. Touch and hold a video thumbnail, then choose **Save or share** to open
-the system share options. On Android, the same menu is also available inside the preview.
+## Queue messages offline on mobile
 
-On web and desktop, if you reload before a file finishes uploading, the draft keeps the file's name
-and shows **Attach again** next to it. Attach the file again or remove it, then send.
+Mobile keeps local copies of draft attachments, so you can preview them and queue
+messages while disconnected. Uploads resume when you reconnect. Drafts and queued
+messages survive app restarts. Signing out of Vetra Connect keeps that work on your
+device until you sign back into the same account.
 
-On web and desktop, HEIC and HEIF photos are automatically converted to JPEG when you drag them into
-the composer or paste them into a message. On iOS, selecting them from **Photo Library** also
-converts them to JPEG. The 10 MB image limit applies to the converted photo.
+## Custom models
 
-On web and desktop, an existing thread settles its composer into a single-line resting state when
-the composer loses focus. At wider sizes, scrolling the conversation also rests a focused composer,
-except when scrolling toward the end while already there. When the thread-context strip has room,
-the model and mode controls stay available beside the thread context; otherwise they return when the
-composer is focused. Focus the composer or start typing to expand it again. The conversation keeps
-the expanded composer's space clear above its last message while the composer rests, so expanding it
-again never covers what you scrolled to. New-thread layouts keep the full composer. **Settings → General → Collapse composer** chooses which triggers rest it:
-**On unfocus**, **On scroll**, both, or neither. With neither selected the composer stays expanded.
-
-At phone-sized web or desktop window widths, existing threads animate between their compact and
-expanded layouts. Up to three image attachments remain visible in either resting layout, followed
-by a count when more are attached. At wider sizes, videos, files, and other draft context remain
-visible at their natural height; the phone-sized compact row reveals those details when expanded.
-
-On mobile, the model picker shows each OpenCode model's upstream provider, such as Anthropic,
-GitHub Copilot, or OpenCode Zen, beneath its name. Search by that provider name to narrow the list
-when starting a thread or changing an existing thread's model.
+On web and desktop, use Settings → Providers → **Models** to add an unlisted model with a custom
+name and options. Only options supported by the provider integration affect turns. Antigravity
+uses its account catalog and does not support custom models.
 
 ## Model defaults
 
@@ -79,18 +55,12 @@ still come from the provider's own configuration.
 
 ## Quote an assistant response
 
-On web and desktop, select text in an assistant response, then choose **Cite in composer** from the
-menu that appears when you release the selection. This inserts an inline quote chip at your cursor
-and opens an optional comment bubble beside the selected text; press `Enter` or choose **Save** to
-attach the comment, or leave it blank to keep just the quote. You can type before and after the
-chip, such as a quote followed by "what do you mean?". A selection must stay within one response
-and fit in 8,000 characters.
+On web and desktop, select text within one assistant response and choose
+**Cite in composer**. You can add a comment about the quote and write instructions
+around it.
 
-The chip shows your comment when it has one, or a short quote preview otherwise. Use the pencil
-button to add or change the comment, and the remove button to delete the quote and its comment from
-the draft. Copying, reloading, and restoring a [stashed prompt](#prompt-stash) keep each comment
-with its quote, and sending tells the agent which words were quoted and which comment you wrote.
-The quoted text and comment count toward the message limit.
+Select the quote in a draft or sent message to return to its source. If the source
+is unavailable or has changed, the saved quote remains readable.
 
 Select a chip in the composer or a sent message to open the source thread, scroll to the response,
 and highlight the quoted passage — including in older history. The
@@ -98,10 +68,13 @@ highlight pulses, holds for a moment, then fades on its own; press `Escape` to s
 or clear it early. If the source is unavailable or its text has changed, the saved quote stays
 readable and Vetra Code shows a warning.
 
-Mobile shows the full saved quote and its comment in sent messages. It does not offer
-**Cite in composer** or navigation to a quote's source.
+## Recall a sent prompt
 
-## Images and videos in messages
+Press `ArrowUp` in an empty composer to bring back the last prompt you sent in this thread. Press
+`ArrowUp` again to go further back, and `ArrowDown` to come forward. Moving forward past the newest
+prompt clears the composer. Recall walks the prompts loaded in the thread. Attachments, terminal
+context, and other extras from the original message are not restored, only the text you typed. A
+composer that holds an attachment or a picked element does not count as empty.
 
 On web, desktop, and mobile, select a link to an image or video to open it inside Vetra Code.
 Workspace image and video links open the file viewer. Links to media outside the workspace
@@ -179,24 +152,26 @@ open the stack. Interacting with the attached banner or composer does not open t
 
 ## Prompt stash
 
-Use the default shortcut, `Cmd+S` on macOS or `Ctrl+S` on Windows and Linux, to stash the current
-prompt and its attachments after all file uploads finish. When the composer is empty and the stash
-has one entry, press the shortcut again to restore it. The shortcut opens the stash menu if there
-are multiple entries or the entry's images are still saving. You can also open the menu from the
-stash badge. Stashes that contain files must be restored in the environment where those files were
-uploaded. Stashed files stay uploaded on the server for 24 hours. If you restore an entry after
-that, the file comes back with **Attach again** next to it. Attach the file again or remove it, then
-send.
+On web and desktop, press `Cmd+S` on macOS or `Ctrl+S` on Windows and Linux to save
+the current prompt and its attachments for later. Wait for uploads to finish first.
+With an empty composer, the same shortcut restores a single stash or opens the
+stash menu when there are several.
+
+Stashes containing uploaded files must be restored in their original environment.
+Those files are retained for 24 hours. After an upload expires, restore the prompt
+and use **Attach again** or remove the missing file before sending.
 
 ## Commands and skills
 
-Type `/` to open the command menu. Type `$` to find and add a skill. Skill rows show their source,
-such as System, Personal, Project, or App.
+Type `/` for commands or `$` to add a skill from the selected environment and
+provider. On mobile, both are also available before starting a thread on
+**New task**.
 
-On mobile, these menus are available on the **New task** screen before you start a thread. They
-use the skills and commands from the selected environment and provider.
+The slash menu also includes skills unless you turn off **Settings → General →
+Show skills in slash menu**. Only skills enabled for the provider are listed.
 
-In a thread with prior conversation context, send `/compact` to reduce context usage. Web and desktop also offer this action from the context meter, and the work log records token counts when the provider reports them.
+Provider commands must start the message to run. Vetra Code commands such as
+`/model` and `/plan`, and skill mentions, work on any line.
 
 By default, the `/` menu includes skills. To keep this menu command-only, turn off **Show skills in
 slash menu** in **Settings → General**. Skill results use the `/skill:Skill Name` label and add the

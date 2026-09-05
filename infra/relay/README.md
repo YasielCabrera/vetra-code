@@ -159,8 +159,7 @@ and hosted web builds.
 
 See:
 
-- [Vetra Connect Clerk Setup](../../docs/internals/vetra-connect.md) for Clerk keys, JWT templates, and sign-up restrictions
-  setup.
+- [Vetra Connect Clerk Setup](../../docs/internals/vetra-connect.md) for Clerk keys, JWT templates, and sign-up restrictions.
 - [Relay Observability](../../docs/operations/relay-observability.md) for deployment tracing and diagnostics.
 - [Vetra Connect Architecture Overview](../../docs/internals/vetra-code-connect-auth-flow.html) for the full link,
   connect, endpoint, and notification flows.

@@ -5,7 +5,7 @@
 This fork ships product analytics **off**: `VETRA_TELEMETRY_ENABLED` defaults to
 false and `VETRA_POSTHOG_KEY` has no default, so an unconfigured install sends
 nothing. The schema below describes what the server would emit once Vetra owns a
-PostHog project. See [Syncing upstream T3 Code](./upstream-sync.md) for why those
+PostHog project. See [Syncing upstream Vetra Code](./upstream-sync.md) for why those
 defaults must survive every sync.
 
 Vetra Code sends anonymous product events from the server to PostHog. The server
@@ -14,27 +14,28 @@ installation-scoped anonymous ID as the distinct ID. It also keeps the
 telemetry opt-out, event buffer, and batch delivery. Clients do not load the
 PostHog browser SDK.
 
-## Client events
+## Attribution boundaries
 
-These events use the metadata from the WebSocket connection that caused them.
-The metadata is not a person property or server-global current-client value.
-Two clients connected to one server can report different values at the same
-time.
+Client dimensions belong to the event's WebSocket connection. A server-global
+"current client" would misattribute simultaneous web, desktop, and mobile use.
+Provider execution has its own events because a turn can outlive the requesting
+connection.
 
-| Event                   | Description                                                                                                                                          |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `client.connected`      | The server accepted an authenticated WebSocket connection. Reconnects count again. Use this event for connection diagnostics, not active-use counts. |
-| `client.thread.started` | The server accepted a command that created a thread.                                                                                                 |
-| `client.turn.requested` | The server accepted a turn request. This is the standard active-use event.                                                                           |
+Keep client and server dimensions separate. A desktop host can serve a phone or a
+remote browser, and a direct connection can cross a network. Older clients omit
+metadata. Missing client values must stay unknown rather than being backfilled
+from server properties. The legacy `clientType` property describes how the server
+runs; use `surface` for the connected client.
 
-`provider.turn.sent` stays a provider execution event. It does not receive
-client metadata because a provider turn can continue after the requesting
-client disconnects.
+## Interpreting events
 
-## Recommended properties
+Use `client.turn.requested` for active-use reports. `client.connected` counts
+reconnects, so network behavior can inflate it. One identity can appear in several
+client groups during a period; adding those groups double-counts users.
 
-Client properties appear on the three client events when the connected client
-reports them. Older clients can omit every client property.
+Provider send and completion counts need not match. Providers can emit synthetic
+turns without a send request. Collection is best effort, with no scan or backfill
+of provider history.
 
 | Property               | Values and meaning                                                                                                                                                                              |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -48,8 +49,9 @@ reports them. Older clients can omit every client property.
 | `clientDeviceModel`    | Hardware model when the native client reports it. Initially mobile only. This is not a user-assigned device name.                                                                               |
 | `connectionMethod`     | `direct`, `ssh`, `relay`, or `unknown`. `direct` means that the client connected to the server endpoint without an SSH or relay connection. It does not mean both processes run on one machine. |
 
-Server properties appear on all events, including server boot and background
-events.
+Unknown counts stay absent. Partial usage contains valid observed counts but
+cannot establish a whole-turn total. Keep these distinctions when changing token
+normalization or building reports.
 
 | Property           | Values and meaning                                             |
 | ------------------ | -------------------------------------------------------------- |

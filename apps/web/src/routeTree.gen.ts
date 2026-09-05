@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as UsageRouteImport } from './routes/usage'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PairRouteImport } from './routes/pair'
@@ -36,6 +37,11 @@ import { Route as ChatIssuesRouteImport } from './routes/_chat.issues'
 import { Route as ChatDraftDraftIdRouteImport } from './routes/_chat.draft.$draftId'
 import { Route as ChatEnvironmentIdThreadIdRouteImport } from './routes/_chat.$environmentId.$threadId'
 
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UsageRoute = UsageRouteImport.update({
   id: '/usage',
   path: '/usage',
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
   '/issues': typeof ChatIssuesRoute
+  '/welcome': typeof WelcomeRoute
   '/pull-requests': typeof ChatPullRequestsRoute
   '/automations/$automationKey': typeof AutomationsAutomationKeyRoute
   '/automations/new': typeof AutomationsNewRoute
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
   '/issues': typeof ChatIssuesRoute
+  '/welcome': typeof WelcomeRoute
   '/pull-requests': typeof ChatPullRequestsRoute
   '/automations/$automationKey': typeof AutomationsAutomationKeyRoute
   '/automations/new': typeof AutomationsNewRoute
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
   '/_chat/issues': typeof ChatIssuesRoute
+  '/welcome': typeof WelcomeRoute
   '/_chat/pull-requests': typeof ChatPullRequestsRoute
   '/automations/$automationKey': typeof AutomationsAutomationKeyRoute
   '/automations/new': typeof AutomationsNewRoute
@@ -260,6 +269,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/usage'
     | '/issues'
+    | '/welcome'
     | '/pull-requests'
     | '/automations/$automationKey'
     | '/automations/new'
@@ -286,6 +296,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/usage'
     | '/issues'
+    | '/welcome'
     | '/pull-requests'
     | '/automations/$automationKey'
     | '/automations/new'
@@ -314,6 +325,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/usage'
     | '/_chat/issues'
+    | '/welcome'
     | '/_chat/pull-requests'
     | '/automations/$automationKey'
     | '/automations/new'
@@ -344,6 +356,7 @@ export interface RootRouteChildren {
   UsageRoute: typeof UsageRoute
   AutomationsAutomationKeyRoute: typeof AutomationsAutomationKeyRoute
   AutomationsNewRoute: typeof AutomationsNewRoute
+  WelcomeRoute: typeof WelcomeRoute
   ConnectCallbackRoute: typeof ConnectCallbackRoute
   ProjectsProjectKeyRoute: typeof ProjectsProjectKeyRoute
   AutomationsIndexRoute: typeof AutomationsIndexRoute
@@ -352,6 +365,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/usage': {
       id: '/usage'
       path: '/usage'
@@ -593,6 +613,7 @@ const rootRouteChildren: RootRouteChildren = {
   UsageRoute: UsageRoute,
   AutomationsAutomationKeyRoute: AutomationsAutomationKeyRoute,
   AutomationsNewRoute: AutomationsNewRoute,
+  WelcomeRoute: WelcomeRoute,
   ConnectCallbackRoute: ConnectCallbackRoute,
   ProjectsProjectKeyRoute: ProjectsProjectKeyRoute,
   AutomationsIndexRoute: AutomationsIndexRoute,

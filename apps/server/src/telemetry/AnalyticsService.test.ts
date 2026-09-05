@@ -213,4 +213,18 @@ it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
       assert.deepEqual(capturedRequests, []);
     }),
   );
+
+  it.effect("sends nothing when telemetry is explicitly disabled", () =>
+    Effect.gen(function* () {
+      const capturedRequests: Array<RecordedBatchRequest> = [];
+
+      yield* runWithTelemetryConfig(capturedRequests, {
+        VETRA_TELEMETRY_ENABLED: false,
+        VETRA_POSTHOG_KEY: "phc_test_key",
+        VETRA_POSTHOG_HOST: "http://localhost",
+      });
+
+      assert.deepEqual(capturedRequests, []);
+    }),
+  );
 });

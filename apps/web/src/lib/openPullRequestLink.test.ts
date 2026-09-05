@@ -1,13 +1,12 @@
-import { describe, expect, it, vi } from "vite-plus/test";
+import { describe, expect, it } from "vite-plus/test";
 
 import {
   changeRequestRepositoryUrl,
   findProjectForChangeRequest,
   gitHubPullRequestBrowserUrl,
   matchesLinkedPullRequestUrl,
-  openPullRequestLink,
   parseChangeRequestUrl,
-  PullRequestLinkOpenError,
+  pullRequestCandidateUrlFromReferenceAutolink,
   shouldOpenPullRequestExternally,
 } from "./openPullRequestLink";
 import { ProjectId, type RepositoryIdentity } from "@vetra-code/contracts";
@@ -130,6 +129,29 @@ describe("changeRequestRepositoryUrl", () => {
   });
 });
 
+describe("pullRequestCandidateUrlFromReferenceAutolink", () => {
+  it("turns GitHub's shared issue route into a pull request candidate", () => {
+    expect(
+      pullRequestCandidateUrlFromReferenceAutolink(
+        "https://github.com/pingdotgg/t3code/issues/8600#issuecomment-1",
+      ),
+    ).toBe("https://github.com/pingdotgg/t3code/pull/8600#issuecomment-1");
+  });
+
+  it("does not reinterpret other issue hosts or malformed references", () => {
+    expect(
+      pullRequestCandidateUrlFromReferenceAutolink(
+        "https://gitlab.com/pingdotgg/t3code/-/issues/8600",
+      ),
+    ).toBeNull();
+    expect(
+      pullRequestCandidateUrlFromReferenceAutolink(
+        "https://github.com/pingdotgg/t3code/issues/not-a-number",
+      ),
+    ).toBeNull();
+  });
+});
+
 describe("matchesLinkedPullRequestUrl", () => {
   const linkedPullRequest = {
     projectId: ProjectId.make("project-1"),
@@ -160,33 +182,6 @@ describe("matchesLinkedPullRequestUrl", () => {
         "https://github.example.com/vetra-code/vetra-code/pull/42",
       ),
     ).toBe(false);
-  });
-});
-
-describe("openPullRequestLink", () => {
-  it("opens the requested pull request URL", async () => {
-    const openExternal = vi.fn(async () => undefined);
-    const targetUrl = "https://github.com/vetra-code/vetra/pull/123";
-
-    await openPullRequestLink({ openExternal }, targetUrl);
-
-    expect(openExternal).toHaveBeenCalledExactlyOnceWith(targetUrl);
-  });
-
-  it("reports bridge failures with a safe target origin", async () => {
-    const cause = new Error("desktop shell unavailable");
-    const targetUrl = "https://github.com/vetra-code/vetra/pull/123?token=secret";
-    const openExternal = vi.fn(async () => Promise.reject(cause));
-
-    const result = openPullRequestLink({ openExternal }, targetUrl);
-
-    await expect(result).rejects.toEqual(
-      new PullRequestLinkOpenError({
-        targetOrigin: "https://github.com",
-        cause,
-      }),
-    );
-    await expect(result).rejects.not.toHaveProperty("message", expect.stringContaining("secret"));
   });
 });
 

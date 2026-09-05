@@ -1,8 +1,8 @@
-# Source Control Integrations
+# Source control
 
 Vetra Code connects to your Git hosting provider so you can create pull requests, review code, and manage repositories without leaving the app.
 
-## Supported Providers
+## Connect an account
 
 Vetra Code works with the platforms your team already uses:
 
@@ -11,21 +11,21 @@ Vetra Code works with the platforms your team already uses:
 - **Bitbucket** – Pull request workflows (via API token authentication)
 - **Azure DevOps** – Pull request support for Microsoft-hosted repositories
 
-## What You Can Do
+Install [GitHub CLI](https://cli.github.com/) 2.81.0 or newer, then sign in:
 
-### Start Projects from Anywhere
+```bash
+gh auth login
+```
 
-**Clone repositories directly**
+### GitLab
 
-- Open the Command Palette (`Cmd/Ctrl + K`) → **Add Project**
-- Choose **GitHub repository**, **GitLab repository**, **Bitbucket repository**, **Azure DevOps repository**, or paste any **Git URL**
-- Enter the repository path (`owner/repo`, `group/project`, `workspace/repository`, or `project/repository`) or a full Git URL, pick a destination, and start coding
+Install [GitLab CLI](https://gitlab.com/gitlab-org/cli), then sign in:
 
-**Publish local projects to the cloud**
+```bash
+glab auth login
+```
 
-- Have a local Git repository without a remote?
-- Use the **Publish Repository** action to create a new hosted repository (GitHub, GitLab, Bitbucket, or Azure DevOps), add it as your origin remote, and push, in one flow
-- If the local repository has no commits yet, publishing creates the remote and wires it up but does not push. Make a commit, then push normally.
+### Bitbucket
 
 ### Manage Code Reviews Without Context Switching
 
@@ -170,9 +170,8 @@ Recommended, a Bitbucket access token:
 export VETRA_BITBUCKET_ACCESS_TOKEN="your-access-token"
 ```
 
-Or an Atlassian account email plus API token, with read/write access to pull requests and
-repositories, plus read access to your user account (`read:user:bitbucket`, used to verify the
-connection):
+Or use an Atlassian account email and API token with read/write access to repositories and pull
+requests, plus user read access (`read:user:bitbucket`):
 
 ```bash
 export VETRA_BITBUCKET_EMAIL="you@example.com"
@@ -182,38 +181,49 @@ export VETRA_BITBUCKET_API_TOKEN="your-token"
 If both are set, the access token wins. Restart Vetra Code and verify the connection in **Source
 Control settings**.
 
-### For Azure DevOps
+### Azure DevOps
 
-1. Install Azure CLI:
-   ```bash
-   brew install azure-cli
-   ```
-2. Add the DevOps extension:
-   ```bash
-   az extension add --name azure-devops
-   ```
-3. Sign in:
-   ```bash
-   az login
-   ```
+Install [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/), add the DevOps extension, and sign in:
 
----
+```bash
+az extension add --name azure-devops
+az login
+```
 
-## Requirements & Troubleshooting
+## Clone or publish a project
 
 **Git is required** – Vetra Code uses Git for all local operations. Ensure `git` is installed on your server.
 
 **Server-side setup** – Authentication happens on the machine running Vetra Code (the server), not your local browser. If you're using a hosted or team instance, your administrator may have already configured providers.
 
-**Common issues:**
+## Create a pull request
 
 - **Provider shows "Not authenticated"** – Run the login command for that provider (e.g., `gh auth login`) in a terminal on the server, then rescan in Settings
 - **GitHub says it could not verify sign-in status** – Vetra Code needs GitHub CLI 2.81.0 or newer to check sign-in status. Update `gh` (e.g., `brew upgrade gh`), then rescan
 - **Bitbucket not connecting** – Double-check your environment variables are set in the correct shell profile and the server was restarted
 - **Can't push to a remote** – Verify your Git remote URL matches the provider you've authenticated with (SSH vs HTTPS remotes may need different credentials)
 
-**Need more help?** Check your provider's CLI documentation:
+Choose the writing style and model in **Settings → Source Control**. **Repository conventions**
+uses the project's instructions and recent commit subjects.
 
-- [GitHub CLI](https://cli.github.com/)
-- [GitLab CLI](https://gitlab.com/gitlab-org/cli)
-- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/)
+## Review and merge
+
+Open **Pull requests** to review changes and comments, request reviewers, check out a branch,
+or merge. You can edit review titles and descriptions and your own comments where the host allows it.
+GitLab calls these merge requests.
+
+GitHub, GitLab, and Azure DevOps support auto-merge while checks are outstanding. GitHub also
+supports approving waiting fork workflows and opening a revert pull request for a merged change.
+
+For Azure DevOps, use the host website to view diffs or change comments. Bitbucket does not support
+reopening a declined pull request.
+
+## Troubleshooting
+
+- **Not authenticated:** run the provider's login command on the server, then rescan. For Bitbucket,
+  confirm the running server received the environment variables.
+- **GitHub sign-in cannot be verified:** update GitHub CLI to at least 2.81.0.
+- **Push fails despite a connected account:** check the Git remote's credentials. SSH and HTTPS
+  remotes can require separate setup from the hosting provider's API access.
+- **A review cannot load:** open it on the host website while resolving connectivity, permissions,
+  or rate limits.

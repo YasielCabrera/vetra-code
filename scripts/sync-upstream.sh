@@ -105,11 +105,23 @@ RENAMES=(
   # stored preference and desynchronising the CSS name from its JS registration.
   # Keyed on the opening quote so the `pingdotgg/t3code.git` remote is untouched.
   '"t3code.="vetra.'
+  # Same idea for the colon-separated `localStorage` keys and the URL scheme
+  # (`t3code:ui-state:v1`, `t3code:theme`, `t3code://app`). The generic `t3code`
+  # pair would map these to `vetra-code:*` and orphan every user's stored client
+  # state. Four keys predate this pair and still ship as `vetra-code:*`
+  # (browser-favicons, chunk-load-reloaded, default-theme-applied,
+  # remote-open-hint-seen); renaming them is a migration, not a sync.
+  '"t3code:="vetra:'
   # Upstream's `localStorage` namespace for the pull request surfaces. Nothing
   # else matches a bare `t3.` prefix, and a blanket pair cannot be added: it
   # would also rewrite `t3.codes` hosts and the `t3.large` EC2 instance type a
   # machine-detection fixture asserts on. Extend this list per namespace.
   't3.pullRequests.=vetra.pullRequests.'
+  # The environment discovery document's well-known path. A blanket `t3/` pair
+  # cannot be added (it would rewrite Effect service keys and repository paths),
+  # so this one namespace is listed explicitly. Without it, a merged client test
+  # probes a path this server does not serve.
+  '.well-known/t3/=.well-known/vetra/'
   't3-assistant-citation=vetra-assistant-citation'
   # The assistant-citation URL scheme. It rides in prompts sent to providers and
   # in persisted messages, so it is product identity, not an internal name.

@@ -439,20 +439,24 @@ fi
 # never becomes ready. Resolve the CLI once up front so that install failure is
 # reported here, with npm's own output on stderr.
 require_installed_vetra_cli() {
-  VETRA_CLI_PATH="$("$@" -- sh -c 'command -v ${PRODUCT_CLI_NAME}' || true)"
+  if ! VETRA_CLI_PATH="$("$@" -- sh -c 'command -v ${PRODUCT_CLI_NAME}')"; then
+    printf 'Remote host could not install %s. See npm output above for the cause.\\n' @@VETRA_PACKAGE_SPEC@@ >&2
+    return 1
+  fi
   if [ -n "$VETRA_CLI_PATH" ]; then
     return 0
   fi
   printf 'Remote host installed %s but npm produced no ${PRODUCT_CLI_NAME} executable, which usually means a native dependency (node-pty) failed to build. Install a C toolchain on the remote host (Debian/Ubuntu: build-essential, Fedora/RHEL: gcc-c++ make, macOS: xcode-select --install) and try again.\\n' @@VETRA_PACKAGE_SPEC@@ >&2
   return 1
 }
+# The launcher records this PID, so exec the CLI without an npm wrapper process.
 if command -v npx >/dev/null 2>&1; then
   require_installed_vetra_cli npx --yes --package @@VETRA_PACKAGE_SPEC@@ || exit 1
-  exec npx --yes @@VETRA_PACKAGE_SPEC@@ "$@"
+  exec "$VETRA_CLI_PATH" "$@"
 fi
 if command -v npm >/dev/null 2>&1; then
   require_installed_vetra_cli npm exec --yes --package @@VETRA_PACKAGE_SPEC@@ || exit 1
-  exec npm exec --yes @@VETRA_PACKAGE_SPEC@@ -- "$@"
+  exec "$VETRA_CLI_PATH" "$@"
 fi
 printf 'Remote host is missing the Vetra CLI and could not install @@VETRA_PACKAGE_SPEC@@ because node/npm/npx are unavailable on PATH. Install Node or configure a supported version manager for non-interactive shells.\\n' >&2
 exit 1

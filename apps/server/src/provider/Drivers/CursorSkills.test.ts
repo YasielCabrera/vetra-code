@@ -137,7 +137,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
   // Personal skills are routinely symlinks into a shared `~/.agents/skills`
   // tree. The walk will not follow one out of the root it resolved, so the
   // skill is reported from the shared tree, which is a scanned root itself.
-  it.effect("reports a symlinked personal skill from the tree it really lives in", () =>
+  it.effect("reports a symlinked personal skill under the link it was installed as", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
@@ -160,7 +160,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
         {
           name: "next-cache-components",
           displayName: "next-cache",
-          path: path.join(shared, "next-cache-components", "SKILL.md"),
+          path: path.join(cursorSkills, "next-cache-components", "SKILL.md"),
           enabled: true,
           scope: "user",
           description: "Cache docs.",

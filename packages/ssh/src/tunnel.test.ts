@@ -105,8 +105,7 @@ describe("ssh tunnel scripts", () => {
 
     assert.include(script, "VETRA_NODE_SCRIPT_PATH=''");
     assert.include(script, 'exec vetra "$@"');
-    assert.include(script, "exec npx --yes '@vetra-code/server@latest' \"$@\"");
-    assert.include(script, "exec npm exec --yes '@vetra-code/server@latest' -- \"$@\"");
+    assert.include(script, 'exec "$VETRA_CLI_PATH" "$@"');
     assert.include(script, "could not install '@vetra-code/server@latest'");
     assert.include(
       script,
@@ -149,15 +148,11 @@ describe("ssh tunnel scripts", () => {
 
     assert.include(
       script,
-      "exec npx --yes '@vetra-code/server@nightly; touch /tmp/vetra-owned' \"$@\"",
-    );
-    assert.include(
-      script,
-      "exec npm exec --yes '@vetra-code/server@nightly; touch /tmp/vetra-owned' -- \"$@\"",
-    );
-    assert.include(
-      script,
       "require_installed_vetra_cli npx --yes --package '@vetra-code/server@nightly; touch /tmp/vetra-owned'",
+    );
+    assert.include(
+      script,
+      "require_installed_vetra_cli npm exec --yes --package '@vetra-code/server@nightly; touch /tmp/vetra-owned'",
     );
     assert.notInclude(script, "exec npx --yes @vetra-code/server@nightly; touch /tmp/vetra-owned");
   });

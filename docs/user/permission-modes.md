@@ -1,33 +1,29 @@
-# Permission Modes
+# Permission modes
 
-A permission mode controls how much the agent does on its own and when it stops to ask you.
+Permission modes control when an agent needs your approval to act. Choose a mode in the message
+composer; it applies to that thread.
 
-The mode is set per thread, from the mode control in the message composer. Changing it in one
-thread does not change any other thread. A thread created from inside another thread keeps that
-thread's mode; otherwise new threads start in **Full access** unless you pick something else
-before sending.
+New threads start in **Full access** unless you choose another mode before sending. A thread
+created from another thread inherits its mode.
 
-## The Modes
+| Mode                  | Behavior                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| **Supervised**        | Requests approval for commands and file changes.                                      |
+| **Auto-accept edits** | Approves file edits automatically; other actions can still require approval.          |
+| **Auto**              | Uses the provider's automatic review to approve routine actions and ask about others. |
+| **Full access**       | Allows commands and edits without approval prompts.                                   |
 
-**Supervised**: ask before commands and file changes. The agent pauses and shows you what it
-wants to run or edit, and waits for approval. Work outside the workspace is restricted.
+Approve or reject requests in the conversation to let the agent continue. Permission modes do
+not prevent the agent from asking questions about the task.
 
-**Auto-accept edits**: auto-approve edits, ask before other actions. File changes go through
-without prompting; commands and anything else still stop for approval.
+## Provider differences
 
-**Auto**: routine actions proceed without you; risky ones still ask. How this is enforced depends
-on the provider: Codex delegates routine approvals to an AI reviewer, Claude uses its own auto
-permission mode, Cursor uses Smart Auto review, and providers without an equivalent (such as
-OpenCode and Antigravity) fall back to asking, like Supervised.
-
-**Full access**: allow commands and edits without prompts. The default. The agent runs
-unattended until it finishes or asks a question of its own.
-
-Approvals appear inline in the conversation. Approve or reject one and the agent continues from
-there.
+Providers enforce permissions differently. Some read-only actions can proceed in **Supervised**.
+**Auto** uses automatic review on Codex, Claude, and Cursor; providers without an equivalent,
+including OpenCode and Antigravity, fall back to asking.
 
 For Grok, **Always allow this session** remembers the matching command or tool input. Other
-actions still ask for approval. It does not change the thread to **Full access**.
+actions still require approval.
 
 Antigravity uses its own permission policy for each mode. Vetra Code still shows any approval or
 question the official agent sends in **Full access**. A remembered approval is available only

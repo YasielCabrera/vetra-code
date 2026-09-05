@@ -94,7 +94,6 @@ export const BrowserSessionGetSessionError = Schema.Union([
   BrowserSessionCreationError,
 ]);
 export type BrowserSessionGetSessionError = typeof BrowserSessionGetSessionError.Type;
-export const isBrowserSessionGetSessionError = Schema.is(BrowserSessionGetSessionError);
 
 export const BrowserSessionError = Schema.Union([
   BrowserSessionPartitionDerivationError,
@@ -103,7 +102,6 @@ export const BrowserSessionError = Schema.Union([
   BrowserSessionCacheClearError,
 ]);
 export type BrowserSessionError = typeof BrowserSessionError.Type;
-export const isBrowserSessionError = Schema.is(BrowserSessionError);
 
 export class BrowserSession extends Context.Service<
   BrowserSession,
