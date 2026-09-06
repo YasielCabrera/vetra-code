@@ -1,3 +1,4 @@
+import { RefreshIcon } from "~/components/ui/refresh-icon";
 import {
   ActivityIcon,
   AlertTriangleIcon,
@@ -9,8 +10,6 @@ import {
   GaugeIcon,
   HardDriveIcon,
   MemoryStickIcon,
-  RefreshCwIcon,
-  RotateCcwIcon,
 } from "lucide-react";
 import type {
   BackgroundBooleanState,
@@ -982,9 +981,7 @@ export function ResourceTelemetryDiagnostics() {
                     onClick={telemetry.refresh}
                     aria-label="Refresh resource telemetry"
                   >
-                    <RefreshCwIcon
-                      className={cn("size-3", telemetry.isPending && "animate-spin")}
-                    />
+                    <RefreshIcon className="size-3" refreshing={telemetry.isPending} />
                   </Button>
                 }
               />
@@ -1101,7 +1098,7 @@ export function ResourceTelemetryDiagnostics() {
         headerAction={
           collectorNeedsRetry ? (
             <Button size="xs" variant="outline" disabled={isRetrying} onClick={retryCollector}>
-              <RotateCcwIcon className={cn("size-3", isRetrying && "animate-spin")} />
+              <RefreshIcon className="size-3" refreshing={isRetrying} />
               Retry monitor
             </Button>
           ) : null
@@ -1239,7 +1236,7 @@ export function ResourceTelemetryDiagnostics() {
               onClick={history.refresh}
               aria-label="Refresh resource history"
             >
-              <RefreshCwIcon className={cn("size-3", history.isPending && "animate-spin")} />
+              <RefreshIcon className="size-3" refreshing={history.isPending} />
             </Button>
           </div>
         }

@@ -36,6 +36,22 @@ development server directly to the public internet.
 Do not mix pairing links, CLI packages, or URL schemes from another product with Vetra Code. They can
 connect to a different server and read or modify that environment's state.
 
+## Balance new threads across machines
+
+Auto balance is off by default. On web and desktop, enable it in
+**Settings → Connections → Load balancing** to automatically choose a machine for
+new threads in projects grouped across connected environments.
+Each machine starts at **Normal**. Choose **Prefer** to favor it when it has CPU and
+memory available, **Less often** to reduce its share, or **Manual only** to exclude
+it from automatic selection. These are preferences, not fixed traffic percentages.
+Preferences are saved separately in each client.
+
+The composer checks eligible machines when choosing a draft's environment, then keeps
+that choice stable. Choose **Auto balance** again to check current resources, or choose
+a specific machine to override it. Choosing a branch or worktree also keeps the draft
+on that machine. Existing threads stay where they started. If resource checks are
+unavailable or all eligible machines are full, choose a machine manually to continue.
+
 ## Security model retained
 
 A pairing link authorizes a client to exchange its one-time token for a durable server session.

@@ -22,15 +22,10 @@ export { EMBER_THEME, GROVE_THEME, IRIS_THEME, OCEAN_THEME, VETRA_CHAT_THEME, TH
 export type { ThemeAppearance, ThemeColorRole, ThemeColors, ThemeDefinition, ThemeVariants };
 
 export const VETRA_CHAT_THEME_ID = "vetra-chat" as const;
-export const VETRA_CHAT_THEME_LABEL = "Vetra Chat";
-export const GROVE_THEME_ID = "grove" as const;
-export const GROVE_THEME_LABEL = "Grove";
+const GROVE_THEME_ID = "grove" as const;
 export const OCEAN_THEME_ID = "ocean" as const;
-export const OCEAN_THEME_LABEL = "Ocean";
-export const EMBER_THEME_ID = "ember" as const;
-export const EMBER_THEME_LABEL = "Ember";
-export const IRIS_THEME_ID = "iris" as const;
-export const IRIS_THEME_LABEL = "Iris";
+const EMBER_THEME_ID = "ember" as const;
+const IRIS_THEME_ID = "iris" as const;
 export const THEME_FILE_VERSION = 1 as const;
 export const CUSTOM_THEMES_STORAGE_KEY = "vetra:themes:v1";
 export const THEME_FOLLOW_SYSTEM_STORAGE_KEY = "vetra:theme-follow-system";

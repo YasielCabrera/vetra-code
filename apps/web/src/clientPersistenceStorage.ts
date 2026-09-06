@@ -2,7 +2,7 @@ import { ClientSettingsSchema, type ClientSettings } from "@vetra-code/contracts
 
 import { getLocalStorageItem, setLocalStorageItem } from "./hooks/useLocalStorage";
 
-export const CLIENT_SETTINGS_STORAGE_KEY = "vetra:client-settings:v1";
+const CLIENT_SETTINGS_STORAGE_KEY = "vetra:client-settings:v1";
 
 function hasWindow(): boolean {
   return typeof window !== "undefined";

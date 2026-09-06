@@ -40,7 +40,7 @@ describe("ScopePicker", () => {
     expect(markup).toContain("global");
     expect(markup).toContain("private");
     expect(markup).toContain("Add scope…");
-    expect(markup.match(/aria-label="Remove"/g)).toHaveLength(2);
+    expect(markup.match(/data-slot="combobox-chip-remove"/g)).toHaveLength(2);
   });
 
   it("prompts for scopes when the filter is empty", () => {

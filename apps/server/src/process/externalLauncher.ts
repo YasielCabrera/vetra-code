@@ -45,7 +45,6 @@ export {
   ExternalLauncherEditorSpawnError,
   ExternalLauncherUnknownEditorError,
   ExternalLauncherUnsupportedEditorError,
-  isExternalLauncherError,
 } from "@vetra-code/contracts";
 export type { LaunchEditorInput };
 interface EditorLaunch {

@@ -131,6 +131,13 @@ RENAMES=(
   'T3Server=VetraServer'
   'T3Home=VetraHome'
   't3Home=vetraHome'
+  # Lower-camel names upstream builds from the product word. Neither 'T3Code'
+  # nor 'T3ProjectFile' matches these, so a merge otherwise keeps T3 identity in
+  # a local binding ('t3File') or a module path ('lib/t3ProjectFileDefaults').
+  't3ProjectFile=vetraProjectFile'
+  't3File=vetraFile'
+  # Upstream's remote-launch script builder. 'T3Runner' matches no other pair.
+  'buildRemoteT3RunnerScript=buildRemoteVetraRunnerScript'
   # Upstream's GitHub org / winget publisher, never a TypeScript identifier.
   # Mapped onto the same identity as the pairs below so a repo-identity fixture
   # cannot come out half-renamed (`VetraTools/vetra-code` lowercases to a

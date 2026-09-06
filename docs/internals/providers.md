@@ -24,6 +24,14 @@ adapter in a child scope. Adapter implementations live beside them in
 [`ProviderAdapter.ts`][adapter]. Read the driver plus its adapter to see how a specific agent's
 transport, config, and event shapes are mapped.
 
+Antigravity separates account profiles per instance while sharing installed executables across the
+environment. It forces file-based credential storage because the native macOS keychain entry would
+otherwise be shared across instances. The launch environment removes ambient Google credentials,
+so an instance cannot silently use another account or billing project. The agent also resolves
+its user-global skill directories under that profile, so the profile links those two directories
+back to the user's real `~/.gemini`; MCP servers, hooks, and rules there stay out of the profile.
+See [profile isolation](../../apps/server/src/provider/antigravityAuthSupport.ts).
+
 ## Runtime context
 
 Every adapter uses `apps/server/src/provider/RuntimeInstructions.ts` to identify Vetra Code and
