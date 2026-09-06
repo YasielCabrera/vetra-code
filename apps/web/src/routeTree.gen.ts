@@ -180,8 +180,8 @@ export interface FileRoutesByFullPath {
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
-  '/issues': typeof ChatIssuesRoute
   '/welcome': typeof WelcomeRoute
+  '/issues': typeof ChatIssuesRoute
   '/pull-requests': typeof ChatPullRequestsRoute
   '/automations/$automationKey': typeof AutomationsAutomationKeyRoute
   '/automations/new': typeof AutomationsNewRoute
@@ -207,8 +207,8 @@ export interface FileRoutesByTo {
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
-  '/issues': typeof ChatIssuesRoute
   '/welcome': typeof WelcomeRoute
+  '/issues': typeof ChatIssuesRoute
   '/pull-requests': typeof ChatPullRequestsRoute
   '/automations/$automationKey': typeof AutomationsAutomationKeyRoute
   '/automations/new': typeof AutomationsNewRoute
@@ -237,8 +237,8 @@ export interface FileRoutesById {
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
-  '/_chat/issues': typeof ChatIssuesRoute
   '/welcome': typeof WelcomeRoute
+  '/_chat/issues': typeof ChatIssuesRoute
   '/_chat/pull-requests': typeof ChatPullRequestsRoute
   '/automations/$automationKey': typeof AutomationsAutomationKeyRoute
   '/automations/new': typeof AutomationsNewRoute
@@ -268,8 +268,8 @@ export interface FileRouteTypes {
     | '/pair'
     | '/settings'
     | '/usage'
-    | '/issues'
     | '/welcome'
+    | '/issues'
     | '/pull-requests'
     | '/automations/$automationKey'
     | '/automations/new'
@@ -295,8 +295,8 @@ export interface FileRouteTypes {
     | '/pair'
     | '/settings'
     | '/usage'
-    | '/issues'
     | '/welcome'
+    | '/issues'
     | '/pull-requests'
     | '/automations/$automationKey'
     | '/automations/new'
@@ -324,8 +324,8 @@ export interface FileRouteTypes {
     | '/pair'
     | '/settings'
     | '/usage'
-    | '/_chat/issues'
     | '/welcome'
+    | '/_chat/issues'
     | '/_chat/pull-requests'
     | '/automations/$automationKey'
     | '/automations/new'
@@ -354,9 +354,9 @@ export interface RootRouteChildren {
   PairRoute: typeof PairRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   UsageRoute: typeof UsageRoute
+  WelcomeRoute: typeof WelcomeRoute
   AutomationsAutomationKeyRoute: typeof AutomationsAutomationKeyRoute
   AutomationsNewRoute: typeof AutomationsNewRoute
-  WelcomeRoute: typeof WelcomeRoute
   ConnectCallbackRoute: typeof ConnectCallbackRoute
   ProjectsProjectKeyRoute: typeof ProjectsProjectKeyRoute
   AutomationsIndexRoute: typeof AutomationsIndexRoute
@@ -611,9 +611,9 @@ const rootRouteChildren: RootRouteChildren = {
   PairRoute: PairRoute,
   SettingsRoute: SettingsRouteWithChildren,
   UsageRoute: UsageRoute,
+  WelcomeRoute: WelcomeRoute,
   AutomationsAutomationKeyRoute: AutomationsAutomationKeyRoute,
   AutomationsNewRoute: AutomationsNewRoute,
-  WelcomeRoute: WelcomeRoute,
   ConnectCallbackRoute: ConnectCallbackRoute,
   ProjectsProjectKeyRoute: ProjectsProjectKeyRoute,
   AutomationsIndexRoute: AutomationsIndexRoute,
