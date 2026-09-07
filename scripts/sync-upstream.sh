@@ -27,6 +27,11 @@ PRUNE_PATHS=(
   # destination.
   .github/ISSUE_TEMPLATE/via-triage.yml
   .github/triage
+  # Upstream's security policy routes reports to security@ping.gg and links
+  # t3.codes/security-policy. The rename pass makes it read as Vetra Code's
+  # policy while still pointing at T3, which is worse than shipping none.
+  # Restore this file only once Vetra owns a reporting destination.
+  .github/SECURITY.md
   apps/mobile
   apps/marketing
   scripts/mobile-showcase.ts
@@ -62,6 +67,11 @@ PRUNE_GLOBS=(
 # ones. `pingdotgg/t3code` is excluded -- that is the real upstream repo URL and
 # must survive verbatim. Likewise t3.codes domains are deliberately absent.
 RENAMES=(
+  # Upstream tells users to run the published CLI as `npx t3 <cmd>`. The fork's
+  # server package is private, so there is no npx entry point; the command is
+  # just `vetra <cmd>`. Keyed on the whole prefix, ahead of the pairs below,
+  # because none of them match a bare `t3` followed by a space.
+  'npx t3 =vetra '
   'com.t3tools.t3code=com.vetra.code'
   '@t3tools/=@vetra-code/'
   'T3CODE_=VETRA_'

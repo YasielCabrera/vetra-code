@@ -1,6 +1,6 @@
 {
   "name": "@vetra-code/server",
-  "version": "0.0.38",
+  "version": "0.0.39",
   "private": true,
   "license": "MIT",
   "bin": {
@@ -29,6 +29,8 @@
     "node-pty": "^1.1.0",
     "pg": "8.23.0",
     "pg-cursor": "2.22.0",
+    "stream-chain": "^4.2.5",
+    "stream-json": "3.6.0",
     "yaml": "catalog:",
     "yauzl": "^3.4.0"
   },

@@ -3,16 +3,26 @@
 Vetra Code shows a setup flow the first time you open a new installation.
 Existing workspaces skip this flow.
 
-## Choose a connection
+## Connect your computers
 
-- **This computer** runs agents on the computer that hosts Vetra Code. It does not
-  require an account.
+Select one or more computers to set up. If you opened Vetra Code directly from a
+server or the desktop app, that computer is already connected and selected.
+It is identified by its name, which may differ from the device running your
+browser.
+
+You can add more computers before continuing:
+
 - **Vetra Connect** connects computers that are signed in to your account. This
   option appears only once Vetra Connect is configured for your installation.
-- **Pair a server** connects directly to a server on your network or tailnet.
+- **Add a computer** connects directly to a server on your network or tailnet.
   Start the server with `vetra serve`, then run `vetra pair --tailscale` and
   paste the pairing link. You can also run `vetra serve --host <address>` and
   use `vetra pair` when the server is already reachable on your network.
+
+Saved computers and computers discovered through Vetra Connect are selected by
+default. Uncheck any you do not want to set up; this does not disconnect them.
+Continue when your selected computers are connected. Setup checks
+agents across the selected computers, then offers project import grouped by computer.
 
 If Vetra Code cannot confirm the workspace during startup, the setup flow shows
 **Still connecting** instead of opening the app. Select **Reload** to try again.
@@ -23,9 +33,11 @@ unreadable settings with defaults.
 
 ## Check your agents
 
-Vetra Code checks the selected computer for Claude Code and Codex. If an agent is
+Vetra Code checks each selected computer for Claude Code and Codex. If an agent is
 not installed or signed in, select its action to open a terminal with the
-correct command ready to run. Other providers can be enabled in Settings.
+correct command ready to run. Install uses the vendor's standalone installer,
+which does not need Node or npm and keeps **Update now** working in Settings.
+Other providers can be enabled in Settings.
 
 The setup terminal uses the home directory and environment configured for the
 selected provider instance. Sensitive values remain redacted in Settings and
@@ -33,9 +45,16 @@ terminal metadata while the terminal process can use them.
 
 ## Import your projects
 
-Vetra Code finds directories that Claude Code or Codex has used. The default
-selection includes projects active within the last 30 days. Select **Choose**
-to include older projects or change the selection.
+Vetra Code finds directories that Claude Code or Codex has used. Git repositories
+are listed first, newest activity on top. When the remote is on GitHub, the
+group shows the repository as `owner/name`. Clones with the same remote share
+one group. Directories that are not git repositories sit under "Other folders".
+
+The default selection includes git repositories active within the last 30 days
+with at least three conversations. Use the checkboxes, or "Select all" and
+"Select none", to change the selection. Linked git worktrees, Codex scratch
+directories under `Documents/Codex`, and anything under `Downloads` are not
+offered.
 
 A large or malformed history can reach the scan limit. Vetra Code keeps the
 projects it found and warns when projects or conversations may be missing.
@@ -57,5 +76,5 @@ with up to 100,000 input records. Run import again to continue a large batch.
 Completed conversations are not imported again. You can continue without the
 remaining history.
 
-You can skip agent setup and project import. Select **Back** to return to a
-previous step.
+You can continue without configuring agents or importing projects, or return to an earlier step
+using the setup progress bar. Navigation pauses while an import is running.

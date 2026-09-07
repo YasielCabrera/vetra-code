@@ -1,9 +1,8 @@
 import { useAtomValue } from "@effect/atom-react";
 import { RefreshIcon } from "~/components/ui/refresh-icon";
-import { scopeProjectRef } from "@vetra-code/client-runtime/environment";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { LinkIcon, PlusIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import ChatView from "../components/ChatView";
 import { Button } from "../components/ui/button";
@@ -146,7 +145,7 @@ function HostedStaticOnboardingState() {
               </EmptyTitle>
               <EmptyDescription className="mt-2 text-sm leading-relaxed text-muted-foreground/78">
                 This browser connects to Vetra Code running on your computer or a server. Start the
-                T3 Code desktop app or command-line server on that machine and keep it running.
+                Vetra Code desktop app or command-line server on that machine and keep it running.
               </EmptyDescription>
               <EmptyDescription className="mt-2 text-sm leading-relaxed text-muted-foreground/78">
                 {cloudEnabled
