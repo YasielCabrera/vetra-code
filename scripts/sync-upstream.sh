@@ -73,6 +73,20 @@ RENAMES=(
   # because none of them match a bare `t3` followed by a space.
   'npx t3 =vetra '
   'com.t3tools.t3code=com.vetra.code'
+  # Same application id in upstream's PascalCase spelling, used by the Linux
+  # window-capture code as a D-Bus well-known name and a desktop-entry name.
+  # Without this pair the generic `t3tools` and `T3Code` pairs compose into
+  # `com.vetra-code.VetraCode`, which is both the wrong app id and an invalid
+  # D-Bus name.
+  'com.t3tools.T3Code=com.vetra.code'
+  # Bare `com.t3tools.<Service>` D-Bus interfaces and bus names that carry no
+  # product word (`com.t3tools.SnapShot`, `com.t3tools.KdeCapture.Feedback`),
+  # plus the matching object paths. D-Bus name elements allow only
+  # `[A-Za-z0-9_]`, so the generic `t3tools=vetra-code` pair would emit
+  # `com.vetra-code.SnapShot` and the bus would reject it at runtime. Must stay
+  # after the two app-id pairs above, which are more specific.
+  'com.t3tools.=com.vetra.'
+  '/com/t3tools/=/com/vetra/'
   '@t3tools/=@vetra-code/'
   'T3CODE_=VETRA_'
   # Upstream's SCREAMING_SNAKE constants and test env vars (T3_CHAT_THEME,
@@ -109,6 +123,17 @@ RENAMES=(
   # spelling. `t3_code` survives the uppercase `T3_` pair, and `T3Mcp*` matches
   # no other pair, so without these a sync leaks both into the work log.
   'T3McpToolPresentation=VetraMcpToolPresentation'
+  # Upstream's GNOME Shell extension for active-window capture. `T3SnapShot` is
+  # a D-Bus well-known name, an object path element, and the exported extension
+  # class; no other pair matches it, so without this one the fork would claim
+  # T3's bus name and collide with an installed upstream extension.
+  'T3SnapShot=VetraSnapShot'
+  # The same extension's GNOME UUID, which doubles as the directory GNOME
+  # installs it into. `t3.codes` is deliberately absent from this table (see the
+  # header) because it must survive in comments and upstream-host fixtures, so
+  # this one application identity is keyed on the whole literal. Mapped onto
+  # `vetra.code` to match PRODUCT_DESKTOP_APP_ID rather than inventing a domain.
+  'snap-shot@t3.codes=snap-shot@vetra.code'
   't3_code=vetra_code'
   # Persisted client keys and CSS highlight registry names the fork owns. The
   # generic `t3code` pair would map these to `vetra-code.*`, orphaning a user's
