@@ -118,6 +118,14 @@ RENAMES=(
   't3.json=vetra.json'
   'T3 Connect=Vetra Connect'
   't3-connect=vetra-connect'
+  # Upstream spells its URL scheme with the same word as its product slug, so
+  # the generic `t3code` pair maps both to `vetra-code`. This fork splits them:
+  # the slug is `vetra-code` (user-data dir, WM class) but the scheme is
+  # PRODUCT_DESKTOP_PROTOCOL, `vetra`. Only the mime-handler spelling can be
+  # keyed mechanically; a bare `scheme: "t3code"` literal still needs a human,
+  # so check every scheme fixture after a merge that touches URL handling.
+  'x-scheme-handler/t3code-dev=x-scheme-handler/vetra-dev'
+  'x-scheme-handler/t3code=x-scheme-handler/vetra'
   'T3Connect=VetraConnect'
   # Upstream's MCP work-log presentation helper and its lowercase server-name
   # spelling. `t3_code` survives the uppercase `T3_` pair, and `T3Mcp*` matches
@@ -173,6 +181,19 @@ RENAMES=(
   't3File=vetraFile'
   # Upstream's remote-launch script builder. 'T3Runner' matches no other pair.
   'buildRemoteT3RunnerScript=buildRemoteVetraRunnerScript'
+  # Binary names built from a variable, as in the Linux capture helpers'
+  # `t3-${backend}-snap-shot`. The quoted `"t3-` pair below cannot see these,
+  # and the crates in native/ rename to `vetra-*`, so a miss leaves the build
+  # script staging a filename cargo never produces.
+  't3-${=vetra-${'
+  # Generated names the window-capture code writes into a user's home: scratch
+  # and backup files beside a compositor config, the staged GNOME extension
+  # directory, the XDG portal shortcut id, and the KDE test bus socket. None is
+  # preceded by a quote, so the `"t3-` pair below cannot reach them, and each
+  # one lands in a shared namespace where T3's name would collide.
+  '.t3-capture-=.vetra-capture-'
+  't3-snap-shot-=vetra-snap-shot-'
+  't3-kde-bus-=vetra-kde-bus-'
   # Upstream's GitHub org / winget publisher, never a TypeScript identifier.
   # Mapped onto the same identity as the pairs below so a repo-identity fixture
   # cannot come out half-renamed (`VetraTools/vetra-code` lowercases to a

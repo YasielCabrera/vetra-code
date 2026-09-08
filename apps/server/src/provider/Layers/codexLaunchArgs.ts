@@ -1,14 +1,13 @@
 import { tokenizeCliArgs } from "@vetra-code/shared/cliArgs";
 
-export const VETRA_CODEX_LAUNCH_ARGS_ENV = "VETRA_CODEX_LAUNCH_ARGS";
+const VETRA_CODEX_LAUNCH_ARGS_ENV = "VETRA_CODEX_LAUNCH_ARGS";
 
 export const resolveCodexLaunchArgs = (
   launchArgs?: string,
   environment: NodeJS.ProcessEnv = process.env,
 ) => environment[VETRA_CODEX_LAUNCH_ARGS_ENV]?.trim() || launchArgs?.trim() || "";
 
-export const codexLaunchArgv = (launchArgs?: string): ReadonlyArray<string> =>
-  tokenizeCliArgs(launchArgs);
+const codexLaunchArgv = (launchArgs?: string): ReadonlyArray<string> => tokenizeCliArgs(launchArgs);
 
 export const codexAppServerArgs = (launchArgs?: string) => [
   "app-server",

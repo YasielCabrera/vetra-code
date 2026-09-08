@@ -115,7 +115,7 @@ export function isBrowserAllowedPort(port: number): boolean {
   return !FETCH_BAD_PORTS.has(port);
 }
 
-export class DevRunnerConfigurationError extends Schema.TaggedErrorClass<DevRunnerConfigurationError>()(
+export class DevRunnerConfigurationError extends Schema.TaggedError<DevRunnerConfigurationError>()(
   "DevRunnerConfigurationError",
   {
     configKeys: Schema.Array(Schema.String),
@@ -127,7 +127,7 @@ export class DevRunnerConfigurationError extends Schema.TaggedErrorClass<DevRunn
   }
 }
 
-export class DevRunnerInvalidPortOffsetError extends Schema.TaggedErrorClass<DevRunnerInvalidPortOffsetError>()(
+export class DevRunnerInvalidPortOffsetError extends Schema.TaggedError<DevRunnerInvalidPortOffsetError>()(
   "DevRunnerInvalidPortOffsetError",
   {
     configKey: Schema.Literal("VETRA_PORT_OFFSET"),
@@ -140,7 +140,7 @@ export class DevRunnerInvalidPortOffsetError extends Schema.TaggedErrorClass<Dev
   }
 }
 
-export class DevRunnerPortExhaustedError extends Schema.TaggedErrorClass<DevRunnerPortExhaustedError>()(
+export class DevRunnerPortExhaustedError extends Schema.TaggedError<DevRunnerPortExhaustedError>()(
   "DevRunnerPortExhaustedError",
   {
     startOffset: Schema.Number,
@@ -156,7 +156,7 @@ export class DevRunnerPortExhaustedError extends Schema.TaggedErrorClass<DevRunn
   }
 }
 
-export class DevRunnerProcessError extends Schema.TaggedErrorClass<DevRunnerProcessError>()(
+export class DevRunnerProcessError extends Schema.TaggedError<DevRunnerProcessError>()(
   "DevRunnerProcessError",
   {
     operation: Schema.Literals(["spawn", "wait-for-exit"]),
@@ -172,7 +172,7 @@ export class DevRunnerProcessError extends Schema.TaggedErrorClass<DevRunnerProc
   }
 }
 
-export class DevRunnerProcessExitError extends Schema.TaggedErrorClass<DevRunnerProcessExitError>()(
+export class DevRunnerProcessExitError extends Schema.TaggedError<DevRunnerProcessExitError>()(
   "DevRunnerProcessExitError",
   {
     mode: Schema.Literals(["dev", "dev:server", "dev:web", "dev:desktop"]),
@@ -187,7 +187,7 @@ export class DevRunnerProcessExitError extends Schema.TaggedErrorClass<DevRunner
   }
 }
 
-export class DevRunnerHostNotProxiableError extends Schema.TaggedErrorClass<DevRunnerHostNotProxiableError>()(
+export class DevRunnerHostNotProxiableError extends Schema.TaggedError<DevRunnerHostNotProxiableError>()(
   "DevRunnerHostNotProxiableError",
   {
     mode: Schema.Literals(["dev", "dev:web"]),
@@ -876,6 +876,7 @@ const devRunnerCli = Command.make("dev-runner", {
   ),
   browser: Flag.boolean("browser").pipe(
     Flag.withDescription("Open a browser automatically (disabled by default for web dev)."),
+    Flag.withDefault(false),
   ),
   autoBootstrapProjectFromCwd: Flag.boolean("auto-bootstrap-project-from-cwd").pipe(
     Flag.withDescription(

@@ -33,7 +33,7 @@ const MAX_TIMELINE_PAGES = 5;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/u;
 const encodeJson = Schema.encodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
 
-export class GitHubIssueReadError extends Schema.TaggedErrorClass<GitHubIssueReadError>()(
+export class GitHubIssueReadError extends Schema.TaggedError<GitHubIssueReadError>()(
   "GitHubIssueReadError",
   {
     cwd: Schema.String,

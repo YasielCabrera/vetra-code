@@ -1,5 +1,7 @@
 import { fromLenientJson } from "@vetra-code/shared/schemaJson";
 import {
+  PRODUCT_DESKTOP_APP_ID,
+  PRODUCT_DESKTOP_DEV_APP_ID,
   PRODUCT_DESKTOP_DEV_USER_DATA_DIRECTORY_NAME,
   PRODUCT_DESKTOP_USER_DATA_DIRECTORY_NAME,
 } from "@vetra-code/shared/productIdentity";
@@ -29,9 +31,14 @@ interface EarlyDesktopSettingsInput {
 type EarlyLinuxElectronOptionsInput = EarlyDesktopSettingsInput;
 
 export interface EarlyLinuxElectronOptions {
+  readonly isDevelopment: boolean;
   readonly linuxWmClass: string;
+  readonly linuxDesktopEntryName: string;
   readonly passwordStore: LinuxPasswordStoreSwitch | null;
 }
+
+export const resolveLinuxDesktopEntryName = (isDevelopment: boolean): string =>
+  `${isDevelopment ? PRODUCT_DESKTOP_DEV_APP_ID : PRODUCT_DESKTOP_APP_ID}.desktop`;
 
 const trimNonEmpty = (value: string | undefined): string | null => {
   const trimmed = value?.trim();
@@ -84,10 +91,13 @@ export function resolveEarlyLinuxElectronOptions(
   input: EarlyLinuxElectronOptionsInput,
 ): EarlyLinuxElectronOptions {
   const preference = resolveEarlyLinuxPasswordStorePreference(input);
+  const isDevelopment = isDevelopmentEnvironment(input.env);
   return {
-    linuxWmClass: isDevelopmentEnvironment(input.env)
+    isDevelopment,
+    linuxWmClass: isDevelopment
       ? PRODUCT_DESKTOP_DEV_USER_DATA_DIRECTORY_NAME
       : PRODUCT_DESKTOP_USER_DATA_DIRECTORY_NAME,
+    linuxDesktopEntryName: resolveLinuxDesktopEntryName(isDevelopment),
     passwordStore: resolveLinuxPasswordStoreSwitch({
       preference,
       env: input.env,

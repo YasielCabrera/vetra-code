@@ -179,7 +179,7 @@ export const ProviderSubscriptionCredentialSetInput = Schema.Struct({
 export type ProviderSubscriptionCredentialSetInput =
   typeof ProviderSubscriptionCredentialSetInput.Type;
 
-export class ProviderSubscriptionUsageError extends Schema.TaggedErrorClass<ProviderSubscriptionUsageError>()(
+export class ProviderSubscriptionUsageError extends Schema.TaggedError<ProviderSubscriptionUsageError>()(
   "ProviderSubscriptionUsageError",
   {
     reason: Schema.Literals([

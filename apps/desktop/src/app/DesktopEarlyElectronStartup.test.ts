@@ -81,7 +81,9 @@ describe("DesktopEarlyElectronStartup", () => {
     });
 
     assert.deepEqual(options, {
+      isDevelopment: true,
       linuxWmClass: "vetra-code-dev",
+      linuxDesktopEntryName: "com.vetra.code.dev.desktop",
       passwordStore: "gnome-libsecret",
     });
   });

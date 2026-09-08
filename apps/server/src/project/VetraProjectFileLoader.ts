@@ -21,7 +21,7 @@ import { VetraProjectFileFromJson } from "@vetra-code/shared/vetraProjectFile";
 
 const decodeVetraProjectFileJson = Schema.decodeEffect(VetraProjectFileFromJson);
 
-export class VetraProjectFileLoadError extends Schema.TaggedErrorClass<VetraProjectFileLoadError>()(
+export class VetraProjectFileLoadError extends Schema.TaggedError<VetraProjectFileLoadError>()(
   "VetraProjectFileLoadError",
   {
     operation: Schema.Literals(["read", "decode"]),
@@ -59,6 +59,7 @@ const logVetraProjectFileLoadError = (error: VetraProjectFileLoadError) =>
     }),
   );
 
+/** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;

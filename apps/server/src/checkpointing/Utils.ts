@@ -2,7 +2,7 @@ import * as Encoding from "effect/Encoding";
 import { CheckpointRef, ProjectId, type ThreadId } from "@vetra-code/contracts";
 import { PRODUCT_CHECKPOINT_REFS_PREFIX } from "@vetra-code/shared/productIdentity";
 
-export const CHECKPOINT_REFS_PREFIX = PRODUCT_CHECKPOINT_REFS_PREFIX;
+const CHECKPOINT_REFS_PREFIX = PRODUCT_CHECKPOINT_REFS_PREFIX;
 
 export function checkpointRefForThreadTurn(threadId: ThreadId, turnCount: number): CheckpointRef {
   return CheckpointRef.make(

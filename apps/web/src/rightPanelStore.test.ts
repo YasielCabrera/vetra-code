@@ -38,15 +38,17 @@ describe("rightPanelStore", () => {
   });
 
   it.each(["diff-first", "pull-request-first"])(
-    "keeps the linked pull request above the completed diff with %s delivery",
+    "prioritizes the linked pull request over browser and diff with %s delivery",
     (order) => {
       const store = useRightPanelStore.getState();
+      store.openBrowser(refA, "existing-browser");
       const revision = store.getUserActionRevision(refA);
       const requests =
         order === "diff-first"
           ? [completedDiff, linkedPullRequest]
           : [linkedPullRequest, completedDiff];
       for (const surface of requests) store.openProactive(refA, surface, revision);
+      store.reconcileBrowserSurfaces(refA, ["existing-browser", "agent-browser"]);
 
       expect(
         selectActiveRightPanelSurface(useRightPanelStore.getState().byThreadKey, refA),
@@ -736,6 +738,8 @@ describe("rightPanelStore", () => {
     };
     useRightPanelStore.getState().openPullRequest(refA, first);
     useRightPanelStore.getState().openPullRequest(refA, second);
+    const url = "https://gitlab.example.com/pingdotgg/t3code/-/merge_requests/4909";
+    useRightPanelStore.getState().openPullRequest(refA, { ...first, url });
     useRightPanelStore.getState().openPullRequest(refA, first);
 
     const state = selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA);
@@ -744,6 +748,10 @@ describe("rightPanelStore", () => {
       pullRequestSurfaceId(second),
     ]);
     expect(state.activeSurfaceId).toBe(pullRequestSurfaceId(first));
+    expect(
+      selectActiveRightPanelSurface(useRightPanelStore.getState().byThreadKey, refA),
+    ).toMatchObject({ url });
+    expect(state.surfaces[1]).not.toHaveProperty("url");
   });
 
   it("tracks one surface per issue and keeps two servers' copies apart", () => {

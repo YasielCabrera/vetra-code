@@ -9,7 +9,7 @@ import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-code/shared
 
 import * as PtyAdapter from "./PtyAdapter.ts";
 
-export class NodePtyModuleLoadError extends Schema.TaggedErrorClass<NodePtyModuleLoadError>()(
+export class NodePtyModuleLoadError extends Schema.TaggedError<NodePtyModuleLoadError>()(
   "NodePtyModuleLoadError",
   {
     platform: Schema.String,

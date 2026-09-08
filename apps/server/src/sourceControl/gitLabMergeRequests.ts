@@ -5,7 +5,7 @@ import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { PositiveInt, TrimmedNonEmptyString } from "@vetra-code/contracts";
-import { decodeJsonResult, formatSchemaError } from "@vetra-code/shared/schemaJson";
+import { decodeJsonResult } from "@vetra-code/shared/schemaJson";
 
 export interface NormalizedGitLabMergeRequestRecord {
   readonly number: number;
@@ -128,8 +128,6 @@ function normalizeGitLabMergeRequestRecord(
 const decodeGitLabMergeRequestList = decodeJsonResult(Schema.Array(Schema.Unknown));
 const decodeGitLabMergeRequest = decodeJsonResult(GitLabMergeRequestSchema);
 const decodeGitLabMergeRequestEntry = Schema.decodeUnknownExit(GitLabMergeRequestSchema);
-
-export const formatGitLabJsonDecodeError = formatSchemaError;
 
 export function decodeGitLabMergeRequestListJson(
   raw: string,

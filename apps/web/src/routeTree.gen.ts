@@ -20,6 +20,7 @@ import { Route as AutomationsIndexRouteImport } from './routes/automations.index
 import { Route as ChatIndexRouteImport } from './routes/_chat.index'
 import { Route as SettingsWeb3RouteImport } from './routes/settings.web3'
 import { Route as SettingsSourceControlRouteImport } from './routes/settings.source-control'
+import { Route as SettingsSnapShotRouteImport } from './routes/settings.snap-shot'
 import { Route as SettingsProvidersRouteImport } from './routes/settings.providers'
 import { Route as SettingsProjectsRouteImport } from './routes/settings.projects'
 import { Route as SettingsKeybindingsRouteImport } from './routes/settings.keybindings'
@@ -90,6 +91,11 @@ const SettingsWeb3Route = SettingsWeb3RouteImport.update({
 const SettingsSourceControlRoute = SettingsSourceControlRouteImport.update({
   id: '/source-control',
   path: '/source-control',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsSnapShotRoute = SettingsSnapShotRouteImport.update({
+  id: '/snap-shot',
+  path: '/snap-shot',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsProvidersRoute = SettingsProvidersRouteImport.update({
@@ -202,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/settings/keybindings': typeof SettingsKeybindingsRoute
   '/settings/projects': typeof SettingsProjectsRoute
   '/settings/providers': typeof SettingsProvidersRoute
+  '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/settings/web3': typeof SettingsWeb3Route
   '/automations/': typeof AutomationsIndexRoute
@@ -230,6 +237,7 @@ export interface FileRoutesByTo {
   '/settings/keybindings': typeof SettingsKeybindingsRoute
   '/settings/projects': typeof SettingsProjectsRoute
   '/settings/providers': typeof SettingsProvidersRoute
+  '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/settings/web3': typeof SettingsWeb3Route
   '/': typeof ChatIndexRoute
@@ -261,6 +269,7 @@ export interface FileRoutesById {
   '/settings/keybindings': typeof SettingsKeybindingsRoute
   '/settings/projects': typeof SettingsProjectsRoute
   '/settings/providers': typeof SettingsProvidersRoute
+  '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/settings/web3': typeof SettingsWeb3Route
   '/_chat/': typeof ChatIndexRoute
@@ -293,6 +302,7 @@ export interface FileRouteTypes {
     | '/settings/keybindings'
     | '/settings/projects'
     | '/settings/providers'
+    | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/web3'
     | '/automations/'
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
     | '/settings/keybindings'
     | '/settings/projects'
     | '/settings/providers'
+    | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/web3'
     | '/'
@@ -351,6 +362,7 @@ export interface FileRouteTypes {
     | '/settings/keybindings'
     | '/settings/projects'
     | '/settings/providers'
+    | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/web3'
     | '/_chat/'
@@ -452,6 +464,13 @@ declare module '@tanstack/react-router' {
       path: '/source-control'
       fullPath: '/settings/source-control'
       preLoaderRoute: typeof SettingsSourceControlRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/snap-shot': {
+      id: '/settings/snap-shot'
+      path: '/snap-shot'
+      fullPath: '/settings/snap-shot'
+      preLoaderRoute: typeof SettingsSnapShotRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/providers': {
@@ -604,6 +623,7 @@ interface SettingsRouteChildren {
   SettingsKeybindingsRoute: typeof SettingsKeybindingsRoute
   SettingsProjectsRoute: typeof SettingsProjectsRoute
   SettingsProvidersRoute: typeof SettingsProvidersRoute
+  SettingsSnapShotRoute: typeof SettingsSnapShotRoute
   SettingsSourceControlRoute: typeof SettingsSourceControlRoute
   SettingsWeb3Route: typeof SettingsWeb3Route
 }
@@ -618,6 +638,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsKeybindingsRoute: SettingsKeybindingsRoute,
   SettingsProjectsRoute: SettingsProjectsRoute,
   SettingsProvidersRoute: SettingsProvidersRoute,
+  SettingsSnapShotRoute: SettingsSnapShotRoute,
   SettingsSourceControlRoute: SettingsSourceControlRoute,
   SettingsWeb3Route: SettingsWeb3Route,
 }

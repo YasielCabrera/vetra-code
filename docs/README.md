@@ -19,6 +19,7 @@
 - [Environment themes](./user/environment-theme.md)
 - [Keyboard shortcuts](./user/keybindings.md)
 - [Keyboard focus](./user/keyboard-focus.md)
+- [SnapShots](./user/snap-shot.md)
 - [Review usage](./user/usage.md)
 - [Import browser sessions](./user/browser-import.md)
 - [Remote access](./user/remote-access.md)
@@ -63,7 +64,7 @@ source alone does not explain. Most code changes do not need an internal documen
 
 ### Runbooks
 
-- [Syncing upstream T3 Code](./internals/upstream-sync.md)
+- [Syncing upstream Vetra Code](./internals/upstream-sync.md)
 - [Release](./operations/release.md)
 - [Observability](./operations/observability.md)
 - [Relay observability](./operations/relay-observability.md)

@@ -299,7 +299,7 @@ const POWERHOUSE_PROJECT_FAILURE_MESSAGES: Record<PowerhouseProjectFailure, stri
   read_failed: "Failed to read document models from disk.",
 };
 
-export class PowerhouseProjectError extends Schema.TaggedErrorClass<PowerhouseProjectError>()(
+export class PowerhouseProjectError extends Schema.TaggedError<PowerhouseProjectError>()(
   "PowerhouseProjectError",
   {
     failure: PowerhouseProjectFailure,
@@ -567,7 +567,7 @@ const POWERHOUSE_DATABASE_FAILURE_MESSAGES: Record<PowerhouseDatabaseFailure, st
   read_failed: "The Powerhouse database could not be inspected.",
 };
 
-export class PowerhouseDatabaseError extends Schema.TaggedErrorClass<PowerhouseDatabaseError>()(
+export class PowerhouseDatabaseError extends Schema.TaggedError<PowerhouseDatabaseError>()(
   "PowerhouseDatabaseError",
   {
     failure: PowerhouseDatabaseFailure,
@@ -868,7 +868,7 @@ const POWERHOUSE_REACTOR_FAILURE_MESSAGES: Record<PowerhouseReactorFailure, stri
   timeout: "The reactor did not respond in time.",
 };
 
-export class PowerhouseReactorError extends Schema.TaggedErrorClass<PowerhouseReactorError>()(
+export class PowerhouseReactorError extends Schema.TaggedError<PowerhouseReactorError>()(
   "PowerhouseReactorError",
   {
     failure: PowerhouseReactorFailure,

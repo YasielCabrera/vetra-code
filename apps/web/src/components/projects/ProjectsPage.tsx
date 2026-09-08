@@ -188,14 +188,7 @@ const ProjectRow = memo(function ProjectRow({
         onClick={() => onOpen(group.projectKey)}
         className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-left outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <ProjectFavicon
-          environmentId={group.environmentId}
-          cwd={group.workspaceRoot}
-          projectName={group.displayName}
-          faviconPath={group.faviconPath}
-          projectIcon={group.projectIcon}
-          className="size-5 shrink-0"
-        />
+        <ProjectFavicon project={group} className="size-5 shrink-0" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium text-foreground">
             {group.displayName}

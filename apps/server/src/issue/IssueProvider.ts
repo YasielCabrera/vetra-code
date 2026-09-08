@@ -21,7 +21,7 @@ export const IssueProviderFailureReason = Schema.Literals([
 ]);
 export type IssueProviderFailureReason = typeof IssueProviderFailureReason.Type;
 
-export class IssueProviderError extends Schema.TaggedErrorClass<IssueProviderError>()(
+export class IssueProviderError extends Schema.TaggedError<IssueProviderError>()(
   "IssueProviderError",
   {
     provider: SourceControlProviderKindSchema,

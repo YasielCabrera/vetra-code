@@ -43,6 +43,12 @@ The web and desktop Agents panel shows each sub-agent's model and reasoning effo
 reports them. If Codex does not report either value, Vetra Code leaves it out instead of using the
 parent agent's settings.
 
+## Codex says I hit a usage limit
+
+When Codex stops on a usage limit, the thread names the window that ran out and when it resets, when
+Codex reports them. Send the message again after the reset. On a workspace plan the message also
+says whether your workspace owner needs to add credits or raise the spend limit to continue sooner.
+
 ## Browser and computer activity
 
 Browser and Computer Use calls show their user-facing task title when Codex provides one. Expanded

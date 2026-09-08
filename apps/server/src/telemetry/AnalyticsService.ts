@@ -68,7 +68,7 @@ export class AnalyticsService extends Context.Service<
   );
 }
 
-export function serverOsFromNodePlatform(platform: string): ClientOs {
+function serverOsFromNodePlatform(platform: string): ClientOs {
   switch (platform) {
     case "darwin":
       return "macOS";
@@ -83,6 +83,7 @@ export function serverOsFromNodePlatform(platform: string): ClientOs {
   }
 }
 
+/** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {
   const telemetryConfig = yield* TelemetryEnvConfig;
   // Opting in without a project key has nowhere safe to send, so treat a blank

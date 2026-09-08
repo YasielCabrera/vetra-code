@@ -5,7 +5,7 @@ import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { PositiveInt, TrimmedNonEmptyString } from "@vetra-code/contracts";
-import { decodeJsonResult, formatSchemaError } from "@vetra-code/shared/schemaJson";
+import { decodeJsonResult } from "@vetra-code/shared/schemaJson";
 
 export interface NormalizedGitHubPullRequestRecord {
   readonly number: number;
@@ -113,8 +113,6 @@ function normalizeGitHubPullRequestRecord(
 const decodeGitHubPullRequestList = decodeJsonResult(Schema.Array(Schema.Unknown));
 const decodeGitHubPullRequest = decodeJsonResult(GitHubPullRequestSchema);
 const decodeGitHubPullRequestEntry = Schema.decodeUnknownExit(GitHubPullRequestSchema);
-
-export const formatGitHubJsonDecodeError = formatSchemaError;
 
 export function decodeGitHubPullRequestListJson(
   raw: string,

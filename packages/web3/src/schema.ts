@@ -204,7 +204,7 @@ export type Web3KeystoreFile = typeof Web3KeystoreFile.Type;
 
 // ── Errors ───────────────────────────────────────────────────────────
 
-export class PreviewWalletDisabledError extends Schema.TaggedErrorClass<PreviewWalletDisabledError>()(
+export class PreviewWalletDisabledError extends Schema.TaggedError<PreviewWalletDisabledError>()(
   "PreviewWalletDisabledError",
   {},
 ) {
@@ -213,7 +213,7 @@ export class PreviewWalletDisabledError extends Schema.TaggedErrorClass<PreviewW
   }
 }
 
-export class PreviewWalletRequestNotFoundError extends Schema.TaggedErrorClass<PreviewWalletRequestNotFoundError>()(
+export class PreviewWalletRequestNotFoundError extends Schema.TaggedError<PreviewWalletRequestNotFoundError>()(
   "PreviewWalletRequestNotFoundError",
   {
     requestId: Schema.String,
@@ -224,7 +224,7 @@ export class PreviewWalletRequestNotFoundError extends Schema.TaggedErrorClass<P
   }
 }
 
-export class PreviewWalletNoChainError extends Schema.TaggedErrorClass<PreviewWalletNoChainError>()(
+export class PreviewWalletNoChainError extends Schema.TaggedError<PreviewWalletNoChainError>()(
   "PreviewWalletNoChainError",
   {},
 ) {
@@ -233,7 +233,7 @@ export class PreviewWalletNoChainError extends Schema.TaggedErrorClass<PreviewWa
   }
 }
 
-export class PreviewWalletNoAccountError extends Schema.TaggedErrorClass<PreviewWalletNoAccountError>()(
+export class PreviewWalletNoAccountError extends Schema.TaggedError<PreviewWalletNoAccountError>()(
   "PreviewWalletNoAccountError",
   {},
 ) {
@@ -242,7 +242,7 @@ export class PreviewWalletNoAccountError extends Schema.TaggedErrorClass<Preview
   }
 }
 
-export class PreviewWalletRpcError extends Schema.TaggedErrorClass<PreviewWalletRpcError>()(
+export class PreviewWalletRpcError extends Schema.TaggedError<PreviewWalletRpcError>()(
   "PreviewWalletRpcError",
   {
     method: Schema.String,
@@ -257,7 +257,7 @@ export class PreviewWalletRpcError extends Schema.TaggedErrorClass<PreviewWallet
   }
 }
 
-export class PreviewWalletSigningError extends Schema.TaggedErrorClass<PreviewWalletSigningError>()(
+export class PreviewWalletSigningError extends Schema.TaggedError<PreviewWalletSigningError>()(
   "PreviewWalletSigningError",
   {
     method: Schema.String,
@@ -269,7 +269,7 @@ export class PreviewWalletSigningError extends Schema.TaggedErrorClass<PreviewWa
   }
 }
 
-export class PreviewWalletKeystoreError extends Schema.TaggedErrorClass<PreviewWalletKeystoreError>()(
+export class PreviewWalletKeystoreError extends Schema.TaggedError<PreviewWalletKeystoreError>()(
   "PreviewWalletKeystoreError",
   {
     operation: Schema.Literals(["read", "write", "derive", "import"]),

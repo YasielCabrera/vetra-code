@@ -19,7 +19,7 @@ import type { ElementType, ReactNode } from "react";
 import { cn } from "~/lib/utils";
 import { getSourceControlPresentationForKind } from "~/sourceControlPresentation";
 
-import { ProjectFavicon } from "../ProjectFavicon";
+import { ProjectFavicon, type ProjectFaviconProject } from "../ProjectFavicon";
 import { Button } from "../ui/button";
 import {
   Menu,
@@ -43,12 +43,7 @@ export interface ListFilterOption<Value extends string> {
    */
   readonly Icon: ElementType<{ className?: string }>;
   /** A project row wears its own repository's icon, falling back to a repository glyph. */
-  readonly favicon?: {
-    readonly environmentId: EnvironmentId;
-    readonly cwd: string;
-    readonly faviconPath?: string | null;
-    readonly projectIcon?: ProjectIconOverride | null;
-  };
+  readonly favicon?: ProjectFaviconProject;
   /** Why it cannot be chosen, carried onto the item as its tooltip. */
   readonly unavailable?: string | undefined;
 }
@@ -60,11 +55,7 @@ function ListFilterOptionIcon<Value extends string>({
 }) {
   return option.favicon ? (
     <ProjectFavicon
-      environmentId={option.favicon.environmentId}
-      cwd={option.favicon.cwd}
-      projectName={option.label}
-      faviconPath={option.favicon.faviconPath}
-      projectIcon={option.favicon.projectIcon}
+      project={option.favicon}
       fallbackIcon={FolderGit2Icon}
       className="size-3.5 shrink-0"
     />
@@ -241,7 +232,8 @@ export function ListFilterProjectSubmenu({
           Icon: FolderGit2Icon,
           favicon: {
             environmentId: project.environmentId,
-            cwd: project.workspaceRoot,
+            workspaceRoot: project.workspaceRoot,
+            title: project.title,
             faviconPath: project.faviconPath ?? null,
             projectIcon: project.projectIcon ?? null,
           },
