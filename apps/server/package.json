@@ -45,6 +45,7 @@
     "@vetra-code/effect-acp": "workspace:*",
     "@vetra-code/effect-codex-app-server": "workspace:*",
     "@vetra-code/shared": "workspace:*",
+    "@vetra-code/ssh": "workspace:*",
     "@vetra-code/tailscale": "workspace:*",
     "@vetra-code/web": "workspace:*",
     "@vetra-code/web3": "workspace:*",

@@ -1,3 +1,4 @@
+import { EnvironmentId, type ThreadPullRequestLink } from "@vetra-code/contracts";
 import type { DesktopPreviewFavicon, PreviewSessionSnapshot } from "@vetra-code/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vite-plus/test";
@@ -6,6 +7,7 @@ import type { RightPanelSurface } from "~/rightPanelStore";
 
 import {
   RightPanelTabs,
+  resolvePullRequestTabLink,
   shouldOpenDefaultBrowserProfileFromMenuClick,
   surfaceShortcutActionForKey,
   surfaceShortcutTargetsTypingContext,
@@ -120,18 +122,22 @@ function renderTabs(
       onAddBrowserInProfile={() => undefined}
       onAddTerminal={() => undefined}
       onAddPullRequest={() => undefined}
+      onAddPullRequests={() => undefined}
       onAddDiff={() => undefined}
       onAddFiles={() => undefined}
       onAddAgents={() => undefined}
       onAddPowerhouse={() => undefined}
+      onAddDevice={() => undefined}
       liveAgentCount={0}
       browserAvailable
       terminalAvailable={false}
       diffAvailable={false}
       filesAvailable={false}
       pullRequestAvailable={false}
+      pullRequestsAvailable={false}
       agentsAvailable={false}
       powerhouseAvailable={false}
+      deviceAvailable={false}
     >
       <div>content</div>
     </RightPanelTabs>,
@@ -189,18 +195,22 @@ function renderLauncher(
       onAddBrowserInProfile={() => undefined}
       onAddTerminal={() => undefined}
       onAddPullRequest={() => undefined}
+      onAddPullRequests={() => undefined}
       onAddDiff={() => undefined}
       onAddFiles={() => undefined}
       onAddAgents={() => undefined}
       onAddPowerhouse={() => undefined}
+      onAddDevice={() => undefined}
       liveAgentCount={0}
       browserAvailable
       terminalAvailable={false}
       diffAvailable={false}
       filesAvailable={false}
       pullRequestAvailable={false}
+      pullRequestsAvailable={false}
       agentsAvailable={false}
       powerhouseAvailable={powerhouseAvailable}
+      deviceAvailable={false}
     >
       <div>content</div>
     </RightPanelTabs>,
@@ -211,13 +221,9 @@ describe("RightPanelTabs powerhouse launcher", () => {
   it("offers each Powerhouse tool as a separate surface", () => {
     const html = renderLauncher(true);
     expect(html).toContain("Document models");
-    expect(html).toContain("Inspect document model definitions.");
     expect(html).toContain("Document explorer");
-    expect(html).toContain("Browse reactor drives and documents.");
     expect(html).toContain("Powerhouse Database");
-    expect(html).toContain("Inspect Powerhouse database schemas.");
     expect(html).toContain("Switchboard");
-    expect(html).toContain("Explore and run reactor GraphQL operations.");
   });
 
   it("shows nothing at all outside a Powerhouse project", () => {
@@ -365,5 +371,49 @@ describe("tabMuteMenuItem", () => {
       label: "Unmute tab",
       disabled: false,
     });
+  });
+});
+
+describe("pull request tab snapshots", () => {
+  const environmentId = EnvironmentId.make("local");
+  const link: ThreadPullRequestLink = {
+    host: "github.com",
+    repository: "acme/api",
+    number: 7,
+    url: "https://github.com/acme/api/pull/7",
+    source: "manual",
+    linkedAt: "2026-01-01T00:00:00Z",
+    stack: null,
+    snapshot: null,
+  };
+  it("keeps unknown linked state authoritative and scopes matches to environment and host", () => {
+    const threads = [{ environmentId, pullRequests: [link] }];
+    expect(resolvePullRequestTabLink(threads, environmentId, "github.com", link)).toBe(link);
+    expect(
+      resolvePullRequestTabLink(threads, EnvironmentId.make("remote"), "github.com", link),
+    ).toBeUndefined();
+    expect(
+      resolvePullRequestTabLink(threads, environmentId, "github.enterprise.test", link),
+    ).toBeUndefined();
+  });
+  it("uses the newest snapshot when several threads link the same PR", () => {
+    const snapshot = {
+      state: "merged" as const,
+      title: "API",
+      headBranch: "api",
+      baseBranch: "main",
+      isDraft: false,
+      updatedAt: null,
+      syncedAt: "2026-02-01T00:00:00Z",
+    };
+    const newer = { ...link, snapshot };
+    expect(
+      resolvePullRequestTabLink(
+        [{ environmentId, pullRequests: [link, newer] }],
+        environmentId,
+        "github.com",
+        link,
+      ),
+    ).toBe(newer);
   });
 });

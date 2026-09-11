@@ -11,6 +11,7 @@ This is a living glossary for Vetra Code. It explains what common terms mean in 
 - [Orchestration](#orchestration)
 - [Provider runtime](#provider-runtime)
 - [Checkpointing](#checkpointing)
+- [Pull requests](#pull-requests)
 - [Appearance](#appearance)
 - [Powerhouse](#powerhouse)
 - [Fork and upstream](#fork-and-upstream)
@@ -181,6 +182,20 @@ The patch difference between two checkpoints. Query logic lives in [CheckpointDi
 
 The file patch and changed-file summary for one turn. It is usually computed in [CheckpointDiffQuery.ts][20], represented in [the contracts][1], and recorded into thread state by [projector.ts][4].
 
+### Pull requests
+
+#### Pull request link
+
+A persisted association between a thread and one review, keyed by host, repository, and number. A thread can hold several, and a link can point at a review in a different project of the same environment. Keys are normalized (host and repository lower-cased) before they reach storage, so the same review never links twice. See [threadPullRequests.ts][31] and [ProjectionThreadPullRequests.ts][32].
+
+#### Pull request sync
+
+The reactor that refreshes each distinct linked review once per cadence, deduplicated by link key, and discovers the layers of a native GitHub stack. An explicit refresh or a failed stack read schedules another read. See [PullRequestSyncReactor.ts][33].
+
+#### Current pull request
+
+The one link that single-review controls and older clients act on, derived rather than stored. Open work wins; a completed single chain resolves to its top layer; otherwise the most recently updated link wins. See `resolveThreadCurrentPullRequest` in [threadPullRequests.ts][31].
+
 ### Appearance
 
 #### Environment theme
@@ -277,3 +292,6 @@ The Vetra-owned names that must survive every upstream merge: product name, `@ve
 [28]: ../../scripts/sync-upstream.sh
 [29]: ../../apps/server/src/environmentTheme.ts
 [30]: ../user/environment-theme.md
+[31]: ../../packages/shared/src/threadPullRequests.ts
+[32]: ../../apps/server/src/persistence/ProjectionThreadPullRequests.ts
+[33]: ../../apps/server/src/orchestration/PullRequestSyncReactor.ts

@@ -22,6 +22,7 @@
 - [SnapShots](./user/snap-shot.md)
 - [Review usage](./user/usage.md)
 - [Import browser sessions](./user/browser-import.md)
+- [Devices and simulators](./user/devices.md)
 - [Remote access](./user/remote-access.md)
 - [Keeping app and server in sync](./user/updating.md)
 - [Preview wallet (Web3)](./user/preview-wallet.md)
@@ -59,6 +60,7 @@ source alone does not explain. Most code changes do not need an internal documen
 - [Product analytics](./internals/product-analytics.md)
 - [Environment auth](./internals/environment-auth.md)
 - [Vetra Connect](./internals/vetra-connect.md)
+- [Devices](./internals/devices.md)
 - [CI gates](./internals/ci.md)
 - [Engineering work artifacts](./internals/work-artifacts.md)
 

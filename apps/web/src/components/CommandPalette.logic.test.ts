@@ -3,14 +3,176 @@ import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@vetra-c
 import type { Project, Thread } from "../types";
 import {
   buildBrowseGroups,
+  buildCommandPaletteProjectMetadata,
   buildProjectActionItems,
   buildThreadActionItems,
+  buildLinkedThreadActionItems,
   enumerateCommandPaletteItems,
   filterPinnedBrowseEntries,
   filterCommandPaletteGroups,
   reduceCommandPaletteUiState,
   type CommandPaletteGroup,
 } from "./CommandPalette.logic";
+
+describe("linked pull request thread navigation", () => {
+  it("keeps archived relations searchable and routes them through the PR environment", async () => {
+    const environmentId = EnvironmentId.make("remote");
+    const id = ThreadId.make("archived-thread");
+    const runThread = vi.fn(async () => {});
+    const query = "https://github.com/acme/web/pull/42";
+    const linkedThreads = {
+      environmentId,
+      threads: [
+        {
+          id,
+          projectId: ProjectId.make("project"),
+          title: "Completed work",
+          archivedAt: "2026-09-01T00:00:00.000Z",
+        },
+      ],
+    };
+    const state = reduceCommandPaletteUiState(
+      { open: false, mode: "command", openIntent: null, addProjectCompletion: "open-thread" },
+      {
+        _tag: "OpenSearch",
+        query,
+        linkedThreads,
+      },
+    );
+    expect(state.openIntent).toEqual({ kind: "search", query, linkedThreads });
+    const items = buildLinkedThreadActionItems({ ...linkedThreads, query, icon: null, runThread });
+    const groups = filterCommandPaletteGroups({
+      activeGroups: [],
+      query,
+      isInSubmenu: false,
+      projectSearchItems: [],
+      settingsSearchItems: [],
+      threadSearchItems: items,
+    });
+    expect(groups.flatMap((group) => group.items)).toEqual(items);
+    expect(items[0]?.description).toBe("Archived thread");
+    await items[0]?.run();
+    expect(runThread).toHaveBeenCalledWith({ environmentId, id });
+  });
+});
+
+describe("buildCommandPaletteProjectMetadata", () => {
+  const localEnvironmentId = EnvironmentId.make("environment-local");
+  const remoteEnvironmentId = EnvironmentId.make("environment-build-box");
+  const locations = new Map([
+    [localEnvironmentId, { kind: "local" as const, label: "Local", machine: "laptop" as const }],
+    [
+      remoteEnvironmentId,
+      { kind: "remote" as const, label: "Build box", machine: "server" as const },
+    ],
+  ]);
+
+  it("makes every member environment and path searchable", () => {
+    const metadata = buildCommandPaletteProjectMetadata({
+      projects: [
+        {
+          environmentId: localEnvironmentId,
+          title: "Vetra Code",
+          workspaceRoot: "/Users/theo/Projects/vetra-code",
+        },
+        {
+          environmentId: remoteEnvironmentId,
+          title: "vetra-code",
+          workspaceRoot: "/srv/vetra-code",
+        },
+      ],
+      locationByEnvironmentId: locations,
+    });
+
+    expect(metadata.searchTerms).toEqual([
+      "Vetra Code",
+      "/Users/theo/Projects/vetra-code",
+      "Local",
+      "vetra-code",
+      "/srv/vetra-code",
+      "Build box",
+    ]);
+    expect(metadata.environmentLabels).toEqual(["Local", "Build box"]);
+
+    const [filteredGroup] = filterCommandPaletteGroups({
+      activeGroups: [],
+      query: "build box",
+      isInSubmenu: false,
+      projectSearchItems: [
+        {
+          kind: "action",
+          value: "project:vetra-code",
+          title: "Vetra Code",
+          searchTerms: metadata.searchTerms,
+          icon: null,
+          run: async () => undefined,
+        },
+      ],
+      threadSearchItems: [],
+    });
+    expect(filteredGroup?.items).toHaveLength(1);
+  });
+
+  it("deduplicates grouped checkouts by environment", () => {
+    const metadata = buildCommandPaletteProjectMetadata({
+      projects: [
+        {
+          environmentId: remoteEnvironmentId,
+          title: "Vetra Code",
+          workspaceRoot: "/srv/vetra-code",
+        },
+        {
+          environmentId: remoteEnvironmentId,
+          title: "Vetra Code worktree",
+          workspaceRoot: "/srv/vetra-code-feature",
+        },
+      ],
+      locationByEnvironmentId: locations,
+    });
+
+    expect(metadata.environmentLabels).toEqual(["Build box"]);
+  });
+
+  it("deduplicates distinct environments with the same label", () => {
+    const secondRemoteEnvironmentId = EnvironmentId.make("environment-build-box-2");
+    const metadata = buildCommandPaletteProjectMetadata({
+      projects: [
+        {
+          environmentId: remoteEnvironmentId,
+          title: "Vetra Code",
+          workspaceRoot: "/srv/vetra-code",
+        },
+        {
+          environmentId: secondRemoteEnvironmentId,
+          title: "Vetra Code mirror",
+          workspaceRoot: "/srv/mirror/vetra-code",
+        },
+      ],
+      locationByEnvironmentId: new Map([
+        [remoteEnvironmentId, { label: "Build box" }],
+        [secondRemoteEnvironmentId, { label: "Build box" }],
+      ]),
+    });
+
+    expect(metadata.environmentLabels).toEqual(["Build box"]);
+  });
+
+  it("uses a human-readable fallback when presentation data is unavailable", () => {
+    const metadata = buildCommandPaletteProjectMetadata({
+      projects: [
+        {
+          environmentId: remoteEnvironmentId,
+          title: "Vetra Code",
+          workspaceRoot: "/srv/vetra-code",
+        },
+      ],
+      locationByEnvironmentId: new Map(),
+    });
+
+    expect(metadata.searchTerms).toContain("Remote");
+    expect(metadata.environmentLabels).toEqual(["Remote"]);
+  });
+});
 
 describe("reduceCommandPaletteUiState", () => {
   const closedState = {
@@ -66,6 +228,33 @@ describe("reduceCommandPaletteUiState", () => {
         addProjectCompletion: "open-thread",
       },
     );
+  });
+
+  it("opens PR search from another overlay and replaces an earlier search", () => {
+    const first = reduceCommandPaletteUiState(
+      { open: true, mode: "files", openIntent: null, addProjectCompletion: "open-thread" },
+      {
+        _tag: "OpenSearch",
+        query: "https://github.com/acme/web/pull/7",
+      },
+    );
+    expect(first).toEqual({
+      open: true,
+      mode: "command",
+      addProjectCompletion: "open-thread",
+      openIntent: { kind: "search", query: "https://github.com/acme/web/pull/7" },
+    });
+    const second = reduceCommandPaletteUiState(first, {
+      _tag: "OpenSearch",
+      query: "https://github.com/acme/web/pull/8",
+    });
+    expect(second.openIntent).toEqual({
+      kind: "search",
+      query: "https://github.com/acme/web/pull/8",
+    });
+    expect(
+      reduceCommandPaletteUiState(second, { _tag: "SetOpen", open: false }).openIntent,
+    ).toBeNull();
   });
 
   it("routes open intents to command mode", () => {
@@ -233,6 +422,7 @@ function makeThread(overrides: Partial<Thread> = {}): Thread {
     branch: null,
     worktreePath: null,
     checkpoints: [],
+    pullRequests: [],
     activities: [],
     ...overrides,
   };
@@ -590,4 +780,46 @@ describe("filterPinnedBrowseEntries", () => {
       exactEntry: windowsEntries[0],
     });
   });
+});
+
+it.each([
+  "#10839",
+  "10839",
+  "pingdotgg/t3code#10839",
+  "https://github.com/pingdotgg/t3code/pull/10839",
+])("finds linked threads from PR query %s", (query) => {
+  const items = buildThreadActionItems({
+    threads: [
+      makeThread({
+        title: "Implementation",
+        pullRequests: [
+          {
+            host: "github.com",
+            repository: "pingdotgg/t3code",
+            number: 10839,
+            url: "https://github.com/pingdotgg/t3code/pull/10839",
+            source: "manual",
+            linkedAt: "2026-09-08T00:00:00Z",
+            snapshot: null,
+            stack: null,
+          },
+        ],
+      }),
+      makeThread({ id: ThreadId.make("unrelated"), title: "Other work" }),
+    ],
+    projectTitleById: new Map(),
+    sortOrder: "updated_at",
+    icon: null,
+    runThread: async () => undefined,
+  });
+  const groups = filterCommandPaletteGroups({
+    activeGroups: [],
+    query,
+    isInSubmenu: false,
+    projectSearchItems: [],
+    threadSearchItems: items,
+  });
+  expect(groups.flatMap((group) => group.items.map((item) => item.title))).toEqual([
+    "Implementation",
+  ]);
 });

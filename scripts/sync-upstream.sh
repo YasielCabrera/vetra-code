@@ -47,6 +47,12 @@ PRUNE_PATHS=(
   docs/internals/mobile-navigation.md
   docs/internals/voice-input.md
   docs/user/mobile-appearance.md
+  docs/user/mobile-notifications.md
+  # Firebase/APNs setup for the mobile client's push notifications.
+  docs/operations/android-notifications.md
+  # Upstream's Connect operator guide is written for T3's hosted Clerk and
+  # relay. Restore it only once Vetra owns those destinations.
+  docs/operations/connect-setup.md
   # Upstream's AUR publishing pipeline. The fork owns no AUR package, and
   # publish-aur.yml is only reachable from the release.yml we deleted. The
   # PKGBUILD directories also carry T3 identity in their *paths*, which the
@@ -143,6 +149,11 @@ RENAMES=(
   # `vetra.code` to match PRODUCT_DESKTOP_APP_ID rather than inventing a domain.
   'snap-shot@t3.codes=snap-shot@vetra.code'
   't3_code=vetra_code'
+  # Upstream keys the relay's Effect services on a bare `t3code-relay/` prefix,
+  # which the generic `t3code` pair below turns into `vetra-code-relay/` -- not
+  # the `@vetra-code/relay/` the deterministicKeys diagnostic demands. Keyed on
+  # the opening quote so prose and package paths are left alone.
+  '"t3code-relay/="@vetra-code/relay/'
   # Persisted client keys and CSS highlight registry names the fork owns. The
   # generic `t3code` pair would map these to `vetra-code.*`, orphaning a user's
   # stored preference and desynchronising the CSS name from its JS registration.

@@ -337,7 +337,7 @@ export type MessagesTimelineRow =
       summaryKind: ToolGroupSummaryKind;
       toolSurface?: WorkLogEntry["toolSurface"];
       toolIcon?: WorkLogEntry["toolIcon"];
-      summaryToolIcon?: "browser" | "vetra-code";
+      summaryToolIcon?: "browser" | "device" | "vetra-code" | "pull-request";
       hasFailure: boolean;
     }
   | {

@@ -76,6 +76,7 @@ function makeRunThread(overrides?: Partial<OrchestrationThread>): OrchestrationT
     interactionMode: "default",
     branch: null,
     worktreePath: null,
+    pullRequests: [],
     latestTurn: null,
     createdAt: NOW,
     updatedAt: NOW,

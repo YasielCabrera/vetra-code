@@ -8,6 +8,7 @@ import {
 } from "@vetra-code/contracts";
 import { classifyMarkdownImageSource } from "@vetra-code/client-runtime/markdown-images";
 import { resolveMediaSource } from "@vetra-code/client-runtime/media-source";
+import { parseChangeRequestUrl } from "@vetra-code/shared/changeRequestUrl";
 import { isWorkspaceImagePreviewPath } from "@vetra-code/shared/filePreview";
 
 export function isWorktreeSetupActivity(kind: string): boolean {
@@ -36,16 +37,21 @@ export interface WorkLogPresentationEntry {
 }
 
 export type ToolGroupAction =
+  | "link-pr"
+  | "unlink-pr"
+  | "list-prs"
   | "read"
   | "edit"
   | "command"
   | "browser"
+  | "device"
   | "code-search"
   | "search"
   | "other"
   | "update";
 
 export type ToolGroupSummaryKind =
+  | "pull-request"
   | ToolGroupAction
   | "dynamic-tool"
   | "agent-tool"
@@ -60,6 +66,9 @@ const VETRA_MCP_TOOL_LABELS: Record<
   string,
   readonly [action: string, running: string, completed: string, detail: string]
 > = {
+  link_pull_request: ["Link", "Linking", "Linked", "a pull request"],
+  unlink_pull_request: ["Unlink", "Unlinking", "Unlinked", "a pull request"],
+  list_thread_pull_requests: ["Check", "Checking", "Checked", "linked pull requests"],
   orchestrator_capabilities: ["Get", "Getting", "Got", "orchestration capabilities"],
   delegate_task: ["Delegate", "Delegating", "Delegated", "a child task"],
   task_status: ["Get", "Getting", "Got", "delegated task status"],
@@ -87,9 +96,28 @@ const VETRA_MCP_TOOL_LABELS: Record<
   preview_set_appearance: ["Set", "Setting", "Set", "preview browser appearance"],
   preview_recording_start: ["Start", "Starting", "Started", "recording the preview browser"],
   preview_recording_stop: ["Stop", "Stopping", "Stopped", "recording the preview browser"],
+  device_list: ["List", "Listing", "Listed", "simulators and emulators"],
+  device_open: ["Open", "Opening", "Opened", "a device in the Device panel"],
+  device_screenshot: [
+    "Take a screenshot of",
+    "Taking a screenshot of",
+    "Took a screenshot of",
+    "the device",
+  ],
+  device_close: ["Close", "Closing", "Closed", "a device"],
 };
 
-function resolveVetraMcpToolPresentation(value: string | undefined, status: string | undefined) {
+const PR_TOOL_ACTIONS: Readonly<Record<string, ToolGroupAction>> = {
+  link_pull_request: "link-pr",
+  unlink_pull_request: "unlink-pr",
+  list_thread_pull_requests: "list-prs",
+};
+
+function resolveVetraMcpToolPresentation(
+  value: string | undefined,
+  status: string | undefined,
+  data?: unknown,
+) {
   if (!value) return null;
   const name = normalizeCompactToolLabel(value).replace(
     /^(?:mcp__(?:vetra-code|vetra_code|vetracode)__|(?:vetra-code|vetra_code|vetracode)(?:[.:/]|\s*·\s*))/i,
@@ -111,9 +139,31 @@ function resolveVetraMcpToolPresentation(value: string | undefined, status: stri
               ? `Stopped ${running.toLowerCase()}`
               : running;
 
+  const actionKind = Object.hasOwn(PR_TOOL_ACTIONS, name) ? PR_TOOL_ACTIONS[name] : undefined;
+  const payload = asRecord(data);
+  const input =
+    asRecord(payload?.arguments) ?? asRecord(payload?.input) ?? asRecord(payload?.rawInput);
+  const urlTarget = typeof input?.url === "string" ? parseChangeRequestUrl(input.url) : null;
+  const number = urlTarget?.number ?? input?.number;
+  const target =
+    actionKind !== undefined &&
+    actionKind !== "list-prs" &&
+    typeof number === "number" &&
+    Number.isSafeInteger(number) &&
+    number > 0
+      ? `PR #${number}`
+      : detail;
   return {
-    displayName: `${verb} ${detail}`,
-    icon: name.startsWith("preview_") ? ("browser" as const) : ("vetra-code" as const),
+    displayName: `${verb} ${target}`,
+    icon:
+      actionKind !== undefined
+        ? ("pull-request" as const)
+        : name.startsWith("preview_")
+          ? ("browser" as const)
+          : name.startsWith("device_")
+            ? ("device" as const)
+            : ("vetra-code" as const),
+    ...(actionKind === undefined ? {} : { action: actionKind }),
   };
 }
 
@@ -138,16 +188,16 @@ export function resolveWorkEntryToolPresentation(
       "tool" in data &&
       typeof data.tool === "string"
     ) {
-      return resolveVetraMcpToolPresentation(`${data.server}.${data.tool}`, status);
+      return resolveVetraMcpToolPresentation(`${data.server}.${data.tool}`, status, data);
     }
     if ("toolName" in data && typeof data.toolName === "string") {
-      return resolveVetraMcpToolPresentation(data.toolName, status);
+      return resolveVetraMcpToolPresentation(data.toolName, status, data);
     }
   }
 
   return (
-    resolveVetraMcpToolPresentation(entry.toolTitle, status) ??
-    resolveVetraMcpToolPresentation(entry.label, status)
+    resolveVetraMcpToolPresentation(entry.toolTitle, status, data) ??
+    resolveVetraMcpToolPresentation(entry.label, status, data)
   );
 }
 
@@ -401,7 +451,10 @@ export function toolGroupAction(entry: WorkLogPresentationEntry): ToolGroupActio
   ) {
     return "update";
   }
-  if (resolveWorkEntryToolPresentation(entry)?.icon === "browser") return "browser";
+  const presentation = resolveWorkEntryToolPresentation(entry);
+  if (presentation?.action !== undefined) return presentation.action;
+  if (presentation?.icon === "browser") return "browser";
+  if (presentation?.icon === "device") return "device";
   if (
     entry.requestKind === "file-read" ||
     entry.itemType === "image_view" ||
@@ -495,12 +548,22 @@ function toolGroupActionCount(
 
 function toolGroupActionLabel(action: ToolGroupAction, count: number): string {
   switch (action) {
+    case "link-pr":
+      return `Linked ${count} ${count === 1 ? "pull request" : "pull requests"}`;
+    case "unlink-pr":
+      return `Unlinked ${count} ${count === 1 ? "pull request" : "pull requests"}`;
+    case "list-prs":
+      return count === 1
+        ? "Checked linked pull requests"
+        : `Checked linked pull requests ${count} times`;
     case "read":
       return `Read ${count} ${count === 1 ? "file" : "files"}`;
     case "edit":
       return `Changed ${count} ${count === 1 ? "file" : "files"}`;
     case "command":
       return `Ran ${count} ${count === 1 ? "command" : "commands"}`;
+    case "device":
+      return `Used device controls ${count} ${count === 1 ? "time" : "times"}`;
     case "browser":
       return `Used browser ${count} ${count === 1 ? "time" : "times"}`;
     case "search":
@@ -519,7 +582,7 @@ export function summarizeToolGroup(entries: ReadonlyArray<WorkLogPresentationEnt
   const sources = new Map<string, ToolActivitySource>();
   const groupedEntries = new Map<ToolGroupAction, WorkLogPresentationEntry[]>();
   for (const entry of summaryEntries) {
-    if (entry.toolSource) {
+    if (entry.toolSource && resolveWorkEntryToolPresentation(entry)?.icon !== "pull-request") {
       sources.set(entry.toolSource.key, entry.toolSource);
       continue;
     }
@@ -592,6 +655,11 @@ export function omitSupersededLifecycleMarkers<T>(
 export function toolGroupSummaryKind(
   entries: ReadonlyArray<WorkLogPresentationEntry>,
 ): ToolGroupSummaryKind {
+  if (
+    entries.length > 0 &&
+    entries.every((entry) => resolveWorkEntryToolPresentation(entry)?.icon === "pull-request")
+  )
+    return "pull-request";
   const actions = new Set(entries.map(toolGroupAction));
   if (actions.size !== 1) return "mixed";
 

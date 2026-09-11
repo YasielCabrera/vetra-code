@@ -1005,15 +1005,19 @@ function IssuesRouteView() {
             onAddDiff={() => undefined}
             onAddFiles={() => undefined}
             onAddPullRequest={() => undefined}
+            onAddPullRequests={() => undefined}
             onAddAgents={() => undefined}
             onAddPowerhouse={() => undefined}
+            onAddDevice={() => undefined}
             browserAvailable={false}
             terminalAvailable={false}
             diffAvailable={false}
             filesAvailable={false}
             pullRequestAvailable={false}
+            pullRequestsAvailable={false}
             agentsAvailable={false}
             powerhouseAvailable={false}
+            deviceAvailable={false}
             liveAgentCount={0}
             issueStatuses={issueTabStatuses}
           >

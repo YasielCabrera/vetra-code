@@ -826,6 +826,9 @@ export const makeAntigravityAdapter = Effect.fn("makeAntigravityAdapter")(functi
                 cwd,
                 clientInfo: { name: "vetra-code", version: "0.0.0" },
                 clientFileSystem: true,
+                ...(mcp?.agentDeviceEnvironment
+                  ? { agentDeviceEnvironment: mcp.agentDeviceEnvironment }
+                  : {}),
                 additionalDirectories: [serverConfig.attachmentsDir],
                 ...(Option.isSome(cursor) ? { resumeSessionId: cursor.value.sessionId } : {}),
                 mcpServers: mcp

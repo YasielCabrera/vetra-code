@@ -70,16 +70,18 @@ After the merge, those changes must appear under Vetra names (`Vetra Code`, `@ve
 
 Surfaces this fork deleted and will not ship:
 
-| Path                                                                         | Why                        |
-| ---------------------------------------------------------------------------- | -------------------------- |
-| `.agents/skills/test-t3-mobile/`                                             | Mobile-only testing skill. |
-| `.github/ISSUE_TEMPLATE/via-triage.yml`, `.github/triage/`                   | T3-owned support workflow. |
-| `apps/mobile/`                                                               | Mobile client removed.     |
-| `apps/marketing/`                                                            | Marketing site removed.    |
-| `apps/server/src/cli/triage*`                                                | Files issues in T3's repo. |
-| `scripts/mobile-showcase*` and `scripts/mobile-native-static-check*`         | Mobile-only tooling.       |
-| `t3.json`                                                                    | Replaced by `vetra.json`.  |
-| `patches/*react-navigation*`, `patches/*react-native*`, and `patches/*expo*` | Mobile dependency patches. |
+| Path                                                                         | Why                               |
+| ---------------------------------------------------------------------------- | --------------------------------- |
+| `.agents/skills/test-t3-mobile/`                                             | Mobile-only testing skill.        |
+| `.github/ISSUE_TEMPLATE/via-triage.yml`, `.github/triage/`                   | T3-owned support workflow.        |
+| `apps/mobile/`                                                               | Mobile client removed.            |
+| `apps/marketing/`                                                            | Marketing site removed.           |
+| `apps/server/src/cli/triage*`                                                | Files issues in T3's repo.        |
+| `scripts/mobile-showcase*` and `scripts/mobile-native-static-check*`         | Mobile-only tooling.              |
+| `t3.json`                                                                    | Replaced by `vetra.json`.         |
+| `docs/user/mobile-*`, `docs/operations/android-notifications.md`             | Mobile-only guidance.             |
+| `docs/operations/connect-setup.md`                                           | Written for T3's Clerk and relay. |
+| `patches/*react-navigation*`, `patches/*react-native*`, and `patches/*expo*` | Mobile dependency patches.        |
 
 The script's `PRUNE_PATHS` / `PRUNE_GLOBS` lists are the source of truth for the mechanical drop.
 If upstream adds a new file inside those trees, the prune pass deletes it again. If upstream adds a
@@ -151,11 +153,16 @@ backends leak back in.
   `"t3/<path>"`, which no `RENAMES` pair matches (there is no package name to key on, and a
   blanket `t3/` pair would rewrite paths). The fork's keys all read
   `@vetra-code/<package>/<path>`, and the `deterministicKeys` diagnostic names the expected value,
-  so a typecheck of the merged package finds every one. Check with
-  `git grep -ohE '>\(\)\("[^"]+"' -- apps/server/src | sed 's/.*"\(.*\)"/\1/' | awk -F/ '{print $1}' | sort -u`.
+  so a typecheck of the merged package finds every one. Check every workspace, not just the server:
+  `git grep -ohE '>\(\)\("[^"]+"' -- apps packages infra | sed 's/.*"\(.*\)"/\1/' | awk -F/ '{print $1}' | sort -u`.
 - Rewrite generic `t3.` prefixes. A blanket `t3.` → `vetra.` pair would smash `t3.codes`. Persistence
   keys such as `t3.pullRequests.list` therefore survive until a specific `RENAMES` pair exists or
   you fix them by hand. Search `` `t3. `` / `"t3.` in code (not docs) after every sync.
+- Renumber an incoming migration. This fork inserted `041_ProjectionAutomations`, so every upstream
+  migration after it collides one number low. Take the incoming file, `git mv` it past our highest
+  number, and shift the `toMigrationInclusive` boundaries in its test by the same offset — the
+  migration test asserts on the schema _before_ and _after_ its own migration, so a stale boundary
+  fails with a missing table rather than a wrong number.
 - Prune GitHub workflows. Upstream still has `release.yml`, `deploy-relay.yml`, and the
   `mobile-*.yml` workflows. A merge can restore them or conflict on the deletion. Delete them again
   if they return.
