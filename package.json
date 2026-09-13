@@ -15,6 +15,7 @@
     "start:mock-update-server": "node scripts/mock-update-server.ts",
     "icons:export": "node scripts/export-brand-icons.ts",
     "icons:check": "node scripts/export-brand-icons.ts --check",
+    "licenses:sync": "node scripts/sync-third-party-license-notices.ts",
     "build": "vp run --filter './apps/*' --filter './packages/*' --filter './oxlint-plugin-vetra' --filter './scripts' build",
     "build:desktop": "vp run --filter @vetra-code/desktop --filter @vetra-code/server build",
     "build:resource-monitor": "cargo build --locked --release --manifest-path native/resource-monitor/Cargo.toml",

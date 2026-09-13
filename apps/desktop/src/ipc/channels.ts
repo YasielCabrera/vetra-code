@@ -7,6 +7,7 @@ export const OPEN_EXTERNAL_CHANNEL = "desktop:open-external";
 export const OPEN_SYSTEM_SETTINGS_CHANNEL = "desktop:open-system-settings";
 export const PROBE_REMOTE_EDITORS_CHANNEL = "desktop:probe-remote-editors";
 export const MENU_ACTION_CHANNEL = "desktop:menu-action";
+export const PASTE_AS_TEXT_CHANNEL = "desktop:paste-as-text";
 export const SNAP_SHOT_EVENT_CHANNEL = "desktop:snap-shot-event";
 export const QUIT_SHORTCUT_CHANNEL = "desktop:quit-shortcut";
 export const GET_WINDOW_FULLSCREEN_STATE_CHANNEL = "desktop:get-window-fullscreen-state";
@@ -112,3 +113,7 @@ export const PREVIEW_WALLET_APPROVE_CHANNEL = "desktop:preview-wallet-approve";
 export const PREVIEW_WALLET_REJECT_CHANNEL = "desktop:preview-wallet-reject";
 export const PREVIEW_WALLET_APPLY_SETTINGS_CHANNEL = "desktop:preview-wallet-apply-settings";
 export const PREVIEW_WALLET_STATE_CHANNEL = "desktop:preview-wallet-state";
+
+export const MAC_PERMISSION_HELPER_CHANNEL = "desktop:mac-permission-helper";
+
+export const CHECK_SYSTEM_PERMISSION_CHANNEL = "desktop:check-system-permission";

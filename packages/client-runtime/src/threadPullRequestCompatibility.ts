@@ -4,6 +4,7 @@ import type {
   ThreadId,
   ThreadPullRequestKey,
 } from "@vetra-code/contracts";
+import { normalizeThreadPullRequestKey } from "@vetra-code/shared/threadPullRequests";
 
 type LinkingCapabilities = Pick<
   ExecutionEnvironmentCapabilities,
@@ -36,20 +37,19 @@ export function planThreadPullRequestMutation({
   legacyRepository?: string | undefined;
   linked: boolean;
 }) {
+  const key = normalizeThreadPullRequestKey(reference);
   switch (threadPullRequestLinkMode(capabilities)) {
     case "multiple":
       return linked
         ? {
             type: "thread.pull-request.link" as const,
-            input: { threadId, ...reference, source: "manual" as const },
+            input: { threadId, ...reference, ...key, source: "manual" as const },
           }
         : {
             type: "thread.pull-request.unlink" as const,
             input: {
               threadId,
-              host: reference.host,
-              repository: reference.repository,
-              number: reference.number,
+              ...key,
             },
           };
     case "single":

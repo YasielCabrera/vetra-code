@@ -196,6 +196,17 @@ The reactor that refreshes each distinct linked review once per cadence, dedupli
 
 The one link that single-review controls and older clients act on, derived rather than stored. Open work wins; a completed single chain resolves to its top layer; otherwise the most recently updated link wins. See `resolveThreadCurrentPullRequest` in [threadPullRequests.ts][31].
 
+### Composer context
+
+| Term                 | Meaning                                                                                                                                |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Context record       | The typed payload behind a composer chip, keyed by `contextId` in `message.context.records`. It never holds bytes.                     |
+| Context reference    | One occurrence of a record in message text: `[label](vetra-context://v1/<kind>/<contextId>)`. Several references can share one record. |
+| Attachment binding   | The link from an image or file record to its server-owned attachment. Its attachment ID can change without changing `contextId`.       |
+| Attachment inventory | The ordered image records shown as thumbnails above the prose, including images with no inline references.                             |
+
+See [composer context references](./composer-context-references.md) for the contract and lifecycle.
+
 ### Appearance
 
 #### Environment theme

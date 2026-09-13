@@ -46,7 +46,7 @@ node apps/server/src/bin.ts app
 ```
 
 This opens a new thread for the current directory, adding the project if needed.
-Pass a path, such as `npx t3 app ../my-project`, to open another directory. It requires
+Pass a path, such as `vetra app ../my-project`, to open another directory. It requires
 the desktop app, so a standalone server or an SSH session is not enough. If the
 command cannot reach the app, start or update the desktop app and try again.
 
@@ -83,6 +83,12 @@ Linux-local copy so startup does not depend on reading application files through
 successful launch, Vetra Code keeps the current runtime and one previous runtime for rollback and
 removes older caches automatically. If a cached runtime stops working, Vetra Code launches from the
 application files under `/mnt/c` instead and reinstalls the runtime on the next launch.
+
+If the app crashes during launch, open Settings → Diagnostics on the next launch
+that succeeds. It lists startup crashes from the last 7 days with the error and
+component stack that store crash reports leave out. Copy the report and paste it
+into a GitHub issue. Error messages can quote values from the app, so read it over
+before sharing.
 
 ## Providers
 

@@ -194,7 +194,6 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
         priceUsage: usage.price,
         ...(eventLoggers.native ? { nativeEventLogger: eventLoggers.native } : {}),
       });
-      const textGeneration = yield* makeCodexTextGeneration(effectiveConfig, processEnv);
       const subscriptionUsage = makeCodexSubscriptionUsageCapability({
         instance: { instanceId, driverKind: DRIVER_KIND, displayName },
         settings: effectiveConfig,
@@ -261,6 +260,11 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
               cause,
             }),
         ),
+      );
+      const textGeneration = yield* makeCodexTextGeneration(
+        effectiveConfig,
+        processEnv,
+        snapshot.getSnapshot.pipe(Effect.map((value) => value.models)),
       );
       const snapshotForCwd = (cwd: string) =>
         !effectiveConfig.enabled

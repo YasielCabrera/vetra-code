@@ -62,20 +62,23 @@ vi.mock("~/state/vcs", () => ({
   vcsEnvironment: { status: () => ({}) },
 }));
 
-vi.mock("./projectFilesQueryState", () => ({
-  useProjectEntriesQuery: () => ({
-    data: {
-      entries: [
-        { path: "src", kind: "directory" },
-        { path: "src/changed.ts", kind: "file" },
-        { path: "src/unchanged.ts", kind: "file" },
-      ],
-      truncated: false,
-    },
+vi.mock("./useDirectoryEntries", () => ({
+  useDirectoryEntries: () => ({
+    entries: [
+      { path: "src", kind: "directory" },
+      { path: "src/changed.ts", kind: "file" },
+      { path: "src/unchanged.ts", kind: "file" },
+    ],
+    load: () => Promise.resolve(),
+    refresh: () => {},
+    ready: true,
     error: null,
     isPending: false,
-    refresh: () => {},
   }),
+}));
+
+vi.mock("~/state/queries", () => ({
+  useProjectPathSearch: () => ({ entries: [], error: null, isPending: false, refresh: () => {} }),
 }));
 
 import FileBrowserPanel from "./FileBrowserPanel";

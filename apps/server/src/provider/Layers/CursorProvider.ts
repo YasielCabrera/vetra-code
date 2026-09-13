@@ -57,6 +57,7 @@ const decodeCursorListAvailableModelsResponse = Schema.decodeUnknownEffect(
 );
 const CURSOR_PRESENTATION = {
   displayName: "Cursor",
+  supportsConversationRollback: false,
   badgeLabel: "Early Access",
   showInteractionModeToggle: true,
 } as const;

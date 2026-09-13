@@ -26,6 +26,7 @@ import {
   LayersIcon,
   ListChecksIcon,
   PenLineIcon,
+  Plug2Icon,
   Maximize2Icon,
   Minimize2Icon,
   SearchIcon,
@@ -113,7 +114,7 @@ import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { isCommandPaletteOpen } from "../commandPaletteBus";
 import { isElectron } from "../env";
-import { resolveShortcutCommand } from "../keybindings";
+import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { PanelLayoutControls } from "../components/chat/PanelLayoutControls";
 import { Button } from "../components/ui/button";
@@ -1574,7 +1575,7 @@ function PullRequestsRouteView() {
       terminalShortcutLabel={null}
       rightPanelAvailable={rightPanelAvailable}
       rightPanelOpen={rightPanelState.isOpen}
-      rightPanelShortcutLabel={null}
+      rightPanelShortcutLabel={shortcutLabelForCommand(keybindings, "rightPanel.toggle")}
       rightPanelUnavailableLabel="Select a pull request first"
       liveAgentCount={0}
       onToggleTerminal={() => undefined}
@@ -1718,7 +1719,7 @@ function PullRequestsRouteView() {
   // kind force the hostname to tell them apart.
   const hostEntries = hosts.length > 0 ? hosts : expectedHosts;
   const hostMenuOptions: ReadonlyArray<PullRequestFilterOption<string>> = [
-    { value: "", label: "All hosts", Icon: LayersIcon },
+    { value: "", label: "All", Icon: Plug2Icon },
     ...hostEntries.map((entry) => {
       // `expectedHosts` stands in before the server has answered, and nothing is known to be
       // unreadable yet; once the summaries arrive they carry whether each one could be read.
@@ -1915,6 +1916,12 @@ function PullRequestsRouteView() {
     event.stopPropagation();
     if (!event.repeat) closeSurface(activePullRequestSurface);
   });
+  const toggleRightPanelFromShortcut = useEffectEvent((event: KeyboardEvent) => {
+    if (!rightPanelAvailable) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.repeat) toggleRightPanel();
+  });
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || isCommandPaletteOpen()) return;
@@ -1922,6 +1929,7 @@ function PullRequestsRouteView() {
         context: { terminalFocus: isTerminalFocused() },
       });
       if (command === "rightPanel.close") closeActiveSurfaceFromShortcut(event);
+      if (command === "rightPanel.toggle") toggleRightPanelFromShortcut(event);
       if (command === "thread.copyReference") copyPullRequestFromShortcut(event);
     };
     window.addEventListener("keydown", onKeyDown);
@@ -2228,6 +2236,16 @@ function PullRequestsColumn({
               </div>
               {sortMenu}
               {filtersMenu}
+              <CompactFilterMenu
+                label="Filter by provider"
+                outlined
+                iconOnly={host !== undefined}
+                triggerIcon={<Plug2Icon aria-hidden className="size-4" />}
+                triggerLabel="All"
+                value={host ?? ""}
+                options={hostMenuOptions}
+                onChange={(next) => onHost(next === "" ? undefined : next)}
+              />
               {!condensed ? (
                 <PullRequestRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               ) : null}

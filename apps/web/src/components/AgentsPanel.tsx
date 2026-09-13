@@ -1,9 +1,7 @@
 /**
- * Agents right-panel surface: the fleet view over the native subagent fold,
- * and the only place the roster renders in full (the chat carries one CTA row
- * per spawn batch; the header popover carries a two-line summary of it). Row
- * status shading and activity text are shared with those surfaces through
- * agentStatusPresentation.
+ * Agents right-panel surface: the fleet view over the native subagent fold.
+ * The chat carries one expandable row per spawn batch and links here. Row status shading and
+ * activity text are shared with those surfaces through agentStatusPresentation.
  *
  * Visualization rules (from live-test feedback):
  * - Spawn order is stable. Activity and completion update rows in place.

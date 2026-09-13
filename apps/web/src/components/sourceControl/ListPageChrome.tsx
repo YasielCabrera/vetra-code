@@ -20,6 +20,7 @@ export function CompactFilterMenu<Value extends string>({
   triggerIcon,
   triggerLabel,
   outlined = false,
+  iconOnly = false,
   value,
   options,
   onChange,
@@ -31,6 +32,8 @@ export function CompactFilterMenu<Value extends string>({
   triggerLabel?: string;
   /** Renders the trigger as a button, for a control that sits outside the breadcrumb row. */
   outlined?: boolean;
+  /** Collapses the trigger to the current option's icon when the row runs out of width. */
+  iconOnly?: boolean;
   value: Value;
   options: ReadonlyArray<ListFilterOption<Value>>;
   onChange: (value: Value) => void;
@@ -41,8 +44,11 @@ export function CompactFilterMenu<Value extends string>({
   return (
     <Menu>
       <MenuTrigger
-        aria-label={triggerLabel ? `${label}: ${current.label}` : label}
-        render={outlined ? <Button variant="outline" /> : undefined}
+        aria-label={triggerLabel || iconOnly ? `${label}: ${current.label}` : label}
+        title={iconOnly ? `${label}: ${current.label}` : undefined}
+        render={
+          outlined ? <Button variant="outline" size={iconOnly ? "icon" : "default"} /> : undefined
+        }
         className={
           outlined
             ? className
@@ -52,7 +58,9 @@ export function CompactFilterMenu<Value extends string>({
               )
         }
       >
-        {triggerLabel ? (
+        {iconOnly ? (
+          <current.Icon aria-hidden className="size-4" />
+        ) : triggerLabel ? (
           <>
             {triggerIcon}
             <span>{triggerLabel}</span>

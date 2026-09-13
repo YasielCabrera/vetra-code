@@ -1,3 +1,6 @@
+import { upgradeLegacyContextMessage } from "@vetra-code/shared/composerContextLegacy";
+import { elementContextToPreviewAnnotation } from "../lib/elementContext";
+import { previewAnnotationContextRecord } from "../lib/composerContextRecords";
 import { EnvironmentId, MessageId, ThreadId, type AssistantCitation } from "@vetra-code/contracts";
 import { serializeAssistantCitation } from "@vetra-code/shared/assistantCitations";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
@@ -13,7 +16,11 @@ import {
   PASTE_COMMAND,
 } from "lexical";
 
-import { registerComposerInlineTokenPaste } from "./composerInlineTokenPaste";
+import {
+  importPastedComposerText,
+  readPastedComposerContext,
+  registerComposerInlineTokenPaste,
+} from "./composerInlineTokenPaste";
 import {
   $consumeComposerCitationCommentRequest,
   $createComposerCitationNode,
@@ -53,6 +60,7 @@ function createCitationEditor(text = "") {
     createMentionNode: (path) => $createTextNode(`<mention:${path}>`),
     createPowerhouseNode: (token) => $createTextNode(`<powerhouse:${token.value}>`),
     createCitationNode: $createComposerCitationNode,
+    createContextReferenceNode: (reference) => $createTextNode(`<context:${reference.contextId}>`),
     getExpandedAbsoluteOffsetForPoint: (_node, offset) => offset,
   });
   return editor;
@@ -78,11 +86,11 @@ function pasteText(editor: ReturnType<typeof createEditor>, text: string) {
 class TestClipboardEvent extends Event {
   readonly clipboardData: DataTransfer;
 
-  constructor(text: string) {
+  constructor(text: string, extra: Record<string, string> = {}) {
     super("paste", { cancelable: true });
     this.clipboardData = {
       files: [],
-      getData: (type: string) => (type === "text/plain" ? text : ""),
+      getData: (type: string) => (type === "text/plain" ? text : (extra[type] ?? "")),
     } as unknown as DataTransfer;
   }
 }
@@ -115,6 +123,8 @@ describe("registerComposerInlineTokenPaste", () => {
       createMentionNode: (path) => $createTextNode(`<mention:${path}>`),
       createPowerhouseNode: (token) => $createTextNode(`<powerhouse:${token.value}>`),
       createCitationNode: $createComposerCitationNode,
+      createContextReferenceNode: (reference) =>
+        $createTextNode(`<context:${reference.contextId}>`),
       getExpandedAbsoluteOffsetForPoint: () => 0,
     });
     editor.registerCommand(PASTE_COMMAND, plainTextFallback, COMMAND_PRIORITY_EDITOR);
@@ -162,6 +172,8 @@ describe("registerComposerInlineTokenPaste", () => {
       createMentionNode: (path) => $createTextNode(`<mention:${path}>`),
       createPowerhouseNode: (token) => $createTextNode(`<powerhouse:${token.value}>`),
       createCitationNode: $createComposerCitationNode,
+      createContextReferenceNode: (reference) =>
+        $createTextNode(`<context:${reference.contextId}>`),
       getExpandedAbsoluteOffsetForPoint: () => 0,
     });
     editor.registerCommand(PASTE_COMMAND, plainTextFallback, COMMAND_PRIORITY_EDITOR);
@@ -198,6 +210,8 @@ describe("registerComposerInlineTokenPaste", () => {
       createMentionNode: (path) => $createTextNode(`<mention:${path}>`),
       createPowerhouseNode: (token) => $createTextNode(`<powerhouse:${token.value}>`),
       createCitationNode: $createComposerCitationNode,
+      createContextReferenceNode: (reference) =>
+        $createTextNode(`<context:${reference.contextId}>`),
       getExpandedAbsoluteOffsetForPoint: () => 0,
     });
     editor.registerCommand(PASTE_COMMAND, plainTextFallback, COMMAND_PRIORITY_EDITOR);
@@ -236,6 +250,8 @@ describe("registerComposerInlineTokenPaste", () => {
       createMentionNode: (path) => $createTextNode(`<mention:${path}>`),
       createPowerhouseNode: (token) => $createTextNode(`<powerhouse:${token.value}>`),
       createCitationNode: $createComposerCitationNode,
+      createContextReferenceNode: (reference) =>
+        $createTextNode(`<context:${reference.contextId}>`),
       getExpandedAbsoluteOffsetForPoint: () => 0,
     });
 
@@ -524,6 +540,240 @@ describe("registerComposerInlineTokenPaste", () => {
       });
     },
   );
+});
+
+describe("context reference paste", () => {
+  it.each([
+    { focus: "focused", prefix: "" },
+    { focus: "blurred", prefix: "" },
+    { focus: "focused", prefix: "log ".repeat(10_000) },
+    { focus: "blurred", prefix: "log ".repeat(10_000) },
+  ])(
+    "imports structured paste when $focus with $prefix.length extra characters",
+    ({ focus, prefix }) => {
+      vi.stubGlobal("ClipboardEvent", TestClipboardEvent);
+      const editor = createEditor({ nodes: [ComposerCitationNode] });
+      editor.update(
+        () => {
+          const paragraph = $createParagraphNode();
+          $getRoot().append(paragraph);
+          paragraph.selectEnd();
+        },
+        { discrete: true },
+      );
+      const imported: string[] = [];
+      const importFragment = (
+        fragment: import("@vetra-code/contracts").ComposerContextClipboardFragment,
+      ) => {
+        imported.push(...fragment.records.map((record) => record.contextId));
+        return new Map([["img-old", "img-new"]]);
+      };
+      registerComposerInlineTokenPaste(editor, {
+        createMentionNode: (path) => $createTextNode(`<mention:${path}>`),
+        createPowerhouseNode: (token) => $createTextNode(`<powerhouse:${token.value}>`),
+        createCitationNode: $createComposerCitationNode,
+        createContextReferenceNode: (reference) =>
+          $createTextNode(`<context:${reference.contextId}>`),
+        getExpandedAbsoluteOffsetForPoint: () => 0,
+        importContextFragment: importFragment,
+      });
+      const event = new TestClipboardEvent(
+        `${prefix}![shot](vetra-context://v1/image/img-old) and [T](vetra-context://v1/terminal/ctx-t)`,
+        {
+          "web application/x-vetra-context-fragment+json": JSON.stringify({
+            version: 1,
+            source: { environmentId: "env-1" },
+            records: [
+              {
+                version: 1,
+                contextId: "img-old",
+                kind: "image",
+                label: "shot",
+                attachmentId: "a",
+                name: "shot.png",
+                mimeType: "image/png",
+                sizeBytes: 1,
+              },
+              {
+                version: 1,
+                contextId: "ctx-t",
+                kind: "terminal",
+                label: "T",
+                terminalId: "t",
+                terminalLabel: "T",
+                lineStart: 1,
+                lineEnd: 1,
+                text: "x",
+              },
+              {
+                version: 1,
+                contextId: "img-unrelated",
+                kind: "image",
+                label: "other",
+                attachmentId: "b",
+                name: "other.png",
+                mimeType: "image/png",
+                sizeBytes: 1,
+              },
+            ],
+          }),
+        },
+      );
+      expect(
+        readPastedComposerContext(event.clipboardData)?.records.map((record) => record.contextId),
+      ).toEqual(["img-old", "ctx-t"]);
+      if (focus === "blurred") {
+        expect(importPastedComposerText(event.clipboardData, importFragment)).toBe(
+          `${prefix}![shot](vetra-context://v1/image/img-new) and [T](vetra-context://v1/terminal/ctx-t)`,
+        );
+        expect(imported).toEqual(["img-old", "ctx-t"]);
+        return;
+      }
+      editor.update(
+        () => {
+          editor.dispatchCommand(PASTE_COMMAND, event as ClipboardEvent);
+        },
+        { discrete: true },
+      );
+      expect(imported).toEqual(["img-old", "ctx-t"]);
+      expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe(
+        `${prefix}<context:img-new> and <context:ctx-t>`,
+      );
+    },
+  );
+
+  it("converts a copied legacy element into a sendable annotation and rewrites its link", () => {
+    const copied = upgradeLegacyContextMessage(
+      [
+        "Fix this",
+        "",
+        "<element_context>",
+        "- <button>:",
+        "  url: https://example.com",
+        "  selector: #save",
+        "  html:",
+        "    <button>Save</button>",
+        "  styles:",
+        "    color: red;",
+        "</element_context>",
+      ].join("\n"),
+    );
+    const event = new TestClipboardEvent(copied.text, {
+      "web application/x-vetra-context-fragment+json": JSON.stringify({
+        version: 1,
+        source: { environmentId: "env-1" },
+        records: copied.records,
+      }),
+    });
+    const annotations: ReturnType<typeof previewAnnotationContextRecord>[] = [];
+    const text = importPastedComposerText(event.clipboardData, (fragment) => {
+      const record = fragment.records[0]!;
+      if (record.kind !== "element" || "payload" in record) throw new Error("Expected element");
+      const annotation = previewAnnotationContextRecord(
+        elementContextToPreviewAnnotation(record, "imported", "2026-01-01T00:00:00Z"),
+      );
+      annotations.push(annotation);
+      return new Map([[record.contextId, annotation.contextId]]);
+    });
+    expect(text).toContain("vetra-context://v1/preview-annotation/preview-annotation_imported");
+    expect(annotations[0]?.elements?.[0]).toMatchObject({
+      selector: "#save",
+      htmlPreview: "<button>Save</button>",
+      styles: "color: red;",
+    });
+  });
+
+  it("imports an annotation's dependent screenshot when only its chip is pasted", () => {
+    vi.stubGlobal("ClipboardEvent", TestClipboardEvent);
+    const editor = createEditor({ nodes: [ComposerCitationNode] });
+    editor.update(
+      () => {
+        const paragraph = $createParagraphNode();
+        $getRoot().append(paragraph);
+        paragraph.selectEnd();
+      },
+      { discrete: true },
+    );
+    const imported: string[] = [];
+    registerComposerInlineTokenPaste(editor, {
+      createMentionNode: (path) => $createTextNode(`<mention:${path}>`),
+      createPowerhouseNode: (token) => $createTextNode(`<powerhouse:${token.value}>`),
+      createCitationNode: $createComposerCitationNode,
+      createContextReferenceNode: (reference) =>
+        $createTextNode(`<context:${reference.contextId}>`),
+      getExpandedAbsoluteOffsetForPoint: () => 0,
+      importContextFragment: (fragment) => {
+        imported.push(...fragment.records.map((record) => record.contextId));
+        return new Map();
+      },
+    });
+    const annotationId = "preview-annotation_ann-1";
+    const screenshotId = "image_ann-1";
+    const event = new TestClipboardEvent(
+      `[Fix button](vetra-context://v1/preview-annotation/${annotationId})`,
+      {
+        "web application/x-vetra-context-fragment+json": JSON.stringify({
+          version: 1,
+          source: { environmentId: "env-1" },
+          records: [
+            {
+              version: 1,
+              contextId: annotationId,
+              kind: "preview-annotation",
+              label: "Fix button",
+              annotationId: "ann-1",
+              pageUrl: "https://example.com",
+              pageTitle: "Example",
+              comment: "Fix button",
+              targetSummary: "1 selected element",
+              styleChanges: [],
+              screenshotContextId: screenshotId,
+            },
+            {
+              version: 1,
+              contextId: screenshotId,
+              kind: "image",
+              label: "annotation.png",
+              attachmentId: "attachment-1",
+              name: "annotation.png",
+              mimeType: "image/png",
+              sizeBytes: 10,
+            },
+            {
+              version: 1,
+              contextId: "image_unrelated",
+              kind: "image",
+              label: "unrelated.png",
+              attachmentId: "attachment-2",
+              name: "unrelated.png",
+              mimeType: "image/png",
+              sizeBytes: 10,
+            },
+          ],
+        }),
+      },
+    );
+    editor.update(
+      () => {
+        editor.dispatchCommand(PASTE_COMMAND, event as ClipboardEvent);
+      },
+      { discrete: true },
+    );
+
+    expect(imported).toEqual([annotationId, screenshotId]);
+    expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe(
+      `<context:${annotationId}>`,
+    );
+  });
+
+  it("turns pasted context links into reference nodes", () => {
+    vi.stubGlobal("ClipboardEvent", TestClipboardEvent);
+    const editor = createCitationEditor("see ");
+    pasteText(editor, "[Terminal 1 line 4](vetra-context://v1/terminal/ctx-1) now");
+    expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe(
+      "see <context:ctx-1> now",
+    );
+  });
 });
 
 describe("citation comment opening", () => {

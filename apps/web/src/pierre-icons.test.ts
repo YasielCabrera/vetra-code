@@ -20,18 +20,21 @@ describe("Pierre file icons", () => {
     assert.equal(resolvePierreIconForEntry("vite.config.ts", "file")?.token, "vite");
   });
 
-  it("extends Pierre with Vetra-specific exact filename icons", () => {
-    assert.equal(
-      resolvePierreIconForEntry("package.json", "file")?.name,
-      "vetra-file-icon-package-json",
-    );
+  it("uses built-in Pierre icons where available", () => {
+    assert.equal(resolvePierreIconForEntry("package.json", "file")?.name, "file-tree-builtin-npm");
     assert.equal(
       resolvePierreIconForEntry("config/tsconfig.json", "file")?.name,
-      "vetra-file-icon-tsconfig",
+      "file-tree-builtin-typescript",
     );
+    assert.equal(resolvePierreIconForEntry("CLAUDE.md", "file")?.name, "file-tree-builtin-claude");
+    assert.equal(
+      resolvePierreIconForEntry("README.md", "file")?.name,
+      "file-tree-builtin-markdown",
+    );
+  });
+
+  it("extends Pierre with Vetra-specific exact filename icons", () => {
     assert.equal(resolvePierreIconForEntry("AGENTS.md", "file")?.name, "vetra-file-icon-agents");
-    assert.equal(resolvePierreIconForEntry("CLAUDE.md", "file")?.name, "vetra-file-icon-claude");
-    assert.equal(resolvePierreIconForEntry("README.md", "file")?.name, "vetra-file-icon-readme");
     assert.equal(resolvePierreIconForEntry("pnpm-lock.yaml", "file")?.name, "vetra-file-icon-pnpm");
     assert.equal(
       resolvePierreIconForEntry("pnpm-workspace.yaml", "file")?.name,
@@ -40,7 +43,9 @@ describe("Pierre file icons", () => {
   });
 
   it("ships every custom icon referenced by the extended resolver", () => {
-    const customIconNames = new Set(Object.values(VETRA_PIERRE_ICONS.byFileName));
+    const customIconNames = new Set(
+      Object.values(VETRA_PIERRE_ICONS.byFileName).filter((name) => name.startsWith("vetra-")),
+    );
     for (const iconName of customIconNames) {
       assert.include(VETRA_PIERRE_ICONS.spriteSheet, `id="${iconName}"`);
     }

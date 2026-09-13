@@ -180,6 +180,13 @@ RENAMES=(
   # The assistant-citation URL scheme. It rides in prompts sent to providers and
   # in persisted messages, so it is product identity, not an internal name.
   't3-citation=vetra-citation'
+  # The composer-context URL scheme and its clipboard MIME type
+  # (`x-t3-context-fragment+json`). Both are persisted in message text and
+  # exchanged with other apps, so they are product identity. The generic
+  # `"t3-` pair below only fires when the literal opens with a quote, which
+  # catches the protocol constant but not the scheme inside links, fixtures,
+  # or the MIME string.
+  't3-context=vetra-context'
   'T3ProjectFile=VetraProjectFile'
   'T3Project=VetraProject'
   'T3Server=VetraServer'

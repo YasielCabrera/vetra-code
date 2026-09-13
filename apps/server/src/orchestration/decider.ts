@@ -1751,6 +1751,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
           role: "user",
           text: command.message.text,
           attachments: command.message.attachments,
+          ...(command.message.context !== undefined ? { context: command.message.context } : {}),
           turnId: null,
           streaming: false,
           createdAt: command.createdAt,
@@ -2072,6 +2073,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
       };
     }
 
+    case "thread.conversation.revert":
     case "thread.checkpoint.revert": {
       yield* requireThread({
         readModel,
@@ -2089,6 +2091,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         payload: {
           threadId: command.threadId,
           turnCount: command.turnCount,
+          ...(command.type === "thread.conversation.revert" ? { restoreFiles: false } : {}),
           createdAt: command.createdAt,
         },
       };
