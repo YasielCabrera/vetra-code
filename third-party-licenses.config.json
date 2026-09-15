@@ -473,6 +473,58 @@
         "licenseId": "MIT",
         "copyrights": ["Copyright (c) 2025 opencode"]
       }
+    },
+    {
+      "license": "MIT",
+      "name": "@uiw/react-codemirror",
+      "sourceUrl": "https://github.com/uiwjs/react-codemirror",
+      "generatedNotice": {
+        "licenseId": "MIT",
+        "copyrights": ["Copyright (c) 2021 uiw"]
+      }
+    },
+    {
+      "license": "MIT",
+      "name": "@uiw/codemirror-extensions-basic-setup",
+      "sourceUrl": "https://github.com/uiwjs/react-codemirror",
+      "generatedNotice": {
+        "licenseId": "MIT",
+        "copyrights": ["Copyright (c) 2021 uiw"]
+      }
+    },
+    {
+      "license": "MIT",
+      "name": "@web3icons/react",
+      "sourceUrl": "https://github.com/0xa3k5/web3icons/tree/main/packages/react",
+      "generatedNotice": {
+        "licenseId": "MIT",
+        "copyrights": ["Copyright (c) 2024 0xa3k5"]
+      }
+    },
+    {
+      "license": "MIT",
+      "name": "@web3icons/common",
+      "sourceUrl": "https://github.com/0xa3k5/web3icons/tree/main/packages/common",
+      "generatedNotice": {
+        "licenseId": "MIT",
+        "copyrights": ["Copyright (c) 2024 0xa3k5"]
+      }
+    },
+    {
+      "license": "MIT",
+      "name": "pg-types",
+      "sourceUrl": "https://github.com/brianc/node-pg-types",
+      "generatedNotice": {
+        "licenseId": "MIT"
+      }
+    },
+    {
+      "license": "MIT",
+      "name": "pgpass",
+      "sourceUrl": "https://github.com/hoegaarden/pgpass",
+      "generatedNotice": {
+        "licenseId": "MIT"
+      }
     }
   ]
 }
