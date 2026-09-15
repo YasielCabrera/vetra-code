@@ -23,19 +23,17 @@ allowBuilds:
   workerd: false
 
 catalog:
-  "@clerk/backend": 3.14.0
-  "@clerk/clerk-js": 6.30.1
-  "@clerk/electron": 0.0.37
+  "@clerk/backend": 3.17.2
+  "@clerk/clerk-js": 6.31.1
+  "@clerk/electron": 0.0.42
   "@clerk/electron-passkeys": 0.0.3
-  "@clerk/react": 6.14.7
-  "@clerk/shared": 4.30.1
+  "@clerk/react": 6.15.2
+  "@clerk/shared": 4.31.1
   "@effect/atom-react": 4.0.0-rc.112
   "@effect/openapi-generator": 4.0.0-rc.112
-  "@effect/platform-bun": 4.0.0-rc.112
   "@effect/platform-node": 4.0.0-rc.112
   "@effect/platform-node-shared": 4.0.0-rc.112
   "@effect/sql-pg": 4.0.0-rc.112
-  "@effect/sql-sqlite-bun": 4.0.0-rc.112
   "@effect/tsgo": 0.41.0
   "@effect/vitest": 4.0.0-rc.112
   "@legendapp/list": 3.3.5
@@ -57,11 +55,11 @@ catalog:
   yaml: ^2.9.0
 
 minimumReleaseAgeExclude:
-  - "@clerk/backend@3.14.0"
-  - "@clerk/clerk-js@6.30.1"
-  - "@clerk/electron@0.0.37"
-  - "@clerk/react@6.14.7"
-  - "@clerk/shared@4.30.1"
+  - "@clerk/backend@3.17.2"
+  - "@clerk/clerk-js@6.31.1"
+  - "@clerk/electron@0.0.42"
+  - "@clerk/react@6.15.2"
+  - "@clerk/shared@4.31.1"
   - "@distilled.cloud/aws@0.30.2"
   - "@distilled.cloud/axiom@0.30.2"
   - "@distilled.cloud/cloudflare@0.30.2"
@@ -70,11 +68,9 @@ minimumReleaseAgeExclude:
   - "@distilled.cloud/planetscale@0.30.2"
   - "@effect/atom-react@4.0.0-rc.112"
   - "@effect/openapi-generator@4.0.0-rc.112"
-  - "@effect/platform-bun@4.0.0-rc.112"
   - "@effect/platform-node-shared@4.0.0-rc.112"
   - "@effect/platform-node@4.0.0-rc.112"
   - "@effect/sql-pg@4.0.0-rc.112"
-  - "@effect/sql-sqlite-bun@4.0.0-rc.112"
   - "@effect/vitest@4.0.0-rc.112"
   - alchemy@2.0.0-beta.76
   - effect@4.0.0-rc.112
@@ -110,11 +106,9 @@ overrides:
   "@clerk/react": "catalog:"
   "@clerk/shared": "catalog:"
   "@effect/atom-react": "catalog:"
-  "@effect/platform-bun": "catalog:"
   "@effect/platform-node": "catalog:"
   "@effect/platform-node-shared": "catalog:"
   "@effect/sql-pg": "catalog:"
-  "@effect/sql-sqlite-bun": "catalog:"
   "@effect/vitest": "catalog:"
   "@effect/vitest>vitest": "-"
   "@pierre/diffs>@shikijs/transformers": ^4.2.0

@@ -17,14 +17,14 @@ phone or another browser shows.
 The machine can also set the environment's theme:
 
 ```bash
-t3 theme set nightfall
+vetra theme set nightfall
 ```
 
 Web and desktop clients switch to it — immediately when connected, on their next connect
 otherwise — and a fresh client opens with it. Each client applies a set once, so picking a
-different theme in Settings afterwards sticks until the next `t3 theme set`, and running the same
-set again is how you bring clients back. `t3 theme clear` removes the setting without changing
-what anyone currently has, and `t3 theme show` prints the current theme and everything the
+different theme in Settings afterwards sticks until the next `vetra theme set`, and running the same
+set again is how you bring clients back. `vetra theme clear` removes the setting without changing
+what anyone currently has, and `vetra theme show` prints the current theme and everything the
 machine publishes. Only the environment you are anchored to publishes themes, so a remote client
 follows the machine it is connected to, not the device it runs on. Vetra Code Mobile keeps its own
 appearance settings and does not follow environment themes.

@@ -20,6 +20,9 @@ github:cursoragent
 github:D3OXY
 github:eggfriedrice24
 github:extoci
+github:f-trycua
+github:flamboh
+github:FllipEis
 github:gbarros-dev
 github:gfsaaser24
 github:github-actions[bot]

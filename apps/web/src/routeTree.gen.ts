@@ -32,7 +32,6 @@ import { Route as SettingsConnectionsRouteImport } from './routes/settings.conne
 import { Route as SettingsArchivedRouteImport } from './routes/settings.archived'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
 import { Route as ProjectsProjectKeyRouteImport } from './routes/projects.$projectKey'
-import { Route as ConnectCallbackRouteImport } from './routes/connect_.callback'
 import { Route as AutomationsNewRouteImport } from './routes/automations.new'
 import { Route as AutomationsAutomationKeyRouteImport } from './routes/automations.$automationKey'
 import { Route as ChatPullRequestsRouteImport } from './routes/_chat.pull-requests'
@@ -155,11 +154,6 @@ const ProjectsProjectKeyRoute = ProjectsProjectKeyRouteImport.update({
   path: '/projects/$projectKey',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConnectCallbackRoute = ConnectCallbackRouteImport.update({
-  id: '/connect_/callback',
-  path: '/connect/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AutomationsNewRoute = AutomationsNewRouteImport.update({
   id: '/automations/new',
   path: '/automations/new',
@@ -204,7 +198,6 @@ export interface FileRoutesByFullPath {
   '/pull-requests': typeof ChatPullRequestsRoute
   '/automations/$automationKey': typeof AutomationsAutomationKeyRoute
   '/automations/new': typeof AutomationsNewRoute
-  '/connect/callback': typeof ConnectCallbackRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/archived': typeof SettingsArchivedRoute
@@ -234,7 +227,6 @@ export interface FileRoutesByTo {
   '/pull-requests': typeof ChatPullRequestsRoute
   '/automations/$automationKey': typeof AutomationsAutomationKeyRoute
   '/automations/new': typeof AutomationsNewRoute
-  '/connect/callback': typeof ConnectCallbackRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/archived': typeof SettingsArchivedRoute
@@ -267,7 +259,6 @@ export interface FileRoutesById {
   '/_chat/pull-requests': typeof ChatPullRequestsRoute
   '/automations/$automationKey': typeof AutomationsAutomationKeyRoute
   '/automations/new': typeof AutomationsNewRoute
-  '/connect_/callback': typeof ConnectCallbackRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/archived': typeof SettingsArchivedRoute
@@ -301,7 +292,6 @@ export interface FileRouteTypes {
     | '/pull-requests'
     | '/automations/$automationKey'
     | '/automations/new'
-    | '/connect/callback'
     | '/projects/$projectKey'
     | '/settings/appearance'
     | '/settings/archived'
@@ -331,7 +321,6 @@ export interface FileRouteTypes {
     | '/pull-requests'
     | '/automations/$automationKey'
     | '/automations/new'
-    | '/connect/callback'
     | '/projects/$projectKey'
     | '/settings/appearance'
     | '/settings/archived'
@@ -363,7 +352,6 @@ export interface FileRouteTypes {
     | '/_chat/pull-requests'
     | '/automations/$automationKey'
     | '/automations/new'
-    | '/connect_/callback'
     | '/projects/$projectKey'
     | '/settings/appearance'
     | '/settings/archived'
@@ -394,7 +382,6 @@ export interface RootRouteChildren {
   WelcomeRoute: typeof WelcomeRoute
   AutomationsAutomationKeyRoute: typeof AutomationsAutomationKeyRoute
   AutomationsNewRoute: typeof AutomationsNewRoute
-  ConnectCallbackRoute: typeof ConnectCallbackRoute
   ProjectsProjectKeyRoute: typeof ProjectsProjectKeyRoute
   AutomationsIndexRoute: typeof AutomationsIndexRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
@@ -563,13 +550,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/connect_/callback': {
-      id: '/connect_/callback'
-      path: '/connect/callback'
-      fullPath: '/connect/callback'
-      preLoaderRoute: typeof ConnectCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/automations/new': {
       id: '/automations/new'
       path: '/automations/new'
@@ -678,7 +658,6 @@ const rootRouteChildren: RootRouteChildren = {
   WelcomeRoute: WelcomeRoute,
   AutomationsAutomationKeyRoute: AutomationsAutomationKeyRoute,
   AutomationsNewRoute: AutomationsNewRoute,
-  ConnectCallbackRoute: ConnectCallbackRoute,
   ProjectsProjectKeyRoute: ProjectsProjectKeyRoute,
   AutomationsIndexRoute: AutomationsIndexRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,

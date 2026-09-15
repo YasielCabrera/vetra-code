@@ -9,12 +9,16 @@ import * as Cause from "effect/Cause";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
+import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 
 import * as GitWorkflowService from "../../git/GitWorkflowService.ts";
 import * as ProjectSetupScriptRunner from "../../project/ProjectSetupScriptRunner.ts";
+import * as TerminalManager from "../../terminal/Manager.ts";
 import * as VcsStatusBroadcaster from "../../vcs/VcsStatusBroadcaster.ts";
+import * as WorktreeSetupTracker from "../../project/WorktreeSetupTracker.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import { ThreadDeletionReactor } from "../Services/ThreadDeletionReactor.ts";
 import {
@@ -61,6 +65,8 @@ const make = Effect.gen(function* () {
   const gitWorkflow = yield* GitWorkflowService.GitWorkflowService;
   const projectSetupScriptRunner = yield* ProjectSetupScriptRunner.ProjectSetupScriptRunner;
   const vcsStatusBroadcaster = yield* VcsStatusBroadcaster.VcsStatusBroadcaster;
+  const worktreeSetupTracker = yield* WorktreeSetupTracker.WorktreeSetupTracker;
+  const terminalManager = yield* TerminalManager.TerminalManager;
   const threadDeletionReactor = yield* ThreadDeletionReactor;
   const crypto = yield* Crypto.Crypto;
 
@@ -86,7 +92,7 @@ const make = Effect.gen(function* () {
       .refreshStatus(cwd)
       .pipe(Effect.ignoreCause({ log: true }), Effect.forkDetach, Effect.asVoid);
 
-  const appendSetupScriptActivity = (
+  const appendSetupScriptActivityWithOptions = (
     input: {
       readonly threadId: ThreadId;
       readonly kind: "setup-script.requested" | "setup-script.started" | "setup-script.failed";
@@ -139,25 +145,31 @@ const make = Effect.gen(function* () {
     dispatchOptions,
   ) =>
     Effect.gen(function* () {
+      const dispatchFromClient = (
+        dispatchCommand: Parameters<typeof orchestrationEngine.dispatch>[0],
+      ) => orchestrationEngine.dispatch(dispatchCommand, dispatchOptions);
+      const appendSetupScriptActivity = (
+        input: Parameters<typeof appendSetupScriptActivityWithOptions>[0],
+      ) => appendSetupScriptActivityWithOptions(input, dispatchOptions);
       const bootstrap = command.bootstrap;
       const { bootstrap: _bootstrap, ...finalTurnStartCommand } = command;
       let createdThread = false;
       let targetProjectId = bootstrap?.createThread?.projectId;
       let targetProjectCwd = bootstrap?.prepareWorktree?.projectCwd;
       let targetWorktreePath = bootstrap?.createThread?.worktreePath ?? null;
+      // The setup script's terminal, once started. Cancel closes only this
+      // one so terminals the user opened meanwhile survive.
+      let setupTerminalId: string | null = null;
 
       const cleanupCreatedThread = () =>
         createdThread
           ? serverCommandId("bootstrap-thread-delete").pipe(
               Effect.flatMap((commandId) =>
-                orchestrationEngine.dispatch(
-                  {
-                    type: "thread.delete",
-                    commandId,
-                    threadId: command.threadId,
-                  },
-                  dispatchOptions,
-                ),
+                dispatchFromClient({
+                  type: "thread.delete",
+                  commandId,
+                  threadId: command.threadId,
+                }),
               ),
               Effect.as(true),
             )
@@ -169,20 +181,17 @@ const make = Effect.gen(function* () {
         readonly worktreePath: string;
       }) => {
         const detail = projectSetupScriptCompatibilityDetail(input.error);
-        return appendSetupScriptActivity(
-          {
-            threadId: command.threadId,
-            kind: "setup-script.failed",
-            summary: "Setup script failed to start",
-            createdAt: input.requestedAt,
-            payload: {
-              detail,
-              worktreePath: input.worktreePath,
-            },
-            tone: "error",
+        return appendSetupScriptActivity({
+          threadId: command.threadId,
+          kind: "setup-script.failed",
+          summary: "Setup script failed to start",
+          createdAt: input.requestedAt,
+          payload: {
+            detail,
+            worktreePath: input.worktreePath,
           },
-          dispatchOptions,
-        ).pipe(
+          tone: "error",
+        }).pipe(
           Effect.ignoreCause({ log: false }),
           Effect.flatMap(() =>
             Effect.logWarning("bootstrap turn start failed to launch setup script", {
@@ -210,28 +219,22 @@ const make = Effect.gen(function* () {
             worktreePath: input.worktreePath,
           };
           yield* Effect.all([
-            appendSetupScriptActivity(
-              {
-                threadId: command.threadId,
-                kind: "setup-script.requested",
-                summary: "Starting setup script",
-                createdAt: input.requestedAt,
-                payload,
-                tone: "info",
-              },
-              dispatchOptions,
-            ),
-            appendSetupScriptActivity(
-              {
-                threadId: command.threadId,
-                kind: "setup-script.started",
-                summary: "Setup script started",
-                createdAt: startedAt,
-                payload,
-                tone: "info",
-              },
-              dispatchOptions,
-            ),
+            appendSetupScriptActivity({
+              threadId: command.threadId,
+              kind: "setup-script.requested",
+              summary: "Starting setup script",
+              createdAt: input.requestedAt,
+              payload,
+              tone: "info",
+            }),
+            appendSetupScriptActivity({
+              threadId: command.threadId,
+              kind: "setup-script.started",
+              summary: "Setup script started",
+              createdAt: startedAt,
+              payload,
+              tone: "info",
+            }),
           ]).pipe(
             Effect.asVoid,
             Effect.catch((error) =>
@@ -249,19 +252,38 @@ const make = Effect.gen(function* () {
           );
         });
 
+      const tracked = bootstrap?.prepareWorktree !== undefined;
+      const threadId = command.threadId;
+      const track = (effect: Effect.Effect<void>) => (tracked ? effect : Effect.void);
+
+      // Starts the setup script. For tracked bootstraps it returns the
+      // effect that waits for the script to exit and records the outcome
+      // on the card; whether the agent stage waits on it depends on the
+      // script's `async` flag. Returns null when nothing is left to await.
+      // Untracked callers keep the old fire-and-forget behavior.
       const runSetupProgram = () =>
         Effect.gen(function* () {
           if (!bootstrap?.runSetupScript || !targetWorktreePath) {
-            return;
+            yield* track(worktreeSetupTracker.stageStatus(threadId, "setup-script", "skipped"));
+            return null;
           }
           const worktreePath = targetWorktreePath;
           const requestedAt = yield* nowIso;
-          yield* projectSetupScriptRunner
+          yield* track(worktreeSetupTracker.stageStatus(threadId, "setup-script", "running"));
+          const setupResult = yield* projectSetupScriptRunner
             .runForThread({
-              threadId: command.threadId,
+              threadId,
               ...(targetProjectId ? { projectId: targetProjectId } : {}),
               ...(targetProjectCwd ? { projectCwd: targetProjectCwd } : {}),
               worktreePath,
+              ...(tracked
+                ? {
+                    observeCompletion: {
+                      onOutputLine: (line) =>
+                        worktreeSetupTracker.appendTail(threadId, "setup-script", line),
+                    },
+                  }
+                : {}),
             })
             .pipe(
               Effect.matchEffect({
@@ -270,47 +292,190 @@ const make = Effect.gen(function* () {
                     error,
                     requestedAt,
                     worktreePath,
-                  }),
+                  }).pipe(
+                    Effect.andThen(
+                      track(
+                        worktreeSetupTracker.stageStatus(
+                          threadId,
+                          "setup-script",
+                          "failed",
+                          "failed to start",
+                        ),
+                      ),
+                    ),
+                    Effect.as(null),
+                  ),
                 onSuccess: (setupResult) => {
                   if (setupResult.status !== "started") {
-                    return Effect.void;
+                    return track(
+                      worktreeSetupTracker.stageStatus(
+                        threadId,
+                        "setup-script",
+                        "skipped",
+                        "no setup script",
+                      ),
+                    ).pipe(Effect.as(null));
                   }
+                  setupTerminalId = setupResult.terminalId;
                   return recordSetupScriptStarted({
                     requestedAt,
                     worktreePath,
                     scriptId: setupResult.scriptId,
                     scriptName: setupResult.scriptName,
                     terminalId: setupResult.terminalId,
-                  });
+                  }).pipe(
+                    Effect.andThen(
+                      track(
+                        worktreeSetupTracker.update(threadId, (snapshot) => ({
+                          ...snapshot,
+                          setupScript: {
+                            name: setupResult.scriptName,
+                            command: setupResult.scriptCommand,
+                            terminalId: setupResult.terminalId,
+                          },
+                        })),
+                      ),
+                    ),
+                    Effect.as(setupResult),
+                  );
                 },
               }),
             );
+          if (!tracked || !setupResult?.completion) {
+            return null;
+          }
+          // The setup script is best effort, like the untracked path: a
+          // failed install must not throw away the worktree the user just
+          // waited for. The card keeps the failed stage and its terminal.
+          // Forked right away so the terminal listener behind `completion`
+          // is always consumed, even when the turn dispatch fails before
+          // anyone would otherwise wait on it. The tracker update is a
+          // no-op once the snapshot has been dropped.
+          const completionFiber = yield* setupResult.completion.pipe(
+            Effect.flatMap((completion) => {
+              if (completion.exitCode === 0) {
+                return worktreeSetupTracker.stageStatus(threadId, "setup-script", "done");
+              }
+              const detail =
+                completion.exitCode === null
+                  ? "terminal closed before the script finished"
+                  : `exit ${completion.exitCode}`;
+              return worktreeSetupTracker.stageStatus(threadId, "setup-script", "failed", detail);
+            }),
+            Effect.forkDetach,
+          );
+          if (!setupResult.async) {
+            yield* Fiber.join(completionFiber);
+            return null;
+          }
+          return completionFiber;
         });
 
       const bootstrapProgram = Effect.gen(function* () {
-        if (bootstrap?.createThread) {
-          const created = yield* orchestrationEngine.dispatch(
-            {
-              type: "thread.create",
-              commandId: yield* serverCommandId("bootstrap-thread-create"),
-              threadId: command.threadId,
-              projectId: bootstrap.createThread.projectId,
-              title: bootstrap.createThread.title,
-              modelSelection: bootstrap.createThread.modelSelection,
-              runtimeMode: bootstrap.createThread.runtimeMode,
-              interactionMode: bootstrap.createThread.interactionMode,
-              branch: bootstrap.createThread.branch,
-              worktreePath: bootstrap.createThread.worktreePath,
-              ...(bootstrap.createThread.hidden !== undefined
-                ? { hidden: bootstrap.createThread.hidden }
-                : {}),
-              ...(bootstrap.createThread.automationId !== undefined
-                ? { automationId: bootstrap.createThread.automationId }
-                : {}),
-              createdAt: bootstrap.createThread.createdAt,
-            },
-            dispatchOptions,
+        const prepareWorktree = bootstrap?.prepareWorktree;
+        let shouldPrepareWorktree = prepareWorktree
+          ? yield* gitWorkflow.isRepository(prepareWorktree.projectCwd)
+          : false;
+        let worktreeBaseRef = prepareWorktree?.baseBranch ?? null;
+
+        if (prepareWorktree && shouldPrepareWorktree) {
+          // "Start from origin" is a stored default; repos without the
+          // requested remote branch fall back to the local base branch.
+          const startFromOrigin =
+            prepareWorktree.startFromOrigin === true &&
+            (yield* gitWorkflow.remoteExists({
+              cwd: prepareWorktree.projectCwd,
+              remoteName: "origin",
+            }));
+          if (startFromOrigin) {
+            yield* track(worktreeSetupTracker.stageStatus(threadId, "fetch", "running"));
+            yield* gitWorkflow.fetchRemote({
+              cwd: prepareWorktree.projectCwd,
+              remoteName: "origin",
+            });
+            const remoteBaseExists = yield* gitWorkflow.remoteBranchExists({
+              cwd: prepareWorktree.projectCwd,
+              refName: prepareWorktree.baseBranch,
+              remoteName: "origin",
+            });
+            if (remoteBaseExists) {
+              const resolvedRemoteBase = yield* gitWorkflow.resolveRemoteTrackingCommit({
+                cwd: prepareWorktree.projectCwd,
+                refName: prepareWorktree.baseBranch,
+                fallbackRemoteName: "origin",
+              });
+              worktreeBaseRef = resolvedRemoteBase.commitSha;
+              yield* track(
+                worktreeSetupTracker.stageStatus(
+                  threadId,
+                  "fetch",
+                  "done",
+                  `origin/${prepareWorktree.baseBranch} at ${resolvedRemoteBase.commitSha.slice(0, 7)}`,
+                ),
+              );
+            } else {
+              yield* track(
+                worktreeSetupTracker.stageStatus(
+                  threadId,
+                  "fetch",
+                  "warning",
+                  `origin/${prepareWorktree.baseBranch} not found, using local branch`,
+                ),
+              );
+            }
+          } else {
+            yield* track(worktreeSetupTracker.stageStatus(threadId, "fetch", "skipped"));
+          }
+
+          const resolvedWorktreeBaseRef = worktreeBaseRef ?? prepareWorktree.baseBranch;
+          shouldPrepareWorktree = yield* gitWorkflow.hasCommit({
+            cwd: prepareWorktree.projectCwd,
+            refName: resolvedWorktreeBaseRef,
+          });
+          worktreeBaseRef = resolvedWorktreeBaseRef;
+          yield* track(
+            worktreeSetupTracker.update(threadId, (snapshot) => ({
+              ...snapshot,
+              baseRef: resolvedWorktreeBaseRef,
+            })),
           );
+        }
+
+        if (prepareWorktree && !shouldPrepareWorktree) {
+          // Not a git repo, or the base has no commit: the thread runs in
+          // the project checkout instead. The card says so and moves on.
+          yield* track(
+            worktreeSetupTracker.update(threadId, (snapshot) => ({
+              ...snapshot,
+              stages: snapshot.stages.map((stage) =>
+                stage.id === "fetch" || stage.id === "checkout" || stage.id === "submodules"
+                  ? { ...stage, status: "skipped", detail: "using project checkout" }
+                  : stage,
+              ),
+            })),
+          );
+        }
+
+        if (bootstrap?.createThread) {
+          const created = yield* dispatchFromClient({
+            type: "thread.create",
+            commandId: yield* serverCommandId("bootstrap-thread-create"),
+            threadId: command.threadId,
+            projectId: bootstrap.createThread.projectId,
+            title: bootstrap.createThread.title,
+            modelSelection: bootstrap.createThread.modelSelection,
+            runtimeMode: bootstrap.createThread.runtimeMode,
+            interactionMode: bootstrap.createThread.interactionMode,
+            branch: bootstrap.createThread.branch,
+            worktreePath: bootstrap.createThread.worktreePath,
+            ...(bootstrap.createThread.hidden !== undefined
+              ? { hidden: bootstrap.createThread.hidden }
+              : {}),
+            ...(bootstrap.createThread.automationId !== undefined
+              ? { automationId: bootstrap.createThread.automationId }
+              : {}),
+            createdAt: bootstrap.createThread.createdAt,
+          });
           // The successful create is a fence in the engine command queue:
           // every delete for the prior incarnation committed before it.
           // Drain through that event before setup or turn start can own
@@ -319,93 +484,216 @@ const make = Effect.gen(function* () {
           createdThread = true;
         }
 
-        if (bootstrap?.prepareWorktree) {
-          let worktreeBaseRef = bootstrap.prepareWorktree.baseBranch;
-          // "Start from origin" is a stored default. A repo without an origin
-          // remote, or without that branch on origin, falls back to the local
-          // base branch instead of failing the whole bootstrap.
-          const startFromOrigin =
-            bootstrap.prepareWorktree.startFromOrigin === true &&
-            (yield* gitWorkflow.remoteExists({
-              cwd: bootstrap.prepareWorktree.projectCwd,
-              remoteName: "origin",
-            }));
-          if (startFromOrigin) {
-            yield* gitWorkflow.fetchRemote({
-              cwd: bootstrap.prepareWorktree.projectCwd,
-              remoteName: "origin",
-            });
-            const remoteBaseExists = yield* gitWorkflow.remoteBranchExists({
-              cwd: bootstrap.prepareWorktree.projectCwd,
-              refName: bootstrap.prepareWorktree.baseBranch,
-              remoteName: "origin",
-            });
-            if (remoteBaseExists) {
-              const resolvedRemoteBase = yield* gitWorkflow.resolveRemoteTrackingCommit({
-                cwd: bootstrap.prepareWorktree.projectCwd,
-                refName: bootstrap.prepareWorktree.baseBranch,
-                fallbackRemoteName: "origin",
-              });
-              worktreeBaseRef = resolvedRemoteBase.commitSha;
-            }
-          }
-          const worktree = yield* gitWorkflow.createWorktree({
-            cwd: bootstrap.prepareWorktree.projectCwd,
-            refName: worktreeBaseRef,
-            newRefName: bootstrap.prepareWorktree.branch,
-            baseRefName: bootstrap.prepareWorktree.baseBranch,
-            path: null,
-          });
-          targetWorktreePath = worktree.worktree.path;
-          yield* orchestrationEngine.dispatch(
+        if (prepareWorktree && shouldPrepareWorktree && worktreeBaseRef) {
+          yield* worktreeSetupTracker.stageStatus(threadId, "checkout", "running");
+          let checkoutTotal: number | null = null;
+          const worktree = yield* gitWorkflow.createWorktree(
             {
-              type: "thread.meta.update",
-              commandId: yield* serverCommandId("bootstrap-thread-meta-update"),
-              threadId: command.threadId,
-              branch: worktree.worktree.refName,
-              worktreePath: targetWorktreePath,
+              cwd: prepareWorktree.projectCwd,
+              refName: worktreeBaseRef,
+              newRefName: prepareWorktree.branch,
+              baseRefName: prepareWorktree.baseBranch,
+              path: null,
             },
-            dispatchOptions,
+            {
+              progress: {
+                // Git has registered the directory at this point, so a
+                // cancel during the submodule step can still remove it.
+                onWorktreeClaimed: (path) =>
+                  Effect.sync(() => {
+                    targetWorktreePath = path;
+                  }),
+                onCheckoutProgress: ({ percent, completed, total }) => {
+                  checkoutTotal = total;
+                  return worktreeSetupTracker.stage(threadId, "checkout", {
+                    percent,
+                    detail: `${completed.toLocaleString("en-US")} / ${total.toLocaleString("en-US")} files`,
+                  });
+                },
+                onSubmodulesStarted: () =>
+                  worktreeSetupTracker
+                    .stageStatus(
+                      threadId,
+                      "checkout",
+                      "done",
+                      checkoutTotal === null
+                        ? null
+                        : `${checkoutTotal.toLocaleString("en-US")} files`,
+                    )
+                    .pipe(
+                      Effect.andThen(
+                        worktreeSetupTracker.stageStatus(threadId, "submodules", "running"),
+                      ),
+                    ),
+                onSubmoduleLine: (line) => {
+                  const submodulePath = /Submodule path '([^']+)'/.exec(line)?.[1];
+                  return submodulePath === undefined
+                    ? Effect.void
+                    : worktreeSetupTracker.stage(threadId, "submodules", {
+                        detail: submodulePath,
+                      });
+                },
+                onSubmodulesFinished: ({ ok, detail }) =>
+                  worktreeSetupTracker.stageStatus(
+                    threadId,
+                    "submodules",
+                    ok ? "done" : "warning",
+                    ok ? undefined : (detail ?? "submodule checkout failed"),
+                  ),
+              },
+            },
           );
+          const checkoutEndedAt = yield* nowIso;
+          yield* worktreeSetupTracker.update(threadId, (snapshot) => ({
+            ...snapshot,
+            worktreePath: worktree.worktree.path,
+            stages: snapshot.stages.map((stage) => {
+              if (stage.id === "checkout" && stage.status === "running") {
+                return {
+                  ...stage,
+                  status: "done",
+                  percent: 100,
+                  endedAt: checkoutEndedAt,
+                  detail:
+                    checkoutTotal === null
+                      ? stage.detail
+                      : `${checkoutTotal.toLocaleString("en-US")} files`,
+                };
+              }
+              if (stage.id === "submodules" && stage.status === "pending") {
+                return { ...stage, status: "skipped", detail: "none" };
+              }
+              return stage;
+            }),
+          }));
+          targetWorktreePath = worktree.worktree.path;
+          yield* dispatchFromClient({
+            type: "thread.meta.update",
+            commandId: yield* serverCommandId("bootstrap-thread-meta-update"),
+            threadId,
+            branch: worktree.worktree.refName,
+            worktreePath: targetWorktreePath,
+          });
           yield* refreshGitStatus(targetWorktreePath);
         }
 
-        yield* runSetupProgram();
+        const pendingSetupScript = yield* runSetupProgram();
 
-        return yield* orchestrationEngine.dispatch(finalTurnStartCommand, dispatchOptions);
+        yield* track(worktreeSetupTracker.stageStatus(threadId, "agent", "running"));
+        // Past this point a cancel would roll back a thread whose turn has
+        // started. Drop the cancel handle and make the handoff atomic.
+        yield* track(worktreeSetupTracker.markUncancellable(threadId));
+        const started = yield* Effect.uninterruptible(dispatchFromClient(finalTurnStartCommand));
+        yield* track(worktreeSetupTracker.stageStatus(threadId, "agent", "done"));
+        // An async setup script outlives the handoff: the snapshot stays
+        // running so the client keeps its row next to the agent's work,
+        // and settles when the script exits. The turn already started, so
+        // the wait cannot fail the dispatch.
+        const settle = track(worktreeSetupTracker.finish(threadId, "done"));
+        if (pendingSetupScript) {
+          yield* Fiber.join(pendingSetupScript).pipe(
+            Effect.ignoreCause({ log: true }),
+            Effect.andThen(settle),
+            Effect.forkDetach,
+          );
+        } else {
+          yield* settle;
+        }
+        return started;
       });
 
-      return yield* bootstrapProgram.pipe(
+      const runBootstrap = tracked
+        ? Effect.gen(function* () {
+            const fiber = yield* Effect.forkChild(bootstrapProgram);
+            yield* worktreeSetupTracker.begin({
+              threadId,
+              branch: bootstrap?.prepareWorktree?.branch ?? null,
+              baseRef: bootstrap?.prepareWorktree?.baseBranch ?? null,
+              stages: ["fetch", "checkout", "submodules", "setup-script", "agent"],
+              fiber,
+            });
+            return yield* Fiber.join(fiber);
+          })
+        : bootstrapProgram;
+
+      const cleanupAndFail = (
+        cause: Cause.Cause<unknown>,
+        dispatchError: OrchestrationDispatchCommandError,
+      ) =>
+        Effect.uninterruptible(cleanupCreatedThread()).pipe(
+          Effect.matchCauseEffect({
+            onFailure: (cleanupCause) =>
+              Effect.logWarning("bootstrap thread cleanup failed", {
+                threadId,
+                detail: Cause.pretty(cleanupCause),
+              }).pipe(Effect.flatMap(() => Effect.fail(dispatchError))),
+            onSuccess: (threadDeleted) =>
+              Effect.fail(
+                threadDeleted
+                  ? new OrchestrationDispatchCommandError({
+                      message: dispatchError.message,
+                      ...(dispatchError.cause !== undefined ? { cause: dispatchError.cause } : {}),
+                      bootstrapThreadDisposition: "deleted",
+                    })
+                  : dispatchError,
+              ),
+          }),
+        );
+
+      return yield* runBootstrap.pipe(
         Effect.catchCause((cause) => {
           const dispatchError = toBootstrapDispatchCommandCauseError(cause);
           if (Cause.hasInterruptsOnly(cause)) {
-            return Effect.fail(dispatchError);
+            // A user cancel interrupts the forked bootstrap fiber. The
+            // created thread is rolled back like any other failure so the
+            // draft returns to the composer. The setup terminal is closed
+            // first so a still-running script cannot hold files open in
+            // the worktree while git removes it. Closing kills the
+            // process asynchronously, so the removal retries briefly.
+            const closeSetupTerminal = setupTerminalId
+              ? terminalManager.close({
+                  threadId,
+                  terminalId: setupTerminalId,
+                  deleteHistory: true,
+                })
+              : Effect.void;
+            const removeCreatedWorktree =
+              tracked && targetWorktreePath && bootstrap?.prepareWorktree
+                ? closeSetupTerminal.pipe(
+                    Effect.ignoreCause({ log: true }),
+                    Effect.andThen(
+                      gitWorkflow
+                        .removeWorktree({
+                          cwd: bootstrap.prepareWorktree.projectCwd,
+                          path: targetWorktreePath,
+                          force: true,
+                        })
+                        .pipe(Effect.retry({ times: 4, schedule: Schedule.spaced("500 millis") })),
+                    ),
+                    Effect.ignoreCause({ log: true }),
+                    Effect.uninterruptible,
+                  )
+                : Effect.void;
+            return track(worktreeSetupTracker.finish(threadId, "cancelled")).pipe(
+              Effect.andThen(removeCreatedWorktree),
+              Effect.andThen(
+                tracked
+                  ? cleanupAndFail(
+                      cause,
+                      new OrchestrationDispatchCommandError({
+                        message: "Worktree setup cancelled.",
+                      }),
+                    )
+                  : Effect.fail(dispatchError),
+              ),
+            );
           }
-          return Effect.uninterruptible(cleanupCreatedThread()).pipe(
-            Effect.matchCauseEffect({
-              onFailure: (cleanupCause) =>
-                Effect.logWarning("bootstrap thread cleanup failed", {
-                  threadId: command.threadId,
-                  detail: Cause.pretty(cleanupCause),
-                }).pipe(Effect.flatMap(() => Effect.fail(dispatchError))),
-              onSuccess: (threadDeleted) =>
-                Effect.fail(
-                  threadDeleted
-                    ? new OrchestrationDispatchCommandError({
-                        message: dispatchError.message,
-                        ...(dispatchError.cause !== undefined
-                          ? { cause: dispatchError.cause }
-                          : {}),
-                        bootstrapThreadDisposition: "deleted",
-                      })
-                    : dispatchError,
-                ),
-            }),
+          return track(worktreeSetupTracker.finish(threadId, "failed", dispatchError.message)).pipe(
+            Effect.andThen(cleanupAndFail(cause, dispatchError)),
           );
         }),
       );
     });
-
   return {
     dispatchBootstrapTurnStart,
   } satisfies ThreadTurnBootstrapShape;

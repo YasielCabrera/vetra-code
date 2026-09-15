@@ -21,11 +21,16 @@ describe("electron development launcher", () => {
       VITE_DEV_SERVER_URL: "http://127.0.0.1:8526",
       VETRA_PORT: "16566",
       VETRA_HOME: "/tmp/t3",
+      VETRA_OTLP_PROTOCOL: "http/protobuf",
     });
 
     assert.include(
       environmentScript,
       "if [ -z \"${VITE_DEV_SERVER_URL:-}\" ]; then export VITE_DEV_SERVER_URL='http://127.0.0.1:8526'; fi",
+    );
+    assert.include(
+      environmentScript,
+      "if [ -z \"${VETRA_OTLP_PROTOCOL:-}\" ]; then export VETRA_OTLP_PROTOCOL='http/protobuf'; fi",
     );
     assert.notInclude(environmentScript, "\nexport VITE_DEV_SERVER_URL=");
   });

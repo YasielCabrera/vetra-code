@@ -6,14 +6,13 @@ import {
   describeReadinessCause,
   waitForHttpReady as waitForHttpReadyShared,
 } from "@vetra-code/shared/httpReadiness";
+import { cliReleaseDownloadBaseUrl } from "@vetra-code/shared/cliRelease";
 import * as NetService from "@vetra-code/shared/Net";
 import { extractJsonObject, fromLenientJson } from "@vetra-code/shared/schemaJson";
 import { satisfiesSemverRange } from "@vetra-code/shared/semver";
 import {
-  PRODUCT_CLI_NAME,
   PRODUCT_DEFAULT_SERVER_PORT,
   PRODUCT_HOME_DIRECTORY_NAME,
-  PRODUCT_SERVER_PACKAGE,
 } from "@vetra-code/shared/productIdentity";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -62,16 +61,35 @@ const SSH_READY_PROBE_TIMEOUT_MS = 1_000;
 const TUNNEL_SHUTDOWN_TIMEOUT_MS = 2_000;
 const REMOTE_READY_TIMEOUT_MS = 60_000;
 const REMOTE_LAUNCH_TIMEOUT_MS = 90_000;
+// A cold archive launch also downloads and unpacks a ~70 MB release archive
+// and may wait on another installer's lock. The budgets nest: the checksum
+// file is tiny and the archive download is bounded; a waiter outlasts both
+// downloads plus extraction so it can reuse the result; and the SSH command
+// outlasts an install (own or waited-for) plus readiness, with slack for
+// verification and extraction, which have no timeout of their own.
+const REMOTE_ARCHIVE_CHECKSUMS_SECONDS = 30;
+const REMOTE_ARCHIVE_DOWNLOAD_SECONDS = 240;
+const REMOTE_ARCHIVE_LOCK_WAIT_SECONDS = 360;
+const REMOTE_ARCHIVE_LAUNCH_TIMEOUT_MS = 900_000;
 const REMOTE_REUSE_READY_TIMEOUT_MS = 2_000;
 
 export interface RemoteVetraRunnerOptions {
-  readonly packageSpec?: string;
+  /**
+   * Dev mode: run `node <path>` on the remote instead of a release archive.
+   * The only mode that needs Node on the remote.
+   */
   readonly nodeScriptPath?: string | null;
   readonly nodeEngineRange?: string | null;
+  /**
+   * Exact version whose self-contained release archive the remote installs
+   * and runs. Required unless `nodeScriptPath` is set; the remote then needs
+   * neither Node nor npm.
+   */
+  readonly archiveVersion?: string | null;
+  readonly releaseBaseUrl?: string | null;
 }
 
 export interface SshEnvironmentManagerOptions {
-  readonly resolveCliPackageSpec?: () => string;
   readonly resolveCliRunner?: Effect.Effect<RemoteVetraRunnerOptions>;
 }
 
@@ -113,14 +131,18 @@ function sshTargetLogFields(target: DesktopSshEnvironmentTarget) {
   };
 }
 
+function isNodeScriptRunner(runner: RemoteVetraRunnerOptions | undefined): boolean {
+  return Boolean(runner?.nodeScriptPath?.trim());
+}
+
 function sshRunnerLogFields(runner: RemoteVetraRunnerOptions | undefined) {
   if (runner?.nodeScriptPath?.trim()) {
     return { runner: "node-script", nodeScriptPath: runner.nodeScriptPath.trim() };
   }
-  if (runner?.packageSpec?.trim()) {
-    return { runner: "package", packageSpec: runner.packageSpec.trim() };
+  if (runner?.archiveVersion?.trim()) {
+    return { runner: "archive", archiveVersion: runner.archiveVersion.trim() };
   }
-  return { runner: "default" };
+  return { runner: "archive" };
 }
 
 interface SshAuthOperationInput<T> {
@@ -411,46 +433,116 @@ ensure_remote_node_path() {
 const REMOTE_RUNNER_SCRIPT = `#!/bin/sh
 set -eu
 @@VETRA_NODE_ENV_SCRIPT@@
-ensure_remote_node_path || true
 VETRA_NODE_SCRIPT_PATH=@@VETRA_NODE_SCRIPT_PATH@@
 if [ -n "$VETRA_NODE_SCRIPT_PATH" ]; then
+  # Dev mode: a source checkout on the remote. This is the only path that
+  # needs Node, so Node discovery runs here and nowhere else.
+  ensure_remote_node_path || true
   if ! command -v node >/dev/null 2>&1; then
     printf 'Remote host is missing node on PATH. Install Node or configure a supported version manager for non-interactive shells.\\n' >&2
     exit 1
   fi
   exec node "$VETRA_NODE_SCRIPT_PATH" "$@"
 fi
-if command -v ${PRODUCT_CLI_NAME} >/dev/null 2>&1; then
-  exec ${PRODUCT_CLI_NAME} "$@"
+VETRA_ARCHIVE_VERSION=@@VETRA_ARCHIVE_VERSION@@
+if [ -z "$VETRA_ARCHIVE_VERSION" ]; then
+  printf 'No vetra release version was provided for the remote runtime.\\n' >&2
+  exit 1
 fi
-# npm extracts a package before it runs the native builds of its dependencies,
-# so a failed build (${PRODUCT_CLI_NAME} depends on node-pty, which needs a C toolchain) leaves
-# the npx cache without a ${PRODUCT_CLI_NAME} executable. \`npx --yes\` then exits 0 without
-# running anything at all, which the caller only ever sees as a server that
-# never becomes ready. Resolve the CLI once up front so that install failure is
-# reported here, with npm's own output on stderr.
-require_installed_vetra_cli() {
-  if ! VETRA_CLI_PATH="$("$@" -- sh -c 'command -v ${PRODUCT_CLI_NAME}')"; then
-    printf 'Remote host could not install %s. See npm output above for the cause.\\n' @@VETRA_PACKAGE_SPEC@@ >&2
-    return 1
-  fi
-  if [ -n "$VETRA_CLI_PATH" ]; then
-    return 0
-  fi
-  printf 'Remote host installed %s but npm produced no ${PRODUCT_CLI_NAME} executable, which usually means a native dependency (node-pty) failed to build. Install a C toolchain on the remote host (Debian/Ubuntu: build-essential, Fedora/RHEL: gcc-c++ make, macOS: xcode-select --install) and try again.\\n' @@VETRA_PACKAGE_SPEC@@ >&2
-  return 1
+# Self-contained release archive: no Node, npm, or compiler on the remote.
+# Unpacked into the pinned-runtime layout so \`vetra service install\` reuses it.
+VETRA_RELEASE_BASE_URL=@@VETRA_RELEASE_BASE_URL@@
+VETRA_RUNTIME_DIR="$HOME/${PRODUCT_HOME_DIRECTORY_NAME}/runtime/versions/$VETRA_ARCHIVE_VERSION"
+vetra_runtime_ready() {
+  [ -x "$VETRA_RUNTIME_DIR/vetra" ] && [ "$(cat "$VETRA_RUNTIME_DIR/.install-complete" 2>/dev/null)" = "$VETRA_ARCHIVE_VERSION" ]
 }
-# The launcher records this PID, so exec the CLI without an npm wrapper process.
-if command -v npx >/dev/null 2>&1; then
-  require_installed_vetra_cli npx --yes --package @@VETRA_PACKAGE_SPEC@@ || exit 1
-  exec "$VETRA_CLI_PATH" "$@"
+if ! vetra_runtime_ready; then
+  mkdir -p "$HOME/${PRODUCT_HOME_DIRECTORY_NAME}/runtime/versions"
+  # Concurrent launches (two clients, a retry racing a slow first run) must
+  # not both install: mkdir is the atomic lock and the ready check repeats
+  # under it.
+  VETRA_LOCK="$HOME/${PRODUCT_HOME_DIRECTORY_NAME}/runtime/versions/.$VETRA_ARCHIVE_VERSION.install.lock"
+  # mkdir is the only portable atomic exclusive create (mv would silently
+  # nest a candidate inside an existing lock). The owner publishes its pid
+  # right after, so a lock with a live owner is never reclaimed however
+  # slow its download is, and a lock whose owner is dead is reclaimed at
+  # once. A lock with no pid at all is a crash between mkdir and the pid
+  # write; it is reclaimed after a short grace so a live owner has time to
+  # publish.
+  VETRA_LOCK_WAITED=0
+  VETRA_LOCK_UNOWNED=0
+  while ! mkdir "$VETRA_LOCK" 2>/dev/null; do
+    VETRA_LOCK_OWNER="$(cat "$VETRA_LOCK/pid" 2>/dev/null || true)"
+    if [ -n "$VETRA_LOCK_OWNER" ]; then
+      VETRA_LOCK_UNOWNED=0
+      if ! kill -0 "$VETRA_LOCK_OWNER" 2>/dev/null; then
+        rm -rf "$VETRA_LOCK"
+        continue
+      fi
+    else
+      VETRA_LOCK_UNOWNED=$((VETRA_LOCK_UNOWNED + 1))
+      if [ "$VETRA_LOCK_UNOWNED" -ge 5 ]; then
+        rm -rf "$VETRA_LOCK"
+        continue
+      fi
+    fi
+    if [ "$VETRA_LOCK_WAITED" -ge @@VETRA_ARCHIVE_LOCK_WAIT_SECONDS@@ ]; then
+      printf 'Another vetra %s installation has held %s for too long.\\n' "$VETRA_ARCHIVE_VERSION" "$VETRA_LOCK" >&2
+      exit 1
+    fi
+    sleep 1
+    VETRA_LOCK_WAITED=$((VETRA_LOCK_WAITED + 1))
+  done
+  printf '%s\\n' "$$" > "$VETRA_LOCK/pid.tmp" && mv "$VETRA_LOCK/pid.tmp" "$VETRA_LOCK/pid"
+  trap 'rm -rf "$VETRA_LOCK"' EXIT
 fi
-if command -v npm >/dev/null 2>&1; then
-  require_installed_vetra_cli npm exec --yes --package @@VETRA_PACKAGE_SPEC@@ || exit 1
-  exec "$VETRA_CLI_PATH" "$@"
+if ! vetra_runtime_ready; then
+  case "$(uname -s)" in
+    Darwin) VETRA_PLATFORM="darwin" ;;
+    Linux) VETRA_PLATFORM="linux" ;;
+    *) printf 'Remote host %s has no vetra release archive.\\n' "$(uname -s)" >&2; exit 1 ;;
+  esac
+  case "$(uname -m)" in
+    arm64 | aarch64) VETRA_ARCH="arm64" ;;
+    x86_64 | amd64) VETRA_ARCH="x64" ;;
+    *) printf 'Remote host %s has no vetra release archive.\\n' "$(uname -m)" >&2; exit 1 ;;
+  esac
+  VETRA_ARCHIVE="vetra-$VETRA_ARCHIVE_VERSION-$VETRA_PLATFORM-$VETRA_ARCH.tar.gz"
+  VETRA_STAGING="$(mktemp -d "$HOME/${PRODUCT_HOME_DIRECTORY_NAME}/runtime/versions/.staging-XXXXXX")"
+  trap 'rm -rf "$VETRA_STAGING" "$VETRA_LOCK"' EXIT
+  vetra_fetch() {
+    if command -v curl >/dev/null 2>&1; then curl -fsSL --connect-timeout 30 --max-time "$3" "$1" -o "$2"
+    elif command -v wget >/dev/null 2>&1; then wget -q --timeout=30 --tries=1 "$1" -O "$2"
+    else printf 'Remote host needs curl or wget to download %s.\\n' "$VETRA_ARCHIVE" >&2; exit 1
+    fi
+  }
+  vetra_fetch "$VETRA_RELEASE_BASE_URL/v$VETRA_ARCHIVE_VERSION/SHA256SUMS" "$VETRA_STAGING/SHA256SUMS" @@VETRA_ARCHIVE_CHECKSUMS_SECONDS@@
+  vetra_fetch "$VETRA_RELEASE_BASE_URL/v$VETRA_ARCHIVE_VERSION/$VETRA_ARCHIVE" "$VETRA_STAGING/$VETRA_ARCHIVE" @@VETRA_ARCHIVE_DOWNLOAD_SECONDS@@
+  VETRA_EXPECTED="$(grep " \\*\\{0,1\\}$VETRA_ARCHIVE$" "$VETRA_STAGING/SHA256SUMS" | cut -d' ' -f1)"
+  if command -v sha256sum >/dev/null 2>&1; then
+    VETRA_ACTUAL="$(sha256sum "$VETRA_STAGING/$VETRA_ARCHIVE" | cut -d' ' -f1)"
+  else
+    VETRA_ACTUAL="$(shasum -a 256 "$VETRA_STAGING/$VETRA_ARCHIVE" | cut -d' ' -f1)"
+  fi
+  if [ -z "$VETRA_EXPECTED" ] || [ "$VETRA_ACTUAL" != "$VETRA_EXPECTED" ]; then
+    printf 'Checksum mismatch for %s.\\n' "$VETRA_ARCHIVE" >&2; exit 1
+  fi
+  tar -xzf "$VETRA_STAGING/$VETRA_ARCHIVE" -C "$VETRA_STAGING" --strip-components=1
+  rm -f "$VETRA_STAGING/$VETRA_ARCHIVE" "$VETRA_STAGING/SHA256SUMS"
+  # Prove the binary runs here (libc, arch) before marking it ready, or every
+  # later launch would exec a broken install instead of retrying.
+  if ! "$VETRA_STAGING/vetra" --version >/dev/null 2>&1; then
+    printf 'The vetra %s executable does not run on this host.\\n' "$VETRA_ARCHIVE_VERSION" >&2; exit 1
+  fi
+  printf '%s\\n' "$VETRA_ARCHIVE_VERSION" > "$VETRA_STAGING/.install-complete"
+  rm -rf "$VETRA_RUNTIME_DIR"
+  mv "$VETRA_STAGING" "$VETRA_RUNTIME_DIR"
 fi
-printf 'Remote host is missing the Vetra CLI and could not install @@VETRA_PACKAGE_SPEC@@ because node/npm/npx are unavailable on PATH. Install Node or configure a supported version manager for non-interactive shells.\\n' >&2
-exit 1
+if [ -n "\${VETRA_LOCK:-}" ]; then
+  rm -rf "$VETRA_LOCK"
+  trap - EXIT
+fi
+exec "$VETRA_RUNTIME_DIR/vetra" "$@"
 `;
 
 const REMOTE_LAUNCH_SCRIPT = `set -eu
@@ -479,16 +571,30 @@ if [ ! -f "$RUNNER_FILE" ] || ! cmp -s "$RUNNER_NEXT" "$RUNNER_FILE"; then
 fi
 mv "$RUNNER_NEXT" "$RUNNER_FILE"
 chmod 700 "$RUNNER_FILE"
-if ! ensure_remote_node_path; then
+VETRA_ARCHIVE_MODE=@@VETRA_ARCHIVE_MODE@@
+if [ "$VETRA_ARCHIVE_MODE" = "1" ]; then
+  # The archive ships the helpers below inside the executable; the remote
+  # needs no Node at all. Resolving the runner once here also downloads the
+  # archive before the port and readiness probes rely on it.
+  "$RUNNER_FILE" --version >/dev/null
+elif ! ensure_remote_node_path; then
   printf 'Remote host is missing node on PATH. Install Node or configure a supported version manager for non-interactive shells.\\n' >&2
   exit 1
 fi
 pick_port() {
+  if [ "$VETRA_ARCHIVE_MODE" = "1" ]; then
+    "$RUNNER_FILE" __ssh-helper pick-port "$PORT_FILE" "@@VETRA_DEFAULT_REMOTE_PORT@@" "@@VETRA_REMOTE_PORT_SCAN_WINDOW@@"
+    return
+  fi
   node - "$PORT_FILE" "@@VETRA_DEFAULT_REMOTE_PORT@@" "@@VETRA_REMOTE_PORT_SCAN_WINDOW@@" <<'NODE'
 @@VETRA_PICK_PORT_SCRIPT@@
 NODE
 }
 wait_ready() {
+  if [ "$VETRA_ARCHIVE_MODE" = "1" ]; then
+    "$RUNNER_FILE" __ssh-helper wait-ready "$REMOTE_PORT" "$1" "@@VETRA_READY_PROBE_TIMEOUT_MS@@"
+    return
+  fi
   node - "$REMOTE_PORT" "$1" "@@VETRA_READY_PROBE_TIMEOUT_MS@@" <<'NODE'
 @@VETRA_WAIT_READY_SCRIPT@@
 NODE
@@ -502,6 +608,10 @@ wait_for_pid_exit() {
   done
 }
 resolve_default_runtime_port() {
+  if [ "$VETRA_ARCHIVE_MODE" = "1" ]; then
+    "$RUNNER_FILE" __ssh-helper runtime-port "$DEFAULT_RUNTIME_FILE"
+    return
+  fi
   node - "$DEFAULT_RUNTIME_FILE" <<'NODE'
 const fs = require("node:fs");
 const runtimePath = process.argv[2] ?? "";
@@ -588,7 +698,11 @@ fi
 if [ -z "$REMOTE_PORT" ]; then
   REMOTE_PORT="$(pick_port)" || true
   if [ -z "$REMOTE_PORT" ]; then
-    printf 'Failed to find an available port on the remote host. Ensure node is available on PATH.\\n' >&2
+    if [ "$VETRA_ARCHIVE_MODE" = "1" ]; then
+      printf 'Failed to find an available port on the remote host.\\n' >&2
+    else
+      printf 'Failed to find an available port on the remote host. Ensure node is available on PATH.\\n' >&2
+    fi
     exit 1
   fi
   nohup env VETRA_NO_BROWSER=1 "$RUNNER_FILE" serve --host 127.0.0.1 --port "$REMOTE_PORT" --base-dir "$DEFAULT_SERVER_HOME" >>"$LOG_FILE" 2>&1 < /dev/null &
@@ -656,15 +770,52 @@ if [ -f "$LOG_FILE" ]; then
 fi
 `;
 
+export class SshInvalidArchiveVersionError extends Schema.TaggedError<SshInvalidArchiveVersionError>()(
+  "SshInvalidArchiveVersionError",
+  { archiveVersion: Schema.String },
+) {
+  override get message(): string {
+    return `'${this.archiveVersion}' is not an exact vetra version and cannot name a runtime directory.`;
+  }
+}
+
+// The version becomes a directory name the runner removes and recreates, so
+// it must be one exact SemVer segment: no separators, no `..`, no shell
+// metacharacters beyond what SemVer allows.
+const EXACT_ARCHIVE_VERSION =
+  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
+
+export class SshMissingRunnerError extends Schema.TaggedError<SshMissingRunnerError>()(
+  "SshMissingRunnerError",
+  {},
+) {
+  override get message(): string {
+    return "A remote vetra runner needs an archive version or a node script path.";
+  }
+}
+
 export function buildRemoteVetraRunnerScript(input?: RemoteVetraRunnerOptions): string {
-  const packageSpec = shellSingleQuote(
-    input?.packageSpec?.trim() || `${PRODUCT_SERVER_PACKAGE}@latest`,
-  );
   const nodeScriptPath = input?.nodeScriptPath?.trim() || "";
+  const archiveVersion = input?.archiveVersion?.trim() || "";
+  if (nodeScriptPath === "" && archiveVersion === "") {
+    throw new SshMissingRunnerError();
+  }
+  if (archiveVersion !== "" && !EXACT_ARCHIVE_VERSION.test(archiveVersion)) {
+    throw new SshInvalidArchiveVersionError({ archiveVersion });
+  }
+  // Strip the `/v<version>` the helper appends: the script builds URLs itself.
+  const releaseBaseUrl = cliReleaseDownloadBaseUrl("", input?.releaseBaseUrl ?? undefined).replace(
+    /\/v$/u,
+    "",
+  );
   return stripTrailingNewlines(
     applyScriptPlaceholders(REMOTE_RUNNER_SCRIPT, {
-      VETRA_PACKAGE_SPEC: packageSpec,
       VETRA_NODE_SCRIPT_PATH: shellSingleQuote(nodeScriptPath),
+      VETRA_ARCHIVE_VERSION: shellSingleQuote(archiveVersion),
+      VETRA_RELEASE_BASE_URL: shellSingleQuote(releaseBaseUrl),
+      VETRA_ARCHIVE_LOCK_WAIT_SECONDS: String(REMOTE_ARCHIVE_LOCK_WAIT_SECONDS),
+      VETRA_ARCHIVE_DOWNLOAD_SECONDS: String(REMOTE_ARCHIVE_DOWNLOAD_SECONDS),
+      VETRA_ARCHIVE_CHECKSUMS_SECONDS: String(REMOTE_ARCHIVE_CHECKSUMS_SECONDS),
       VETRA_NODE_ENV_SCRIPT: buildRemoteNodeEnvScript(input),
     }),
   );
@@ -681,6 +832,7 @@ export function buildRemoteNodeEnvScript(input?: RemoteVetraRunnerOptions): stri
 
 export function buildRemoteLaunchScript(input?: RemoteVetraRunnerOptions): string {
   return applyScriptPlaceholders(REMOTE_LAUNCH_SCRIPT, {
+    VETRA_ARCHIVE_MODE: isNodeScriptRunner(input) ? "0" : "1",
     VETRA_NODE_ENV_SCRIPT: buildRemoteNodeEnvScript(input),
     VETRA_RUNNER_SCRIPT: stripTrailingNewlines(buildRemoteVetraRunnerScript(input)),
     VETRA_PICK_PORT_SCRIPT: stripTrailingNewlines(REMOTE_PICK_PORT_SCRIPT),
@@ -733,7 +885,9 @@ export const launchOrReuseRemoteServer = Effect.fn("ssh/tunnel.launchOrReuseRemo
     const result = yield* runSshCommand(target, {
       remoteCommandArgs: ["sh", "-l", "-s", "--", remoteStateKey(target)],
       stdin: buildRemoteLaunchScript(runner),
-      timeoutMs: REMOTE_LAUNCH_TIMEOUT_MS,
+      timeoutMs: isNodeScriptRunner(runner)
+        ? REMOTE_LAUNCH_TIMEOUT_MS
+        : REMOTE_ARCHIVE_LAUNCH_TIMEOUT_MS,
       ...(input?.authSecret === undefined ? {} : { authSecret: input.authSecret }),
       ...(input?.batchMode === undefined ? {} : { batchMode: input.batchMode }),
       ...(input?.interactiveAuth === undefined ? {} : { interactiveAuth: input.interactiveAuth }),
@@ -791,6 +945,9 @@ export const issueRemotePairingToken = Effect.fn("ssh/tunnel.issueRemotePairingT
   const result = yield* runSshCommand(target, {
     remoteCommandArgs: ["sh", "-s"],
     stdin: buildRemotePairingScript(target, runner),
+    // Pairing may be the first command on a cold remote, so it can install
+    // the archive on the way.
+    ...(isNodeScriptRunner(runner) ? {} : { timeoutMs: REMOTE_ARCHIVE_LAUNCH_TIMEOUT_MS }),
     ...(input?.authSecret === undefined ? {} : { authSecret: input.authSecret }),
     ...(input?.batchMode === undefined ? {} : { batchMode: input.batchMode }),
     ...(input?.interactiveAuth === undefined ? {} : { interactiveAuth: input.interactiveAuth }),
@@ -1521,13 +1678,8 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
       ...sshTargetLogFields(resolvedTarget),
       key,
     });
-    const packageSpec = options.resolveCliPackageSpec?.();
     const runner =
-      options.resolveCliRunner === undefined
-        ? packageSpec === undefined
-          ? undefined
-          : { packageSpec }
-        : yield* options.resolveCliRunner;
+      options.resolveCliRunner === undefined ? undefined : yield* options.resolveCliRunner;
     yield* Effect.logDebug("ssh.environment.runner.resolved", {
       ...sshTargetLogFields(resolvedTarget),
       ...sshRunnerLogFields(runner),

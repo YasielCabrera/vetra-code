@@ -1,8 +1,7 @@
 import * as NodeCrypto from "node:crypto";
 
-import type { DesktopSshEnvironmentTarget, DesktopUpdateChannel } from "@vetra-code/contracts";
+import type { DesktopSshEnvironmentTarget } from "@vetra-code/contracts";
 import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { PRODUCT_SERVER_PACKAGE } from "@vetra-code/shared/productIdentity";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -15,7 +14,6 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 import { buildSshChildEnvironment, type SshAuthOptions } from "./auth.ts";
 import { SshCommandError, SshInvalidTargetError } from "./errors.ts";
 
-const PUBLISHABLE_VETRA_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u;
 const DEFAULT_SSH_COMMAND_TIMEOUT_MS = 60_000;
 const MAX_SSH_ERROR_OUTPUT_LENGTH = 4_000;
 
@@ -364,22 +362,3 @@ export const resolveSshTarget = Effect.fn("ssh/command.resolveSshTarget")(functi
     ),
   );
 });
-
-export function resolveRemoteVetraCliPackageSpec(input: {
-  readonly appVersion: string;
-  readonly updateChannel: DesktopUpdateChannel;
-  readonly isDevelopment?: boolean;
-}): string {
-  const appVersion = input.appVersion.trim();
-  if (!input.isDevelopment && PUBLISHABLE_VETRA_VERSION_PATTERN.test(appVersion)) {
-    return `${PRODUCT_SERVER_PACKAGE}@${appVersion}`;
-  }
-
-  if (input.isDevelopment) {
-    return `${PRODUCT_SERVER_PACKAGE}@nightly`;
-  }
-
-  return input.updateChannel === "nightly"
-    ? `${PRODUCT_SERVER_PACKAGE}@nightly`
-    : `${PRODUCT_SERVER_PACKAGE}@latest`;
-}

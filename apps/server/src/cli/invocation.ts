@@ -44,9 +44,8 @@ function detectCliRunner(entryPath: string): CliRunner | null {
  * anything else suggests the bare package.
  */
 function suggestedPackageSpec(version: string): string {
-  return version.includes("-nightly.")
-    ? `${PRODUCT_SERVER_PACKAGE}@nightly`
-    : PRODUCT_SERVER_PACKAGE;
+  const channel = /^[^-+]+-(nightly|preview)\./.exec(version)?.[1];
+  return channel === undefined ? PRODUCT_SERVER_PACKAGE : `${PRODUCT_SERVER_PACKAGE}@${channel}`;
 }
 
 /**

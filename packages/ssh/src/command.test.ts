@@ -14,7 +14,6 @@ import {
   baseSshArgs,
   getLastNonEmptyOutputLine,
   parseSshResolveOutput,
-  resolveRemoteVetraCliPackageSpec,
   runSshCommand,
 } from "./command.ts";
 import { SshCommandError } from "./errors.ts";
@@ -95,41 +94,6 @@ describe("ssh command", () => {
           { batchMode: "no" },
         ),
         ["-o", "BatchMode=no", "-o", "ConnectTimeout=10", "-p", "2222"],
-      );
-    }),
-  );
-
-  it.effect("resolves the remote vetra package spec from the desktop release channel", () =>
-    Effect.sync(() => {
-      assert.equal(
-        resolveRemoteVetraCliPackageSpec({
-          appVersion: "0.0.17",
-          updateChannel: "latest",
-        }),
-        "@vetra-code/server@0.0.17",
-      );
-      assert.equal(
-        resolveRemoteVetraCliPackageSpec({
-          appVersion: "0.0.17-nightly.20260415.44",
-          updateChannel: "nightly",
-        }),
-        "@vetra-code/server@0.0.17-nightly.20260415.44",
-      );
-      assert.equal(
-        resolveRemoteVetraCliPackageSpec({
-          appVersion: "0.0.0-dev",
-          updateChannel: "nightly",
-          isDevelopment: true,
-        }),
-        "@vetra-code/server@nightly",
-      );
-      assert.equal(
-        resolveRemoteVetraCliPackageSpec({
-          appVersion: "0.0.0-dev",
-          updateChannel: "latest",
-          isDevelopment: true,
-        }),
-        "@vetra-code/server@nightly",
       );
     }),
   );

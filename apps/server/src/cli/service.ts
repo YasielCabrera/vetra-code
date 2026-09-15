@@ -5,6 +5,7 @@ import * as Layer from "effect/Layer";
 import * as Terminal from "effect/Terminal";
 import { Command, Flag, GlobalFlag, Prompt } from "effect/unstable/cli";
 import { PRODUCT_CLI_NAME, PRODUCT_SERVER_PACKAGE } from "@vetra-code/shared/productIdentity";
+import { FetchHttpClient } from "effect/unstable/http";
 
 import packageJson from "../../package.json" with { type: "json" };
 import * as BootService from "../cloud/bootService.ts";
@@ -18,7 +19,11 @@ export const bootServiceLayer = (config: ServerConfig.ServerConfig["Service"]) =
     baseDir: config.baseDir,
     logsDir: config.logsDir,
     cliVersion: packageJson.version,
-  }).pipe(Layer.provide(ProcessRunner.layer));
+  }).pipe(
+    Layer.provide(ProcessRunner.layer),
+    // Archive-distributed versions download the release archive here.
+    Layer.provide(FetchHttpClient.layer),
+  );
 
 export type ServiceReconcileResult =
   | {
@@ -34,6 +39,7 @@ export type ServiceReconcileResult =
 /** Install, update, or repair the service using the CLI version running this command. */
 export const reconcileService = Effect.fn("cli.service.reconcile")(function* (options?: {
   readonly allowDowngrade?: boolean;
+  readonly start?: boolean;
 }) {
   const service = yield* BootService.BootService;
   const status = yield* service.status;
@@ -83,7 +89,7 @@ export function formatServiceStatus(
       `  Unit: ${status.unitPath}`,
       `  Logs: ${status.logPath}`,
       ...problems,
-      `  Next: Use \`npx ${PRODUCT_SERVER_PACKAGE}@${installedVersion} service update\` to repair it, or pass \`--allow-downgrade\` explicitly.`,
+      `  Next: Run \`vetra update ${installedVersion}\` to match it, or pass \`--allow-downgrade\` to \`vetra service install\` explicitly.`,
     ].join("\n");
   }
   return [
@@ -92,9 +98,7 @@ export function formatServiceStatus(
     `  Unit: ${status.unitPath}`,
     `  Logs: ${status.logPath}`,
     ...problems,
-    ...(status.current
-      ? []
-      : [`  Next: Run \`npx ${PRODUCT_SERVER_PACKAGE}@${cliVersion} service update\`.`]),
+    ...(status.current ? [] : ["  Next: Run `vetra service install` to repair it."]),
   ].join("\n");
 }
 
@@ -136,14 +140,18 @@ const serviceInstallCommand = Command.make("install", serviceReconcileFlags).pip
   ),
 );
 
+// Kept one release for muscle memory and old docs. It did what `vetra service
+// install` does; the way to move to a newer release is `vetra update`.
 const serviceUpdateCommand = Command.make("update", serviceReconcileFlags).pipe(
-  Command.withDescription(
-    `Update or repair the background service using this CLI version. Use \`npx ${PRODUCT_SERVER_PACKAGE}@latest service update\` for the latest release.`,
-  ),
+  Command.withDescription("Deprecated. Run `vetra update` to move to a newer release."),
+  Command.unlisted,
   Command.withHandler((flags) =>
     runServiceCommand(
       flags,
       Effect.gen(function* () {
+        yield* Console.log(
+          "`vetra service update` is deprecated: run `vetra update` to move to a newer release, or `vetra service install` to repair the service. Repairing now.",
+        );
         const result = yield* reconcileService({ allowDowngrade: flags.allowDowngrade });
         if (!result.changed) {
           yield* Console.log(
@@ -153,6 +161,27 @@ const serviceUpdateCommand = Command.make("update", serviceReconcileFlags).pipe(
         }
         yield* Console.log(
           `${result.previouslyInstalled ? "Updated" : "Installed"} Vetra Code service with ${PRODUCT_SERVER_PACKAGE}@${packageJson.version}.\nLogs: ${result.plan.logPath}`,
+        );
+      }),
+    ),
+  ),
+);
+
+const serviceRestartCommand = Command.make("restart", projectLocationFlags).pipe(
+  Command.withDescription(
+    "Restart the background service. Picks up a version installed by `vetra update` that was not restarted at the time.",
+  ),
+  Command.withHandler((flags) =>
+    runServiceCommand(
+      flags,
+      Effect.gen(function* () {
+        const service = yield* BootService.BootService;
+        const status = yield* service.status;
+        const restarted = yield* service.restart;
+        yield* Console.log(
+          restarted
+            ? `Restarted the Vetra Code service${status.installedVersion === undefined ? "" : ` on ${PRODUCT_SERVER_PACKAGE}@${status.installedVersion}`}.`
+            : "Vetra Code service is not installed.",
         );
       }),
     ),
@@ -265,8 +294,9 @@ export const serviceCommand = Command.make("service").pipe(
   Command.withDescription("Manage the Vetra Code background service."),
   Command.withSubcommands([
     serviceInstallCommand,
+    serviceRestartCommand,
     serviceUninstallCommand,
-    serviceUpdateCommand,
     serviceStatusCommand,
+    serviceUpdateCommand,
   ]),
 );

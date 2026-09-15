@@ -45,7 +45,7 @@ function recoveryHint(error: RelayProtectedError): string {
     case "RelayEnvironmentLinkLimitExceededError":
       return "Unlink an unused environment in Vetra Connect, then restart Vetra Code on this machine.";
     case "RelayAuthInvalidError":
-      return "Run `t3 connect login` to check this machine's authorization. If the stored credential was revoked, sign out with `t3 connect logout`, then run `t3 connect` again. Restart Vetra Code after signing in.";
+      return "Run `vetra connect login` to check this machine's authorization. If the stored credential was revoked, sign out with `vetra connect logout`, then run `vetra connect` again. Restart Vetra Code after signing in.";
     case "RelayEnvironmentLinkProofExpiredError":
     case "RelayEnvironmentLinkProofInvalidError":
       return "Check this machine's date and time, update Vetra Code, then restart it.";

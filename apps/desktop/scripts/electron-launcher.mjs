@@ -116,6 +116,8 @@ export function makeDevelopmentEnvironmentScript(environment) {
     ["VETRA_COMMIT_HASH", environment.VETRA_COMMIT_HASH],
     ["VETRA_OTLP_TRACES_URL", environment.VETRA_OTLP_TRACES_URL],
     ["VETRA_OTLP_EXPORT_INTERVAL_MS", environment.VETRA_OTLP_EXPORT_INTERVAL_MS],
+    ["VETRA_OTLP_HEADERS", environment.VETRA_OTLP_HEADERS],
+    ["VETRA_OTLP_PROTOCOL", environment.VETRA_OTLP_PROTOCOL],
     ["VETRA_DESKTOP_APP_USER_MODEL_ID", APP_BUNDLE_ID],
   ].filter((entry) => typeof entry[1] === "string" && entry[1].trim().length > 0);
   return [

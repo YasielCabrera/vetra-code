@@ -215,6 +215,12 @@ az login
 
 **Git is required** – Vetra Code uses Git for all local operations. Ensure `git` is installed on your server.
 
+Use **Add Project** in the command palette (`Cmd/Ctrl+K`) to clone a repository. Choose a hosting
+provider or paste a Git URL, then choose where to save it. The project opens right away while the
+clone runs in the background: you can write your first prompt, and sending waits until the files
+are in place. A toast tracks progress and lets you cancel; if the clone fails, retry it from the
+toast or from the banner above the composer.
+
 **Server-side setup** – Authentication happens on the machine running Vetra Code (the server), not your local browser. If you're using a hosted or team instance, your administrator may have already configured providers.
 
 ## Create a pull request
@@ -236,7 +242,7 @@ GitLab calls these merge requests.
 GitHub, GitLab, and Azure DevOps support auto-merge while checks are outstanding. GitHub also
 supports approving waiting fork workflows and opening a revert pull request for a merged change.
 
-GitHub routing is off by default. In Settings → Connections (Environments on mobile), choose
+GitHub sharing is off by default. In Settings → Connections → GitHub sharing (Environments on mobile), choose
 **Read PRs** or **Read and act** for each environment you trust to share GitHub access.
 Enable both the original environment and the environment answering its requests on this client.
 **Read and act** can use broader GitHub permissions than the original environment's credential;

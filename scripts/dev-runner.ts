@@ -397,6 +397,7 @@ export function createDevRunnerEnv({
       delete output.VETRA_MODE;
       delete output.VETRA_NO_BROWSER;
       delete output.VETRA_HOST;
+      delete output.VETRA_DEV_AUTH_TOKEN;
     }
 
     if (!isDesktopMode && host !== undefined) {

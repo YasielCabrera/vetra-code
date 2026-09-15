@@ -52,6 +52,8 @@ describe("DesktopEnvironment", () => {
           VETRA_DEV_REMOTE_SERVER_ENTRY_PATH: " /remote/server.mjs ",
           VETRA_OTLP_TRACES_URL: " http://127.0.0.1:4318/v1/traces ",
           VETRA_OTLP_EXPORT_INTERVAL_MS: "2500",
+          VETRA_OTLP_HEADERS: "authorization=Basic%20abc%3D%3D,x-tenant=acme",
+          VETRA_OTLP_PROTOCOL: "http/protobuf",
         },
       );
 
@@ -85,6 +87,14 @@ describe("DesktopEnvironment", () => {
       assert.deepEqual(environment.commitHashOverride, Option.some("0123456789abcdef"));
       assert.deepEqual(environment.otlpTracesUrl, Option.some("http://127.0.0.1:4318/v1/traces"));
       assert.equal(environment.otlpExportIntervalMs, 2500);
+      assert.deepEqual(
+        environment.otlpHeaders,
+        Option.some({
+          authorization: "Basic abc==",
+          "x-tenant": "acme",
+        }),
+      );
+      assert.equal(environment.otlpProtocol, "http/protobuf");
     }),
   );
 
@@ -102,6 +112,7 @@ describe("DesktopEnvironment", () => {
       assert.equal(environment.logDir, "/tmp/vetra/userdata/logs");
       assert.equal(environment.browserArtifactsDir, "/tmp/vetra/userdata/browser-artifacts");
       assert.equal(environment.serverSettingsPath, "/tmp/vetra/userdata/settings.json");
+      assert.equal(environment.otlpProtocol, "http/json");
     }),
   );
 
@@ -119,6 +130,10 @@ describe("DesktopEnvironment", () => {
       assert.equal(
         environment.backendEntryPath,
         "/install/resources/server.asar/apps/server/dist/bin.mjs",
+      );
+      assert.equal(
+        environment.clientAssetsDir,
+        "/install/resources/server.asar/apps/server/dist/client",
       );
     }),
   );

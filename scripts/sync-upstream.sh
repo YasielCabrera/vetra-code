@@ -59,6 +59,20 @@ PRUNE_PATHS=(
   # rename pass below never rewrites.
   .github/workflows/publish-aur.yml
   packaging/aur
+  # Upstream's one-line installers. They default to downloading and executing
+  # pingdotgg/t3code release binaries, and are only reachable from the t3.codes
+  # pages that serve them. Restore once Vetra publishes its own archives.
+  scripts/install.sh
+  scripts/install.ps1
+  # Upstream's desktop release job is `workflow_call`-only and reachable solely
+  # from the release.yml this fork deleted; its preview-publish half is built
+  # around Developer ID signing secrets we do not hold. This fork's
+  # self-contained .github/workflows/desktop-macos-preview.yml owns that surface.
+  .github/workflows/release-desktop.yml
+  .github/workflows/desktop-macos-preview-publish.yml
+  # Deleted during fork isolation: the fork's dev setup lives in AGENTS.md, and
+  # upstream's file documents the T3 CLI and t3.json worktree scripts.
+  docs/operations/development.md
 )
 PRUNE_GLOBS=(
   'apps/server/src/cli/triage*'
@@ -78,6 +92,13 @@ RENAMES=(
   # just `vetra <cmd>`. Keyed on the whole prefix, ahead of the pairs below,
   # because none of them match a bare `t3` followed by a space.
   'npx t3 =vetra '
+  # Upstream's user-facing command references (`t3 service install`, `t3 update`,
+  # `t3 theme set`, ...). The fork's CLI is PRODUCT_CLI_NAME, so leaving these
+  # tells users to run a binary that does not exist. Keyed on the opening
+  # backtick and a trailing space so repository URLs, `t3.codes` hosts, and the
+  # `t3.large` instance type are untouched. Must stay after the `npx t3 ` pair
+  # above, which is more specific.
+  '`t3 =`vetra '
   'com.t3tools.t3code=com.vetra.code'
   # Same application id in upstream's PascalCase spelling, used by the Linux
   # window-capture code as a D-Bus well-known name and a desktop-entry name.
@@ -166,6 +187,12 @@ RENAMES=(
   # (browser-favicons, chunk-load-reloaded, default-theme-applied,
   # remote-open-hint-seen); renaming them is a migration, not a sync.
   '"t3code:="vetra:'
+  # The same scheme written without an opening quote: `t3code://app` in docs and
+  # in template literals such as `t3code://app${pathname}`. The quoted pair above
+  # cannot see those, and the generic `t3code` pair below turns them into
+  # `vetra-code://`, which is the user-data slug rather than
+  # PRODUCT_DESKTOP_PROTOCOL and matches no registered scheme.
+  't3code://=vetra://'
   # Upstream's `localStorage` namespace for the pull request surfaces. Nothing
   # else matches a bare `t3.` prefix, and a blanket pair cannot be added: it
   # would also rewrite `t3.codes` hosts and the `t3.large` EC2 instance type a
@@ -197,8 +224,10 @@ RENAMES=(
   # a local binding ('t3File') or a module path ('lib/t3ProjectFileDefaults').
   't3ProjectFile=vetraProjectFile'
   't3File=vetraFile'
-  # Upstream's remote-launch script builder. 'T3Runner' matches no other pair.
-  'buildRemoteT3RunnerScript=buildRemoteVetraRunnerScript'
+  # Upstream's remote-launch script builder and the options type it takes.
+  # 'T3Runner' matches no other pair, and keying on the shared 'RemoteT3Runner'
+  # prefix covers both 'buildRemoteT3RunnerScript' and 'RemoteT3RunnerOptions'.
+  'RemoteT3Runner=RemoteVetraRunner'
   # Binary names built from a variable, as in the Linux capture helpers'
   # `t3-${backend}-snap-shot`. The quoted `"t3-` pair below cannot see these,
   # and the crates in native/ rename to `vetra-*`, so a miss leaves the build
@@ -300,7 +329,11 @@ while IFS= read -r file; do
     from="${pair%%=*}"
     to="${pair#*=}"
     if [[ "$from" == "t3code" ]]; then
-      perl -pi -e 's{(?<!pingdotgg/)\Qt3code\E}{vetra-code}g' "$file"
+      # Case-insensitive guard: upstream pairs `pingdotgg/t3code` with
+      # `PingDotGG/t3code` in repo-identity fixtures because both lower-case to
+      # the same key. Rewriting only the capitalised one silently breaks those
+      # tests, since `vetra-code` and `t3code` no longer case-fold together.
+      perl -pi -e 's{(?<!(?i:pingdotgg/))\Qt3code\E}{vetra-code}g' "$file"
     elif [[ "$from" == "effect-acp" ]]; then
       perl -pi -e 's{(?<!\@vetra-code/)(?<!packages/)\Qeffect-acp\E}{\@vetra-code/effect-acp}g' "$file"
     elif [[ "$from" == "effect-codex-app-server" ]]; then
