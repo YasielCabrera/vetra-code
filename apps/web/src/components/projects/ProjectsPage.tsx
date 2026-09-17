@@ -13,6 +13,7 @@ import { useAllEnvironmentShellsBootstrapped, useThreadShells } from "../../stat
 import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "../../workspaceTitlebar";
 import { ProjectFavicon } from "../ProjectFavicon";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { SidebarInset } from "../ui/sidebar";
@@ -194,9 +195,12 @@ const ProjectRow = memo(function ProjectRow({
             {group.displayName}
           </span>
           <span className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground/70">
-            <span className="truncate" title={group.workspaceRoot}>
-              {repositoryLabel ?? group.workspaceRoot}
-            </span>
+            <Tooltip>
+              <TooltipTrigger
+                render={<span className="truncate">{repositoryLabel ?? group.workspaceRoot}</span>}
+              />
+              <TooltipPopup>{group.workspaceRoot}</TooltipPopup>
+            </Tooltip>
             {checkoutLabel ? (
               <span className="flex shrink-0 items-center gap-1">
                 <LayersIcon aria-hidden className="size-3" />

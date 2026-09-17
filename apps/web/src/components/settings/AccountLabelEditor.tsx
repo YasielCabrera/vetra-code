@@ -9,6 +9,7 @@ import { WEB3_ACCOUNT_LABEL_MAX_LENGTH } from "@vetra-code/web3/schema";
 import { PencilIcon } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
+import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 
 import { resolveAccountLabelCommit } from "./web3Settings.logic";
@@ -79,12 +80,11 @@ export function AccountLabelEditor({
     );
   }
 
-  return (
+  const trigger = (
     <button
       type="button"
       disabled={disabled}
       aria-label={`Rename ${label}`}
-      title="Rename account"
       className={cn(
         "group inline-flex min-w-0 max-w-[14rem] items-center gap-1 rounded-sm px-1 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-64",
         className,
@@ -100,5 +100,12 @@ export function AccountLabelEditor({
         aria-hidden
       />
     </button>
+  );
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={trigger} />
+      <TooltipPopup>Rename account</TooltipPopup>
+    </Tooltip>
   );
 }

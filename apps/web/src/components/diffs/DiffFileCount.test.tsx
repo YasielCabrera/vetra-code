@@ -29,7 +29,6 @@ describe("DiffFileCount", () => {
 
     expect(markup).toContain("12+ files</span>");
     expect(markup).toContain(`aria-label="${explanation}"`);
-    expect(markup).toContain(`title="${explanation}"`);
   });
 
   it("renders nothing when no changed files are available", () => {

@@ -11,6 +11,7 @@ import {
   buildSidebarProjectPickerEntries,
   buildSidebarProjectSnapshots,
 } from "~/sidebarProjectGrouping";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useProjects, useThreadShells } from "~/state/entities";
 import { useEnvironments, usePrimaryEnvironmentId } from "~/state/environments";
 import {
@@ -117,9 +118,12 @@ export function ProjectSelectorControl(props: ProjectSelectorControlProps) {
             >
               {entries.map(({ group }) => (
                 <MenuRadioItem key={group.projectKey} value={group.projectKey} closeOnClick>
-                  <span className="block min-w-0 truncate" title={group.displayName}>
-                    {group.displayName}
-                  </span>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={<span className="block min-w-0 truncate">{group.displayName}</span>}
+                    />
+                    <TooltipPopup>{group.displayName}</TooltipPopup>
+                  </Tooltip>
                 </MenuRadioItem>
               ))}
             </MenuRadioGroup>

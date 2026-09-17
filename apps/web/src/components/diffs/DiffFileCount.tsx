@@ -1,5 +1,7 @@
 import { FileDiffIcon } from "lucide-react";
 
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+
 export function DiffFileCount(props: { count: number; truncated: boolean }) {
   const { count, truncated } = props;
   if (count <= 0) return null;
@@ -12,14 +14,23 @@ export function DiffFileCount(props: { count: number; truncated: boolean }) {
     ? `At least ${formattedCount} changed files; diff preview is truncated`
     : `${formattedCount} changed file${count === 1 ? "" : "s"}`;
 
-  return (
+  const chip = (
     <span
       className="inline-flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground tabular-nums"
       aria-label={accessibleLabel}
-      title={truncated ? accessibleLabel : undefined}
     >
       <FileDiffIcon aria-hidden="true" className="size-3.5" />
       {fileLabel}
     </span>
+  );
+
+  // Only a truncated preview needs explaining; an exact count already reads as one.
+  if (!truncated) return chip;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={chip} />
+      <TooltipPopup>{accessibleLabel}</TooltipPopup>
+    </Tooltip>
   );
 }

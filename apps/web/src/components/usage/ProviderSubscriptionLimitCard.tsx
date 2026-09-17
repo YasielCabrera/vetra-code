@@ -5,9 +5,11 @@ import type {
   ProviderSubscriptionUsageWindow,
 } from "@vetra-code/contracts";
 import { TriangleAlertIcon } from "lucide-react";
+import { useState } from "react";
 
 import { cn } from "../../lib/utils";
 import { RedactedSensitiveText } from "../settings/RedactedSensitiveText";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 export type ReadySubscriptionUsage = Extract<
   ProviderSubscriptionUsageInstanceResult,
@@ -313,6 +315,12 @@ function ProviderCostDashboard({
   readonly now: Date;
   readonly presentation: ProviderSubscriptionPresentation;
 }) {
+  // One tooltip for the whole chart, re-anchored to the bar under the pointer.
+  // A period can run to 365 bars, and a tooltip root per bar is a real cost.
+  const [hoveredBar, setHoveredBar] = useState<{
+    readonly element: HTMLElement;
+    readonly label: string;
+  } | null>(null);
   const points = chartPoints(cost, now);
   const maxCost = points.reduce((maximum, point) => Math.max(maximum, point.cost ?? 0), 0);
   const maxTokens = points.reduce((maximum, point) => Math.max(maximum, point.tokens ?? 0), 0);
@@ -379,7 +387,7 @@ function ProviderCostDashboard({
               const value = chartKind === "cost" ? point.cost : point.tokens;
               const height =
                 value && chartMaximum > 0 ? Math.max(6, (value / chartMaximum) * 100) : 0;
-              const title =
+              const label =
                 value === undefined
                   ? `${point.date}: no reported usage`
                   : chartKind === "cost"
@@ -388,21 +396,34 @@ function ProviderCostDashboard({
               return (
                 <span
                   key={point.date}
-                  title={title}
                   aria-hidden
                   className="min-w-0 rounded-t-[2px]"
                   style={{ height: `${height}%`, backgroundColor: presentation.accentColor }}
+                  onPointerEnter={(event) => setHoveredBar({ element: event.currentTarget, label })}
+                  onPointerLeave={() =>
+                    setHoveredBar((current) => (current?.label === label ? null : current))
+                  }
                 />
               );
             })}
           </div>
+          <Tooltip open={hoveredBar !== null} onOpenChange={() => setHoveredBar(null)}>
+            <TooltipPopup anchor={hoveredBar?.element ?? null}>{hoveredBar?.label}</TooltipPopup>
+          </Tooltip>
         </figure>
       ) : null}
       <div className="space-y-0.5 text-[11px] leading-4 text-muted-foreground">
         {cost.topModel ? (
-          <p className="truncate" title={cost.topModel}>
-            <span className="font-medium text-foreground/70">Top model:</span> {cost.topModel}
-          </p>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <p className="truncate">
+                  <span className="font-medium text-foreground/70">Top model:</span> {cost.topModel}
+                </p>
+              }
+            />
+            <TooltipPopup>{cost.topModel}</TooltipPopup>
+          </Tooltip>
         ) : null}
         {cost.scope === "local-environment" ? (
           <p>
@@ -678,12 +699,16 @@ export function ProviderSubscriptionLimitCard({
           ) : (
             <span aria-hidden />
           )}
-          <span
-            className="text-[11px] text-muted-foreground"
-            title={`${sourceLabel(instance.source)} · Refreshed ${absoluteRefresh}`}
-          >
-            Updated {formatUpdated(instance.fetchedAt, renderTime)}
-          </span>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span className="text-[11px] text-muted-foreground">
+                  Updated {formatUpdated(instance.fetchedAt, renderTime)}
+                </span>
+              }
+            />
+            <TooltipPopup>{`${sourceLabel(instance.source)} · Refreshed ${absoluteRefresh}`}</TooltipPopup>
+          </Tooltip>
           <span
             className={cn(
               "text-right text-[11px] text-muted-foreground",
