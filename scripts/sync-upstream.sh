@@ -22,6 +22,8 @@ UPSTREAM_REF="${1:-upstream/main}"
 # files upstream newly adds inside them never land.
 PRUNE_PATHS=(
   .agents/skills/test-t3-mobile
+  # iOS build/debug automation for the mobile client this fork does not ship.
+  .agents/skills/ios-debugger-agent
   # Upstream support automation fetches T3's playbook and files issues in
   # pingdotgg/t3code. Keep it out until Vetra owns a published CLI and support
   # destination.
@@ -40,6 +42,7 @@ PRUNE_PATHS=(
   scripts/mobile-showcase-environment.ts
   scripts/mobile-native-static-check.ts
   scripts/mobile-native-static-check.test.ts
+  scripts/mobile-native-client.ts
   't3.json'
   # Mobile-only internals docs. The fork ships no mobile client, so these
   # describe trees the prune pass deletes.
@@ -58,12 +61,19 @@ PRUNE_PATHS=(
   # PKGBUILD directories also carry T3 identity in their *paths*, which the
   # rename pass below never rewrites.
   .github/workflows/publish-aur.yml
+  .github/workflows/release.yml
+  .github/workflows/mobile-eas-preview.yml
+  .github/workflows/mobile-eas-production.yml
+  .github/workflows/mobile-fingerprint-check.yml
+  .github/workflows/mobile-showcase-screenshots.yml
+  .github/workflows/deploy-relay.yml
   packaging/aur
   # Upstream's one-line installers. They default to downloading and executing
   # pingdotgg/t3code release binaries, and are only reachable from the t3.codes
   # pages that serve them. Restore once Vetra publishes its own archives.
   scripts/install.sh
   scripts/install.ps1
+  scripts/install.test.ts
   # Upstream's desktop release job is `workflow_call`-only and reachable solely
   # from the release.yml this fork deleted; its preview-publish half is built
   # around Developer ID signing secrets we do not hold. This fork's

@@ -1,5 +1,5 @@
 import { RefreshIcon } from "~/components/ui/refresh-icon";
-import { ChevronDownIcon, GitPullRequestIcon } from "lucide-react";
+import { ChevronDownIcon } from "lucide-react";
 import * as Duration from "effect/Duration";
 import * as Option from "effect/Option";
 import { useEffect, useState, type ReactNode } from "react";
@@ -68,6 +68,8 @@ import {
 } from "./settingsLayout";
 import { searchableSetting } from "./settingsSearch";
 import { SettingsRow } from "./settingsLayout";
+import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
+
 import { DEFAULT_CLIENT_SETTINGS } from "@vetra-code/contracts/settings";
 import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
 
@@ -514,7 +516,7 @@ function EmptySourceControlDiscovery({
     <SettingsSection id={searchableSetting("source-control").id} title="Server environment">
       <Empty className="min-h-88">
         <EmptyMedia variant="icon">
-          <GitPullRequestIcon />
+          <PullRequestGlyph.pullRequest />
         </EmptyMedia>
         <EmptyHeader>
           <EmptyTitle>

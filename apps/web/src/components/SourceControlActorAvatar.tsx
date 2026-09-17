@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { cn } from "~/lib/utils";
 
 interface SourceControlActor {
@@ -15,7 +17,9 @@ export function SourceControlActorAvatar({
 }) {
   const login = actor?.login ?? "ghost";
   const avatarUrl = actor?.avatarUrl ?? null;
-  return avatarUrl === null ? (
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null);
+  // Not every host reports an avatar, and a private host may refuse the browser's request.
+  return avatarUrl === null || failedAvatarUrl === avatarUrl ? (
     <span
       aria-hidden
       className={cn(
@@ -32,6 +36,7 @@ export function SourceControlActorAvatar({
       src={avatarUrl}
       loading="lazy"
       className={cn("size-4 shrink-0 rounded-full bg-muted object-cover", className)}
+      onError={() => setFailedAvatarUrl(avatarUrl)}
     />
   );
 }

@@ -1,3 +1,4 @@
+import type { ClientSettings } from "@vetra-code/contracts/settings";
 import type { AssistantCitation } from "@vetra-code/contracts";
 import {
   serializeAssistantCitation,
@@ -10,7 +11,7 @@ import {
 
 export type ComposerTriggerKind = "path" | "pull-request" | "slash-command" | "skill";
 export type ComposerSlashCommand = "model" | "plan" | "default";
-export type ComposerSubmissionIntent = "foreground" | "background";
+export type ComposerSubmissionIntent = "foreground" | "background" | "alternate";
 
 export interface ComposerTrigger {
   kind: ComposerTriggerKind;
@@ -28,9 +29,17 @@ export function composerSubmissionIntentForEnter(input: {
   shiftKey: boolean;
   modifierKey: boolean;
   isDraftThread: boolean;
+  isRunning?: boolean;
+  sendShortcut?: ClientSettings["sendShortcut"];
+  prompt?: string;
 }): ComposerSubmissionIntent | null {
-  if (input.isMobileViewport || input.shiftKey) {
-    return null;
+  const requiresModifier =
+    input.sendShortcut === "mod-enter" ||
+    (input.sendShortcut === "mod-enter-multiline" && /[\r\n]/.test(input.prompt ?? ""));
+  if (input.isMobileViewport || (requiresModifier && !input.modifierKey)) return null;
+  if (input.shiftKey && !(requiresModifier && input.modifierKey && input.isRunning)) return null;
+  if (input.isRunning && input.modifierKey && (!requiresModifier || input.shiftKey)) {
+    return "alternate";
   }
   return input.modifierKey && input.isDraftThread ? "background" : "foreground";
 }
@@ -80,7 +89,7 @@ export function expandCollapsedComposerCursor(text: string, cursorInput: number)
       continue;
     }
     if (segment.type === "skill") {
-      const expandedLength = segment.name.length + 1;
+      const expandedLength = segment.source.length;
       if (remaining <= 1) {
         return expandedCursor + (remaining === 0 ? 0 : expandedLength);
       }
@@ -157,7 +166,7 @@ export function collapseExpandedComposerCursor(text: string, cursorInput: number
       continue;
     }
     if (segment.type === "skill") {
-      const expandedLength = segment.name.length + 1;
+      const expandedLength = segment.source.length;
       if (remaining === 0) {
         return collapsedCursor;
       }
@@ -237,10 +246,11 @@ export function detectComposerTrigger(text: string, cursorInput: number): Compos
       rangeEnd: cursor,
     };
   }
-  if (token.startsWith("$")) {
+  const skillPrefix = /^\p{Sc}/u.exec(token);
+  if (skillPrefix) {
     return {
       kind: "skill",
-      query: token.slice(1),
+      query: token.slice(skillPrefix[0].length),
       rangeStart: tokenStart,
       rangeEnd: cursor,
     };

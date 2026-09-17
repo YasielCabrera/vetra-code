@@ -1,5 +1,6 @@
 import {
   EnvironmentId,
+  ORCHESTRATION_PROTOCOL_VERSION,
   PROVIDER_SEND_TURN_MAX_FILE_BYTES,
   type ExecutionEnvironmentDescriptor,
 } from "@vetra-code/contracts";
@@ -212,6 +213,7 @@ export const make = Effect.gen(function* () {
       ...(machine === null ? {} : { machine }),
     },
     serverVersion: packageJson.version,
+    orchestrationProtocolVersion: ORCHESTRATION_PROTOCOL_VERSION,
     capabilities: {
       repositoryIdentity: true,
       connectionProbe: true,
@@ -221,8 +223,11 @@ export const make = Effect.gen(function* () {
       pullRequests: true,
       issues: true,
       inlineMessageContext: true,
+      requiredWorktreeBootstrap: true,
       threadSettlement: true,
       threadAutoSettlement: true,
+      storageCleanup: true,
+      projectWorktreeCleanup: true,
       threadRestartContinuation: true,
       projectSettingsOverrides: true,
       threadSnooze: true,

@@ -81,6 +81,7 @@ function makeService(
         Layer.succeed(IssueProviderRegistry, fromProviders(providers)),
         Layer.mock(SourceControlProviderRegistry.SourceControlProviderRegistry)({
           resolveHandle,
+          resolveLink: () => undefined,
         }),
         Layer.mock(ProjectionSnapshotQuery.ProjectionSnapshotQuery)({
           getShellSnapshot: () =>

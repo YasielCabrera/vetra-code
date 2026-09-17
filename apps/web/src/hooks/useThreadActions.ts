@@ -7,6 +7,7 @@ import {
 import { settlePromise, squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
 import { canSnooze, threadWokeAt } from "@vetra-code/client-runtime/state/thread-settled";
 import { EnvironmentId, type ScopedThreadRef, ThreadId } from "@vetra-code/contracts";
+import { resolveWorktreeCleanup } from "@vetra-code/shared/projectSettings";
 import * as Cause from "effect/Cause";
 import * as Schema from "effect/Schema";
 import { AsyncResult } from "effect/unstable/reactivity";
@@ -17,6 +18,8 @@ import { getFallbackThreadIdAfterDelete, pinOrderKeyBetween } from "../component
 import { readEnvironmentSupportsAutomations } from "../state/automations";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { terminalEnvironment } from "../state/terminal";
+import { appAtomRegistry } from "../rpc/atomRegistry";
+import { environmentServerConfigsAtom } from "../state/server";
 import { threadEnvironment } from "../state/threads";
 import { vcsEnvironment } from "../state/vcs";
 import { useNewThreadHandler } from "./useHandleNewThread";
@@ -372,7 +375,13 @@ export function useThreadActions() {
       const canDeleteWorktree = orphanedWorktreePath !== null && threadProject !== null;
       const localApi = readLocalApi();
       let shouldDeleteWorktree = false;
-      if (canDeleteWorktree && localApi) {
+      const environmentSettings = appAtomRegistry
+        .get(environmentServerConfigsAtom)
+        .get(threadRef.environmentId)?.settings;
+      const automaticWorktreeCleanup = environmentSettings
+        ? resolveWorktreeCleanup(environmentSettings, thread.projectId).worktreeOnDelete
+        : false;
+      if (canDeleteWorktree && localApi && !automaticWorktreeCleanup) {
         const confirmationResult = await settlePromise(() =>
           localApi.dialogs.confirm(
             [

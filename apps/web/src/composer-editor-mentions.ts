@@ -20,6 +20,7 @@ export type ComposerPromptSegment =
   | {
       type: "skill";
       name: string;
+      source: string;
     }
   | {
       type: "powerhouse";
@@ -143,7 +144,7 @@ function splitPromptTextIntoComposerSegments(text: string): ComposerPromptSegmen
         source: match.source,
       });
     } else {
-      segments.push({ type: "skill", name: match.value });
+      segments.push({ type: "skill", name: match.value, source: match.source });
     }
 
     cursor = match.end;

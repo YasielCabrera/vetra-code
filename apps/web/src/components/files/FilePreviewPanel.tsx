@@ -1057,20 +1057,27 @@ export default function FilePreviewPanel({
   // A file outside the workspace (an absolute path) is shown, never edited.
   const isHostFile =
     attachment !== undefined || (relativePath !== null && isAbsolutePath(relativePath));
-  const file = useProjectFileQuery(
-    environmentId,
-    cwd,
-    relativePath,
-    attachment === undefined && !isMedia && !isPdf,
-  );
+  // Media and PDFs render from their absolute path, so their contents are never
+  // shown. The read still runs: a folder named `assets.png` is only knowable as a
+  // folder from the read failure, and the server stats before reading, so a folder
+  // costs an open and a stat and returns no body.
+  const file = useProjectFileQuery(environmentId, cwd, relativePath, attachment === undefined);
+  // A chat link cannot tell a folder from a file, so a folder arrives here as
+  // a file surface and the read fails. Keep the breadcrumbs, drop the preview
+  // pane, and let the tree fill the surface with the folder revealed. Mutation
+  // refresh stays on so the surface notices if the path becomes a file. A host
+  // path cannot be revealed in the workspace tree, so it keeps the read error.
+  const isDirectory = file.isNotFile && !isHostFile;
+  // Everything preview-related keys off previewPath; a folder has no preview.
+  const previewPath = isDirectory ? null : relativePath;
   const vcsStatus = useEnvironmentQuery(
-    relativePath !== null && !isMedia && !isPdf && file.data !== null && !file.data.truncated
+    previewPath !== null && !isMedia && !isPdf && file.data !== null && !file.data.truncated
       ? vcsEnvironment.status({ environmentId, input: { cwd } })
       : null,
   );
   const [explorerOpen, setExplorerOpen] = useState(initialExplorerOpen);
   const showExplorer = shouldShowFileExplorer({
-    relativePath,
+    relativePath: previewPath,
     explorerOpen,
     attachmentOpen: attachment !== undefined,
   });
@@ -1104,9 +1111,9 @@ export default function FilePreviewPanel({
     null,
   );
   const breadcrumbRef = useRef<HTMLDivElement>(null);
-  const isMarkdown = relativePath ? isMarkdownPreviewFile(relativePath) : false;
+  const isMarkdown = previewPath ? isMarkdownPreviewFile(previewPath) : false;
   const tableDelimiter =
-    relativePath && attachment === undefined ? filePreviewDelimiter({ name: relativePath }) : null;
+    previewPath && attachment === undefined ? filePreviewDelimiter({ name: previewPath }) : null;
   // A reveal still wins over the preference: the line only exists in the source.
   const revealHandled =
     revealLine === null ||
@@ -1121,12 +1128,13 @@ export default function FilePreviewPanel({
       : isHtml
         ? ("html" as const)
         : null;
-  const canToggleRendered = attachment === undefined && renderedMode !== null;
+  const canToggleRendered =
+    previewPath !== null && attachment === undefined && renderedMode !== null;
   const updateClientSettings = useUpdateClientSettings();
   // Word wrap only reaches the text bodies. A rendered Markdown document, a table and the
   // browser frame all lay themselves out, so the toggle stays hidden rather than inert.
   const showsRawText =
-    relativePath !== null &&
+    previewPath !== null &&
     file.data !== null &&
     !(isMarkdown && renderMarkdown) &&
     !(tableDelimiter && renderTable) &&
@@ -1138,11 +1146,11 @@ export default function FilePreviewPanel({
       ? setRenderTablePreferred
       : setRenderBrowserFilePreferred;
   const canOpenInBrowser =
-    relativePath !== null &&
+    previewPath !== null &&
     attachment === undefined &&
     !isVideo &&
     isPreviewSupportedInRuntime() &&
-    isBrowserPreviewFile(relativePath);
+    isBrowserPreviewFile(previewPath);
   const absolutePath =
     relativePath && attachment === undefined ? resolvePathLinkTarget(relativePath, cwd) : null;
   const onFilePostRender = useFileLineReveal(relativePath, revealLine, revealRequestId);
@@ -1152,8 +1160,10 @@ export default function FilePreviewPanel({
     enabled:
       attachment === undefined &&
       relativePath !== null &&
-      !isMedia &&
-      !isPdf &&
+      // Media and PDFs never show their contents, so re-reading them on every
+      // workspace mutation is waste. A folder named like one still re-reads, so
+      // it notices when the path becomes a file.
+      (isDirectory || (!isMedia && !isPdf)) &&
       !selectedFilePending,
     mutationId: workspaceMutationId,
     refresh: file.refresh,
@@ -1295,7 +1305,7 @@ export default function FilePreviewPanel({
               <TooltipPopup>{swapExplorerSideLabel}</TooltipPopup>
             </Tooltip>
           ) : null}
-          {!isHostFile ? (
+          {!isHostFile && previewPath !== null ? (
             <FileSurfaceAction
               label={explorerOpen ? "Hide file explorer" : "Show file explorer"}
               pressed={explorerOpen}
@@ -1306,7 +1316,7 @@ export default function FilePreviewPanel({
           ) : null}
         </div>
       ) : null}
-      {relativePath &&
+      {previewPath &&
       attachment === undefined &&
       !isMedia &&
       !renderBrowserFile &&
@@ -1317,12 +1327,9 @@ export default function FilePreviewPanel({
       ) : null}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div
-          className={cn(
-            "min-w-0 flex-1 flex-col overflow-hidden",
-            relativePath ? "flex" : "hidden",
-          )}
+          className={cn("min-w-0 flex-1 flex-col overflow-hidden", previewPath ? "flex" : "hidden")}
         >
-          {relativePath && attachment ? (
+          {isDirectory ? null : relativePath && attachment ? (
             <AttachmentFilePreview
               key={`${environmentId}:${attachment.id}`}
               name={attachment.name}
@@ -1439,11 +1446,11 @@ export default function FilePreviewPanel({
             minWidth={FILE_EXPLORER_MIN_WIDTH}
             maxFraction={FILE_EXPLORER_MAX_FRACTION}
             side={explorerSide}
-            fill={relativePath === null}
+            fill={previewPath === null}
             label="Resize file explorer"
             className={cn(
-              relativePath && "border-border/60",
-              relativePath &&
+              previewPath && "border-border/60",
+              previewPath &&
                 (explorerSide === "left" ? "order-first border-r" : "order-last border-l"),
             )}
           >
@@ -1456,7 +1463,7 @@ export default function FilePreviewPanel({
               selectedPathRevealId={revealRequestId}
               onOpenFile={onOpenFile}
               workspaceMutationId={workspaceMutationId}
-              {...(relativePath && !isMedia && !isPdf
+              {...(previewPath && !isMedia && !isPdf
                 ? { onRefreshSelectedFile: file.refresh }
                 : {})}
             />

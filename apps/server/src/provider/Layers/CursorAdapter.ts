@@ -136,6 +136,10 @@ export interface CursorAdapterLiveOptions {
   readonly turnInactivityTimeoutMs?: number;
   /** Override the longer in-flight-tool inactivity timeout in focused tests. */
   readonly activeToolInactivityTimeoutMs?: number;
+  readonly onAvailableCommands?: (
+    commands: ReadonlyArray<EffectAcpSchema.AvailableCommand>,
+    cwd: string,
+  ) => Effect.Effect<void>;
 }
 
 interface PendingApproval {
@@ -911,6 +915,11 @@ export function makeCursorAdapter(
                     return;
                   case "ModeChanged":
                     return;
+                  case "AvailableCommandsUpdated":
+                    yield* (
+                      options?.onAvailableCommands?.(event.availableCommands, cwd) ?? Effect.void
+                    );
+                    return;
                   case "AssistantItemStarted":
                     ctx.assistantReply = new CursorTransportFailure();
                     yield* offerRuntimeEvent(
@@ -973,6 +982,27 @@ export function makeCursorAdapter(
                         threadId: ctx.threadId,
                         turnId: ctx.activeTurnId,
                         toolCall: event.toolCall,
+                        rawPayload: event.rawPayload,
+                      }),
+                    );
+                    return;
+                  case "ThoughtDelta":
+                    // Thoughts are narration, not the reply: they stay out of
+                    // `assistantReply` so a resumed turn replays only answers.
+                    yield* logNative(
+                      ctx.threadId,
+                      "session/update",
+                      event.rawPayload,
+                      "acp.jsonrpc",
+                    );
+                    yield* offerRuntimeEvent(
+                      makeAcpContentDeltaEvent({
+                        stamp: yield* makeEventStamp(),
+                        provider: PROVIDER,
+                        threadId: ctx.threadId,
+                        turnId: ctx.activeTurnId,
+                        streamKind: "reasoning_text",
+                        text: event.text,
                         rawPayload: event.rawPayload,
                       }),
                     );
@@ -1173,15 +1203,19 @@ export function makeCursorAdapter(
           const promptOutcome = yield* Effect.raceFirst(
             ctx.acp
               .prompt({
-                // ACP has no system-message field; keep runtime context separate
-                // from the user's text.
-                prompt: [
-                  ...promptParts,
-                  {
-                    type: "text",
-                    text: buildRuntimeInstructions({ harness: "Cursor", model: resolvedModel }),
-                  },
-                ],
+                // ACP has no system-message field; keep runtime context
+                // separate from the user's text. An ACP command parses the
+                // complete text, so extra context would turn an exact command
+                // into an ordinary model prompt or change its arguments.
+                prompt: /^\/[^\s/]+(?:\s|$)/.test(rawPrompt)
+                  ? promptParts
+                  : [
+                      ...promptParts,
+                      {
+                        type: "text",
+                        text: buildRuntimeInstructions({ harness: "Cursor", model: resolvedModel }),
+                      },
+                    ],
               })
               .pipe(
                 Effect.mapError((error) =>

@@ -92,6 +92,7 @@ import { ThreadDeletionReactorLive } from "./orchestration/Layers/ThreadDeletion
 import { ThreadTurnBootstrapLive } from "./orchestration/Layers/ThreadTurnBootstrap.ts";
 import { AutomationSchedulerLive } from "./automation/Layers/AutomationScheduler.ts";
 import * as ThreadSettlementReactor from "./orchestration/ThreadSettlementReactor.ts";
+import * as StorageCleanup from "./storageCleanup.ts";
 import * as PullRequestSyncReactor from "./orchestration/PullRequestSyncReactor.ts";
 import * as ThreadPullRequestReactor from "./orchestration/ThreadPullRequestReactor.ts";
 import * as AgentAwarenessRelay from "./relay/AgentAwarenessRelay.ts";
@@ -260,6 +261,7 @@ const ReactorLayerLive = Layer.empty.pipe(
   Layer.provideMerge(ProviderRuntimeIngestionLive),
   Layer.provideMerge(ProviderCommandReactorLive),
   Layer.provideMerge(CheckpointReactorLive),
+  Layer.provideMerge(StorageCleanup.layer),
   // The scheduler starts runs through the bootstrap service, so the bootstrap
   // has to come after it in this chain: later entries provide to earlier ones.
   Layer.provideMerge(AutomationSchedulerLive),
@@ -358,7 +360,9 @@ const GitManagerLayerLive = GitManager.layer.pipe(
   Layer.provideMerge(WorktreeSetupTracker.layer),
   Layer.provideMerge(GitVcsDriver.layer),
   Layer.provideMerge(SourceControlProviderRegistryLayerLive),
-  Layer.provideMerge(TextGeneration.layer),
+  Layer.provideMerge(
+    TextGeneration.layer.pipe(Layer.provide(SourceControlProviderRegistryLayerLive)),
+  ),
 );
 
 const GitLayerLive = Layer.empty.pipe(
@@ -520,8 +524,10 @@ const RuntimeCoreDependenciesBaseLive = ReactorLayerLive.pipe(
   // Core Services
   Layer.provideMerge(ServerSettingsLayerLive),
   Layer.provideMerge(CheckpointingLayerLive),
+  // `GitHubCli` is the registry's own instance, exposed because the asset route fetches
+  // GitHub-hosted pull request media with the repository's credential.
   Layer.provideMerge(
-    Layer.mergeAll(SourceControlProviderRegistryLayerLive, PullRequestServiceLive),
+    Layer.mergeAll(SourceControlProviderRegistryLayerLive, PullRequestServiceLive, GitHubCli.layer),
   ),
   Layer.provideMerge(GitLayerLive),
   Layer.provideMerge(VcsLayerLive),

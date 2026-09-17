@@ -19,6 +19,7 @@ import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
 import { Route as AutomationsIndexRouteImport } from './routes/automations.index'
 import { Route as ChatIndexRouteImport } from './routes/_chat.index'
 import { Route as SettingsWeb3RouteImport } from './routes/settings.web3'
+import { Route as SettingsStorageRouteImport } from './routes/settings.storage'
 import { Route as SettingsSourceControlRouteImport } from './routes/settings.source-control'
 import { Route as SettingsSnapShotRouteImport } from './routes/settings.snap-shot'
 import { Route as SettingsProvidersRouteImport } from './routes/settings.providers'
@@ -86,6 +87,11 @@ const ChatIndexRoute = ChatIndexRouteImport.update({
 const SettingsWeb3Route = SettingsWeb3RouteImport.update({
   id: '/web3',
   path: '/web3',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsStorageRoute = SettingsStorageRouteImport.update({
+  id: '/storage',
+  path: '/storage',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsSourceControlRoute = SettingsSourceControlRouteImport.update({
@@ -212,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/settings/web3': typeof SettingsWeb3Route
+  '/settings/storage': typeof SettingsStorageRoute
   '/automations/': typeof AutomationsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
@@ -241,6 +248,7 @@ export interface FileRoutesByTo {
   '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/settings/web3': typeof SettingsWeb3Route
+  '/settings/storage': typeof SettingsStorageRoute
   '/': typeof ChatIndexRoute
   '/automations': typeof AutomationsIndexRoute
   '/projects': typeof ProjectsIndexRoute
@@ -273,6 +281,7 @@ export interface FileRoutesById {
   '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/settings/web3': typeof SettingsWeb3Route
+  '/settings/storage': typeof SettingsStorageRoute
   '/_chat/': typeof ChatIndexRoute
   '/automations/': typeof AutomationsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/web3'
+    | '/settings/storage'
     | '/automations/'
     | '/projects/'
     | '/$environmentId/$threadId'
@@ -335,6 +345,7 @@ export interface FileRouteTypes {
     | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/web3'
+    | '/settings/storage'
     | '/'
     | '/automations'
     | '/projects'
@@ -366,6 +377,7 @@ export interface FileRouteTypes {
     | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/web3'
+    | '/settings/storage'
     | '/_chat/'
     | '/automations/'
     | '/projects/'
@@ -457,6 +469,13 @@ declare module '@tanstack/react-router' {
       path: '/web3'
       fullPath: '/settings/web3'
       preLoaderRoute: typeof SettingsWeb3RouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/storage': {
+      id: '/settings/storage'
+      path: '/storage'
+      fullPath: '/settings/storage'
+      preLoaderRoute: typeof SettingsStorageRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/source-control': {
@@ -627,6 +646,7 @@ interface SettingsRouteChildren {
   SettingsSnapShotRoute: typeof SettingsSnapShotRoute
   SettingsSourceControlRoute: typeof SettingsSourceControlRoute
   SettingsWeb3Route: typeof SettingsWeb3Route
+  SettingsStorageRoute: typeof SettingsStorageRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
@@ -643,6 +663,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsSnapShotRoute: SettingsSnapShotRoute,
   SettingsSourceControlRoute: SettingsSourceControlRoute,
   SettingsWeb3Route: SettingsWeb3Route,
+  SettingsStorageRoute: SettingsStorageRoute,
 }
 
 const SettingsRouteWithChildren = SettingsRoute._addFileChildren(

@@ -24,14 +24,12 @@ const processOutput = (stdout: string): VcsProcess.VcsProcessOutput => ({
 
 const mockRun = vi.fn<VcsProcess.VcsProcess["Service"]["run"]>();
 const mockFetch = vi.fn<(...args: Parameters<typeof globalThis.fetch>) => Promise<Response>>();
-const preconnect: typeof globalThis.fetch.preconnect = () => {};
 
 const layer = SourceControlAttachmentResolver.layer.pipe(
   Layer.provide(GitHubCli.layer),
   Layer.provide(Layer.mock(VcsProcess.VcsProcess)({ run: mockRun })),
   Layer.provide(FetchHttpClient.layer),
-  // `preconnect` rounds the mock out to the platform `fetch` shape; nothing here calls it.
-  Layer.provide(Layer.succeed(FetchHttpClient.Fetch, Object.assign(mockFetch, { preconnect }))),
+  Layer.provide(Layer.succeed(FetchHttpClient.Fetch, mockFetch)),
   Layer.provide(
     ServerConfig.ServerConfig.layerTest(process.cwd(), {
       prefix: "vetra-source-control-attachment-test-",

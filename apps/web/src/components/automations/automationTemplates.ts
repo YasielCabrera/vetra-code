@@ -1,12 +1,13 @@
 import {
   ClipboardListIcon,
-  GitPullRequestArrowIcon,
   LightbulbIcon,
   PackageIcon,
   SunriseIcon,
   TelescopeIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+
+import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 
 import {
   cronFromPreset,
@@ -77,7 +78,7 @@ export const AUTOMATION_TEMPLATES: ReadonlyArray<AutomationTemplate> = [
       "List the open pull requests in this repository. For each, say who it is waiting on, whether checks are green, and how long it has been open. Put the ones waiting on me first.",
     preset: weekdaysAt(9 * 60),
     scheduleLabel: "Weekdays at 9:00 AM",
-    icon: GitPullRequestArrowIcon,
+    icon: PullRequestGlyph.pullRequest,
   },
   {
     id: "weekly-review",
