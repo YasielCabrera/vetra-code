@@ -600,13 +600,13 @@ export function PreviewView({
         if (!result) return;
         const { annotation: picked, submission, screenshotFailed = false } = result;
         // The structured annotation is still sendable when its optional crop
-        // stalls or fails, so tell the user what they lost and keep going
-        // instead of holding the composer for an attachment that never lands.
-        // The stored copy drops the screenshot on failure, otherwise the prompt
-        // would tell the agent a crop is attached when none was sent.
-        const capture = await capturePreviewAnnotationScreenshot(picked);
+        // fails, so tell the user what they lost and keep going instead of
+        // dropping the pick. The stored copy drops the screenshot on failure,
+        // otherwise the prompt would tell the agent a crop is attached when
+        // none was sent.
+        const capture = capturePreviewAnnotationScreenshot(picked);
         // Main reports a crop that failed or timed out on its side; the local
-        // conversion can fail too. Either way the user should hear about it.
+        // decode can fail too. Either way the user should hear about it.
         const cropDropped = screenshotFailed || capture.status === "failed";
         const annotation = capture.status === "failed" ? { ...picked, screenshot: null } : picked;
         addPreviewAnnotation(threadRef, annotation);

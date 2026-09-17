@@ -217,8 +217,8 @@ export interface FileRoutesByFullPath {
   '/settings/providers': typeof SettingsProvidersRoute
   '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
-  '/settings/web3': typeof SettingsWeb3Route
   '/settings/storage': typeof SettingsStorageRoute
+  '/settings/web3': typeof SettingsWeb3Route
   '/automations/': typeof AutomationsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
@@ -247,8 +247,8 @@ export interface FileRoutesByTo {
   '/settings/providers': typeof SettingsProvidersRoute
   '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
-  '/settings/web3': typeof SettingsWeb3Route
   '/settings/storage': typeof SettingsStorageRoute
+  '/settings/web3': typeof SettingsWeb3Route
   '/': typeof ChatIndexRoute
   '/automations': typeof AutomationsIndexRoute
   '/projects': typeof ProjectsIndexRoute
@@ -280,8 +280,8 @@ export interface FileRoutesById {
   '/settings/providers': typeof SettingsProvidersRoute
   '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
-  '/settings/web3': typeof SettingsWeb3Route
   '/settings/storage': typeof SettingsStorageRoute
+  '/settings/web3': typeof SettingsWeb3Route
   '/_chat/': typeof ChatIndexRoute
   '/automations/': typeof AutomationsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
@@ -314,8 +314,8 @@ export interface FileRouteTypes {
     | '/settings/providers'
     | '/settings/snap-shot'
     | '/settings/source-control'
-    | '/settings/web3'
     | '/settings/storage'
+    | '/settings/web3'
     | '/automations/'
     | '/projects/'
     | '/$environmentId/$threadId'
@@ -344,8 +344,8 @@ export interface FileRouteTypes {
     | '/settings/providers'
     | '/settings/snap-shot'
     | '/settings/source-control'
-    | '/settings/web3'
     | '/settings/storage'
+    | '/settings/web3'
     | '/'
     | '/automations'
     | '/projects'
@@ -376,8 +376,8 @@ export interface FileRouteTypes {
     | '/settings/providers'
     | '/settings/snap-shot'
     | '/settings/source-control'
-    | '/settings/web3'
     | '/settings/storage'
+    | '/settings/web3'
     | '/_chat/'
     | '/automations/'
     | '/projects/'
@@ -645,8 +645,8 @@ interface SettingsRouteChildren {
   SettingsProvidersRoute: typeof SettingsProvidersRoute
   SettingsSnapShotRoute: typeof SettingsSnapShotRoute
   SettingsSourceControlRoute: typeof SettingsSourceControlRoute
-  SettingsWeb3Route: typeof SettingsWeb3Route
   SettingsStorageRoute: typeof SettingsStorageRoute
+  SettingsWeb3Route: typeof SettingsWeb3Route
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
@@ -662,8 +662,8 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsProvidersRoute: SettingsProvidersRoute,
   SettingsSnapShotRoute: SettingsSnapShotRoute,
   SettingsSourceControlRoute: SettingsSourceControlRoute,
-  SettingsWeb3Route: SettingsWeb3Route,
   SettingsStorageRoute: SettingsStorageRoute,
+  SettingsWeb3Route: SettingsWeb3Route,
 }
 
 const SettingsRouteWithChildren = SettingsRoute._addFileChildren(

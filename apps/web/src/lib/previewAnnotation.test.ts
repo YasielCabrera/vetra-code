@@ -1,7 +1,14 @@
 import type { PreviewAnnotationPayload } from "@vetra-code/contracts";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { describe, expect, it } from "vite-plus/test";
 
 import { capturePreviewAnnotationScreenshot } from "./previewAnnotation";
+
+const screenshot = (dataUrl: string) => ({
+  dataUrl,
+  width: 100,
+  height: 80,
+  cropRect: { x: 10, y: 20, width: 100, height: 80 },
+});
 
 const annotation: PreviewAnnotationPayload = {
   id: "annotation_1",
@@ -31,44 +38,42 @@ const annotation: PreviewAnnotationPayload = {
       value: "16px",
     },
   ],
-  screenshot: {
-    dataUrl: "data:image/png;base64,AA==",
-    width: 100,
-    height: 80,
-    cropRect: { x: 10, y: 20, width: 100, height: 80 },
-  },
+  screenshot: screenshot("data:image/png;base64,c2NyZWVuc2hvdA=="),
   createdAt: "2026-06-11T00:00:00.000Z",
 };
 
+const withDataUrl = (dataUrl: string): PreviewAnnotationPayload => ({
+  ...annotation,
+  screenshot: screenshot(dataUrl),
+});
+
 describe("preview annotation capture", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-  });
-
-  it("returns the crop when the fetch resolves", async () => {
-    vi.stubGlobal("fetch", async () => new Response(new Blob(["png"], { type: "image/png" })));
-    const capture = await capturePreviewAnnotationScreenshot(annotation);
+  // The desktop CSP refuses `fetch` on a `data:` URL, so the crop has to be
+  // decoded in-process. A regression here silently drops every screenshot.
+  it("decodes the crop into an attachable file", async () => {
+    const capture = capturePreviewAnnotationScreenshot(annotation);
     expect(capture.status).toBe("captured");
+    if (capture.status !== "captured") return;
+    expect(capture.file.name).toBe("preview-annotation-annotation_1.png");
+    expect(capture.file.type).toBe("image/png");
+    expect(await capture.file.text()).toBe("screenshot");
   });
 
-  it("reports none when the annotation carries no crop", async () => {
-    const capture = await capturePreviewAnnotationScreenshot({ ...annotation, screenshot: null });
-    expect(capture).toEqual({ status: "none" });
-  });
-
-  it("fails instead of hanging when the crop never arrives", async () => {
-    vi.useFakeTimers();
-    vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
-    const capturePromise = capturePreviewAnnotationScreenshot(annotation, 1_000);
-    await vi.advanceTimersByTimeAsync(1_000);
-    expect(await capturePromise).toEqual({ status: "failed" });
-  });
-
-  it("fails when the crop fetch throws", async () => {
-    vi.stubGlobal("fetch", async () => {
-      throw new Error("data url unreadable");
+  it("reports none when the annotation carries no crop", () => {
+    expect(capturePreviewAnnotationScreenshot({ ...annotation, screenshot: null })).toEqual({
+      status: "none",
     });
-    expect(await capturePreviewAnnotationScreenshot(annotation)).toEqual({ status: "failed" });
+  });
+
+  it("fails on an unreadable crop instead of attaching an empty file", () => {
+    expect(capturePreviewAnnotationScreenshot(withDataUrl("data:image/png;base64,%%%%"))).toEqual({
+      status: "failed",
+    });
+    expect(capturePreviewAnnotationScreenshot(withDataUrl("data:image/png;base64,"))).toEqual({
+      status: "failed",
+    });
+    expect(capturePreviewAnnotationScreenshot(withDataUrl("blob:nope"))).toEqual({
+      status: "failed",
+    });
   });
 });
