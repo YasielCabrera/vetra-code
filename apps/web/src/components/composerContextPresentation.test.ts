@@ -30,6 +30,49 @@ describe("composerContextRecordsFromDraft", () => {
     });
   });
 
+  it("carries the staged crop for a preview annotation whose draft copy was compacted", () => {
+    const id = "annotation-1";
+    // The draft blanks `dataUrl` so persisted drafts stay small; without the
+    // staged image the chip has nothing left to render.
+    const annotation = {
+      id,
+      pageUrl: "http://localhost:3000",
+      pageTitle: "Example",
+      comment: "Tighten this spacing",
+      elements: [],
+      regions: [],
+      strokes: [],
+      styleChanges: [],
+      screenshot: {
+        dataUrl: "",
+        width: 10,
+        height: 10,
+        cropRect: { x: 0, y: 0, width: 10, height: 10 },
+      },
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const image = {
+      type: "image" as const,
+      id,
+      name: `preview-annotation-${id}.png`,
+      mimeType: "image/png",
+      sizeBytes: 1,
+      file: new File(["x"], `preview-annotation-${id}.png`),
+      previewUrl: "data:image/png;base64,c2hvdA==",
+    };
+
+    const record = composerContextRecordsFromDraft({
+      terminalContexts: [],
+      previewAnnotations: [annotation],
+      images: [image],
+    }).get(`preview-annotation_${id}`);
+
+    expect(record).toMatchObject({
+      kind: "preview-annotation",
+      screenshotUrl: "data:image/png;base64,c2hvdA==",
+    });
+  });
+
   it("resolves each wire reference to its own backing draft even when producer ids collide", () => {
     const id = "same.id:1";
     const terminal = {

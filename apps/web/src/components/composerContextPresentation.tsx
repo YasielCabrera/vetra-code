@@ -60,7 +60,15 @@ import {
 export type ComposerDraftContextRecord =
   | { kind: "terminal"; record: TerminalContextDraft }
   | { kind: "review-comment"; record: ReviewCommentContext }
-  | { kind: "preview-annotation"; record: PreviewAnnotationPayload }
+  | {
+      kind: "preview-annotation";
+      record: PreviewAnnotationPayload;
+      /**
+       * The draft keeps annotations compact by blanking `screenshot.dataUrl`, so the
+       * crop has to come from the composer image the pick staged alongside it.
+       */
+      screenshotUrl?: string | undefined;
+    }
   | { kind: "image"; record: ComposerImageAttachment; upload?: AttachmentUploadState | undefined }
   | { kind: "file"; record: ComposerFileAttachment; upload?: AttachmentUploadState | undefined };
 
@@ -124,7 +132,13 @@ export function composerContextRecordsFromDraft(input: {
     records.set(reviewCommentContextId(record.id), { kind: "review-comment", record });
   }
   for (const record of input.previewAnnotations ?? []) {
-    records.set(previewAnnotationContextId(record.id), { kind: "preview-annotation", record });
+    // The pick stages its crop as an image sharing the annotation's id.
+    const screenshot = input.images?.find((image) => image.id === record.id);
+    records.set(previewAnnotationContextId(record.id), {
+      kind: "preview-annotation",
+      record,
+      screenshotUrl: screenshot?.previewUrl,
+    });
   }
   return records;
 }
@@ -292,15 +306,18 @@ function ComposerReviewCommentDetails({ comment }: { comment: ReviewCommentConte
 
 function ComposerPreviewAnnotationDetails({
   annotation,
+  screenshotUrl,
 }: {
   annotation: PreviewAnnotationPayload;
+  screenshotUrl: string | undefined;
 }) {
   const summary = previewAnnotationTooltip(annotation);
+  const cropUrl = screenshotUrl || annotation.screenshot?.dataUrl || null;
   return (
     <div className="overflow-hidden rounded-lg border border-border/70 bg-background/70">
-      {annotation.screenshot?.dataUrl ? (
+      {cropUrl ? (
         <img
-          src={annotation.screenshot.dataUrl}
+          src={cropUrl}
           alt="Annotated preview crop"
           className="max-h-64 w-full border-border/70 border-b bg-muted object-contain"
         />
@@ -440,7 +457,12 @@ const composerContextPresentationRegistry = createContextPresentationRegistry<
             }
             label={previewAnnotationContextLabel(entry.record)}
             kindLabel="Preview annotation"
-            details={<ComposerPreviewAnnotationDetails annotation={entry.record} />}
+            details={
+              <ComposerPreviewAnnotationDetails
+                annotation={entry.record}
+                screenshotUrl={entry.screenshotUrl}
+              />
+            }
             detailsMode={definition.capabilities.details}
             toneClassName={CONTEXT_INLINE_CHIP_TONE_CLASS_NAMES["preview-annotation"]}
           />
