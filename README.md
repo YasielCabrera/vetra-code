@@ -84,7 +84,7 @@ pnpm dev --dry-run
 - Desktop auto-update is disabled unless `VETRA_ENABLE_AUTO_UPDATE=true` and a Vetra release repository is configured.
 - Product analytics are off: `VETRA_TELEMETRY_ENABLED` defaults to false and no analytics project key ships, so nothing is sent unless you configure your own.
 - The `t3` package is private during bootstrap, so registry installation, background-service installation, and package-based SSH launch are not release-ready yet.
-- Internal workspace packages use the `@t3tools/*` scope.
+- Internal workspace packages keep upstream's `@t3tools/*` scope so merges from `pingdotgg/t3code` stay mechanical. Vetra-owned naming lives in [productIdentity.ts](packages/shared/src/productIdentity.ts), and the `@vetra-code/*` scope is reserved for names we would publish.
 
 ## Planning and architecture
 

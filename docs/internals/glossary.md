@@ -254,7 +254,7 @@ The original Vetra Code repository, [pingdotgg/t3code](https://github.com/pingdo
 
 #### Fork identity
 
-The Vetra-owned names that must survive every upstream merge: product name, `@t3tools/*` packages, `VETRA_*` env vars, `~/.vetra-code`, `vetra://`, desktop application IDs, and `vetra.json`. They are centralized in [productIdentity.ts][27]. A raw merge from upstream reintroduces `t3*` names; [sync-upstream.sh][28] rewrites them mechanically, then a human review keeps auth, analytics, and auto-update from talking to T3.
+The Vetra-owned names that must survive every upstream merge: product name, `VETRA_*` env vars, `~/.vetra-code`, `vetra://`, desktop application IDs, `vetra.json`, and the reserved `@vetra-code/*` npm names. They are centralized in [productIdentity.ts][27]. Everything a user never sees keeps upstream's `t3*` name — workspace packages, import paths, internal symbols, and file paths — so merges stay mechanical. A raw merge reintroduces T3 identity; [sync-upstream.sh][28] rewrites it, then a human review keeps auth, analytics, and auto-update from talking to T3.
 
 ## Practical Shortcuts
 

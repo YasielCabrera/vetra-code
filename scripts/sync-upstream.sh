@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 # Merge pingdotgg/t3code into this fork.
 #
-# The fork renamed almost every t3* identifier to vetra* and deleted whole app
-# trees (mobile, marketing). Upstream keeps shipping the old names into the old
-# paths, so a raw `git merge` drags them back in. This script merges, prunes the
-# trees we deleted on purpose, and re-applies the rename to whatever the merge
-# just brought in -- turning what would be recurring hand-editing into a
-# mechanical pass. Anything it cannot decide is left as a real conflict.
+# The fork keeps upstream's names for everything a user never sees. Workspace
+# packages, import paths, internal symbols, and scratch directories are all
+# `t3*`, so most merged files apply verbatim. What the fork does rename is
+# product identity -- what a user reads, what is persisted, and what would
+# collide with an installed t3code -- and that lives in
+# packages/shared/src/productIdentity.ts. The table below re-applies exactly
+# that rename to whatever a merge brings in. The script also prunes the trees
+# this fork deleted on purpose. Anything it cannot decide is left as a real
+# conflict.
+#
+# Do not add a pair for an internal name. Renaming one here drags it back out
+# of sync with upstream and undoes the reason these merges are cheap.
 #
 # This is only the mechanical pass. After it runs, follow
 # docs/internals/upstream-sync.md: resolve conflicts, drop restored T3 release
@@ -96,6 +102,11 @@ PRUNE_GLOBS=(
 # Ordered: most specific first, since later patterns are substrings of earlier
 # ones. `pingdotgg/t3code` is excluded -- that is the real upstream repo URL and
 # must survive verbatim. Likewise t3.codes domains are deliberately absent.
+#
+# Every pair below is product identity. There is deliberately no pair for
+# `@t3tools/`, `t3code`, `t3tools`, or any bare internal symbol: those are the
+# names this fork shares with upstream, and rewriting them is what used to make
+# every merge a conflict.
 RENAMES=(
   # Upstream tells users to run the published CLI as `npx t3 <cmd>`. The fork's
   # server package is private, so there is no npx entry point; the command is
@@ -106,184 +117,99 @@ RENAMES=(
   # `t3 theme set`, ...). The fork's CLI is PRODUCT_CLI_NAME, so leaving these
   # tells users to run a binary that does not exist. Keyed on the opening
   # backtick and a trailing space so repository URLs, `t3.codes` hosts, and the
-  # `t3.large` instance type are untouched. Must stay after the `npx t3 ` pair
-  # above, which is more specific.
+  # `t3.large` instance type are untouched.
   '`t3 =`vetra '
+
+  # Desktop application identity. Two installed apps cannot share an
+  # application id, a D-Bus name, or a URL scheme.
   'com.t3tools.t3code=com.vetra.code'
-  # Same application id in upstream's PascalCase spelling, used by the Linux
+  # The same id in upstream's PascalCase spelling, used by the Linux
   # window-capture code as a D-Bus well-known name and a desktop-entry name.
-  # Without this pair the generic `t3tools` and `T3Code` pairs compose into
-  # `com.vetra-code.VetraCode`, which is both the wrong app id and an invalid
-  # D-Bus name.
   'com.t3tools.T3Code=com.vetra.code'
   # Bare `com.t3tools.<Service>` D-Bus interfaces and bus names that carry no
   # product word (`com.t3tools.SnapShot`, `com.t3tools.KdeCapture.Feedback`),
-  # plus the matching object paths. D-Bus name elements allow only
-  # `[A-Za-z0-9_]`, so the generic `t3tools=vetra-code` pair would emit
-  # `com.vetra-code.SnapShot` and the bus would reject it at runtime. Must stay
-  # after the two app-id pairs above, which are more specific.
+  # plus the matching object paths. Must stay after the two id pairs above.
   'com.t3tools.=com.vetra.'
   '/com/t3tools/=/com/vetra/'
-  '@t3tools/=@vetra-code/'
-  'T3CODE_=VETRA_'
-  # Upstream's SCREAMING_SNAKE constants and test env vars (T3_CHAT_THEME,
-  # T3_PROJECT_FILE_NAME, T3_ACP_*, ...). The fork maps every one of these to
-  # VETRA_*. Note the leftover grep below cannot see these: `T3[A-Z][a-z]`
-  # does not match an underscore, so only typecheck catches a miss.
-  'T3_=VETRA_'
-  # Upstream's session cookie name is the lowercase literal `t3_session`, which
-  # no other pair matches (`T3_` is uppercase). The fork serves this name from
-  # PRODUCT_SESSION_COOKIE_NAME, so without this pair a merge that touches auth
-  # leaks `t3_session` into cookie assertions and legacy-cookie fixtures.
-  't3_session=vetra_session'
-  't3tools=vetra-code'
-  # Upstream's oxlint plugin is named `t3code`, ours is `vetra`, so a rule
-  # reference must not go through the generic `t3code` pair below (it would
-  # yield `vetra-code/<rule>` and silently stop matching). Keyed on the rule
-  # name prefixes rather than a bare `t3code/` so repository URLs such as
-  # `pingdotgg/t3code/main/...` are left alone.
-  't3code/no-=vetra/no-'
-  't3code/namespace-=vetra/namespace-'
-  # All-caps wordmark used in the DMG installer artwork. Neither `T3 Code` nor
-  # the leftover grep below matches it (the space defeats `T3CODE`, the case
-  # defeats `T3 Code`), so without this pair it ships T3 branding silently.
-  'T3 CODE=VETRA CODE'
-  'T3 Code=Vetra Code'
-  'T3-Code=Vetra-Code'
-  'T3-code=vetra-code'
-  't3-code=vetra-code'
-  't3.json=vetra.json'
-  'T3 Connect=Vetra Connect'
-  't3-connect=vetra-connect'
-  # Upstream spells its URL scheme with the same word as its product slug, so
-  # the generic `t3code` pair maps both to `vetra-code`. This fork splits them:
-  # the slug is `vetra-code` (user-data dir, WM class) but the scheme is
-  # PRODUCT_DESKTOP_PROTOCOL, `vetra`. Only the mime-handler spelling can be
-  # keyed mechanically; a bare `scheme: "t3code"` literal still needs a human,
-  # so check every scheme fixture after a merge that touches URL handling.
-  'x-scheme-handler/t3code-dev=x-scheme-handler/vetra-dev'
-  'x-scheme-handler/t3code=x-scheme-handler/vetra'
-  'T3Connect=VetraConnect'
-  # Upstream's MCP work-log presentation helper and its lowercase server-name
-  # spelling. `t3_code` survives the uppercase `T3_` pair, and `T3Mcp*` matches
-  # no other pair, so without these a sync leaks both into the work log.
-  'T3McpToolPresentation=VetraMcpToolPresentation'
   # Upstream's GNOME Shell extension for active-window capture. `T3SnapShot` is
   # a D-Bus well-known name, an object path element, and the exported extension
-  # class; no other pair matches it, so without this one the fork would claim
-  # T3's bus name and collide with an installed upstream extension.
+  # class, so leaving it would claim T3's bus name and collide with an
+  # installed upstream extension.
   'T3SnapShot=VetraSnapShot'
   # The same extension's GNOME UUID, which doubles as the directory GNOME
-  # installs it into. `t3.codes` is deliberately absent from this table (see the
-  # header) because it must survive in comments and upstream-host fixtures, so
-  # this one application identity is keyed on the whole literal. Mapped onto
-  # `vetra.code` to match PRODUCT_DESKTOP_APP_ID rather than inventing a domain.
+  # installs it into. Mapped onto `vetra.code` to match PRODUCT_DESKTOP_APP_ID
+  # rather than inventing a domain.
   'snap-shot@t3.codes=snap-shot@vetra.code'
-  't3_code=vetra_code'
-  # Upstream keys the relay's Effect services on a bare `t3code-relay/` prefix,
-  # which the generic `t3code` pair below turns into `vetra-code-relay/` -- not
-  # the `@vetra-code/relay/` the deterministicKeys diagnostic demands. Keyed on
-  # the opening quote so prose and package paths are left alone.
-  '"t3code-relay/="@vetra-code/relay/'
-  # Persisted client keys and CSS highlight registry names the fork owns. The
-  # generic `t3code` pair would map these to `vetra-code.*`, orphaning a user's
-  # stored preference and desynchronising the CSS name from its JS registration.
-  # Keyed on the opening quote so the `pingdotgg/t3code.git` remote is untouched.
+  # Upstream spells its URL scheme with the same word as its product slug. This
+  # fork splits them: the slug is `vetra-code` but the scheme is
+  # PRODUCT_DESKTOP_PROTOCOL, `vetra`. A bare `scheme: "t3code"` literal still
+  # needs a human, so check every scheme fixture after a merge that touches URL
+  # handling.
+  'x-scheme-handler/t3code-dev=x-scheme-handler/vetra-dev'
+  'x-scheme-handler/t3code=x-scheme-handler/vetra'
+  't3code://=vetra://'
+  # The systemd unit the CLI installs. Two units cannot share a name.
+  't3code.service=vetra-code.service'
+
+  # Environment variables. A machine can run both products, and an exported
+  # T3CODE_HOME must not reach into this one's state. Note the leftover grep
+  # below cannot see these: `T3[A-Z][a-z]` does not match an underscore.
+  'T3CODE_=VETRA_'
+  'T3_=VETRA_'
+
+  # Persisted state and served paths. Rewriting any of these orphans a user's
+  # stored preference or points a remote client at a path this server does not
+  # serve.
+  't3_session=vetra_session'
+  # Persisted client keys and CSS highlight registry names. Keyed on the
+  # opening quote so the `pingdotgg/t3code.git` remote is untouched.
   '"t3code.="vetra.'
-  # Same idea for the colon-separated `localStorage` keys and the URL scheme
-  # (`t3code:ui-state:v1`, `t3code:theme`, `t3code://app`). The generic `t3code`
-  # pair would map these to `vetra-code:*` and orphan every user's stored client
-  # state. Four keys predate this pair and still ship as `vetra-code:*`
+  # Colon-separated `localStorage` keys (`t3code:ui-state:v1`, `t3code:theme`).
+  # Four keys predate this pair and still ship as `vetra-code:*`
   # (browser-favicons, chunk-load-reloaded, default-theme-applied,
   # remote-open-hint-seen); renaming them is a migration, not a sync.
   '"t3code:="vetra:'
-  # The same scheme written without an opening quote: `t3code://app` in docs and
-  # in template literals such as `t3code://app${pathname}`. The quoted pair above
-  # cannot see those, and the generic `t3code` pair below turns them into
-  # `vetra-code://`, which is the user-data slug rather than
-  # PRODUCT_DESKTOP_PROTOCOL and matches no registered scheme.
-  't3code://=vetra://'
-  # Upstream's `localStorage` namespace for the pull request surfaces. Nothing
-  # else matches a bare `t3.` prefix, and a blanket pair cannot be added: it
-  # would also rewrite `t3.codes` hosts and the `t3.large` EC2 instance type a
-  # machine-detection fixture asserts on. Extend this list per namespace.
   't3.pullRequests.=vetra.pullRequests.'
-  # The environment discovery document's well-known path. A blanket `t3/` pair
-  # cannot be added (it would rewrite Effect service keys and repository paths),
-  # so this one namespace is listed explicitly. Without it, a merged client test
-  # probes a path this server does not serve.
+  # The environment discovery document's well-known path.
   '.well-known/t3/=.well-known/vetra/'
+  # Vetra Connect's HTTP routes. Keyed on the trailing slash so the
+  # docs/internals/t3-connect.md filename, which tracks upstream, is untouched.
+  't3-connect/=vetra-connect/'
+  # The environment JWT's issuer and audience prefix.
+  't3-env:=vetra-env:'
+  # URL schemes that ride in prompts sent to providers and in persisted
+  # messages, plus the composer-context clipboard MIME type.
   't3-assistant-citation=vetra-assistant-citation'
-  # The assistant-citation URL scheme. It rides in prompts sent to providers and
-  # in persisted messages, so it is product identity, not an internal name.
   't3-citation=vetra-citation'
-  # The composer-context URL scheme and its clipboard MIME type
-  # (`x-t3-context-fragment+json`). Both are persisted in message text and
-  # exchanged with other apps, so they are product identity. The generic
-  # `"t3-` pair below only fires when the literal opens with a quote, which
-  # catches the protocol constant but not the scheme inside links, fixtures,
-  # or the MIME string.
   't3-context=vetra-context'
-  'T3ProjectFile=VetraProjectFile'
-  'T3Project=VetraProject'
-  'T3Server=VetraServer'
-  'T3Home=VetraHome'
-  't3Home=vetraHome'
-  # Lower-camel names upstream builds from the product word. Neither 'T3Code'
-  # nor 'T3ProjectFile' matches these, so a merge otherwise keeps T3 identity in
-  # a local binding ('t3File') or a module path ('lib/t3ProjectFileDefaults').
-  't3ProjectFile=vetraProjectFile'
-  't3File=vetraFile'
-  # Upstream's remote-launch script builder and the options type it takes.
-  # 'T3Runner' matches no other pair, and keying on the shared 'RemoteT3Runner'
-  # prefix covers both 'buildRemoteT3RunnerScript' and 'RemoteT3RunnerOptions'.
-  'RemoteT3Runner=RemoteVetraRunner'
-  # Binary names built from a variable, as in the Linux capture helpers'
-  # `t3-${backend}-snap-shot`. The quoted `"t3-` pair below cannot see these,
-  # and the crates in native/ rename to `vetra-*`, so a miss leaves the build
-  # script staging a filename cargo never produces.
-  't3-${=vetra-${'
-  # Generated names the window-capture code writes into a user's home: scratch
-  # and backup files beside a compositor config, the staged GNOME extension
-  # directory, the XDG portal shortcut id, and the KDE test bus socket. None is
-  # preceded by a quote, so the `"t3-` pair below cannot reach them, and each
-  # one lands in a shared namespace where T3's name would collide.
+  # Theme ids persisted in a user's settings.
+  't3-chat=vetra-chat'
+  # The MCP server name agents address tools by.
+  't3_code=vetra_code'
+
+  # Generated names written into a user's home: scratch and backup files beside
+  # a compositor config, the staged GNOME extension directory, the XDG portal
+  # shortcut id, and the KDE test bus socket. Each lands in a shared namespace
+  # where T3's name would collide.
   '.t3-capture-=.vetra-capture-'
   't3-snap-shot-=vetra-snap-shot-'
   't3-kde-bus-=vetra-kde-bus-'
-  # Upstream's GitHub org / winget publisher, never a TypeScript identifier.
-  # Mapped onto the same identity as the pairs below so a repo-identity fixture
-  # cannot come out half-renamed (`VetraTools/vetra-code` lowercases to a
-  # different canonical key than `vetra-code/vetra-code`).
-  'T3Tools=Vetra-Code'
-  'T3Code=VetraCode'
-  # Lower-camel form used in analytics property names (`t3CodeVersion`). Neither
-  # `T3Code` nor the leftover grep's `T3[A-Z][a-z]` matches it, so without this
-  # pair a merged property name silently keeps T3 identity.
-  't3Code=vetraCode'
-  't3-resource-monitor=vetra-resource-monitor'
-  't3-relay=vetra-relay'
-  # Prose form of the theme name, which `t3-chat` below does not match.
+
+  # Product name, in every spelling that reaches a user. The all-caps form is
+  # the wordmark in the DMG installer artwork; neither `T3 Code` nor the
+  # leftover grep matches it.
+  'T3 CODE=VETRA CODE'
+  'T3 Code=Vetra Code'
+  'T3-Code=Vetra-Code'
+  'T3 Connect=Vetra Connect'
   'T3 Chat=Vetra Chat'
-  't3-chat=vetra-chat'
-  't3-env=vetra-env'
+  # Upstream's GitHub org / winget publisher, never a TypeScript identifier.
+  'T3Tools=Vetra-Code'
+  # The project file this fork reads. Upstream's own t3.json is pruned above.
+  't3.json=vetra.json'
+  # Fixture identity for the relay and the ACP test client.
+  't3-relay=vetra-relay'
   't3-test=vetra-test'
-  # Temp-directory and fixture-identity prefixes, in tests and in the runtime
-  # code that names a scratch directory. `t3-code` does not match a bare
-  # `t3-<word>`, so these otherwise survive as T3 identity. Keyed on the opening
-  # quote: the bare form would also rewrite `t3-code`-adjacent prose and the
-  # `t3-[a-z]` hits the leftover grep only reports, some of which are real asset
-  # filenames that must keep matching the file on disk.
-  '"t3-="vetra-'
-  't3code=vetra-code'
-  # Upstream publishes these workspace packages unscoped; the fork scopes both
-  # under `@vetra-code/`. Handled as special cases below because they need
-  # lookbehinds: a `packages/<name>` *path* must stay unscoped, and an
-  # already-scoped specifier must not double-scope. Without these pairs, an
-  # upstream file that adds `from "effect-acp/errors"` merges cleanly and then
-  # fails to resolve.
-  'effect-acp=@vetra-code/effect-acp'
-  'effect-codex-app-server=@vetra-code/effect-codex-app-server'
 )
 
 say() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
@@ -333,24 +259,12 @@ while IFS= read -r file; do
   [[ -L "$file" ]] && continue
   [[ -f "$file" ]] || continue
   grep -Iq . "$file" 2>/dev/null || continue   # skip binaries
-  grep -qE 't3|T3|effect-acp|effect-codex-app-server' "$file" 2>/dev/null || continue
+  grep -qE 't3|T3' "$file" 2>/dev/null || continue
   before=$(shasum "$file" | cut -d' ' -f1)
   for pair in "${RENAMES[@]}"; do
     from="${pair%%=*}"
     to="${pair#*=}"
-    if [[ "$from" == "t3code" ]]; then
-      # Case-insensitive guard: upstream pairs `pingdotgg/t3code` with
-      # `PingDotGG/t3code` in repo-identity fixtures because both lower-case to
-      # the same key. Rewriting only the capitalised one silently breaks those
-      # tests, since `vetra-code` and `t3code` no longer case-fold together.
-      perl -pi -e 's{(?<!(?i:pingdotgg/))\Qt3code\E}{vetra-code}g' "$file"
-    elif [[ "$from" == "effect-acp" ]]; then
-      perl -pi -e 's{(?<!\@vetra-code/)(?<!packages/)\Qeffect-acp\E}{\@vetra-code/effect-acp}g' "$file"
-    elif [[ "$from" == "effect-codex-app-server" ]]; then
-      perl -pi -e 's{(?<!\@vetra-code/)(?<!packages/)\Qeffect-codex-app-server\E}{\@vetra-code/effect-codex-app-server}g' "$file"
-    else
-      FROM="$from" TO="$to" perl -pi -e 's{\Q$ENV{FROM}\E}{$ENV{TO}}g' "$file"
-    fi
+    FROM="$from" TO="$to" perl -pi -e 's{\Q$ENV{FROM}\E}{$ENV{TO}}g' "$file"
   done
   if [[ "$(shasum "$file" | cut -d' ' -f1)" != "$before" ]]; then
     rewritten=$((rewritten + 1))
@@ -367,27 +281,37 @@ else
   echo "$conflicts"
 fi
 
-say "Leftover t3 references (review each -- upstream URLs and t3.codes domains are expected)"
-# Excluded, all pure noise: vendored reference checkouts and lockfiles match on
-# base64 `sha512-` integrity hashes, and this script matches on its own table.
-# `t3-[a-z]` is report-only on purpose: these are usually temp-dir prefixes that
-# are safe to rebrand, but some are real asset filenames where rewriting the
-# string without renaming the file breaks the lookup. Decide per hit.
+say "Leftover T3 identity (review each -- package names, import paths, and internal symbols are meant to stay t3*)"
+# Only identity spellings are reported. `t3code`, `t3tools`, and `t3`-prefixed
+# symbols are deliberately absent: this fork shares those with upstream, so
+# reporting them would bury the handful of hits that matter.
 #
-# `\.t3/` is likewise report-only, and deliberately has no RENAMES pair: it is a
-# storage path, so a blind rewrite would also hit AGENTS.md, where `~/.t3/userdata`
-# names the developer's real legacy install on purpose. Rebrand the runtime and
-# fixture hits; leave that one.
-git grep -nIE 't3tools|t3code|T3 Code|T3CODE|T3_|T3[A-Z][a-z]|t3-[a-z]|\.t3/' -- . \
+# `\.t3/` is report-only and has no RENAMES pair: it is a storage path, and a
+# blind rewrite would also hit AGENTS.md, where `~/.t3/userdata` names the
+# developer's real legacy install on purpose. Rebrand runtime and fixture hits;
+# leave that one.
+git grep -nIE 'T3 Code|T3 Connect|T3 Chat|T3CODE|T3_[A-Z]|t3_session|t3\.json|t3code://|x-scheme-handler/t3code|\.well-known/t3/|t3-(citation|context|assistant-citation)|com\.t3tools|T3SnapShot|\.t3/' -- . \
   ':!.repos' ':!*lock*' ":!${BASH_SOURCE[0]#./}" | grep -v 'pingdotgg/' | head -40 || echo "none"
+
+say "Vetra names outside the identity surface (these should carry upstream's name)"
+# The fork owns `@vetra-code/` only where a name is published or reserved: the
+# CLI's npm package and its platform binaries. Anywhere else it means a merge,
+# or a new package, reintroduced the scope the fork deliberately gave up.
+git grep -nI '@vetra-code/' -- . \
+  ':!.repos' ':!*lock*' ":!${BASH_SOURCE[0]#./}" ':!re-making-plan' \
+  ':!packages/shared/src/productIdentity.ts' ':!packages/shared/src/legacyCliLauncher*' \
+  ':!apps/server/scripts/cli.ts' ':!scripts/build-npm-platform-packages*' \
+  ':!apps/server/src/cli/invocation.test.ts' ':!apps/server/src/cli/service.test.ts' \
+  ':!docs/internals/server-updates.md' ':!docs/operations/release.md' | head -20 || echo "none"
 
 cat <<'EOF'
 
 Next: docs/internals/upstream-sync.md
   1. Resolve any conflicts listed above, then `git add` them.
   2. Drop restored T3 release / relay-deploy / mobile workflows if they came back.
-  3. Re-run the leftover-t3 grep; extend RENAMES in this script for anything
-     mechanical rather than hand-editing it. Also search t3.codes / t3.gg.
+  3. Re-run both greps above. Extend RENAMES only for product identity; an
+     internal name that came back as `t3*` is correct and should stay.
+     Also search t3.codes / t3.gg.
   4. Confirm Clerk, relay, PostHog, and auto-update still cannot talk to T3.
   5. pnpm install, then focused typecheck/tests for packages the merge touched.
   6. git commit    -- the merge message is already staged

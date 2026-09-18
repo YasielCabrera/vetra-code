@@ -13,16 +13,23 @@ doc. The script is mechanical. The review is the rest of the job.
 
 ## Why a script exists
 
-The fork renamed almost every `t3*` identifier to `vetra*` and deleted whole trees (mobile,
-marketing, inherited release automation). Upstream still ships the old names into the old paths. A
-plain `git merge` therefore:
+The fork deleted whole trees (mobile, marketing, inherited release automation) and renames a small
+set of product identity strings. A plain `git merge` therefore:
 
 - restores deleted apps and workflows;
-- reintroduces `T3 Code`, `@t3tools/*`, `T3CODE_*`, `t3.json`, and similar identifiers;
+- reintroduces `T3 Code`, `T3CODE_*`, `t3.json`, `com.t3tools.*` application ids, and the other
+  identity spellings mapped below;
 - can re-enable Clerk, relay, PostHog, and desktop auto-update against T3-owned destinations.
 
-The script merges, prunes the trees we deleted on purpose, and re-applies the rename to files the
+The script merges, prunes the trees we deleted on purpose, and re-applies that rename to files the
 merge actually changed. Anything it cannot decide is left as a real conflict.
+
+What the script deliberately does **not** rename is everything else. Workspace packages, import
+paths, internal symbols, file paths, and scratch directories all keep upstream's `t3*` names. That
+is why roughly half the files this fork touches are byte-identical to upstream and can never
+conflict. Renaming one of them back is the easiest way to make every future sync expensive again:
+the fork once carried the `@vetra-code/*` scope, and import lines alone accounted for about half of
+all merge conflicts.
 
 ## Git layout
 
@@ -125,12 +132,14 @@ It will:
    rest of the script (`|| true` after merge).
 5. `git rm` the prune paths and globs above, including files upstream newly added inside them.
 6. Walk files this merge changed (`ACMR` vs `HEAD`). For text files that still contain `t3` / `T3`,
-   apply the ordered `RENAMES` table in the script. `pingdotgg/t3code` is excluded so the real
-   upstream URL survives. `t3.codes` domains are _not_ in the table on purpose.
+   apply the ordered `RENAMES` table in the script. The table holds product identity only:
+   `t3.codes` domains are absent on purpose, and so are package names, import paths, and internal
+   symbols.
 7. Stage rewritten files that merged cleanly. Leave conflicted files unstaged: staging one would
    mark it resolved with conflict markers still inside.
-8. Print remaining unmerged paths and a leftover-`t3` grep (noisy hits in `.repos/`, lockfiles, and
-   the script itself are excluded).
+8. Print remaining unmerged paths, then two greps: T3 identity that should have been renamed, and
+   `@vetra-code/` names that escaped outside the published-package surface. Noisy hits in
+   `.repos/`, lockfiles, and the script itself are excluded from both.
 
 The merge commit message is already prepared. The script does **not** commit.
 
@@ -140,21 +149,15 @@ These are the recurring human (or follow-up) steps. Skipping them is how T3 iden
 backends leak back in.
 
 - Resolve conflicts. Semantic choices stay with the reviewer.
-- Rename identifiers that are not in `RENAMES`. New upstream names (`T3SomethingNew`, a new npm
-  scope, a new protocol) will survive until someone adds a pair to the table.
-- Rename **files**. The rewrite pass edits contents, not paths. A newly added
-  `T3ConnectUserProfilePage.tsx` will export `T3ConnectUserProfilePage` after rename and then
-  fail to import until you `git mv` it. `git ls-files | grep -iE 't3connect|T3Connect'` after the
-  script.
+- Rename identity that is not in `RENAMES`. A new upstream application id, URL scheme, cookie, or
+  persisted key survives until someone adds a pair. An ordinary new `T3SomethingNew` symbol needs
+  no pair: internal names are meant to stay upstream's.
+- Rename **files**. The rewrite pass edits contents, not paths. This rarely matters now that the
+  fork keeps upstream's paths — an incoming `T3ConnectUserProfilePage.tsx` lands where it belongs.
+  It matters only for the few paths that carry identity, such as brand assets under `assets/`.
 - Rewrite `t3.codes` / `t3.gg` URLs. Expected in comments, licenses, and tests that mention
   upstream. Not acceptable as a runtime default, Clerk host, relay, updater feed, or analytics
   destination.
-- Rebrand bare `t3/` Effect service keys. Upstream tags some `Context.Service` declarations
-  `"t3/<path>"`, which no `RENAMES` pair matches (there is no package name to key on, and a
-  blanket `t3/` pair would rewrite paths). The fork's keys all read
-  `@t3tools/<package>/<path>`, and the `deterministicKeys` diagnostic names the expected value,
-  so a typecheck of the merged package finds every one. Check every workspace, not just the server:
-  `git grep -ohE '>\(\)\("[^"]+"' -- apps packages infra | sed 's/.*"\(.*\)"/\1/' | awk -F/ '{print $1}' | sort -u`.
 - Rewrite generic `t3.` prefixes. A blanket `t3.` → `vetra.` pair would smash `t3.codes`. Persistence
   keys such as `t3.pullRequests.list` therefore survive until a specific `RENAMES` pair exists or
   you fix them by hand. Search `` `t3. `` / `"t3.` in code (not docs) after every sync.
@@ -360,40 +363,58 @@ is not part of the sync and must not be left behind silently.
 ## Identity map
 
 The script's `RENAMES` table is ordered most-specific first. Keep it that way: later patterns are
-substrings of earlier ones. Current pairs (see the script for the live list):
+substrings of earlier ones. Every pair is product identity — something a user reads, something
+persisted, or something that would collide with an installed t3code (see the script for the live
+list):
 
-| Upstream                                                              | Vetra                                           |
-| --------------------------------------------------------------------- | ----------------------------------------------- |
-| `com.t3tools.t3code`                                                  | `com.vetra.code`                                |
-| `@t3tools/`                                                           | `@t3tools/`                                     |
-| `T3CODE_`                                                             | `VETRA_`                                        |
-| `T3_`                                                                 | `VETRA_`                                        |
-| `t3tools`                                                             | `vetra-code`                                    |
-| `T3 Code` / `T3-Code` / `t3-code`                                     | `Vetra Code` / `Vetra-Code` / `vetra-code`      |
-| `t3.json`                                                             | `vetra.json`                                    |
-| `T3 Connect` / `t3-connect` / `T3Connect`                             | `Vetra Connect` / `vetra-connect` / `T3Connect` |
-| `T3ProjectFile` / `T3Project` / `T3Server` / `T3Home` / `t3Home`      | `Vetra*` / `t3Home`                             |
-| `T3Tools` / `T3Code`                                                  | `Vetra-Code` / `VetraCode`                      |
-| `t3-resource-monitor` / `t3-relay` / `t3-chat` / `t3-env` / `t3-test` | `vetra-*`                                       |
-| `t3code` (not preceded by `pingdotgg/`)                               | `vetra-code`                                    |
-| `effect-acp` (not already scoped, not a `packages/` path)             | `effect-acp`                                    |
+| Upstream                                               | Vetra                                                           |
+| ------------------------------------------------------ | --------------------------------------------------------------- |
+| `T3 Code` / `T3-Code` / `T3 CODE`                      | `Vetra Code` / `Vetra-Code` / `VETRA CODE`                      |
+| `T3 Connect` / `t3-connect/`                           | `Vetra Connect` / `vetra-connect/`                              |
+| `T3 Chat` / `t3-chat`                                  | `Vetra Chat` / `vetra-chat`                                     |
+| `T3Tools`                                              | `Vetra-Code`                                                    |
+| `npx t3 ` / `` `t3 ``                                  | `vetra ` / `` `vetra ``                                         |
+| `T3CODE_` / `T3_`                                      | `VETRA_`                                                        |
+| `com.t3tools.*` / `/com/t3tools/`                      | `com.vetra.*` / `/com/vetra/`                                   |
+| `T3SnapShot` / `snap-shot@t3.codes`                    | `VetraSnapShot` / `snap-shot@vetra.code`                        |
+| `x-scheme-handler/t3code` / `t3code://`                | `x-scheme-handler/vetra` / `vetra://`                           |
+| `t3code.service` / `t3.json`                           | `vetra-code.service` / `vetra.json`                             |
+| `t3_session` / `t3_code`                               | `vetra_session` / `vetra_code`                                  |
+| `"t3code.` / `"t3code:` / `t3.pullRequests.`           | `"vetra.` / `"vetra:` / `vetra.pullRequests.`                   |
+| `.well-known/t3/` / `t3-env:`                          | `.well-known/vetra/` / `vetra-env:`                             |
+| `t3-citation` / `t3-context` / `t3-assistant-citation` | `vetra-citation` / `vetra-context` / `vetra-assistant-citation` |
+| `.t3-capture-` / `t3-snap-shot-` / `t3-kde-bus-`       | `.vetra-capture-` / `vetra-snap-shot-` / `vetra-kde-bus-`       |
+| `t3-relay` / `t3-test`                                 | `vetra-relay` / `vetra-test`                                    |
+
+Names that stay upstream's. Adding any of these to the table would undo the reason merges are
+cheap:
+
+| Kind                | Value                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------ |
+| Workspace packages  | `@t3tools/*`, `t3` (server), `t3code-relay`, unscoped `effect-acp` and `effect-codex-app-server` |
+| Lint plugin         | `oxlint-plugin-t3code`, rules `t3code/*`                                                         |
+| Internal symbols    | `t3Home`, `T3ProjectFile*`, `RemoteT3Runner`, `T3Connect*` components, `T3Wordmark`, `allT3`     |
+| Effect service keys | `t3/<path>` and `@t3tools/<package>/<path>`, enforced by the `deterministicKeys` diagnostic      |
+| Scratch prefixes    | `t3code-*` and `t3-*` mkdtemp names, `t3env_*` test credentials                                  |
+| Native crates       | `t3-resource-monitor`, `t3-kde-snap-shot`, `t3-hyprland-snap-shot`                               |
+| File paths          | every path upstream also ships, including `T3Wordmark.tsx` and `.agents/skills/test-t3-app`      |
 
 Runtime constants that must not drift, even if a merge conflict "resolves" them back:
 
-| Constant       | Value                                              |
-| -------------- | -------------------------------------------------- |
-| Product name   | `Vetra Code`                                       |
-| Package scope  | `@t3tools/*`                                       |
-| CLI            | `vetra`                                            |
-| Home directory | `.vetra-code`                                      |
-| Project file   | `vetra.json`                                       |
-| Session cookie | `vetra_session`                                    |
-| Ports          | production `4873`; dev server `14873`, web `6733`  |
-| Desktop IDs    | `com.vetra.code`, `com.vetra.code.dev`             |
-| Launch agent   | `com.vetra.code.service`                           |
-| Protocols      | `vetra://`, `vetra-dev://`                         |
-| Git refs       | `refs/vetra/checkpoints`, `refs/vetra/pre-refresh` |
-| Env prefix     | `VETRA_*` only. No `T3CODE_*` aliases.             |
+| Constant       | Value                                                       |
+| -------------- | ----------------------------------------------------------- |
+| Product name   | `Vetra Code`                                                |
+| npm identity   | `@vetra-code/server`, `@vetra-code/vetra-<platform>-<arch>` |
+| CLI            | `vetra`                                                     |
+| Home directory | `.vetra-code`                                               |
+| Project file   | `vetra.json`                                                |
+| Session cookie | `vetra_session`                                             |
+| Ports          | production `4873`; dev server `14873`, web `6733`           |
+| Desktop IDs    | `com.vetra.code`, `com.vetra.code.dev`                      |
+| Launch agent   | `com.vetra.code.service`                                    |
+| Protocols      | `vetra://`, `vetra-dev://`                                  |
+| Git refs       | `refs/vetra/checkpoints`, `refs/vetra/pre-refresh`          |
+| Env prefix     | `VETRA_*` only. No `T3CODE_*` aliases.                      |
 
 ## Conflict patterns that keep coming back
 

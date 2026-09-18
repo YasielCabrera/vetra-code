@@ -144,9 +144,10 @@ git diff --name-only "$MB"..upstream/main \
 git diff --name-only "$MB"..upstream/main \
   | grep -iE 'productIdentity|analytics|posthog|clerk|relay|updater|auto-?update|telemetry|pairing'
 
-# NEW upstream identifiers the rename table does not cover yet
+# NEW upstream identity the rename table does not cover yet. Package names,
+# import paths, and internal symbols are shared with upstream and are not drift.
 git diff "$MB"..upstream/main | grep -E '^\+' \
-  | grep -oE 'T3[A-Za-z_]+|@t3tools/[a-z-]+|T3CODE_[A-Z_]+|t3code|t3\.codes' \
+  | grep -oE 'T3 (Code|Connect|Chat)|T3CODE_[A-Z_]+|T3_[A-Z_]+|com\.t3tools\.[A-Za-z.]*|x-scheme-handler/t3code[a-z-]*|t3code://|t3code\.[a-z]+|t3_[a-z]+|t3\.codes' \
   | sort | uniq -c | sort -rn
 ```
 
@@ -155,13 +156,9 @@ For the last one: cross-check every distinct hit against the `RENAMES` table in
 are the ones that would survive a sync and leak T3 identity into the product. A hit
 already in the table is handled mechanically and is not news.
 
-Also worth a line if present: a brand-new upstream file whose _name_ carries T3
-identity (the rename pass rewrites contents, never paths, so it needs a manual
-`git mv`):
-
-```bash
-git diff --name-only --diff-filter=A "$MB"..upstream/main | grep -iE 't3'
-```
+A new upstream file whose _name_ carries T3 identity needs no action: this fork keeps
+upstream's paths, so only a path that would collide with Vetra identity (brand assets,
+`t3.json`) is worth a line.
 
 ## Step 5 — Classify each commit: Take / Drop / Review
 
