@@ -230,10 +230,10 @@
             "vetra-ember": "ember",
             "vetra-iris": "iris",
           };
-          const isLegacyVetraChatDark = storedTheme === "vetra-chat-dark";
+          const isLegacyT3ChatDark = storedTheme === "vetra-chat-dark";
           const themeId =
             storedTheme === null ? "" : (LEGACY_THEME_IDS[storedTheme] ?? storedTheme);
-          const legacyMode = isLegacyVetraChatDark ? "dark" : null;
+          const legacyMode = isLegacyT3ChatDark ? "dark" : null;
           const builtInModes = BUILT_IN_THEME_MODES[themeId] ?? null;
           const customTheme = builtInModes ? null : findCustomTheme(themeId);
           const themeModes =

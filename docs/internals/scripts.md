@@ -63,7 +63,7 @@ authenticated.
   options, so workspace type checking runs separately.
 - `vp run typecheck`: Strict TypeScript checks for all packages.
 - `vp run test`: Runs workspace tests.
-- `node apps/server/scripts/vetra-sqlite-state.ts <query|exec> --base-dir <path> ...`: Inspects or seeds
+- `node apps/server/scripts/t3-sqlite-state.ts <query|exec> --base-dir <path> ...`: Inspects or seeds
   an isolated Vetra SQLite database; writes create a private backup first.
 
 ## Desktop artifacts

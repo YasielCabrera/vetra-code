@@ -1,5 +1,5 @@
 [package]
-name = "vetra-hyprland-snap-shot"
+name = "t3-hyprland-snap-shot"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"

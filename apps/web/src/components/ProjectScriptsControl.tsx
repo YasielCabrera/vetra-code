@@ -1,7 +1,7 @@
 import type {
   ProjectScript,
   ResolvedKeybindingsConfig,
-  VetraProjectFileScript,
+  T3ProjectFileScript,
 } from "@t3tools/contracts";
 import {
   isAtomCommandInterrupted,
@@ -37,12 +37,12 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 export type { NewProjectScriptInput, ProjectScriptActionResult };
 
-const NO_FILE_SCRIPTS: ReadonlyArray<VetraProjectFileScript> = [];
+const NO_FILE_SCRIPTS: ReadonlyArray<T3ProjectFileScript> = [];
 
 interface ProjectScriptsControlProps {
   scripts: ReadonlyArray<ProjectScript>;
   /** Scripts declared in the project's checked-in vetra.json, offered for import. */
-  fileScripts?: ReadonlyArray<VetraProjectFileScript>;
+  fileScripts?: ReadonlyArray<T3ProjectFileScript>;
   keybindings: ResolvedKeybindingsConfig;
   preferredScriptId?: string | null;
   onRunScript: (script: ProjectScript) => void;
@@ -107,7 +107,7 @@ export default function ProjectScriptsControl({
     [onAddScript, onUpdateScript],
   );
 
-  const importFileScript = async (fileScript: VetraProjectFileScript) => {
+  const importFileScript = async (fileScript: T3ProjectFileScript) => {
     const payload: NewProjectScriptInput = {
       name: fileScript.name,
       command: fileScript.command,

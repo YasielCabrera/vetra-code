@@ -4,22 +4,22 @@ import { LogInIcon, ServerIcon, SmartphoneIcon } from "lucide-react";
 import { hasCloudPublicConfig } from "../../cloud/publicConfig";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 import { MobileClientsUserProfilePage } from "./MobileClientsUserProfilePage";
-import { VetraConnectUserProfilePage } from "./VetraConnectUserProfilePage";
-import { useVetraConnectAuthPrompt } from "./useVetraConnectAuthPrompt";
+import { T3ConnectUserProfilePage } from "./T3ConnectUserProfilePage";
+import { useT3ConnectAuthPrompt } from "./useT3ConnectAuthPrompt";
 
-export function VetraConnectSidebarSignIn() {
+export function T3ConnectSidebarSignIn() {
   if (!hasCloudPublicConfig()) return null;
 
-  return <ConfiguredVetraConnectSidebarSignIn />;
+  return <ConfiguredT3ConnectSidebarSignIn />;
 }
 
-export function VetraConnectSidebarAvatar() {
+export function T3ConnectSidebarAvatar() {
   if (!hasCloudPublicConfig()) return null;
 
-  return <ConfiguredVetraConnectSidebarAvatar />;
+  return <ConfiguredT3ConnectSidebarAvatar />;
 }
 
-function ConfiguredVetraConnectSidebarAvatar() {
+function ConfiguredT3ConnectSidebarAvatar() {
   const { isLoaded, isSignedIn } = useAuth();
 
   if (!isLoaded || !isSignedIn) return null;
@@ -45,15 +45,15 @@ function ConfiguredVetraConnectSidebarAvatar() {
         labelIcon={<ServerIcon className="size-4" />}
         url="vetra-connect"
       >
-        <VetraConnectUserProfilePage />
+        <T3ConnectUserProfilePage />
       </UserButton.UserProfilePage>
     </UserButton>
   );
 }
 
-function ConfiguredVetraConnectSidebarSignIn() {
+function ConfiguredT3ConnectSidebarSignIn() {
   const { isLoaded, isSignedIn } = useAuth();
-  const { authPrompt, openAuthPrompt } = useVetraConnectAuthPrompt();
+  const { authPrompt, openAuthPrompt } = useT3ConnectAuthPrompt();
 
   if (!isLoaded || isSignedIn) return null;
 

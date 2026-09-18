@@ -1,11 +1,11 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
-import { VetraProjectFile } from "./vetraProjectFile.ts";
+import { T3ProjectFile } from "./t3ProjectFile.ts";
 
-const decode = Schema.decodeUnknownSync(VetraProjectFile);
+const decode = Schema.decodeUnknownSync(T3ProjectFile);
 
-describe("VetraProjectFile", () => {
+describe("T3ProjectFile", () => {
   it("decodes a full project file", () => {
     const decoded = decode({
       $schema: "https://schema.vetra.invalid/vetra.json",

@@ -411,7 +411,7 @@ export const ResourceTelemetryGroups = Schema.Struct({
   backend: ResourceTelemetryAggregate,
   electron: ResourceTelemetryAggregate,
   monitor: ResourceTelemetryAggregate,
-  allVetra: ResourceTelemetryAggregate,
+  allT3: ResourceTelemetryAggregate,
 });
 export type ResourceTelemetryGroups = typeof ResourceTelemetryGroups.Type;
 

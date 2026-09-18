@@ -43,7 +43,7 @@ the task commands.
 - `infra/relay` (`t3code-relay`, temporary internal package name): the optional Vetra Connect relay,
   deployed with Alchemy. It is disabled until Vetra-owned cloud configuration exists and is not in the hot path;
   after connect, client traffic goes directly to the environment. See
-  [vetra-connect.md](./vetra-connect.md).
+  [t3-connect.md](./t3-connect.md).
 
 ## Other top-level directories
 

@@ -21,7 +21,7 @@ import {
   buildRemoteLaunchScript,
   buildRemotePairingScript,
   buildRemoteStopScript,
-  buildRemoteVetraRunnerScript,
+  buildRemoteT3RunnerScript,
   SshInvalidArchiveVersionError,
   SshMissingRunnerError,
   describeReadinessCause,
@@ -112,7 +112,7 @@ const NODE_SCRIPT = {
 
 describe("ssh tunnel scripts", () => {
   it("installs and runs the release archive without Node, npm, or npx", () => {
-    const script = buildRemoteVetraRunnerScript(ARCHIVE);
+    const script = buildRemoteT3RunnerScript(ARCHIVE);
 
     assert.include(script, "VETRA_ARCHIVE_VERSION='1.2.3-preview.20260911.4'");
     assert.include(script, "VETRA_NODE_SCRIPT_PATH=''");
@@ -190,34 +190,34 @@ describe("ssh tunnel scripts", () => {
       "v1.2.3",
     ]) {
       assert.throws(
-        () => buildRemoteVetraRunnerScript({ archiveVersion }),
+        () => buildRemoteT3RunnerScript({ archiveVersion }),
         SshInvalidArchiveVersionError,
         undefined,
         archiveVersion,
       );
     }
     assert.include(
-      buildRemoteVetraRunnerScript(ARCHIVE),
+      buildRemoteT3RunnerScript(ARCHIVE),
       "VETRA_ARCHIVE_VERSION='1.2.3-preview.20260911.4'",
     );
   });
 
   it("refuses to build a runner with neither an archive version nor a node script", () => {
     for (const input of [undefined, {}, { archiveVersion: "  " }, { nodeScriptPath: null }]) {
-      assert.throws(() => buildRemoteVetraRunnerScript(input), SshMissingRunnerError);
+      assert.throws(() => buildRemoteT3RunnerScript(input), SshMissingRunnerError);
     }
     assert.throws(() => buildRemoteLaunchScript(), SshMissingRunnerError);
   });
 
   it("does not hard-code a remote node engine range", () => {
-    const script = buildRemoteVetraRunnerScript(NODE_SCRIPT);
+    const script = buildRemoteT3RunnerScript(NODE_SCRIPT);
 
     assert.include(script, "VETRA_NODE_ENGINE_RANGE=''");
     assert.notInclude(script, TEST_NODE_ENGINE_RANGE);
   });
 
   it("builds the remote vetra runner with a node script override", () => {
-    const script = buildRemoteVetraRunnerScript({
+    const script = buildRemoteT3RunnerScript({
       ...NODE_SCRIPT,
       nodeEngineRange: TEST_NODE_ENGINE_RANGE,
     });
@@ -773,7 +773,7 @@ describe("archive runner script", () => {
         const runner = `${root}/run-vetra.sh`;
         yield* fs.writeFileString(
           runner,
-          buildRemoteVetraRunnerScript({ archiveVersion, releaseBaseUrl }),
+          buildRemoteT3RunnerScript({ archiveVersion, releaseBaseUrl }),
         );
         const home = `${root}/home`;
         yield* fs.makeDirectory(home, { recursive: true });

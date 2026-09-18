@@ -3,7 +3,7 @@ import {
   type EnvironmentId,
   type ThreadEnvMode,
 } from "@t3tools/contracts";
-import { parseVetraProjectFile } from "@t3tools/shared/vetraProjectFile";
+import { parseT3ProjectFile } from "@t3tools/shared/t3ProjectFile";
 import { executeAtomQuery } from "@t3tools/client-runtime/state/runtime";
 
 import {
@@ -15,14 +15,14 @@ import { appAtomRegistry } from "~/rpc/atomRegistry";
 /**
  * Read `defaultThreadEnvMode` from the project's checked-in `vetra.json`.
  *
- * Imperative counterpart to `useVetraProjectFileScripts` for the new-thread
+ * Imperative counterpart to `useT3ProjectFileScripts` for the new-thread
  * path, which resolves defaults at call time rather than render time. The
  * file query atom caches per (environment, cwd), so repeat calls don't
  * re-fetch. Optimistic in-app writes overlay the query result, matching what
  * `useProjectFileQuery` renders. Missing, truncated, or invalid files
  * resolve to null.
  */
-export async function readVetraProjectFileDefaultThreadEnvMode(
+export async function readT3ProjectFileDefaultThreadEnvMode(
   environmentId: EnvironmentId,
   workspaceRoot: string,
 ): Promise<ThreadEnvMode | null> {
@@ -38,5 +38,5 @@ export async function readVetraProjectFileDefaultThreadEnvMode(
     result._tag === "Success" ? result.value : null,
   );
   if (data === null || data.truncated) return null;
-  return parseVetraProjectFile(data.contents)?.defaultThreadEnvMode ?? null;
+  return parseT3ProjectFile(data.contents)?.defaultThreadEnvMode ?? null;
 }

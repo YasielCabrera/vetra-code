@@ -1,12 +1,12 @@
 /**
- * VetraProjectFileLoader - Effect service that loads the checked-in `vetra.json`
+ * T3ProjectFileLoader - Effect service that loads the checked-in `vetra.json`
  * project file from a workspace root.
  *
  * Loading is best-effort: a missing file resolves to `Option.none`, and
  * unreadable or invalid files are logged and treated as absent so callers
  * can fall back to their defaults.
  *
- * @module VetraProjectFileLoader
+ * @module T3ProjectFileLoader
  */
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -16,13 +16,13 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
-import { VETRA_PROJECT_FILE_NAME, type VetraProjectFile } from "@t3tools/contracts";
-import { VetraProjectFileFromJson } from "@t3tools/shared/vetraProjectFile";
+import { VETRA_PROJECT_FILE_NAME, type T3ProjectFile } from "@t3tools/contracts";
+import { T3ProjectFileFromJson } from "@t3tools/shared/t3ProjectFile";
 
-const decodeVetraProjectFileJson = Schema.decodeEffect(VetraProjectFileFromJson);
+const decodeT3ProjectFileJson = Schema.decodeEffect(T3ProjectFileFromJson);
 
-export class VetraProjectFileLoadError extends Schema.TaggedError<VetraProjectFileLoadError>()(
-  "VetraProjectFileLoadError",
+export class T3ProjectFileLoadError extends Schema.TaggedError<T3ProjectFileLoadError>()(
+  "T3ProjectFileLoadError",
   {
     operation: Schema.Literals(["read", "decode"]),
     workspaceRoot: Schema.String,
@@ -36,8 +36,8 @@ export class VetraProjectFileLoadError extends Schema.TaggedError<VetraProjectFi
 }
 
 /** Service tag for vetra.json project file loading. */
-export class VetraProjectFileLoader extends Context.Service<
-  VetraProjectFileLoader,
+export class T3ProjectFileLoader extends Context.Service<
+  T3ProjectFileLoader,
   {
     /**
      * Load and decode `vetra.json` at the workspace root.
@@ -45,11 +45,11 @@ export class VetraProjectFileLoader extends Context.Service<
      * Never fails: missing, unreadable, or invalid files resolve to
      * `Option.none` (invalid files are logged as warnings).
      */
-    readonly load: (workspaceRoot: string) => Effect.Effect<Option.Option<VetraProjectFile>>;
+    readonly load: (workspaceRoot: string) => Effect.Effect<Option.Option<T3ProjectFile>>;
   }
->()("t3/project/VetraProjectFileLoader") {}
+>()("t3/project/T3ProjectFileLoader") {}
 
-const logVetraProjectFileLoadError = (error: VetraProjectFileLoadError) =>
+const logT3ProjectFileLoadError = (error: T3ProjectFileLoadError) =>
   Effect.logWarning(error).pipe(
     Effect.annotateLogs({
       operation: error.operation,
@@ -64,7 +64,7 @@ export const make = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
 
-  const load: VetraProjectFileLoader["Service"]["load"] = Effect.fn("VetraProjectFileLoader.load")(
+  const load: T3ProjectFileLoader["Service"]["load"] = Effect.fn("T3ProjectFileLoader.load")(
     function* (workspaceRoot) {
       const filePath = path.join(workspaceRoot, VETRA_PROJECT_FILE_NAME);
       const raw = yield* fileSystem.readFileString(filePath).pipe(
@@ -73,8 +73,8 @@ export const make = Effect.gen(function* () {
           PlatformError: (error) =>
             error.reason._tag === "NotFound"
               ? Effect.succeed(Option.none<string>())
-              : logVetraProjectFileLoadError(
-                  new VetraProjectFileLoadError({
+              : logT3ProjectFileLoadError(
+                  new T3ProjectFileLoadError({
                     operation: "read",
                     workspaceRoot,
                     filePath,
@@ -84,26 +84,26 @@ export const make = Effect.gen(function* () {
         }),
       );
       if (Option.isNone(raw)) {
-        return Option.none<VetraProjectFile>();
+        return Option.none<T3ProjectFile>();
       }
-      return yield* decodeVetraProjectFileJson(raw.value).pipe(
+      return yield* decodeT3ProjectFileJson(raw.value).pipe(
         Effect.map(Option.some),
         Effect.catchTags({
           SchemaError: (error) =>
-            logVetraProjectFileLoadError(
-              new VetraProjectFileLoadError({
+            logT3ProjectFileLoadError(
+              new T3ProjectFileLoadError({
                 operation: "decode",
                 workspaceRoot,
                 filePath,
                 cause: error,
               }),
-            ).pipe(Effect.as(Option.none<VetraProjectFile>())),
+            ).pipe(Effect.as(Option.none<T3ProjectFile>())),
         }),
       );
     },
   );
 
-  return VetraProjectFileLoader.of({ load });
+  return T3ProjectFileLoader.of({ load });
 });
 
-export const layer = Layer.effect(VetraProjectFileLoader, make);
+export const layer = Layer.effect(T3ProjectFileLoader, make);

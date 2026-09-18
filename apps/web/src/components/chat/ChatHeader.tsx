@@ -36,7 +36,7 @@ import { OpenInPicker } from "./OpenInPicker";
 import { ThreadAgentsControl } from "./ThreadAgentsControl";
 import { useRemoteOpenState, type RemoteOpenMode } from "../../remoteOpen";
 import { usePrimaryEnvironmentId } from "../../state/environments";
-import { useVetraProjectFileScripts } from "~/hooks/useVetraProjectFileScripts";
+import { useT3ProjectFileScripts } from "~/hooks/useT3ProjectFileScripts";
 import { useThreadActionMenu } from "~/hooks/useThreadActionMenu";
 import { readLocalApi } from "~/localApi";
 import { threadEnvironment } from "../../state/threads";
@@ -165,7 +165,7 @@ export const ChatHeader = memo(function ChatHeader({
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const activeProjectName = activeProject?.title;
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
-  const fileScripts = useVetraProjectFileScripts(
+  const fileScripts = useT3ProjectFileScripts(
     activeThreadEnvironmentId,
     activeProjectScripts ? activeProjectCwd : null,
   );

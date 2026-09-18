@@ -44,7 +44,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const home = yield* fs
-        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .makeTempDirectoryScoped({ prefix: "t3-cursor-skills-" })
         .pipe(Effect.flatMap(fs.realPath));
       const workspace = path.join(home, "workspace");
       const cursorHome = path.join(home, ".cursor");
@@ -98,7 +98,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const home = yield* fs
-        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .makeTempDirectoryScoped({ prefix: "t3-cursor-skills-" })
         .pipe(Effect.flatMap(fs.realPath));
       const workspace = path.join(home, "workspace");
       const cursorHome = path.join(home, ".cursor");
@@ -142,7 +142,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const home = yield* fs
-        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .makeTempDirectoryScoped({ prefix: "t3-cursor-skills-" })
         .pipe(Effect.flatMap(fs.realPath));
       const shared = path.join(home, ".agents", "skills");
       const cursorSkills = path.join(home, ".cursor", "skills");
@@ -174,7 +174,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const home = yield* fs
-        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .makeTempDirectoryScoped({ prefix: "t3-cursor-skills-" })
         .pipe(Effect.flatMap(fs.realPath));
       const cursorSkills = path.join(home, ".cursor", "skills");
 
@@ -195,7 +195,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const home = yield* fs
-        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .makeTempDirectoryScoped({ prefix: "t3-cursor-skills-" })
         .pipe(Effect.flatMap(fs.realPath));
       const builtins = path.join(home, ".cursor", "skills-cursor");
 
@@ -216,7 +216,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const home = yield* fs
-        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .makeTempDirectoryScoped({ prefix: "t3-cursor-skills-" })
         .pipe(Effect.flatMap(fs.realPath));
       const plugins = path.join(home, ".cursor", "plugins");
 
@@ -255,7 +255,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const home = yield* fs
-        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .makeTempDirectoryScoped({ prefix: "t3-cursor-skills-" })
         .pipe(Effect.flatMap(fs.realPath));
       const cursorSkills = path.join(home, ".cursor", "skills");
 
@@ -285,7 +285,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const home = yield* fs
-        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .makeTempDirectoryScoped({ prefix: "t3-cursor-skills-" })
         .pipe(Effect.flatMap(fs.realPath));
       const pluginRoot = path.join(home, ".cursor", "plugins", "local", "mcp-only");
 
@@ -306,7 +306,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const home = yield* fs
-        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .makeTempDirectoryScoped({ prefix: "t3-cursor-skills-" })
         .pipe(Effect.flatMap(fs.realPath));
       const pluginRoot = path.join(home, ".cursor", "plugins", "local", "pstack");
 
@@ -332,7 +332,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const home = yield* fs
-        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .makeTempDirectoryScoped({ prefix: "t3-cursor-skills-" })
         .pipe(Effect.flatMap(fs.realPath));
       const cursorSkills = path.join(home, ".cursor", "skills");
 
@@ -380,7 +380,7 @@ it.layer(NodeServices.layer)("discoverCursorSkills", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const home = yield* fs
-        .makeTempDirectoryScoped({ prefix: "vetra-cursor-skills-" })
+        .makeTempDirectoryScoped({ prefix: "t3-cursor-skills-" })
         .pipe(Effect.flatMap(fs.realPath));
       const workspace = path.join(home, "workspace");
       const cursorHome = path.join(home, ".cursor");

@@ -132,7 +132,7 @@ const withIdentity = <A, E, R>(
                 ? Effect.fail(input.legacyPathProbeError)
                 : Effect.succeed(input.legacyPathExists === true && path.includes("vetra-code")),
             readFileString: () =>
-              Effect.succeed(input.packageJson ?? '{"vetraCommitHash":"abcdef1234567890"}'),
+              Effect.succeed(input.packageJson ?? '{"t3codeCommitHash":"abcdef1234567890"}'),
           }),
         ),
         Layer.provideMerge(makeAssetsLayer(input.pngIconPath ?? Option.none())),

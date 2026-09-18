@@ -60,17 +60,17 @@ function resolveEarlyDesktopSettingsPath(input: {
   readonly homeDirectory: string;
   readonly joinPath: JoinPath;
 }): string {
-  const vetraHome = Option.fromUndefinedOr(input.env.VETRA_HOME);
+  const t3Home = Option.fromUndefinedOr(input.env.VETRA_HOME);
   const baseDir = resolveDesktopBaseDir({
     homeDirectory: input.homeDirectory,
     joinPath: input.joinPath,
-    vetraHome,
+    t3Home,
   });
   const stateDir = resolveDesktopStateDir({
     baseDir,
     isDevelopment: isDevelopmentEnvironment(input.env),
     joinPath: input.joinPath,
-    vetraHome,
+    t3Home,
   });
   return input.joinPath(stateDir, "desktop-settings.json");
 }

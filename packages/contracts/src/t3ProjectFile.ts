@@ -7,7 +7,7 @@ import { ProjectScriptIcon } from "./orchestration.ts";
 /** File name of the checked-in Vetra project file, resolved at the workspace root. */
 export const VETRA_PROJECT_FILE_NAME = "vetra.json";
 
-/** Public URL of the published JSON Schema for {@link VetraProjectFile}. */
+/** Public URL of the published JSON Schema for {@link T3ProjectFile}. */
 export const VETRA_PROJECT_FILE_SCHEMA_URL = "https://schema.vetra.invalid/vetra.json";
 
 const VETRA_PROJECT_FILE_PATH_MAX_LENGTH = 512;
@@ -24,7 +24,7 @@ const trimmedNonEmpty = (annotations: { readonly description: string }, maxLengt
   return encoded.pipe(Schema.decodeTo(encoded, SchemaTransformation.trim()));
 };
 
-export const VetraProjectFileScript = Schema.Struct({
+export const T3ProjectFileScript = Schema.Struct({
   name: trimmedNonEmpty({
     description: "Display name for the script, shown in the Vetra Code scripts menu.",
   }),
@@ -63,9 +63,9 @@ export const VetraProjectFileScript = Schema.Struct({
 }).annotate({
   description: "A project script that team members can import into Vetra Code.",
 });
-export type VetraProjectFileScript = typeof VetraProjectFileScript.Type;
+export type T3ProjectFileScript = typeof T3ProjectFileScript.Type;
 
-export const VetraProjectFile = Schema.Struct({
+export const T3ProjectFile = Schema.Struct({
   $schema: Schema.optionalKey(
     Schema.String.annotate({
       description: `URL of the JSON Schema for this file, typically "${VETRA_PROJECT_FILE_SCHEMA_URL}".`,
@@ -87,7 +87,7 @@ export const VetraProjectFile = Schema.Struct({
     }),
   ),
   scripts: Schema.optionalKey(
-    Schema.Array(VetraProjectFileScript)
+    Schema.Array(T3ProjectFileScript)
       .annotate({
         description:
           "Project scripts shared with everyone who opens this repository in Vetra Code.",
@@ -99,4 +99,4 @@ export const VetraProjectFile = Schema.Struct({
   description:
     "Checked-in project configuration for Vetra Code (vetra.json at the repository root).",
 });
-export type VetraProjectFile = typeof VetraProjectFile.Type;
+export type T3ProjectFile = typeof T3ProjectFile.Type;

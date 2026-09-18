@@ -313,7 +313,7 @@ const signMacArchiveContents = Effect.fn("signMacArchiveContents")(function* (in
         entry.endsWith(".node") ||
         entry.endsWith(".dylib") ||
         entry.endsWith("spawn-helper") ||
-        entry.endsWith("vetra-resource-monitor"),
+        entry.endsWith("t3-resource-monitor"),
     )
     .map((entry) => path.join(input.contentDir, entry));
 

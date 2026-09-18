@@ -10,13 +10,13 @@ import { TestClock } from "effect/testing";
 
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
 import * as ProjectFaviconResolver from "./ProjectFaviconResolver.ts";
-import * as VetraProjectFileLoader from "./VetraProjectFileLoader.ts";
+import * as T3ProjectFileLoader from "./T3ProjectFileLoader.ts";
 
 const TestLayer = Layer.empty.pipe(
   Layer.provideMerge(
     ProjectFaviconResolver.layer.pipe(
       Layer.provide(WorkspacePaths.layer),
-      Layer.provide(VetraProjectFileLoader.layer),
+      Layer.provide(T3ProjectFileLoader.layer),
     ),
   ),
   Layer.provideMerge(NodeServices.layer),
@@ -45,7 +45,7 @@ const writeTextFile = Effect.fn("writeTextFile")(function* (
 
 const makeResolverWithFileSystem = (fileSystem: FileSystem.FileSystem) =>
   ProjectFaviconResolver.make.pipe(
-    Effect.provide([WorkspacePaths.layer, VetraProjectFileLoader.layer]),
+    Effect.provide([WorkspacePaths.layer, T3ProjectFileLoader.layer]),
     Effect.provideService(FileSystem.FileSystem, fileSystem),
   );
 

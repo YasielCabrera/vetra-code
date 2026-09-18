@@ -6,7 +6,7 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as Effect from "effect/Effect";
 
-import { resolveGitWorktreePath, resolveWorktreeVetraHome } from "./devHome.ts";
+import { resolveGitWorktreePath, resolveWorktreeT3Home } from "./devHome.ts";
 
 const makeRepo = (
   kind:
@@ -94,11 +94,11 @@ describe("resolveGitWorktreePath", () => {
   );
 });
 
-describe("resolveWorktreeVetraHome", () => {
+describe("resolveWorktreeT3Home", () => {
   it.effect("answers with .vetra-code before the dev runner creates it", () =>
     Effect.gen(function* () {
       const { root, nested } = yield* makeRepo("worktree");
-      const home = yield* resolveWorktreeVetraHome(nested);
+      const home = yield* resolveWorktreeT3Home(nested);
       assert.equal(home, NodePath.join(NodePath.resolve(root), ".vetra-code"));
       assert.isFalse(NodeFS.existsSync(home ?? ""));
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),

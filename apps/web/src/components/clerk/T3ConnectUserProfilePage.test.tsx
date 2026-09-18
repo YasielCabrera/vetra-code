@@ -3,7 +3,7 @@ import type { RelayClientEnvironmentRecord } from "@t3tools/contracts/relay";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { VetraConnectEnvironmentRow } from "./VetraConnectUserProfilePage";
+import { T3ConnectEnvironmentRow } from "./T3ConnectUserProfilePage";
 
 const environment: RelayClientEnvironmentRecord = {
   environmentId: "environment-1" as EnvironmentId,
@@ -24,7 +24,7 @@ function renderRow({
   readonly mutationPending?: boolean;
 } = {}) {
   return renderToStaticMarkup(
-    <VetraConnectEnvironmentRow
+    <T3ConnectEnvironmentRow
       environment={environment}
       confirmationOpen={confirmationOpen}
       mutationPending={mutationPending}

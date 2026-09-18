@@ -752,7 +752,7 @@ export function syntheticLoadSessionResponseFromInitialize(
     ...(models ? { models } : {}),
     ...(modes ? { modes } : {}),
     _meta: {
-      vetraSessionLoadReady: "replay_idle",
+      t3SessionLoadReady: "replay_idle",
     },
   };
 }

@@ -11,7 +11,7 @@ import * as Stream from "effect/Stream";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 import * as NodeNet from "node:net";
 
-import { buildRemoteStopScript, buildRemoteVetraRunnerScript } from "./tunnel.ts";
+import { buildRemoteStopScript, buildRemoteT3RunnerScript } from "./tunnel.ts";
 
 const Started = Schema.Struct({
   pid: Schema.Number,
@@ -66,9 +66,7 @@ server.listen(Number(process.env.VETRA_TEST_PORT ?? 0), "127.0.0.1", () => {
                 },
                 detached: false,
                 stdin: Stream.make(
-                  new TextEncoder().encode(
-                    buildRemoteVetraRunnerScript({ nodeScriptPath: cliPath }),
-                  ),
+                  new TextEncoder().encode(buildRemoteT3RunnerScript({ nodeScriptPath: cliPath })),
                 ),
               }),
             );

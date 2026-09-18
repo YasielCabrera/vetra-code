@@ -14,7 +14,7 @@ import {
   ExecutionEnvironmentDescriptor,
   PortSchema,
 } from "@t3tools/contracts";
-import { resolveWorktreeVetraHome } from "@t3tools/shared/devHome";
+import { resolveWorktreeT3Home } from "@t3tools/shared/devHome";
 import {
   buildTailscaleHttpsBaseUrl,
   DEFAULT_TAILSCALE_SERVE_PORT,
@@ -247,7 +247,7 @@ const discoverPairTarget = Effect.fn("pair.discoverPairTarget")(function* (
     // Same precedence as dev-runner: inside a linked worktree its own `.vetra-code`
     // outranks the shared home, so `vetra pair` in a worktree pairs with the dev
     // server under test rather than the daily-driver install.
-    const worktreeHome = yield* resolveWorktreeVetraHome(process.cwd());
+    const worktreeHome = yield* resolveWorktreeT3Home(process.cwd());
     if (worktreeHome !== undefined) {
       bases.push(worktreeHome);
     }

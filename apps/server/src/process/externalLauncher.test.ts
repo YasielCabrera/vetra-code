@@ -125,7 +125,7 @@ it.effect("launches an installed editor with platform-safe arguments", () =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
     yield* fileSystem.writeFileString(path.join(binDir, "code.CMD"), "@echo off\r\n");
 
     let spawned: ChildProcess.StandardCommand | undefined;
@@ -164,7 +164,7 @@ for (const platform of ["darwin", "linux"] as const) {
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
       const cursorPath = path.join(binDir, "cursor");
       yield* fileSystem.writeFileString(cursorPath, "#!/bin/sh\n");
       yield* fileSystem.chmod(cursorPath, 0o755);
@@ -213,7 +213,7 @@ it.effect("launches Cursor in classic IDE mode through the Windows command shim"
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
     yield* fileSystem.writeFileString(path.join(binDir, "cursor.CMD"), "@echo off\r\n");
 
     let spawned: ChildProcess.StandardCommand | undefined;
@@ -252,7 +252,7 @@ it.effect.skipIf(windowsHost)("reveals a file in Finder with open -R on macOS", 
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
     const openPath = path.join(binDir, "open");
     yield* fileSystem.writeFileString(openPath, "#!/bin/sh\n");
     yield* fileSystem.chmod(openPath, 0o755);
@@ -287,7 +287,7 @@ it.effect("reveals a file in File Explorer through PowerShell on Windows", () =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
     yield* fileSystem.writeFileString(path.join(binDir, "explorer.CMD"), "@echo off\r\n");
     // resolvePowerShellPath builds `${SYSTEMROOT}\System32\...` with Windows
     // separators, which on the posix test filesystem is one file name.
@@ -402,7 +402,7 @@ it.effect("does not advertise reveal on Windows when PowerShell is missing", () 
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
     yield* fileSystem.writeFileString(path.join(binDir, "explorer.CMD"), "@echo off\r\n");
 
     const result = yield* Effect.gen(function* () {
@@ -437,7 +437,7 @@ it.effect.skipIf(windowsHost)(
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
       for (const name of ["explorer.exe", "powershell.exe", "xdg-open"]) {
         const filePath = path.join(binDir, name);
         yield* fileSystem.writeFileString(filePath, "#!/bin/sh\n");
@@ -492,7 +492,7 @@ it.effect.skipIf(windowsHost)(
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
       const explorerPath = path.join(binDir, "explorer.exe");
       yield* fileSystem.writeFileString(explorerPath, "");
       yield* fileSystem.chmod(explorerPath, 0o755);
@@ -530,7 +530,7 @@ it.effect.skipIf(windowsHost)(
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
       for (const name of ["explorer.exe", "xdg-open", "xdg-mime"]) {
         const filePath = path.join(binDir, name);
         yield* fileSystem.writeFileString(filePath, "#!/bin/sh\n");
@@ -585,7 +585,7 @@ it.effect.skipIf(windowsHost)(
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
       for (const name of ["xdg-open", "xdg-mime"]) {
         const filePath = path.join(binDir, name);
         yield* fileSystem.writeFileString(filePath, "#!/bin/sh\n");
@@ -638,7 +638,7 @@ it.effect.skipIf(windowsHost)(
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
       for (const name of ["explorer.exe", "powershell.exe"]) {
         const filePath = path.join(binDir, name);
         yield* fileSystem.writeFileString(filePath, "#!/bin/sh\n");
@@ -681,7 +681,7 @@ it.effect.skipIf(windowsHost)("reveals by opening the containing directory on Li
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
     for (const name of ["xdg-open", "xdg-mime"]) {
       const filePath = path.join(binDir, name);
       yield* fileSystem.writeFileString(filePath, "#!/bin/sh\n");
@@ -722,7 +722,7 @@ it.effect.skipIf(windowsHost)(
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
       const xdgOpenPath = path.join(binDir, "xdg-open");
       yield* fileSystem.writeFileString(xdgOpenPath, "#!/bin/sh\n");
       yield* fileSystem.chmod(xdgOpenPath, 0o755);
@@ -742,7 +742,7 @@ it.effect.skipIf(windowsHost)(
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
       for (const name of ["xdg-open", "xdg-mime"]) {
         const filePath = path.join(binDir, name);
         yield* fileSystem.writeFileString(filePath, "#!/bin/sh\n");
@@ -785,7 +785,7 @@ it.effect.skipIf(windowsHost)(
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
       for (const name of ["xdg-open", "xdg-mime"]) {
         const filePath = path.join(binDir, name);
         yield* fileSystem.writeFileString(filePath, "#!/bin/sh\n");
@@ -815,7 +815,7 @@ it.effect.skipIf(windowsHost)(
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
       for (const name of ["xdg-open", "xdg-mime"]) {
         const filePath = path.join(binDir, name);
         yield* fileSystem.writeFileString(filePath, "#!/bin/sh\n");
@@ -850,7 +850,7 @@ it.live.skipIf(windowsHost)("a stalled handler probe drops only the file manager
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
     for (const name of ["xdg-open", "xdg-mime", "code"]) {
       const filePath = path.join(binDir, name);
       yield* fileSystem.writeFileString(filePath, "#!/bin/sh\n");
@@ -881,7 +881,7 @@ it.effect.skipIf(windowsHost)(
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+      const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
       const xdgOpenPath = path.join(binDir, "xdg-open");
       yield* fileSystem.writeFileString(xdgOpenPath, "#!/bin/sh\n");
       yield* fileSystem.chmod(xdgOpenPath, 0o755);
@@ -901,7 +901,7 @@ it.effect("discovers editors through the service API", () =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-editors-" });
+    const binDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-editors-" });
     yield* fileSystem.writeFileString(path.join(binDir, "code.CMD"), "@echo off\r\n");
     yield* fileSystem.writeFileString(path.join(binDir, "explorer.CMD"), "@echo off\r\n");
 

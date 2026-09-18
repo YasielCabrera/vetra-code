@@ -43,7 +43,7 @@ it.layer(NodeServices.layer)("CodexHomeLayout", (it) => {
   describe("resolveCodexHomeLayout", () => {
     it.effect("uses direct CODEX_HOME when no shadow home is configured", () =>
       Effect.gen(function* () {
-        const homePath = yield* makeTempDir("vetra-code-codex-home-");
+        const homePath = yield* makeTempDir("t3code-codex-home-");
 
         const layout = yield* resolveCodexHomeLayout(
           decodeCodexSettings({

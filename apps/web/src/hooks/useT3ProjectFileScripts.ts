@@ -1,17 +1,17 @@
 import {
   VETRA_PROJECT_FILE_NAME,
   type EnvironmentId,
-  type VetraProjectFile,
-  type VetraProjectFileScript,
+  type T3ProjectFile,
+  type T3ProjectFileScript,
 } from "@t3tools/contracts";
-import { parseVetraProjectFile } from "@t3tools/shared/vetraProjectFile";
+import { parseT3ProjectFile } from "@t3tools/shared/t3ProjectFile";
 import { useMemo } from "react";
 
 import { useProjectFileQuery } from "~/components/files/projectFilesQueryState";
 
-const NO_SCRIPTS: ReadonlyArray<VetraProjectFileScript> = [];
+const NO_SCRIPTS: ReadonlyArray<T3ProjectFileScript> = [];
 
-export interface VetraProjectFileState {
+export interface T3ProjectFileState {
   /**
    * - `valid`: vetra.json exists and decoded.
    * - `invalid`: vetra.json exists but fails to decode (the server then ignores
@@ -21,18 +21,18 @@ export interface VetraProjectFileState {
    */
   status: "loading" | "missing" | "invalid" | "valid";
   /** The decoded file when status is `valid`, null otherwise. */
-  file: VetraProjectFile | null;
-  scripts: ReadonlyArray<VetraProjectFileScript>;
+  file: T3ProjectFile | null;
+  scripts: ReadonlyArray<T3ProjectFileScript>;
 }
 
 /**
  * Decoded state of the project's checked-in `vetra.json`, including whether the
  * file exists but is broken — which the runtime otherwise swallows silently.
  */
-export function useVetraProjectFileState(
+export function useT3ProjectFileState(
   environmentId: EnvironmentId,
   cwd: string | null,
-): VetraProjectFileState {
+): T3ProjectFileState {
   const query = useProjectFileQuery(
     environmentId,
     cwd ?? "",
@@ -49,7 +49,7 @@ export function useVetraProjectFileState(
         scripts: NO_SCRIPTS,
       } as const;
     }
-    const file = parseVetraProjectFile(contents);
+    const file = parseT3ProjectFile(contents);
     if (file === null) {
       return { status: "invalid", file: null, scripts: NO_SCRIPTS } as const;
     }
@@ -62,9 +62,9 @@ export function useVetraProjectFileState(
  * scripts menu for import. Missing, truncated, or invalid files resolve to
  * an empty list.
  */
-export function useVetraProjectFileScripts(
+export function useT3ProjectFileScripts(
   environmentId: EnvironmentId,
   cwd: string | null,
-): ReadonlyArray<VetraProjectFileScript> {
-  return useVetraProjectFileState(environmentId, cwd).scripts;
+): ReadonlyArray<T3ProjectFileScript> {
+  return useT3ProjectFileState(environmentId, cwd).scripts;
 }

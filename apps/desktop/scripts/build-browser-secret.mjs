@@ -18,8 +18,7 @@ if (hostPlatform === "linux") {
   if (machine === undefined) throw new Error(`Unsupported Linux architecture: ${values.arch}`);
   const root = NodeURL.fileURLToPath(new URL("../../../native/browser-secret/", import.meta.url));
   const source = NodePath.resolve(root, "main.c");
-  const output =
-    values.output ?? NodePath.resolve(root, "build", values.arch, "vetra-browser-secret");
+  const output = values.output ?? NodePath.resolve(root, "build", values.arch, "t3-browser-secret");
   const matchesArchitecture = (file) => {
     const header = NodeFS.readFileSync(file).subarray(0, 20);
     return header.toString("hex", 0, 6) === "7f454c460201" && header.readUInt16LE(18) === machine;

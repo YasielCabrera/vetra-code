@@ -115,7 +115,7 @@ const EnvServerConfig = Config.all({
   ),
   port: Config.port("VETRA_PORT").pipe(Config.option, Config.map(Option.getOrUndefined)),
   host: Config.string("VETRA_HOST").pipe(Config.option, Config.map(Option.getOrUndefined)),
-  vetraHome: Config.string("VETRA_HOME").pipe(Config.option, Config.map(Option.getOrUndefined)),
+  t3Home: Config.string("VETRA_HOME").pipe(Config.option, Config.map(Option.getOrUndefined)),
   devUrl: Config.url("VITE_DEV_SERVER_URL").pipe(Config.option, Config.map(Option.getOrUndefined)),
   devAllowedOrigins: Config.string("VETRA_DEV_ALLOWED_ORIGINS").pipe(
     Config.withDefault(""),
@@ -303,11 +303,11 @@ export const resolveServerConfig = (
       mode === "web" && devUrl !== undefined ? yield* DevAuthTokenConfig : undefined;
     const explicitBaseDir = resolveOptionPrecedence(
       normalizedFlags.baseDir,
-      Option.fromUndefinedOr(env.vetraHome),
+      Option.fromUndefinedOr(env.t3Home),
     ).pipe(Option.filter((value) => value.trim().length > 0));
     const baseDir = yield* resolveBaseDir(
       Option.getOrUndefined(
-        resolveOptionPrecedence(explicitBaseDir, Option.fromUndefinedOr(bootstrap?.vetraHome)),
+        resolveOptionPrecedence(explicitBaseDir, Option.fromUndefinedOr(bootstrap?.t3Home)),
       ),
     );
     const rawCwd = Option.getOrElse(normalizedFlags.cwd, () => process.cwd());

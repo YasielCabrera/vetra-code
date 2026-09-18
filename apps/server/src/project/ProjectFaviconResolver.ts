@@ -19,7 +19,7 @@ import * as PlatformError from "effect/PlatformError";
 import * as Schema from "effect/Schema";
 
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
-import * as VetraProjectFileLoader from "./VetraProjectFileLoader.ts";
+import * as T3ProjectFileLoader from "./T3ProjectFileLoader.ts";
 
 // Resolution walks up to 12 well-known paths plus 7 source files, so a miss
 // costs ~20 filesystem probes. AssetAccess resolves on every project-favicon
@@ -154,7 +154,7 @@ export const make = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const workspacePaths = yield* WorkspacePaths.WorkspacePaths;
-  const projectFileLoader = yield* VetraProjectFileLoader.VetraProjectFileLoader;
+  const projectFileLoader = yield* T3ProjectFileLoader.T3ProjectFileLoader;
 
   const resolveIconHref = (href: string): ReadonlyArray<string> => {
     const clean = href.replace(/^\//, "");

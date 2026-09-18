@@ -49,7 +49,7 @@ const helperLayer = (input: {
   readonly capture?: (command: CapturedCommand) => void;
 }) =>
   Layer.merge(
-    Layer.succeed(LinuxBrowserSecretPath, "/bundled/browser-secret/vetra-browser-secret"),
+    Layer.succeed(LinuxBrowserSecretPath, "/bundled/browser-secret/t3-browser-secret"),
     Layer.succeed(
       ChildProcessSpawner.ChildProcessSpawner,
       ChildProcessSpawner.make((command) =>
@@ -164,7 +164,7 @@ describe("Linux Chromium secrets", () => {
         linuxSecretApplication: "msedge",
       });
 
-      expect(captured?.command).toBe("/bundled/browser-secret/vetra-browser-secret");
+      expect(captured?.command).toBe("/bundled/browser-secret/t3-browser-secret");
       expect(captured?.args).toEqual(["msedge"]);
       expect(captured?.options.stdin).toBe("ignore");
       expect(keys.cbcV10).toHaveLength(16);

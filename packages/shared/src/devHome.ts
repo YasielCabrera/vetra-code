@@ -91,7 +91,7 @@ export const resolveGitWorktreePath = (
  * worktree. Deliberately does not require the directory to exist yet: falling
  * back because it is missing would send callers at the shared home.
  */
-export const resolveWorktreeVetraHome = (
+export const resolveWorktreeT3Home = (
   cwd: string,
 ): Effect.Effect<string | undefined, never, FileSystem.FileSystem | Path.Path> =>
   Effect.gen(function* () {

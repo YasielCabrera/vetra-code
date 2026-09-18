@@ -143,7 +143,7 @@ backends leak back in.
 - Rename identifiers that are not in `RENAMES`. New upstream names (`T3SomethingNew`, a new npm
   scope, a new protocol) will survive until someone adds a pair to the table.
 - Rename **files**. The rewrite pass edits contents, not paths. A newly added
-  `T3ConnectUserProfilePage.tsx` will export `VetraConnectUserProfilePage` after rename and then
+  `T3ConnectUserProfilePage.tsx` will export `T3ConnectUserProfilePage` after rename and then
   fail to import until you `git mv` it. `git ls-files | grep -iE 't3connect|T3Connect'` after the
   script.
 - Rewrite `t3.codes` / `t3.gg` URLs. Expected in comments, licenses, and tests that mention
@@ -362,21 +362,21 @@ is not part of the sync and must not be left behind silently.
 The script's `RENAMES` table is ordered most-specific first. Keep it that way: later patterns are
 substrings of earlier ones. Current pairs (see the script for the live list):
 
-| Upstream                                                              | Vetra                                              |
-| --------------------------------------------------------------------- | -------------------------------------------------- |
-| `com.t3tools.t3code`                                                  | `com.vetra.code`                                   |
-| `@t3tools/`                                                           | `@t3tools/`                                        |
-| `T3CODE_`                                                             | `VETRA_`                                           |
-| `T3_`                                                                 | `VETRA_`                                           |
-| `t3tools`                                                             | `vetra-code`                                       |
-| `T3 Code` / `T3-Code` / `t3-code`                                     | `Vetra Code` / `Vetra-Code` / `vetra-code`         |
-| `t3.json`                                                             | `vetra.json`                                       |
-| `T3 Connect` / `t3-connect` / `T3Connect`                             | `Vetra Connect` / `vetra-connect` / `VetraConnect` |
-| `T3ProjectFile` / `T3Project` / `T3Server` / `T3Home` / `t3Home`      | `Vetra*` / `vetraHome`                             |
-| `T3Tools` / `T3Code`                                                  | `Vetra-Code` / `VetraCode`                         |
-| `t3-resource-monitor` / `t3-relay` / `t3-chat` / `t3-env` / `t3-test` | `vetra-*`                                          |
-| `t3code` (not preceded by `pingdotgg/`)                               | `vetra-code`                                       |
-| `effect-acp` (not already scoped, not a `packages/` path)             | `effect-acp`                                       |
+| Upstream                                                              | Vetra                                           |
+| --------------------------------------------------------------------- | ----------------------------------------------- |
+| `com.t3tools.t3code`                                                  | `com.vetra.code`                                |
+| `@t3tools/`                                                           | `@t3tools/`                                     |
+| `T3CODE_`                                                             | `VETRA_`                                        |
+| `T3_`                                                                 | `VETRA_`                                        |
+| `t3tools`                                                             | `vetra-code`                                    |
+| `T3 Code` / `T3-Code` / `t3-code`                                     | `Vetra Code` / `Vetra-Code` / `vetra-code`      |
+| `t3.json`                                                             | `vetra.json`                                    |
+| `T3 Connect` / `t3-connect` / `T3Connect`                             | `Vetra Connect` / `vetra-connect` / `T3Connect` |
+| `T3ProjectFile` / `T3Project` / `T3Server` / `T3Home` / `t3Home`      | `Vetra*` / `t3Home`                             |
+| `T3Tools` / `T3Code`                                                  | `Vetra-Code` / `VetraCode`                      |
+| `t3-resource-monitor` / `t3-relay` / `t3-chat` / `t3-env` / `t3-test` | `vetra-*`                                       |
+| `t3code` (not preceded by `pingdotgg/`)                               | `vetra-code`                                    |
+| `effect-acp` (not already scoped, not a `packages/` path)             | `effect-acp`                                    |
 
 Runtime constants that must not drift, even if a merge conflict "resolves" them back:
 

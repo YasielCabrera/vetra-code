@@ -135,7 +135,7 @@ export function resolveResourceMonitorRustTargets(
 }
 
 export function resourceMonitorExecutableName(platform: typeof BuildPlatform.Type): string {
-  return platform === "win" ? "vetra-resource-monitor.exe" : "vetra-resource-monitor";
+  return platform === "win" ? "t3-resource-monitor.exe" : "t3-resource-monitor";
 }
 
 const PLATFORM_CONFIG: Record<typeof BuildPlatform.Type, PlatformConfig> = {
@@ -932,7 +932,7 @@ interface StagePackageJson {
   readonly name: string;
   readonly version: string;
   readonly buildVersion: string;
-  readonly vetraCommitHash: string;
+  readonly t3codeCommitHash: string;
   readonly private: true;
   readonly packageManager: string;
   readonly description: string;
@@ -2303,7 +2303,7 @@ export const stageBrowserSecret = Effect.fn("stageBrowserSecret")(function* (inp
         "--arch",
         input.arch === "arm64" ? "arm64" : "x64",
         "--output",
-        path.join(input.stageResourcesDir, "browser-secret", "vetra-browser-secret"),
+        path.join(input.stageResourcesDir, "browser-secret", "t3-browser-secret"),
       ],
       { cwd: input.repoRoot },
     ),
@@ -3200,7 +3200,7 @@ export const validateWindowsPackagedPayload = Effect.fn(
     return yield* new WindowsPackagedPayloadValidationError({
       reason: "resource-monitor-missing",
       packagedAppDir,
-      missingFiles: ["resource-monitor/vetra-resource-monitor.exe"],
+      missingFiles: ["resource-monitor/t3-resource-monitor.exe"],
     });
   }
 
@@ -3649,7 +3649,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     name: PRODUCT_SLUG,
     version: appVersion,
     buildVersion: appVersion,
-    vetraCommitHash: commitHash,
+    t3codeCommitHash: commitHash,
     private: true,
     packageManager: rootPackageJson.packageManager,
     description: "Vetra Code desktop build",

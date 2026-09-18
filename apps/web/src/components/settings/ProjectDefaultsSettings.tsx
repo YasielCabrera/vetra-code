@@ -7,7 +7,7 @@ import {
 import { createModelSelection } from "@t3tools/shared/model";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useVetraProjectFileState } from "../../hooks/useVetraProjectFileScripts";
+import { useT3ProjectFileState } from "../../hooks/useT3ProjectFileScripts";
 import { getCustomModelOptionsByInstance } from "../../modelSelection";
 import {
   applyProviderInstanceSettings,
@@ -83,11 +83,11 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
   // has no override of its own; show which one "inherit" resolves to.
   const checkout = scope.kind === "checkout" ? scope.checkout : null;
   // The query is disabled without a checkout, so any id satisfies the hook.
-  const vetraFile = useVetraProjectFileState(
+  const t3File = useT3ProjectFileState(
     checkout?.environmentId ?? EnvironmentId.make("none"),
     category === "general" && checkout ? checkout.workspaceRoot : null,
   );
-  const repositoryEnvMode = vetraFile.file?.defaultThreadEnvMode ?? null;
+  const repositoryEnvMode = t3File.file?.defaultThreadEnvMode ?? null;
   const inheritedEnvModeLabel =
     workspaceSource === "project"
       ? null

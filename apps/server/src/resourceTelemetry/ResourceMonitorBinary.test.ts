@@ -27,9 +27,9 @@ describe("ResourceMonitorBinary", () => {
       });
       const fileSystem = yield* FileSystem.FileSystem;
       const baseDir = yield* fileSystem.makeTempDirectoryScoped({
-        prefix: "vetra-resource-monitor-binary-",
+        prefix: "t3-resource-monitor-binary-",
       });
-      const binaryPath = `${baseDir}/vetra-resource-monitor.exe`;
+      const binaryPath = `${baseDir}/t3-resource-monitor.exe`;
       yield* fileSystem.writeFileString(binaryPath, "binary");
 
       const service = yield* ResourceMonitorBinary.make().pipe(
@@ -50,9 +50,9 @@ describe("ResourceMonitorBinary", () => {
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const baseDir = yield* fileSystem.makeTempDirectoryScoped({
-        prefix: "vetra-resource-monitor-binary-",
+        prefix: "t3-resource-monitor-binary-",
       });
-      const binaryPath = `${baseDir}/vetra-resource-monitor`;
+      const binaryPath = `${baseDir}/t3-resource-monitor`;
       yield* fileSystem.writeFileString(binaryPath, "binary");
       yield* fileSystem.chmod(binaryPath, 0o755);
 
@@ -74,7 +74,7 @@ describe("ResourceMonitorBinary", () => {
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const baseDir = yield* fileSystem.makeTempDirectoryScoped({
-        prefix: "vetra-resource-monitor-binary-",
+        prefix: "t3-resource-monitor-binary-",
       });
       const binaryPath = `${baseDir}/custom-resource-monitor`;
       yield* fileSystem.writeFileString(binaryPath, "binary");
@@ -97,9 +97,9 @@ describe("ResourceMonitorBinary", () => {
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const baseDir = yield* fileSystem.makeTempDirectoryScoped({
-        prefix: "vetra-resource-monitor-binary-",
+        prefix: "t3-resource-monitor-binary-",
       });
-      const binaryPath = `${baseDir}/vetra-resource-monitor`;
+      const binaryPath = `${baseDir}/t3-resource-monitor`;
       yield* fileSystem.writeFileString(binaryPath, "binary");
       yield* fileSystem.chmod(binaryPath, 0o644);
 
@@ -123,7 +123,7 @@ describe("ResourceMonitorBinary", () => {
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const baseDir = yield* fileSystem.makeTempDirectoryScoped({
-        prefix: "vetra-resource-monitor-binary-",
+        prefix: "t3-resource-monitor-binary-",
       });
       const service = yield* ResourceMonitorBinary.make().pipe(
         Effect.provide(ServerConfig.layerTest(process.cwd(), baseDir)),
@@ -141,7 +141,7 @@ describe("ResourceMonitorBinary", () => {
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const baseDir = yield* fileSystem.makeTempDirectoryScoped({
-        prefix: "vetra-resource-monitor-binary-",
+        prefix: "t3-resource-monitor-binary-",
       });
       const service = yield* ResourceMonitorBinary.make().pipe(
         Effect.provide(ServerConfig.layerTest(process.cwd(), baseDir)),

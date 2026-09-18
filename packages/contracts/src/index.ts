@@ -30,7 +30,7 @@ export * from "./pullRequest.ts";
 export * from "./issue.ts";
 export * from "./automation.ts";
 export * from "./orchestration.ts";
-export * from "./vetraProjectFile.ts";
+export * from "./t3ProjectFile.ts";
 export * from "./editor.ts";
 export * from "./project.ts";
 export * from "./filesystem.ts";

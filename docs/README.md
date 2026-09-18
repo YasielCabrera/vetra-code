@@ -59,7 +59,7 @@ source alone does not explain. Most code changes do not need an internal documen
 - [Resource telemetry](./internals/resource-telemetry.md)
 - [Product analytics](./internals/product-analytics.md)
 - [Environment auth](./internals/environment-auth.md)
-- [Vetra Connect](./internals/vetra-connect.md)
+- [Vetra Connect](./internals/t3-connect.md)
 - [Devices](./internals/devices.md)
 - [CI gates](./internals/ci.md)
 - [Engineering work artifacts](./internals/work-artifacts.md)

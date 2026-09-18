@@ -250,7 +250,7 @@ export const runSqliteState = Effect.fn("runSqliteState")(function* (
 });
 
 const vetraSqliteStateCommand = Command.make(
-  "vetra-sqlite-state",
+  "t3-sqlite-state",
   {
     operation: Argument.choice("operation", SqliteStateOperation.literals).pipe(
       Argument.withDescription("Run a read-only query or a backed-up fixture mutation."),

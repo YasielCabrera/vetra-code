@@ -5,7 +5,7 @@ import type { SVGProps } from "react";
  * `fill="currentColor"` so the mark inherits the surrounding text colour;
  * everywhere else it keeps the brand green.
  */
-export function VetraMark({ fill = "#04C161", ...props }: SVGProps<SVGSVGElement>) {
+export function T3Wordmark({ fill = "#04C161", ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg aria-hidden="true" fill="none" viewBox="0 0 81 81" {...props}>
       <path

@@ -61,7 +61,7 @@ function mockProcess(exit: number | PlatformError.PlatformError) {
 
 const devServerInput = {
   mode: "dev:server",
-  vetraHome: "/tmp/vetra-code-dev-runner",
+  t3Home: "/tmp/vetra-code-dev-runner",
   browser: undefined,
   autoBootstrapProjectFromCwd: undefined,
   logWebSocketEvents: undefined,
@@ -158,7 +158,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: { VETRA_DEV_AUTH_TOKEN: "reusable-dev-auth-token-that-is-long-enough" },
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -180,7 +180,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: {},
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -201,7 +201,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: {},
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: true,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -221,7 +221,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: { VETRA_NO_BROWSER: "0" },
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: false,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -242,7 +242,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: {},
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: "/tmp/custom-vetra",
+          t3Home: "/tmp/custom-vetra",
           browser: false,
           autoBootstrapProjectFromCwd: false,
           logWebSocketEvents: true,
@@ -273,7 +273,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           },
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -296,7 +296,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           },
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -319,7 +319,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           },
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: false,
@@ -332,7 +332,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
       }),
     );
 
-    it.effect("uses custom vetraHome when provided", () =>
+    it.effect("uses custom t3Home when provided", () =>
       Effect.gen(function* () {
         const path = yield* Path.Path;
         const env = yield* createDevRunnerEnv({
@@ -340,7 +340,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: {},
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: "/tmp/my-vetra",
+          t3Home: "/tmp/my-vetra",
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -368,7 +368,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           },
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: "/tmp/my-vetra",
+          t3Home: "/tmp/my-vetra",
           browser: true,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -397,7 +397,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: {},
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -425,7 +425,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
             },
             serverOffset: 0,
             webOffset: 0,
-            vetraHome: undefined,
+            t3Home: undefined,
             browser: undefined,
             autoBootstrapProjectFromCwd: undefined,
             logWebSocketEvents: undefined,
@@ -454,7 +454,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: { VETRA_SINGLE_ORIGIN_DEV: "1" },
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -475,7 +475,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: { VETRA_SINGLE_ORIGIN_DEV: "1" },
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -500,7 +500,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
             baseEnv: { HOST: "0.0.0.0" },
             serverOffset: 0,
             webOffset: 0,
-            vetraHome: undefined,
+            t3Home: undefined,
             browser: undefined,
             autoBootstrapProjectFromCwd: undefined,
             logWebSocketEvents: undefined,
@@ -523,7 +523,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: { HOST: "0.0.0.0" },
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -545,7 +545,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: { HOST: "0.0.0.0" },
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -565,7 +565,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: {},
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -921,7 +921,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           baseEnv: { VETRA_HOME: "/home/user/.vetra-code" },
           serverOffset: 0,
           webOffset: 0,
-          vetraHome: undefined,
+          t3Home: undefined,
           browser: undefined,
           autoBootstrapProjectFromCwd: undefined,
           logWebSocketEvents: undefined,
@@ -1256,7 +1256,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
       );
 
       const spawnedHome = (input: {
-        readonly vetraHome: string | undefined;
+        readonly t3Home: string | undefined;
         readonly cwd: string;
         readonly ambientHome: string | undefined;
       }) =>
@@ -1274,7 +1274,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
             }),
           );
 
-          yield* runDevRunnerWithInput({ ...devServerInput, vetraHome: input.vetraHome }).pipe(
+          yield* runDevRunnerWithInput({ ...devServerInput, t3Home: input.t3Home }).pipe(
             Effect.provide(Layer.mergeAll(emptyConfigLayer, netServiceLayer, spawnerLayer)),
             Effect.provideService(HostProcessPlatform, "linux"),
             Effect.provideService(HostProcessWorkingDirectory, input.cwd),
@@ -1292,7 +1292,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           const path = yield* Path.Path;
           const root = yield* makeWorktree;
           const home = yield* spawnedHome({
-            vetraHome: "/tmp/explicit-home",
+            t3Home: "/tmp/explicit-home",
             cwd: root,
             ambientHome: "/home/user/.vetra-code",
           });
@@ -1305,7 +1305,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           const path = yield* Path.Path;
           const root = yield* makeWorktree;
           const home = yield* spawnedHome({
-            vetraHome: "   ",
+            t3Home: "   ",
             cwd: root,
             ambientHome: "/home/user/.vetra-code",
           });
@@ -1318,7 +1318,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           const path = yield* Path.Path;
           const root = yield* makeWorktree;
           const home = yield* spawnedHome({
-            vetraHome: undefined,
+            t3Home: undefined,
             cwd: root,
             ambientHome: "/home/user/.vetra-code",
           });
@@ -1330,7 +1330,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
         Effect.gen(function* () {
           const path = yield* Path.Path;
           const home = yield* spawnedHome({
-            vetraHome: undefined,
+            t3Home: undefined,
             cwd: NodeOS.tmpdir(),
             ambientHome: "/home/user/.vetra-code",
           });
@@ -1341,7 +1341,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
       it.effect("leaves the home implicit with no worktree and no ambient value", () =>
         Effect.gen(function* () {
           const home = yield* spawnedHome({
-            vetraHome: undefined,
+            t3Home: undefined,
             cwd: NodeOS.tmpdir(),
             ambientHome: undefined,
           });

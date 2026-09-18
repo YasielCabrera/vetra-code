@@ -41,7 +41,7 @@ import { codexSessionAppServerArgs } from "./codexLaunchArgs.ts";
 import { expandHomePath } from "../../pathExpansion.ts";
 import {
   buildCodexDeveloperInstructions,
-  type VetraCodeToolAvailability,
+  type T3CodeToolAvailability,
 } from "../CodexDeveloperInstructions.ts";
 const decodeV2TurnStartResponse = Schema.decodeUnknownEffect(EffectCodexSchema.V2TurnStartResponse);
 
@@ -72,7 +72,7 @@ export function hasConfiguredMcpServer(appServerArgs: ReadonlyArray<string> | un
 function configuredMcpToolAvailability(
   appServerArgs: ReadonlyArray<string> | undefined,
   mcpCapabilities: ReadonlySet<string> | undefined,
-): VetraCodeToolAvailability {
+): T3CodeToolAvailability {
   if (!hasConfiguredMcpServer(appServerArgs)) return { browser: false, device: false };
   // Callers predating the capability set attached the browser toolkit only.
   if (mcpCapabilities === undefined) return { browser: true, device: false };
@@ -590,7 +590,7 @@ function buildCodexCollaborationMode(input: {
   readonly interactionMode?: ProviderInteractionMode;
   readonly model?: string;
   readonly effort?: EffectCodexSchema.V2TurnStartParams__ReasoningEffort;
-  readonly browserToolsAvailable?: boolean | VetraCodeToolAvailability;
+  readonly browserToolsAvailable?: boolean | T3CodeToolAvailability;
 }): EffectCodexSchema.V2TurnStartParams__CollaborationMode | undefined {
   if (input.interactionMode === undefined) {
     return undefined;
@@ -628,7 +628,7 @@ export function buildTurnStartParams(input: {
   readonly effort?: EffectCodexSchema.V2TurnStartParams__ReasoningEffort;
   readonly interactionMode?: ProviderInteractionMode;
   /** Defaults to true so callers that predate the agent-access gate are unchanged. */
-  readonly browserToolsAvailable?: boolean | VetraCodeToolAvailability;
+  readonly browserToolsAvailable?: boolean | T3CodeToolAvailability;
 }): Effect.Effect<
   CodexTurnStartParamsWithCollaborationMode,
   CodexErrors.CodexAppServerProtocolParseError

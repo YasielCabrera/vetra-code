@@ -68,7 +68,7 @@ Existing property meanings do not change:
 - `clientType` describes how the server runs. It is `desktop-app` for a desktop
   server and `cli-web-client` for a CLI web server. It does not describe the
   connected client. Use `surface` and `webDeployment` for new reports.
-- `platform`, `arch`, `wsl`, and `vetraCodeVersion` describe the server. Use the
+- `platform`, `arch`, `wsl`, and `t3CodeVersion` describe the server. Use the
   new `server*` names for new reports.
 - `appVersion` describes the connected client. Use `clientAppVersion` for new
   reports.

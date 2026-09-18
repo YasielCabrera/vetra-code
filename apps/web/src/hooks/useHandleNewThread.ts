@@ -30,7 +30,7 @@ import {
   resolveNewDraftStartFromOrigin,
   resolveNewThreadModelSelectionOverride,
 } from "../lib/chatThreadActions";
-import { readVetraProjectFileDefaultThreadEnvMode } from "../lib/vetraProjectFileDefaults";
+import { readT3ProjectFileDefaultThreadEnvMode } from "../lib/t3ProjectFileDefaults";
 import { environmentServerConfigsAtom } from "../state/server";
 import { resolveThreadRouteTarget } from "../threadRoutes";
 import { legacyProjectCwdPreferenceKey, useUiStateStore } from "../uiStateStore";
@@ -158,7 +158,7 @@ export function useNewThreadHandler() {
         return resolveDefaultThreadEnvMode({
           projectSetting: projectThreadEnvMode,
           projectFile: consultProjectFile
-            ? await readVetraProjectFileDefaultThreadEnvMode(
+            ? await readT3ProjectFileDefaultThreadEnvMode(
                 project.environmentId,
                 project.workspaceRoot,
               )

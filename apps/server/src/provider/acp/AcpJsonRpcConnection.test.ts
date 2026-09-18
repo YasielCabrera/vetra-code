@@ -1056,7 +1056,7 @@ describe("AcpSessionRuntime", () => {
 
       expect(started.sessionId).toBe("mock-session-1");
       expect(started.sessionSetupResult._meta).toMatchObject({
-        vetraSessionLoadReady: "replay_idle",
+        t3SessionLoadReady: "replay_idle",
       });
 
       const unexpectedReplayEvent = yield* Stream.runHead(runtime.getEvents()).pipe(

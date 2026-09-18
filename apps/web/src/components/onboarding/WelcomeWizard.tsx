@@ -31,7 +31,7 @@ import { APP_BASE_NAME } from "../../branding";
 import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { hasCloudPublicConfig } from "../../cloud/publicConfig";
-import { useVetraConnectAuthPrompt } from "../clerk/useVetraConnectAuthPrompt";
+import { useT3ConnectAuthPrompt } from "../clerk/useT3ConnectAuthPrompt";
 import { useCompleteOnboarding } from "../../onboarding/firstRun";
 import {
   groupOnboardingProjects,
@@ -64,7 +64,7 @@ import { getDriverOption } from "../settings/providerDriverMeta";
 import { TerminalViewport } from "../ThreadTerminalDrawer";
 import { CloudEnvironmentConnectRows } from "../cloud/CloudEnvironmentConnectList";
 import { ClaudeAI, OpenAI } from "../Icons";
-import { VetraMark } from "../VetraMark";
+import { T3Wordmark } from "../T3Wordmark";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
@@ -193,7 +193,7 @@ export function WelcomeWizard({
           title={`Set up ${APP_BASE_NAME}`}
           identity={
             <div className="flex items-center gap-1.5" role="img" aria-label={APP_BASE_NAME}>
-              <VetraMark className="size-4 shrink-0" aria-hidden />
+              <T3Wordmark className="size-4 shrink-0" aria-hidden />
               <span className="text-[1.4rem] font-medium tracking-tight text-muted-foreground">
                 {APP_BASE_NAME}
               </span>
@@ -414,7 +414,7 @@ function ConnectAccountOption({
 }) {
   const { environments } = useEnvironments();
   const { isLoaded, isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
-  const { openAuthPrompt } = useVetraConnectAuthPrompt();
+  const { openAuthPrompt } = useT3ConnectAuthPrompt();
   const [expanded, setExpanded] = useState(true);
   const [discoveryReady, setDiscoveryReady] = useState(false);
   const onDiscoveryReady = useCallback(() => setDiscoveryReady(true), []);

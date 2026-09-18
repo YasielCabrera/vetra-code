@@ -58,7 +58,7 @@ jobs:
         id: resource_monitor_cache
         uses: actions/cache@v6
         with:
-          path: native/resource-monitor/target/aarch64-apple-darwin/release/vetra-resource-monitor
+          path: native/resource-monitor/target/aarch64-apple-darwin/release/t3-resource-monitor
           key: resource-monitor-aarch64-apple-darwin-${{ hashFiles('native/resource-monitor/Cargo.lock', 'native/resource-monitor/Cargo.toml', 'native/resource-monitor/src/**') }}
 
       - name: Setup Rust

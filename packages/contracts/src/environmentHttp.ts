@@ -608,7 +608,7 @@ class EnvironmentConnectHttpApi extends HttpApiGroup.make("connect")
     }),
   )
   .add(
-    HttpApiEndpoint.post("vetraMintCredential", "/api/vetra-connect/mint-credential", {
+    HttpApiEndpoint.post("t3MintCredential", "/api/vetra-connect/mint-credential", {
       payload: RelayCloudMintCredentialRequest,
       success: RelayEnvironmentMintResponse,
       error: EnvironmentHttpCloudErrors,

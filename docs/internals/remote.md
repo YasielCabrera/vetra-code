@@ -53,7 +53,7 @@ parameter would disclose it to the wrong origin.
 Tailscale supplies an endpoint for ordinary pairing, so it needs no separate
 environment type. Authentication remains the environment's responsibility for
 every route. See [environment authentication](./environment-auth.md) and the
-[Vetra Connect trust boundary](./vetra-connect.md).
+[Vetra Connect trust boundary](./t3-connect.md).
 
 SSH can launch a server as well as forward a port. Desktop main owns that
 lifecycle because it can spawn SSH and handle authentication prompts. The
@@ -180,7 +180,7 @@ behind NAT, inbound ports are unavailable, or mobile must reach a desktop-hosted
 the client's perspective this is still an ordinary WebSocket connection; the route is mediated. The
 relay Worker only brokers credentials and a managed endpoint; application traffic then flows over
 the provisioned Cloudflare tunnel hostname for the life of the connection, not through the relay
-Worker itself. See [vetra-connect.md](./vetra-connect.md).
+Worker itself. See [t3-connect.md](./t3-connect.md).
 
 ### Tailscale access
 
@@ -273,7 +273,7 @@ Clients treat the field like any other capability: absent means "use the fallbac
 These remain unbuilt and are listed to keep the model honest:
 
 - third-party tunnel products as additional endpoint providers;
-- a relay-hosted OAuth callback broker (see [vetra-connect.md](./vetra-connect.md));
+- a relay-hosted OAuth callback broker (see [t3-connect.md](./t3-connect.md));
 - richer multi-environment UI beyond the current connections list.
 
 [model]: ../../packages/client-runtime/src/connection/model.ts

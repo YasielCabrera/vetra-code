@@ -5,7 +5,7 @@ import * as NodeOS from "node:os";
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NetService from "@t3tools/shared/Net";
-import { resolveGitWorktreePath, resolveWorktreeVetraHome } from "@t3tools/shared/devHome";
+import { resolveGitWorktreePath, resolveWorktreeT3Home } from "@t3tools/shared/devHome";
 import { HostProcessEnvironment, HostProcessWorkingDirectory } from "@t3tools/shared/hostProcess";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import {
@@ -300,7 +300,7 @@ interface CreateDevRunnerEnvInput {
   readonly baseEnv: NodeJS.ProcessEnv;
   readonly serverOffset: number;
   readonly webOffset: number;
-  readonly vetraHome: string | undefined;
+  readonly t3Home: string | undefined;
   readonly browser: boolean | undefined;
   readonly autoBootstrapProjectFromCwd: boolean | undefined;
   readonly logWebSocketEvents: boolean | undefined;
@@ -314,7 +314,7 @@ export function createDevRunnerEnv({
   baseEnv,
   serverOffset,
   webOffset,
-  vetraHome,
+  t3Home,
   browser,
   autoBootstrapProjectFromCwd,
   logWebSocketEvents,
@@ -326,8 +326,8 @@ export function createDevRunnerEnv({
     const serverPort = port ?? BASE_SERVER_PORT + serverOffset;
     const webPort = BASE_WEB_PORT + webOffset;
     // Precedence (--home-dir > worktree .vetra-code > ambient VETRA_HOME) is resolved
-    // by the caller; an unset vetraHome here genuinely means "use the default".
-    const configuredBaseDir = vetraHome?.trim() || undefined;
+    // by the caller; an unset t3Home here genuinely means "use the default".
+    const configuredBaseDir = t3Home?.trim() || undefined;
     const resolvedBaseDir = yield* resolveBaseDir(configuredBaseDir);
     const isDesktopMode = mode === "dev:desktop";
 
@@ -624,7 +624,7 @@ export function resolveModePortOffsets<R = NetService.NetService>({
 
 interface DevRunnerCliInput {
   readonly mode: DevMode;
-  readonly vetraHome: string | undefined;
+  readonly t3Home: string | undefined;
   readonly browser: boolean | undefined;
   readonly autoBootstrapProjectFromCwd: boolean | undefined;
   readonly logWebSocketEvents: boolean | undefined;
@@ -683,12 +683,12 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
     // A dev server started inside a worktree defaults to that worktree's own
     // (gitignored) `.vetra-code` — see @t3tools/shared/devHome for why this must
     // outrank an ambient VETRA_HOME. `--home-dir` still wins.
-    const worktreeHome = yield* resolveWorktreeVetraHome(yield* HostProcessWorkingDirectory);
+    const worktreeHome = yield* resolveWorktreeT3Home(yield* HostProcessWorkingDirectory);
     // Trim before choosing: `--home-dir ""` is not a selection, and treating it
     // as one would skip the worktree default and land on the shared home —
     // exactly the outcome this precedence exists to prevent.
-    const resolvedVetraHome =
-      (input.vetraHome?.trim() || undefined) ??
+    const resolvedT3Home =
+      (input.t3Home?.trim() || undefined) ??
       worktreeHome ??
       (hostEnvironment.VETRA_HOME?.trim() || undefined);
     const env = yield* createDevRunnerEnv({
@@ -696,7 +696,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
       baseEnv: hostEnvironment,
       serverOffset,
       webOffset,
-      vetraHome: resolvedVetraHome,
+      t3Home: resolvedT3Home,
       browser: input.browser,
       autoBootstrapProjectFromCwd: input.autoBootstrapProjectFromCwd,
       logWebSocketEvents: input.logWebSocketEvents,
@@ -864,7 +864,7 @@ const devRunnerCli = Command.make("dev-runner", {
   mode: Argument.choice("mode", DEV_RUNNER_MODES).pipe(
     Argument.withDescription("Development mode to run."),
   ),
-  vetraHome: Flag.string("home-dir").pipe(
+  t3Home: Flag.string("home-dir").pipe(
     Flag.withDescription(
       "Explicit Vetra Code data directory; runtime state is stored under userdata (equivalent to VETRA_HOME). Inside a git worktree this defaults to that worktree's own .vetra-code so dev state stays off the shared home.",
     ),

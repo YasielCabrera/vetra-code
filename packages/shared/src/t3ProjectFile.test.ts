@@ -2,16 +2,16 @@ import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
-  buildVetraProjectFileJsonSchema,
-  parseVetraProjectFile,
-  VetraProjectFileFromJson,
-} from "./vetraProjectFile.ts";
+  buildT3ProjectFileJsonSchema,
+  parseT3ProjectFile,
+  T3ProjectFileFromJson,
+} from "./t3ProjectFile.ts";
 
-const decodeJson = Schema.decodeUnknownSync(VetraProjectFileFromJson);
+const decodeJson = Schema.decodeUnknownSync(T3ProjectFileFromJson);
 
-describe("buildVetraProjectFileJsonSchema", () => {
+describe("buildT3ProjectFileJsonSchema", () => {
   it("emits a draft 2020-12 schema with the published $id", () => {
-    const schema = buildVetraProjectFileJsonSchema();
+    const schema = buildT3ProjectFileJsonSchema();
 
     expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
     expect(schema.$id).toBe("https://schema.vetra.invalid/vetra.json");
@@ -20,7 +20,7 @@ describe("buildVetraProjectFileJsonSchema", () => {
   });
 
   it("documents every supported field", () => {
-    const schema = buildVetraProjectFileJsonSchema() as {
+    const schema = buildT3ProjectFileJsonSchema() as {
       properties: Record<
         string,
         {
@@ -55,12 +55,12 @@ describe("buildVetraProjectFileJsonSchema", () => {
   });
 
   it("stays JSON-serializable", () => {
-    const schema = buildVetraProjectFileJsonSchema();
+    const schema = buildT3ProjectFileJsonSchema();
     expect(JSON.parse(JSON.stringify(schema))).toEqual(schema);
   });
 });
 
-describe("VetraProjectFileFromJson", () => {
+describe("T3ProjectFileFromJson", () => {
   it("decodes lenient JSONC with comments and trailing commas", () => {
     const decoded = decodeJson(`{
       // team scripts
@@ -79,15 +79,15 @@ describe("VetraProjectFileFromJson", () => {
   });
 });
 
-describe("parseVetraProjectFile", () => {
+describe("parseT3ProjectFile", () => {
   it("returns the decoded file for valid contents", () => {
-    expect(parseVetraProjectFile('{ "defaultThreadEnvMode": "worktree" }')).toEqual({
+    expect(parseT3ProjectFile('{ "defaultThreadEnvMode": "worktree" }')).toEqual({
       defaultThreadEnvMode: "worktree",
     });
   });
 
   it("returns null for malformed or invalid contents", () => {
-    expect(parseVetraProjectFile("{ not json")).toBeNull();
-    expect(parseVetraProjectFile('{ "defaultThreadEnvMode": "spaceship" }')).toBeNull();
+    expect(parseT3ProjectFile("{ not json")).toBeNull();
+    expect(parseT3ProjectFile('{ "defaultThreadEnvMode": "spaceship" }')).toBeNull();
   });
 });

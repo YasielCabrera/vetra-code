@@ -122,7 +122,7 @@ const PR_TOOL_ACTIONS: Readonly<Record<string, ToolGroupAction>> = {
   list_thread_pull_requests: "list-prs",
 };
 
-function resolveVetraMcpToolPresentation(
+function resolveT3McpToolPresentation(
   value: string | undefined,
   status: string | undefined,
   data?: unknown,
@@ -197,16 +197,16 @@ export function resolveWorkEntryToolPresentation(
       "tool" in data &&
       typeof data.tool === "string"
     ) {
-      return resolveVetraMcpToolPresentation(`${data.server}.${data.tool}`, status, data);
+      return resolveT3McpToolPresentation(`${data.server}.${data.tool}`, status, data);
     }
     if ("toolName" in data && typeof data.toolName === "string") {
-      return resolveVetraMcpToolPresentation(data.toolName, status, data);
+      return resolveT3McpToolPresentation(data.toolName, status, data);
     }
   }
 
   return (
-    resolveVetraMcpToolPresentation(entry.toolTitle, status, data) ??
-    resolveVetraMcpToolPresentation(entry.label, status, data)
+    resolveT3McpToolPresentation(entry.toolTitle, status, data) ??
+    resolveT3McpToolPresentation(entry.label, status, data)
   );
 }
 

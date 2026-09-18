@@ -17,7 +17,7 @@ export const layer = Layer.effect(
     const environment = yield* DesktopEnvironment;
     if (environment.platform !== "linux") return undefined;
     const fileSystem = yield* FileSystem.FileSystem;
-    const relative = environment.path.join("browser-secret", "vetra-browser-secret");
+    const relative = environment.path.join("browser-secret", "t3-browser-secret");
     const candidates = environment.isPackaged
       ? [environment.path.join(environment.resourcesPath, relative)]
       : [
@@ -27,7 +27,7 @@ export const layer = Layer.effect(
             "browser-secret",
             "build",
             environment.processArch,
-            "vetra-browser-secret",
+            "t3-browser-secret",
           ),
           ...environment.resolveResourcePathCandidates(relative),
         ];

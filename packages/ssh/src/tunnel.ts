@@ -73,7 +73,7 @@ const REMOTE_ARCHIVE_LOCK_WAIT_SECONDS = 360;
 const REMOTE_ARCHIVE_LAUNCH_TIMEOUT_MS = 900_000;
 const REMOTE_REUSE_READY_TIMEOUT_MS = 2_000;
 
-export interface RemoteVetraRunnerOptions {
+export interface RemoteT3RunnerOptions {
   /**
    * Dev mode: run `node <path>` on the remote instead of a release archive.
    * The only mode that needs Node on the remote.
@@ -90,7 +90,7 @@ export interface RemoteVetraRunnerOptions {
 }
 
 export interface SshEnvironmentManagerOptions {
-  readonly resolveCliRunner?: Effect.Effect<RemoteVetraRunnerOptions>;
+  readonly resolveCliRunner?: Effect.Effect<RemoteT3RunnerOptions>;
 }
 
 interface SshTunnelEntry {
@@ -131,11 +131,11 @@ function sshTargetLogFields(target: DesktopSshEnvironmentTarget) {
   };
 }
 
-function isNodeScriptRunner(runner: RemoteVetraRunnerOptions | undefined): boolean {
+function isNodeScriptRunner(runner: RemoteT3RunnerOptions | undefined): boolean {
   return Boolean(runner?.nodeScriptPath?.trim());
 }
 
-function sshRunnerLogFields(runner: RemoteVetraRunnerOptions | undefined) {
+function sshRunnerLogFields(runner: RemoteT3RunnerOptions | undefined) {
   if (runner?.nodeScriptPath?.trim()) {
     return { runner: "node-script", nodeScriptPath: runner.nodeScriptPath.trim() };
   }
@@ -794,7 +794,7 @@ export class SshMissingRunnerError extends Schema.TaggedError<SshMissingRunnerEr
   }
 }
 
-export function buildRemoteVetraRunnerScript(input?: RemoteVetraRunnerOptions): string {
+export function buildRemoteT3RunnerScript(input?: RemoteT3RunnerOptions): string {
   const nodeScriptPath = input?.nodeScriptPath?.trim() || "";
   const archiveVersion = input?.archiveVersion?.trim() || "";
   if (nodeScriptPath === "" && archiveVersion === "") {
@@ -821,7 +821,7 @@ export function buildRemoteVetraRunnerScript(input?: RemoteVetraRunnerOptions): 
   );
 }
 
-export function buildRemoteNodeEnvScript(input?: RemoteVetraRunnerOptions): string {
+export function buildRemoteNodeEnvScript(input?: RemoteT3RunnerOptions): string {
   return stripTrailingNewlines(
     applyScriptPlaceholders(REMOTE_NODE_ENV_SCRIPT, {
       VETRA_NODE_ENGINE_RANGE: shellSingleQuote(input?.nodeEngineRange?.trim() || ""),
@@ -830,11 +830,11 @@ export function buildRemoteNodeEnvScript(input?: RemoteVetraRunnerOptions): stri
   );
 }
 
-export function buildRemoteLaunchScript(input?: RemoteVetraRunnerOptions): string {
+export function buildRemoteLaunchScript(input?: RemoteT3RunnerOptions): string {
   return applyScriptPlaceholders(REMOTE_LAUNCH_SCRIPT, {
     VETRA_ARCHIVE_MODE: isNodeScriptRunner(input) ? "0" : "1",
     VETRA_NODE_ENV_SCRIPT: buildRemoteNodeEnvScript(input),
-    VETRA_RUNNER_SCRIPT: stripTrailingNewlines(buildRemoteVetraRunnerScript(input)),
+    VETRA_RUNNER_SCRIPT: stripTrailingNewlines(buildRemoteT3RunnerScript(input)),
     VETRA_PICK_PORT_SCRIPT: stripTrailingNewlines(REMOTE_PICK_PORT_SCRIPT),
     VETRA_WAIT_READY_SCRIPT: stripTrailingNewlines(REMOTE_WAIT_READY_SCRIPT),
     VETRA_DEFAULT_REMOTE_PORT: String(DEFAULT_REMOTE_PORT),
@@ -847,11 +847,11 @@ export function buildRemoteLaunchScript(input?: RemoteVetraRunnerOptions): strin
 
 export function buildRemotePairingScript(
   target: DesktopSshEnvironmentTarget,
-  input?: RemoteVetraRunnerOptions,
+  input?: RemoteT3RunnerOptions,
 ): string {
   return applyScriptPlaceholders(REMOTE_PAIRING_SCRIPT, {
     VETRA_STATE_KEY: remoteStateKey(target),
-    VETRA_RUNNER_SCRIPT: stripTrailingNewlines(buildRemoteVetraRunnerScript(input)),
+    VETRA_RUNNER_SCRIPT: stripTrailingNewlines(buildRemoteT3RunnerScript(input)),
   });
 }
 
@@ -871,7 +871,7 @@ export const launchOrReuseRemoteServer = Effect.fn("ssh/tunnel.launchOrReuseRemo
   function* (
     target: DesktopSshEnvironmentTarget,
     input?: SshAuthOptions,
-    runner?: RemoteVetraRunnerOptions,
+    runner?: RemoteT3RunnerOptions,
   ): Effect.fn.Return<
     { readonly remotePort: number; readonly remoteServerKind: "external" | "managed" | null },
     SshCommandError | SshInvalidTargetError | SshLaunchError,
@@ -930,7 +930,7 @@ export const launchOrReuseRemoteServer = Effect.fn("ssh/tunnel.launchOrReuseRemo
 export const issueRemotePairingToken = Effect.fn("ssh/tunnel.issueRemotePairingToken")(function* (
   target: DesktopSshEnvironmentTarget,
   input?: SshAuthOptions,
-  runner?: RemoteVetraRunnerOptions,
+  runner?: RemoteT3RunnerOptions,
 ): Effect.fn.Return<
   {
     readonly credential: string;
@@ -1494,7 +1494,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
   const createTunnelEntry = Effect.fn("ssh/tunnel.ensureTunnelEntry.create")(function* (input: {
     readonly key: string;
     readonly resolvedTarget: DesktopSshEnvironmentTarget;
-    readonly runner?: RemoteVetraRunnerOptions;
+    readonly runner?: RemoteT3RunnerOptions;
   }): Effect.fn.Return<SshTunnelEntry, SshEnvironmentEffectError, SshEnvironmentEffectContext> {
     yield* Effect.logDebug("ssh.environment.tunnel.create.start", {
       ...sshTargetLogFields(input.resolvedTarget),
@@ -1607,7 +1607,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
   const ensureTunnelEntry = Effect.fn("ssh/tunnel.ensureTunnelEntry")(function* (
     key: string,
     resolvedTarget: DesktopSshEnvironmentTarget,
-    runner?: RemoteVetraRunnerOptions,
+    runner?: RemoteT3RunnerOptions,
   ): Effect.fn.Return<SshTunnelEntry, SshEnvironmentEffectError, SshEnvironmentEffectContext> {
     const entry = tunnels.get(key) ?? null;
 

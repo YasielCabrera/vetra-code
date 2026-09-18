@@ -37,7 +37,7 @@ export const DesktopConfig = Config.all({
   appDataDirectory: trimmedString("APPDATA"),
   xdgConfigHome: trimmedString("XDG_CONFIG_HOME"),
   xdgDataHome: trimmedString("XDG_DATA_HOME"),
-  vetraHome: trimmedString("VETRA_HOME"),
+  t3Home: trimmedString("VETRA_HOME"),
   devServerUrl: Config.url("VITE_DEV_SERVER_URL").pipe(Config.option),
   appUserModelIdOverride: trimmedString("VETRA_DESKTOP_APP_USER_MODEL_ID"),
   devRemoteServerEntryPath: trimmedString("VETRA_DEV_REMOTE_SERVER_ENTRY_PATH"),

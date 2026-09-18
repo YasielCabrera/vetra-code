@@ -5,7 +5,7 @@ import { Link, useCanGoBack, useLocation, useNavigate } from "@tanstack/react-ro
 
 import { APP_BASE_NAME } from "../../branding";
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
-import { VetraMark } from "../VetraMark";
+import { T3Wordmark } from "../T3Wordmark";
 import { cn } from "../../lib/utils";
 import { useEnvironments } from "../../state/environments";
 import { rememberedIssueFilters } from "../sourceControl/listFilterMemory";
@@ -89,7 +89,7 @@ function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
       )}
       to="/"
     >
-      <VetraMark className="size-4 shrink-0" {...(onBackdrop ? { fill: "currentColor" } : {})} />
+      <T3Wordmark className="size-4 shrink-0" {...(onBackdrop ? { fill: "currentColor" } : {})} />
       <span className="-translate-y-px truncate text-sm font-semibold tracking-tight">
         {APP_BASE_NAME}
       </span>

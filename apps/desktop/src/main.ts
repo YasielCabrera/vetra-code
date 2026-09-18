@@ -17,7 +17,7 @@ import * as Electron from "electron";
 
 import * as NetService from "@t3tools/shared/Net";
 import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
-import type { RemoteVetraRunnerOptions } from "@t3tools/ssh/tunnel";
+import type { RemoteT3RunnerOptions } from "@t3tools/ssh/tunnel";
 import serverPackageJson from "../../server/package.json" with { type: "json" };
 
 import * as DesktopIpc from "./ipc/DesktopIpc.ts";
@@ -91,7 +91,7 @@ const desktopEnvironmentLayer = Layer.unwrap(
 // a source checkout instead so the two sides can be iterated together.
 const resolveDesktopSshCliRunner = (
   environment: DesktopEnvironment.DesktopEnvironment["Service"],
-): RemoteVetraRunnerOptions => {
+): RemoteT3RunnerOptions => {
   const devRemoteEntryPath = Option.getOrUndefined(environment.devRemoteServerEntryPath);
   if (environment.isDevelopment && devRemoteEntryPath !== undefined) {
     return {

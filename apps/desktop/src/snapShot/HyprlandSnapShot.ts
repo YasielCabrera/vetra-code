@@ -12,7 +12,7 @@ import { startNativeCaptureFeedback } from "./NativeCaptureFeedback.ts";
 import { HYPRLAND_CAPTURE_ACTION } from "./linuxCaptureSession.ts";
 export { isHyprlandCaptureSession } from "./linuxCaptureSession.ts";
 
-export const HYPRLAND_CAPTURE_EXECUTABLE = "vetra-hyprland-snap-shot";
+export const HYPRLAND_CAPTURE_EXECUTABLE = "t3-hyprland-snap-shot";
 export type HyprlandCapturePaths = { readonly bundle: string; readonly dataHome: string };
 export function hyprlandCaptureExecutable(paths: HyprlandCapturePaths) {
   return NodePath.join(

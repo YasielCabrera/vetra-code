@@ -862,7 +862,7 @@ export function ResourceTelemetryDiagnostics({
   }, [environmentId]);
   const [isRetrying, setIsRetrying] = useState(false);
   const snapshot = telemetry.data;
-  const allVetra = snapshot?.groups.allVetra;
+  const allT3 = snapshot?.groups.allT3;
 
   const signalProcess = useCallback(
     async (process: ResourceTelemetryProcess, signal: ServerProcessSignal) => {
@@ -1021,46 +1021,40 @@ export function ResourceTelemetryDiagnostics({
             <IconStat
               icon={<CpuIcon className="size-3.5" />}
               label="Current CPU"
-              value={allVetra ? `${allVetra.currentCpuPercent.toFixed(1)}%` : "..."}
-              detail={
-                allVetra ? `${formatCpuTime(allVetra.cpuTimeMs)} observed CPU time` : undefined
-              }
+              value={allT3 ? `${allT3.currentCpuPercent.toFixed(1)}%` : "..."}
+              detail={allT3 ? `${formatCpuTime(allT3.cpuTimeMs)} observed CPU time` : undefined}
             />
             <IconStat
               icon={<MemoryStickIcon className="size-3.5" />}
               label="Resident memory"
-              value={allVetra ? formatBytes(allVetra.currentRssBytes) : "..."}
+              value={allT3 ? formatBytes(allT3.currentRssBytes) : "..."}
               detail={
-                allVetra
-                  ? `${formatBytes(allVetra.peakRssBytes)} combined process peaks`
-                  : undefined
+                allT3 ? `${formatBytes(allT3.peakRssBytes)} combined process peaks` : undefined
               }
             />
             <IconStat
               icon={<ActivityIcon className="size-3.5" />}
               label="Process count"
-              value={allVetra ? String(allVetra.processCount) : "..."}
+              value={allT3 ? String(allT3.processCount) : "..."}
               detail={
-                allVetra
-                  ? `${allVetra.processStarts} starts · ${allVetra.processExits} exits`
-                  : undefined
+                allT3 ? `${allT3.processStarts} starts · ${allT3.processExits} exits` : undefined
               }
             />
             <IconStat
               icon={<HardDriveIcon className="size-3.5" />}
               label="Read throughput"
-              value={allVetra ? formatRate(allVetra.ioReadBytesPerSecond) : "..."}
-              detail={allVetra ? `${formatBytes(allVetra.ioReadBytes)} observed` : undefined}
+              value={allT3 ? formatRate(allT3.ioReadBytesPerSecond) : "..."}
+              detail={allT3 ? `${formatBytes(allT3.ioReadBytes)} observed` : undefined}
             />
             <IconStat
               icon={<DatabaseIcon className="size-3.5" />}
               label="Write throughput"
-              value={allVetra ? formatRate(allVetra.ioWriteBytesPerSecond) : "..."}
-              detail={allVetra ? `${formatBytes(allVetra.ioWriteBytes)} observed` : undefined}
+              value={allT3 ? formatRate(allT3.ioWriteBytesPerSecond) : "..."}
+              detail={allT3 ? `${formatBytes(allT3.ioWriteBytes)} observed` : undefined}
               tone={
-                allVetra && allVetra.ioWriteBytesPerSecond >= 10 * 1_024 * 1_024
+                allT3 && allT3.ioWriteBytesPerSecond >= 10 * 1_024 * 1_024
                   ? "danger"
-                  : allVetra && allVetra.ioWriteBytesPerSecond >= 1_024 * 1_024
+                  : allT3 && allT3.ioWriteBytesPerSecond >= 1_024 * 1_024
                     ? "warning"
                     : "default"
               }

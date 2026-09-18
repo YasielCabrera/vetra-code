@@ -1,4 +1,4 @@
-import { EnvironmentId, type VetraProjectFileScript } from "@t3tools/contracts";
+import { EnvironmentId, type T3ProjectFileScript } from "@t3tools/contracts";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
@@ -6,7 +6,7 @@ import {
 import { DEFAULT_RESOLVED_KEYBINDINGS } from "@t3tools/shared/keybindings";
 import { ChevronDownIcon, PlusIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { useVetraProjectFileState } from "../../hooks/useVetraProjectFileScripts";
+import { useT3ProjectFileState } from "../../hooks/useT3ProjectFileScripts";
 import { useEnvironments } from "../../state/environments";
 import {
   EMPTY_PROJECT_SCRIPT_INPUT,
@@ -88,13 +88,13 @@ export function ProjectActionsSettings() {
   // A project's vetra.json can declare actions to import. Read it from the
   // representative checkout; the imported action still fans out.
   const representativeMember = target?.projectId ? memberById.get(target.projectId) : undefined;
-  const vetraFile = useVetraProjectFileState(
+  const t3File = useT3ProjectFileState(
     representativeMember?.environmentId ?? EnvironmentId.make("none"),
     representativeMember?.workspaceRoot ?? null,
   );
   const importableScripts = useMemo(
     () =>
-      vetraFile.scripts.filter(
+      t3File.scripts.filter(
         (fileScript) =>
           !scripts.some(
             (script) =>
@@ -102,10 +102,10 @@ export function ProjectActionsSettings() {
               script.name.toLowerCase() === fileScript.name.toLowerCase(),
           ),
       ),
-    [scripts, vetraFile.scripts],
+    [scripts, t3File.scripts],
   );
   const importFileScript = useCallback(
-    async (fileScript: VetraProjectFileScript) => {
+    async (fileScript: T3ProjectFileScript) => {
       const payload: NewProjectScriptInput = {
         name: fileScript.name,
         command: fileScript.command,
@@ -206,7 +206,7 @@ export function ProjectActionsSettings() {
           onEdit={(script) => setRequest(editorRequestForScript(script, keybindings))}
         />
       )}
-      {vetraFile.status === "invalid" ? (
+      {t3File.status === "invalid" ? (
         <SettingsRow
           title="vetra.json is invalid"
           description="A vetra.json exists in this checkout but fails to parse, so every action and icon it declares is ignored. Check the JSON syntax and icon values."

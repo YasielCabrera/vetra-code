@@ -162,7 +162,7 @@ import * as ProjectFaviconResolver from "./project/ProjectFaviconResolver.ts";
 import * as PowerhouseDatabaseInspector from "./powerhouse/PowerhouseDatabaseInspector.ts";
 import * as PowerhouseProject from "./powerhouse/PowerhouseProject.ts";
 import * as PowerhouseReactorClient from "./powerhouse/PowerhouseReactorClient.ts";
-import * as VetraProjectFileLoader from "./project/VetraProjectFileLoader.ts";
+import * as T3ProjectFileLoader from "./project/T3ProjectFileLoader.ts";
 import * as ProjectSetupScriptRunner from "./project/ProjectSetupScriptRunner.ts";
 import * as RepositoryIdentityResolver from "./project/RepositoryIdentityResolver.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
@@ -727,7 +727,7 @@ const buildAppUnderTest = (options?: {
       ),
       ProjectFaviconResolver.layer.pipe(
         Layer.provide(WorkspacePaths.layer),
-        Layer.provide(VetraProjectFileLoader.layer),
+        Layer.provide(T3ProjectFileLoader.layer),
       ),
       powerhouseProjectLayer,
       PowerhouseDatabaseInspector.layer.pipe(Layer.provide(powerhouseProjectLayer)),
@@ -3118,7 +3118,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         body: jsonRequestBody({
           relayUrl: "https://relay.example.test",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: "not-a-public-key",
           endpointRuntime: null,
         }),
@@ -3166,18 +3166,18 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       const insecureRelayUrl = yield* postRelayConfig({
         relayUrl: "http://relay.example.test",
         cloudUserId: "user_123",
-        environmentCredential: "vetraenv_test_credential",
+        environmentCredential: "t3env_test_credential",
       });
       const insecureRelayIssuer = yield* postRelayConfig({
         relayUrl: "https://relay.example.test",
         cloudUserId: "user_123",
         relayIssuer: "http://relay.example.test",
-        environmentCredential: "vetraenv_test_credential",
+        environmentCredential: "t3env_test_credential",
       });
       const nonOriginRelayUrl = yield* postRelayConfig({
         relayUrl: "https://relay.example.test/path",
         cloudUserId: "user_123",
-        environmentCredential: "vetraenv_test_credential",
+        environmentCredential: "t3env_test_credential",
       });
       const emptyCredential = yield* postRelayConfig({
         relayUrl: "https://relay.example.test",
@@ -3237,8 +3237,8 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
           }),
         });
 
-      const firstResponse = yield* postRelayConfig("user_123", "vetraenv_first_credential");
-      const replacementResponse = yield* postRelayConfig("user_456", "vetraenv_second_credential");
+      const firstResponse = yield* postRelayConfig("user_123", "t3env_first_credential");
+      const replacementResponse = yield* postRelayConfig("user_456", "t3env_second_credential");
       const replacementBody = yield* responseJsonEffect<{
         readonly _tag?: string;
         readonly message?: string;
@@ -3289,7 +3289,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
           relayUrl: "https://transport.example.test",
           relayIssuer: "https://relay.example.test",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: null,
         }),
@@ -3371,7 +3371,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
           relayUrl: "https://transport.example.test",
           relayIssuer: "https://relay.example.test",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: {
             providerKind: "cloudflare_tunnel",
@@ -3444,7 +3444,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         body: jsonRequestBody({
           relayUrl: "https://relay.example.test",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: null,
         }),
@@ -3503,7 +3503,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         body: jsonRequestBody({
           relayUrl: "https://relay.example.test",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: null,
         }),
@@ -3562,7 +3562,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         body: jsonRequestBody({
           relayUrl: "https://relay.example.test",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: null,
         }),
@@ -3622,7 +3622,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         body: jsonRequestBody({
           relayUrl: "https://relay.example.test",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: null,
         }),
@@ -3684,7 +3684,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
             relayUrl: "https://transport.example.test",
             cloudUserId: "user_123",
             relayIssuer: "https://relay.example.test",
-            environmentCredential: "vetraenv_test_credential",
+            environmentCredential: "t3env_test_credential",
             cloudMintPublicKey: cloudKeyPair.publicKey,
             endpointRuntime: null,
           }),
@@ -3763,7 +3763,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         body: jsonRequestBody({
           relayUrl: "https://relay.example.test",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: {
             providerKind: "cloudflare_tunnel",
@@ -3832,7 +3832,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         body: jsonRequestBody({
           relayUrl: "https://relay.example.test/",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: null,
         }),
@@ -3899,7 +3899,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         body: jsonRequestBody({
           relayUrl: "https://relay.example.test/",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: null,
         }),
@@ -3950,7 +3950,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         body: jsonRequestBody({
           relayUrl: "https://relay.example.test/",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: null,
         }),
@@ -4001,7 +4001,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         body: jsonRequestBody({
           relayUrl: "https://relay.example.test/",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: null,
         }),
@@ -4066,7 +4066,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         body: jsonRequestBody({
           relayUrl: "https://relay.example.test/",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: null,
         }),
@@ -4116,7 +4116,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         body: jsonRequestBody({
           relayUrl: "https://relay.example.test/",
           cloudUserId: "user_123",
-          environmentCredential: "vetraenv_test_credential",
+          environmentCredential: "t3env_test_credential",
           cloudMintPublicKey: cloudKeyPair.publicKey,
           endpointRuntime: null,
         }),

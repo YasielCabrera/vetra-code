@@ -622,7 +622,7 @@ const make = Effect.gen(function* () {
       );
       const environmentClient = yield* makeEnvironmentClient(endpoint.httpBaseUrl);
       const decoded = yield* environmentClient.connect
-        .vetraMintCredential({ payload: { proof } })
+        .t3MintCredential({ payload: { proof } })
         .pipe(
           withoutRedirects,
           Effect.mapError(

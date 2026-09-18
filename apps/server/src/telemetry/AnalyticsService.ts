@@ -140,7 +140,7 @@ export const make = Effect.gen(function* () {
           platform: hostPlatform,
           wsl: Option.getOrUndefined(telemetryConfig.wslDistroName),
           arch: hostArchitecture,
-          vetraCodeVersion: packageJson.version,
+          t3CodeVersion: packageJson.version,
           clientType,
           serverOs: serverOsFromNodePlatform(hostPlatform),
           serverArch: hostArchitecture,
