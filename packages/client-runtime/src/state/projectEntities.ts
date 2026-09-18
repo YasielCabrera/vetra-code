@@ -4,7 +4,7 @@ import type {
   OrchestrationShellSnapshot,
   ProjectId,
   ScopedProjectRef,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { Atom } from "effect/unstable/reactivity";
 
 import type { EnvironmentProject } from "./models.ts";

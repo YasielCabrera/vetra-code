@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import type { DesktopUpdateActionResult, DesktopUpdateState } from "@vetra-code/contracts";
+import type { DesktopUpdateActionResult, DesktopUpdateState } from "@t3tools/contracts";
 
 import {
   canCheckForUpdate,

@@ -8,9 +8,9 @@ import {
   WsRpcGroup,
   type OrchestrationProjectShell,
   type OrchestrationThreadShell,
-} from "@vetra-code/contracts";
-import type { RelayAgentActivityState } from "@vetra-code/contracts/relay";
-import { projectThreadAwareness } from "@vetra-code/shared/agentAwareness";
+} from "@t3tools/contracts";
+import type { RelayAgentActivityState } from "@t3tools/contracts/relay";
+import { projectThreadAwareness } from "@t3tools/shared/agentAwareness";
 import * as Cause from "effect/Cause";
 import * as Option from "effect/Option";
 import * as Clock from "effect/Clock";

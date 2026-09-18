@@ -1,4 +1,4 @@
-import type { UsageProviderKind } from "@vetra-code/contracts";
+import type { UsageProviderKind } from "@t3tools/contracts";
 
 import { ClaudeAI, GrokIcon, type Icon, OpenAI } from "../Icons";
 

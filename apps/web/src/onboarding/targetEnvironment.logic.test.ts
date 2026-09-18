@@ -3,8 +3,8 @@ import {
   PrimaryConnectionTarget,
   RelayConnectionTarget,
   SshConnectionTarget,
-} from "@vetra-code/client-runtime/connection";
-import { EnvironmentId } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/connection";
+import { EnvironmentId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

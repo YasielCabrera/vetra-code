@@ -12,7 +12,7 @@ import {
   ThreadLinkedPullRequest,
   TurnId,
   ProviderInstanceId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";

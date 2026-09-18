@@ -2,4 +2,4 @@ export {
   getPairingTokenFromUrl,
   setPairingTokenOnUrl,
   stripPairingTokenFromUrl,
-} from "@vetra-code/shared/remote";
+} from "@t3tools/shared/remote";

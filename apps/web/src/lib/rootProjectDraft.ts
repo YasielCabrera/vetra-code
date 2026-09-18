@@ -1,5 +1,5 @@
-import { scopeProjectRef } from "@vetra-code/client-runtime/environment";
-import type { EnvironmentId } from "@vetra-code/contracts";
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
+import type { EnvironmentId } from "@t3tools/contracts";
 
 import { DraftId, useComposerDraftStore } from "~/composerDraftStore";
 import { newProjectId, newThreadId } from "~/lib/utils";

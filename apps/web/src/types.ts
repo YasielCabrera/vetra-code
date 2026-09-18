@@ -1,4 +1,4 @@
-import { imageMimeType } from "@vetra-code/shared/image";
+import { imageMimeType } from "@t3tools/shared/image";
 import type {
   ChatFileAttachment as ContractChatFileAttachment,
   ChatImageAttachment as ContractChatImageAttachment,
@@ -12,15 +12,15 @@ import type {
   ProjectScript as ContractProjectScript,
   ProviderInteractionMode,
   RuntimeMode,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import type {
   EnvironmentProject,
   EnvironmentThread,
   EnvironmentThreadShell,
-} from "@vetra-code/client-runtime/state/shell";
-import { videoMimeType } from "@vetra-code/shared/video";
+} from "@t3tools/client-runtime/state/shell";
+import { videoMimeType } from "@t3tools/shared/video";
 
-export { videoMimeType } from "@vetra-code/shared/video";
+export { videoMimeType } from "@t3tools/shared/video";
 
 export type SessionPhase = "disconnected" | "connecting" | "ready" | "running";
 export const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";

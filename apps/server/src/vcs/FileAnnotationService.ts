@@ -10,8 +10,8 @@ import type {
   VcsFileBlameResult,
   VcsFileLineChangesInput,
   VcsFileLineChangesResult,
-} from "@vetra-code/contracts";
-import { countTextLines, fileContentRevision } from "@vetra-code/shared/fileRevision";
+} from "@t3tools/contracts";
+import { countTextLines, fileContentRevision } from "@t3tools/shared/fileRevision";
 
 import * as WorkspaceFileSystem from "../workspace/WorkspaceFileSystem.ts";
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
@@ -59,7 +59,7 @@ export class FileAnnotationService extends Context.Service<
       input: VcsFileBlameInput,
     ) => Effect.Effect<VcsFileBlameResult, FileAnnotationServiceError>;
   }
->()("@vetra-code/server/vcs/FileAnnotationService") {}
+>()("t3/vcs/FileAnnotationService") {}
 
 export const make = Effect.gen(function* () {
   const workspace = yield* WorkspaceFileSystem.WorkspaceFileSystem;

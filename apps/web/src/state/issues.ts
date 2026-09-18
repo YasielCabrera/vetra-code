@@ -1,5 +1,5 @@
 import { useAtomValue } from "@effect/atom-react";
-import { createIssueEnvironmentAtoms } from "@vetra-code/client-runtime/state/issues";
+import { createIssueEnvironmentAtoms } from "@t3tools/client-runtime/state/issues";
 import type {
   EnvironmentId,
   IssueListCursors,
@@ -8,7 +8,7 @@ import type {
   IssueListProjectError,
   IssueProviderSummary,
   IssueRepositorySummary,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 import { useCallback, useMemo } from "react";

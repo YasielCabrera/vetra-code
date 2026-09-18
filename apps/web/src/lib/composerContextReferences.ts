@@ -1,9 +1,9 @@
-import type { ComposerContextId, ComposerContextKind } from "@vetra-code/contracts";
+import type { ComposerContextId, ComposerContextKind } from "@t3tools/contracts";
 import {
   collectComposerContextReferences,
   formatComposerContextReference,
   replaceComposerContextReferences,
-} from "@vetra-code/shared/composerContextReferences";
+} from "@t3tools/shared/composerContextReferences";
 
 /**
  * Prompt-string operations on inline context references, independent of kind. Each context

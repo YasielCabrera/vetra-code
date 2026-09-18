@@ -11,11 +11,11 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { createModelSelection } from "@vetra-code/shared/model";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { createModelSelection } from "@t3tools/shared/model";
 import { expect } from "vite-plus/test";
 
-import { CursorSettings, ProviderInstanceId } from "@vetra-code/contracts";
+import { CursorSettings, ProviderInstanceId } from "@t3tools/contracts";
 
 import * as ServerConfig from "../config.ts";
 import * as TextGeneration from "./TextGeneration.ts";

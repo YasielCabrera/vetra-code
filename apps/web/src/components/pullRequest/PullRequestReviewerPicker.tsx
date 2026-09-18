@@ -9,14 +9,14 @@ import type {
   EnvironmentId,
   PullRequestRef,
   PullRequestReviewerCandidate,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { CheckIcon, UserPlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { pullRequestEnvironment } from "~/state/pullRequests";
 import { useEnvironmentQuery } from "~/state/query";
 import { useAtomCommand } from "~/state/use-atom-command";
-import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
+import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 
 import { toastManager } from "../ui/toast";
 import { PullRequestCandidatePicker } from "./PullRequestCandidatePicker";

@@ -1,4 +1,4 @@
-import type { ProjectId, ProjectScript, ServerSettings } from "@vetra-code/contracts";
+import type { ProjectId, ProjectScript, ServerSettings } from "@t3tools/contracts";
 
 type ProjectScriptSettings = Pick<
   ServerSettings,

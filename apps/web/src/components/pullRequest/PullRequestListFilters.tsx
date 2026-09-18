@@ -7,7 +7,7 @@ import type {
   PullRequestListFilters,
   PullRequestListState,
   SourceControlProviderKind,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   CircleCheckIcon,
   CircleDashedIcon,

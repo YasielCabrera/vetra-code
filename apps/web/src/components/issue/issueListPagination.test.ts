@@ -1,4 +1,4 @@
-import type { EnvironmentId, ProjectId } from "@vetra-code/contracts";
+import type { EnvironmentId, ProjectId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { EnvironmentIssueEntry, MergedIssueList } from "~/state/issues";

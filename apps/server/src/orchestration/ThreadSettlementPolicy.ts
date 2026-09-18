@@ -1,5 +1,5 @@
-import type { OrchestrationThreadShell } from "@vetra-code/contracts";
-import { visibleThreadPullRequests } from "@vetra-code/shared/threadPullRequests";
+import type { OrchestrationThreadShell } from "@t3tools/contracts";
+import { visibleThreadPullRequests } from "@t3tools/shared/threadPullRequests";
 
 export interface SettlementPullRequest {
   readonly state: "open" | "closed" | "merged";

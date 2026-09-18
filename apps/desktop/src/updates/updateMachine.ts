@@ -3,7 +3,7 @@ import type {
   DesktopUpdateChannel,
   DesktopUpdateReleaseNote,
   DesktopUpdateState,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 function nextStatusAfterDownloadFailure(
   currentState: DesktopUpdateState,

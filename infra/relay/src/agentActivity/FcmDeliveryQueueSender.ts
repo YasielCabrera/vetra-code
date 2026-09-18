@@ -11,4 +11,4 @@ export class FcmDeliveryQueueSender extends Context.Service<
       body: FcmDeliveries.FcmDeliveryJob,
     ) => Effect.Effect<void, Cloudflare.Queues.SendError>;
   }
->()("@vetra-code/relay/agentActivity/FcmDeliveryQueueSender") {}
+>()("t3code-relay/agentActivity/FcmDeliveryQueueSender") {}

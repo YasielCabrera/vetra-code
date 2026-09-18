@@ -1,10 +1,10 @@
-import { EnvironmentId } from "@vetra-code/contracts";
-import { mediaMimeType } from "@vetra-code/shared/filePreview";
+import { EnvironmentId } from "@t3tools/contracts";
+import { mediaMimeType } from "@t3tools/shared/filePreview";
 import {
   getProjectFaviconCacheKey,
   getProjectFaviconResourceKey,
   isProjectFaviconFallbackUrl,
-} from "@vetra-code/shared/projectFavicon";
+} from "@t3tools/shared/projectFavicon";
 import * as Encoding from "effect/Encoding";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";

@@ -1,4 +1,4 @@
-import type { ThreadPullRequestLink } from "@vetra-code/contracts";
+import type { ThreadPullRequestLink } from "@t3tools/contracts";
 
 import { resolveThreadCurrentPullRequestLink } from "./threadPullRequests.ts";
 

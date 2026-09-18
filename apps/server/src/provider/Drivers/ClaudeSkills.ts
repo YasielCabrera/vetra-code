@@ -15,13 +15,13 @@
  */
 import * as NodeOS from "node:os";
 
-import type { ClaudeSettings, ServerProviderSkill } from "@vetra-code/contracts";
+import type { ClaudeSettings, ServerProviderSkill } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { fromLenientJson } from "@vetra-code/shared/schemaJson";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { fromLenientJson } from "@t3tools/shared/schemaJson";
 import { parse as parseYamlDocument } from "yaml";
 
 import { expandHomePath } from "../../pathExpansion.ts";

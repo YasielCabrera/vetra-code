@@ -1,7 +1,7 @@
 packages:
   - apps/*
   - infra/*
-  - oxlint-plugin-vetra
+  - oxlint-plugin-t3code
   - packages/*
   - scripts
 

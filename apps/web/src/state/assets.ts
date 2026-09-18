@@ -1,7 +1,7 @@
 import {
   createAssetEnvironmentAtoms,
   createProjectFaviconUrlAtomFamily,
-} from "@vetra-code/client-runtime/state/assets";
+} from "@t3tools/client-runtime/state/assets";
 import { Atom } from "effect/unstable/reactivity";
 
 import { connectionAtomRuntime } from "../connection/runtime";

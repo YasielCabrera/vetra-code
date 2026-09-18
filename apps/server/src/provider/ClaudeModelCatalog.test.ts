@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
-import { ProviderInstanceId } from "@vetra-code/contracts";
+import { ProviderInstanceId } from "@t3tools/contracts";
 
 import { hasValidClaudeManifestAdapters } from "./ClaudeModelManifest.ts";
 import type { ModelManifestData } from "./ModelManifest.ts";

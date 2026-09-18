@@ -39,7 +39,7 @@ import {
   ThreadApprovalResponseRequestedPayload as ContractsThreadApprovalResponseRequestedPayloadSchema,
   ThreadCheckpointRevertRequestedPayload as ContractsThreadCheckpointRevertRequestedPayloadSchema,
   ThreadSessionStopRequestedPayload as ContractsThreadSessionStopRequestedPayloadSchema,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 // Server-internal alias surface, backed by contract schemas as the source of truth.
 export const ProjectCreatedPayload = ContractsProjectCreatedPayloadSchema;

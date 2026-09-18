@@ -7,7 +7,7 @@ import {
   MessageId,
   ThreadId,
   type AssistantCitation,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   assistantCitationsToPlainText,
   collectAssistantCitations,

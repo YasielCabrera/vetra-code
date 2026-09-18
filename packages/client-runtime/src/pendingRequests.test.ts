@@ -1,4 +1,4 @@
-import { EventId, TurnId, type OrchestrationThreadActivity } from "@vetra-code/contracts";
+import { EventId, TurnId, type OrchestrationThreadActivity } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 import { derivePendingRequests } from "./pendingRequests.ts";
 

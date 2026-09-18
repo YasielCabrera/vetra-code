@@ -1,7 +1,7 @@
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
-import * as NodeSqliteClient from "@vetra-code/shared/nodeSqliteClient";
+import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 
 import { runMigrations } from "../Migrations.ts";
 import migrateActiveOrderKey from "./050_ProjectionThreadsActiveOrderKey.ts";

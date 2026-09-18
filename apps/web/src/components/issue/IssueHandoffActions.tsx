@@ -1,5 +1,5 @@
-import { scopeProjectRef } from "@vetra-code/client-runtime/environment";
-import type { EnvironmentId, IssueDetail } from "@vetra-code/contracts";
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
+import type { EnvironmentId, IssueDetail } from "@t3tools/contracts";
 import { BookOpenIcon, MessageCircleQuestionIcon } from "lucide-react";
 import { useState } from "react";
 

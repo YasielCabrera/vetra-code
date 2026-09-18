@@ -7,7 +7,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { isEntrypoint } from "./entrypoint.ts";
-import { symlinksSupported } from "@vetra-code/shared/testing/symlinks";
+import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
 
 const makeTempDir = () =>
   NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "vetra-entrypoint-test-"));

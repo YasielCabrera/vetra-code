@@ -10,7 +10,7 @@ import {
   PROVIDER_DISPLAY_NAMES,
   type ProviderDriverKind,
   type ServerProvider,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 /**
  * Title-case a slug: splits on `_` / `-` and camelCase boundaries, so

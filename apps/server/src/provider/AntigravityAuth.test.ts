@@ -1,10 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
-import {
-  ProviderInstanceId,
-  ProviderSetupError,
-  type ProviderAuthState,
-} from "@vetra-code/contracts";
+import { ProviderInstanceId, ProviderSetupError, type ProviderAuthState } from "@t3tools/contracts";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -13,8 +9,8 @@ import * as Option from "effect/Option";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
-import * as AcpErrors from "@vetra-code/effect-acp/errors";
-import type * as AcpSchema from "@vetra-code/effect-acp/schema";
+import * as AcpErrors from "effect-acp/errors";
+import type * as AcpSchema from "effect-acp/schema";
 
 import {
   makeAntigravityAuth,

@@ -8,7 +8,7 @@ import {
   ThreadId,
   type ClientOrchestrationCommand,
   type OrchestrationShellSnapshot,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Crypto from "effect/Crypto";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

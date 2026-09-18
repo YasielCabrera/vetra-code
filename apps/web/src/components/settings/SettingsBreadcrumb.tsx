@@ -1,4 +1,4 @@
-import { resolveEnvironmentMachineKind } from "@vetra-code/contracts";
+import { resolveEnvironmentMachineKind } from "@t3tools/contracts";
 import { LayersIcon } from "lucide-react";
 import type { ReactNode } from "react";
 

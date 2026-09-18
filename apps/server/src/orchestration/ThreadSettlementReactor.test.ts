@@ -14,8 +14,8 @@ import {
   type PullRequestSummary,
   type ServerSettings,
   type ServerSettingsPatch,
-} from "@vetra-code/contracts";
-import { applyServerSettingsPatch } from "@vetra-code/shared/serverSettings";
+} from "@t3tools/contracts";
+import { applyServerSettingsPatch } from "@t3tools/shared/serverSettings";
 import { assert, describe, it } from "@effect/vitest";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";

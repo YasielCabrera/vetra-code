@@ -16,7 +16,7 @@ const mockPeerPath = Effect.map(Effect.service(Path.Path), (path) =>
 );
 const mockPeerArgs = (path: string) => [path];
 
-it.layer(NodeServices.layer)("@vetra-code/effect-codex-app-server client", (it) => {
+it.layer(NodeServices.layer)("effect-codex-app-server client", (it) => {
   const makeHandle = (env?: Record<string, string>) =>
     Effect.gen(function* () {
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
@@ -59,7 +59,7 @@ it.layer(NodeServices.layer)("@vetra-code/effect-codex-app-server client", (it) 
 
         const initialized = yield* client.request("initialize", {
           clientInfo: {
-            name: "@vetra-code/effect-codex-app-server-test",
+            name: "effect-codex-app-server-test",
             title: "Effect Codex App Server Test",
             version: "0.0.0",
           },
@@ -136,7 +136,7 @@ it.layer(NodeServices.layer)("@vetra-code/effect-codex-app-server client", (it) 
         const client = yield* CodexClient.CodexAppServerClient;
         return yield* client.request("initialize", {
           clientInfo: {
-            name: "@vetra-code/effect-codex-app-server-test",
+            name: "effect-codex-app-server-test",
             title: "Effect Codex App Server Test",
             version: "0.0.0",
           },

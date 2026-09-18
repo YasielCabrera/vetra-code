@@ -1,7 +1,7 @@
 import { assert, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import type { OrchestrationProjectShell, ProjectId } from "@vetra-code/contracts";
+import type { OrchestrationProjectShell, ProjectId } from "@t3tools/contracts";
 
 import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";

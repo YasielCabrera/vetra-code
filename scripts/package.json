@@ -1,5 +1,5 @@
 {
-  "name": "@vetra-code/scripts",
+  "name": "@t3tools/scripts",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,8 +10,8 @@
     "@effect/platform-node": "catalog:",
     "@electron/asar": "^3.4.1",
     "@electron/osx-sign": "2.7.0",
-    "@vetra-code/shared": "workspace:*",
-    "@vetra-code/tailscale": "workspace:*",
+    "@t3tools/shared": "workspace:*",
+    "@t3tools/tailscale": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

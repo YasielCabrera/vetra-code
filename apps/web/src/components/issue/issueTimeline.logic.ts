@@ -1,4 +1,4 @@
-import type { IssueActivity, IssueTimelineEvent, IssueTimelineItem } from "@vetra-code/contracts";
+import type { IssueActivity, IssueTimelineEvent, IssueTimelineItem } from "@t3tools/contracts";
 
 /** The host usually answers oldest-first, but timestamps are the contract and the order is not. */
 export function buildIssueTimeline(activity: IssueActivity): ReadonlyArray<IssueTimelineItem> {

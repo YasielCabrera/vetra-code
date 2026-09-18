@@ -3,7 +3,7 @@ import {
   EditorId,
   type EnvironmentId,
   type ResolvedKeybindingsConfig,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { memo, useCallback, useEffect, useMemo } from "react";
 import { isOpenFavoriteEditorShortcut, shortcutLabelForCommand } from "../../keybindings";
 import { usePreferredEditor } from "../../editorPreferences";

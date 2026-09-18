@@ -13,17 +13,17 @@ import {
   type DirectoryRecord,
 } from "@electron/asar";
 
-import { fromYaml } from "@vetra-code/shared/schemaYaml";
-import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { clerkFrontendApiHostnameFromPublishableKey } from "@vetra-code/shared/relayAuth";
-import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+import { fromYaml } from "@t3tools/shared/schemaYaml";
+import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { clerkFrontendApiHostnameFromPublishableKey } from "@t3tools/shared/relayAuth";
+import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import {
   PRODUCT_DESKTOP_APP_ID,
   PRODUCT_DESKTOP_DEV_PROTOCOL,
   PRODUCT_DESKTOP_PROTOCOL,
   PRODUCT_NAME,
   PRODUCT_SLUG,
-} from "@vetra-code/shared/productIdentity";
+} from "@t3tools/shared/productIdentity";
 import rootPackageJson from "../package.json" with { type: "json" };
 import desktopPackageJson from "../apps/desktop/package.json" with { type: "json" };
 import gnomeCaptureBundle from "../apps/desktop/gnome-extension/bundle.json" with { type: "json" };
@@ -3782,7 +3782,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   const builderArgs = [
     "exec",
     "--filter",
-    "@vetra-code/desktop",
+    "@t3tools/desktop",
     "--",
     "electron-builder",
     "--projectDir",
@@ -3800,7 +3800,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
       shell: builderCommand.shell,
     }),
     {
-      label: `vp exec --filter @vetra-code/desktop -- electron-builder --projectDir ${stageAppDir} ${platformConfig.cliFlag} --${options.arch} --publish never`,
+      label: `vp exec --filter @t3tools/desktop -- electron-builder --projectDir ${stageAppDir} ${platformConfig.cliFlag} --${options.arch} --publish never`,
       verbose: options.verbose,
     },
   );

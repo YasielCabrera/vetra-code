@@ -10,7 +10,7 @@ import {
   type RuntimeRequestId,
   type ThreadId,
   type TurnId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import {
   type AcpPermissionRequest,

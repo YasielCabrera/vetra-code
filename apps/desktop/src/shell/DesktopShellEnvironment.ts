@@ -65,7 +65,7 @@ export class DesktopShellEnvironment extends Context.Service<
   {
     readonly installIntoProcess: Effect.Effect<void>;
   }
->()("@vetra-code/desktop/shell/DesktopShellEnvironment") {}
+>()("@t3tools/desktop/shell/DesktopShellEnvironment") {}
 
 const LOGIN_SHELL_ENV_NAMES = [
   "PATH",

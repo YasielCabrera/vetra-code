@@ -1,9 +1,9 @@
-import { EDITORS, EditorId, EnvironmentId } from "@vetra-code/contracts";
+import { EDITORS, EditorId, EnvironmentId } from "@t3tools/contracts";
 import {
   mapAtomCommandResult,
   type AtomCommandFailure,
   type AtomCommandResult,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import * as Cause from "effect/Cause";
 import * as Schema from "effect/Schema";
 import { AsyncResult } from "effect/unstable/reactivity";

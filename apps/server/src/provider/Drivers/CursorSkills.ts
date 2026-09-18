@@ -24,7 +24,7 @@
  */
 import * as NodeOS from "node:os";
 
-import type { ServerProviderSkill } from "@vetra-code/contracts";
+import type { ServerProviderSkill } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as FileSystem from "effect/FileSystem";

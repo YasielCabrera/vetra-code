@@ -4,8 +4,8 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ProviderInstallState,
-} from "@vetra-code/contracts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+} from "@t3tools/contracts";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";

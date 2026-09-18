@@ -3,7 +3,7 @@ import {
   HostProcessExecutablePath,
   HostProcessPlatform,
   HostProcessUserId,
-} from "@vetra-code/shared/hostProcess";
+} from "@t3tools/shared/hostProcess";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -16,8 +16,8 @@ import * as Path from "effect/Path";
 import { HttpClient } from "effect/unstable/http";
 import * as Schema from "effect/Schema";
 
-import { CLI_RELEASE_BASE_URL_ENV } from "@vetra-code/shared/cliRelease";
-import { PRODUCT_SERVER_PACKAGE } from "@vetra-code/shared/productIdentity";
+import { CLI_RELEASE_BASE_URL_ENV } from "@t3tools/shared/cliRelease";
+import { PRODUCT_SERVER_PACKAGE } from "@t3tools/shared/productIdentity";
 
 import * as ProcessRunner from "../processRunner.ts";
 import {
@@ -545,7 +545,7 @@ export class BootService extends Context.Service<
     readonly uninstall: Effect.Effect<boolean, BootServiceError>;
     readonly status: Effect.Effect<BootServiceStatus, BootServiceError>;
   }
->()("@vetra-code/server/cloud/bootService") {}
+>()("t3/cloud/bootService") {}
 
 export interface BootServiceHost {
   readonly execPath: string;

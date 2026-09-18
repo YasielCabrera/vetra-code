@@ -1,4 +1,4 @@
-import type { EnvironmentThreadShell } from "@vetra-code/client-runtime/state/models";
+import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 import { useCallback } from "react";
 
 import { automationRunVisitKey } from "../components/automations/automationsList.logic";

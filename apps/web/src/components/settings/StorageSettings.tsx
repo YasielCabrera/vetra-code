@@ -1,5 +1,5 @@
-import type { StorageCleanupSettings, WorktreeCleanupRules } from "@vetra-code/contracts";
-import { resolveWorktreeCleanup } from "@vetra-code/shared/projectSettings";
+import type { StorageCleanupSettings, WorktreeCleanupRules } from "@t3tools/contracts";
+import { resolveWorktreeCleanup } from "@t3tools/shared/projectSettings";
 import { useState } from "react";
 
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";

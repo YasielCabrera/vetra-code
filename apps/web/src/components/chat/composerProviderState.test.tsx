@@ -4,8 +4,8 @@ import {
   type ProviderOptionDescriptor,
   type ProviderOptionSelection,
   type ServerProviderModel,
-} from "@vetra-code/contracts";
-import { getProviderOptionDescriptors } from "@vetra-code/shared/model";
+} from "@t3tools/contracts";
+import { getProviderOptionDescriptors } from "@t3tools/shared/model";
 import { getProviderModelCapabilities } from "../../providerModels";
 import {
   getComposerPromptInjectionState,

@@ -2,13 +2,13 @@ import {
   type CursorSettings,
   type ProviderOptionSelection,
   type RuntimeMode,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Scope from "effect/Scope";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
-import type * as EffectAcpErrors from "@vetra-code/effect-acp/errors";
+import type * as EffectAcpErrors from "effect-acp/errors";
 
 import {
   CURSOR_PARAMETERIZED_MODEL_PICKER_CAPABILITIES,

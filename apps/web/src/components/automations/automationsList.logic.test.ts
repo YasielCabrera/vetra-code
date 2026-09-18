@@ -1,12 +1,6 @@
-import type { EnvironmentAutomation } from "@vetra-code/client-runtime/state/automations";
-import type { EnvironmentThreadShell } from "@vetra-code/client-runtime/state/models";
-import type {
-  AutomationId,
-  EnvironmentId,
-  ProjectId,
-  ThreadId,
-  TurnId,
-} from "@vetra-code/contracts";
+import type { EnvironmentAutomation } from "@t3tools/client-runtime/state/automations";
+import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
+import type { AutomationId, EnvironmentId, ProjectId, ThreadId, TurnId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { describeAutomationDeletion } from "../../hooks/useAutomationActions";

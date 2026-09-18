@@ -1,4 +1,4 @@
-import type { PullRequestCheck, PullRequestCheckStatus } from "@vetra-code/contracts";
+import type { PullRequestCheck, PullRequestCheckStatus } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { dedupeChecks } from "./pullRequestChecks.ts";

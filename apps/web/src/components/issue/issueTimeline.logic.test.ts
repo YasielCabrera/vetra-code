@@ -1,4 +1,4 @@
-import type { IssueActivity, IssueTimelineEvent } from "@vetra-code/contracts";
+import type { IssueActivity, IssueTimelineEvent } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { buildIssueTimeline, issueTimelineEventLabel } from "./issueTimeline.logic";

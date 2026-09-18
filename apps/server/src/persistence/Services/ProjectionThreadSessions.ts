@@ -13,7 +13,7 @@ import {
   ProviderInstanceId,
   ThreadId,
   TurnId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
@@ -75,6 +75,4 @@ export interface ProjectionThreadSessionRepositoryShape {
 export class ProjectionThreadSessionRepository extends Context.Service<
   ProjectionThreadSessionRepository,
   ProjectionThreadSessionRepositoryShape
->()(
-  "@vetra-code/server/persistence/Services/ProjectionThreadSessions/ProjectionThreadSessionRepository",
-) {}
+>()("t3/persistence/Services/ProjectionThreadSessions/ProjectionThreadSessionRepository") {}

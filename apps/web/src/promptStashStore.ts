@@ -1,4 +1,4 @@
-import { ComposerContextRecord, ForwardCompatibleArray } from "@vetra-code/contracts";
+import { ComposerContextRecord, ForwardCompatibleArray } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import { create } from "zustand";
 

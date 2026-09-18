@@ -1,6 +1,6 @@
 import { BookmarkIcon, FileIcon, FileTextIcon } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
-import { assistantCitationsToPlainText } from "@vetra-code/shared/assistantCitations";
+import { assistantCitationsToPlainText } from "@t3tools/shared/assistantCitations";
 
 import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { cn } from "~/lib/utils";

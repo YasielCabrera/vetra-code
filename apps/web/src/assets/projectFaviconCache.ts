@@ -3,7 +3,7 @@ import {
   createProjectFaviconImageLoader,
   PROJECT_FAVICON_MAX_DATA_URL_LENGTH,
   PROJECT_FAVICON_THUMBNAIL_SIZE,
-} from "@vetra-code/client-runtime/project-favicon-cache";
+} from "@t3tools/client-runtime/project-favicon-cache";
 
 const DATABASE_NAME = "vetra:project-favicons";
 const DATABASE_VERSION = 2;

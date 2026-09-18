@@ -1,4 +1,4 @@
-import type { EnvironmentId, IssueActor } from "@vetra-code/contracts";
+import type { EnvironmentId, IssueActor } from "@t3tools/contracts";
 import { ExternalLinkIcon } from "lucide-react";
 
 import { formatRelativeTimeLabel } from "~/timestampFormat";

@@ -1,4 +1,4 @@
-import type { PowerhouseReactorError } from "@vetra-code/contracts";
+import type { PowerhouseReactorError } from "@t3tools/contracts";
 import { RadioTower } from "lucide-react";
 
 import { describeReactorFailure } from "../PowerhousePanel.logic";

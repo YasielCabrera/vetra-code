@@ -1,4 +1,4 @@
-import { POWERHOUSE_DATABASE_SQL_MAX_LENGTH } from "@vetra-code/contracts";
+import { POWERHOUSE_DATABASE_SQL_MAX_LENGTH } from "@t3tools/contracts";
 
 export class PowerhouseSqlRejectedError extends Error {
   constructor(message = "Only one read-only row-producing SQL statement is allowed.") {

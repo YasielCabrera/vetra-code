@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 
-import { fileContentRevision } from "@vetra-code/shared/fileRevision";
+import { fileContentRevision } from "@t3tools/shared/fileRevision";
 
 import * as WorkspaceFileSystem from "../workspace/WorkspaceFileSystem.ts";
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";

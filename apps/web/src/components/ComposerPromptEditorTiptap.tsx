@@ -10,15 +10,15 @@ import type {
   AssistantCitation,
   ComposerContextClipboardFragment,
   ServerProviderSkill,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   serializeAssistantCitation,
   withAssistantCitationComment,
-} from "@vetra-code/shared/assistantCitations";
+} from "@t3tools/shared/assistantCitations";
 import {
   COMPOSER_CONTEXT_CLIPBOARD_MIME,
   encodeComposerContextClipboardHtml,
-} from "@vetra-code/shared/composerContextClipboard";
+} from "@t3tools/shared/composerContextClipboard";
 import {
   createContext,
   use,
@@ -75,9 +75,9 @@ import {
   ComposerContextReferenceChip,
   ComposerContextRecordsContext,
 } from "./composerContextPresentation";
-import type { PowerhouseReferenceKind } from "@vetra-code/shared/composerInlineTokens";
+import type { PowerhouseReferenceKind } from "@t3tools/shared/composerInlineTokens";
 import type { AssistantCitationSourceAnchor } from "~/lib/assistantTextSelection";
-import { formatProviderSkillDisplayName } from "@vetra-code/client-runtime/providerSkills";
+import { formatProviderSkillDisplayName } from "@t3tools/client-runtime/providerSkills";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { importPastedComposerText } from "./composerInlineTokenPaste";
 import { didComposerSelectionChangeVisibly } from "./composerSelection";

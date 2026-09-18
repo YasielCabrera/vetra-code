@@ -1,8 +1,8 @@
-import { EnvironmentId } from "@vetra-code/contracts";
+import { EnvironmentId } from "@t3tools/contracts";
 import {
   RelayEnvironmentConnectScope,
   RelayEnvironmentStatusScope,
-} from "@vetra-code/contracts/relay";
+} from "@t3tools/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";

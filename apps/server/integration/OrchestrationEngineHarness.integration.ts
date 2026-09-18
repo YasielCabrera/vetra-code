@@ -9,7 +9,7 @@ import {
   type OrchestrationEvent,
   type OrchestrationThread,
   type ProviderApprovalDecision,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as FileSystem from "effect/FileSystem";

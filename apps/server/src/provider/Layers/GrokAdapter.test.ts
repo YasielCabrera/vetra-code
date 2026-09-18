@@ -23,8 +23,8 @@ import {
   ThreadId,
   TurnId,
   type ProviderRuntimeEvent,
-} from "@vetra-code/contracts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+} from "@t3tools/contracts";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 
 import { ServerConfig } from "../../config.ts";
 import { execScriptSource, writeFakeCli } from "../../testUtils/fakeCli.ts";

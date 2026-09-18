@@ -6,7 +6,7 @@ import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 
-import { AuthEnvironmentScopes } from "@vetra-code/contracts";
+import { AuthEnvironmentScopes } from "@t3tools/contracts";
 
 import {
   type AuthPairingLinkRepositoryError,
@@ -102,7 +102,7 @@ export class AuthPairingLinkRepository extends Context.Service<
       input: GetAuthPairingLinkByCredentialInput,
     ) => Effect.Effect<Option.Option<AuthPairingLinkRecord>, AuthPairingLinkRepositoryError>;
   }
->()("@vetra-code/server/persistence/AuthPairingLinks/AuthPairingLinkRepository") {}
+>()("t3/persistence/AuthPairingLinks/AuthPairingLinkRepository") {}
 
 function toPersistenceSqlOrDecodeError(
   sqlOperation: string,

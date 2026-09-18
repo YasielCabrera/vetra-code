@@ -3,8 +3,8 @@ import type {
   ProjectId,
   ThreadId,
   ThreadPullRequestKey,
-} from "@vetra-code/contracts";
-import { normalizeThreadPullRequestKey } from "@vetra-code/shared/threadPullRequests";
+} from "@t3tools/contracts";
+import { normalizeThreadPullRequestKey } from "@t3tools/shared/threadPullRequests";
 
 type LinkingCapabilities = Pick<
   ExecutionEnvironmentCapabilities,

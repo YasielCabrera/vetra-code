@@ -2,7 +2,7 @@ import {
   ORCHESTRATION_PROTOCOL_QUERY_PARAM,
   ORCHESTRATION_PROTOCOL_VERSION,
   type ExecutionEnvironmentDescriptor,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { ConnectionBlockedError } from "./model.ts";
 

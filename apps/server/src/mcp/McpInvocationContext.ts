@@ -4,7 +4,7 @@ import {
   PreviewAutomationUnavailableError,
   type ProviderInstanceId,
   type ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 
@@ -22,7 +22,7 @@ export interface McpInvocationScope {
 export class McpInvocationContext extends Context.Service<
   McpInvocationContext,
   McpInvocationScope
->()("@vetra-code/server/mcp/McpInvocationContext") {}
+>()("t3/mcp/McpInvocationContext") {}
 
 /** The error a missing capability surfaces as; preview keeps its own so the broker can route it. */
 export type McpCapabilityError<C extends McpCapability> = C extends "preview"

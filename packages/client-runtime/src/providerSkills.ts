@@ -2,7 +2,7 @@ import type {
   ServerProvider,
   ServerProviderSkill,
   ServerProviderSlashCommand,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export type ProviderSkillSourceKind = "app" | "repo" | "project" | "personal" | "system" | "other";
 

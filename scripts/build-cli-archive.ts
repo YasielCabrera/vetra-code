@@ -28,9 +28,9 @@ import * as Schema from "effect/Schema";
 import { Command, Flag } from "effect/unstable/cli";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
-import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { fromYaml } from "@vetra-code/shared/schemaYaml";
-import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { fromYaml } from "@t3tools/shared/schemaYaml";
+import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import rootPackageJson from "../package.json" with { type: "json" };
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
 

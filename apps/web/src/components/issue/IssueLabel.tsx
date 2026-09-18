@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { IssueLabel as IssueLabelValue } from "@vetra-code/contracts";
+import type { IssueLabel as IssueLabelValue } from "@t3tools/contracts";
 
 const HEX_COLOR = /^[0-9a-f]{6}$/iu;
 

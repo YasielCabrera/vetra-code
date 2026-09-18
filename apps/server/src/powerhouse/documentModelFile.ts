@@ -15,13 +15,13 @@ import type {
   PowerhouseDocumentModelOperation,
   PowerhouseDocumentModelSpecification,
   PowerhouseDocumentModelSummary,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   POWERHOUSE_MODEL_SUMMARY_DESCRIPTION_MAX_LENGTH,
   POWERHOUSE_MODEL_SUMMARY_EXTENSION_MAX_LENGTH,
   POWERHOUSE_MODEL_SUMMARY_ID_MAX_LENGTH,
   POWERHOUSE_MODEL_SUMMARY_NAME_MAX_LENGTH,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Predicate from "effect/Predicate";
 
 export type ParsedDocumentModel =

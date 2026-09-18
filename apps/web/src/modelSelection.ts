@@ -8,16 +8,16 @@ import {
   ProviderInstanceId,
   type ServerProvider,
   type ServerSettingsPatch,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   type CustomModelDefinition,
   createModelSelection,
   normalizeCustomModelSlug,
   readCustomModelEntries,
   resolveSelectableModel,
-} from "@vetra-code/shared/model";
+} from "@t3tools/shared/model";
 import { getComposerProviderState } from "./components/chat/composerProviderState";
-import { UnifiedSettings } from "@vetra-code/contracts/settings";
+import { UnifiedSettings } from "@t3tools/contracts/settings";
 import * as Arr from "effect/Array";
 import * as Result from "effect/Result";
 import {

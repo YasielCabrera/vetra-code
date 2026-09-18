@@ -21,7 +21,7 @@ export class ApnsProviderTokens extends Context.Service<
   {
     readonly getJwt: (input: ApnsJwtSigningInput) => Effect.Effect<string, ApnsJwtError>;
   }
->()("@vetra-code/relay/agentActivity/ApnsProviderTokens") {}
+>()("t3code-relay/agentActivity/ApnsProviderTokens") {}
 
 interface CachedProviderToken {
   readonly jwt: string;

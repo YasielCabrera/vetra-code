@@ -12,4 +12,4 @@ export {
   type ProjectGroupingSettings,
   type ProjectGroup,
   type ProjectGroupMember,
-} from "@vetra-code/client-runtime/state/project-grouping";
+} from "@t3tools/client-runtime/state/project-grouping";

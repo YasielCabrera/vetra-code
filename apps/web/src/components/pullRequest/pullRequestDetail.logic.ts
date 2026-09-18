@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { parseChangeRequestUrl } from "@vetra-code/shared/changeRequestUrl";
+import { parseChangeRequestUrl } from "@t3tools/shared/changeRequestUrl";
 
 import {
   PullRequestDetail,
@@ -23,7 +23,7 @@ import {
   type PullRequestUpdateMethod,
   type SourceControlProviderKind,
   type VcsRef,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { inferReviewCommentFenceLanguage, type ReviewCommentContext } from "~/reviewCommentContext";
 import { reviewCommentContextId } from "~/lib/composerContextRecords";

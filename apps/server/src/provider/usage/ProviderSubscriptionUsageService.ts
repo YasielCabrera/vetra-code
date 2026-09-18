@@ -6,7 +6,7 @@ import {
   type ProviderSubscriptionUsageInstanceResult,
   type ProviderSubscriptionUsageReadInput,
   type ProviderSubscriptionUsageReport,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
@@ -106,7 +106,7 @@ const unavailableServiceError = () =>
 
 /** The default keeps partial RPC test runtimes backwards-compatible. Production overrides it. */
 export class ProviderSubscriptionUsageService extends Context.Reference<ProviderSubscriptionUsageServiceShape>(
-  "@vetra-code/server/provider/usage/ProviderSubscriptionUsageService",
+  "t3/provider/usage/ProviderSubscriptionUsageService",
   {
     defaultValue: () => ({
       read: () =>

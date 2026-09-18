@@ -13,7 +13,7 @@ import {
   type ReviewDiffPreviewError,
   type ReviewDiffPreviewInput,
   type ReviewDiffPreviewResult,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import * as ServerConfig from "../config.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
@@ -29,7 +29,7 @@ export class ReviewService extends Context.Service<
       input: ReviewDiffFileContentsInput,
     ) => Effect.Effect<ReviewDiffFileContentsResult, ReviewDiffPreviewError>;
   }
->()("@vetra-code/server/review/ReviewService") {}
+>()("t3/review/ReviewService") {}
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {

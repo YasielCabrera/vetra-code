@@ -4,7 +4,7 @@ import {
   USAGE_CONTRACT_VERSION,
   type EnvironmentId,
   type UsageProviderKind,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   CircleAlertIcon,
   ChevronDownIcon,
@@ -12,14 +12,14 @@ import {
   SlidersHorizontalIcon,
 } from "lucide-react";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import { refreshUsageLimits } from "@vetra-code/client-runtime/state/usage";
+import { refreshUsageLimits } from "@t3tools/client-runtime/state/usage";
 
 import {
   isCompatibleUsageContractVersion,
   isModelCostUnknown,
   type DailyTotals,
   type HourlyTotals,
-} from "@vetra-code/shared/usageMerge";
+} from "@t3tools/shared/usageMerge";
 
 import { isElectron } from "../../env";
 import { cn } from "../../lib/utils";
@@ -38,7 +38,7 @@ import {
   formatTokens,
   formatUsd,
   makeWindow,
-} from "@vetra-code/shared/usageFormat";
+} from "@t3tools/shared/usageFormat";
 import { Button } from "../ui/button";
 import {
   Menu,

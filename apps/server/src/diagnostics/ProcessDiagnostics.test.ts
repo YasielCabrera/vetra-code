@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import type {
   DesktopHostTelemetrySnapshot,
   ResourceMonitorSnapshotEvent,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

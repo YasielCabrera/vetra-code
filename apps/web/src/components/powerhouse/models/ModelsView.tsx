@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@vetra-code/contracts";
+import type { EnvironmentId } from "@t3tools/contracts";
 import { AlertTriangle, Braces, ChevronRight, RefreshCw } from "lucide-react";
 
 import { Button } from "~/components/ui/button";

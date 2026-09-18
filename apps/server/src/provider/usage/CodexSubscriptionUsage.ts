@@ -4,10 +4,10 @@ import type {
   ProviderSubscriptionUsageDetail,
   ProviderSubscriptionUsageInstanceResult,
   ProviderSubscriptionUsageWindow,
-} from "@vetra-code/contracts";
-import * as CodexClient from "@vetra-code/effect-codex-app-server/client";
-import type * as CodexSchema from "@vetra-code/effect-codex-app-server/schema";
-import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+} from "@t3tools/contracts";
+import * as CodexClient from "effect-codex-app-server/client";
+import type * as CodexSchema from "effect-codex-app-server/schema";
+import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";

@@ -29,8 +29,8 @@ These commands build the artifacts without publishing anything:
 
 ```bash
 pnpm install
-pnpm exec vp run --filter @vetra-code/server build
-pnpm exec vp run --filter @vetra-code/desktop build
+pnpm exec vp run --filter t3 build
+pnpm exec vp run --filter @t3tools/desktop build
 pnpm release:smoke
 ```
 

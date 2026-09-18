@@ -17,7 +17,7 @@
  * folding (completion can create an agent; a late start only fills
  * metadata).
  */
-import type { OrchestrationThreadActivity } from "@vetra-code/contracts";
+import type { OrchestrationThreadActivity } from "@t3tools/contracts";
 
 export type RuntimeSubagentStatus =
   | "pending"

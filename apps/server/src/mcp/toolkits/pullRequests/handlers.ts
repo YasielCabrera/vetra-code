@@ -6,14 +6,14 @@ import {
   type SourceControlProviderKind,
   type ThreadId,
   type ThreadPullRequestLink,
-} from "@vetra-code/contracts";
-import { changeRequestUrlFor, parseChangeRequestUrl } from "@vetra-code/shared/changeRequestUrl";
+} from "@t3tools/contracts";
+import { changeRequestUrlFor, parseChangeRequestUrl } from "@t3tools/shared/changeRequestUrl";
 import {
   normalizeThreadPullRequestKey,
   resolveThreadPullRequestChains,
   threadPullRequestKeyOf,
   visibleThreadPullRequests,
-} from "@vetra-code/shared/threadPullRequests";
+} from "@t3tools/shared/threadPullRequests";
 import * as Cause from "effect/Cause";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";

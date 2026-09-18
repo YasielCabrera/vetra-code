@@ -9,13 +9,13 @@ import {
   DesktopAppActivationResponse,
   type DesktopAppActivationPlatform,
   type DesktopAppActivationRequest,
-} from "@vetra-code/contracts";
-import { resolveDesktopAppControlAddress } from "@vetra-code/shared/desktopAppControl";
+} from "@t3tools/contracts";
+import { resolveDesktopAppControlAddress } from "@t3tools/shared/desktopAppControl";
 import {
   HostProcessPlatform,
   HostProcessUserId,
   HostProcessWorkingDirectory,
-} from "@vetra-code/shared/hostProcess";
+} from "@t3tools/shared/hostProcess";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";

@@ -24,8 +24,8 @@ import type {
   ProjectSearchContentsInput,
   ProjectSearchContentsResult,
   ProjectSearchEntriesResult,
-} from "@vetra-code/contracts";
-import { isWorkspaceImagePreviewPath } from "@vetra-code/shared/filePreview";
+} from "@t3tools/contracts";
+import { isWorkspaceImagePreviewPath } from "@t3tools/shared/filePreview";
 
 // fff-node stays external to the CLI bundle because it dlopens a native
 // library. A static `import` of an external package is a hard error inside a
@@ -131,7 +131,7 @@ export class WorkspaceSearchIndex extends Context.Service<
       WorkspaceSearchIndexRefreshFailed | WorkspaceSearchIndexScanTimedOut
     >;
   }
->()("@vetra-code/server/workspace/WorkspaceSearchIndex") {}
+>()("t3/workspace/WorkspaceSearchIndex") {}
 
 function toPosixPath(input: string): string {
   return input.replaceAll("\\", "/");
@@ -569,7 +569,7 @@ export const layer = (key: string) => {
 };
 
 export class WorkspaceSearchIndexMap extends LayerMap.Service<WorkspaceSearchIndexMap>()(
-  "@vetra-code/server/workspace/WorkspaceSearchIndexMap",
+  "t3/workspace/WorkspaceSearchIndexMap",
   {
     lookup: layer,
     idleTimeToLive: WORKSPACE_INDEX_IDLE_TTL,

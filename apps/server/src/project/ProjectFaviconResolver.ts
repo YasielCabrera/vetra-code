@@ -124,7 +124,7 @@ export class ProjectFaviconResolver extends Context.Service<
       faviconPath?: string,
     ) => Effect.Effect<string | null, ProjectFaviconResolutionError>;
   }
->()("@vetra-code/server/project/ProjectFaviconResolver") {}
+>()("t3/project/ProjectFaviconResolver") {}
 
 function extractIconHref(source: string): string | null {
   const htmlMatch = source.match(LINK_ICON_HTML_RE);

@@ -2,12 +2,12 @@ import type {
   PowerhouseReactorDocumentSearchFilter,
   PowerhouseReactorDocumentSummary,
   PowerhouseReactorDocumentViewFilter,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   POWERHOUSE_REACTOR_FILTER_VALUE_MAX_COUNT,
   POWERHOUSE_REACTOR_ID_MAX_LENGTH,
   POWERHOUSE_REACTOR_OPERATION_TEXT_MAX_LENGTH,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export interface PowerhouseDocumentFilters {
   readonly type: string;

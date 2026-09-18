@@ -31,7 +31,7 @@ import {
   ProviderApprovalDecision,
   ThreadId,
   ProviderSendTurnInput,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as NodeCrypto from "node:crypto";
 import * as Crypto from "effect/Crypto";
@@ -43,10 +43,10 @@ import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import * as CodexErrors from "@vetra-code/effect-codex-app-server/errors";
-import * as EffectCodexSchema from "@vetra-code/effect-codex-app-server/schema";
+import * as CodexErrors from "effect-codex-app-server/errors";
+import * as EffectCodexSchema from "effect-codex-app-server/schema";
 
-import { getModelSelectionStringOptionValue } from "@vetra-code/shared/model";
+import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
 import { getCodexServiceTierOptionValue } from "../../codexModelOptions.ts";
 import * as McpProviderSession from "../../mcp/McpProviderSession.ts";
 

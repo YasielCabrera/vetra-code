@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vite-plus/test";
-import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@vetra-code/contracts";
+import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import type { Project, Thread } from "../types";
 import {
   buildBrowseGroups,

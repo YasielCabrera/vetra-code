@@ -1,8 +1,4 @@
-import type {
-  ProviderAuthState,
-  ProviderInstanceId,
-  ProviderSetupError,
-} from "@vetra-code/contracts";
+import type { ProviderAuthState, ProviderInstanceId, ProviderSetupError } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import type * as Stream from "effect/Stream";
@@ -60,4 +56,4 @@ export interface ProviderAuthServiceShape {
 export class ProviderAuthService extends Context.Service<
   ProviderAuthService,
   ProviderAuthServiceShape
->()("@vetra-code/server/provider/Services/ProviderAuthService") {}
+>()("t3/provider/Services/ProviderAuthService") {}

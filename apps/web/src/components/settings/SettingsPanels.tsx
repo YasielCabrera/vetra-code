@@ -11,13 +11,13 @@ import {
   type ProviderInstanceId,
   type ScopedThreadRef,
   type SidebarProjectGroupingMode,
-} from "@vetra-code/contracts";
-import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
+} from "@t3tools/contracts";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   isAtomCommandInterrupted,
   settlePromise,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import {
   DEFAULT_ENVIRONMENT_IDENTIFICATION_MODE,
   DEFAULT_UNIFIED_SETTINGS,
@@ -41,9 +41,9 @@ import {
   type ResponseStreamingMode,
   MIN_TERMINAL_FONT_SIZE,
   type QuitConfirmationMode,
-} from "@vetra-code/contracts/settings";
-import { resolveServerBackgroundActivitySettings } from "@vetra-code/shared/backgroundActivitySettings";
-import { createModelSelection } from "@vetra-code/shared/model";
+} from "@t3tools/contracts/settings";
+import { resolveServerBackgroundActivitySettings } from "@t3tools/shared/backgroundActivitySettings";
+import { createModelSelection } from "@t3tools/shared/model";
 import * as Duration from "effect/Duration";
 import * as Equal from "effect/Equal";
 import * as Schema from "effect/Schema";

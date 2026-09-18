@@ -16,12 +16,12 @@ import type {
   AgentPanelModel,
   AgentPanelWorkflowGroup,
   RuntimeSubagent,
-} from "@vetra-code/client-runtime/state/subagentRuntime";
+} from "@t3tools/client-runtime/state/subagentRuntime";
 import {
   formatSubagentModelLabel,
   formatSubagentTokenCount,
-} from "@vetra-code/client-runtime/state/subagentRuntime";
-import type { EnvironmentId, ThreadId } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/state/subagentRuntime";
+import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { Bot, Braces, Check, ChevronDown, ChevronRight, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 

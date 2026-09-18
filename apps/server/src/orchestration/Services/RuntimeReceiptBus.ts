@@ -14,13 +14,7 @@
  *
  * @module RuntimeReceiptBus
  */
-import {
-  CheckpointRef,
-  IsoDateTime,
-  NonNegativeInt,
-  ThreadId,
-  TurnId,
-} from "@vetra-code/contracts";
+import { CheckpointRef, IsoDateTime, NonNegativeInt, ThreadId, TurnId } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
@@ -68,5 +62,5 @@ export interface RuntimeReceiptBusShape {
 }
 
 export class RuntimeReceiptBus extends Context.Service<RuntimeReceiptBus, RuntimeReceiptBusShape>()(
-  "@vetra-code/server/orchestration/Services/RuntimeReceiptBus",
+  "t3/orchestration/Services/RuntimeReceiptBus",
 ) {}

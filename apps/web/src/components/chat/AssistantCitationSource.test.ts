@@ -1,5 +1,5 @@
 import type { LegendListRef } from "@legendapp/list/react";
-import { EnvironmentId, MessageId, ThreadId } from "@vetra-code/contracts";
+import { EnvironmentId, MessageId, ThreadId } from "@t3tools/contracts";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {

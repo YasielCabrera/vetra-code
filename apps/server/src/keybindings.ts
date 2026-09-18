@@ -18,7 +18,7 @@ import {
   type ServerRemoveKeybindingInput,
   type ServerUpsertKeybindingInput,
   type ServerConfigIssue,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Array from "effect/Array";
 import * as Cache from "effect/Cache";
 import * as Cause from "effect/Cause";
@@ -42,14 +42,14 @@ import * as Stream from "effect/Stream";
 import * as Semaphore from "effect/Semaphore";
 import * as ServerConfig from "./config.ts";
 import { writeFileStringAtomically } from "./atomicWrite.ts";
-import { fromJsonStringPretty, fromLenientJson } from "@vetra-code/shared/schemaJson";
+import { fromJsonStringPretty, fromLenientJson } from "@t3tools/shared/schemaJson";
 import {
   DEFAULT_KEYBINDINGS,
   mergeWithDefaultKeybindings,
   compileResolvedKeybindingRule,
   compileResolvedKeybindingsConfig,
   parseKeybindingShortcut,
-} from "@vetra-code/shared/keybindings";
+} from "@t3tools/shared/keybindings";
 
 export {
   DEFAULT_KEYBINDINGS,
@@ -261,7 +261,7 @@ export class Keybindings extends Context.Service<
       input: ServerRemoveKeybindingInput,
     ) => Effect.Effect<ResolvedKeybindingsConfig, KeybindingsConfigError>;
   }
->()("@vetra-code/server/keybindings") {}
+>()("t3/keybindings") {}
 
 const make = Effect.gen(function* () {
   const { keybindingsConfigPath } = yield* ServerConfig.ServerConfig;

@@ -6,4 +6,4 @@ export {
   toSortableTimestamp,
   type SettledThreadTimestampInput,
   type ThreadSortInput,
-} from "@vetra-code/client-runtime/state/thread-sort";
+} from "@t3tools/client-runtime/state/thread-sort";

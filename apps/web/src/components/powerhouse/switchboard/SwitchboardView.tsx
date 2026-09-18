@@ -1,7 +1,7 @@
 import { useGraphiQL, useMonaco } from "@graphiql/react";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
-import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
-import type { EnvironmentId } from "@vetra-code/contracts";
+import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import type { EnvironmentId } from "@t3tools/contracts";
 import { getOperationAST, type ExecutionResult } from "graphql";
 import { GraphiQL, type GraphiQLProps } from "graphiql";
 import "graphiql/setup-workers/vite";

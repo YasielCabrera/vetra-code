@@ -2,7 +2,7 @@ import * as Clock from "effect/Clock";
 import type {
   RelayClientInstallProgressEvent,
   RelayClientInstallProgressStage,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -132,7 +132,7 @@ export interface RelayClientShape {
 }
 
 export class RelayClient extends Context.Service<RelayClient, RelayClientShape>()(
-  "@vetra-code/shared/relayClient",
+  "@t3tools/shared/relayClient",
 ) {}
 
 function executableFileName(platform: NodeJS.Platform): string {

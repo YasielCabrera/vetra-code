@@ -9,8 +9,8 @@ import {
   DesktopTelemetryControlMessage,
   type DesktopUpdateStatusReport,
   type ResourceTelemetrySourceStatus,
-} from "@vetra-code/contracts";
-import { resolveServerBackgroundActivitySettings } from "@vetra-code/shared/backgroundActivitySettings";
+} from "@t3tools/contracts";
+import { resolveServerBackgroundActivitySettings } from "@t3tools/shared/backgroundActivitySettings";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
@@ -196,7 +196,7 @@ export class DesktopTelemetryReceiver extends Context.Service<
       Scope.Scope
     >;
   }
->()("@vetra-code/server/resourceTelemetry/DesktopTelemetryReceiver") {}
+>()("t3/resourceTelemetry/DesktopTelemetryReceiver") {}
 
 const decodeMessage = Schema.decodeUnknownEffect(DesktopHostTelemetryMessage);
 const encodeControlMessage = Schema.encodeEffect(

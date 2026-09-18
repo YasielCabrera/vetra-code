@@ -20,9 +20,9 @@ import type {
   VcsStatusRemoteResult,
   VcsStatusResult,
   VcsStatusStreamEvent,
-} from "@vetra-code/contracts";
-import { mergeGitStatusParts } from "@vetra-code/shared/git";
-import { resolveProjectSettings } from "@vetra-code/shared/projectSettings";
+} from "@t3tools/contracts";
+import { mergeGitStatusParts } from "@t3tools/shared/git";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 
 import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
 import * as GitWorkflowService from "../git/GitWorkflowService.ts";
@@ -205,7 +205,7 @@ export class VcsStatusBroadcaster extends Context.Service<
       options?: StreamStatusOptions,
     ) => Stream.Stream<VcsStatusStreamEvent, GitManagerServiceError>;
   }
->()("@vetra-code/server/vcs/VcsStatusBroadcaster") {}
+>()("t3/vcs/VcsStatusBroadcaster") {}
 
 function fingerprintStatusPart(status: unknown): string {
   return JSON.stringify(status);

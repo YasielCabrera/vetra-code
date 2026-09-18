@@ -8,7 +8,7 @@ import * as Layer from "effect/Layer";
 import * as PlatformError from "effect/PlatformError";
 import * as Schema from "effect/Schema";
 import * as SynchronizedRef from "effect/SynchronizedRef";
-import { PRODUCT_SLUG } from "@vetra-code/shared/productIdentity";
+import { PRODUCT_SLUG } from "@t3tools/shared/productIdentity";
 
 const PREVIEW_PARTITION_PREFIX = `persist:${PRODUCT_SLUG}-preview-`;
 /**
@@ -125,7 +125,7 @@ export class BrowserSession extends Context.Service<
       partitions?: ReadonlyArray<string>,
     ) => Effect.Effect<void, BrowserSessionCacheClearError>;
   }
->()("@vetra-code/desktop/preview/BrowserSession") {}
+>()("@t3tools/desktop/preview/BrowserSession") {}
 
 /**
  * Restricts a clear to the given partitions. Omitting them keeps the historical

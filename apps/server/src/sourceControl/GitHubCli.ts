@@ -15,7 +15,7 @@ import {
   TrimmedNonEmptyString,
   type SourceControlRepositoryVisibility,
   type VcsError,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitHubGraphQlBudget from "./githubGraphQlBudget.ts";
@@ -336,7 +336,7 @@ export class GitHubCli extends Context.Service<
       readonly force?: boolean;
     }) => Effect.Effect<void, GitHubCliError>;
   }
->()("@vetra-code/server/sourceControl/GitHubCli") {}
+>()("t3/sourceControl/GitHubCli") {}
 
 const RawGitHubRepositoryCloneUrlsSchema = Schema.Struct({
   nameWithOwner: TrimmedNonEmptyString,

@@ -1,4 +1,4 @@
-import type { PreviewViewportSetting } from "@vetra-code/contracts";
+import type { PreviewViewportSetting } from "@t3tools/contracts";
 
 export async function commitViewportAndAspectRatio(
   setting: PreviewViewportSetting,

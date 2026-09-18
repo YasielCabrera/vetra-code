@@ -1,4 +1,4 @@
-import type { IssueDetail } from "@vetra-code/contracts";
+import type { IssueDetail } from "@t3tools/contracts";
 
 import type { ReviewCommentContext } from "~/reviewCommentContext";
 

@@ -6,8 +6,8 @@ import type {
   OrchestrationThreadShell,
   ThreadId,
   TurnId,
-} from "@vetra-code/contracts";
-import { ProviderInstanceId } from "@vetra-code/contracts";
+} from "@t3tools/contracts";
+import { ProviderInstanceId } from "@t3tools/contracts";
 
 import { projectThreadAwareness } from "./agentAwareness.ts";
 

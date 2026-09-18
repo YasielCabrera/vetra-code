@@ -1,5 +1,5 @@
 import { useAtomRefresh, useAtomValue } from "@effect/atom-react";
-import type { PowerhouseDatabaseError, PowerhouseReactorError } from "@vetra-code/contracts";
+import type { PowerhouseDatabaseError, PowerhouseReactorError } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";

@@ -3,14 +3,14 @@ import {
   compileResolvedKeybindingsConfig,
   DEFAULT_RESOLVED_KEYBINDINGS,
   mergeWithDefaultKeybindings,
-} from "@vetra-code/shared/keybindings";
+} from "@t3tools/shared/keybindings";
 
 import {
   type KeybindingCommand,
   type KeybindingShortcut,
   type KeybindingWhenNode,
   type ResolvedKeybindingsConfig,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   formatShortcutLabel,
   isDiffToggleShortcut,

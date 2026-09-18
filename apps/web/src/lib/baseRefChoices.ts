@@ -1,4 +1,4 @@
-import type { VcsRef } from "@vetra-code/contracts";
+import type { VcsRef } from "@t3tools/contracts";
 
 export interface BaseRefChoice {
   readonly id: string;

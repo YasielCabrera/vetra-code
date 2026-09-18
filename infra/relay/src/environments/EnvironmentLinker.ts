@@ -2,13 +2,13 @@ import {
   RelayEnvironmentLinkProofPayload,
   RelayEnvironmentLinkProofInvalidReason,
   type RelayEnvironmentLinkRequest,
-} from "@vetra-code/contracts/relay";
+} from "@t3tools/contracts/relay";
 import {
   decodeRelayJwt,
   normalizeRelayIssuer,
   RELAY_LINK_PROOF_TYP,
   verifyRelayJwt,
-} from "@vetra-code/shared/relayJwt";
+} from "@t3tools/shared/relayJwt";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -88,7 +88,7 @@ export class EnvironmentLinker extends Context.Service<
       EnvironmentLinkError
     >;
   }
->()("@vetra-code/relay/environments/EnvironmentLinker") {}
+>()("t3code-relay/environments/EnvironmentLinker") {}
 
 const decodeProof = Schema.decodeUnknownEffect(RelayEnvironmentLinkProofPayload);
 

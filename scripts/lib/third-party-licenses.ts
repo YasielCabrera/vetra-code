@@ -120,7 +120,7 @@ const NOTICE_TEXT_EXTENSIONS = new Set([
   ".txt",
   ".unlicense",
 ]);
-const FIRST_PARTY_PACKAGE_PREFIX = "@vetra-code/";
+const FIRST_PARTY_PACKAGE_PREFIX = "@t3tools/";
 
 function isNoticeTextFile(fileName: string): boolean {
   return (

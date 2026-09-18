@@ -1,4 +1,4 @@
-import type { EnvironmentId, IssueListState, ProjectId } from "@vetra-code/contracts";
+import type { EnvironmentId, IssueListState, ProjectId } from "@t3tools/contracts";
 import { LoaderIcon, SearchIcon } from "lucide-react";
 
 import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";

@@ -9,7 +9,7 @@ import {
   HostProcessInvokedAs,
   HostProcessPlatform,
   HostProcessWorkingDirectory,
-} from "@vetra-code/shared/hostProcess";
+} from "@t3tools/shared/hostProcess";
 
 import { repointLauncher, resolveLauncherPath } from "./update.ts";
 

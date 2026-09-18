@@ -3,8 +3,8 @@ import {
   type EnvironmentId,
   type VetraProjectFile,
   type VetraProjectFileScript,
-} from "@vetra-code/contracts";
-import { parseVetraProjectFile } from "@vetra-code/shared/vetraProjectFile";
+} from "@t3tools/contracts";
+import { parseVetraProjectFile } from "@t3tools/shared/vetraProjectFile";
 import { useMemo } from "react";
 
 import { useProjectFileQuery } from "~/components/files/projectFilesQueryState";

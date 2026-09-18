@@ -15,14 +15,14 @@
  *
  * @module BrowserImportSources
  */
-import type { BrowserImportSourceId, BrowserImportSourceProfile } from "@vetra-code/contracts";
-import * as NodeSqliteClient from "@vetra-code/shared/nodeSqliteClient";
+import type { BrowserImportSourceId, BrowserImportSourceProfile } from "@t3tools/contracts";
+import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 import {
   HostProcessEnvironment,
   HostProcessAddresses,
   HostProcessHostname,
   HostProcessPlatform,
-} from "@vetra-code/shared/hostProcess";
+} from "@t3tools/shared/hostProcess";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";

@@ -3,8 +3,8 @@ import {
   type DesktopCaptureConfigApplied,
   type DesktopCaptureConfigPreview,
   type DesktopSnapShotState,
-} from "@vetra-code/contracts";
-import { parseKeybindingShortcut } from "@vetra-code/shared/keybindings";
+} from "@t3tools/contracts";
+import { parseKeybindingShortcut } from "@t3tools/shared/keybindings";
 import { FileDiff } from "@pierre/diffs/react";
 import { parseDiffFromFile } from "@pierre/diffs";
 import { useMemo, useState } from "react";

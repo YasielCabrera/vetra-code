@@ -1,5 +1,5 @@
-import type { ProviderUsageRefreshIntervalMinutes } from "@vetra-code/contracts";
-import { DEFAULT_UNIFIED_SETTINGS } from "@vetra-code/contracts/settings";
+import type { ProviderUsageRefreshIntervalMinutes } from "@t3tools/contracts";
+import { DEFAULT_UNIFIED_SETTINGS } from "@t3tools/contracts/settings";
 
 import { useClientSettings, useUpdateClientSettings } from "../../hooks/useSettings";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";

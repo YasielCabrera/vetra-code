@@ -11,7 +11,7 @@ import type {
   DesktopCaptureConfigApplied,
   DesktopCaptureConfigPreview,
   DesktopCaptureConfigRequest,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   captureConfigKeys,
   editCaptureConfig,

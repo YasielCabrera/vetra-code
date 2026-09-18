@@ -8,7 +8,7 @@ import type {
   PullRequestCheck,
   PullRequestReaction,
   PullRequestViewerPermissions,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { gitHubLoginAvatarUrl } from "../sourceControl/GitHubActor.ts";
 import * as GitHubPullRequestCli from "./GitHubPullRequestCli.ts";

@@ -9,7 +9,7 @@ export class DesktopState extends Context.Service<
     readonly backendReady: Ref.Ref<boolean>;
     readonly quitting: Ref.Ref<boolean>;
   }
->()("@vetra-code/desktop/app/DesktopState") {}
+>()("@t3tools/desktop/app/DesktopState") {}
 
 const make = Effect.all({
   backendReady: Ref.make(false),

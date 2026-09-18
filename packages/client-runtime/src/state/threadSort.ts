@@ -1,8 +1,5 @@
-import type { OrchestrationThreadShell, ProjectId } from "@vetra-code/contracts";
-import type {
-  SidebarProjectSortOrder,
-  SidebarThreadSortOrder,
-} from "@vetra-code/contracts/settings";
+import type { OrchestrationThreadShell, ProjectId } from "@t3tools/contracts";
+import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@t3tools/contracts/settings";
 
 export interface ThreadSortInput {
   readonly createdAt: string;

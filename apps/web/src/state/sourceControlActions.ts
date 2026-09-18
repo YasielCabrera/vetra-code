@@ -3,11 +3,11 @@ import type {
   AtomCommandFailure,
   AtomCommandResult,
   AtomCommandSuccess,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import {
   VcsActionUnavailableError,
   type VcsActionOperation,
-} from "@vetra-code/client-runtime/state/vcs";
+} from "@t3tools/client-runtime/state/vcs";
 import type {
   EnvironmentId,
   GitActionProgressEvent,
@@ -16,7 +16,7 @@ import type {
   SourceControlCloneProtocol,
   SourceControlRepositoryVisibility,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/unstable/reactivity";

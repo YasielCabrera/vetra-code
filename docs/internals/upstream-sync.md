@@ -63,7 +63,7 @@ Upstream changes to the execution runtime we still run:
 - bugfixes and features in `apps/server`, `apps/web`, `apps/desktop`, and `packages/*` that are not
   T3-product-specific.
 
-After the merge, those changes must appear under Vetra names (`Vetra Code`, `@vetra-code/*`,
+After the merge, those changes must appear under Vetra names (`Vetra Code`, `@t3tools/*`,
 `VETRA_*`, `vetra.json`, `~/.vetra-code`, `vetra://`, and so on).
 
 ### Drop
@@ -152,7 +152,7 @@ backends leak back in.
 - Rebrand bare `t3/` Effect service keys. Upstream tags some `Context.Service` declarations
   `"t3/<path>"`, which no `RENAMES` pair matches (there is no package name to key on, and a
   blanket `t3/` pair would rewrite paths). The fork's keys all read
-  `@vetra-code/<package>/<path>`, and the `deterministicKeys` diagnostic names the expected value,
+  `@t3tools/<package>/<path>`, and the `deterministicKeys` diagnostic names the expected value,
   so a typecheck of the merged package finds every one. Check every workspace, not just the server:
   `git grep -ohE '>\(\)\("[^"]+"' -- apps packages infra | sed 's/.*"\(.*\)"/\1/' | awk -F/ '{print $1}' | sort -u`.
 - Rewrite generic `t3.` prefixes. A blanket `t3.` → `vetra.` pair would smash `t3.codes`. Persistence
@@ -339,7 +339,7 @@ is not part of the sync and must not be left behind silently.
 
    ```bash
    pnpm exec vp test run path/to/focused.test.ts
-   pnpm exec vp run --filter @vetra-code/server typecheck
+   pnpm exec vp run --filter t3 typecheck
    ```
 
 8. **Commit the merge.** The message is already staged from `git merge --no-commit`. Do not squash
@@ -365,7 +365,7 @@ substrings of earlier ones. Current pairs (see the script for the live list):
 | Upstream                                                              | Vetra                                              |
 | --------------------------------------------------------------------- | -------------------------------------------------- |
 | `com.t3tools.t3code`                                                  | `com.vetra.code`                                   |
-| `@t3tools/`                                                           | `@vetra-code/`                                     |
+| `@t3tools/`                                                           | `@t3tools/`                                        |
 | `T3CODE_`                                                             | `VETRA_`                                           |
 | `T3_`                                                                 | `VETRA_`                                           |
 | `t3tools`                                                             | `vetra-code`                                       |
@@ -376,14 +376,14 @@ substrings of earlier ones. Current pairs (see the script for the live list):
 | `T3Tools` / `T3Code`                                                  | `Vetra-Code` / `VetraCode`                         |
 | `t3-resource-monitor` / `t3-relay` / `t3-chat` / `t3-env` / `t3-test` | `vetra-*`                                          |
 | `t3code` (not preceded by `pingdotgg/`)                               | `vetra-code`                                       |
-| `effect-acp` (not already scoped, not a `packages/` path)             | `@vetra-code/effect-acp`                           |
+| `effect-acp` (not already scoped, not a `packages/` path)             | `effect-acp`                                       |
 
 Runtime constants that must not drift, even if a merge conflict "resolves" them back:
 
 | Constant       | Value                                              |
 | -------------- | -------------------------------------------------- |
 | Product name   | `Vetra Code`                                       |
-| Package scope  | `@vetra-code/*`                                    |
+| Package scope  | `@t3tools/*`                                       |
 | CLI            | `vetra`                                            |
 | Home directory | `.vetra-code`                                      |
 | Project file   | `vetra.json`                                       |

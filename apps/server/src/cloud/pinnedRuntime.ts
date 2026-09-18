@@ -16,10 +16,10 @@ import {
   cliArchiveTarCommand,
   cliReleaseDownloadBaseUrl,
   parseChecksums,
-} from "@vetra-code/shared/cliRelease";
+} from "@t3tools/shared/cliRelease";
 
 import * as ProcessRunner from "../processRunner.ts";
-import { PRODUCT_CLI_NAME } from "@vetra-code/shared/productIdentity";
+import { PRODUCT_CLI_NAME } from "@t3tools/shared/productIdentity";
 
 /**
  * A pinned runtime is an exact Vetra release archive unpacked into

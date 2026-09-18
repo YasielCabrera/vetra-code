@@ -1,8 +1,8 @@
-import { EnvironmentId } from "@vetra-code/contracts";
+import { EnvironmentId } from "@t3tools/contracts";
 import type {
   RelayClientEnvironmentRecord,
   RelayEnvironmentStatusResponse,
-} from "@vetra-code/contracts/relay";
+} from "@t3tools/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

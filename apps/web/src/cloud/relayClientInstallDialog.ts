@@ -2,7 +2,7 @@ import {
   RelayClientInstallProgressStageSchema,
   type RelayClientInstallProgressEvent,
   type RelayClientInstallProgressStage,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 
 export class RelayClientInstallConfirmationConflictError extends Schema.TaggedError<RelayClientInstallConfirmationConflictError>()(

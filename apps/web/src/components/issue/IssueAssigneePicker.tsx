@@ -1,8 +1,8 @@
 /** Assigning an issue from the same compact people picker used for pull-request reviewers. */
-import type { EnvironmentId, IssueAssigneeCandidate, IssueRef } from "@vetra-code/contracts";
+import type { EnvironmentId, IssueAssigneeCandidate, IssueRef } from "@t3tools/contracts";
 import { CheckIcon, UserPlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
-import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
+import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 
 import { issueEnvironment } from "~/state/issues";
 import { useEnvironmentQuery } from "~/state/query";

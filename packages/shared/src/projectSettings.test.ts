@@ -3,7 +3,7 @@ import {
   PROJECT_SCOPED_SERVER_SETTING_KEYS,
   ProjectId,
   ProviderInstanceId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 import { createModelSelection } from "./model.ts";
 import {

@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId, type AgentSessionProjectCandidate } from "@vetra-code/contracts";
+import { EnvironmentId, ProjectId, type AgentSessionProjectCandidate } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

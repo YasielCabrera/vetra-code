@@ -54,7 +54,7 @@ authenticated.
 
 ## Build, check, test
 
-- `vp run build`: Fans out over `apps/*`, `packages/*`, `oxlint-plugin-vetra`, and `scripts`.
+- `vp run build`: Fans out over `apps/*`, `packages/*`, `oxlint-plugin-t3code`, and `scripts`.
   Workspaces that define a build task run one: desktop, server (which depends on web), and
   web. Shared packages are consumed and bundled transitively rather than built separately.
 - `vp run build:desktop`: Builds the desktop pipeline (desktop plus server).

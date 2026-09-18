@@ -2,7 +2,7 @@ import type {
   EnvironmentId,
   ServerSettingsPatch,
   UsageModelPriceOverride,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export interface UsagePriceTarget {
   readonly environmentId: EnvironmentId;

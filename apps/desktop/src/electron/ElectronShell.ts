@@ -3,7 +3,7 @@ import {
   REMOTE_CAPABLE_EDITOR_IDS,
   remoteSchemeForEditor,
   type SystemSettingsPane,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -58,7 +58,7 @@ export class ElectronShell extends Context.Service<
     readonly openSystemSettings: (pane: SystemSettingsPane) => Effect.Effect<boolean>;
     readonly copyText: (text: string) => Effect.Effect<void>;
   }
->()("@vetra-code/desktop/electron/ElectronShell") {}
+>()("@t3tools/desktop/electron/ElectronShell") {}
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = ElectronShell.of({

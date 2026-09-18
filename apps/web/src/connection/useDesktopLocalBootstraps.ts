@@ -1,4 +1,4 @@
-import type { DesktopEnvironmentBootstrap } from "@vetra-code/contracts";
+import type { DesktopEnvironmentBootstrap } from "@t3tools/contracts";
 import { useEffect, useState } from "react";
 
 import { readDesktopSecondaryBootstraps } from "./desktopLocal";

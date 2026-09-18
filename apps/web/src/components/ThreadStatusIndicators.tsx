@@ -1,19 +1,19 @@
 import { useSupportsMultiplePullRequests } from "~/hooks/useSupportsMultiplePullRequests";
-import { scopedThreadKey, scopeThreadRef } from "@vetra-code/client-runtime/environment";
-import { pullRequestDetailToVcsStatus } from "@vetra-code/client-runtime/state/pull-requests";
+import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { pullRequestDetailToVcsStatus } from "@t3tools/client-runtime/state/pull-requests";
 import {
   resolveEnvironmentMachineKind,
   type EnvironmentId,
   type ThreadLinkedPullRequest,
   type ThreadPullRequestLink,
   type VcsStatusResult,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   resolveThreadCurrentPullRequestLink,
   resolveThreadPullRequestChains,
   visibleThreadPullRequests,
   type ThreadPullRequestBadge,
-} from "@vetra-code/shared/threadPullRequests";
+} from "@t3tools/shared/threadPullRequests";
 import { FolderGit2Icon, TerminalIcon } from "lucide-react";
 import { useMemo, type MouseEvent } from "react";
 import { buttonVariants, InlineButton } from "./ui/button";
@@ -129,7 +129,7 @@ export function linkedPullRequestSnapshotStatus(
 export {
   resolveThreadPullRequestBadge,
   type ThreadPullRequestBadge,
-} from "@vetra-code/shared/threadPullRequests";
+} from "@t3tools/shared/threadPullRequests";
 
 export interface ThreadPullRequestBadgePresentation {
   readonly Icon: PullRequestGlyphIcon;

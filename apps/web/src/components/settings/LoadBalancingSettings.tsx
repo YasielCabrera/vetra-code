@@ -1,4 +1,4 @@
-import { resolveEnvironmentMachineKind } from "@vetra-code/contracts";
+import { resolveEnvironmentMachineKind } from "@t3tools/contracts";
 
 import {
   useClientSettings,

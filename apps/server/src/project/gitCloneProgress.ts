@@ -1,4 +1,4 @@
-import type { ProjectCloneStage } from "@vetra-code/contracts";
+import type { ProjectCloneStage } from "@t3tools/contracts";
 
 export interface GitCloneProgressLine {
   readonly stage: ProjectCloneStage;

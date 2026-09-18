@@ -3,8 +3,8 @@ import {
   EnvironmentId,
   type ModelSelection,
   type ProviderInstanceId,
-} from "@vetra-code/contracts";
-import { createModelSelection } from "@vetra-code/shared/model";
+} from "@t3tools/contracts";
+import { createModelSelection } from "@t3tools/shared/model";
 import { useNavigate } from "@tanstack/react-router";
 
 import { useVetraProjectFileState } from "../../hooks/useVetraProjectFileScripts";

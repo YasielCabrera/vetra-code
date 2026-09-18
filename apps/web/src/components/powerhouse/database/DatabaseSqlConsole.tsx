@@ -1,13 +1,13 @@
 import CodeMirror from "@uiw/react-codemirror";
 import { PostgreSQL, sql } from "@codemirror/lang-sql";
-import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
+import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import type {
   EnvironmentId,
   PowerhouseDatabaseCatalogResult,
   PowerhouseDatabaseQueryResult,
   PowerhouseDatabaseRowLimit,
   PowerhouseDatabaseTargetId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { CircleAlert, Clock3, Play, X } from "lucide-react";
 import { useMemo, useState } from "react";
 

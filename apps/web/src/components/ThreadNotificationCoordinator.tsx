@@ -1,6 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import type { EnvironmentId, ThreadId } from "@vetra-code/contracts";
+import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { useCallback, useEffect, useRef } from "react";
 

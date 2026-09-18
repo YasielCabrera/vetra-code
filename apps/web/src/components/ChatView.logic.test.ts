@@ -11,7 +11,7 @@ import {
   ThreadId,
   TurnId,
   type WorktreeSetupSnapshot,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { Atom, AsyncResult } from "effect/unstable/reactivity";
 import { appAtomRegistry } from "../rpc/atomRegistry";
@@ -19,8 +19,8 @@ import { environmentThreadDetails } from "../state/threads";
 
 import type { Thread, ThreadShell, TurnDiffSummary } from "../types";
 import { deriveProviderInstanceEntries, NO_PROVIDER_MODEL_SELECTION } from "../providerInstances";
-import type { CodexArtifactTemplate } from "@vetra-code/client-runtime/codex-artifact-templates";
-import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
+import type { CodexArtifactTemplate } from "@t3tools/client-runtime/codex-artifact-templates";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   type RightPanelSurface,
   pullRequestSurface,

@@ -5,7 +5,7 @@ import {
   HostProcessEnvironment,
   HostProcessIsExecutable,
   HostProcessPlatform,
-} from "@vetra-code/shared/hostProcess";
+} from "@t3tools/shared/hostProcess";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";

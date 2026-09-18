@@ -4,7 +4,7 @@ import type {
   PullRequestChecksState,
   PullRequestRef,
   ScopedThreadRef,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { useOpenLink } from "~/browser/useOpenLink";
 import { cn } from "~/lib/utils";

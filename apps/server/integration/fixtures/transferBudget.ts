@@ -1,4 +1,4 @@
-import { EventId, ProviderDriverKind } from "@vetra-code/contracts";
+import { EventId, ProviderDriverKind } from "@t3tools/contracts";
 
 import type {
   FixtureProviderRuntimeEvent,

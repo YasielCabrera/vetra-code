@@ -1,10 +1,10 @@
-import { scopeProjectRef, scopeThreadRef } from "@vetra-code/client-runtime/environment";
+import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   type DesktopPendingSnapShot,
   EnvironmentId,
   ProjectId,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { DraftId, useComposerDraftStore } from "../../composerDraftStore";

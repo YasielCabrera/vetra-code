@@ -52,7 +52,7 @@ export class ManagedTunnelLimits extends Context.Service<
       readonly environmentId: string;
     }) => Effect.Effect<void, ManagedTunnelLimitExceeded | ManagedTunnelLimitPersistenceError>;
   }
->()("@vetra-code/relay/environments/ManagedTunnelLimits") {}
+>()("t3code-relay/environments/ManagedTunnelLimits") {}
 
 export const make = Effect.gen(function* () {
   const db = yield* RelayDb.RelayDb;

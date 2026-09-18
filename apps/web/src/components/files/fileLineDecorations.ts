@@ -2,7 +2,7 @@ import type {
   VcsFileBlameCommit,
   VcsFileBlameResult,
   VcsFileLineChangesResult,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export const FILE_CHANGE_NONE = 0;
 export const FILE_CHANGE_ADDED = 1;

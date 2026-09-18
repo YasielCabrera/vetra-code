@@ -17,9 +17,9 @@ import type {
   PullRequestReviewThread,
   PullRequestReviewerCandidate,
   PullRequestState,
-} from "@vetra-code/contracts";
-import { TrimmedNonEmptyString } from "@vetra-code/contracts";
-import { decodeJsonResult } from "@vetra-code/shared/schemaJson";
+} from "@t3tools/contracts";
+import { TrimmedNonEmptyString } from "@t3tools/contracts";
+import { decodeJsonResult } from "@t3tools/shared/schemaJson";
 
 /**
  * GitLab's REST enums are decoded as plain strings and normalized here: a GitLab release that

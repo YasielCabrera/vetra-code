@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vite-plus/test";
-import type { RuntimeMode } from "@vetra-code/contracts";
+import type { RuntimeMode } from "@t3tools/contracts";
 
 const testState = vi.hoisted(() => {
   let completeProjectFileRead: (value: null) => void = () => undefined;
@@ -88,16 +88,16 @@ vi.mock("@effect/atom-react", () => ({
           ["environment-ssh", { settings: testState.targetSettings }],
         ]),
 }));
-vi.mock("@vetra-code/client-runtime/environment", () => ({
+vi.mock("@t3tools/client-runtime/environment", () => ({
   scopedProjectKey: () => "remote-project",
   scopeProjectRef: (environmentId: string, projectId: string) => ({ environmentId, projectId }),
   scopeThreadRef: (environmentId: string, threadId: string) => ({ environmentId, threadId }),
 }));
-vi.mock("@vetra-code/contracts", () => ({
+vi.mock("@t3tools/contracts", () => ({
   DEFAULT_RUNTIME_MODE: "default",
   DEFAULT_SERVER_SETTINGS: {},
 }));
-vi.mock("@vetra-code/shared/projectSettings", () => ({
+vi.mock("@t3tools/shared/projectSettings", () => ({
   // Environment settings pass through; the tests set project fields on the
   // project record, which the hook still honors until the server folds them.
   resolveProjectSettings: (settings: Record<string, unknown>) => ({
@@ -106,7 +106,7 @@ vi.mock("@vetra-code/shared/projectSettings", () => ({
     overrides: {},
   }),
 }));
-vi.mock("@vetra-code/shared/threadEnvMode", () => ({
+vi.mock("@t3tools/shared/threadEnvMode", () => ({
   resolveDefaultThreadEnvMode: (input: {
     readonly projectFile: "local" | "worktree" | null;
     readonly globalDefault: "local" | "worktree";

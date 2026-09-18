@@ -1,5 +1,5 @@
-import type { ContextMenuItem } from "@vetra-code/contracts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import type { ContextMenuItem } from "@t3tools/contracts";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -58,7 +58,7 @@ export class ElectronMenu extends Context.Service<
     ) => Effect.Effect<Option.Option<string>>;
     readonly popupTemplate: (input: ElectronMenuTemplateInput) => Effect.Effect<void>;
   }
->()("@vetra-code/desktop/electron/ElectronMenu") {}
+>()("@t3tools/desktop/electron/ElectronMenu") {}
 
 function normalizeContextMenuItems(source: readonly ContextMenuItem[]): ContextMenuItem[] {
   const normalizedItems: ContextMenuItem[] = [];

@@ -2,7 +2,7 @@ import {
   type ClaudeSettings,
   type ModelCapabilities,
   type ServerProviderSlashCommand,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -11,8 +11,8 @@ import * as Path from "effect/Path";
 import * as Ref from "effect/Ref";
 import * as Result from "effect/Result";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
-import { createModelCapabilities } from "@vetra-code/shared/model";
-import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+import { createModelCapabilities } from "@t3tools/shared/model";
+import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import {
   query as claudeQuery,
   type Options as ClaudeQueryOptions,

@@ -8,7 +8,7 @@ import {
   Web3RejectCode,
   Web3RequestId,
   Web3RpcUrl,
-} from "@vetra-code/web3/schema";
+} from "@t3tools/web3/schema";
 
 import { EnvironmentId, ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import {

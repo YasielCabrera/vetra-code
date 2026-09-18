@@ -84,7 +84,7 @@ function concatBytes(chunks: ReadonlyArray<Uint8Array>): Uint8Array {
   return batch;
 }
 
-it.layer(NodeServices.layer)("@vetra-code/effect-acp client", (it) => {
+it.layer(NodeServices.layer)("effect-acp client", (it) => {
   const makeHandle = (env?: Record<string, string>) =>
     Effect.gen(function* () {
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
@@ -348,7 +348,7 @@ it.layer(NodeServices.layer)("@vetra-code/effect-acp client", (it) => {
             terminal: false,
           },
           clientInfo: {
-            name: "@vetra-code/effect-acp-test",
+            name: "effect-acp-test",
             version: "0.0.0",
           },
         });
@@ -434,7 +434,7 @@ it.layer(NodeServices.layer)("@vetra-code/effect-acp client", (it) => {
               terminal: false,
             },
             clientInfo: {
-              name: "@vetra-code/effect-acp-test",
+              name: "effect-acp-test",
               version: "0.0.0",
             },
           });
@@ -519,7 +519,7 @@ it.layer(NodeServices.layer)("@vetra-code/effect-acp client", (it) => {
             terminal: false,
           },
           clientInfo: {
-            name: "@vetra-code/effect-acp-test",
+            name: "effect-acp-test",
             version: "0.0.0",
           },
         });
@@ -600,7 +600,7 @@ it.layer(NodeServices.layer)("@vetra-code/effect-acp client", (it) => {
             terminal: false,
           },
           clientInfo: {
-            name: "@vetra-code/effect-acp-test",
+            name: "effect-acp-test",
             version: "0.0.0",
           },
         });
@@ -634,7 +634,7 @@ it.layer(NodeServices.layer)("@vetra-code/effect-acp client", (it) => {
             terminal: false,
           },
           clientInfo: {
-            name: "@vetra-code/effect-acp-test",
+            name: "effect-acp-test",
             version: "0.0.0",
           },
         })

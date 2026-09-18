@@ -25,8 +25,8 @@ implementation is the deterministic, agent-friendly half.
 
 ## Layout
 
-`@vetra-code/web3` (`packages/web3`) holds all the web3 domain logic and is a
-**leaf**: it must not import `@vetra-code/contracts` or `@vetra-code/shared`,
+`@t3tools/web3` (`packages/web3`) holds all the web3 domain logic and is a
+**leaf**: it must not import `@t3tools/contracts` or `@t3tools/shared`,
 because `contracts` depends on _it_.
 
 | Subpath      | Contents                                                  | Dependencies     |
@@ -42,7 +42,7 @@ because `contracts` depends on _it_.
 `./inpage` and `./rpc` are dependency-free **on purpose**: `./inpage` is bundled
 into `preview-pick-preload.cjs`, a sandboxed Electron preload, and Electron cannot
 resolve package imports from inside a packaged ASAR. `apps/desktop/vite.config.ts`
-therefore lists `@vetra-code/` in that pack entry's `deps.alwaysBundle`; dropping
+therefore lists `@t3tools/` in that pack entry's `deps.alwaysBundle`; dropping
 that inlines nothing and the packaged app fails at runtime, not at build time.
 
 Electron-specific plumbing lives in `apps/desktop/src/preview/Wallet.ts`, which is

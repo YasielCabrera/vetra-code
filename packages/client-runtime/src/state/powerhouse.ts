@@ -6,7 +6,7 @@
  * subscriptions are not relayed: adding a second streaming protocol over the
  * environment websocket needs a separate transport design.
  */
-import { WS_METHODS } from "@vetra-code/contracts";
+import { WS_METHODS } from "@t3tools/contracts";
 import { Atom } from "effect/unstable/reactivity";
 
 import type { EnvironmentRegistry } from "../connection/registry.ts";

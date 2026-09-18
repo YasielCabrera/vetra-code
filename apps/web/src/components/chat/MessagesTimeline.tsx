@@ -5,7 +5,7 @@ import {
   getQuestionAnswerPreview,
   getQuestionAnswerText,
   hasQuestionAnswer,
-} from "@vetra-code/client-runtime/work-log/user-input";
+} from "@t3tools/client-runtime/work-log/user-input";
 import {
   deriveTimelineMinimapItems,
   resolveTimelineMinimapPreview,
@@ -21,30 +21,30 @@ import {
   type ToolActivityIcon,
   type TurnId,
   type WorktreeSetupSnapshot,
-} from "@vetra-code/contracts";
-import { parseScopedThreadKey } from "@vetra-code/client-runtime/environment";
-import { replaceComposerContextReferences } from "@vetra-code/shared/composerContextReferences";
-import type { CodexArtifactTemplate } from "@vetra-code/client-runtime/codex-artifact-templates";
+} from "@t3tools/contracts";
+import { parseScopedThreadKey } from "@t3tools/client-runtime/environment";
+import { replaceComposerContextReferences } from "@t3tools/shared/composerContextReferences";
+import type { CodexArtifactTemplate } from "@t3tools/client-runtime/codex-artifact-templates";
 import {
   resolveWorkEntryToolPresentation,
   resolveViewedImageAsset,
   workEntryViewedImagePath,
   summarizeToolGroup,
   omitSupersededLifecycleMarkers,
-} from "@vetra-code/client-runtime/work-log/presentation";
-import { resolveWorkGroupScrollAnchor } from "@vetra-code/client-runtime/work-log/scroll-anchor";
+} from "@t3tools/client-runtime/work-log/presentation";
+import { resolveWorkGroupScrollAnchor } from "@t3tools/client-runtime/work-log/scroll-anchor";
 import type {
   AgentPanelModel,
   RuntimeSubagent,
-} from "@vetra-code/client-runtime/state/subagentRuntime";
-import { formatAttachmentSize } from "@vetra-code/client-runtime/state/attachments";
+} from "@t3tools/client-runtime/state/subagentRuntime";
+import { formatAttachmentSize } from "@t3tools/client-runtime/state/attachments";
 import {
   emptyAgentPanelModel,
   formatSubagentModelLabel,
   formatSubagentTokenCount,
   isActiveSubagentStatus,
   isTerminalSubagentStatus,
-} from "@vetra-code/client-runtime/state/subagentRuntime";
+} from "@t3tools/client-runtime/state/subagentRuntime";
 
 const EMPTY_AGENT_PANEL_MODEL = emptyAgentPanelModel();
 const NOOP_OPEN_AGENTS = () => {};
@@ -52,10 +52,10 @@ const EMPTY_QUEUED_MESSAGES: ReadonlyArray<QueuedComposerMessage> = [];
 const NOOP_QUEUED_MESSAGE_ACTION = (_id: string) => {};
 const NOOP_USE_ARTIFACT_TEMPLATE = () => {};
 const NOOP_OPEN_ATTACHMENT = (_attachment: ChatFileAttachment) => {};
-import { resolveChatListAnchoredEndSpace } from "@vetra-code/shared/chatList";
-import { toolActivityFaviconUrl } from "@vetra-code/shared/favicon";
-import { formatDuration } from "@vetra-code/shared/orchestrationTiming";
-import { getProjectFaviconCacheKey } from "@vetra-code/shared/projectFavicon";
+import { resolveChatListAnchoredEndSpace } from "@t3tools/shared/chatList";
+import { toolActivityFaviconUrl } from "@t3tools/shared/favicon";
+import { formatDuration } from "@t3tools/shared/orchestrationTiming";
+import { getProjectFaviconCacheKey } from "@t3tools/shared/projectFavicon";
 import { observeVisibleAnimation } from "../../lib/visibleAnimation";
 import {
   createContext,
@@ -133,7 +133,7 @@ import type {
   ComposerContextId,
   ComposerContextRecord,
   KnownComposerContextRecord,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { Button } from "../ui/button";
 import type { QueuedComposerMessage } from "../../queuedMessageStore";
 import { useAssetUrlRefresh, useAssetUrls, useAssetUrlState } from "../../assets/assetUrls";
@@ -223,12 +223,12 @@ import {
 import {
   collectComposerContextReferences,
   formatComposerContextReference,
-} from "@vetra-code/shared/composerContextReferences";
+} from "@t3tools/shared/composerContextReferences";
 import {
   COMPOSER_CONTEXT_CLIPBOARD_MIME,
   encodeComposerContextClipboardHtml,
   encodeComposerContextFragment,
-} from "@vetra-code/shared/composerContextClipboard";
+} from "@t3tools/shared/composerContextClipboard";
 import { chatMarkdownClipboardPayload } from "../../markdown-clipboard";
 import {
   CHAT_INLINE_CHIP_CLASS_NAME,
@@ -245,7 +245,7 @@ import type { ChatMarkdownContextReference } from "../ChatMarkdown";
 import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { cn } from "~/lib/utils";
 import { useUiStateStore } from "~/uiStateStore";
-import { type TimestampFormat } from "@vetra-code/contracts/settings";
+import { type TimestampFormat } from "@t3tools/contracts/settings";
 import { formatChatTimestampTooltip, formatDayAwareTimestamp } from "../../timestampFormat";
 
 import { SkillInlineText } from "./SkillInlineText";
@@ -4911,7 +4911,7 @@ const PlainWorkEntryRow = memo(function PlainWorkEntryRow(props: {
 function QuestionAnswerHistory({
   answer,
 }: {
-  answer: import("@vetra-code/contracts").UserInputAttachmentAnswerPayload;
+  answer: import("@t3tools/contracts").UserInputAttachmentAnswerPayload;
 }) {
   const { activeThreadEnvironmentId } = use(TimelineRowCtx);
   const attachments = useMemo(() => Object.values(answer.attachmentsByQuestionId).flat(), [answer]);

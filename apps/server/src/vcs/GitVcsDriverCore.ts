@@ -29,15 +29,12 @@ import {
   type VcsFileLineChangesResult,
   type VcsRef,
   type VcsWorkingTreeFileStatus,
-} from "@vetra-code/contracts";
-import {
-  dedupeRemoteBranchesWithLocalMatches,
-  normalizeGitRemoteUrl,
-} from "@vetra-code/shared/git";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { compactTraceAttributes } from "@vetra-code/shared/observability";
-import { PRODUCT_PRE_REFRESH_REF_PREFIX, PRODUCT_SLUG } from "@vetra-code/shared/productIdentity";
-import { decodeJsonResult } from "@vetra-code/shared/schemaJson";
+} from "@t3tools/contracts";
+import { dedupeRemoteBranchesWithLocalMatches, normalizeGitRemoteUrl } from "@t3tools/shared/git";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { compactTraceAttributes } from "@t3tools/shared/observability";
+import { PRODUCT_PRE_REFRESH_REF_PREFIX, PRODUCT_SLUG } from "@t3tools/shared/productIdentity";
+import { decodeJsonResult } from "@t3tools/shared/schemaJson";
 import { gitCommandDuration, gitCommandsTotal, withMetrics } from "../observability/Metrics.ts";
 import * as GitVcsDriver from "./GitVcsDriver.ts";
 import { GitFileAnnotationParseError } from "./GitFileAnnotationError.ts";

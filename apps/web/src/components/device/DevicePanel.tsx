@@ -3,7 +3,7 @@ import type {
   DeviceServiceState,
   DeviceSummary,
   ScopedThreadRef,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   ChevronLeft,
   Home,

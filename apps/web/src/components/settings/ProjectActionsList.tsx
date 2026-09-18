@@ -1,4 +1,4 @@
-import type { ProjectScript, ResolvedKeybindingsConfig } from "@vetra-code/contracts";
+import type { ProjectScript, ResolvedKeybindingsConfig } from "@t3tools/contracts";
 import { SettingsIcon } from "lucide-react";
 import { shortcutLabelForCommand } from "../../keybindings";
 import { commandForProjectScript } from "../../projectScripts";

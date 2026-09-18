@@ -1,4 +1,4 @@
-import { DesktopAppActivationResponse } from "@vetra-code/contracts";
+import { DesktopAppActivationResponse } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 

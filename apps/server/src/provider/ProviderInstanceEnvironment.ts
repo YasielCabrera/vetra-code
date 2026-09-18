@@ -1,4 +1,4 @@
-import type { ProviderInstanceEnvironment } from "@vetra-code/contracts";
+import type { ProviderInstanceEnvironment } from "@t3tools/contracts";
 
 import { expandHomePath } from "../pathExpansion.ts";
 

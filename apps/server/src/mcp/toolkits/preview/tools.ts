@@ -18,7 +18,7 @@ import {
   PreviewAutomationTabTargetInput,
   PreviewAutomationTypeInput,
   PreviewAutomationWaitForInput,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import * as FileSystem from "effect/FileSystem";
 import { Tool, Toolkit } from "effect/unstable/ai";

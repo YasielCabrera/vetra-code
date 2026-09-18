@@ -4,9 +4,9 @@ import type {
   RelayAgentActivityPublishProofPayload,
   RelayAgentActivityPublishRequest,
   RelayAgentActivityState,
-} from "@vetra-code/contracts/relay";
-import { RELAY_ACTIVITY_PUBLISH_TYP } from "@vetra-code/shared/relayJwt";
-import { stableStringify } from "@vetra-code/shared/relaySigning";
+} from "@t3tools/contracts/relay";
+import { RELAY_ACTIVITY_PUBLISH_TYP } from "@t3tools/shared/relayJwt";
+import { stableStringify } from "@t3tools/shared/relaySigning";
 import { describe, expect, it } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";

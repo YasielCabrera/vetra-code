@@ -2,7 +2,7 @@ import {
   defaultInstanceIdForDriver,
   ProviderDriverKind,
   type ServerProvider,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { it, assert, vi } from "@effect/vitest";
 
 import * as Effect from "effect/Effect";

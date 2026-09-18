@@ -1,4 +1,4 @@
-import type { PreviewAnnotationSubmission } from "@vetra-code/contracts";
+import type { PreviewAnnotationSubmission } from "@t3tools/contracts";
 
 interface AnnotationKeyboardEvent {
   readonly key: string;

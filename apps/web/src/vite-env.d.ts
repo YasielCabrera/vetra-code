@@ -1,6 +1,6 @@
 /// <reference types="vite-plus/client" />
 
-import type { DesktopBridge } from "@vetra-code/contracts";
+import type { DesktopBridge } from "@t3tools/contracts";
 
 interface ImportMetaEnv {
   readonly VITE_HTTP_URL: string;

@@ -33,8 +33,8 @@ import {
   ProviderDriverKind,
   type ProviderInstanceConfigMap,
   ProviderInstanceId,
-} from "@vetra-code/contracts";
-import { isHostWindows } from "@vetra-code/shared/hostProcess";
+} from "@t3tools/contracts";
+import { isHostWindows } from "@t3tools/shared/hostProcess";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";

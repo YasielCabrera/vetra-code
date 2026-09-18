@@ -12,7 +12,7 @@ import type {
   ProjectIconOverride,
   ProjectId,
   SourceControlProviderKind,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { FolderGit2Icon, LayersIcon, ListFilterIcon } from "lucide-react";
 import type { ElementType, ReactNode } from "react";
 

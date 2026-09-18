@@ -38,10 +38,10 @@ import {
   ClaudeSettings,
   CodexSettings,
   ProviderInstanceId,
-} from "@vetra-code/contracts";
-import { makeKeyedCoalescingWorker } from "@vetra-code/shared/KeyedCoalescingWorker";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { getTerminalLabel } from "@vetra-code/shared/terminalLabels";
+} from "@t3tools/contracts";
+import { makeKeyedCoalescingWorker } from "@t3tools/shared/KeyedCoalescingWorker";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
 import * as DateTime from "effect/DateTime";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -216,7 +216,7 @@ export class TerminalManager extends Context.Service<
       listener: (event: TerminalMetadataStreamEvent) => Effect.Effect<void>,
     ) => Effect.Effect<() => void>;
   }
->()("@vetra-code/server/terminal/Manager/TerminalManager") {}
+>()("t3/terminal/Manager/TerminalManager") {}
 
 interface TerminalSubprocessInspectResult {
   readonly hasRunningSubprocess: boolean;

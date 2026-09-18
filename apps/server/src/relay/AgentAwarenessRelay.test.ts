@@ -11,14 +11,14 @@ import type {
   ProjectId,
   ThreadId,
   TurnId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import type {
   RelayAgentActivityPublishProofPayload,
   RelayAgentActivityState,
-} from "@vetra-code/contracts/relay";
-import { CommandId, ProviderInstanceId } from "@vetra-code/contracts";
-import { RelayClientTracer } from "@vetra-code/shared/relayTracing";
-import { RELAY_ACTIVITY_PUBLISH_TYP, verifyRelayJwt } from "@vetra-code/shared/relayJwt";
+} from "@t3tools/contracts/relay";
+import { CommandId, ProviderInstanceId } from "@t3tools/contracts";
+import { RelayClientTracer } from "@t3tools/shared/relayTracing";
+import { RELAY_ACTIVITY_PUBLISH_TYP, verifyRelayJwt } from "@t3tools/shared/relayJwt";
 import { describe, expect, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

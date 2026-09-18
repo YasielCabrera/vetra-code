@@ -2,8 +2,8 @@ import {
   type ProviderInstanceId,
   type ServerProvider,
   ServerProvider as ServerProviderSchema,
-} from "@vetra-code/contracts";
-import { causeErrorTag } from "@vetra-code/shared/observability";
+} from "@t3tools/contracts";
+import { causeErrorTag } from "@t3tools/shared/observability";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";

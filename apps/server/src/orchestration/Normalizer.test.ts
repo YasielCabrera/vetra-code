@@ -6,7 +6,7 @@ import {
   ProjectId,
   ProviderInstanceId,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { canonicalizeClientCommandTimestamps } from "./Normalizer.ts";
 

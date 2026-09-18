@@ -2,8 +2,8 @@ import {
   isModifierPairShortcut,
   type SnapShotModifier,
   type SnapShotShortcut,
-} from "@vetra-code/contracts";
-import { parseKeybindingShortcut } from "@vetra-code/shared/keybindings";
+} from "@t3tools/contracts";
+import { parseKeybindingShortcut } from "@t3tools/shared/keybindings";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { getDesktopSnapShotBridge } from "../../lib/desktopSnapShot";
 import {

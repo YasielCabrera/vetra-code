@@ -16,7 +16,7 @@ export class MacPermissions extends Context.Service<
       isGranted?: () => boolean | Promise<boolean>,
     ) => Effect.Effect<void>;
   }
->()("@vetra-code/desktop/permissions/MacPermissions") {}
+>()("@t3tools/desktop/permissions/MacPermissions") {}
 
 export const layer = Layer.effect(
   MacPermissions,

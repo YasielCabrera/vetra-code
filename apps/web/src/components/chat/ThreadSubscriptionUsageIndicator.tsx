@@ -3,7 +3,7 @@ import type {
   ProviderInstanceId,
   ProviderSubscriptionUsageInstanceResult,
   ProviderSubscriptionUsageWindow,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { memo, useRef, useState, type FocusEvent } from "react";
 
 import type { EnvironmentProviderSubscriptionUsageStatus } from "../../state/providerSubscriptionUsage";

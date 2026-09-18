@@ -1,4 +1,4 @@
-import type { ProviderInteractionMode } from "@vetra-code/contracts";
+import type { ProviderInteractionMode } from "@t3tools/contracts";
 import { buildRuntimeInstructions } from "./RuntimeInstructions.ts";
 
 const VETRA_CODE_BROWSER_TOOL_INSTRUCTIONS = `

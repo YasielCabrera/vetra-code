@@ -20,8 +20,8 @@ import {
   type UsageLimitSourceConfig,
   type UsageLimitSourceId,
   type UsageLimitSourceSnapshot,
-} from "@vetra-code/contracts";
-import { resolveServerBackgroundActivitySettings } from "@vetra-code/shared/backgroundActivitySettings";
+} from "@t3tools/contracts";
+import { resolveServerBackgroundActivitySettings } from "@t3tools/shared/backgroundActivitySettings";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
@@ -49,7 +49,7 @@ export class UsageLimitSources extends Context.Service<
       input: UsageLimitSourceConsumeResetCreditInput,
     ) => Effect.Effect<ProviderConsumeResetCreditResult, UsageLimitSourceError>;
   }
->()("@vetra-code/server/usage/UsageLimitSources") {}
+>()("t3/usage/UsageLimitSources") {}
 
 function sourceLabel(id: string, config: UsageLimitSourceConfig): string {
   if (config.label) return config.label;

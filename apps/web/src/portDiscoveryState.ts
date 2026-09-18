@@ -4,8 +4,8 @@ import {
   type DiscoveredLocalServer,
   type EnvironmentId,
   type ThreadId,
-} from "@vetra-code/contracts";
-import { isLoopbackHost } from "@vetra-code/shared/preview";
+} from "@t3tools/contracts";
+import { isLoopbackHost } from "@t3tools/shared/preview";
 import { useMemo } from "react";
 
 import { previewEnvironment } from "./state/preview";

@@ -43,7 +43,7 @@ jobs:
           run-install: true
 
       - name: Ensure Electron runtime is installed
-        run: vp run --filter @vetra-code/desktop ensure:electron
+        run: vp run --filter @t3tools/desktop ensure:electron
 
       # Files/dependencies are repo-wide; export checks cover clean workspaces only.
       - name: Check unused code
@@ -68,7 +68,7 @@ jobs:
       - name: Verify preload bundle output
         run: node apps/desktop/scripts/verify-preload-bundle.mjs
 
-  # Everything except `@vetra-code/server` (apps/server). `--parallel` drops the package
+  # Everything except `t3` (apps/server). `--parallel` drops the package
   # dependency ordering that `vp run` applies by default: these `test` tasks
   # declare no `dependsOn` and resolve workspace deps from source, so ordering
   # only bought us idle runners between dependency layers. The concurrency
@@ -94,7 +94,7 @@ jobs:
           run-install: true
 
       - name: Ensure Electron runtime is installed
-        run: vp run --filter @vetra-code/desktop ensure:electron
+        run: vp run --filter @t3tools/desktop ensure:electron
 
       - uses: ./.github/actions/setup-apt-mirrors
 
@@ -110,7 +110,7 @@ jobs:
         run: node --test .github/scripts/check-nightly-release.test.cjs
 
       - name: Test
-        run: vp run --parallel --concurrency-limit 4 --filter '!@vetra-code/server' --filter '!@vetra-code/monorepo' test
+        run: vp run --parallel --concurrency-limit 4 --filter '!t3' --filter '!@t3tools/monorepo' test
 
   # apps/server sets `fileParallelism: false`, so its 239 files run strictly
   # one at a time. Sharding spreads them over separate runners instead of
@@ -140,14 +140,14 @@ jobs:
           cache: true
           run-install: true
 
-      # No Electron setup here: `@vetra-code/server` has no Electron dependency
+      # No Electron setup here: `t3` has no Electron dependency
       # and none of its tests touch the runtime. Only the non-server `test`
-      # job, which covers @vetra-code/desktop, needs the download.
+      # job, which covers @t3tools/desktop, needs the download.
       - name: Test
         env:
           VETRA_TRANSFER_BUDGET_REPORT_PATH: ${{ runner.temp }}/vetra-transfer-budget.md
           VETRA_TRANSFER_BUDGET_RESULT_PATH: ${{ runner.temp }}/thread-transfer-result.json
-        run: vp run --filter @vetra-code/server test --shard ${{ matrix.shard }}/${{ strategy.job-total }}
+        run: vp run --filter t3 test --shard ${{ matrix.shard }}/${{ strategy.job-total }}
 
       # src/server.test.ts writes the budget report, so exactly one shard
       # produces these files. Gating the upload on their presence keeps a
@@ -233,7 +233,7 @@ jobs:
           cache: true
           run-install: |
             args:
-              - --filter=@vetra-code/scripts...
+              - --filter=@t3tools/scripts...
 
       - name: Exercise release-only workflow steps
         run: node scripts/release-smoke.ts

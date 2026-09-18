@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vetra-code/contracts";
+import { EnvironmentId } from "@t3tools/contracts";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { useComposerDraftStore } from "~/composerDraftStore";

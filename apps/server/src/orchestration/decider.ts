@@ -18,14 +18,14 @@ import {
   type ThreadPullRequestKey,
   type ThreadPullRequestLink,
   type OrchestrationThreadActivity,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   legacyLinkedPullRequestOf,
   legacyThreadPullRequestKey,
   normalizeThreadPullRequestKey,
   threadPullRequestKeysEqual,
-} from "@vetra-code/shared/threadPullRequests";
-import { compareDateTimeStrings } from "@vetra-code/shared/dateTime";
+} from "@t3tools/shared/threadPullRequests";
+import { compareDateTimeStrings } from "@t3tools/shared/dateTime";
 import * as DateTime from "effect/DateTime";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";

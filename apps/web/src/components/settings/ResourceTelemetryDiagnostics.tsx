@@ -24,14 +24,14 @@ import type {
   ResourceTelemetrySourceHealth,
   ResourceTelemetrySourceStatus,
   ServerProcessSignal,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 
 import {
   useResourceTelemetry,

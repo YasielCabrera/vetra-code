@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vetra-code/contracts";
+import { EnvironmentId } from "@t3tools/contracts";
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 

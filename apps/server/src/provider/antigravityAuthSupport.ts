@@ -4,12 +4,9 @@ import * as NodeFSP from "node:fs/promises";
 // @effect-diagnostics-next-line nodeBuiltinImport:off - resolveAntigravityProfileDirectory is a pure sync helper, so it cannot use the Path service.
 import * as NodePath from "node:path";
 
-import type { AntigravityAuthMethod, ProviderInstanceId } from "@vetra-code/contracts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import {
-  resolveNodeExecutable,
-  nodeRuntimeUnavailableMessage,
-} from "@vetra-code/shared/nodeRuntime";
+import type { AntigravityAuthMethod, ProviderInstanceId } from "@t3tools/contracts";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { resolveNodeExecutable, nodeRuntimeUnavailableMessage } from "@t3tools/shared/nodeRuntime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -18,7 +15,7 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as ChildProcess from "effect/unstable/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
-import * as AcpErrors from "@vetra-code/effect-acp/errors";
+import * as AcpErrors from "effect-acp/errors";
 
 import { collectUint8StreamText } from "../stream/collectUint8StreamText.ts";
 import type { AcpSpawnInput } from "./acp/AcpSessionRuntime.ts";

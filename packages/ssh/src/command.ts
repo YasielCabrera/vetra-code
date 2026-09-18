@@ -1,7 +1,7 @@
 import * as NodeCrypto from "node:crypto";
 
-import type { DesktopSshEnvironmentTarget } from "@vetra-code/contracts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import type { DesktopSshEnvironmentTarget } from "@t3tools/contracts";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";

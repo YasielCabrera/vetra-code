@@ -1,10 +1,10 @@
 import { useAtomValue } from "@effect/atom-react";
-import { resolveEnvironmentMachineKind } from "@vetra-code/contracts";
+import { resolveEnvironmentMachineKind } from "@t3tools/contracts";
 import {
   gitHubRoutingConnectionKey,
   gitHubRoutingPermissionFor,
   type GitHubRoutingPermission,
-} from "@vetra-code/client-runtime/connection";
+} from "@t3tools/client-runtime/connection";
 import { useState } from "react";
 
 import { environmentCatalog } from "~/connection/catalog";

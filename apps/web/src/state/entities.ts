@@ -3,13 +3,13 @@ import type {
   EnvironmentProject,
   EnvironmentThread,
   EnvironmentThreadShell,
-} from "@vetra-code/client-runtime/state/shell";
+} from "@t3tools/client-runtime/state/shell";
 import {
   type EnvironmentThreadStatus,
   mergeEnvironmentThread,
-} from "@vetra-code/client-runtime/state/threads";
-import type { ScopedProjectRef, ScopedThreadRef, ServerConfig } from "@vetra-code/contracts";
-import type { EnvironmentId } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/state/threads";
+import type { ScopedProjectRef, ScopedThreadRef, ServerConfig } from "@t3tools/contracts";
+import type { EnvironmentId } from "@t3tools/contracts";
 import { Atom } from "effect/unstable/reactivity";
 import { useMemo } from "react";
 import { appAtomRegistry } from "../rpc/atomRegistry";

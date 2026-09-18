@@ -1,4 +1,4 @@
-import { countTextLines } from "@vetra-code/shared/fileRevision";
+import { countTextLines } from "@t3tools/shared/fileRevision";
 
 export interface FileLineShift {
   readonly startLine: number;

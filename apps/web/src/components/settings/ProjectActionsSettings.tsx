@@ -1,9 +1,9 @@
-import { EnvironmentId, type VetraProjectFileScript } from "@vetra-code/contracts";
+import { EnvironmentId, type VetraProjectFileScript } from "@t3tools/contracts";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
-import { DEFAULT_RESOLVED_KEYBINDINGS } from "@vetra-code/shared/keybindings";
+} from "@t3tools/client-runtime/state/runtime";
+import { DEFAULT_RESOLVED_KEYBINDINGS } from "@t3tools/shared/keybindings";
 import { ChevronDownIcon, PlusIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useVetraProjectFileState } from "../../hooks/useVetraProjectFileScripts";

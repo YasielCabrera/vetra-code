@@ -1,4 +1,4 @@
-import type { DevicePlatform, EnvironmentId } from "@vetra-code/contracts";
+import type { DevicePlatform, EnvironmentId } from "@t3tools/contracts";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "~/lib/utils";

@@ -26,13 +26,13 @@ export default defineConfig({
       build: {
         command:
           "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack",
-        dependsOn: ["@vetra-code/server#build"],
+        dependsOn: ["t3#build"],
         cache: false,
       },
       dev: {
         command:
           "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && cross-env VETRA_DESKTOP_DEV=1 vp pack --watch",
-        dependsOn: ["@vetra-code/server#build"],
+        dependsOn: ["t3#build"],
         cache: false,
       },
       "dev:bundle": {
@@ -42,7 +42,7 @@ export default defineConfig({
       },
       "dev:electron": {
         command: "node scripts/dev-electron.mjs",
-        dependsOn: ["@vetra-code/server#build"],
+        dependsOn: ["t3#build"],
         cache: false,
       },
     },
@@ -109,10 +109,10 @@ export default defineConfig({
       entry: ["src/preview-pick-preload.ts"],
       deps: {
         // Sandboxed preloads cannot resolve package imports from inside the
-        // packaged ASAR, so the wallet provider (@vetra-code/web3/inpage) has to
+        // packaged ASAR, so the wallet provider (@t3tools/web3/inpage) has to
         // be inlined here rather than left as a runtime require().
         alwaysBundle: (id) =>
-          id === "react-grab" || id.startsWith("react-grab/") || id.startsWith("@vetra-code/"),
+          id === "react-grab" || id.startsWith("react-grab/") || id.startsWith("@t3tools/"),
       },
     },
     {

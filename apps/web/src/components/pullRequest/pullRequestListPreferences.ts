@@ -6,7 +6,7 @@ import {
   PullRequestInvolvement,
   PullRequestListFilters,
   PullRequestListState,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export const PullRequestListSort = Schema.Literals([
   "ready",

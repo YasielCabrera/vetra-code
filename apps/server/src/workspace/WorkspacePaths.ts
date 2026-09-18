@@ -116,7 +116,7 @@ export class WorkspacePaths extends Context.Service<
       WorkspacePathOutsideRootError
     >;
   }
->()("@vetra-code/server/workspace/WorkspacePaths") {}
+>()("t3/workspace/WorkspacePaths") {}
 
 function toPosixRelativePath(input: string): string {
   return input.replaceAll("\\", "/");

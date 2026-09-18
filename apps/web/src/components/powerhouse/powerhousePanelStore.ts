@@ -8,7 +8,7 @@
  * document selection across a reload would re-fetch data from a reactor that
  * may no longer be running, so selection resets instead.
  */
-import type { PowerhouseDatabaseRowLimit, PowerhouseDatabaseTargetId } from "@vetra-code/contracts";
+import type { PowerhouseDatabaseRowLimit, PowerhouseDatabaseTargetId } from "@t3tools/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import * as Predicate from "effect/Predicate";

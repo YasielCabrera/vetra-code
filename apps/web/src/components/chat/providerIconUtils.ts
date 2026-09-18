@@ -1,4 +1,4 @@
-import { ProviderDriverKind } from "@vetra-code/contracts";
+import { ProviderDriverKind } from "@t3tools/contracts";
 import {
   AntigravityIcon,
   ClaudeAI,

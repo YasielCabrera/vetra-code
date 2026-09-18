@@ -1,4 +1,4 @@
-import type { ContextMenuItem } from "@vetra-code/contracts";
+import type { ContextMenuItem } from "@t3tools/contracts";
 
 import { writeTextToClipboard } from "~/hooks/useCopyToClipboard";
 import { readLocalApi } from "~/localApi";

@@ -7,7 +7,7 @@ import {
   HostProcessEnvironment,
   HostProcessHostname,
   HostProcessPlatform,
-} from "@vetra-code/shared/hostProcess";
+} from "@t3tools/shared/hostProcess";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -33,7 +33,7 @@ import {
   sourcePathContext,
   windowsChromiumCookiesAreHeld,
 } from "./Sources.ts";
-import { symlinksSupported } from "@vetra-code/shared/testing/symlinks";
+import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
 
 const helium = BROWSER_IMPORT_SOURCES.find((source) => source.id === "helium")!;
 

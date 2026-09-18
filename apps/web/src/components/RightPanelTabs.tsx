@@ -15,13 +15,13 @@ import {
   type AnimateLayoutChanges,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { pullRequestHostOf, type SourceControlProviderKind } from "@vetra-code/contracts";
-import type { EnvironmentThreadShell } from "@vetra-code/client-runtime/state/shell";
+import { pullRequestHostOf, type SourceControlProviderKind } from "@t3tools/contracts";
+import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
 import { useProjects, useServerConfigs, useThreadShells } from "~/state/entities";
 import {
   threadPullRequestKeysEqual,
   visibleThreadPullRequests,
-} from "@vetra-code/shared/threadPullRequests";
+} from "@t3tools/shared/threadPullRequests";
 import type {
   ContextMenuItem,
   EnvironmentId,
@@ -29,8 +29,8 @@ import type {
   PreviewSessionSnapshot,
   ProjectId,
   PullRequestState,
-} from "@vetra-code/contracts";
-import { getTerminalLabel } from "@vetra-code/shared/terminalLabels";
+} from "@t3tools/contracts";
+import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
 import {
   Bot,
   Braces,

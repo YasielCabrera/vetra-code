@@ -8,7 +8,7 @@ import {
   HostProcessEnvironment,
   HostProcessIsExecutable,
   HostProcessPlatform,
-} from "@vetra-code/shared/hostProcess";
+} from "@t3tools/shared/hostProcess";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";

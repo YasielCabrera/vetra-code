@@ -9,7 +9,7 @@ import type {
   PullRequestReaction,
   PullRequestReactionContent,
   PullRequestReviewThread,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import type { ProviderChangeRequest } from "./PullRequestProvider.ts";
 import { dedupeChecks } from "./pullRequestChecks.ts";
 

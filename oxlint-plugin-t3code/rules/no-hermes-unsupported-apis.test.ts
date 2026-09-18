@@ -2,11 +2,11 @@ import { assert, describe } from "@effect/vitest";
 
 import { createOxlintRuleHarness } from "../test/utils.ts";
 
-const rule = createOxlintRuleHarness("vetra/no-hermes-unsupported-apis", {
+const rule = createOxlintRuleHarness("t3code/no-hermes-unsupported-apis", {
   filename: "fixture.ts",
 });
 
-describe("vetra/no-hermes-unsupported-apis", () => {
+describe("t3code/no-hermes-unsupported-apis", () => {
   rule.valid("allows in-place sort on a copy", `const sorted = [...items].sort(compare);`);
 
   rule.valid("allows in-place reverse on a copy", `const reversed = [...items].reverse();`);

@@ -50,7 +50,7 @@ const forcedShutdownTimeoutMs = 1_500;
 const restartDebounceMs = 120;
 const childTreeGracePeriodMs = 1_200;
 const remoteDebuggingPort = process.env.VETRA_DESKTOP_REMOTE_DEBUGGING_PORT?.trim();
-// oxlint-disable-next-line vetra/no-global-process-runtime -- Standalone dev script has no Effect runtime.
+// oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone dev script has no Effect runtime.
 const hostPlatform = NodeOS.platform();
 
 NodeChildProcess.execFileSync(

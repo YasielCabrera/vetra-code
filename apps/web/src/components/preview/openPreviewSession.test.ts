@@ -5,7 +5,7 @@ import {
   type PreviewOpenInput,
   type PreviewSessionSnapshot,
   type ScopedThreadRef,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";

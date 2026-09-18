@@ -1,4 +1,4 @@
-import { POWERHOUSE_REACTOR_DOCUMENT_TYPE_MAX_LENGTH } from "@vetra-code/contracts";
+import { POWERHOUSE_REACTOR_DOCUMENT_TYPE_MAX_LENGTH } from "@t3tools/contracts";
 import { Braces, ChevronDown, FileType2, Folder, HardDrive, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 

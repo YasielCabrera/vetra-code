@@ -1,10 +1,10 @@
-import { changeRequestUrlFor as changeRequestWebUrl } from "@vetra-code/shared/changeRequestUrl";
-export { changeRequestUrlFor as changeRequestWebUrl } from "@vetra-code/shared/changeRequestUrl";
+import { changeRequestUrlFor as changeRequestWebUrl } from "@t3tools/shared/changeRequestUrl";
+export { changeRequestUrlFor as changeRequestWebUrl } from "@t3tools/shared/changeRequestUrl";
 import {
   pullRequestHostOf,
   type ScopedThreadRef,
   type SourceControlProviderKind,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

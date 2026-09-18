@@ -3,9 +3,9 @@ import type {
   ContextMenuItem as TreeContextMenuItem,
   ContextMenuOpenContext as TreeContextMenuOpenContext,
 } from "@pierre/trees";
-import type { EnvironmentId, ProjectEntry, VcsStatusResult } from "@vetra-code/contracts";
+import type { EnvironmentId, ProjectEntry, VcsStatusResult } from "@t3tools/contracts";
 import { FileTree, useFileTree, useFileTreeSearch, useFileTreeSelector } from "@pierre/trees/react";
-import { serializeComposerFileLink } from "@vetra-code/shared/composerTrigger";
+import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
 import { ChevronsDownUpIcon, ChevronsUpDownIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 

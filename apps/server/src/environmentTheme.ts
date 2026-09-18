@@ -21,8 +21,8 @@ import {
   EnvironmentThemeFile,
   EnvironmentThemeId,
   environmentThemeFileHasColors,
-} from "@vetra-code/contracts";
-import { UNPUBLISHABLE_THEME_IDS } from "@vetra-code/shared/themePalettes";
+} from "@t3tools/contracts";
+import { UNPUBLISHABLE_THEME_IDS } from "@t3tools/shared/themePalettes";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
@@ -86,7 +86,7 @@ export class EnvironmentThemeService extends Context.Service<
      */
     readonly streamChanges: Stream.Stream<ReadonlyArray<EnvironmentTheme>>;
   }
->()("@vetra-code/server/environmentTheme/EnvironmentThemeService") {}
+>()("t3/environmentTheme/EnvironmentThemeService") {}
 
 /**
  * Reads a theme file through one opened handle, so every check binds to the

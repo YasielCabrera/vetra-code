@@ -2,8 +2,8 @@ import { useAtomValue } from "@effect/atom-react";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
-import type { EnvironmentId, ProviderDriverKind, ProviderInstanceId } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/state/runtime";
+import type { EnvironmentId, ProviderDriverKind, ProviderInstanceId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Redacted from "effect/Redacted";
 import { AsyncResult } from "effect/unstable/reactivity";

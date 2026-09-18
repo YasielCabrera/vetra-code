@@ -7,7 +7,7 @@ import {
   type ProviderSendTurnInput,
   ThreadId,
   TurnId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { assert, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

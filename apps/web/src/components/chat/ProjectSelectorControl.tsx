@@ -1,6 +1,6 @@
-import { scopedProjectKey } from "@vetra-code/client-runtime/environment";
-import type { EnvironmentProject } from "@vetra-code/client-runtime/state/shell";
-import type { ScopedProjectRef } from "@vetra-code/contracts";
+import { scopedProjectKey } from "@t3tools/client-runtime/environment";
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
+import type { ScopedProjectRef } from "@t3tools/contracts";
 import { ChevronDownIcon, FolderIcon, FolderPlusIcon } from "lucide-react";
 import { useMemo } from "react";
 

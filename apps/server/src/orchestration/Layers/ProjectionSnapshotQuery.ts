@@ -38,8 +38,8 @@ import {
   ThreadPullRequestSnapshot,
   ThreadPullRequestStack,
   type ThreadPullRequestLink,
-} from "@vetra-code/contracts";
-import { legacyLinkedPullRequestOf } from "@vetra-code/shared/threadPullRequests";
+} from "@t3tools/contracts";
+import { legacyLinkedPullRequestOf } from "@t3tools/shared/threadPullRequests";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

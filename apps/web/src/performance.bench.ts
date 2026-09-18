@@ -1,16 +1,11 @@
-import {
-  EventId,
-  ProjectId,
-  TurnId,
-  type OrchestrationThreadActivity,
-} from "@vetra-code/contracts";
+import { EventId, ProjectId, TurnId, type OrchestrationThreadActivity } from "@t3tools/contracts";
 import {
   getLatestThreadForProject,
   sortActiveThreadsByOrderKey,
   sortPinnedThreadsByOrderKey,
   sortThreads,
-} from "@vetra-code/client-runtime/state/thread-sort";
-import { formatHourShort, formatRelativeHourShort } from "@vetra-code/shared/usageFormat";
+} from "@t3tools/client-runtime/state/thread-sort";
+import { formatHourShort, formatRelativeHourShort } from "@t3tools/shared/usageFormat";
 import { bench, describe } from "vite-plus/test";
 
 import { deriveActivePlanState } from "./session-logic";

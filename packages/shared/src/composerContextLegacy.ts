@@ -5,7 +5,7 @@ import {
   type PreviewAnnotationContextRecord,
   ReviewCommentContextRecord,
   type TerminalContextRecord,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 
 import { formatComposerContextReference } from "./composerContextReferences.ts";

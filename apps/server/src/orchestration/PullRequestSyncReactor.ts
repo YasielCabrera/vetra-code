@@ -1,4 +1,4 @@
-import { siblingPullRequestUrl } from "@vetra-code/shared/changeRequestUrl";
+import { siblingPullRequestUrl } from "@t3tools/shared/changeRequestUrl";
 import {
   CommandId,
   type OrchestrationThreadShell,
@@ -7,14 +7,14 @@ import {
   type ThreadPullRequestLink,
   type ThreadPullRequestSnapshot,
   type ThreadPullRequestStack,
-} from "@vetra-code/contracts";
-import { makeDrainableWorker } from "@vetra-code/shared/DrainableWorker";
+} from "@t3tools/contracts";
+import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
 import {
   threadPullRequestKeyOf,
   normalizeThreadPullRequestKey,
   threadPullRequestKeysEqual,
   visibleThreadPullRequests,
-} from "@vetra-code/shared/threadPullRequests";
+} from "@t3tools/shared/threadPullRequests";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -122,7 +122,7 @@ export class PullRequestSyncReactor extends Context.Service<
     /** Force the next sweep to re-read this pull request, even when its snapshot is terminal. */
     readonly requestSync: (key: ThreadPullRequestKey) => Effect.Effect<void>;
   }
->()("@vetra-code/server/orchestration/PullRequestSyncReactor") {}
+>()("t3/orchestration/PullRequestSyncReactor") {}
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {

@@ -1,4 +1,4 @@
-import type { EnvironmentId, PowerhouseProjectLocation } from "@vetra-code/contracts";
+import type { EnvironmentId, PowerhouseProjectLocation } from "@t3tools/contracts";
 import { useMemo } from "react";
 
 import { powerhouseEnvironment } from "~/state/powerhouse";

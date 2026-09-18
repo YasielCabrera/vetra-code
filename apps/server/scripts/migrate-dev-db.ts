@@ -28,8 +28,8 @@
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NodeOS from "node:os";
-import { resolveWorktreeVetraHome } from "@vetra-code/shared/devHome";
-import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-code/shared/productIdentity";
+import { resolveWorktreeVetraHome } from "@t3tools/shared/devHome";
+import { PRODUCT_HOME_DIRECTORY_NAME } from "@t3tools/shared/productIdentity";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -40,7 +40,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { Command, Flag } from "effect/unstable/cli";
 
 import { migrationManifest, runMigrations } from "../src/persistence/Migrations.ts";
-import * as NodeSqliteClient from "@vetra-code/shared/nodeSqliteClient";
+import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 
 export class MigrateDevDbNotInWorktreeError extends Schema.TaggedError<MigrateDevDbNotInWorktreeError>()(
   "MigrateDevDbNotInWorktreeError",

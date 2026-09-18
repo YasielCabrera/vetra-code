@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vetra-code/contracts";
+import { EnvironmentId } from "@t3tools/contracts";
 import { act, type ComponentProps, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { create, type ReactTestRenderer } from "react-test-renderer";

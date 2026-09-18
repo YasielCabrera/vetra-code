@@ -6,7 +6,7 @@ import type {
   ServerTraceDiagnosticsResult,
   ServerTraceDiagnosticsSpanOccurrence,
   ServerTraceDiagnosticsSpanSummary,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -61,7 +61,7 @@ export class TraceDiagnostics extends Context.Service<
       options: TraceDiagnosticsOptions,
     ) => Effect.Effect<ServerTraceDiagnosticsResult>;
   }
->()("@vetra-code/server/diagnostics/TraceDiagnostics") {}
+>()("t3/diagnostics/TraceDiagnostics") {}
 
 interface TraceDiagnosticsInput {
   readonly traceFilePath: string;

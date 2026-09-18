@@ -1,4 +1,4 @@
-import { createOrchestrationEnvironmentAtoms } from "@vetra-code/client-runtime/state/orchestration";
+import { createOrchestrationEnvironmentAtoms } from "@t3tools/client-runtime/state/orchestration";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

@@ -1,8 +1,8 @@
-import type { ScopedThreadRef, ThreadPullRequestLink } from "@vetra-code/contracts";
+import type { ScopedThreadRef, ThreadPullRequestLink } from "@t3tools/contracts";
 import {
   resolveThreadPullRequestChains,
   visibleThreadPullRequests,
-} from "@vetra-code/shared/threadPullRequests";
+} from "@t3tools/shared/threadPullRequests";
 import { ArrowUpRightIcon, LinkIcon, MoreHorizontalIcon, PlusIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 

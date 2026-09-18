@@ -1,4 +1,4 @@
-import type { SshDeviceHostConfig } from "@vetra-code/contracts";
+import type { SshDeviceHostConfig } from "@t3tools/contracts";
 
 /** Apply one host change without replacing another environment's host list. */
 export function updateDeviceHosts(

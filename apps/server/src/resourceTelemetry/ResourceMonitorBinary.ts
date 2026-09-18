@@ -2,7 +2,7 @@ import {
   HostProcessArchitecture,
   HostProcessEnvironment,
   HostProcessPlatform,
-} from "@vetra-code/shared/hostProcess";
+} from "@t3tools/shared/hostProcess";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -60,7 +60,7 @@ export class ResourceMonitorBinary extends Context.Service<
   {
     readonly resolve: Effect.Effect<string, ResourceMonitorBinaryError>;
   }
->()("@vetra-code/server/resourceTelemetry/ResourceMonitorBinary") {}
+>()("t3/resourceTelemetry/ResourceMonitorBinary") {}
 
 function binaryName(platform: NodeJS.Platform): string {
   return platform === "win32" ? "vetra-resource-monitor.exe" : "vetra-resource-monitor";
@@ -84,7 +84,7 @@ function detectResourceMonitorLinuxLibc(): ResourceMonitorLinuxLibc {
 }
 
 export const ResourceMonitorHostLinuxLibc = Context.Reference<ResourceMonitorLinuxLibc>(
-  "@vetra-code/server/resourceTelemetry/ResourceMonitorHostLinuxLibc",
+  "t3/resourceTelemetry/ResourceMonitorHostLinuxLibc",
   {
     defaultValue: detectResourceMonitorLinuxLibc,
   },

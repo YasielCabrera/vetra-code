@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import * as EffectAcpErrors from "@vetra-code/effect-acp/errors";
-import { ProviderDriverKind } from "@vetra-code/contracts";
+import * as EffectAcpErrors from "effect-acp/errors";
+import { ProviderDriverKind } from "@t3tools/contracts";
 
 import { acpPermissionOutcome, mapAcpToAdapterError } from "./AcpAdapterSupport.ts";
 

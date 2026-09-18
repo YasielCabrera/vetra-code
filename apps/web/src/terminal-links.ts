@@ -1,7 +1,7 @@
 import {
   formatFilePathPosition,
   splitFilePathPosition,
-} from "@vetra-code/client-runtime/markdown-links";
+} from "@t3tools/client-runtime/markdown-links";
 
 import { isMacPlatform } from "./lib/utils";
 

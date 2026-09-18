@@ -5,7 +5,7 @@ import type {
   TerminalSessionSnapshot,
   TerminalSummary,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   appendOutput,
   DEFAULT_MAX_TERMINAL_BUFFER_BYTES,

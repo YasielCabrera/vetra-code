@@ -1,4 +1,4 @@
-import type { PowerhouseDocumentModelSummary } from "@vetra-code/contracts";
+import type { PowerhouseDocumentModelSummary } from "@t3tools/contracts";
 
 export type PowerhouseDocumentTypeSource = "system" | "model";
 

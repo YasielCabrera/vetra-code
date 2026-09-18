@@ -1,13 +1,13 @@
 import type {
   RelayClientEnvironmentRecord,
   RelayEnvironmentStatusResponse,
-} from "@vetra-code/contracts/relay";
-import type { EnvironmentId } from "@vetra-code/contracts";
+} from "@t3tools/contracts/relay";
+import type { EnvironmentId } from "@t3tools/contracts";
 import {
   RelayEnvironmentConnectScope,
   RelayEnvironmentStatusScope,
-} from "@vetra-code/contracts/relay";
-import { decodeRelayJwt } from "@vetra-code/shared/relayJwt";
+} from "@t3tools/contracts/relay";
+import { decodeRelayJwt } from "@t3tools/shared/relayJwt";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Data from "effect/Data";

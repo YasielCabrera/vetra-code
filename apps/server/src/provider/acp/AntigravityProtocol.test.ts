@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Schema from "effect/Schema";
-import * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
+import * as EffectAcpSchema from "effect-acp/schema";
 
 import {
   extractAntigravityUserInputQuestion,

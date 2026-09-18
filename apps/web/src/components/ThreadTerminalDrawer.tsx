@@ -2,14 +2,14 @@ import { useAtomValue } from "@effect/atom-react";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import {
   INITIAL_TERMINAL_OUTPUT_CURSOR,
   readTerminalOutputUpdate,
   type TerminalOutputCursor,
   type TerminalOutputUpdate,
   type TerminalSessionState,
-} from "@vetra-code/client-runtime/state/terminal";
+} from "@t3tools/client-runtime/state/terminal";
 import {
   Plus,
   Square,
@@ -24,8 +24,8 @@ import {
   type ResolvedKeybindingsConfig,
   type ScopedThreadRef,
   type ThreadId,
-} from "@vetra-code/contracts";
-import { getTerminalLabel } from "@vetra-code/shared/terminalLabels";
+} from "@t3tools/contracts";
+import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
 import * as Schema from "effect/Schema";
 import {
   type PointerEvent as ReactPointerEvent,

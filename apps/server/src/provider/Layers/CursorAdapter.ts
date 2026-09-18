@@ -20,7 +20,7 @@ import {
   type RuntimeMode,
   type ThreadId,
   TurnId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
@@ -39,8 +39,8 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import * as SynchronizedRef from "effect/SynchronizedRef";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
-import * as EffectAcpErrors from "@vetra-code/effect-acp/errors";
-import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
+import * as EffectAcpErrors from "effect-acp/errors";
+import type * as EffectAcpSchema from "effect-acp/schema";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";
@@ -318,7 +318,7 @@ function applyRequestedSessionConfiguration<E>(input: {
       }
     | undefined;
   readonly mapError: (context: {
-    readonly cause: import("@vetra-code/effect-acp/errors").AcpError;
+    readonly cause: import("effect-acp/errors").AcpError;
     readonly method: "session/set_config_option" | "session/set_mode";
   }) => E;
 }): Effect.Effect<void, E> {

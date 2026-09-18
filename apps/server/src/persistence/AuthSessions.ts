@@ -12,7 +12,7 @@ import {
   AuthSessionId,
   ClientSurface,
   ServerAuthSessionMethod,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import {
   type AuthSessionRepositoryError,
@@ -129,7 +129,7 @@ export class AuthSessionRepository extends Context.Service<
       input: SetAuthSessionClientConnectionInput,
     ) => Effect.Effect<void, AuthSessionRepositoryError>;
   }
->()("@vetra-code/server/persistence/AuthSessions/AuthSessionRepository") {}
+>()("t3/persistence/AuthSessions/AuthSessionRepository") {}
 
 const AuthSessionDbRow = Schema.Struct({
   sessionId: AuthSessionId,

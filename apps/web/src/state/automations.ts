@@ -4,8 +4,8 @@ import {
   createEnvironmentAutomationAtoms,
   type EnvironmentAutomation,
   type ScopedAutomationRef,
-} from "@vetra-code/client-runtime/state/automations";
-import type { EnvironmentId } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/state/automations";
+import type { EnvironmentId } from "@t3tools/contracts";
 import { Atom } from "effect/unstable/reactivity";
 
 import { environmentCatalog } from "../connection/catalog";

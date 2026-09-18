@@ -2,7 +2,7 @@ import type {
   DesktopTelemetryRequestDesktopUpdate,
   DesktopUpdateRemoteOutcome,
   DesktopUpdateState,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Duration from "effect/Duration";
 import * as Clock from "effect/Clock";
 import * as Deferred from "effect/Deferred";

@@ -18,19 +18,19 @@ import {
   type ThreadId,
   type ThreadLinkedPullRequest,
   type TurnId,
-} from "@vetra-code/contracts";
-import { parseScopedThreadKey } from "@vetra-code/client-runtime/environment";
-import { resolveAssetUrl } from "@vetra-code/client-runtime/state/assets";
+} from "@t3tools/contracts";
+import { parseScopedThreadKey } from "@t3tools/client-runtime/environment";
+import { resolveAssetUrl } from "@t3tools/client-runtime/state/assets";
 import {
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@vetra-code/client-runtime/state/runtime";
-import { videoMimeType } from "@vetra-code/shared/video";
+} from "@t3tools/client-runtime/state/runtime";
+import { videoMimeType } from "@t3tools/shared/video";
 import {
   appendCodexArtifactTemplateUsePrompt,
   codexArtifactTemplateUsePrompt,
   type CodexArtifactTemplate,
-} from "@vetra-code/client-runtime/codex-artifact-templates";
+} from "@t3tools/client-runtime/codex-artifact-templates";
 import {
   type ChatMessage,
   isImageAttachment,
@@ -258,7 +258,7 @@ export function toolGroupConsumesUpwardNavigation(target: EventTarget | null): b
 export {
   findRecordedWorktreeSetup,
   resolveVisibleWorktreeSetup,
-} from "@vetra-code/client-runtime/worktree-setup";
+} from "@t3tools/client-runtime/worktree-setup";
 
 export function resolveDraftHeroState(input: {
   isLocalDraftThread: boolean;

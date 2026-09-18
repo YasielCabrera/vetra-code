@@ -1,18 +1,18 @@
-import type { EnvironmentId, ScopedThreadRef } from "@vetra-code/contracts";
+import type { EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
 import { useNavigate } from "@tanstack/react-router";
 import { type MouseEvent, useCallback } from "react";
 
-import { pullRequestHostOf, type SourceControlProviderKind } from "@vetra-code/contracts";
-import { parseChangeRequestUrl, type ChangeRequestLink } from "@vetra-code/shared/changeRequestUrl";
+import { pullRequestHostOf, type SourceControlProviderKind } from "@t3tools/contracts";
+import { parseChangeRequestUrl, type ChangeRequestLink } from "@t3tools/shared/changeRequestUrl";
 import {
   canonicalRepositoryKey,
   sourceControlRepositorySelector,
-} from "@vetra-code/shared/sourceControl";
+} from "@t3tools/shared/sourceControl";
 
 import { useOpenLink } from "../browser/useOpenLink";
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
 import { useRightPanelStore } from "../rightPanelStore";
-import type { EnvironmentProject } from "@vetra-code/client-runtime/state/shell";
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 
 import { useProjects, useServerConfigs } from "../state/entities";
 import { usePrimaryEnvironmentId } from "../state/environments";
@@ -24,7 +24,7 @@ export {
   pullRequestCandidateUrlFromReferenceAutolink,
   matchesLinkedPullRequestUrl,
   changeRequestRepositoryUrl,
-} from "@vetra-code/shared/changeRequestUrl";
+} from "@t3tools/shared/changeRequestUrl";
 
 function resolvedForgejoRepository(project: EnvironmentProject): URL | null {
   const identity = project.repositoryIdentity;

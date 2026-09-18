@@ -1,4 +1,4 @@
-import type { EnvironmentId, PullRequestDetailView, PullRequestRef } from "@vetra-code/contracts";
+import type { EnvironmentId, PullRequestDetailView, PullRequestRef } from "@t3tools/contracts";
 import { MessageSquareIcon, SendIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
 

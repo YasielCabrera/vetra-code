@@ -3,7 +3,7 @@ import {
   type ProjectListEntriesResult,
   ProjectReadFileError,
   type ProjectReadFileResult,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import { Atom, AtomRegistry } from "effect/unstable/reactivity";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";

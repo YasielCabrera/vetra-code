@@ -5,7 +5,7 @@ import type {
   ProviderSessionRuntimeStatus,
   RuntimeMode,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
@@ -79,4 +79,4 @@ export interface ProviderSessionDirectoryShape {
 export class ProviderSessionDirectory extends Context.Service<
   ProviderSessionDirectory,
   ProviderSessionDirectoryShape
->()("@vetra-code/server/provider/Services/ProviderSessionDirectory") {}
+>()("t3/provider/Services/ProviderSessionDirectory") {}

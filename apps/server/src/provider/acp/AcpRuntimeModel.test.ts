@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
+import type * as EffectAcpSchema from "effect-acp/schema";
 
 import {
   decideToolCallUpdateEmission,

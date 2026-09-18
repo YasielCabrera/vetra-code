@@ -5,9 +5,9 @@ import * as NodeURL from "node:url";
 /** Import restrictions every file keeps, including the one module exempt from the glyph rule. */
 const RESTRICTED_IMPORT_PATHS = [
   {
-    name: "@vetra-code/client-runtime",
+    name: "@t3tools/client-runtime",
     message:
-      "Import from an explicit @vetra-code/client-runtime/* subpath. The package has no root export.",
+      "Import from an explicit @t3tools/client-runtime/* subpath. The package has no root export.",
   },
   {
     name: "@pierre/diffs/react",
@@ -101,7 +101,7 @@ export default defineConfig({
       "**/routeTree.gen.ts",
     ],
     plugins: ["eslint", "oxc", "react", "unicorn", "typescript"],
-    jsPlugins: ["./oxlint-plugin-vetra/index.ts"],
+    jsPlugins: ["./oxlint-plugin-t3code/index.ts"],
     categories: {
       correctness: "warn",
       suspicious: "warn",
@@ -137,17 +137,17 @@ export default defineConfig({
         "error",
         { paths: [...RESTRICTED_IMPORT_PATHS, RESTRICTED_PULL_REQUEST_GLYPH_IMPORTS] },
       ],
-      "vetra/no-global-process-runtime": "error",
-      "vetra/no-inline-schema-compile": "warn",
-      "vetra/no-manual-effect-runtime-in-tests": "error",
-      "vetra/no-native-title-tooltip": "error",
-      "vetra/namespace-node-imports": "error",
+      "t3code/no-global-process-runtime": "error",
+      "t3code/no-inline-schema-compile": "warn",
+      "t3code/no-manual-effect-runtime-in-tests": "error",
+      "t3code/no-native-title-tooltip": "error",
+      "t3code/namespace-node-imports": "error",
     },
     overrides: [
       {
         // The one place that reads the host platform to seed the injected references.
         files: ["packages/shared/src/hostProcess.ts"],
-        rules: { "vetra/no-global-process-runtime": "off" },
+        rules: { "t3code/no-global-process-runtime": "off" },
       },
       {
         // The one module allowed to name lucide's pull-request glyphs; everything else picks
@@ -175,7 +175,7 @@ export default defineConfig({
         "apps/server/src/provider/acp/CursorAcpSupport.test.ts": 1,
       }).map(([file, maxOccurrences]) => {
         const rule: ["error", { maxOccurrences: number }] = ["error", { maxOccurrences }];
-        return { files: [file], rules: { "vetra/no-manual-effect-runtime-in-tests": rule } };
+        return { files: [file], rules: { "t3code/no-manual-effect-runtime-in-tests": rule } };
       }),
     ],
     options: {

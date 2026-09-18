@@ -1,7 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
-import { ConnectionCatalogDocument } from "@vetra-code/client-runtime/platform";
-import { EnvironmentId, type PersistedSavedEnvironmentRecord } from "@vetra-code/contracts";
+import { ConnectionCatalogDocument } from "@t3tools/client-runtime/platform";
+import { EnvironmentId, type PersistedSavedEnvironmentRecord } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";

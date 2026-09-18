@@ -2,9 +2,9 @@ import { useAtomValue } from "@effect/atom-react";
 import {
   connectionCatalogDisplayUrl,
   type EnvironmentPresentation as BaseEnvironmentPresentation,
-} from "@vetra-code/client-runtime/connection";
-import { Discovery } from "@vetra-code/client-runtime/relay";
-import type { EnvironmentId } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/connection";
+import { Discovery } from "@t3tools/client-runtime/relay";
+import type { EnvironmentId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { useMemo } from "react";
 

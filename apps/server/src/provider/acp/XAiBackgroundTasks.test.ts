@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { TurnId } from "@vetra-code/contracts";
+import { TurnId } from "@t3tools/contracts";
 
 import {
   buildGrokBackgroundTaskEvents,

@@ -1,4 +1,4 @@
-import { EventId, type OrchestrationThreadActivity, TurnId } from "@vetra-code/contracts";
+import { EventId, type OrchestrationThreadActivity, TurnId } from "@t3tools/contracts";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vite-plus/test";

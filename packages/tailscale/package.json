@@ -1,5 +1,5 @@
 {
-  "name": "@vetra-code/tailscale",
+  "name": "@t3tools/tailscale",
   "private": true,
   "type": "module",
   "exports": {
@@ -13,7 +13,7 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@vetra-code/shared": "workspace:*",
+    "@t3tools/shared": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

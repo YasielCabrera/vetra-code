@@ -3,8 +3,8 @@ import {
   connectLoopbackRedirectUri,
   CONNECT_OAUTH_SCOPES,
   type ConnectAuthorizeRequest,
-} from "@vetra-code/shared/connectAuth";
-import { clerkFrontendApiUrlFromPublishableKey } from "@vetra-code/shared/relayAuth";
+} from "@t3tools/shared/connectAuth";
+import { clerkFrontendApiUrlFromPublishableKey } from "@t3tools/shared/relayAuth";
 
 import { isHostedStaticApp } from "../hostedPairing";
 import { hasCloudPublicConfig, resolveCloudPublicConfig, trimNonEmpty } from "./publicConfig";

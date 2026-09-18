@@ -2,7 +2,7 @@ import {
   DEFAULT_CLIENT_SETTINGS,
   type DesktopCaptureConfigPreview,
   type DesktopSnapShotState,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { afterEach, beforeEach, expect, it, vi } from "vite-plus/test";
 import { reactHookHarness as hooks } from "../../test/reactHookHarness";
 import { visitElements } from "../../test/reactElementTree";

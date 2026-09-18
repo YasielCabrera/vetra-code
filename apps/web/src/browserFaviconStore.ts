@@ -2,12 +2,8 @@ import {
   scopedProjectKey,
   scopedThreadKey,
   scopeProjectRef,
-} from "@vetra-code/client-runtime/environment";
-import type {
-  DesktopPreviewFavicon,
-  ScopedProjectRef,
-  ScopedThreadRef,
-} from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/environment";
+import type { DesktopPreviewFavicon, ScopedProjectRef, ScopedThreadRef } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { useMemo } from "react";
 import { create } from "zustand";

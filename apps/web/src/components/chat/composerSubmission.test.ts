@@ -4,11 +4,11 @@ import {
   MessageId,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   expandAssistantCitationsForProvider,
   serializeAssistantCitation,
-} from "@vetra-code/shared/assistantCitations";
+} from "@t3tools/shared/assistantCitations";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { submitComposerDraft } from "./composerSubmission";

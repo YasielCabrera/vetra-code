@@ -1,4 +1,4 @@
-import { parseSourceControlAttachmentUrl } from "@vetra-code/shared/sourceControlAttachments";
+import { parseSourceControlAttachmentUrl } from "@t3tools/shared/sourceControlAttachments";
 import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -25,7 +25,7 @@ export class SourceControlAttachmentResolver extends Context.Service<
     /** The signed URL to send the viewer to, or null when it cannot be resolved. */
     readonly resolveDownloadUrl: (url: string) => Effect.Effect<string | null>;
   }
->()("@vetra-code/server/sourceControl/SourceControlAttachmentResolver") {}
+>()("t3/sourceControl/SourceControlAttachmentResolver") {}
 
 /** Only a redirect to a TLS origin is worth sending a viewer to. */
 function signedStorageUrl(location: string | undefined): string | null {

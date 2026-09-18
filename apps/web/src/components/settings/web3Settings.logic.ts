@@ -6,13 +6,13 @@ import {
   findCustomNetwork,
   isBuiltInChainId,
   nativeCurrencyFromSymbol,
-} from "@vetra-code/web3/networks";
+} from "@t3tools/web3/networks";
 import {
   WEB3_ACCOUNT_LABEL_MAX_LENGTH,
   type Web3ApprovalMode,
   type Web3CustomNetwork,
   type Web3WalletStatus,
-} from "@vetra-code/web3/schema";
+} from "@t3tools/web3/schema";
 
 export const APPROVAL_MODE_OPTIONS: ReadonlyArray<{
   readonly value: Web3ApprovalMode;

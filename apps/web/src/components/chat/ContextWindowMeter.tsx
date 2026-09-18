@@ -1,6 +1,6 @@
 import { Button } from "../ui/button";
 import { type ContextWindowSnapshot, formatContextWindowTokens } from "~/lib/contextWindow";
-import { formatThreadCostUsd } from "@vetra-code/shared/usageFormat";
+import { formatThreadCostUsd } from "@t3tools/shared/usageFormat";
 import { CircularUsageMeterButton } from "../ui/circular-usage-meter";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Skeleton } from "../ui/skeleton";

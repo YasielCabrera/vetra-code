@@ -9,9 +9,9 @@ import * as Scope from "effect/Scope";
 import * as Types from "effect/Types";
 import * as ChildProcess from "effect/unstable/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
-import * as CodexClient from "@vetra-code/effect-codex-app-server/client";
-import * as CodexSchema from "@vetra-code/effect-codex-app-server/schema";
-import * as CodexErrors from "@vetra-code/effect-codex-app-server/errors";
+import * as CodexClient from "effect-codex-app-server/client";
+import * as CodexSchema from "effect-codex-app-server/schema";
+import * as CodexErrors from "effect-codex-app-server/errors";
 
 import type {
   CodexSettings,
@@ -22,15 +22,15 @@ import type {
   ProviderOptionDescriptor,
   ServerProviderModel,
   ServerProviderSkill,
-} from "@vetra-code/contracts";
-import { PREFERRED_DEFAULT_CODEX_MODELS, ServerSettingsError } from "@vetra-code/contracts";
+} from "@t3tools/contracts";
+import { PREFERRED_DEFAULT_CODEX_MODELS, ServerSettingsError } from "@t3tools/contracts";
 
 import {
   codexModelFamily,
   createModelCapabilities,
   readCustomModelEntries,
-} from "@vetra-code/shared/model";
-import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+} from "@t3tools/shared/model";
+import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import { codexAppServerArgs, resolveCodexLaunchArgs } from "./codexLaunchArgs.ts";
 import {
   AUTH_PROBE_TIMEOUT_MS,

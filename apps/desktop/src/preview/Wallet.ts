@@ -3,7 +3,7 @@
  *
  * Deliberately thin: every piece of web3 behaviour — method classification,
  * request summarisation, chain resolution, signing, the keystore format — lives
- * in `@vetra-code/web3`. What is left here is Electron: the two IPC surfaces,
+ * in `@t3tools/web3`. What is left here is Electron: the two IPC surfaces,
  * sender validation, and the approval gate that has to consult preview tab
  * state.
  *
@@ -23,8 +23,8 @@ import {
   type PreviewAutomationWalletRequestList,
   type PreviewAutomationWalletResolution,
   type Web3WalletSettings,
-} from "@vetra-code/contracts";
-import { parsePersistedWeb3WalletSettings } from "@vetra-code/shared/serverSettings";
+} from "@t3tools/contracts";
+import { parsePersistedWeb3WalletSettings } from "@t3tools/shared/serverSettings";
 import {
   DEFAULT_LOCAL_RPC_URL,
   describeChain,
@@ -34,15 +34,15 @@ import {
   probeChainId,
   resolveInitialChain,
   web3RpcRequest,
-} from "@vetra-code/web3/chain";
-import type { Web3ProviderEvent } from "@vetra-code/web3/inpage";
+} from "@t3tools/web3/chain";
+import type { Web3ProviderEvent } from "@t3tools/web3/inpage";
 import {
   EMPTY_KEYSTORE,
   keystoreFileName,
   readKeystore,
   writeKeystore,
-} from "@vetra-code/web3/keystore";
-import { findCustomNetwork, isBuiltInNetworkEnabled } from "@vetra-code/web3/networks";
+} from "@t3tools/web3/keystore";
+import { findCustomNetwork, isBuiltInNetworkEnabled } from "@t3tools/web3/networks";
 import {
   chainIdToHex,
   classifyWeb3Method,
@@ -51,7 +51,7 @@ import {
   web3MethodNeedsAccountGrant,
   web3MethodRequiresApproval,
   type Web3MethodKind,
-} from "@vetra-code/web3/rpc";
+} from "@t3tools/web3/rpc";
 import {
   DEFAULT_WEB3_REJECT_CODE,
   PreviewWalletNoAccountError,
@@ -65,7 +65,7 @@ import {
   type Web3RejectCode,
   type Web3RpcUrl,
   type Web3WalletStatus,
-} from "@vetra-code/web3/schema";
+} from "@t3tools/web3/schema";
 import {
   deriveMnemonicAccounts,
   dropAccountFromKeystore,
@@ -75,7 +75,7 @@ import {
   sendTransaction,
   signPersonalMessage,
   signTypedData,
-} from "@vetra-code/web3/signer";
+} from "@t3tools/web3/signer";
 import { ipcMain, webContents, type WebContents } from "electron";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
@@ -238,7 +238,7 @@ export class PreviewWallet extends Context.Service<
     /** Registers the guest-facing `ipcMain` handlers. Requires a scope. */
     readonly installGuestBridge: Effect.Effect<void, never, Scope.Scope>;
   }
->()("@vetra-code/desktop/preview/Wallet/PreviewWallet") {}
+>()("@t3tools/desktop/preview/Wallet/PreviewWallet") {}
 
 const isLoopbackOrigin = (origin: string): boolean => {
   try {

@@ -5,7 +5,7 @@
  * reference and it fetches the detail and the activity itself, so several issues can sit open
  * as peer tabs without the page holding a query for each.
  */
-import type { EnvironmentId, IssueRef } from "@vetra-code/contracts";
+import type { EnvironmentId, IssueRef } from "@t3tools/contracts";
 import {
   ArrowDownUpIcon,
   ArrowUpRightIcon,

@@ -1,4 +1,4 @@
-import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   ISSUE_ASSIGNEE_NOBODY,
   ISSUE_ASSIGNEE_VIEWER,
@@ -11,7 +11,7 @@ import {
   type IssueListState,
   type ProjectId,
   type SourceControlProviderKind,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   CheckCircle2Icon,

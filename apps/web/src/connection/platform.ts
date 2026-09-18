@@ -6,7 +6,7 @@ import {
   PrimaryEnvironmentAuth,
   RelayDeviceIdentity,
   SshEnvironmentGateway,
-} from "@vetra-code/client-runtime/platform";
+} from "@t3tools/client-runtime/platform";
 import {
   BearerConnectionCredential,
   BearerConnectionProfile,
@@ -20,21 +20,18 @@ import {
   PrimaryConnectionRegistration,
   PrimaryConnectionTarget,
   Wakeups,
-} from "@vetra-code/client-runtime/connection";
-import { bootstrapRemoteBearerSession } from "@vetra-code/client-runtime/authorization";
-import { fetchRemoteEnvironmentDescriptor } from "@vetra-code/client-runtime/environment";
-import {
-  managedRelayAccountChanges,
-  managedRelaySessionAtom,
-} from "@vetra-code/client-runtime/relay";
-import { EnvironmentRpcRequestObserver } from "@vetra-code/client-runtime/rpc";
+} from "@t3tools/client-runtime/connection";
+import { bootstrapRemoteBearerSession } from "@t3tools/client-runtime/authorization";
+import { fetchRemoteEnvironmentDescriptor } from "@t3tools/client-runtime/environment";
+import { managedRelayAccountChanges, managedRelaySessionAtom } from "@t3tools/client-runtime/relay";
+import { EnvironmentRpcRequestObserver } from "@t3tools/client-runtime/rpc";
 import {
   AuthStandardClientScopes,
   type DesktopBridge,
   type DesktopEnvironmentBootstrap,
   type DesktopSshEnvironmentTarget,
   PRIMARY_LOCAL_ENVIRONMENT_ID,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";

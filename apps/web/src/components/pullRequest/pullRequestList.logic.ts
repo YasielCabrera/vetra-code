@@ -6,7 +6,7 @@ import {
   PullRequestListProjectError,
   PullRequestListResult,
   resolvePullRequestAuthorFilter,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import type {
   ProjectId,
   PullRequestActor,
@@ -16,7 +16,7 @@ import type {
   PullRequestListCursors,
   PullRequestListFilters,
   PullRequestListState,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { toSortableTimestamp } from "../../lib/threadSort";
 import type { PullRequestListSort } from "./pullRequestListPreferences";

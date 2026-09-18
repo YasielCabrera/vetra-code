@@ -7,7 +7,7 @@ import {
   EnvironmentHttpApi,
   ProviderDriverKind,
   type RepositoryIdentity,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Duration from "effect/Duration";
 import * as Deferred from "effect/Deferred";
@@ -162,9 +162,9 @@ import {
   persistServerRuntimeState,
 } from "./serverRuntimeState.ts";
 import { orchestrationHttpApiLayer } from "./orchestration/http.ts";
-import * as NetService from "@vetra-code/shared/Net";
-import * as RelayClient from "@vetra-code/shared/relayClient";
-import { disableTailscaleServe, ensureTailscaleServe } from "@vetra-code/tailscale";
+import * as NetService from "@t3tools/shared/Net";
+import * as RelayClient from "@t3tools/shared/relayClient";
+import { disableTailscaleServe, ensureTailscaleServe } from "@t3tools/tailscale";
 import { forkParked, ServerActivation } from "./serverActivation.ts";
 
 // MCP handoff thread IDs include escaped provenance and can exceed find-my-way's

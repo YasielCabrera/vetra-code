@@ -1,8 +1,8 @@
 import {
   serializePowerhouseReference,
   type PowerhouseReferenceKind,
-} from "@vetra-code/shared/composerInlineTokens";
-import type { PowerhouseReactorDocumentSummary } from "@vetra-code/contracts";
+} from "@t3tools/shared/composerInlineTokens";
+import type { PowerhouseReactorDocumentSummary } from "@t3tools/contracts";
 
 import {
   COMPOSER_MENTION_DRAG_TYPE,

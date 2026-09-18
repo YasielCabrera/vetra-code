@@ -1,14 +1,14 @@
-import type { UsageProviderKind } from "@vetra-code/contracts";
+import type { UsageProviderKind } from "@t3tools/contracts";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import type { DailyTotals, HourlyTotals } from "@vetra-code/shared/usageMerge";
+import type { DailyTotals, HourlyTotals } from "@t3tools/shared/usageMerge";
 import {
   formatDayShort,
   formatHourShort,
   formatRelativeHourShort,
   formatTokens,
   formatUsd,
-} from "@vetra-code/shared/usageFormat";
+} from "@t3tools/shared/usageFormat";
 import { PROVIDER_ORDER, PROVIDER_PRESENTATION } from "./usageProviders";
 
 const VIEW_WIDTH = 960;

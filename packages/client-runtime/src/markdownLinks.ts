@@ -1,4 +1,4 @@
-import { isWindowsAbsolutePath } from "@vetra-code/shared/path";
+import { isWindowsAbsolutePath } from "@t3tools/shared/path";
 
 const SLASH_PREFIXED_WINDOWS_DRIVE_PATTERN = /^\/[A-Za-z]:[\\/]/;
 const RELATIVE_PATH_PREFIX_PATTERN = /^(~\/|\.{1,2}\/)/;

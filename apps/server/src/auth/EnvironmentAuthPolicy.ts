@@ -1,4 +1,4 @@
-import type { ServerAuthDescriptor } from "@vetra-code/contracts";
+import type { ServerAuthDescriptor } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -12,7 +12,7 @@ export class EnvironmentAuthPolicy extends Context.Service<
   {
     readonly getDescriptor: () => Effect.Effect<ServerAuthDescriptor>;
   }
->()("@vetra-code/server/auth/EnvironmentAuthPolicy") {}
+>()("t3/auth/EnvironmentAuthPolicy") {}
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {

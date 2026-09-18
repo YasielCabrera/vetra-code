@@ -9,7 +9,7 @@ import {
   type OrchestrationEvent,
   type ProviderRuntimeEvent,
   type VcsStatusLocalResult,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -18,8 +18,8 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import type * as PlatformError from "effect/PlatformError";
 import * as Stream from "effect/Stream";
-import { makeDrainableWorker } from "@vetra-code/shared/DrainableWorker";
-import { isTemporaryWorktreeBranch } from "@vetra-code/shared/git";
+import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
+import { isTemporaryWorktreeBranch } from "@t3tools/shared/git";
 
 import { parseTurnDiffFilesFromNumstat } from "../../checkpointing/Diffs.ts";
 import {

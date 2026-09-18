@@ -4,7 +4,7 @@ import {
   ANTIGRAVITY_DEFAULT_MODEL,
   ProviderInstanceId,
   ProviderSetupError,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -16,8 +16,8 @@ import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
-import { type AcpError, AcpRequestError } from "@vetra-code/effect-acp/errors";
-import type * as AcpSchema from "@vetra-code/effect-acp/schema";
+import { type AcpError, AcpRequestError } from "effect-acp/errors";
+import type * as AcpSchema from "effect-acp/schema";
 import { expect } from "vite-plus/test";
 
 import type { AcpSessionRuntimeEvent } from "../provider/acp/AcpSessionRuntime.ts";

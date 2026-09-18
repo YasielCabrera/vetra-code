@@ -4,15 +4,15 @@ import {
   type ModelSelection,
   ProviderDriverKind,
   type ServerProviderModel,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import {
   getModelSelectionStringOptionValue,
   getProviderOptionCurrentValue,
   getProviderOptionDescriptors,
   readCustomModelEntries,
-} from "@vetra-code/shared/model";
-import { compareSemverVersions } from "@vetra-code/shared/semver";
+} from "@t3tools/shared/model";
+import { compareSemverVersions } from "@t3tools/shared/semver";
 
 import {
   type ClaudeCodeCompatibility,

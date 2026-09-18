@@ -12,9 +12,9 @@ import {
   SystemSettingsPaneSchema,
   type DesktopEnvironmentBootstrap,
   type PickedThemeFile,
-} from "@vetra-code/contracts";
-import { WORKSPACE_IMAGE_PREVIEW_EXTENSIONS } from "@vetra-code/shared/filePreview";
-import { isCommandAvailable } from "@vetra-code/shared/shell";
+} from "@t3tools/contracts";
+import { WORKSPACE_IMAGE_PREVIEW_EXTENSIONS } from "@t3tools/shared/filePreview";
+import { isCommandAvailable } from "@t3tools/shared/shell";
 import * as NodeOS from "node:os";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";

@@ -1,8 +1,8 @@
-import type { AssistantCitation } from "@vetra-code/contracts";
+import type { AssistantCitation } from "@t3tools/contracts";
 import {
   formatAssistantCitationHref,
   parseAssistantCitationHref,
-} from "@vetra-code/shared/assistantCitations";
+} from "@t3tools/shared/assistantCitations";
 import * as Encoding from "effect/Encoding";
 import * as Result from "effect/Result";
 

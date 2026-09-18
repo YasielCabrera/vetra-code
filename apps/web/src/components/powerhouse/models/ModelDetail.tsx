@@ -3,7 +3,7 @@ import type {
   PowerhouseDocumentModel,
   PowerhouseDocumentModelModule,
   PowerhouseDocumentModelSpecification,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { ArrowLeft, Braces, RefreshCw } from "lucide-react";
 
 import { Button } from "~/components/ui/button";

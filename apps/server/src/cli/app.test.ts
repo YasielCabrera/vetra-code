@@ -6,15 +6,15 @@ import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
-import type { DesktopAppActivationRequest } from "@vetra-code/contracts";
-import { resolveDesktopAppControlAddress } from "@vetra-code/shared/desktopAppControl";
+import type { DesktopAppActivationRequest } from "@t3tools/contracts";
+import { resolveDesktopAppControlAddress } from "@t3tools/shared/desktopAppControl";
 import {
   HostProcessPlatform,
   HostProcessUserId,
   HostProcessWorkingDirectory,
-} from "@vetra-code/shared/hostProcess";
-import * as NetService from "@vetra-code/shared/Net";
-import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-code/shared/productIdentity";
+} from "@t3tools/shared/hostProcess";
+import * as NetService from "@t3tools/shared/Net";
+import { PRODUCT_HOME_DIRECTORY_NAME } from "@t3tools/shared/productIdentity";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

@@ -1,7 +1,7 @@
 # Background service status
 
 Vetra Code includes Linux and macOS background-service support, but installing it is not yet a
-supported workflow because `@vetra-code/server` is private and unpublished. Until Vetra publishes
+supported workflow because `t3` is private and unpublished. Until Vetra publishes
 and validates its own server package, keep a source-built server running in a terminal or in a
 process supervisor that you configure explicitly.
 

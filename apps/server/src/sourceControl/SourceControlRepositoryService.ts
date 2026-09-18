@@ -17,7 +17,7 @@ import {
   type SourceControlRepositoryCloneUrls,
   type SourceControlRepositoryInfo,
   type SourceControlRepositoryLookupInput,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { ServerConfig } from "../config.ts";
 import { expandHomePathWith } from "../pathExpansion.ts";
@@ -55,7 +55,7 @@ export class SourceControlRepositoryService extends Context.Service<
       input: SourceControlPublishRepositoryInput,
     ) => Effect.Effect<SourceControlPublishRepositoryResult, SourceControlRepositoryError>;
   }
->()("@vetra-code/server/sourceControl/SourceControlRepositoryService") {}
+>()("t3/sourceControl/SourceControlRepositoryService") {}
 
 export interface SourceControlPreparedClone {
   readonly destinationPath: string;

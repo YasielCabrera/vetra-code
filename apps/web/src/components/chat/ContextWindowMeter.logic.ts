@@ -1,8 +1,8 @@
-import type { ModelSelection, ProviderDriverKind, ProviderInstanceId } from "@vetra-code/contracts";
+import type { ModelSelection, ProviderDriverKind, ProviderInstanceId } from "@t3tools/contracts";
 import {
   CLAUDE_RESUME_COMPACTION_NEVER_ANSWER,
   isClaudeResumeCompactionQuestion,
-} from "@vetra-code/shared/claudeCompaction";
+} from "@t3tools/shared/claudeCompaction";
 import {
   resolveSelectableProviderInstanceEntry,
   type ProviderInstanceEntry,

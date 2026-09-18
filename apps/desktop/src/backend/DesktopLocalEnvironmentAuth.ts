@@ -1,5 +1,5 @@
-import { bootstrapRemoteBearerSession } from "@vetra-code/client-runtime/authorization";
-import { PRIMARY_LOCAL_ENVIRONMENT_ID } from "@vetra-code/contracts";
+import { bootstrapRemoteBearerSession } from "@t3tools/client-runtime/authorization";
+import { PRIMARY_LOCAL_ENVIRONMENT_ID } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -40,7 +40,7 @@ export class DesktopLocalEnvironmentAuth extends Context.Service<
   {
     readonly getBearerToken: Effect.Effect<string, DesktopLocalEnvironmentAuthError>;
   }
->()("@vetra-code/desktop/backend/DesktopLocalEnvironmentAuth") {}
+>()("@t3tools/desktop/backend/DesktopLocalEnvironmentAuth") {}
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {

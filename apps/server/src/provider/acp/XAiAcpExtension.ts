@@ -1,12 +1,12 @@
 import * as NodeOS from "node:os";
 
-import type { ProviderUserInputAnswers, UserInputQuestion } from "@vetra-code/contracts";
+import type { ProviderUserInputAnswers, UserInputQuestion } from "@t3tools/contracts";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
-import * as EffectAcpErrors from "@vetra-code/effect-acp/errors";
-import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
+import * as EffectAcpErrors from "effect-acp/errors";
+import type * as EffectAcpSchema from "effect-acp/schema";
 
 import type * as AcpSessionRuntime from "./AcpSessionRuntime.ts";
 

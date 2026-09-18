@@ -15,15 +15,15 @@ import {
   type DevicePlatform,
   type DevicePlatformAvailability,
   LOCAL_DEVICE_HOST_ID,
-} from "@vetra-code/contracts";
-import { waitForHttpReady } from "@vetra-code/shared/httpReadiness";
-import { HostProcessEnvironment, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+} from "@t3tools/contracts";
+import { waitForHttpReady } from "@t3tools/shared/httpReadiness";
+import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import {
   resolveNodeExecutable,
   type NodeRuntimeUnavailableError,
-} from "@vetra-code/shared/nodeRuntime";
-import * as NetService from "@vetra-code/shared/Net";
-import { isCommandAvailable } from "@vetra-code/shared/shell";
+} from "@t3tools/shared/nodeRuntime";
+import * as NetService from "@t3tools/shared/Net";
+import { isCommandAvailable } from "@t3tools/shared/shell";
 import * as Clock from "effect/Clock";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";

@@ -1,8 +1,8 @@
-import { EnvironmentAuthInvalidError } from "@vetra-code/contracts";
+import { EnvironmentAuthInvalidError } from "@t3tools/contracts";
 import {
   RelayAuthInvalidError,
   RelayEnvironmentEndpointTimedOutError,
-} from "@vetra-code/contracts/relay";
+} from "@t3tools/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 
 import {

@@ -35,7 +35,7 @@ import {
   type PowerhouseProjectConfig,
   PowerhouseProjectError,
   type PowerhouseProjectLocation,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
 import { parseDocumentModelFile, summarizeDocumentModel } from "./documentModelFile.ts";
@@ -112,7 +112,7 @@ export class PowerhouseProject extends Context.Service<
       ref: PowerhouseProjectRef & { readonly directoryName: string },
     ) => Effect.Effect<PowerhouseDocumentModel, PowerhouseProjectError>;
   }
->()("@vetra-code/server/powerhouse/PowerhouseProject") {}
+>()("t3/powerhouse/PowerhouseProject") {}
 
 const isNotFound = (error: { readonly reason: { readonly _tag: string } }) =>
   error.reason._tag === "NotFound";

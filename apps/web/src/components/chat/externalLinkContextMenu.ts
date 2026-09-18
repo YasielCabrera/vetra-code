@@ -1,4 +1,4 @@
-import type { ContextMenuItem } from "@vetra-code/contracts";
+import type { ContextMenuItem } from "@t3tools/contracts";
 
 export type ExternalLinkContextMenuAction =
   | "open-in-preview"

@@ -595,7 +595,7 @@ export class RelayClientPrincipal extends Context.Service<
     readonly proofKeyThumbprint?: string;
     readonly dpopScopes?: ReadonlyArray<RelayDpopAccessTokenScope>;
   }
->()("@vetra-code/contracts/relay/RelayClientPrincipal") {}
+>()("@t3tools/contracts/relay/RelayClientPrincipal") {}
 
 export class RelayEnvironmentPrincipal extends Context.Service<
   RelayEnvironmentPrincipal,
@@ -603,7 +603,7 @@ export class RelayEnvironmentPrincipal extends Context.Service<
     readonly environmentId: string;
     readonly environmentPublicKey: string;
   }
->()("@vetra-code/contracts/relay/RelayEnvironmentPrincipal") {}
+>()("@t3tools/contracts/relay/RelayEnvironmentPrincipal") {}
 
 const RelayClientBearerAuthorization = HttpApiSecurity.http({ scheme: "bearer" }).pipe(
   HttpApiSecurity.annotate(

@@ -1,10 +1,10 @@
-import { ProjectId } from "@vetra-code/contracts";
-import { HostProcessEnvironment, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { ProjectId } from "@t3tools/contracts";
+import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import {
   projectScriptRuntimeEnv,
   resolveProjectScripts,
   setupProjectScript,
-} from "@vetra-code/shared/projectScripts";
+} from "@t3tools/shared/projectScripts";
 import * as NodeCrypto from "node:crypto";
 
 import * as Clock from "effect/Clock";
@@ -112,7 +112,7 @@ export class ProjectSetupScriptRunner extends Context.Service<
       input: ProjectSetupScriptRunnerInput,
     ) => Effect.Effect<ProjectSetupScriptRunnerResult, ProjectSetupScriptRunnerError>;
   }
->()("@vetra-code/server/project/ProjectSetupScriptRunner") {}
+>()("t3/project/ProjectSetupScriptRunner") {}
 
 /** @public Service construction is part of the canonical Effect module API. */
 /**

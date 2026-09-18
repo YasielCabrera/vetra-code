@@ -1,4 +1,4 @@
-import { EventId, ProviderDriverKind, RuntimeRequestId } from "@vetra-code/contracts";
+import { EventId, ProviderDriverKind, RuntimeRequestId } from "@t3tools/contracts";
 import type { LegacyProviderRuntimeEvent } from "../TestProviderAdapter.integration.ts";
 
 const PROVIDER = ProviderDriverKind.make("codex");

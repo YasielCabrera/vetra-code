@@ -6,8 +6,8 @@ import {
   EMPTY_ENVIRONMENT_THREAD_STATE,
   type EnvironmentThreadState,
   createThreadEnvironmentAtoms,
-} from "@vetra-code/client-runtime/state/threads";
-import type { EnvironmentId, ThreadId } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/state/threads";
+import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 

@@ -1,10 +1,10 @@
-import { findErrorTraceId } from "@vetra-code/client-runtime/errors";
+import { findErrorTraceId } from "@t3tools/client-runtime/errors";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
-import type { EnvironmentId } from "@vetra-code/contracts";
-import type { RelayClientEnvironmentRecord } from "@vetra-code/contracts/relay";
+} from "@t3tools/client-runtime/state/runtime";
+import type { EnvironmentId } from "@t3tools/contracts";
+import type { RelayClientEnvironmentRecord } from "@t3tools/contracts/relay";
 import { ServerIcon } from "lucide-react";
 import { useRef, useState } from "react";
 

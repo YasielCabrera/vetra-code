@@ -26,7 +26,7 @@ export class ElectronPowerMonitor extends Context.Service<
       listener: (limit: number) => void,
     ) => Effect.Effect<void, never, Scope.Scope>;
   }
->()("@vetra-code/desktop/electron/ElectronPowerMonitor") {}
+>()("@t3tools/desktop/electron/ElectronPowerMonitor") {}
 
 const onSimpleEvent: ElectronPowerMonitor["Service"]["onSimpleEvent"] = (eventName, listener) =>
   Effect.acquireRelease(

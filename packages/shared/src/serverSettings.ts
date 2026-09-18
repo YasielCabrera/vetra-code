@@ -12,7 +12,7 @@ import {
   ServerSettings,
   type ServerSettingsPatch,
   type Web3WalletSettings,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { deepMerge } from "./Struct.ts";

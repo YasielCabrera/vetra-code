@@ -1,4 +1,4 @@
-import type { VcsFileBlameResult, VcsFileLineChangesResult } from "@vetra-code/contracts";
+import type { VcsFileBlameResult, VcsFileLineChangesResult } from "@t3tools/contracts";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {

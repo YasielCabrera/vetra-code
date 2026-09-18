@@ -29,8 +29,8 @@ import type {
   PullRequestLabelCandidateList,
   PullRequestState,
   PullRequestThreadComment,
-} from "@vetra-code/contracts";
-import { decodeJsonResult } from "@vetra-code/shared/schemaJson";
+} from "@t3tools/contracts";
+import { decodeJsonResult } from "@t3tools/shared/schemaJson";
 
 import { dedupeChecks } from "./pullRequestChecks.ts";
 

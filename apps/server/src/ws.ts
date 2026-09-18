@@ -1,7 +1,7 @@
 import {
   sameUsageLimitCommandCoverage,
   withUsageLimitsCommands,
-} from "@vetra-code/shared/usageLimits";
+} from "@t3tools/shared/usageLimits";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
@@ -76,8 +76,8 @@ import {
   type PullRequestRef,
   WS_METHODS,
   WsRpcGroup,
-} from "@vetra-code/contracts";
-import { resolveServerBackgroundActivitySettings } from "@vetra-code/shared/backgroundActivitySettings";
+} from "@t3tools/contracts";
+import { resolveServerBackgroundActivitySettings } from "@t3tools/shared/backgroundActivitySettings";
 import { HttpRouter, HttpServerRequest, HttpServerRespondable } from "effect/unstable/http";
 import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
 
@@ -175,7 +175,7 @@ import * as VcsProjectConfig from "./vcs/VcsProjectConfig.ts";
 import * as PairingGrantStore from "./auth/PairingGrantStore.ts";
 import * as SessionStore from "./auth/SessionStore.ts";
 import { failEnvironmentAuthInvalid, failEnvironmentInternal } from "./auth/http.ts";
-import * as RelayClient from "@vetra-code/shared/relayClient";
+import * as RelayClient from "@t3tools/shared/relayClient";
 const isOrchestrationDispatchCommandError = Schema.is(OrchestrationDispatchCommandError);
 
 const nowIso = Effect.map(DateTime.now, DateTime.formatIso);

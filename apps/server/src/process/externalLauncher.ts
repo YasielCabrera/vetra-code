@@ -17,9 +17,9 @@ import {
   type EditorId,
   type FileManagerRevealKind,
   type LaunchEditorInput,
-} from "@vetra-code/contracts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { isCommandAvailable, resolveSpawnCommand } from "@vetra-code/shared/shell";
+} from "@t3tools/contracts";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { isCommandAvailable, resolveSpawnCommand } from "@t3tools/shared/shell";
 import * as Clock from "effect/Clock";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
@@ -45,7 +45,7 @@ export {
   ExternalLauncherEditorSpawnError,
   ExternalLauncherUnknownEditorError,
   ExternalLauncherUnsupportedEditorError,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 export type { LaunchEditorInput };
 interface EditorLaunch {
   readonly editor: EditorId;
@@ -469,7 +469,7 @@ const resolveFileManagerRevealKind = Effect.fn("externalLauncher.resolveFileMana
 // Editor discovery walks PATH for every known editor and runs for every
 // client connect (the server config embeds the available editors). Memoize
 // the discovered set for a bounded window so repeat connects skip even the
-// per-command cache lookups in @vetra-code/shared/shell.
+// per-command cache lookups in @t3tools/shared/shell.
 //
 // This deliberately does not use `Effect.cachedWithTTL`: that memoizes the
 // first caller's Exit whatever it is, including an interrupt. Callers run this
@@ -479,7 +479,7 @@ const resolveFileManagerRevealKind = Effect.fn("externalLauncher.resolveFileMana
 // permanently. Storing only on success means an interrupted scan leaves the
 // cache untouched and the next connect simply rescans.
 // Expiry uses the monotonic clock (Clock.currentTimeNanos), matching the
-// command-resolution cache in @vetra-code/shared/shell, so a backward wall-clock
+// command-resolution cache in @t3tools/shared/shell, so a backward wall-clock
 // adjustment cannot keep an expired entry alive.
 const EDITOR_DISCOVERY_CACHE_TTL_NANOS = 60_000_000_000n;
 
@@ -512,7 +512,7 @@ export class ExternalLauncher extends Context.Service<
      */
     readonly launchEditor: (input: LaunchEditorInput) => Effect.Effect<void, ExternalLauncherError>;
   }
->()("@vetra-code/server/process/externalLauncher") {}
+>()("t3/process/externalLauncher") {}
 
 // ==============================
 // Implementations

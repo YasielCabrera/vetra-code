@@ -1,4 +1,4 @@
-import type { EnvironmentId, EnvironmentMachineKind } from "@vetra-code/contracts";
+import type { EnvironmentId, EnvironmentMachineKind } from "@t3tools/contracts";
 
 import type { SidebarProjectSnapshot } from "~/sidebarProjectGrouping";
 import { EnvironmentMachineIcon } from "./EnvironmentMachineIcon";

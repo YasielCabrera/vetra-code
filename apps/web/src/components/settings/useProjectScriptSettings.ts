@@ -3,16 +3,16 @@ import {
   mapAtomCommandResult,
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import {
   type EnvironmentId,
   type ProjectId,
   type ProjectScript,
   type ResolvedKeybindingsConfig,
   type ServerSettings,
-} from "@vetra-code/contracts";
-import { resolveProjectScripts } from "@vetra-code/shared/projectScripts";
-import { clearProjectSettingsOverrides } from "@vetra-code/shared/projectSettings";
+} from "@t3tools/contracts";
+import { resolveProjectScripts } from "@t3tools/shared/projectScripts";
+import { clearProjectSettingsOverrides } from "@t3tools/shared/projectSettings";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { useRef, useState } from "react";

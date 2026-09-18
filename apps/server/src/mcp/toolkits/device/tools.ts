@@ -6,7 +6,7 @@ import {
   DeviceToolOpenResult,
   DeviceToolScreenshotResult,
   DeviceToolTargetInput,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";

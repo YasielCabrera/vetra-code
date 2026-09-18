@@ -5,7 +5,7 @@ import type {
   VcsStatusRemoteResult,
   VcsStatusResult,
   VcsStatusStreamEvent,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Arr from "effect/Array";
 import * as Result from "effect/Result";
 import { detectSourceControlProviderFromRemoteUrl } from "./sourceControl.ts";

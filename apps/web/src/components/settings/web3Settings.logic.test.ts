@@ -1,4 +1,4 @@
-import type { Web3WalletStatus } from "@vetra-code/web3/schema";
+import type { Web3WalletStatus } from "@t3tools/web3/schema";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
-import * as EffectAcpErrors from "@vetra-code/effect-acp/errors";
+import * as EffectAcpErrors from "effect-acp/errors";
 
 import {
   applyGrokAcpModelSelection,

@@ -4,7 +4,7 @@ import {
   resolveEnvironmentMachineKind,
   type EnvironmentId,
   type ServerConfig,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { isElectron } from "../../env";
 import { usePrimarySessionState } from "../../environments/primary";

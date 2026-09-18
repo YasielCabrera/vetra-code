@@ -1,5 +1,5 @@
-import { EnvironmentId, MessageId, ThreadId, type AssistantCitation } from "@vetra-code/contracts";
-import { serializeAssistantCitation } from "@vetra-code/shared/assistantCitations";
+import { EnvironmentId, MessageId, ThreadId, type AssistantCitation } from "@t3tools/contracts";
+import { serializeAssistantCitation } from "@t3tools/shared/assistantCitations";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

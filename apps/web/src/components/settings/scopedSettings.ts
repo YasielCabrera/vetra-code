@@ -8,14 +8,14 @@ import {
   type ProjectSettingsOverrides,
   ServerSettings,
   type ServerSettingsPatch,
-} from "@vetra-code/contracts";
-import type { EnvironmentConnectionPhase } from "@vetra-code/client-runtime/connection";
+} from "@t3tools/contracts";
+import type { EnvironmentConnectionPhase } from "@t3tools/client-runtime/connection";
 import {
   clearProjectSettingsOverrides,
   resolveProjectSettings,
   resolveWorktreeCleanup,
   type ProjectSettingSource,
-} from "@vetra-code/shared/projectSettings";
+} from "@t3tools/shared/projectSettings";
 import * as Equal from "effect/Equal";
 
 import type { ResolvedSettingsScope } from "./settingsScope";

@@ -1,8 +1,8 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
-import { getDefaultChain } from "@vetra-code/web3/chain";
-import { toQuantityHex } from "@vetra-code/web3/rpc";
-import type { Web3WalletSettings } from "@vetra-code/contracts";
+import { getDefaultChain } from "@t3tools/web3/chain";
+import { toQuantityHex } from "@t3tools/web3/rpc";
+import type { Web3WalletSettings } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";

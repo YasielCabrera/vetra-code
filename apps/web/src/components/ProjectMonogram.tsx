@@ -1,4 +1,4 @@
-import type { ProjectIconColor } from "@vetra-code/contracts";
+import type { ProjectIconColor } from "@t3tools/contracts";
 import { projectIconColorClassName } from "../projectIconColors";
 import { cn } from "~/lib/utils";
 

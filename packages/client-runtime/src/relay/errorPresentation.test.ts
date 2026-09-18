@@ -1,4 +1,4 @@
-import { RelayAuthInvalidError } from "@vetra-code/contracts/relay";
+import { RelayAuthInvalidError } from "@t3tools/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 
 import {

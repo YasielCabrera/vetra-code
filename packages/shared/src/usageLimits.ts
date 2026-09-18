@@ -16,7 +16,7 @@ import {
   type ServerProviderUsageLimits,
   type ServerProviderUsageWindow,
   type UsageLimitSourceSnapshots,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import * as DateTime from "effect/DateTime";
 

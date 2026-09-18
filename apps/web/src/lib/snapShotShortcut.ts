@@ -5,8 +5,8 @@ import {
   type KeybindingShortcut,
   type SnapShotModifier,
   type SnapShotShortcut,
-} from "@vetra-code/contracts";
-import { parseKeybindingShortcut } from "@vetra-code/shared/keybindings";
+} from "@t3tools/contracts";
+import { parseKeybindingShortcut } from "@t3tools/shared/keybindings";
 
 import { formatShortcutKeyLabel, formatShortcutLabel, shortcutConflictKey } from "../keybindings";
 import { isMacPlatform, isWindowsPlatform } from "./utils";

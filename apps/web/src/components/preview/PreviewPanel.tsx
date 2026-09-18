@@ -1,6 +1,6 @@
 "use client";
 
-import type { PreviewAnnotationPayload, ScopedThreadRef } from "@vetra-code/contracts";
+import type { PreviewAnnotationPayload, ScopedThreadRef } from "@t3tools/contracts";
 
 import type { ComposerImageAttachment } from "~/composerDraftStore";
 import { isPreviewSupportedInRuntime } from "~/previewStateStore";

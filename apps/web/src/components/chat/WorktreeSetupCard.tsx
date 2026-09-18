@@ -2,8 +2,8 @@ import {
   worktreeSetupStageLabel,
   type WorktreeSetupSnapshot,
   type WorktreeSetupStage,
-} from "@vetra-code/contracts";
-import { formatDuration } from "@vetra-code/shared/orchestrationTiming";
+} from "@t3tools/contracts";
+import { formatDuration } from "@t3tools/shared/orchestrationTiming";
 import {
   CheckIcon,
   ChevronDownIcon,

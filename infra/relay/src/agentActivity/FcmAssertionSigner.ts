@@ -32,7 +32,7 @@ export class FcmAssertionSigner extends Context.Service<
       readonly issuedAt: number;
     }) => Effect.Effect<string, FcmAssertionSigningError>;
   }
->()("@vetra-code/relay/agentActivity/FcmAssertionSigner") {}
+>()("t3code-relay/agentActivity/FcmAssertionSigner") {}
 
 export const make = Effect.gen(function* () {
   const { subtle } = yield* WebCrypto.WebCrypto;

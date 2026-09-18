@@ -11,12 +11,12 @@ import {
   TurnId,
   type OrchestrationThread,
   type WorktreeSetupSnapshot,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   applyThreadDetailEvent,
   createEnvironmentThreadDetailAtoms,
   EMPTY_ENVIRONMENT_THREAD_STATE,
-} from "@vetra-code/client-runtime/state/threads";
+} from "@t3tools/client-runtime/state/threads";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom, AtomRegistry } from "effect/unstable/reactivity";
 import {

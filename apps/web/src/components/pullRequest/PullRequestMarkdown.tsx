@@ -1,7 +1,7 @@
 import { ExternalLinkIcon, PaperclipIcon } from "lucide-react";
-import { markdownImageSourceFragment } from "@vetra-code/client-runtime/markdown-images";
-import { githubMediaFetchUrl } from "@vetra-code/shared/githubMedia";
-import type { AssetResource, EnvironmentId, ScopedThreadRef } from "@vetra-code/contracts";
+import { markdownImageSourceFragment } from "@t3tools/client-runtime/markdown-images";
+import { githubMediaFetchUrl } from "@t3tools/shared/githubMedia";
+import type { AssetResource, EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
 import { createContext, useContext, useMemo } from "react";
 import type { Options as ReactMarkdownOptions } from "react-markdown";
 

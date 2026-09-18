@@ -1,5 +1,5 @@
 {
-  "name": "@vetra-code/contracts",
+  "name": "@t3tools/contracts",
   "version": "0.0.42",
   "private": true,
   "files": [
@@ -25,7 +25,7 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@vetra-code/web3": "workspace:*",
+    "@t3tools/web3": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

@@ -5,8 +5,8 @@
  * types `agent-device …` and gets the version the injected instructions were
  * written for, regardless of what is or is not globally installed.
  */
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { resolveNodeExecutable } from "@vetra-code/shared/nodeRuntime";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { resolveNodeExecutable } from "@t3tools/shared/nodeRuntime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";

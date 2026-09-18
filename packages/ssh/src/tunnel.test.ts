@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import * as NetService from "@vetra-code/shared/Net";
-import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import * as NetService from "@t3tools/shared/Net";
+import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";

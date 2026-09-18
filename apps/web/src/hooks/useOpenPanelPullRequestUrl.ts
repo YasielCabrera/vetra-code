@@ -1,5 +1,5 @@
-import { scopeProjectRef } from "@vetra-code/client-runtime/environment";
-import { EnvironmentId, ProjectId, type ScopedThreadRef } from "@vetra-code/contracts";
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
+import { EnvironmentId, ProjectId, type ScopedThreadRef } from "@t3tools/contracts";
 import { useMemo } from "react";
 
 import {

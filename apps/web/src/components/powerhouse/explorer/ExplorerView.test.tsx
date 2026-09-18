@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@vetra-code/contracts";
+import type { EnvironmentId } from "@t3tools/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vite-plus/test";
 

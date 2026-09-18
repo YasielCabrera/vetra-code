@@ -1,9 +1,5 @@
 import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
-import type {
-  EnvironmentId,
-  PullRequestRef,
-  PullRequestStackMembership,
-} from "@vetra-code/contracts";
+import type { EnvironmentId, PullRequestRef, PullRequestStackMembership } from "@t3tools/contracts";
 import { useState } from "react";
 import { usePullRequestStack } from "~/state/usePullRequestStack";
 import { Menu, MenuTrigger, MenuPopup, MenuGroup, MenuGroupLabel, MenuItem } from "../ui/menu";

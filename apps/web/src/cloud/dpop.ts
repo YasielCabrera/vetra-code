@@ -2,7 +2,7 @@ import {
   computeDpopAccessTokenHash,
   computeDpopJwkThumbprint,
   DpopPublicJwk,
-} from "@vetra-code/shared/dpop";
+} from "@t3tools/shared/dpop";
 import * as Crypto from "effect/Crypto";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";

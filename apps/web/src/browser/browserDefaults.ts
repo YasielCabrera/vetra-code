@@ -20,7 +20,7 @@ import {
   type DesktopPreviewTabDefaults,
   type PreviewAppearancePreference,
   type PreviewViewportSetting,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import {
   ensureClientSettingsHydrated,

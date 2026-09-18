@@ -1,5 +1,5 @@
-import type { ThreadPullRequestLink } from "@vetra-code/contracts";
-import { ProjectId } from "@vetra-code/contracts";
+import type { ThreadPullRequestLink } from "@t3tools/contracts";
+import { ProjectId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 import { savedPullRequestStack, pullRequestStackView } from "./pullRequestStackSnapshot";
 

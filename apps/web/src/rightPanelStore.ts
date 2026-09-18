@@ -7,13 +7,13 @@
  * terminal surfaces point at terminal session ids, file surfaces point at
  * workspace paths, and diff/files remain singleton surfaces.
  */
-import { scopedThreadKey, scopeThreadRef } from "@vetra-code/client-runtime/environment";
+import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   EnvironmentId,
   ThreadId,
   type ChatFileAttachment,
   type ScopedThreadRef,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

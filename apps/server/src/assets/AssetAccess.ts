@@ -1,4 +1,4 @@
-import type { AssetResource } from "@vetra-code/contracts";
+import type { AssetResource } from "@t3tools/contracts";
 import {
   AssetAttachmentNotFoundError,
   AssetGitHubMediaUrlValidationError,
@@ -15,7 +15,7 @@ import {
   AssetWorkspaceResolutionError,
   AssetWorkspaceRootNormalizationError,
   ToolActivityNativeAppReference,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   audioMimeTypeFromExtension,
   hostPreviewMimeTypeFromExtension,
@@ -23,15 +23,15 @@ import {
   isWorkspacePreviewEntryPath,
   WORKSPACE_BROWSER_PREVIEW_EXTENSIONS,
   WORKSPACE_IMAGE_PREVIEW_EXTENSIONS,
-} from "@vetra-code/shared/filePreview";
+} from "@t3tools/shared/filePreview";
 import {
   IMAGE_DIMENSIONS_HEADER_BYTES,
   readImageDimensions,
   type ImageDimensions,
-} from "@vetra-code/shared/imageDimensions";
-import { githubMediaFetchUrl, githubMediaFileName } from "@vetra-code/shared/githubMedia";
-import { PROJECT_FAVICON_FALLBACK_MARKER } from "@vetra-code/shared/projectFavicon";
-import { parseSourceControlAttachmentUrl } from "@vetra-code/shared/sourceControlAttachments";
+} from "@t3tools/shared/imageDimensions";
+import { githubMediaFetchUrl, githubMediaFileName } from "@t3tools/shared/githubMedia";
+import { PROJECT_FAVICON_FALLBACK_MARKER } from "@t3tools/shared/projectFavicon";
+import { parseSourceControlAttachmentUrl } from "@t3tools/shared/sourceControlAttachments";
 import * as Clock from "effect/Clock";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";

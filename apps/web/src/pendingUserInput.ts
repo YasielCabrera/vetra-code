@@ -1,4 +1,4 @@
-import type { UserInputQuestion } from "@vetra-code/contracts";
+import type { UserInputQuestion } from "@t3tools/contracts";
 
 export interface PendingUserInputDraftAnswer {
   selectedOptionValues?: string[];

@@ -27,7 +27,7 @@ import {
   ServerSettings,
   ServerSettingsError,
   type ServerSettingsPatch,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Cache from "effect/Cache";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
@@ -49,16 +49,16 @@ import * as Stream from "effect/Stream";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { writeFileStringAtomically } from "./atomicWrite.ts";
 import * as ServerConfig from "./config.ts";
-import { type DeepPartial, deepMerge } from "@vetra-code/shared/Struct";
-import { fromJsonStringPretty, fromLenientJson } from "@vetra-code/shared/schemaJson";
+import { type DeepPartial, deepMerge } from "@t3tools/shared/Struct";
+import { fromJsonStringPretty, fromLenientJson } from "@t3tools/shared/schemaJson";
 import {
   applyServerSettingsPatch,
   deriveLegacyProjectOverrides,
   isModelSelectionProviderEnabled,
-} from "@vetra-code/shared/serverSettings";
+} from "@t3tools/shared/serverSettings";
 import * as ServerSecretStore from "./auth/ServerSecretStore.ts";
 
-export { resolveSourceControlWriterModelSelection } from "@vetra-code/shared/serverSettings";
+export { resolveSourceControlWriterModelSelection } from "@t3tools/shared/serverSettings";
 
 const encodeServerSettings = Schema.encodeEffect(ServerSettings);
 const encodeServerSettingsJson = Schema.encodeUnknownEffect(fromJsonStringPretty(ServerSettings));
@@ -216,7 +216,7 @@ export class ServerSettingsService extends Context.Service<
      */
     readonly subscribeChanges: Effect.Effect<Stream.Stream<ServerSettings>, never, Scope.Scope>;
   }
->()("@vetra-code/server/serverSettings/ServerSettingsService") {
+>()("t3/serverSettings/ServerSettingsService") {
   /** @deprecated Import and use `layerTest` from this module. */
   static readonly layerTest = (overrides: DeepPartial<ServerSettings> = {}) => layerTest(overrides);
 }

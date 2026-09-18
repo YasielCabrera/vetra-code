@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 
 export class ServerActivation extends Context.Reference<Effect.Effect<void> | undefined>(
-  "@vetra-code/server/serverActivation",
+  "t3/serverActivation",
   { defaultValue: () => undefined },
 ) {}
 

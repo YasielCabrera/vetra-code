@@ -11,12 +11,12 @@ import type {
   SourceControlProviderDiscoveryItem,
   VcsDriverKind,
   VcsDiscoveryItem,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   getBackgroundActivityBaseProfile,
   getBackgroundActivityPresetSettings,
   resolveServerBackgroundActivitySettings,
-} from "@vetra-code/shared/backgroundActivitySettings";
+} from "@t3tools/shared/backgroundActivitySettings";
 
 import { useScopedSettings, useUpdateScopedSettings } from "./useScopedSettings";
 import { useSettingsScope } from "./SettingsScopeContext";
@@ -70,7 +70,7 @@ import { searchableSetting } from "./settingsSearch";
 import { SettingsRow } from "./settingsLayout";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 
-import { DEFAULT_CLIENT_SETTINGS } from "@vetra-code/contracts/settings";
+import { DEFAULT_CLIENT_SETTINGS } from "@t3tools/contracts/settings";
 import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
 
 function FileViewerSettings() {

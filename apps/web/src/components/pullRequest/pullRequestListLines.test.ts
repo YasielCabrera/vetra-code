@@ -1,5 +1,5 @@
-import type { ThreadPullRequestLink } from "@vetra-code/contracts";
-import { resolveThreadPullRequestChains } from "@vetra-code/shared/threadPullRequests";
+import type { ThreadPullRequestLink } from "@t3tools/contracts";
+import { resolveThreadPullRequestChains } from "@t3tools/shared/threadPullRequests";
 import { describe, expect, it } from "vite-plus/test";
 
 import { pullRequestListLines } from "./pullRequestListLines";

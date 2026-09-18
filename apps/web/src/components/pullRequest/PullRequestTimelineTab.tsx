@@ -5,7 +5,7 @@ import type {
   PullRequestDetailView,
   PullRequestRef,
   ScopedThreadRef,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   ChevronDownIcon,
   ExternalLinkIcon,

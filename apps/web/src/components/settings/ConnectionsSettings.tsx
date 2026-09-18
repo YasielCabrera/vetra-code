@@ -40,12 +40,12 @@ import {
   type DesktopWslState,
   type EnvironmentId,
   resolveEnvironmentMachineKind,
-} from "@vetra-code/contracts";
-import { connectionStatusText } from "@vetra-code/client-runtime/connection";
+} from "@t3tools/contracts";
+import { connectionStatusText } from "@t3tools/client-runtime/connection";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 

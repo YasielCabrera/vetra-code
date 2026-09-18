@@ -1,4 +1,4 @@
-import type { ProviderSubscriptionUsageInstanceResult } from "@vetra-code/contracts";
+import type { ProviderSubscriptionUsageInstanceResult } from "@t3tools/contracts";
 import { Link } from "@tanstack/react-router";
 import {
   CircleAlertIcon,

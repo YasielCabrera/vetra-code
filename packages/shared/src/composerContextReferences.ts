@@ -5,7 +5,7 @@ import {
   type ComposerContextRecord,
   type ElementContextDetails,
   type KnownComposerContextRecord,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 /**
  * Canonical inline reference: `[label](vetra-context://v1/<kind>/<contextId>)`, or the image

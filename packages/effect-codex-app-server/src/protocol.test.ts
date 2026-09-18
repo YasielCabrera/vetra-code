@@ -34,7 +34,7 @@ const decodeConsumeRateLimitResetCreditResponse = Schema.decodeUnknownEffect(
   CodexRpc.CLIENT_REQUEST_RESPONSES["account/rateLimitResetCredit/consume"],
 );
 
-it.layer(NodeServices.layer)("@vetra-code/effect-codex-app-server protocol", (it) => {
+it.layer(NodeServices.layer)("effect-codex-app-server protocol", (it) => {
   it.effect("maps account usage responses to the upstream token usage schema", () =>
     Effect.gen(function* () {
       assert.strictEqual(
@@ -160,7 +160,7 @@ it.layer(NodeServices.layer)("@vetra-code/effect-codex-app-server protocol", (it
 
         const initializeParams = {
           clientInfo: {
-            name: "@vetra-code/effect-codex-app-server-test",
+            name: "effect-codex-app-server-test",
             title: "Effect Codex App Server Test",
             version: "0.0.0",
           },

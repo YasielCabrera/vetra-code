@@ -4,7 +4,7 @@ import type {
   OrchestrationProjectShell,
   OrchestrationThread,
   OrchestrationThreadShell,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export interface EnvironmentProject extends OrchestrationProjectShell {
   readonly environmentId: EnvironmentId;

@@ -8,7 +8,7 @@ import {
   thirdPartyLicenseEntryKey,
   type ThirdPartyLicenseEntry,
   type ThirdPartyLicenseManifest,
-} from "@vetra-code/shared/thirdPartyLicenses";
+} from "@t3tools/shared/thirdPartyLicenses";
 
 import { Button } from "../ui/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";

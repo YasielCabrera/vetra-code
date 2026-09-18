@@ -9,7 +9,7 @@ import {
   type OrchestrationThread,
   type OrchestrationThreadDetailSnapshot,
   type OrchestrationThreadStreamItem,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { afterEach, describe, expect, it, vi } from "@effect/vitest";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";

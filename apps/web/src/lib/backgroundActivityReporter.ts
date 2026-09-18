@@ -1,15 +1,15 @@
-import { EnvironmentRegistry } from "@vetra-code/client-runtime/connection";
+import { EnvironmentRegistry } from "@t3tools/client-runtime/connection";
 import {
   EnvironmentRpcSubscriptionObserver,
   request,
   type EnvironmentRpcSubscriptionObservation,
-} from "@vetra-code/client-runtime/rpc";
+} from "@t3tools/client-runtime/rpc";
 import {
   type BackgroundScope,
   type ClientActivityReportInput,
   type EnvironmentId,
   WS_METHODS,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";

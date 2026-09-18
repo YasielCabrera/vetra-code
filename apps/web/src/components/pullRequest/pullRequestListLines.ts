@@ -1,5 +1,5 @@
-import type { ThreadPullRequestLink } from "@vetra-code/contracts";
-import type { ThreadPullRequestChain } from "@vetra-code/shared/threadPullRequests";
+import type { ThreadPullRequestLink } from "@t3tools/contracts";
+import type { ThreadPullRequestChain } from "@t3tools/shared/threadPullRequests";
 
 /** One line of a thread's pull-request list: a link plus how deep it sits in its stack. */
 export interface PullRequestListLine {

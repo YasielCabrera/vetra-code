@@ -1,4 +1,4 @@
-import { type TimestampFormat } from "@vetra-code/contracts/settings";
+import { type TimestampFormat } from "@t3tools/contracts/settings";
 
 function getTimestampFormatOptions(
   timestampFormat: TimestampFormat,

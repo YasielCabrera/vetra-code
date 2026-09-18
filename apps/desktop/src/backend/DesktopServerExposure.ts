@@ -1,15 +1,15 @@
 import {
   createAdvertisedEndpoint,
   type CreateAdvertisedEndpointInput,
-} from "@vetra-code/shared/advertisedEndpoint";
+} from "@t3tools/shared/advertisedEndpoint";
 import {
   DesktopServerExposureModeSchema,
   type AdvertisedEndpoint,
   type AdvertisedEndpointProvider,
   type DesktopServerExposureMode,
   type DesktopServerExposureState,
-} from "@vetra-code/contracts";
-import { isTailscaleIpv4Address, readTailscaleStatus } from "@vetra-code/tailscale";
+} from "@t3tools/contracts";
+import { isTailscaleIpv4Address, readTailscaleStatus } from "@t3tools/tailscale";
 import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -284,7 +284,7 @@ export class DesktopServerExposure extends Context.Service<
     }) => Effect.Effect<DesktopServerExposureChange, DesktopTailscaleServePersistenceError>;
     readonly getAdvertisedEndpoints: Effect.Effect<readonly AdvertisedEndpoint[]>;
   }
->()("@vetra-code/desktop/backend/DesktopServerExposure") {}
+>()("@t3tools/desktop/backend/DesktopServerExposure") {}
 
 interface RuntimeState {
   readonly requestedMode: DesktopServerExposureMode;

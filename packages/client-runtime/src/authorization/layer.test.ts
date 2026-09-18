@@ -1,8 +1,8 @@
-import { AuthStandardClientScopes, EnvironmentId } from "@vetra-code/contracts";
+import { AuthStandardClientScopes, EnvironmentId } from "@t3tools/contracts";
 import {
   RelayEnvironmentConnectScope,
   type RelayEnvironmentConnectResponse,
-} from "@vetra-code/contracts/relay";
+} from "@t3tools/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Clock from "effect/Clock";
 import * as Deferred from "effect/Deferred";

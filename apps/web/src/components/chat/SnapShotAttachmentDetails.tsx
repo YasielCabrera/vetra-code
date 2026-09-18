@@ -1,4 +1,4 @@
-import type { SnapShotSource } from "@vetra-code/contracts";
+import type { SnapShotSource } from "@t3tools/contracts";
 import { ImageIcon, TextIcon } from "lucide-react";
 import { Suspense, use, useMemo, type CSSProperties } from "react";
 

@@ -3,7 +3,7 @@ import type {
   DesktopAppStageLabel,
   DesktopRuntimeArch,
   DesktopRuntimeInfo,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -17,14 +17,14 @@ import {
   PRODUCT_DESKTOP_USER_DATA_DIRECTORY_NAME,
   PRODUCT_NAME,
   PRODUCT_SLUG,
-} from "@vetra-code/shared/productIdentity";
+} from "@t3tools/shared/productIdentity";
 
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopConfig from "./DesktopConfig.ts";
 import { resolveLinuxDesktopEntryName } from "./DesktopEarlyElectronStartup.ts";
 import { resolveDesktopBaseDir, resolveDesktopStateDir } from "./DesktopStatePaths.ts";
 import { isNightlyDesktopVersion } from "../updates/updateChannels.ts";
-import type { OtlpProtocol } from "@vetra-code/shared/observability";
+import type { OtlpProtocol } from "@t3tools/shared/observability";
 
 export interface MakeDesktopEnvironmentInput {
   readonly dirname: string;
@@ -98,7 +98,7 @@ export class DesktopEnvironment extends Context.Service<
     readonly resolvePickFolderDefaultPath: (rawOptions: unknown) => Option.Option<string>;
     readonly resolveResourcePathCandidates: (fileName: string) => readonly string[];
   }
->()("@vetra-code/desktop/app/DesktopEnvironment") {}
+>()("@t3tools/desktop/app/DesktopEnvironment") {}
 
 const APP_BASE_NAME = PRODUCT_NAME;
 

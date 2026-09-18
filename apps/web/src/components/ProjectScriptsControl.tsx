@@ -2,11 +2,11 @@ import type {
   ProjectScript,
   ResolvedKeybindingsConfig,
   VetraProjectFileScript,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import { ChevronDownIcon, DownloadIcon, PlusIcon, SettingsIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 

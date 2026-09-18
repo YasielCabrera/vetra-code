@@ -6,13 +6,13 @@ import * as NodePath from "node:path";
 
 import { assert, describe, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { HostProcessEnvironment } from "@vetra-code/shared/hostProcess";
+import { HostProcessEnvironment } from "@t3tools/shared/hostProcess";
 import {
   ProviderDriverKind,
   ProviderInstanceId,
   UsageDay,
   type UsageSummaryInput,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Duration from "effect/Duration";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

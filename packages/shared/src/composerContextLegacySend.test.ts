@@ -1,4 +1,4 @@
-import { ComposerContextId, type ComposerContextRecord } from "@vetra-code/contracts";
+import { ComposerContextId, type ComposerContextRecord } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { upgradeLegacyContextMessage } from "./composerContextLegacy.ts";

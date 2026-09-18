@@ -7,7 +7,7 @@
  *
  * Returns `null` on the web build, where there is no preview and no wallet.
  */
-import type { Web3WalletStatus } from "@vetra-code/web3/schema";
+import type { Web3WalletStatus } from "@t3tools/web3/schema";
 import { useCallback, useSyncExternalStore } from "react";
 
 import { previewBridge } from "../preview/previewBridge";

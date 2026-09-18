@@ -21,7 +21,7 @@ import type {
   GitActionProgressEvent,
   GitPreparePullRequestThreadInput,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import {
   DEFAULT_SERVER_SETTINGS,
@@ -29,7 +29,7 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   TextGenerationError,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 import * as GitLabCli from "../sourceControl/GitLabCli.ts";
 import * as TextGeneration from "../textGeneration/TextGeneration.ts";

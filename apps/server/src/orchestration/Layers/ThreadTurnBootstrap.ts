@@ -7,7 +7,7 @@ import {
   WORKTREE_SETUP_ACTIVITY_KIND,
   worktreeSetupActivityId,
   type WorktreeSetupSnapshot,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";

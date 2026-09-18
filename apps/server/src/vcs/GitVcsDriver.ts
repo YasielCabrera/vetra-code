@@ -32,7 +32,7 @@ import {
   type VcsStatusResult,
   type VcsFileBlameResult,
   type VcsFileLineChangesResult,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   makeGitVcsDriverCore,
   PATCH_RENDER_PREFIX_ARGS,
@@ -395,7 +395,7 @@ export class GitVcsDriver extends Context.Service<
     readonly initRepo: (input: VcsInitInput) => Effect.Effect<void, GitCommandError>;
     readonly listLocalBranchNames: (cwd: string) => Effect.Effect<string[], GitCommandError>;
   }
->()("@vetra-code/server/vcs/GitVcsDriver") {}
+>()("t3/vcs/GitVcsDriver") {}
 
 const WORKSPACE_FILES_MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
 const GIT_CHECK_IGNORE_MAX_STDIN_BYTES = 256 * 1024;

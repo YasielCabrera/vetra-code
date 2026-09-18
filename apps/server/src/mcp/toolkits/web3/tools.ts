@@ -13,8 +13,8 @@ import {
   PreviewAutomationWalletRejectInput,
   PreviewAutomationWalletRequestList,
   PreviewAutomationWalletResolution,
-} from "@vetra-code/contracts";
-import { PreviewWalletDisabledError, Web3WalletStatus } from "@vetra-code/web3/schema";
+} from "@t3tools/contracts";
+import { PreviewWalletDisabledError, Web3WalletStatus } from "@t3tools/web3/schema";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/unstable/ai";
 

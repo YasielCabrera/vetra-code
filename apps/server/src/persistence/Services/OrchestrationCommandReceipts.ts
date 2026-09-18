@@ -15,7 +15,7 @@ import {
   OrchestrationCommandReceiptStatus,
   ProjectId,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
@@ -69,6 +69,4 @@ export interface OrchestrationCommandReceiptRepositoryShape {
 export class OrchestrationCommandReceiptRepository extends Context.Service<
   OrchestrationCommandReceiptRepository,
   OrchestrationCommandReceiptRepositoryShape
->()(
-  "@vetra-code/server/persistence/Services/OrchestrationCommandReceipts/OrchestrationCommandReceiptRepository",
-) {}
+>()("t3/persistence/Services/OrchestrationCommandReceipts/OrchestrationCommandReceiptRepository") {}

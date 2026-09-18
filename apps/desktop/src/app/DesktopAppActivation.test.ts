@@ -9,9 +9,9 @@ import {
   ThreadId,
   type DesktopAppActivationRequest,
   type DesktopAppActivationResponse,
-} from "@vetra-code/contracts";
-import { resolveDesktopAppControlAddress } from "@vetra-code/shared/desktopAppControl";
-import { HostProcessPlatform, HostProcessUserId } from "@vetra-code/shared/hostProcess";
+} from "@t3tools/contracts";
+import { resolveDesktopAppControlAddress } from "@t3tools/shared/desktopAppControl";
+import { HostProcessPlatform, HostProcessUserId } from "@t3tools/shared/hostProcess";
 import { it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import { afterEach, describe, expect } from "vite-plus/test";

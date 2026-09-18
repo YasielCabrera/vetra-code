@@ -2,8 +2,8 @@ import {
   type ModelCapabilities,
   ProviderDriverKind,
   type ProviderOptionDescriptor,
-} from "@vetra-code/contracts";
-import { type CustomModelDefinition, createModelCapabilities } from "@vetra-code/shared/model";
+} from "@t3tools/contracts";
+import { type CustomModelDefinition, createModelCapabilities } from "@t3tools/shared/model";
 
 /** Editable mirror of a `ProviderOptionChoice`. `key` is only a React key. */
 export interface EditorChoice {

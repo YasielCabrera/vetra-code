@@ -1,4 +1,4 @@
-import type { DesktopBridge } from "@vetra-code/contracts";
+import type { DesktopBridge } from "@t3tools/contracts";
 
 const SNAP_SHOT_FOCUS_EVENT = "vetra:focus-composer";
 

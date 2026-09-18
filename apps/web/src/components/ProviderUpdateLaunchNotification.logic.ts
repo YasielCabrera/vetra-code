@@ -6,11 +6,11 @@ import {
   type ProviderDriverKind,
   type ProviderInstanceId,
   type ServerProvider,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 
 export type ProviderUpdateCandidate = ServerProvider & {
   readonly versionAdvisory: NonNullable<ServerProvider["versionAdvisory"]> & {

@@ -11,7 +11,7 @@ import {
   sanitizeThreadTitle,
   toJsonSchemaObject,
 } from "./TextGenerationUtils.ts";
-import { TextGenerationError } from "@vetra-code/contracts";
+import { TextGenerationError } from "@t3tools/contracts";
 
 describe("buildCommitMessagePrompt", () => {
   it("includes staged patch and summary in the prompt", () => {

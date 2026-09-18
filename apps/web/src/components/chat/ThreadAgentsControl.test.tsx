@@ -1,7 +1,7 @@
 import type {
   AgentControlState,
   RuntimeSubagent,
-} from "@vetra-code/client-runtime/state/subagentRuntime";
+} from "@t3tools/client-runtime/state/subagentRuntime";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vite-plus/test";
 

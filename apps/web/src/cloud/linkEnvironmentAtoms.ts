@@ -1,7 +1,7 @@
 import {
   createAtomCommandScheduler,
   createRuntimeCommand,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 import {

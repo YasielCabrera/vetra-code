@@ -1,13 +1,13 @@
-import { threadPullRequestSearchTerms } from "@vetra-code/shared/threadPullRequests";
+import { threadPullRequestSearchTerms } from "@t3tools/shared/threadPullRequests";
 import type { CommandPaletteLinkedThreads } from "../commandPaletteBus";
 import {
   type EnvironmentId,
   type FilesystemBrowseEntry,
   type KeybindingCommand,
   THREAD_JUMP_KEYBINDING_COMMANDS,
-} from "@vetra-code/contracts";
-import { filterFilesystemBrowseEntries } from "@vetra-code/client-runtime/state/filesystem";
-import type { SidebarThreadSortOrder } from "@vetra-code/contracts/settings";
+} from "@t3tools/contracts";
+import { filterFilesystemBrowseEntries } from "@t3tools/client-runtime/state/filesystem";
+import type { SidebarThreadSortOrder } from "@t3tools/contracts/settings";
 import * as Arr from "effect/Array";
 import * as Result from "effect/Result";
 import { type ReactNode } from "react";

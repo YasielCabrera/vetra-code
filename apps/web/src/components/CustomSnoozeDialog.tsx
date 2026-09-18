@@ -6,7 +6,7 @@ import {
   localSnoozeTime,
   resolveCustomSnooze,
   type CustomSnoozeInput,
-} from "@vetra-code/client-runtime/state/thread-settled";
+} from "@t3tools/client-runtime/state/thread-settled";
 import { Button } from "./ui/button";
 import { CalendarIcon } from "lucide-react";
 import { Calendar } from "./ui/calendar";

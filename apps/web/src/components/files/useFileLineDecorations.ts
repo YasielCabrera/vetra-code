@@ -1,5 +1,5 @@
-import type { EnvironmentId } from "@vetra-code/contracts";
-import { countTextLines, fileContentRevision } from "@vetra-code/shared/fileRevision";
+import type { EnvironmentId } from "@t3tools/contracts";
+import { countTextLines, fileContentRevision } from "@t3tools/shared/fileRevision";
 import type { FileOptions } from "@pierre/diffs/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

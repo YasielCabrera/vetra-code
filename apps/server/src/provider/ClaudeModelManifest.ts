@@ -1,5 +1,5 @@
-import { TrimmedNonEmptyString } from "@vetra-code/contracts";
-import { compareSemverVersions, parseSemver } from "@vetra-code/shared/semver";
+import { TrimmedNonEmptyString } from "@t3tools/contracts";
+import { compareSemverVersions, parseSemver } from "@t3tools/shared/semver";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 

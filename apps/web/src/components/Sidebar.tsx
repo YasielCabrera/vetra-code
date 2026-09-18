@@ -1,8 +1,8 @@
 import { requestCustomSnooze } from "./CustomSnoozeDialog";
 import { useSupportsMultiplePullRequests } from "~/hooks/useSupportsMultiplePullRequests";
-import { resolveThreadCurrentPullRequestLink } from "@vetra-code/shared/threadPullRequests";
+import { resolveThreadCurrentPullRequestLink } from "@t3tools/shared/threadPullRequests";
 import { useAtomValue } from "@effect/atom-react";
-import { replaceComposerContextReferences } from "@vetra-code/shared/composerContextReferences";
+import { replaceComposerContextReferences } from "@t3tools/shared/composerContextReferences";
 import * as Schema from "effect/Schema";
 import {
   DndContext,
@@ -20,23 +20,23 @@ import {
   canSnooze,
   effectiveSnoozed,
   threadWokeAt,
-} from "@vetra-code/client-runtime/state/thread-settled";
-import { resolveSettledThreadTimestamp } from "@vetra-code/client-runtime/state/thread-sort";
-import type { EnvironmentThreadShell } from "@vetra-code/client-runtime/state/models";
+} from "@t3tools/client-runtime/state/thread-settled";
+import { resolveSettledThreadTimestamp } from "@t3tools/client-runtime/state/thread-sort";
+import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 import {
   parseScopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
   scopedThreadKey,
-} from "@vetra-code/client-runtime/environment";
+} from "@t3tools/client-runtime/environment";
 import {
   resolveEnvironmentMachineKind,
   type EnvironmentMachineKind,
   type ProjectIconOverride,
   type ScopedThreadRef,
   type ThreadId,
-} from "@vetra-code/contracts";
-import type { TimestampFormat } from "@vetra-code/contracts/settings";
+} from "@t3tools/contracts";
+import type { TimestampFormat } from "@t3tools/contracts/settings";
 import {
   AlarmClockIcon,
   AlarmClockOffIcon,
@@ -83,7 +83,7 @@ import {
   settlePromise,
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import { isElectron } from "../env";
 import {
   resolveShortcutCommand,
@@ -145,7 +145,7 @@ import {
 } from "../threadRoutes";
 import { formatRelativeTimeLabel, parseTimestampDate } from "../timestampFormat";
 import type { SidebarThreadSummary } from "../types";
-import type { EnvironmentProject } from "@vetra-code/client-runtime/state/shell";
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import { cn } from "~/lib/utils";
 import { EnvironmentMachineIcon } from "./EnvironmentMachineIcon";
 import { ProjectEnvironmentBadge } from "./ProjectEnvironmentBadge";

@@ -10,7 +10,7 @@ import {
   ProviderRuntimeEvent,
   ProviderSession,
   ProviderInstanceId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   ApprovalRequestId,
   CommandId,
@@ -24,7 +24,7 @@ import {
   type ServerSettings,
   ThreadId,
   TurnId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

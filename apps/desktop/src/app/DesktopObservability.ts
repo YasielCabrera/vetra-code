@@ -1,10 +1,10 @@
-import { PRIMARY_LOCAL_ENVIRONMENT_ID } from "@vetra-code/contracts";
+import { PRIMARY_LOCAL_ENVIRONMENT_ID } from "@t3tools/contracts";
 import {
   makeLocalFileTracer,
   makeTraceSink,
   otlpSerializationLayer,
-} from "@vetra-code/shared/observability";
-import { parsePersistedServerObservabilitySettings } from "@vetra-code/shared/serverSettings";
+} from "@t3tools/shared/observability";
+import { parsePersistedServerObservabilitySettings } from "@t3tools/shared/serverSettings";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -62,7 +62,7 @@ export class DesktopBackendOutputLogFactory extends Context.Service<
   {
     readonly forInstance: (id: string) => Effect.Effect<DesktopBackendOutputLogShape>;
   }
->()("@vetra-code/desktop/app/DesktopObservability/DesktopBackendOutputLogFactory") {}
+>()("@t3tools/desktop/app/DesktopObservability/DesktopBackendOutputLogFactory") {}
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();

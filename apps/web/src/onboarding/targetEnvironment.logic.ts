@@ -1,5 +1,5 @@
-import type { ConnectionTarget } from "@vetra-code/client-runtime/connection";
-import type { EnvironmentId } from "@vetra-code/contracts";
+import type { ConnectionTarget } from "@t3tools/client-runtime/connection";
+import type { EnvironmentId } from "@t3tools/contracts";
 
 interface OnboardingEnvironment {
   readonly environmentId: EnvironmentId;

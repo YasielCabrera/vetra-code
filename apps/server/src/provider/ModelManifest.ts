@@ -21,8 +21,8 @@ import {
   TrimmedNonEmptyString,
   type ProviderDriverKind,
   type ServerProviderModel,
-} from "@vetra-code/contracts";
-import { codexModelFamily } from "@vetra-code/shared/model";
+} from "@t3tools/contracts";
+import { codexModelFamily } from "@t3tools/shared/model";
 import * as Clock from "effect/Clock";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
@@ -330,7 +330,7 @@ export class ModelManifest extends Context.Service<
      * the teardown of whichever instance happened to trigger it. */
     readonly refreshInBackground: Effect.Effect<void>;
   }
->()("@vetra-code/server/provider/ModelManifest") {}
+>()("t3/provider/ModelManifest") {}
 
 /** Constant service backing the bundled-data test layer. */
 const BundledOnlyModelManifest: ModelManifest["Service"] = {

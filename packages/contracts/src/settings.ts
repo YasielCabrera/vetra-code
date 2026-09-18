@@ -44,7 +44,7 @@ import {
   Web3ChainId,
   Web3CustomNetwork,
   Web3RpcUrl,
-} from "@vetra-code/web3/schema";
+} from "@t3tools/web3/schema";
 import { PullRequestMergeMethod } from "./pullRequest.ts";
 
 // ── Client Settings (local-only) ───────────────────────────────

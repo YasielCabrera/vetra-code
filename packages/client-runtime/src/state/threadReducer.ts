@@ -12,10 +12,10 @@ import type {
   OrchestrationThreadActivity,
   ThreadPullRequestLink,
   TurnId,
-} from "@vetra-code/contracts";
-import { threadPullRequestKeysEqual } from "@vetra-code/shared/threadPullRequests";
-import { isImportedAgentSessionMessageId } from "@vetra-code/contracts";
-import { compareDateTimeStrings } from "@vetra-code/shared/dateTime";
+} from "@t3tools/contracts";
+import { threadPullRequestKeysEqual } from "@t3tools/shared/threadPullRequests";
+import { isImportedAgentSessionMessageId } from "@t3tools/contracts";
+import { compareDateTimeStrings } from "@t3tools/shared/dateTime";
 
 export type ThreadDetailReducerResult =
   | { readonly kind: "updated"; readonly thread: OrchestrationThread }

@@ -1,4 +1,4 @@
-import type { RelayManagedEndpoint } from "@vetra-code/contracts/relay";
+import type { RelayManagedEndpoint } from "@t3tools/contracts/relay";
 import { and, eq } from "drizzle-orm";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -146,7 +146,7 @@ export class ManagedEndpointAllocations extends Context.Service<
       input: RemoveClaimedManagedEndpointAllocationInput,
     ) => Effect.Effect<boolean, ManagedEndpointAllocationPersistenceError>;
   }
->()("@vetra-code/relay/environments/ManagedEndpointAllocations") {}
+>()("t3code-relay/environments/ManagedEndpointAllocations") {}
 
 const allocationSelection = {
   userId: relayManagedEndpointAllocations.userId,

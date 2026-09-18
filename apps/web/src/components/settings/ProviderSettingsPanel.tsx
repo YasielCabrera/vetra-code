@@ -1,11 +1,11 @@
 import { RefreshIcon } from "~/components/ui/refresh-icon";
 import { useAtomValue } from "@effect/atom-react";
-import { connectionStatusTitle } from "@vetra-code/client-runtime/connection";
-import { safeErrorLogAttributes } from "@vetra-code/client-runtime/errors";
+import { connectionStatusTitle } from "@t3tools/client-runtime/connection";
+import { safeErrorLogAttributes } from "@t3tools/client-runtime/errors";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import {
   defaultInstanceIdForDriver,
   type EnvironmentId,
@@ -15,12 +15,12 @@ import {
   type ProviderInstanceId,
   resolveEnvironmentMachineKind,
   resolveProviderInstanceEnabled,
-} from "@vetra-code/contracts";
-import { DEFAULT_UNIFIED_SETTINGS } from "@vetra-code/contracts/settings";
+} from "@t3tools/contracts";
+import { DEFAULT_UNIFIED_SETTINGS } from "@t3tools/contracts/settings";
 import {
   getBackgroundActivityPresetSettings,
   resolveServerBackgroundActivitySettings,
-} from "@vetra-code/shared/backgroundActivitySettings";
+} from "@t3tools/shared/backgroundActivitySettings";
 import * as Arr from "effect/Array";
 import * as Duration from "effect/Duration";
 import * as Equal from "effect/Equal";

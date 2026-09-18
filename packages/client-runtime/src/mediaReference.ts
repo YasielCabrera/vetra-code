@@ -1,4 +1,4 @@
-import { isWindowsAbsolutePath } from "@vetra-code/shared/path";
+import { isWindowsAbsolutePath } from "@t3tools/shared/path";
 
 import { safeDecodeURIComponent } from "./markdownLinks.ts";
 

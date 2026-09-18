@@ -1,5 +1,5 @@
 import "culori/css";
-import { DEFAULT_CODE_FONT_SIZE } from "@vetra-code/contracts";
+import { DEFAULT_CODE_FONT_SIZE } from "@t3tools/contracts";
 import { converter, formatHex, parse } from "culori/fn";
 
 import { DEFAULT_CODE_FONT_STACK, clampCodeFontSize } from "~/appearanceFonts";

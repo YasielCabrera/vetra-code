@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { ScopedThreadRef } from "@vetra-code/contracts";
+import type { ScopedThreadRef } from "@t3tools/contracts";
 
 /**
  * Field-wise ref equality. `scopedThreadKey` joins with `:`, so two distinct

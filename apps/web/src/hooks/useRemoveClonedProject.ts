@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
-import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
-import type { ScopedProjectRef } from "@vetra-code/contracts";
+import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import type { ScopedProjectRef } from "@t3tools/contracts";
 import { useCallback } from "react";
 
 import { useComposerDraftStore } from "../composerDraftStore";

@@ -1,5 +1,5 @@
 import * as Effect from "effect/Effect";
-import type { IssueActivity, IssueActor, IssueComment } from "@vetra-code/contracts";
+import type { IssueActivity, IssueActor, IssueComment } from "@t3tools/contracts";
 
 import { gitHubLoginAvatarUrl } from "../sourceControl/GitHubActor.ts";
 import * as GitHubIssueCli from "./GitHubIssueCli.ts";

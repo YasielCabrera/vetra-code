@@ -1,4 +1,4 @@
-import type { PowerhouseDatabaseQueryResult } from "@vetra-code/contracts";
+import type { PowerhouseDatabaseQueryResult } from "@t3tools/contracts";
 import { MessageSquarePlus } from "lucide-react";
 
 import { Button } from "~/components/ui/button";

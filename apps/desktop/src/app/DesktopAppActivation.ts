@@ -7,9 +7,9 @@ import {
   DESKTOP_APP_ACTIVATION_PROTOCOL_VERSION,
   DesktopAppActivationRequest,
   type DesktopAppActivationResponse,
-} from "@vetra-code/contracts";
-import { resolveDesktopAppControlAddress } from "@vetra-code/shared/desktopAppControl";
-import { HostProcessUserId } from "@vetra-code/shared/hostProcess";
+} from "@t3tools/contracts";
+import { resolveDesktopAppControlAddress } from "@t3tools/shared/desktopAppControl";
+import { HostProcessUserId } from "@t3tools/shared/hostProcess";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -212,7 +212,7 @@ export class DesktopAppActivation extends Context.Service<
     readonly setRendererReady: (ready: boolean) => Effect.Effect<void>;
     readonly complete: (response: DesktopAppActivationResponse) => Effect.Effect<void>;
   }
->()("@vetra-code/desktop/app/DesktopAppActivation") {}
+>()("@t3tools/desktop/app/DesktopAppActivation") {}
 
 const { logWarning } = makeComponentLogger("desktop-app-activation");
 

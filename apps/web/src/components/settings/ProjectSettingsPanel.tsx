@@ -4,10 +4,10 @@ import {
   settlePromise,
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@vetra-code/client-runtime/state/runtime";
-import { scopeProjectRef, scopeThreadRef } from "@vetra-code/client-runtime/environment";
+} from "@t3tools/client-runtime/state/runtime";
+import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { AsyncResult } from "effect/unstable/reactivity";
-import { type EnvironmentId, type ProjectIconOverride } from "@vetra-code/contracts";
+import { type EnvironmentId, type ProjectIconOverride } from "@t3tools/contracts";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import * as Cause from "effect/Cause";
 import { Trash2Icon } from "lucide-react";

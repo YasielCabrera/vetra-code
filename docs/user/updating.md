@@ -9,8 +9,8 @@ Update a source checkout through its Vetra-owned Git remote, then reinstall and 
 ```bash
 git pull --ff-only
 pnpm install
-pnpm exec vp run --filter @vetra-code/server build
-pnpm exec vp run --filter @vetra-code/desktop build
+pnpm exec vp run --filter t3 build
+pnpm exec vp run --filter @t3tools/desktop build
 ```
 
 Finish active agent work and terminal processes before restarting development servers. A

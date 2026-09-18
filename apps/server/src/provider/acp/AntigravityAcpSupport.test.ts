@@ -6,12 +6,12 @@ import {
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
   type ChatAttachment,
   type RuntimeMode,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
-import * as EffectAcpErrors from "@vetra-code/effect-acp/errors";
-import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
+import * as EffectAcpErrors from "effect-acp/errors";
+import type * as EffectAcpSchema from "effect-acp/schema";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import {

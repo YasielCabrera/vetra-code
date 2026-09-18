@@ -18,10 +18,10 @@ import type {
   ProjectSearchContentsResult,
   ProjectSearchEntriesInput,
   ProjectSearchEntriesResult,
-} from "@vetra-code/contracts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { isExplicitRelativePath, isWindowsAbsolutePath } from "@vetra-code/shared/path";
-import { normalizeSearchQuery } from "@vetra-code/shared/searchRanking";
+} from "@t3tools/contracts";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { isExplicitRelativePath, isWindowsAbsolutePath } from "@t3tools/shared/path";
+import { normalizeSearchQuery } from "@t3tools/shared/searchRanking";
 
 import { expandHomePathWith } from "../pathExpansion.ts";
 import * as VcsProcess from "../vcs/VcsProcess.ts";
@@ -104,7 +104,7 @@ export class WorkspaceEntries extends Context.Service<
     ) => Effect.Effect<ProjectSearchContentsResult, WorkspaceEntriesError>;
     readonly refresh: (cwd: string) => Effect.Effect<void>;
   }
->()("@vetra-code/server/workspace/WorkspaceEntries") {}
+>()("t3/workspace/WorkspaceEntries") {}
 
 const resolveBrowseTarget = Effect.fn("WorkspaceEntries.resolveBrowseTarget")(function* (
   input: FilesystemBrowseInput,

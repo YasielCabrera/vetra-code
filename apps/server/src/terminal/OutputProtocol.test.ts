@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
-import { WS_METHODS } from "@vetra-code/contracts";
+import { WS_METHODS } from "@t3tools/contracts";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Queue from "effect/Queue";

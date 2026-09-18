@@ -3,8 +3,8 @@ import {
   type ArchivedSnapshotEntry,
   createArchivedThreadSnapshotsAtomFamily,
   makeArchivedThreadsEnvironmentKey,
-} from "@vetra-code/client-runtime/state/threads";
-import type { EnvironmentId } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/state/threads";
+import type { EnvironmentId } from "@t3tools/contracts";
 import { useCallback, useMemo } from "react";
 
 import { orchestrationEnvironment } from "../state/orchestration";

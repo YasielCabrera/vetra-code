@@ -2,7 +2,7 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import {
   ANTIGRAVITY_AUTH_METHODS,
   type AntigravityAuthMethod,
@@ -10,7 +10,7 @@ import {
   type ProviderAuthState,
   type ProviderInstanceId,
   type ServerProvider,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { useRef, useState } from "react";
 import { Trash2Icon } from "lucide-react";
 

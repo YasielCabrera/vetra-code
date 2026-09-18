@@ -3,7 +3,7 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ProviderSubscriptionUsageReport,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

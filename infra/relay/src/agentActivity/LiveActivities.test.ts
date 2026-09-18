@@ -1,7 +1,7 @@
 import type {
   RelayAgentActivityAggregateState,
   RelayLiveActivityRegistrationRequest,
-} from "@vetra-code/contracts/relay";
+} from "@t3tools/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";

@@ -14,7 +14,7 @@ import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
-import { createModelSelection } from "@vetra-code/shared/model";
+import { createModelSelection } from "@t3tools/shared/model";
 
 import {
   ApprovalRequestId,
@@ -23,7 +23,7 @@ import {
   type ProviderRuntimeEvent,
   ThreadId,
   ProviderInstanceId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { ServerConfig } from "../../config.ts";
 import { buildRuntimeInstructions } from "../RuntimeInstructions.ts";
@@ -31,12 +31,12 @@ import { ServerSettingsService } from "../../serverSettings.ts";
 import type { CursorAdapterShape } from "../Services/CursorAdapter.ts";
 import { cursorStopReasonWarning, makeCursorAdapter } from "./CursorAdapter.ts";
 import { execScriptSource, writeFakeCli } from "../../testUtils/fakeCli.ts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 const decodeCursorSettings = Schema.decodeSync(CursorSettings);
 
 // Test-local service tag so the rest of the file can keep using `yield* CursorAdapter`.
 class CursorAdapter extends Context.Service<CursorAdapter, CursorAdapterShape>()(
-  "@vetra-code/server/provider/Layers/CursorAdapter.test/CursorAdapter",
+  "t3/provider/Layers/CursorAdapter.test/CursorAdapter",
 ) {}
 
 const __dirname = NodePath.dirname(NodeURL.fileURLToPath(import.meta.url));

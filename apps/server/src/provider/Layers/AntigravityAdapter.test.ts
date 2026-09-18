@@ -6,7 +6,7 @@ import {
   ProviderInstanceId,
   ThreadId,
   type ProviderRuntimeEvent,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Deferred from "effect/Deferred";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
@@ -19,8 +19,8 @@ import * as Queue from "effect/Queue";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
-import * as AcpErrors from "@vetra-code/effect-acp/errors";
-import type * as AcpSchema from "@vetra-code/effect-acp/schema";
+import * as AcpErrors from "effect-acp/errors";
+import type * as AcpSchema from "effect-acp/schema";
 
 import { ServerConfig } from "../../config.ts";
 import { ANTIGRAVITY_SIGN_IN_REQUIRED_MESSAGE } from "../antigravityAuthSupport.ts";

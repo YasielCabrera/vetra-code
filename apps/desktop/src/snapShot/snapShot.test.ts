@@ -1,5 +1,5 @@
 import { it as effectIt } from "@effect/vitest";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Effect from "effect/Effect";
 import { describe, expect, it, vi } from "vite-plus/test";
 

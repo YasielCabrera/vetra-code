@@ -4,8 +4,8 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ProviderSubscriptionUsageReport,
-} from "@vetra-code/contracts";
-import type { ClientSettingsPatch } from "@vetra-code/contracts/settings";
+} from "@t3tools/contracts";
+import type { ClientSettingsPatch } from "@t3tools/contracts/settings";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { EnvironmentProviderSubscriptionUsageStatus } from "../state/providerSubscriptionUsage";

@@ -24,7 +24,7 @@ import {
   type PreviewAutomationHostFocus,
   type PreviewAutomationResponse,
   type PreviewAutomationStreamEvent,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Deferred from "effect/Deferred";
@@ -64,7 +64,7 @@ export class PreviewAutomationBroker extends Context.Service<
       request: PreviewAutomationInvokeInput,
     ) => Effect.Effect<A, PreviewAutomationError>;
   }
->()("@vetra-code/server/mcp/PreviewAutomationBroker") {}
+>()("t3/mcp/PreviewAutomationBroker") {}
 
 interface ClientConnection {
   readonly clientId: string;

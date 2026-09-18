@@ -3,11 +3,11 @@ import {
   scopeProjectRef,
   scopeThreadRef,
   scopedThreadKey,
-} from "@vetra-code/client-runtime/environment";
-import { settlePromise, squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
-import { canSnooze, threadWokeAt } from "@vetra-code/client-runtime/state/thread-settled";
-import { EnvironmentId, type ScopedThreadRef, ThreadId } from "@vetra-code/contracts";
-import { resolveWorktreeCleanup } from "@vetra-code/shared/projectSettings";
+} from "@t3tools/client-runtime/environment";
+import { settlePromise, squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import { canSnooze, threadWokeAt } from "@t3tools/client-runtime/state/thread-settled";
+import { EnvironmentId, type ScopedThreadRef, ThreadId } from "@t3tools/contracts";
+import { resolveWorktreeCleanup } from "@t3tools/shared/projectSettings";
 import * as Cause from "effect/Cause";
 import * as Schema from "effect/Schema";
 import { AsyncResult } from "effect/unstable/reactivity";

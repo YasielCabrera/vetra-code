@@ -1,18 +1,13 @@
 import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
-import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
-import type {
-  EnvironmentId,
-  PullRequestRef,
-  ScopedThreadRef,
-  ThreadId,
-} from "@vetra-code/contracts";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import type { EnvironmentId, PullRequestRef, ScopedThreadRef, ThreadId } from "@t3tools/contracts";
 import { CheckIcon, MessageSquareIcon } from "lucide-react";
 import { useState } from "react";
-import { threadPullRequestLinkMode } from "@vetra-code/client-runtime/thread-pull-request-compatibility";
+import { threadPullRequestLinkMode } from "@t3tools/client-runtime/thread-pull-request-compatibility";
 import { usePullRequestLinking } from "~/hooks/usePullRequestLinking";
 
 import { parseChangeRequestUrl } from "~/lib/openPullRequestLink";
-import { normalizeThreadPullRequestKey } from "@vetra-code/shared/threadPullRequests";
+import { normalizeThreadPullRequestKey } from "@t3tools/shared/threadPullRequests";
 import { useProjects, useServerConfigs, useThreadShell, useThreadShells } from "~/state/entities";
 import { pullRequestEnvironment } from "~/state/pullRequests";
 import { useEnvironmentQuery } from "~/state/query";

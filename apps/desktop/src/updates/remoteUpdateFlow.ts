@@ -1,4 +1,4 @@
-import type { DesktopUpdateRemoteOutcome, DesktopUpdateState } from "@vetra-code/contracts";
+import type { DesktopUpdateRemoteOutcome, DesktopUpdateState } from "@t3tools/contracts";
 
 /**
  * What a server-triggered update run should do next, given the updater's

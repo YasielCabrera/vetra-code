@@ -10,7 +10,7 @@ import {
   pullRequestCandidateUrlFromReferenceAutolink,
   shouldOpenPullRequestExternally,
 } from "./openPullRequestLink";
-import { ProjectId, type RepositoryIdentity } from "@vetra-code/contracts";
+import { ProjectId, type RepositoryIdentity } from "@t3tools/contracts";
 
 function repositoryIdentity(
   provider: string,

@@ -9,15 +9,15 @@
 import {
   DEFAULT_SERVER_SETTINGS,
   type PreviewAutomationWalletConfigureInput,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   DEFAULT_WEB3_NETWORKS,
   nextChainSelectionAfterCatalogChange,
   nextChainSelectionAfterCustomNetworkEdit,
   replaceCustomNetwork,
   setBuiltInNetworkEnabled,
-} from "@vetra-code/web3/networks";
-import type { Web3Account, Web3ApprovalMode, Web3CustomNetwork } from "@vetra-code/web3/schema";
+} from "@t3tools/web3/networks";
+import type { Web3Account, Web3ApprovalMode, Web3CustomNetwork } from "@t3tools/web3/schema";
 import {
   CheckIcon,
   CopyIcon,

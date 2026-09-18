@@ -27,7 +27,7 @@ import {
   type AgentSessionProjectGit,
   type AgentSessionScanResult,
   type ProviderInstanceConfig,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -43,9 +43,9 @@ import {
   normalizeGitRemoteUrl,
   parseGitHubRepositoryNameWithOwnerFromRemoteUrl,
   parseOriginUrlFromGitConfig,
-} from "@vetra-code/shared/git";
-import { HostProcessEnvironment, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { normalizeProjectPathForComparison } from "@vetra-code/shared/path";
+} from "@t3tools/shared/git";
+import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { normalizeProjectPathForComparison } from "@t3tools/shared/path";
 
 import * as ServerConfig from "../config.ts";
 import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
@@ -194,7 +194,7 @@ export class AgentSessionScanner extends Context.Service<
       completedSources?: ReadonlyArray<AgentSessionImportSource>,
     ) => Stream.Stream<AgentSessionRecentThread, AgentSessionScanError>;
   }
->()("@vetra-code/server/project/AgentSessionScanner") {}
+>()("t3/project/AgentSessionScanner") {}
 
 type AgentSessionSource = AgentSessionProjectCandidate["sources"][number];
 

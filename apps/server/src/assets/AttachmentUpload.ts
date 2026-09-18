@@ -4,7 +4,7 @@ import {
   ATTACHMENT_UPLOAD_URL_TTL_MS,
   type AttachmentCreateUploadUrlInput,
   AttachmentUploadSigningKeyError,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";

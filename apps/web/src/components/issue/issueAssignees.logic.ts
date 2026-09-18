@@ -1,4 +1,4 @@
-import type { IssueActor, IssueListEntry } from "@vetra-code/contracts";
+import type { IssueActor, IssueListEntry } from "@t3tools/contracts";
 
 export interface KnownIssueAssignees {
   /** The narrowings these people were gathered under, minus the assignee filter itself. */

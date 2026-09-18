@@ -1,4 +1,4 @@
-import { EnvironmentId, WS_METHODS } from "@vetra-code/contracts";
+import { EnvironmentId, WS_METHODS } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 

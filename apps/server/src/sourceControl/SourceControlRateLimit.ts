@@ -8,7 +8,7 @@ import * as Schema from "effect/Schema";
 import {
   SourceControlProviderKind as SourceControlProviderKindSchema,
   type SourceControlProviderKind,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 const FALLBACK_COOLDOWN = Duration.seconds(30);
 const MAX_FALLBACK_COOLDOWN = Duration.minutes(15);
@@ -61,7 +61,7 @@ export class SourceControlRateLimit extends Context.Service<
     ) => Effect.Effect<void>;
     readonly recordSuccess: (input: RateLimitLease) => Effect.Effect<void>;
   }
->()("@vetra-code/server/sourceControl/SourceControlRateLimit") {}
+>()("t3/sourceControl/SourceControlRateLimit") {}
 
 function normalizedKey(key: RateLimitKey, scope: string): string {
   return `${key.provider}\0${key.host.trim().toLowerCase()}\0${scope}`;

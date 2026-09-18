@@ -1,6 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
-import type { EnvironmentId } from "@vetra-code/contracts";
-import { isWindowsAbsolutePath } from "@vetra-code/shared/path";
+import type { EnvironmentId } from "@t3tools/contracts";
+import { isWindowsAbsolutePath } from "@t3tools/shared/path";
 import { useMemo, useState } from "react";
 
 import { primaryServerKeybindingsAtom } from "~/state/server";

@@ -1,10 +1,6 @@
-import type {
-  EnvironmentId,
-  ServerConfig,
-  ServerSelfUpdateCapability,
-} from "@vetra-code/contracts";
-import type { ServerUpdateState } from "@vetra-code/client-runtime/state/server";
-import { compareSemverVersions, parseSemver } from "@vetra-code/shared/semver";
+import type { EnvironmentId, ServerConfig, ServerSelfUpdateCapability } from "@t3tools/contracts";
+import type { ServerUpdateState } from "@t3tools/client-runtime/state/server";
+import { compareSemverVersions, parseSemver } from "@t3tools/shared/semver";
 import * as Schema from "effect/Schema";
 
 import { APP_VERSION } from "./branding";
@@ -120,7 +116,7 @@ export function supportsServerUpdateThreadContinuation(
 
 /** The command to hand users whose server cannot update itself. */
 export function manualServerUpdateCommand(targetVersion: string): string {
-  return `npx --yes @vetra-code/server@${targetVersion}`;
+  return `npx --yes t3@${targetVersion}`;
 }
 
 export function serverUpdateGuidance(capability: ServerSelfUpdateCapability): string {

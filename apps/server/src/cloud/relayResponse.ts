@@ -4,8 +4,8 @@ import {
   EnvironmentHttpForbiddenError,
   EnvironmentHttpInternalServerError,
   EnvironmentHttpUnauthorizedError,
-} from "@vetra-code/contracts";
-import { RelayProtectedError } from "@vetra-code/contracts/relay";
+} from "@t3tools/contracts";
+import { RelayProtectedError } from "@t3tools/contracts/relay";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";

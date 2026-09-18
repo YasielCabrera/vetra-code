@@ -3,7 +3,7 @@ import {
   type DevicePlatformAvailability,
   type EnvironmentId,
   SshDeviceHostConfig,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 
 export interface DeviceHostCheckTarget {

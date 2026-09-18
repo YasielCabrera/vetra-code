@@ -1,4 +1,4 @@
-import { ProviderInstanceId, ThreadId } from "@vetra-code/contracts";
+import { ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -40,7 +40,7 @@ export interface McpSessionRegistryShape {
 export class McpSessionRegistry extends Context.Service<
   McpSessionRegistry,
   McpSessionRegistryShape
->()("@vetra-code/server/mcp/McpSessionRegistry") {}
+>()("t3/mcp/McpSessionRegistry") {}
 
 interface CredentialRecord {
   readonly tokenHash: string;

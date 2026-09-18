@@ -3,7 +3,7 @@
 import {
   SNAP_SHOT_ACCESSIBLE_TEXT_MAX_CHARS,
   type SnapShotAccessibility,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import type * as Electron from "electron";
 
 import {

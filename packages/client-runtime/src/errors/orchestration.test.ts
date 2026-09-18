@@ -1,4 +1,4 @@
-import { OrchestrationDispatchCommandError } from "@vetra-code/contracts";
+import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { wasBootstrapThreadDeleted, wasBootstrapThreadNotCreated } from "./orchestration.ts";

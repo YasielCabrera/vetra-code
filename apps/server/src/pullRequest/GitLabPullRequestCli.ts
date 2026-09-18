@@ -18,7 +18,7 @@ import type {
   PullRequestReviewThread,
   PullRequestReviewVerdict,
   PullRequestReviewerCandidateList,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import * as GitLabCli from "../sourceControl/GitLabCli.ts";
 import {
@@ -394,7 +394,7 @@ export class GitLabPullRequestCli extends Context.Service<
       readonly reacted: boolean;
     }) => Effect.Effect<void, GitLabPullRequestCliError>;
   }
->()("@vetra-code/server/pullRequest/GitLabPullRequestCli") {}
+>()("t3/pullRequest/GitLabPullRequestCli") {}
 
 /** The REST API addresses a project by its URL-encoded full path. */
 function projectPath(repository: string): string {

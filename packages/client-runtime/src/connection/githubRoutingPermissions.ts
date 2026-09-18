@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vetra-code/contracts";
+import { EnvironmentId } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -73,7 +73,7 @@ export class GitHubRoutingPermissions extends Context.Reference<{
     permission: GitHubRoutingPermission,
   ) => Effect.Effect<void, ConnectionAttemptError>;
   readonly forget: (environmentId: EnvironmentId) => Effect.Effect<void, ConnectionAttemptError>;
-}>("@vetra-code/client-runtime/connection/GitHubRoutingPermissions", {
+}>("@t3tools/client-runtime/connection/GitHubRoutingPermissions", {
   defaultValue: () => ({
     get: () => Effect.succeed("off"),
     changes: Stream.succeed([]),

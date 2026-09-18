@@ -1,12 +1,12 @@
-import { createAdvertisedEndpoint } from "@vetra-code/shared/advertisedEndpoint";
-import type { AdvertisedEndpoint, AdvertisedEndpointProvider } from "@vetra-code/contracts";
+import { createAdvertisedEndpoint } from "@t3tools/shared/advertisedEndpoint";
+import type { AdvertisedEndpoint, AdvertisedEndpointProvider } from "@t3tools/contracts";
 import {
   buildTailscaleHttpsBaseUrl,
   isTailscaleIpv4Address,
   parseTailscaleMagicDnsName,
   probeTailscaleHttpsEndpoint,
   readTailscaleStatus,
-} from "@vetra-code/tailscale";
+} from "@t3tools/tailscale";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as HttpClient from "effect/unstable/http/HttpClient";
@@ -14,7 +14,7 @@ import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawne
 
 import type { NetworkInterfaces } from "./DesktopNetworkInterfaces.ts";
 
-export { parseTailscaleMagicDnsName } from "@vetra-code/tailscale";
+export { parseTailscaleMagicDnsName } from "@t3tools/tailscale";
 
 const TAILSCALE_ENDPOINT_PROVIDER: AdvertisedEndpointProvider = {
   id: "tailscale",

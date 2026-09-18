@@ -13,8 +13,8 @@ import type {
   IssueTimelineEvent,
   IssueTimelineItem,
   IssueTimelineSource,
-} from "@vetra-code/contracts";
-import { decodeJsonResult } from "@vetra-code/shared/schemaJson";
+} from "@t3tools/contracts";
+import { decodeJsonResult } from "@t3tools/shared/schemaJson";
 
 const RawActor = Schema.Struct({
   login: Schema.optional(Schema.String),

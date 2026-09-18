@@ -12,9 +12,9 @@ import {
   EnvironmentOrchestrationHttpApi,
   ProviderInstanceId,
   ThreadId,
-} from "@vetra-code/contracts";
-import * as NetService from "@vetra-code/shared/Net";
-import { HostProcessEnvironment } from "@vetra-code/shared/hostProcess";
+} from "@t3tools/contracts";
+import * as NetService from "@t3tools/shared/Net";
+import { HostProcessEnvironment } from "@t3tools/shared/hostProcess";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as DateTime from "effect/DateTime";

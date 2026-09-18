@@ -5,7 +5,7 @@ import {
   ProjectId,
   ProviderInstanceId,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import type { Thread } from "../types";
 import { getLatestThreadForProject, sortThreads } from "./threadSort";
 

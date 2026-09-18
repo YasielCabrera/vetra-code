@@ -7,7 +7,7 @@ import {
   SourceControlProviderError,
   type ChangeRequest,
   type ChangeRequestState,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import * as GitHubCli from "./GitHubCli.ts";
 import { findAuthenticatedGitHubAccount, parseGitHubAuthStatus } from "./gitHubAuthStatus.ts";

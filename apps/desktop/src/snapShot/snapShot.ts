@@ -14,7 +14,7 @@ import {
   type SnapShotKeyChord,
   type SnapShotModifier,
   type SnapShotShortcut,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 interface AccessibilityTreeNode {
   readonly name?: string;

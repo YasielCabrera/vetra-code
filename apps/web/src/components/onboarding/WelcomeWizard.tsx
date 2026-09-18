@@ -7,13 +7,13 @@ import type {
   ScopedProjectRef,
   ServerConfig,
   ServerProvider,
-} from "@vetra-code/contracts";
-import { scopeProjectRef, scopeThreadRef } from "@vetra-code/client-runtime/environment";
+} from "@t3tools/contracts";
+import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
-import { CommandId, ProviderDriverKind, ThreadId } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/state/runtime";
+import { CommandId, ProviderDriverKind, ThreadId } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import {
   ArrowRightIcon,

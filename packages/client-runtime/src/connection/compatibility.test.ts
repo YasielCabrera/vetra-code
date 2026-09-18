@@ -2,7 +2,7 @@ import {
   EnvironmentId,
   ORCHESTRATION_PROTOCOL_VERSION,
   type ExecutionEnvironmentDescriptor,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

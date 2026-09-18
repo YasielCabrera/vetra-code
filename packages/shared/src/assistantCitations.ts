@@ -2,7 +2,7 @@ import {
   ASSISTANT_CITATION_MAX_COMMENT_LENGTH,
   ASSISTANT_CITATION_MAX_TEXT_LENGTH,
   AssistantCitation,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 

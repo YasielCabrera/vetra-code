@@ -5,7 +5,7 @@ import {
   type UsageDay,
   type UsageProviderKind,
   type UsageSummary,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { isModelCostUnknown, mergeUsage, type EnvironmentUsage } from "./usageMerge.ts";

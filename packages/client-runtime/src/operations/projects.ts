@@ -7,7 +7,7 @@ import type {
   SourceControlDiscoveryResult,
   SourceControlProviderKind,
   SourceControlRepositoryInfo,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";

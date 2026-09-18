@@ -9,7 +9,7 @@ import type {
   ThreadLinkedPullRequest,
   ThreadPullRequestKey,
   ThreadPullRequestLink,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   isImportedAgentSessionMessageId,
   OrchestrationCheckpointSummary,
@@ -17,13 +17,13 @@ import {
   OrchestrationSession,
   OrchestrationThread,
   WORKTREE_SETUP_ACTIVITY_KIND,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   legacyLinkedPullRequestOf,
   legacyThreadPullRequestKey,
   threadPullRequestKeysEqual,
-} from "@vetra-code/shared/threadPullRequests";
-import { compareDateTimeStrings } from "@vetra-code/shared/dateTime";
+} from "@t3tools/shared/threadPullRequests";
+import { compareDateTimeStrings } from "@t3tools/shared/dateTime";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Predicate from "effect/Predicate";

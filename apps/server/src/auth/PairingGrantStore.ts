@@ -4,7 +4,7 @@ import {
   type AuthEnvironmentScope,
   type AuthPairingLink,
   type ServerAuthBootstrapMethod,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -219,7 +219,7 @@ export class PairingGrantStore extends Context.Service<
       },
     ) => Effect.Effect<BootstrapGrant, BootstrapCredentialError>;
   }
->()("@vetra-code/server/auth/PairingGrantStore") {}
+>()("t3/auth/PairingGrantStore") {}
 
 interface StoredBootstrapGrant extends BootstrapGrant {
   readonly remainingUses: number | "unbounded";

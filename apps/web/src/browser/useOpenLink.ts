@@ -1,8 +1,8 @@
-import type { ScopedThreadRef } from "@vetra-code/contracts";
+import type { ScopedThreadRef } from "@t3tools/contracts";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import { useCallback } from "react";
 
 import { recordVisitForThread } from "~/browserHistoryStore";

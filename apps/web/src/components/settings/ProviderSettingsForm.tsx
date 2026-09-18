@@ -8,7 +8,7 @@ import type {
   ProviderSettingsFormControl,
   ProviderSettingsFormOption,
   ProviderSettingsFormSchemaAnnotation,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { cn } from "../../lib/utils";
 import { DraftInput } from "../ui/draft-input";

@@ -6,13 +6,13 @@ import {
   type DeviceSummary,
   DeviceToolUnavailableError,
   LOCAL_DEVICE_HOST_ID,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Path from "effect/Path";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import { ServerConfig } from "../../../config.ts";
 import { ensureAgentDeviceShim } from "../../../device/AgentDeviceShim.ts";
-import { nodeRuntimeUnavailableMessage } from "@vetra-code/shared/nodeRuntime";
+import { nodeRuntimeUnavailableMessage } from "@t3tools/shared/nodeRuntime";
 
 import * as DeviceService from "../../../device/DeviceService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";

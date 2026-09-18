@@ -16,14 +16,14 @@ export class RelayDb extends Context.Service<
   EffectPgDatabase & {
     readonly $client: PgClient;
   }
->()("@vetra-code/relay/db/RelayDb") {}
+>()("t3code-relay/db/RelayDb") {}
 
 export class RelayTransactions extends Context.Service<
   RelayTransactions,
   {
     readonly withTransaction: RelayDb["Service"]["$client"]["withTransaction"];
   }
->()("@vetra-code/relay/db/RelayTransactions") {
+>()("t3code-relay/db/RelayTransactions") {
   static readonly layer = Layer.effect(
     RelayTransactions,
     Effect.gen(function* () {

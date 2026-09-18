@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vetra-code/contracts";
+import { EnvironmentId } from "@t3tools/contracts";
 import { assert, it } from "@effect/vitest";
 import { assertTrue } from "@effect/vitest/utils";
 import * as Effect from "effect/Effect";

@@ -3,7 +3,7 @@ import type {
   ProviderInstanceId,
   ProviderSubscriptionUsageReport,
   ProviderUsageAlertTransitionMarker,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export type ProviderUsageAlertMarkers = Readonly<
   Record<string, ProviderUsageAlertTransitionMarker>

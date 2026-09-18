@@ -6,7 +6,7 @@
  *
  * @module ProjectionStateRepository
  */
-import { IsoDateTime, NonNegativeInt } from "@vetra-code/contracts";
+import { IsoDateTime, NonNegativeInt } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
@@ -68,4 +68,4 @@ export interface ProjectionStateRepositoryShape {
 export class ProjectionStateRepository extends Context.Service<
   ProjectionStateRepository,
   ProjectionStateRepositoryShape
->()("@vetra-code/server/persistence/Services/ProjectionState/ProjectionStateRepository") {}
+>()("t3/persistence/Services/ProjectionState/ProjectionStateRepository") {}

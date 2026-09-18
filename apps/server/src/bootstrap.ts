@@ -9,8 +9,8 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import { decodeJsonResult } from "@vetra-code/shared/schemaJson";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { decodeJsonResult } from "@t3tools/shared/schemaJson";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 
 export class BootstrapFdStatError extends Schema.TaggedError<BootstrapFdStatError>()(
   "BootstrapFdStatError",

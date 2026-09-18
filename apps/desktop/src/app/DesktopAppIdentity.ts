@@ -36,7 +36,7 @@ export class DesktopAppIdentity extends Context.Service<
     readonly resolveUserDataPath: Effect.Effect<string, DesktopUserDataPathResolutionError>;
     readonly configure: Effect.Effect<void>;
   }
->()("@vetra-code/desktop/app/DesktopAppIdentity") {}
+>()("@t3tools/desktop/app/DesktopAppIdentity") {}
 
 const normalizeCommitHash = (value: string): Option.Option<string> => {
   const trimmed = value.trim();

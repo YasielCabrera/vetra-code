@@ -1,4 +1,4 @@
-import { EventId, ThreadId } from "@vetra-code/contracts";
+import { EventId, ThreadId } from "@t3tools/contracts";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

@@ -4,7 +4,7 @@ import {
   EventId,
   type OrchestrationEvent,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { it as effectIt } from "@effect/vitest";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";

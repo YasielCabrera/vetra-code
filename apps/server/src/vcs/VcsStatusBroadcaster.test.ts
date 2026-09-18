@@ -21,13 +21,13 @@ import type {
   VcsStatusRemoteResult,
   VcsStatusResult,
   VcsStatusStreamEvent,
-} from "@vetra-code/contracts";
-import { GitManagerError } from "@vetra-code/contracts";
+} from "@t3tools/contracts";
+import { GitManagerError } from "@t3tools/contracts";
 
 import * as VcsStatusBroadcaster from "./VcsStatusBroadcaster.ts";
 import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
 import * as GitWorkflowService from "../git/GitWorkflowService.ts";
-import { symlinksSupported } from "@vetra-code/shared/testing/symlinks";
+import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
 
 const TEST_EPOCH = DateTime.makeUnsafe("1970-01-01T00:00:00.000Z");
 

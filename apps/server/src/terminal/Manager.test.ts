@@ -11,8 +11,8 @@ import {
   ProviderInstanceId,
   ServerSettingsError,
   TerminalProviderInstanceNotFoundError,
-} from "@vetra-code/contracts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+} from "@t3tools/contracts";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Data from "effect/Data";
 import * as Clock from "effect/Clock";
 import * as Deferred from "effect/Deferred";

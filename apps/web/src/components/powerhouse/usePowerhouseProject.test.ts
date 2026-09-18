@@ -1,4 +1,4 @@
-import type { PowerhouseProjectLocation } from "@vetra-code/contracts";
+import type { PowerhouseProjectLocation } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { resolveSelectedProject } from "./usePowerhouseProject";

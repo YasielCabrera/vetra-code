@@ -7,9 +7,9 @@ import * as Layer from "effect/Layer";
 import {
   SourceControlProviderError,
   type SourceControlProviderDiscoveryItem,
-} from "@vetra-code/contracts";
-import type { SourceControlProviderKind } from "@vetra-code/contracts";
-import { detectSourceControlProviderFromRemoteUrl } from "@vetra-code/shared/sourceControl";
+} from "@t3tools/contracts";
+import type { SourceControlProviderKind } from "@t3tools/contracts";
+import { detectSourceControlProviderFromRemoteUrl } from "@t3tools/shared/sourceControl";
 
 import * as AzureDevOpsSourceControlProvider from "./AzureDevOpsSourceControlProvider.ts";
 import * as BitbucketSourceControlProvider from "./BitbucketSourceControlProvider.ts";
@@ -62,7 +62,7 @@ export class SourceControlProviderRegistry extends Context.Service<
     >;
     readonly discover: Effect.Effect<ReadonlyArray<SourceControlProviderDiscoveryItem>>;
   }
->()("@vetra-code/server/sourceControl/SourceControlProviderRegistry") {}
+>()("t3/sourceControl/SourceControlProviderRegistry") {}
 
 function unsupportedProvider(
   kind: SourceControlProviderKind,

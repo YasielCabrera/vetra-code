@@ -5,10 +5,10 @@ import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
-import * as NodeSqliteClient from "@vetra-code/shared/nodeSqliteClient";
+import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 import { runSqliteState } from "./vetra-sqlite-state.ts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { symlinksSupported } from "@vetra-code/shared/testing/symlinks";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
 
 const createFixtureDatabase = Effect.fn("createSqliteStateFixtureDatabase")(function* (
   baseDir: string,

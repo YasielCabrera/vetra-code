@@ -33,8 +33,8 @@ import {
   PreviewAutomationSnapshot,
   DEFAULT_BROWSER_PROFILE_ID,
   INCOGNITO_BROWSER_PROFILE_ID,
-} from "@vetra-code/contracts";
-import { Web3ApprovalMode, Web3WalletStatus } from "@vetra-code/web3/schema";
+} from "@t3tools/contracts";
+import { Web3ApprovalMode, Web3WalletStatus } from "@t3tools/web3/schema";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as NodeURL from "node:url";

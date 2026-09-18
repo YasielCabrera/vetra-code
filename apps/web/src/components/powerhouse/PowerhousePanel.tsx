@@ -12,7 +12,7 @@
  * Powerhouse ships an unrelated package of its own called Vetra; nothing here
  * borrows that name.
  */
-import type { EnvironmentId } from "@vetra-code/contracts";
+import type { EnvironmentId } from "@t3tools/contracts";
 import { FolderCog, Settings2 } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 

@@ -12,7 +12,7 @@ import {
   type AuthSessionState,
   type ExecutionEnvironmentDescriptor,
   type EnvironmentAuthInvalidError,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import type * as Context from "effect/Context";
 import * as Effect from "effect/Effect";

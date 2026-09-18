@@ -23,7 +23,7 @@ import {
   type PowerhouseReactorGetOperationsInput,
   type PowerhouseReactorListDocumentsInput,
   WS_METHODS,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import * as PowerhouseProject from "./PowerhouseProject.ts";
 import * as PowerhouseReactorClient from "./PowerhouseReactorClient.ts";

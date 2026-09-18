@@ -34,12 +34,12 @@ import {
   type ProviderRuntimeEvent,
   type ProviderSession,
   type ServerSettings as ServerSettingsValue,
-} from "@vetra-code/contracts";
-import { expandAssistantCitationsForProvider } from "@vetra-code/shared/assistantCitations";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { causeErrorTag } from "@vetra-code/shared/observability";
-import { getModelSelectionStringOptionValue } from "@vetra-code/shared/model";
-import { resolveProjectSettings } from "@vetra-code/shared/projectSettings";
+} from "@t3tools/contracts";
+import { expandAssistantCitationsForProvider } from "@t3tools/shared/assistantCitations";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { causeErrorTag } from "@t3tools/shared/observability";
+import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

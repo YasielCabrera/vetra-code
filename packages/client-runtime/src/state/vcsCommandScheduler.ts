@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@vetra-code/contracts";
+import type { EnvironmentId } from "@t3tools/contracts";
 
 import { createAtomCommandScheduler, type AtomCommandConcurrency } from "./runtime.ts";
 

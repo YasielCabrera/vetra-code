@@ -32,7 +32,7 @@ import {
   PowerhouseReactorIdentifier,
   type PowerhouseReactorListDocumentsResult,
   PowerhouseReactorSystemInfo,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { collectUint8StreamText } from "../stream/collectUint8StreamText.ts";
 
@@ -112,7 +112,7 @@ export class PowerhouseReactorClient extends Context.Service<
       readonly headers?: PowerhouseGraphqlHeaders | undefined;
     }) => Effect.Effect<PowerhouseReactorExecuteGraphqlResult, PowerhouseReactorError>;
   }
->()("@vetra-code/server/powerhouse/PowerhouseReactorClient") {}
+>()("t3/powerhouse/PowerhouseReactorClient") {}
 
 /** Safe, canonical base URL retained in connection results and later requests. */
 export function normalizeReactorBaseUrl(url: string): string | null {

@@ -1,5 +1,5 @@
 import * as NodeCrypto from "node:crypto";
-import { AuthSessionId } from "@vetra-code/contracts";
+import { AuthSessionId } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Redacted from "effect/Redacted";
 

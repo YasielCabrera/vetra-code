@@ -15,7 +15,7 @@ import type {
   OrchestrationClientOrigin,
   OrchestrationCommand,
   OrchestrationDispatchCommandError,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 
@@ -39,4 +39,4 @@ export interface ThreadTurnBootstrapShape {
 export class ThreadTurnBootstrap extends Context.Service<
   ThreadTurnBootstrap,
   ThreadTurnBootstrapShape
->()("@vetra-code/server/orchestration/Services/ThreadTurnBootstrap") {}
+>()("t3/orchestration/Services/ThreadTurnBootstrap") {}

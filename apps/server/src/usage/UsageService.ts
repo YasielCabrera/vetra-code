@@ -28,8 +28,8 @@ import {
   type UsageSummaryInput,
   type UsageTokenTotals,
   UsageReadError,
-} from "@vetra-code/contracts";
-import { HostProcessEnvironment } from "@vetra-code/shared/hostProcess";
+} from "@t3tools/contracts";
+import { HostProcessEnvironment } from "@t3tools/shared/hostProcess";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
@@ -141,7 +141,7 @@ export class UsageService extends Context.Service<
     /** Refetches the rate table ahead of its TTL. See `ensureRates`. */
     readonly refreshRates: Effect.Effect<UsagePricing>;
   }
->()("@vetra-code/server/usage/UsageService") {}
+>()("t3/usage/UsageService") {}
 
 const EMPTY_PRICING: UsagePricing = {
   status: "unavailable",

@@ -6,13 +6,13 @@ import type {
   ProjectCloneStartResult,
   ProjectId,
   SourceControlRepositoryInfo,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   OrchestrationDispatchCommandError,
   PROJECT_CLONE_DETAIL_MAX_LENGTH,
   PROJECT_CLONE_ERROR_MAX_LENGTH,
   SourceControlRepositoryError,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -70,7 +70,7 @@ export class ProjectCloneTracker extends Context.Service<
     /** Emits every tracked clone first, then the full list after each change. */
     readonly stream: Stream.Stream<ReadonlyArray<ProjectCloneSnapshot>>;
   }
->()("@vetra-code/server/project/ProjectCloneTracker") {}
+>()("t3/project/ProjectCloneTracker") {}
 
 /**
  * Orchestration side effects the caller owns. The tracker never depends on the

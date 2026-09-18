@@ -9,8 +9,8 @@ import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import * as ChildProcess from "effect/unstable/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import {
   collectUint8StreamText,
   decodeUtf8,
@@ -144,7 +144,7 @@ export class ProcessRunner extends Context.Service<
   {
     readonly run: (input: ProcessRunInput) => Effect.Effect<ProcessRunOutput, ProcessRunError>;
   }
->()("@vetra-code/server/processRunner") {}
+>()("t3/processRunner") {}
 
 const DEFAULT_TIMEOUT = "60 seconds";
 const DEFAULT_MAX_OUTPUT_BYTES = 8 * 1024 * 1024;

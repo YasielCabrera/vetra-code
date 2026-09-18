@@ -1,6 +1,6 @@
 import * as NodeURL from "node:url";
 
-import type { ChatAttachment, ProviderApprovalDecision, RuntimeMode } from "@vetra-code/contracts";
+import type { ChatAttachment, ProviderApprovalDecision, RuntimeMode } from "@t3tools/contracts";
 import {
   createOpencodeClient,
   type Agent,
@@ -32,10 +32,10 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 import { isWindowsCommandNotFound } from "../processRunner.ts";
 import { collectStreamAsString } from "./providerSnapshot.ts";
-import * as NetService from "@vetra-code/shared/Net";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { compareSemverVersions, parseSemver } from "@vetra-code/shared/semver";
-import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+import * as NetService from "@t3tools/shared/Net";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { compareSemverVersions, parseSemver } from "@t3tools/shared/semver";
+import { resolveSpawnCommand } from "@t3tools/shared/shell";
 const encodeUnknownJsonStringExit = Schema.encodeUnknownExit(Schema.fromJsonString(Schema.Unknown));
 const OPENCODE_EMPTY_CONFIG_CONTENT = "{}";
 
@@ -1092,7 +1092,7 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
 });
 
 export class OpenCodeRuntime extends Context.Service<OpenCodeRuntime, OpenCodeRuntimeShape>()(
-  "@vetra-code/server/provider/opencodeRuntime",
+  "t3/provider/opencodeRuntime",
 ) {}
 
 export const OpenCodeRuntimeLive = Layer.effect(OpenCodeRuntime, makeOpenCodeRuntime).pipe(

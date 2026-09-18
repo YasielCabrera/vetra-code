@@ -14,7 +14,7 @@ import * as Scope from "effect/Scope";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
-import * as CodexErrors from "@vetra-code/effect-codex-app-server/errors";
+import * as CodexErrors from "effect-codex-app-server/errors";
 import * as UsageService from "../../usage/UsageService.ts";
 import {
   ClaudeSettings,
@@ -26,13 +26,13 @@ import {
   type ServerProvider,
   type ServerProviderSlashCommand,
   type ServerSettings as ContractServerSettings,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as PlatformError from "effect/PlatformError";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { deepMerge } from "@vetra-code/shared/Struct";
-import { createModelCapabilities } from "@vetra-code/shared/model";
-import { applyServerSettingsPatch } from "@vetra-code/shared/serverSettings";
+import { deepMerge } from "@t3tools/shared/Struct";
+import { createModelCapabilities } from "@t3tools/shared/model";
+import { applyServerSettingsPatch } from "@t3tools/shared/serverSettings";
 
 import { checkCodexProviderStatus, type CodexAppServerProviderSnapshot } from "./CodexProvider.ts";
 import { checkClaudeProviderStatus } from "./ClaudeProvider.ts";

@@ -27,7 +27,7 @@
       ],
       // Keep the transitive Effect runtime pinned for standalone npm installs.
       // Native msgpack acceleration and the Vite+ web build prerequisite.
-      "ignoreDependencies": ["@effect/platform-node-shared", "msgpackr-extract", "@vetra-code/web"],
+      "ignoreDependencies": ["@effect/platform-node-shared", "msgpackr-extract", "@t3tools/web"],
     },
     "apps/desktop": {
       // Electron loads these bundles by filename rather than importing them.

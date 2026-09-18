@@ -12,7 +12,7 @@ import type {
   PreviewAnnotationStrokeTarget,
   PreviewAnnotationStyleChange,
   PreviewAnnotationSubmission,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { resolveAnnotationSubmission } from "./AnnotationKeyboard.ts";
 import { installPreviewWallet } from "./WalletPreload.ts";

@@ -3,7 +3,7 @@
  * and the chat header's Agents popover. One status→visual map and one activity
  * rule, so a row means the same thing wherever it renders.
  */
-import type { RuntimeSubagent } from "@vetra-code/client-runtime/state/subagentRuntime";
+import type { RuntimeSubagent } from "@t3tools/client-runtime/state/subagentRuntime";
 import { useEffect, useRef } from "react";
 
 import { cn } from "~/lib/utils";

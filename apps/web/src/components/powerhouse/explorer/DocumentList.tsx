@@ -3,7 +3,7 @@ import type {
   PowerhouseReactorDocumentSearchFilter,
   PowerhouseReactorDocumentSummary,
   PowerhouseReactorDocumentViewFilter,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { ChevronRight, FileText, Folder, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

@@ -1,7 +1,7 @@
 // @effect-diagnostics nodeBuiltinImport:off - realpathSync.native resolves Windows 8.3 short names, which the Effect realPath does not.
 import * as NodeFS from "node:fs";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import { assert, it, describe } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -25,8 +25,8 @@ import {
   GitCommandError,
   ReviewDiffPreviewInput,
   type ReviewDiffFileContentsInput,
-} from "@vetra-code/contracts";
-import { fileContentRevision } from "@vetra-code/shared/fileRevision";
+} from "@t3tools/contracts";
+import { fileContentRevision } from "@t3tools/shared/fileRevision";
 import { ServerConfig } from "../config.ts";
 import { gitCommandDuration } from "../observability/Metrics.ts";
 import { GitFileAnnotationParseError } from "./GitFileAnnotationError.ts";

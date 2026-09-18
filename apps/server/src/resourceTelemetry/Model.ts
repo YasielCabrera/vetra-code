@@ -6,7 +6,7 @@ import type {
   ResourceTelemetryAggregate,
   ResourceTelemetryProcess,
   ResourceTelemetryProcessCategory,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 

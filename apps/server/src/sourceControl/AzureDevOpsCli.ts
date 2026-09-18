@@ -9,7 +9,7 @@ import {
   TrimmedNonEmptyString,
   type SourceControlRepositoryVisibility,
   type VcsError,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import {
@@ -263,7 +263,7 @@ export class AzureDevOpsCli extends Context.Service<
       readonly remoteName?: string;
     }) => Effect.Effect<void, AzureDevOpsCliError>;
   }
->()("@vetra-code/server/sourceControl/AzureDevOpsCli") {}
+>()("t3/sourceControl/AzureDevOpsCli") {}
 
 function normalizeChangeRequestId(reference: string): string {
   const trimmed = reference.trim().replace(/^#/, "");

@@ -5,7 +5,7 @@ import {
   MessageId,
   TurnId,
   type ComposerContextRecord,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { act, createRef, useLayoutEffect, type ReactNode, type Ref } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { create, type ReactTestRenderer } from "react-test-renderer";

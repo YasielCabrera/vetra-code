@@ -8,7 +8,7 @@ import {
   Unlink2Icon,
   TriangleAlertIcon,
 } from "lucide-react";
-import type { PullRequestState } from "@vetra-code/contracts";
+import type { PullRequestState } from "@t3tools/contracts";
 
 export const PullRequestGlyph = {
   pullRequest: GitPullRequestArrowIcon,

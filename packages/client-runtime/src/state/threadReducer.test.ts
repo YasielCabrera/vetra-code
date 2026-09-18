@@ -10,8 +10,8 @@ import {
   ProviderInstanceId,
   ThreadId,
   TurnId,
-} from "@vetra-code/contracts";
-import type { OrchestrationThread } from "@vetra-code/contracts";
+} from "@t3tools/contracts";
+import type { OrchestrationThread } from "@t3tools/contracts";
 
 import { applyThreadDetailEvent } from "./threadReducer.ts";
 

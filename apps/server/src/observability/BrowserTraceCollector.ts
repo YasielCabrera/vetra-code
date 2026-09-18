@@ -1,4 +1,4 @@
-import type { TraceRecord, TraceSink } from "@vetra-code/shared/observability";
+import type { TraceRecord, TraceSink } from "@t3tools/shared/observability";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -8,7 +8,7 @@ export class BrowserTraceCollector extends Context.Service<
   {
     readonly record: (records: ReadonlyArray<TraceRecord>) => Effect.Effect<void>;
   }
->()("@vetra-code/server/observability/BrowserTraceCollector") {}
+>()("t3/observability/BrowserTraceCollector") {}
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = (sink: TraceSink): BrowserTraceCollector["Service"] =>

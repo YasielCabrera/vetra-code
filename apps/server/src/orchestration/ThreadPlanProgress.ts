@@ -40,7 +40,7 @@ export class ThreadPlanProgressService extends Context.Service<
 
     readonly getThreadPlanProgress: (threadId: string) => ThreadPlanProgress | null;
   }
->()("@vetra-code/server/orchestration/ThreadPlanProgress/ThreadPlanProgressService") {}
+>()("t3/orchestration/ThreadPlanProgress/ThreadPlanProgressService") {}
 
 export function make(): ThreadPlanProgressService["Service"] {
   const progressByThreadId = new Map<string, ThreadPlanProgress>();

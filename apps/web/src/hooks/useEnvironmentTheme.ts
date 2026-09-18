@@ -1,4 +1,4 @@
-import type { EnvironmentTheme } from "@vetra-code/contracts";
+import type { EnvironmentTheme } from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
 import * as Equal from "effect/Equal";
 import { useEffect, useRef, useSyncExternalStore } from "react";

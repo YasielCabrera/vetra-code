@@ -4,7 +4,7 @@ import {
   HostProcessExecutablePath,
   HostProcessPlatform,
   HostProcessUserId,
-} from "@vetra-code/shared/hostProcess";
+} from "@t3tools/shared/hostProcess";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";

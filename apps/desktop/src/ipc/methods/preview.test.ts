@@ -3,7 +3,7 @@ import {
   DEFAULT_BROWSER_PROFILE_ID,
   INCOGNITO_BROWSER_PROFILE_ID,
   PreviewAutomationStatus,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";

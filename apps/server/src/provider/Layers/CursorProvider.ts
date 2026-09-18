@@ -8,9 +8,9 @@ import type {
   ServerProviderModel,
   ServerProviderSkill,
   ServerProviderState,
-} from "@vetra-code/contracts";
-import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
-import { causeErrorTag } from "@vetra-code/shared/observability";
+} from "@t3tools/contracts";
+import type * as EffectAcpSchema from "effect-acp/schema";
+import { causeErrorTag } from "@t3tools/shared/observability";
 import * as Cache from "effect/Cache";
 import * as Duration from "effect/Duration";
 import * as Crypto from "effect/Crypto";
@@ -32,8 +32,8 @@ import {
   createModelCapabilities,
   getProviderOptionBooleanSelectionValue,
   getProviderOptionStringSelectionValue,
-} from "@vetra-code/shared/model";
-import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+} from "@t3tools/shared/model";
+import { resolveSpawnCommand } from "@t3tools/shared/shell";
 
 import { discoverCursorSkills } from "../Drivers/CursorSkills.ts";
 import {

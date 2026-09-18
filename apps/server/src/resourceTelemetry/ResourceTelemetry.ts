@@ -7,7 +7,7 @@ import type {
   ResourceTelemetryProcessIdentity,
   ResourceTelemetryRetryResult,
   ResourceTelemetrySnapshot,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -72,7 +72,7 @@ export class ResourceTelemetry extends Context.Service<
     ) => Effect.Effect<boolean, ResourceTelemetryRefreshFailed>;
     readonly retry: Effect.Effect<ResourceTelemetryRetryResult>;
   }
->()("@vetra-code/server/resourceTelemetry/ResourceTelemetry") {}
+>()("t3/resourceTelemetry/ResourceTelemetry") {}
 
 interface TelemetryState {
   readonly nativeSnapshot: Option.Option<ResourceMonitorSnapshotEvent>;

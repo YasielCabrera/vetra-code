@@ -30,7 +30,7 @@ development server directly to the public internet.
 - Vetra Connect and its relay stay hidden when Vetra-owned Clerk and relay settings are absent.
 - Hosted pairing is unavailable until Vetra has its own HTTPS application domain.
 - Package-based headless, SSH, and background-service launch are unavailable while
-  `@vetra-code/server` remains private.
+  `t3` remains private.
 - The mobile client was removed from this fork.
 
 Do not mix pairing links, CLI packages, or URL schemes from another product with Vetra Code. They can

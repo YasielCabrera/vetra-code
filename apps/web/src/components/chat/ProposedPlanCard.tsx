@@ -2,8 +2,8 @@ import { memo, useState, useId } from "react";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
-import type { EnvironmentId, ScopedThreadRef } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/state/runtime";
+import type { EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
 import {
   buildCollapsedProposedPlanPreviewMarkdown,
   buildProposedPlanMarkdownFilename,

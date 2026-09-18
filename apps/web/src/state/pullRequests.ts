@@ -3,14 +3,14 @@ import {
   createLinkedPullRequestSummaryAtomFamily,
   createPullRequestEnvironmentAtoms,
   createPullRequestStackAtomFamily,
-} from "@vetra-code/client-runtime/state/pull-requests";
+} from "@t3tools/client-runtime/state/pull-requests";
 import type {
   EnvironmentId,
   PullRequestListInput,
   PullRequestListStatsInput,
   PullRequestRef,
   PullRequestSummary,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 import { useCallback, useLayoutEffect, useMemo } from "react";

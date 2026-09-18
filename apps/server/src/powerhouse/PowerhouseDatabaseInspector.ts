@@ -45,7 +45,7 @@ import {
   type PowerhouseDatabaseDiscoverInput,
   type PowerhouseDatabaseDiscoverResult,
   type PowerhouseProjectError,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import * as PowerhouseProject from "./PowerhouseProject.ts";
 import {
@@ -95,7 +95,7 @@ export class PowerhouseDatabaseInspector extends Context.Service<
       input: PowerhouseDatabaseRefreshSnapshotInput,
     ) => Effect.Effect<PowerhouseDatabaseRefreshSnapshotResult, InspectorError>;
   }
->()("@vetra-code/server/powerhouse/PowerhouseDatabaseInspector") {}
+>()("t3/powerhouse/PowerhouseDatabaseInspector") {}
 
 const MAX_ENV_BYTES = 256 * 1024;
 const MAX_CATALOG_RELATIONS = 20_000;

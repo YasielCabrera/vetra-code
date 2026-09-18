@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@vetra-code/contracts";
+import type { EnvironmentId } from "@t3tools/contracts";
 import { ChevronRight } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 

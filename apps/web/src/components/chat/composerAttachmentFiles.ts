@@ -2,11 +2,11 @@ import {
   type EnvironmentId,
   isProviderSendTurnSupportedImageMimeType,
   PROVIDER_SEND_TURN_MAX_FILE_BYTES,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   clampFileAttachmentUploadBytes,
   fileAttachmentTooLargeMessage,
-} from "@vetra-code/client-runtime/state/attachments";
+} from "@t3tools/client-runtime/state/attachments";
 
 import type { ComposerFileAttachment, ComposerImageAttachment } from "../../composerDraftStore";
 import { isHeicImageFile } from "../../lib/imageCompression";

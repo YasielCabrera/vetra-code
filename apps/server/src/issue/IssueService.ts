@@ -18,13 +18,13 @@ import type {
   OrchestrationProjectShell,
   SourceControlProviderInfo,
   SourceControlProviderKind,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   IssueOperationError,
   IssueUnavailableError,
   sourceControlHostOf,
-} from "@vetra-code/contracts";
-import { detectSourceControlProviderFromRemoteUrl } from "@vetra-code/shared/sourceControl";
+} from "@t3tools/contracts";
+import { detectSourceControlProviderFromRemoteUrl } from "@t3tools/shared/sourceControl";
 
 import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
@@ -51,7 +51,7 @@ export class IssueService extends Context.Service<
     readonly setAssignees: (input: IssueAssigneeChangeInput) => Effect.Effect<void, IssueError>;
     readonly invalidate: (input: IssueInvalidateInput) => Effect.Effect<void>;
   }
->()("@vetra-code/server/issue/IssueService") {}
+>()("t3/issue/IssueService") {}
 
 interface SupportedProject {
   readonly project: OrchestrationProjectShell;

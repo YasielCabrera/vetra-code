@@ -3,7 +3,7 @@ import type {
   AuthClientPresentationMetadata,
   ClientOs,
   DesktopBridge,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 interface BrowserIdentity {
   readonly userAgent: string;

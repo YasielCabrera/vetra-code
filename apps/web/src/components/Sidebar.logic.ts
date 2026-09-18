@@ -1,21 +1,18 @@
-import { threadPullRequestSearchTerms } from "@vetra-code/shared/threadPullRequests";
+import { threadPullRequestSearchTerms } from "@t3tools/shared/threadPullRequests";
 import * as React from "react";
 import { defaultAnimateLayoutChanges, type AnimateLayoutChanges } from "@dnd-kit/sortable";
 import {
   isAtomCommandInterrupted,
   type AtomCommandResult,
-} from "@vetra-code/client-runtime/state/runtime";
-import type { ContextMenuItem } from "@vetra-code/contracts";
-import type {
-  SidebarProjectSortOrder,
-  SidebarThreadSortOrder,
-} from "@vetra-code/contracts/settings";
+} from "@t3tools/client-runtime/state/runtime";
+import type { ContextMenuItem } from "@t3tools/contracts";
+import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@t3tools/contracts/settings";
 import type { AsyncResult } from "effect/unstable/reactivity";
-import { planPinnedReorder } from "@vetra-code/client-runtime/state/thread-sort";
+import { planPinnedReorder } from "@t3tools/client-runtime/state/thread-sort";
 import {
   effectiveSnoozed,
   type ThreadSnoozeShell,
-} from "@vetra-code/client-runtime/state/thread-settled";
+} from "@t3tools/client-runtime/state/thread-settled";
 import {
   getThreadSortTimestamp,
   resolveSettledThreadTimestamp,
@@ -891,15 +888,12 @@ function firstValidTimestamp(
   return null;
 }
 
-export { sortActiveThreadsByOrderKey as sortThreadsForSidebar } from "@vetra-code/client-runtime/state/thread-sort";
+export { sortActiveThreadsByOrderKey as sortThreadsForSidebar } from "@t3tools/client-runtime/state/thread-sort";
 
 // Pinned-reorder key math and the keyed sort live in client-runtime
 // (state/thread-sort) so web and mobile compute identical pinned orders.
-export {
-  pinOrderKeyBetween,
-  planPinnedReorder,
-} from "@vetra-code/client-runtime/state/thread-sort";
-export { sortPinnedThreadsByOrderKey as sortPinnedThreadsForSidebar } from "@vetra-code/client-runtime/state/thread-sort";
+export { pinOrderKeyBetween, planPinnedReorder } from "@t3tools/client-runtime/state/thread-sort";
+export { sortPinnedThreadsByOrderKey as sortPinnedThreadsForSidebar } from "@t3tools/client-runtime/state/thread-sort";
 
 /**
  * Search the already-ordered sidebar thread collection by title or linked PR.

@@ -2,7 +2,7 @@ import {
   type DesktopPendingSnapShot,
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
   type ScopedThreadRef,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { useCallback, useEffect, useRef } from "react";
 
 import {

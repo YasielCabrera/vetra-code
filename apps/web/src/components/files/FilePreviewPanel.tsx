@@ -5,13 +5,13 @@ import type {
   EnvironmentId,
   ResolvedKeybindingsConfig,
   ScopedThreadRef,
-} from "@vetra-code/contracts";
-import { filePreviewDelimiter } from "@vetra-code/shared/delimitedPreview";
+} from "@t3tools/contracts";
+import { filePreviewDelimiter } from "@t3tools/shared/delimitedPreview";
 import {
   isWorkspaceAudioPreviewPath,
   isWorkspaceImagePreviewPath,
   isWorkspaceVideoPreviewPath,
-} from "@vetra-code/shared/filePreview";
+} from "@t3tools/shared/filePreview";
 import { VirtualizedFile, type SelectedLineRange } from "@pierre/diffs";
 import { Editor } from "@pierre/diffs/editor";
 import { EditProvider, File, type FileOptions, Virtualizer } from "@pierre/diffs/react";
@@ -19,8 +19,8 @@ import { DiffWorkerPoolProvider } from "../DiffWorkerPoolProvider";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
-import { mediaFileReference } from "@vetra-code/client-runtime/media-reference";
+} from "@t3tools/client-runtime/state/runtime";
+import { mediaFileReference } from "@t3tools/client-runtime/media-reference";
 import { ArrowLeftRight, Code2, Eye, FolderTree, Globe2, Table2, WrapTextIcon } from "lucide-react";
 import * as Schema from "effect/Schema";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

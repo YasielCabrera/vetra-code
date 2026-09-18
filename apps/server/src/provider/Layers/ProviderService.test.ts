@@ -11,7 +11,7 @@ import type {
   ProviderTurnStartResult,
   ProviderUploadFeedbackInput,
   ProviderUploadFeedbackResult,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   ASSISTANT_CITATION_MAX_TEXT_LENGTH,
   AssistantCitation,
@@ -27,12 +27,12 @@ import {
   ProviderSessionStartInput,
   ThreadId,
   TurnId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   expandAssistantCitationsForProvider,
   serializeAssistantCitation,
-} from "@vetra-code/shared/assistantCitations";
-import { createModelSelection } from "@vetra-code/shared/model";
+} from "@t3tools/shared/assistantCitations";
+import { createModelSelection } from "@t3tools/shared/model";
 import { it, assert, describe, vi } from "@effect/vitest";
 import { afterAll } from "vite-plus/test";
 

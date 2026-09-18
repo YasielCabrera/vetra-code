@@ -1,9 +1,9 @@
-import type { EnvironmentConnectionPhase } from "@vetra-code/client-runtime/connection";
+import type { EnvironmentConnectionPhase } from "@t3tools/client-runtime/connection";
 import {
   AuthOrchestrationOperateScope,
   type AuthSessionState,
   type EnvironmentId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export interface ProviderEnvironmentOptionLike {
   readonly environmentId: EnvironmentId;

@@ -8,9 +8,9 @@ import { expect, it } from "vite-plus/test";
 
 import { legacyCliLauncherScript } from "./legacyCliLauncher.ts";
 
-// oxlint-disable-next-line vetra/no-global-process-runtime -- This test launches a real host executable.
+// oxlint-disable-next-line t3code/no-global-process-runtime -- This test launches a real host executable.
 const hostPlatform = NodeOS.platform();
-// oxlint-disable-next-line vetra/no-global-process-runtime -- Match the real executable used by the subprocess.
+// oxlint-disable-next-line t3code/no-global-process-runtime -- Match the real executable used by the subprocess.
 const hostArch = NodeOS.arch();
 
 // The fixture executable uses a POSIX shebang. The wrapper itself also runs on Windows.

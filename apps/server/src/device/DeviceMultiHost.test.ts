@@ -1,5 +1,5 @@
 import { expect, it } from "@effect/vitest";
-import { ThreadId } from "@vetra-code/contracts";
+import { ThreadId } from "@t3tools/contracts";
 import * as Deferred from "effect/Deferred";
 import * as Fiber from "effect/Fiber";
 import * as Effect from "effect/Effect";

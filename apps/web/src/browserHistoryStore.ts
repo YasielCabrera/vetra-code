@@ -1,10 +1,10 @@
-import { scopedThreadKey } from "@vetra-code/client-runtime/environment";
-import type { ScopedThreadRef } from "@vetra-code/contracts";
+import { scopedThreadKey } from "@t3tools/client-runtime/environment";
+import type { ScopedThreadRef } from "@t3tools/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 
-import { normalizePreviewUrl } from "@vetra-code/shared/preview";
+import { normalizePreviewUrl } from "@t3tools/shared/preview";
 import { readPreparedConnection } from "~/state/session";
 
 import { isLocalLoopbackHost, normalizeHostname } from "./browser/browserTargetResolver";

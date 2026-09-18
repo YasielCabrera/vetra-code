@@ -4,13 +4,13 @@ import {
   ANTIGRAVITY_DEFAULT_MODEL,
   ProviderInstanceId,
   type AntigravitySettings,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   HostProcessEnvironment,
   HostProcessExecutablePath,
   HostProcessIsExecutable,
   HostProcessPlatform,
-} from "@vetra-code/shared/hostProcess";
+} from "@t3tools/shared/hostProcess";
 import * as Effect from "effect/Effect";
 import * as Deferred from "effect/Deferred";
 import * as Fiber from "effect/Fiber";

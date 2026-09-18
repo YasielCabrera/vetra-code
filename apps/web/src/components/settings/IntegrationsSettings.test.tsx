@@ -2,7 +2,7 @@ import {
   DEFAULT_CLIENT_SETTINGS,
   DEFAULT_UNIFIED_SETTINGS,
   type DeviceServiceState,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   createMemoryHistory,
   createRootRoute,

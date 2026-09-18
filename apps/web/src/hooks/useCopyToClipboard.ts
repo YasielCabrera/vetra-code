@@ -3,7 +3,7 @@ import * as Schema from "effect/Schema";
 import {
   COMPOSER_CONTEXT_CLIPBOARD_MIME,
   encodeComposerContextClipboardHtml,
-} from "@vetra-code/shared/composerContextClipboard";
+} from "@t3tools/shared/composerContextClipboard";
 
 export class ClipboardApiUnavailableError extends Schema.TaggedError<ClipboardApiUnavailableError>()(
   "ClipboardApiUnavailableError",

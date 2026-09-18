@@ -1,5 +1,5 @@
-import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
-import { type EnvironmentId, ThreadId } from "@vetra-code/contracts";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { type EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {

@@ -23,12 +23,12 @@ import {
   type ServerProviderModel,
   type ServerSettings,
   type ServerProviderState,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   normalizeProviderAccentColor,
   resolveProviderInstanceDisplayName,
   shouldShowInstanceBadge,
-} from "@vetra-code/client-runtime/state/provider-instance-display";
+} from "@t3tools/client-runtime/state/provider-instance-display";
 
 export { normalizeProviderAccentColor, shouldShowInstanceBadge };
 

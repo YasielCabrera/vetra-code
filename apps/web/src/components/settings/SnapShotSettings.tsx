@@ -6,7 +6,7 @@ import {
   type DesktopSnapShotState,
   type DesktopSnapShotSetupAction,
   type SnapShotShortcut,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { ChevronDownIcon, PlayIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 

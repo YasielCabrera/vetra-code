@@ -9,9 +9,9 @@ import * as Path from "effect/Path";
 import * as Stream from "effect/Stream";
 import type * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
 import { describe, expect, it } from "vite-plus/test";
-import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
-import { ProviderDriverKind, ProviderInstanceId, type CursorSettings } from "@vetra-code/contracts";
-import { createModelCapabilities } from "@vetra-code/shared/model";
+import type * as EffectAcpSchema from "effect-acp/schema";
+import { ProviderDriverKind, ProviderInstanceId, type CursorSettings } from "@t3tools/contracts";
+import { createModelCapabilities } from "@t3tools/shared/model";
 
 import {
   buildCursorProviderSnapshot,
@@ -34,7 +34,7 @@ import {
   rewriteCursorSkillMentions,
 } from "../Drivers/CursorSkills.ts";
 import { execScriptSource, writeFakeCli } from "../../testUtils/fakeCli.ts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 import { cursorUsageResponseToLimits, readCursorUsageLimits } from "./cursorUsageLimits.ts";
 

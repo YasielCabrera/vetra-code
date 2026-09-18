@@ -2,7 +2,7 @@ import type {
   EnvironmentId,
   PowerhouseReactorDocumentViewFilter,
   PowerhouseReactorOperation,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 

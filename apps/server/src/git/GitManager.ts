@@ -33,11 +33,11 @@ import {
   SourceControlProviderError,
   type SourceControlWritingStyleSettings,
   type ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   hasProjectSettingsOverrides,
   resolveProjectSettings,
-} from "@vetra-code/shared/projectSettings";
+} from "@t3tools/shared/projectSettings";
 import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import {
   detectSourceControlProviderFromGitRemoteUrl,
@@ -46,15 +46,15 @@ import {
   resolveAutoFeatureBranchName,
   sanitizeBranchFragment,
   sanitizeFeatureBranchName,
-} from "@vetra-code/shared/git";
-import { PRODUCT_SLUG, PRODUCT_WORKTREE_BRANCH_PREFIX } from "@vetra-code/shared/productIdentity";
+} from "@t3tools/shared/git";
+import { PRODUCT_SLUG, PRODUCT_WORKTREE_BRANCH_PREFIX } from "@t3tools/shared/productIdentity";
 import {
   getChangeRequestTerminologyForKind,
   isSshRemoteUrl,
   type ChangeRequestTerminology,
-} from "@vetra-code/shared/sourceControl";
+} from "@t3tools/shared/sourceControl";
 
-import { GitManagerError, GitPullRequestMaterializationError } from "@vetra-code/contracts";
+import { GitManagerError, GitPullRequestMaterializationError } from "@t3tools/contracts";
 import * as TextGeneration from "../textGeneration/TextGeneration.ts";
 import {
   conventionalCommitsTextGenerationPolicy,
@@ -65,11 +65,11 @@ import * as ProjectSetupScriptRunner from "../project/ProjectSetupScriptRunner.t
 import * as ProviderRegistry from "../provider/Services/ProviderRegistry.ts";
 import { extractBranchNameFromRemoteRef } from "./remoteRefs.ts";
 import * as ServerSettings from "../serverSettings.ts";
-import type { GitManagerServiceError } from "@vetra-code/contracts";
+import type { GitManagerServiceError } from "@t3tools/contracts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
 import { detectPrTemplate } from "../sourceControl/PrTemplateDetection.ts";
-import type { ChangeRequest } from "@vetra-code/contracts";
+import type { ChangeRequest } from "@t3tools/contracts";
 
 export interface GitActionProgressReporter {
   readonly publish: (event: GitActionProgressEvent) => Effect.Effect<void, never>;
@@ -129,7 +129,7 @@ export class GitManager extends Context.Service<
       options?: GitRunStackedActionOptions,
     ) => Effect.Effect<GitRunStackedActionResult, GitManagerServiceError>;
   }
->()("@vetra-code/server/git/GitManager") {}
+>()("t3/git/GitManager") {}
 
 const COMMIT_TIMEOUT_MS = 10 * 60_000;
 const MAX_PROGRESS_TEXT_LENGTH = 500;

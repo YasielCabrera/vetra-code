@@ -11,7 +11,7 @@ import {
  * Inline context records: the typed payload behind every composer chip.
  * A message's `text` carries position through canonical reference links
  * (`[label](vetra-context://v1/<kind>/<contextId>)`, see
- * `@vetra-code/shared/composerContextReferences`); these records carry the payload,
+ * `@t3tools/shared/composerContextReferences`); these records carry the payload,
  * keyed by `contextId`. Bytes never live here: image and file records bind to a
  * `ChatAttachment` by id.
  */

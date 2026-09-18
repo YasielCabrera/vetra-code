@@ -1,14 +1,14 @@
 import {
   requestKindFromRequestType,
   type PendingApproval,
-} from "@vetra-code/client-runtime/pending-requests";
-import { UserInputAttachmentAnswerPayload } from "@vetra-code/contracts";
-import { foldUserInputActivities } from "@vetra-code/client-runtime/work-log/user-input";
+} from "@t3tools/client-runtime/pending-requests";
+import { UserInputAttachmentAnswerPayload } from "@t3tools/contracts";
+import { foldUserInputActivities } from "@t3tools/client-runtime/work-log/user-input";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Arr from "effect/Array";
 import { shallow } from "zustand/vanilla/shallow";
-import { isBackgroundTaskActivity } from "@vetra-code/client-runtime/state/subagentRuntime";
+import { isBackgroundTaskActivity } from "@t3tools/client-runtime/state/subagentRuntime";
 import {
   commandDetailRepeatsCommand,
   extractCommandOutputText,
@@ -18,8 +18,8 @@ import {
   workEntryIndicatesToolSuccess,
   workLogEntryIsToolLike,
   type WorkLogToolLifecycleStatus,
-} from "@vetra-code/client-runtime/work-log/presentation";
-import { extractToolActivityPresentation } from "@vetra-code/client-runtime/work-log/tool-presentation";
+} from "@t3tools/client-runtime/work-log/presentation";
+import { extractToolActivityPresentation } from "@t3tools/client-runtime/work-log/tool-presentation";
 import {
   isToolLifecycleItemType,
   type AssetResource,
@@ -29,7 +29,7 @@ import {
   type ToolLifecycleItemType,
   type ThreadId,
   type TurnId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import {
   isImageAttachment,
@@ -42,19 +42,16 @@ import {
   type TurnDiffSummary,
 } from "./types";
 
-export type {
-  PendingApproval,
-  PendingUserInput,
-} from "@vetra-code/client-runtime/pending-requests";
+export type { PendingApproval, PendingUserInput } from "@t3tools/client-runtime/pending-requests";
 
-export { formatDuration } from "@vetra-code/shared/orchestrationTiming";
+export { formatDuration } from "@t3tools/shared/orchestrationTiming";
 
 export {
   workEntryDisplayIndicatesToolFailure,
   workEntryIndicatesToolSuccess,
   workLogEntryIsToolLike,
   type WorkLogToolLifecycleStatus,
-} from "@vetra-code/client-runtime/work-log/presentation";
+} from "@t3tools/client-runtime/work-log/presentation";
 
 export interface WorkLogEntry {
   questionAnswer?: UserInputAttachmentAnswerPayload;
@@ -71,9 +68,9 @@ export interface WorkLogEntry {
   changedFiles?: ReadonlyArray<string>;
   tone: "thinking" | "tool" | "info" | "error";
   toolTitle?: string;
-  toolSurface?: import("@vetra-code/contracts").ToolActivitySurface;
-  toolIcon?: import("@vetra-code/contracts").ToolActivityIcon;
-  toolSource?: import("@vetra-code/contracts").ToolActivitySource;
+  toolSurface?: import("@t3tools/contracts").ToolActivitySurface;
+  toolIcon?: import("@t3tools/contracts").ToolActivityIcon;
+  toolSource?: import("@t3tools/contracts").ToolActivitySource;
   toolData?: unknown;
   itemType?: ToolLifecycleItemType;
   requestKind?: PendingApproval["requestKind"];

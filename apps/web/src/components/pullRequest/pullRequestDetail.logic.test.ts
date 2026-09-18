@@ -1,5 +1,5 @@
 import { resolvePlanFollowUpSubmission } from "../../proposedPlan";
-import { serializeLegacyContextMessage } from "@vetra-code/shared/composerContextLegacySend";
+import { serializeLegacyContextMessage } from "@t3tools/shared/composerContextLegacySend";
 import {
   ProjectId,
   PullRequestAction,
@@ -8,7 +8,7 @@ import {
   type PullRequestDetail,
   type PullRequestDetailView,
   type PullRequestReviewThread,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 import { formatInlineContextReference } from "~/lib/composerContextReferences";
 import { buildMessageContext, reviewCommentContextReference } from "~/lib/composerContextRecords";

@@ -3,7 +3,7 @@ import type {
   ProviderSubscriptionUsageDetail,
   ProviderSubscriptionUsageInstanceResult,
   ProviderSubscriptionUsageWindow,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
 

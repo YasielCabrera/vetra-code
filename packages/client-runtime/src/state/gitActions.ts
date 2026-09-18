@@ -2,7 +2,7 @@ import type {
   GitRunStackedActionInput,
   GitStackedAction,
   VcsStatusResult,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export type GitActionIconName = "commit" | "push" | "pr";
 

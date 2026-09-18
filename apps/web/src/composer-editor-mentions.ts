@@ -1,11 +1,11 @@
-import type { AssistantCitation } from "@vetra-code/contracts";
-import { collectAssistantCitations } from "@vetra-code/shared/assistantCitations";
-import { collectComposerContextReferences } from "@vetra-code/shared/composerContextReferences";
+import type { AssistantCitation } from "@t3tools/contracts";
+import { collectAssistantCitations } from "@t3tools/shared/assistantCitations";
+import { collectComposerContextReferences } from "@t3tools/shared/composerContextReferences";
 import {
   collectComposerInlineTokens,
   type ComposerInlineToken,
   type PowerhouseReferenceKind,
-} from "@vetra-code/shared/composerInlineTokens";
+} from "@t3tools/shared/composerInlineTokens";
 
 export type ComposerPromptSegment =
   | {

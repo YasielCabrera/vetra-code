@@ -1,4 +1,4 @@
-import type { PreviewAnnotationPayload } from "@vetra-code/contracts";
+import type { PreviewAnnotationPayload } from "@t3tools/contracts";
 import { create } from "zustand";
 
 import type { ComposerSubmissionIntent } from "./composer-logic";

@@ -1,7 +1,7 @@
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import type { SourceControlProviderKind } from "@vetra-code/contracts";
+import type { SourceControlProviderKind } from "@t3tools/contracts";
 
 import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 import * as GitHubIssueCli from "./GitHubIssueCli.ts";
@@ -14,7 +14,7 @@ export class IssueProviderRegistry extends Context.Service<
     readonly get: (kind: SourceControlProviderKind) => IssueProviderApi | null;
     readonly kinds: ReadonlyArray<SourceControlProviderKind>;
   }
->()("@vetra-code/server/issue/IssueProviderRegistry") {}
+>()("t3/issue/IssueProviderRegistry") {}
 
 export function fromProviders(
   providers: ReadonlyArray<IssueProviderApi>,

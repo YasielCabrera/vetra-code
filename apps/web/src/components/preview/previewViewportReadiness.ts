@@ -1,4 +1,4 @@
-import type { PreviewRenderedViewportSize, PreviewViewportSetting } from "@vetra-code/contracts";
+import type { PreviewRenderedViewportSize, PreviewViewportSetting } from "@t3tools/contracts";
 
 import { browserViewportSettingKey } from "~/browser/browserViewportLayout";
 

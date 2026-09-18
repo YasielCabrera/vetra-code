@@ -1,4 +1,4 @@
-import type { EnvironmentId, ProjectId } from "@vetra-code/contracts";
+import type { EnvironmentId, ProjectId } from "@t3tools/contracts";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 function createStorage(): Storage {

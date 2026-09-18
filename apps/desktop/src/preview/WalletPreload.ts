@@ -13,8 +13,8 @@
  * asynchronously, so a late-arriving provider would be found too — but plenty
  * of dapps only check `window.ethereum`.
  */
-import { installWeb3InpageProvider, WEB3_PROVIDER_ICON } from "@vetra-code/web3/inpage";
-import type { Web3InpageWindow, Web3ProviderEvent } from "@vetra-code/web3/inpage";
+import { installWeb3InpageProvider, WEB3_PROVIDER_ICON } from "@t3tools/web3/inpage";
+import type { Web3InpageWindow, Web3ProviderEvent } from "@t3tools/web3/inpage";
 import { ipcRenderer } from "electron";
 
 import {

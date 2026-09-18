@@ -21,10 +21,10 @@ import {
   EnvironmentScopeRequiredError,
   EnvironmentAuthenticatedAuth,
   EnvironmentAuthenticatedPrincipal,
-} from "@vetra-code/contracts";
-import type { AuthEnvironmentScope, DpopFailureReason } from "@vetra-code/contracts";
-import { parseAllowedOAuthScope } from "@vetra-code/shared/oauthScope";
-import { causeErrorTag } from "@vetra-code/shared/observability";
+} from "@t3tools/contracts";
+import type { AuthEnvironmentScope, DpopFailureReason } from "@t3tools/contracts";
+import { parseAllowedOAuthScope } from "@t3tools/shared/oauthScope";
+import { causeErrorTag } from "@t3tools/shared/observability";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import { identity } from "effect/Function";

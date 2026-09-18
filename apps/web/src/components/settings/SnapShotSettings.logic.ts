@@ -1,8 +1,4 @@
-import type {
-  ClientSettingsPatch,
-  DesktopSnapShotState,
-  SnapShotSound,
-} from "@vetra-code/contracts";
+import type { ClientSettingsPatch, DesktopSnapShotState, SnapShotSound } from "@t3tools/contracts";
 import {
   captureSetupBackend,
   captureSetupDesktopName,

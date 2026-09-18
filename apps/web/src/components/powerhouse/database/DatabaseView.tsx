@@ -1,10 +1,10 @@
-import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
+import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import type {
   EnvironmentId,
   PowerhouseDatabaseRelationSummary,
   PowerhouseDatabaseSchemaSummary,
   PowerhouseDatabaseTarget,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   Braces,
   Columns3,

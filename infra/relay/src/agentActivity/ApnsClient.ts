@@ -1,4 +1,4 @@
-import type { RelayAgentActivityAggregateState } from "@vetra-code/contracts/relay";
+import type { RelayAgentActivityAggregateState } from "@t3tools/contracts/relay";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -221,7 +221,7 @@ export class ApnsClient extends Context.Service<
       readonly issuedAtUnixSeconds: number;
     }) => Effect.Effect<ApnsDeliveryResult, ApnsError>;
   }
->()("@vetra-code/relay/agentActivity/ApnsClient") {}
+>()("t3code-relay/agentActivity/ApnsClient") {}
 
 export const make = Effect.gen(function* () {
   const httpClient = yield* HttpClient.HttpClient;

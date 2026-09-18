@@ -1,4 +1,4 @@
-import type { EnvironmentId, PullRequestLinkedThreadsResult } from "@vetra-code/contracts";
+import type { EnvironmentId, PullRequestLinkedThreadsResult } from "@t3tools/contracts";
 
 export interface CommandPaletteLinkedThreads {
   readonly environmentId: EnvironmentId;

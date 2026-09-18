@@ -1,17 +1,17 @@
 import { useParams } from "@tanstack/react-router";
-import { scopeProjectRef } from "@vetra-code/client-runtime/environment";
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
 import {
   type AtomCommandResult,
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import {
   projectCloneDisplayName,
   projectCloneProgressSummary,
   type EnvironmentId,
   type ProjectCloneSnapshot,
   type ProjectId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { useCallback, useEffect, useRef } from "react";
 
 import { useNewThreadHandler } from "../hooks/useHandleNewThread";

@@ -1,6 +1,6 @@
 import { RefreshIcon } from "~/components/ui/refresh-icon";
 import { Spinner } from "~/components/ui/spinner";
-import { pullRequestHostOf, resolveEnvironmentMachineKind } from "@vetra-code/contracts";
+import { pullRequestHostOf, resolveEnvironmentMachineKind } from "@t3tools/contracts";
 import type {
   EnvironmentId,
   ProjectId,
@@ -11,7 +11,7 @@ import type {
   PullRequestListResult,
   PullRequestListState,
   SourceControlProviderKind,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {

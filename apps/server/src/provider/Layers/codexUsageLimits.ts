@@ -11,10 +11,10 @@ import type {
   ServerProviderResetCredits,
   ServerProviderUsageLimits,
   ServerProviderUsageWindow,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
-import type * as CodexErrors from "@vetra-code/effect-codex-app-server/errors";
+import type * as CodexErrors from "effect-codex-app-server/errors";
 
 import { clampPercent, makeUsageLimits } from "../providerUsageLimits.ts";
 

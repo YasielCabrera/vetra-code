@@ -7,10 +7,10 @@ import {
   type ChatAttachment,
   type ModelSelection,
   type OpenCodeSettings,
-} from "@vetra-code/contracts";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@vetra-code/shared/git";
-import { getModelSelectionStringOptionValue } from "@vetra-code/shared/model";
-import { extractJsonObject } from "@vetra-code/shared/schemaJson";
+} from "@t3tools/contracts";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@t3tools/shared/git";
+import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
+import { extractJsonObject } from "@t3tools/shared/schemaJson";
 
 import * as ServerConfig from "../config.ts";
 import { resolveAttachmentPath } from "../attachmentStore.ts";

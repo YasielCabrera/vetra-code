@@ -2,12 +2,12 @@
 import * as NodeChildProcess from "node:child_process";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { ProviderInstanceId } from "@vetra-code/contracts";
+import { ProviderInstanceId } from "@t3tools/contracts";
 import {
   HostProcessExecutablePath,
   HostProcessIsExecutable,
   HostProcessPlatform,
-} from "@vetra-code/shared/hostProcess";
+} from "@t3tools/shared/hostProcess";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -18,8 +18,8 @@ import * as Stream from "effect/Stream";
 import * as Ndjson from "effect/unstable/encoding/Ndjson";
 import * as ChildProcess from "effect/unstable/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
-import * as AcpErrors from "@vetra-code/effect-acp/errors";
-import { symlinksSupported } from "@vetra-code/shared/testing/symlinks";
+import * as AcpErrors from "effect-acp/errors";
+import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
 
 import {
   ANTIGRAVITY_AUTH_BROWSER_MARKER,

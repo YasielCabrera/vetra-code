@@ -1,6 +1,6 @@
-import { withDeviceHubQuery } from "@vetra-code/client-runtime/state/deviceHubAccess";
-import type { DeviceHubAccess } from "@vetra-code/client-runtime/state/deviceHubAccess";
-import type { DevicePlatform } from "@vetra-code/contracts";
+import { withDeviceHubQuery } from "@t3tools/client-runtime/state/deviceHubAccess";
+import type { DeviceHubAccess } from "@t3tools/client-runtime/state/deviceHubAccess";
+import type { DevicePlatform } from "@t3tools/contracts";
 
 /**
  * Read-only hub endpoints the Tools drawer consumes directly: the accessibility

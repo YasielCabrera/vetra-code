@@ -2,9 +2,9 @@ import {
   connectLoopbackRedirectUri,
   CONNECT_OAUTH_SCOPES,
   DEFAULT_HOSTED_APP_URL,
-} from "@vetra-code/shared/connectAuth";
-import { clerkFrontendApiUrlFromPublishableKey } from "@vetra-code/shared/relayAuth";
-import { normalizeSecureRelayUrl } from "@vetra-code/shared/relayUrl";
+} from "@t3tools/shared/connectAuth";
+import { clerkFrontendApiUrlFromPublishableKey } from "@t3tools/shared/relayAuth";
+import { normalizeSecureRelayUrl } from "@t3tools/shared/relayUrl";
 import * as Config from "effect/Config";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";

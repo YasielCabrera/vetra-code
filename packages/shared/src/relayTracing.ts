@@ -23,7 +23,7 @@ export interface RelayClientTracingResource {
 }
 
 export class RelayClientTracer extends Context.Reference(
-  "@vetra-code/shared/relayTracing/RelayClientTracer",
+  "@t3tools/shared/relayTracing/RelayClientTracer",
   {
     defaultValue: () => Option.none<Tracer.Tracer>(),
   },

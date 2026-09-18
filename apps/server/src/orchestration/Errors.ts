@@ -1,4 +1,4 @@
-import { ThreadId } from "@vetra-code/contracts";
+import { ThreadId } from "@t3tools/contracts";
 import * as SchemaIssue from "effect/SchemaIssue";
 import * as Schema from "effect/Schema";
 

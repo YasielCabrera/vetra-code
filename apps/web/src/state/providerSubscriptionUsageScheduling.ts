@@ -1,4 +1,4 @@
-import type { EnvironmentId, ProviderUsageRefreshIntervalMinutes } from "@vetra-code/contracts";
+import type { EnvironmentId, ProviderUsageRefreshIntervalMinutes } from "@t3tools/contracts";
 
 import type { EnvironmentProviderSubscriptionUsageStatus } from "./providerSubscriptionUsage";
 

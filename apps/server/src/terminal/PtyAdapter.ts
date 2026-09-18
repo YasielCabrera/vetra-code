@@ -63,4 +63,4 @@ export class PtyAdapter extends Context.Service<
      */
     readonly spawn: (input: PtySpawnInput) => Effect.Effect<PtyProcess, PtySpawnError>;
   }
->()("@vetra-code/server/terminal/PtyAdapter") {}
+>()("t3/terminal/PtyAdapter") {}

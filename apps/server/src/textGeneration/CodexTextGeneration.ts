@@ -13,9 +13,9 @@ import {
   type ModelSelection,
   type ServerProviderModel,
   TextGenerationError,
-} from "@vetra-code/contracts";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@vetra-code/shared/git";
-import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+} from "@t3tools/contracts";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@t3tools/shared/git";
+import { resolveSpawnCommand } from "@t3tools/shared/shell";
 
 import { resolveAttachmentPath } from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
@@ -35,7 +35,7 @@ import {
   sanitizeThreadTitle,
   toJsonSchemaObject,
 } from "./TextGenerationUtils.ts";
-import { codexModelFamily, getModelSelectionStringOptionValue } from "@vetra-code/shared/model";
+import { codexModelFamily, getModelSelectionStringOptionValue } from "@t3tools/shared/model";
 import { getCodexServiceTierOptionValue } from "../codexModelOptions.ts";
 
 const CODEX_TIMEOUT_MS = 180_000;

@@ -5,7 +5,7 @@ import {
   EnvironmentId,
   ProviderInstanceId,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import { McpSchema, McpServer } from "effect/unstable/ai";

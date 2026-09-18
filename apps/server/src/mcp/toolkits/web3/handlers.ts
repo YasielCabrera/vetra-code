@@ -12,8 +12,8 @@ import type {
   PreviewAutomationWalletRequestList,
   PreviewAutomationWalletResolution,
   PreviewTabId,
-} from "@vetra-code/contracts";
-import { PreviewWalletDisabledError, type Web3WalletStatus } from "@vetra-code/web3/schema";
+} from "@t3tools/contracts";
+import { PreviewWalletDisabledError, type Web3WalletStatus } from "@t3tools/web3/schema";
 import * as Effect from "effect/Effect";
 
 import * as ServerSettings from "../../../serverSettings.ts";

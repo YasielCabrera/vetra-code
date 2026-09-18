@@ -5,8 +5,8 @@ import {
   type ProviderInstanceId,
   ProviderSetupError,
   type ProviderSetupInput,
-} from "@vetra-code/contracts";
-import { resolveCommandPath } from "@vetra-code/shared/shell";
+} from "@t3tools/contracts";
+import { resolveCommandPath } from "@t3tools/shared/shell";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";

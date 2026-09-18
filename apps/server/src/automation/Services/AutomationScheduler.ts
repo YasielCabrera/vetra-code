@@ -34,4 +34,4 @@ export interface AutomationSchedulerShape {
 export class AutomationScheduler extends Context.Service<
   AutomationScheduler,
   AutomationSchedulerShape
->()("@vetra-code/server/automation/Services/AutomationScheduler") {}
+>()("t3/automation/Services/AutomationScheduler") {}

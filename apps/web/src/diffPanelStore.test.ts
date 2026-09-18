@@ -1,5 +1,5 @@
-import { scopeThreadRef } from "@vetra-code/client-runtime/environment";
-import { EnvironmentId, ThreadId, TurnId } from "@vetra-code/contracts";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { EnvironmentId, ThreadId, TurnId } from "@t3tools/contracts";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { selectThreadDiffPanelSelection, useDiffPanelStore } from "./diffPanelStore";

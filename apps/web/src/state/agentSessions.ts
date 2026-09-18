@@ -1,8 +1,8 @@
-import { WS_METHODS } from "@vetra-code/contracts";
+import { WS_METHODS } from "@t3tools/contracts";
 import {
   createEnvironmentRpcCommand,
   createEnvironmentRpcQueryAtomFamily,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

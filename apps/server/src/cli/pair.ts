@@ -13,14 +13,14 @@ import {
   AuthStandardClientScopes,
   ExecutionEnvironmentDescriptor,
   PortSchema,
-} from "@vetra-code/contracts";
-import { resolveWorktreeVetraHome } from "@vetra-code/shared/devHome";
+} from "@t3tools/contracts";
+import { resolveWorktreeVetraHome } from "@t3tools/shared/devHome";
 import {
   buildTailscaleHttpsBaseUrl,
   DEFAULT_TAILSCALE_SERVE_PORT,
   ensureTailscaleServe,
   readTailscaleStatus,
-} from "@vetra-code/tailscale";
+} from "@t3tools/tailscale";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
 import * as DateTime from "effect/DateTime";

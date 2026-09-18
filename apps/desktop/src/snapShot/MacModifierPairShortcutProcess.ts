@@ -2,7 +2,7 @@
 
 import * as NodeChildProcess from "node:child_process";
 
-import type { SnapShotModifier } from "@vetra-code/contracts";
+import type { SnapShotModifier } from "@t3tools/contracts";
 
 const MAC_MODIFIER_PAIR_DEVICE_MASKS: Record<SnapShotModifier, readonly [number, number]> = {
   shift: [0x2, 0x4],

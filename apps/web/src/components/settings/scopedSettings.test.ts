@@ -3,10 +3,10 @@ import {
   EnvironmentId,
   ProjectId,
   type ServerSettings,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
-import { applyServerSettingsPatch } from "@vetra-code/shared/serverSettings";
-import { resolveWorktreeCleanup } from "@vetra-code/shared/projectSettings";
+import { applyServerSettingsPatch } from "@t3tools/shared/serverSettings";
+import { resolveWorktreeCleanup } from "@t3tools/shared/projectSettings";
 
 import type { SidebarProjectSnapshot } from "../../sidebarProjectGrouping";
 import {

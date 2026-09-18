@@ -1,4 +1,4 @@
-import { OrchestrationGetSnapshotError } from "@vetra-code/contracts";
+import { OrchestrationGetSnapshotError } from "@t3tools/contracts";
 import * as Arr from "effect/Array";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

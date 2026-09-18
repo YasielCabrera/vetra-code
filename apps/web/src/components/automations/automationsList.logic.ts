@@ -1,6 +1,6 @@
-import { scopeThreadRef, scopedThreadKey } from "@vetra-code/client-runtime/environment";
-import type { EnvironmentAutomation } from "@vetra-code/client-runtime/state/automations";
-import type { EnvironmentThreadShell } from "@vetra-code/client-runtime/state/models";
+import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
+import type { EnvironmentAutomation } from "@t3tools/client-runtime/state/automations";
+import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 
 import { describeAutomationSchedule } from "./automationSchedule.logic";
 

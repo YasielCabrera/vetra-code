@@ -1,4 +1,4 @@
-import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-code/shared/productIdentity";
+import { PRODUCT_HOME_DIRECTORY_NAME } from "@t3tools/shared/productIdentity";
 
 import { AGENT_DEVICE_VERSION, DEVICE_HUB_VERSION } from "./DeviceToolchain.ts";
 

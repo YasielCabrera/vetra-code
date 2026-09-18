@@ -1,5 +1,5 @@
 {
-  "name": "@vetra-code/oxlint-plugin-vetra",
+  "name": "@t3tools/oxlint-plugin-t3code",
   "private": true,
   "type": "module",
   "scripts": {

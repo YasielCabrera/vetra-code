@@ -1,4 +1,4 @@
-import type { PowerhouseReferenceKind } from "@vetra-code/shared/composerInlineTokens";
+import type { PowerhouseReferenceKind } from "@t3tools/shared/composerInlineTokens";
 import { FileText, Folder, HardDrive } from "lucide-react";
 
 import {

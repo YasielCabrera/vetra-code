@@ -7,10 +7,10 @@ import {
   type ServerLifecycleWelcomePayload,
   type ServerProvider,
   type ServerSettings,
-} from "@vetra-code/contracts";
-import { createServerEnvironmentAtoms } from "@vetra-code/client-runtime/state/server";
-import { createEnvironmentServerConfigsAtom } from "@vetra-code/client-runtime/state/shell";
-import { mergeWithDefaultKeybindings } from "@vetra-code/shared/keybindings";
+} from "@t3tools/contracts";
+import { createServerEnvironmentAtoms } from "@t3tools/client-runtime/state/server";
+import { createEnvironmentServerConfigsAtom } from "@t3tools/client-runtime/state/shell";
+import { mergeWithDefaultKeybindings } from "@t3tools/shared/keybindings";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 

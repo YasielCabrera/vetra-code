@@ -1,4 +1,4 @@
-import type { DesktopBridge } from "@vetra-code/contracts";
+import type { DesktopBridge } from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {

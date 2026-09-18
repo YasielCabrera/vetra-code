@@ -16,7 +16,7 @@ import {
   type ThemeColors,
   type ThemeDefinition,
   type ThemeVariants,
-} from "@vetra-code/shared/themePalettes";
+} from "@t3tools/shared/themePalettes";
 
 export { EMBER_THEME, GROVE_THEME, IRIS_THEME, OCEAN_THEME, VETRA_CHAT_THEME, THEME_COLOR_ROLES };
 export type { ThemeAppearance, ThemeColorRole, ThemeColors, ThemeDefinition, ThemeVariants };

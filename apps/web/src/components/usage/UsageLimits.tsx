@@ -6,7 +6,7 @@ import {
   ServerProviderResetCredits,
   ServerProviderUsageWindow,
   UsageProviderKind,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
 import {
   elapsedShare,
@@ -15,7 +15,7 @@ import {
   type LimitPace,
   paceOf,
   remainingPercent,
-} from "@vetra-code/shared/usageLimits";
+} from "@t3tools/shared/usageLimits";
 import { GaugeIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 import { Fragment, useState } from "react";
 

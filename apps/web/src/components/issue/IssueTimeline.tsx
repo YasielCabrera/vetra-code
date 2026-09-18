@@ -3,7 +3,7 @@ import type {
   IssueActivity,
   IssueTimelineComment,
   IssueTimelineEvent,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   ArchiveRestoreIcon,
   CircleDotIcon,

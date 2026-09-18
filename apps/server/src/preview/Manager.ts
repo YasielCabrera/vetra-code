@@ -25,12 +25,12 @@ import {
   PreviewSessionLookupError,
   type PreviewSessionSnapshot,
   type PreviewViewportSetting,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   isPreviewUrlNormalizationError,
   newPreviewTabId,
   normalizePreviewUrl,
-} from "@vetra-code/shared/preview";
+} from "@t3tools/shared/preview";
 import * as NodeCrypto from "node:crypto";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -58,7 +58,7 @@ export class PreviewManager extends Context.Service<
     readonly events: Stream.Stream<PreviewEvent>;
     readonly subscribeEvents: Effect.Effect<PubSub.Subscription<PreviewEvent>, never, Scope.Scope>;
   }
->()("@vetra-code/server/preview/Manager/PreviewManager") {}
+>()("t3/preview/Manager/PreviewManager") {}
 
 interface PreviewSessionState {
   readonly threadId: string;

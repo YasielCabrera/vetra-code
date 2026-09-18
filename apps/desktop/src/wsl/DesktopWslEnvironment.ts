@@ -9,9 +9,9 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
-import { buildRemoteNodeEnvScript } from "@vetra-code/ssh/tunnel";
-import { PRODUCT_HOME_DIRECTORY_NAME } from "@vetra-code/shared/productIdentity";
-import { satisfiesSemverRange } from "@vetra-code/shared/semver";
+import { buildRemoteNodeEnvScript } from "@t3tools/ssh/tunnel";
+import { PRODUCT_HOME_DIRECTORY_NAME } from "@t3tools/shared/productIdentity";
+import { satisfiesSemverRange } from "@t3tools/shared/semver";
 
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import { parseWslDistroList, type WslDistro } from "./wslPathParsing.ts";
@@ -135,7 +135,7 @@ export class DesktopWslEnvironment extends Context.Service<
       options?: EnsureWslNodePtyOptions,
     ) => Effect.Effect<EnsureWslNodePtyResult>;
   }
->()("@vetra-code/desktop/wsl/DesktopWslEnvironment") {}
+>()("@t3tools/desktop/wsl/DesktopWslEnvironment") {}
 
 const buildDistroArgs = (distro: string | null): ReadonlyArray<string> =>
   distro ? ["-d", distro] : [];

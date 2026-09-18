@@ -13,7 +13,7 @@ import {
   HostProcessEnvironment,
   HostProcessExecutablePath,
   HostProcessPlatform,
-} from "@vetra-code/shared/hostProcess";
+} from "@t3tools/shared/hostProcess";
 
 import { OpenCodeRuntime, OpenCodeRuntimeLive } from "./opencodeRuntime.ts";
 

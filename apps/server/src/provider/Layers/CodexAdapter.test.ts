@@ -17,8 +17,8 @@ import {
   type ProviderUserInputAnswers,
   ThreadId,
   TurnId,
-} from "@vetra-code/contracts";
-import { createModelSelection } from "@vetra-code/shared/model";
+} from "@t3tools/contracts";
+import { createModelSelection } from "@t3tools/shared/model";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it, vi } from "@effect/vitest";
 
@@ -33,7 +33,7 @@ import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
-import * as CodexErrors from "@vetra-code/effect-codex-app-server/errors";
+import * as CodexErrors from "effect-codex-app-server/errors";
 
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
@@ -52,7 +52,7 @@ const decodeCodexSettings = Schema.decodeSync(CodexSettings);
 
 // Test-local service tag so the rest of the file can keep using `yield* CodexAdapter`.
 class CodexAdapter extends Context.Service<CodexAdapter, CodexAdapterShape>()(
-  "@vetra-code/server/provider/Layers/CodexAdapter.test/CodexAdapter",
+  "t3/provider/Layers/CodexAdapter.test/CodexAdapter",
 ) {}
 
 const asThreadId = (value: string): ThreadId => ThreadId.make(value);

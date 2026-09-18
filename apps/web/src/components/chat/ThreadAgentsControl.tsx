@@ -7,8 +7,8 @@ import type {
   AgentControlGroup,
   AgentControlState,
   RuntimeSubagent,
-} from "@vetra-code/client-runtime/state/subagentRuntime";
-import { agentControlAriaLabel } from "@vetra-code/client-runtime/state/subagentRuntime";
+} from "@t3tools/client-runtime/state/subagentRuntime";
+import { agentControlAriaLabel } from "@t3tools/client-runtime/state/subagentRuntime";
 import { Bot } from "lucide-react";
 import { memo, useState } from "react";
 

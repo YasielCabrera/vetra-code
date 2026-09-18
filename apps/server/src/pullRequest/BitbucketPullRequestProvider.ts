@@ -1,5 +1,5 @@
 import * as Effect from "effect/Effect";
-import type { PullRequestCapabilities, PullRequestViewerPermissions } from "@vetra-code/contracts";
+import type { PullRequestCapabilities, PullRequestViewerPermissions } from "@t3tools/contracts";
 
 import * as BitbucketPullRequestApi from "./BitbucketPullRequestApi.ts";
 import {

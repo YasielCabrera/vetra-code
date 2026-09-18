@@ -1,4 +1,4 @@
-import type { HostResourcesSnapshot } from "@vetra-code/contracts";
+import type { HostResourcesSnapshot } from "@t3tools/contracts";
 
 /** Callers supply only connected machines hosting the project and selected provider. */
 export function chooseLoadBalancedEnvironment(

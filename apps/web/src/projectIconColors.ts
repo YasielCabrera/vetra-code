@@ -1,4 +1,4 @@
-import type { ProjectIconColor } from "@vetra-code/contracts";
+import type { ProjectIconColor } from "@t3tools/contracts";
 
 export const PROJECT_ICON_COLORS: ReadonlyArray<{
   readonly value: ProjectIconColor;

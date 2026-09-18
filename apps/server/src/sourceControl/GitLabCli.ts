@@ -11,7 +11,7 @@ import {
   TrimmedNonEmptyString,
   type SourceControlRepositoryVisibility,
   type VcsError,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import {
@@ -316,7 +316,7 @@ export class GitLabCli extends Context.Service<
       readonly force?: boolean;
     }) => Effect.Effect<void, GitLabCliError>;
   }
->()("@vetra-code/server/sourceControl/GitLabCli") {}
+>()("t3/sourceControl/GitLabCli") {}
 
 const RawGitLabRepositoryCloneUrlsSchema = Schema.Struct({
   path_with_namespace: TrimmedNonEmptyString,

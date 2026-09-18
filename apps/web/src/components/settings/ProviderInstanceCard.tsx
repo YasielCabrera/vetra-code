@@ -24,13 +24,13 @@ import {
   type ProviderDriverKind,
   type ServerProvider,
   type ServerProviderModel,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import {
   type CustomModelDefinition,
   readCustomModelEntries,
   toCustomModelSetting,
-} from "@vetra-code/shared/model";
+} from "@t3tools/shared/model";
 import { cn } from "../../lib/utils";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import { normalizeProviderAccentColor } from "../../providerInstances";

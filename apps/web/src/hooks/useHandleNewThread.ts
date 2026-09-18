@@ -3,12 +3,8 @@ import {
   scopedProjectKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@vetra-code/client-runtime/environment";
-import {
-  DEFAULT_SERVER_SETTINGS,
-  type ScopedProjectRef,
-  type ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/environment";
+import { DEFAULT_SERVER_SETTINGS, type ScopedProjectRef, type ThreadId } from "@t3tools/contracts";
 import { useParams, useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 import {
@@ -26,8 +22,8 @@ import {
   getProjectOrderKey,
   selectProjectGroupingSettings,
 } from "../logicalProject";
-import { resolveProjectSettings } from "@vetra-code/shared/projectSettings";
-import { resolveDefaultThreadEnvMode } from "@vetra-code/shared/threadEnvMode";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
+import { resolveDefaultThreadEnvMode } from "@t3tools/shared/threadEnvMode";
 import { readProjects, readThreadShell, useProjects, useThread } from "../state/entities";
 import {
   hasExplicitComposerModelSelection,

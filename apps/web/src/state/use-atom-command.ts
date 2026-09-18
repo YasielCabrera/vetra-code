@@ -4,7 +4,7 @@ import {
   type AtomCommandOptions,
   type AtomCommandResult,
   runAtomCommand,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import { useCallback, useContext } from "react";
 
 export function useAtomCommand<A, E, W>(

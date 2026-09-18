@@ -1,12 +1,12 @@
 import {
   normalizeThreadPullRequestKey,
   threadPullRequestKeysEqual,
-} from "@vetra-code/shared/threadPullRequests";
+} from "@t3tools/shared/threadPullRequests";
 import {
   PullRequestLinkedThreadsResult,
   PullRequestOperationError,
   type ThreadPullRequestKey,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/unstable/sql/SqlClient";

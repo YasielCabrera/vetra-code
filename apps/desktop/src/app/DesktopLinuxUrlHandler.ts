@@ -88,7 +88,7 @@ export class DesktopLinuxUrlHandler extends Context.Service<
   {
     readonly register: Effect.Effect<void>;
   }
->()("@vetra-code/desktop/app/DesktopLinuxUrlHandler") {}
+>()("@t3tools/desktop/app/DesktopLinuxUrlHandler") {}
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {

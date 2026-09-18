@@ -79,7 +79,7 @@ dependencies represented at their boundary rather than mocking internal behavior
 The relay deploys through Alchemy:
 
 ```sh
-vp run --filter @vetra-code/relay deploy
+vp run --filter t3code-relay deploy
 ```
 
 The stack provisions the Cloudflare Worker and queues, managed endpoint resources, database
@@ -96,8 +96,8 @@ PlanetScale branch and runtime role for local development, so deploy `prod` befo
 developer stages:
 
 ```sh
-vp run --filter @vetra-code/relay deploy -- --stage prod
-vp run --filter @vetra-code/relay deploy -- --env-file .env.local
+vp run --filter t3code-relay deploy -- --stage prod
+vp run --filter t3code-relay deploy -- --env-file .env.local
 ```
 
 Alchemy defaults personal deployments to the `dev_$USER` stage. Relay custom domains apply the same

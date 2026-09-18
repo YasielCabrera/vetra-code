@@ -211,7 +211,7 @@ export class AcpAgent extends Context.Service<
       handler: (payload: A) => Effect.Effect<void, AcpError.AcpError>,
     ) => Effect.Effect<void>;
   }
->()("@vetra-code/effect-acp/agent/AcpAgent") {}
+>()("effect-acp/agent/AcpAgent") {}
 
 interface AcpCoreAgentRequestHandlers {
   initialize?: (
@@ -255,7 +255,7 @@ interface AcpCoreAgentRequestHandlers {
 const decodeCancelNotification = Schema.decodeUnknownEffect(AcpSchema.CancelNotification);
 
 /** @public Service construction is part of the canonical Effect module API. */
-export const make = Effect.fn("@vetra-code/effect-acp/AcpAgent.make")(function* (
+export const make = Effect.fn("effect-acp/AcpAgent.make")(function* (
   stdio: Stdio.Stdio,
   options: AcpAgentOptions = {},
 ): Effect.fn.Return<AcpAgent["Service"], never, Scope.Scope> {

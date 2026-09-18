@@ -1,4 +1,4 @@
-import type { ProjectEntry, VcsStatusResult } from "@vetra-code/contracts";
+import type { ProjectEntry, VcsStatusResult } from "@t3tools/contracts";
 import type { GitStatus, GitStatusEntry } from "@pierre/trees";
 
 import { fileTreeAncestorDirectoryPaths } from "./filePath";

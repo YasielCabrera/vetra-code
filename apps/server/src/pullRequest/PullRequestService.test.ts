@@ -14,8 +14,8 @@ import type {
   PullRequestReviewCapabilities,
   PullRequestReviewerCapabilities,
   SourceControlProviderKind,
-} from "@vetra-code/contracts";
-import { PullRequestOperationError } from "@vetra-code/contracts";
+} from "@t3tools/contracts";
+import { PullRequestOperationError } from "@t3tools/contracts";
 
 import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";

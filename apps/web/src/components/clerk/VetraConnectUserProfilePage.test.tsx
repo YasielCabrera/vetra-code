@@ -1,5 +1,5 @@
-import type { EnvironmentId } from "@vetra-code/contracts";
-import type { RelayClientEnvironmentRecord } from "@vetra-code/contracts/relay";
+import type { EnvironmentId } from "@t3tools/contracts";
+import type { RelayClientEnvironmentRecord } from "@t3tools/contracts/relay";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vite-plus/test";
 

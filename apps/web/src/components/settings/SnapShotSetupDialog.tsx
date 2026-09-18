@@ -4,7 +4,7 @@ import {
   isModifierPairShortcut,
   type DesktopSnapShotSetupAction,
   type DesktopSnapShotState,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { useId, useState, type ReactNode } from "react";
 import { CaptureShortcutConfig } from "./CaptureShortcutConfig";
 import { Button } from "../ui/button";

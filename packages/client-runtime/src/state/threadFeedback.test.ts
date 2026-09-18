@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { MessageId } from "@vetra-code/contracts";
+import { MessageId } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/unstable/reactivity";
 

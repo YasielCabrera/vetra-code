@@ -1,18 +1,18 @@
 "use client";
 
-import { scopedThreadKey } from "@vetra-code/client-runtime/environment";
+import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import {
   DEFAULT_BROWSER_PROFILE_ID,
   FILL_PREVIEW_VIEWPORT,
   type PreviewAnnotationPayload,
   type PreviewViewportSetting,
   type ScopedThreadRef,
-} from "@vetra-code/contracts";
-import { normalizePreviewUrl } from "@vetra-code/shared/preview";
+} from "@t3tools/contracts";
+import { normalizePreviewUrl } from "@t3tools/shared/preview";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {

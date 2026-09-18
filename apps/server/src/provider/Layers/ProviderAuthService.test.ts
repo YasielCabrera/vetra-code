@@ -6,7 +6,7 @@ import {
   ThreadId,
   type ProviderAuthState,
   type ProviderSession,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Deferred from "effect/Deferred";
 import * as Fiber from "effect/Fiber";

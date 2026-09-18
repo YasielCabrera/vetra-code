@@ -1,4 +1,4 @@
-import { AuthSessionId } from "@vetra-code/contracts";
+import { AuthSessionId } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 

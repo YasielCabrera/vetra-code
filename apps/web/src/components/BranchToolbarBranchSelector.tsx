@@ -1,13 +1,13 @@
 import { useSupportsMultiplePullRequests } from "~/hooks/useSupportsMultiplePullRequests";
-import { resolveThreadCurrentPullRequestLink } from "@vetra-code/shared/threadPullRequests";
+import { resolveThreadCurrentPullRequestLink } from "@t3tools/shared/threadPullRequests";
 import { useRightPanelStore } from "../rightPanelStore";
 import { RefreshIcon } from "~/components/ui/refresh-icon";
-import { scopeProjectRef, scopeThreadRef } from "@vetra-code/client-runtime/environment";
+import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
-import type { ContextMenuItem, EnvironmentId, VcsRef, ThreadId } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/state/runtime";
+import type { ContextMenuItem, EnvironmentId, VcsRef, ThreadId } from "@t3tools/contracts";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { ChevronDownIcon, GitBranchIcon, SearchIcon } from "lucide-react";
 import {

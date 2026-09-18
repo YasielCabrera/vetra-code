@@ -1,17 +1,17 @@
 import type { ElementType } from "react";
-import type { SourceControlProviderInfo, SourceControlProviderKind } from "@vetra-code/contracts";
+import type { SourceControlProviderInfo, SourceControlProviderKind } from "@t3tools/contracts";
 export {
   DEFAULT_CHANGE_REQUEST_TERMINOLOGY,
   getChangeRequestTerminology,
   resolveChangeRequestPresentation,
   type ChangeRequestPresentation,
   type ChangeRequestTerminology,
-} from "@vetra-code/shared/sourceControl";
+} from "@t3tools/shared/sourceControl";
 import {
   getChangeRequestTerminology,
   resolveChangeRequestPresentation,
   type ChangeRequestTerminology,
-} from "@vetra-code/shared/sourceControl";
+} from "@t3tools/shared/sourceControl";
 import {
   AzureDevOpsIcon,
   BitbucketIcon,

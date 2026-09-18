@@ -1,4 +1,4 @@
-import type { DevicePlatformAvailability } from "@vetra-code/contracts";
+import type { DevicePlatformAvailability } from "@t3tools/contracts";
 import { Check, Minus } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
 

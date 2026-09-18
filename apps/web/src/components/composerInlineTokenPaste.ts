@@ -1,15 +1,15 @@
-import { ComposerContextId } from "@vetra-code/contracts";
-import type { ComposerContextClipboardFragment } from "@vetra-code/contracts";
+import { ComposerContextId } from "@t3tools/contracts";
+import type { ComposerContextClipboardFragment } from "@t3tools/contracts";
 import {
   COMPOSER_CONTEXT_CLIPBOARD_MIME,
   decodeComposerContextFragment,
   decodeComposerContextClipboardHtml,
-} from "@vetra-code/shared/composerContextClipboard";
+} from "@t3tools/shared/composerContextClipboard";
 import {
   collectComposerContextReferences,
   formatComposerContextReference,
   replaceComposerContextReferences,
-} from "@vetra-code/shared/composerContextReferences";
+} from "@t3tools/shared/composerContextReferences";
 /** Clipboard records referenced by the copied text, including dependent screenshots. */
 export function readPastedComposerContext(
   clipboardData: Pick<DataTransfer, "getData">,

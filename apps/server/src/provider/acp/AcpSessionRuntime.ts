@@ -16,11 +16,11 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import * as ChildProcess from "effect/unstable/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
-import * as EffectAcpClient from "@vetra-code/effect-acp/client";
-import * as EffectAcpErrors from "@vetra-code/effect-acp/errors";
-import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
-import type * as EffectAcpProtocol from "@vetra-code/effect-acp/protocol";
-import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+import * as EffectAcpClient from "effect-acp/client";
+import * as EffectAcpErrors from "effect-acp/errors";
+import type * as EffectAcpSchema from "effect-acp/schema";
+import type * as EffectAcpProtocol from "effect-acp/protocol";
+import { resolveSpawnCommand } from "@t3tools/shared/shell";
 
 import {
   collectSessionConfigOptionValues,
@@ -292,7 +292,7 @@ export class AcpSessionRuntime extends Context.Service<
       payload: unknown,
     ) => Effect.Effect<void, EffectAcpErrors.AcpError>;
   }
->()("@vetra-code/server/provider/acp/AcpSessionRuntime") {}
+>()("t3/provider/acp/AcpSessionRuntime") {}
 
 interface AcpStartedState extends AcpSessionRuntimeStartResult {}
 

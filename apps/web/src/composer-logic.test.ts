@@ -1,10 +1,10 @@
-import { filterComposerPullRequestMatches } from "@vetra-code/shared/composerPullRequestMatches";
-import { EnvironmentId, MessageId, ThreadId, type AssistantCitation } from "@vetra-code/contracts";
+import { filterComposerPullRequestMatches } from "@t3tools/shared/composerPullRequestMatches";
+import { EnvironmentId, MessageId, ThreadId, type AssistantCitation } from "@t3tools/contracts";
 import {
   collectAssistantCitations,
   expandAssistantCitationsForProvider,
   serializeAssistantCitation,
-} from "@vetra-code/shared/assistantCitations";
+} from "@t3tools/shared/assistantCitations";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

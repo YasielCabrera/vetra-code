@@ -1,7 +1,7 @@
 import {
   COMPOSER_CONTEXT_REVIEW_DIFF_MAX_CHARS,
   COMPOSER_CONTEXT_REVIEW_TEXT_MAX_CHARS,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import type {
   ComposerContextId,
   ComposerContextRecord,
@@ -16,13 +16,13 @@ import type {
   ReviewCommentContextRecord,
   TerminalContextRecord,
   ThreadId,
-} from "@vetra-code/contracts";
-import { upgradeLegacyContextMessage } from "@vetra-code/shared/composerContextLegacy";
-import { encodeComposerContextFragment } from "@vetra-code/shared/composerContextClipboard";
+} from "@t3tools/contracts";
+import { upgradeLegacyContextMessage } from "@t3tools/shared/composerContextLegacy";
+import { encodeComposerContextFragment } from "@t3tools/shared/composerContextClipboard";
 import {
   collectComposerContextReferences,
   sanitizeComposerContextLabel,
-} from "@vetra-code/shared/composerContextReferences";
+} from "@t3tools/shared/composerContextReferences";
 
 import {
   type ComposerContextReference,

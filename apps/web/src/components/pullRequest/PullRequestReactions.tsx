@@ -3,7 +3,7 @@ import type {
   PullRequestReaction,
   PullRequestReactionContent,
   PullRequestRef,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { SmilePlusIcon } from "lucide-react";
 import { useState } from "react";
 

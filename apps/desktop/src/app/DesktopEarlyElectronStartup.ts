@@ -1,10 +1,10 @@
-import { fromLenientJson } from "@vetra-code/shared/schemaJson";
+import { fromLenientJson } from "@t3tools/shared/schemaJson";
 import {
   PRODUCT_DESKTOP_APP_ID,
   PRODUCT_DESKTOP_DEV_APP_ID,
   PRODUCT_DESKTOP_DEV_USER_DATA_DIRECTORY_NAME,
   PRODUCT_DESKTOP_USER_DATA_DIRECTORY_NAME,
-} from "@vetra-code/shared/productIdentity";
+} from "@t3tools/shared/productIdentity";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 

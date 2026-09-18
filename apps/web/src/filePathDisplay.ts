@@ -3,8 +3,8 @@ import {
   formatFilePathPosition,
   splitFilePathPosition,
   stripSlashPrefixedWindowsDrive,
-} from "@vetra-code/client-runtime/markdown-links";
-import { isWindowsAbsolutePath } from "@vetra-code/shared/path";
+} from "@t3tools/client-runtime/markdown-links";
+import { isWindowsAbsolutePath } from "@t3tools/shared/path";
 
 function normalizePathSeparators(path: string): string {
   return path.replaceAll("\\", "/");

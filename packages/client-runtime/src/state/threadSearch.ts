@@ -3,7 +3,7 @@ import {
   OrchestrationSearchThreadsInput,
   type OrchestrationSearchThreadsResult,
   type OrchestrationThreadSearchMatch,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";

@@ -1,5 +1,5 @@
-import type { EnvironmentId, UsageLimitsReport } from "@vetra-code/contracts";
-import { limitsNotice } from "@vetra-code/shared/usageLimits";
+import type { EnvironmentId, UsageLimitsReport } from "@t3tools/contracts";
+import { limitsNotice } from "@t3tools/shared/usageLimits";
 import { GaugeIcon } from "lucide-react";
 
 import { getDriverOption } from "../settings/providerDriverMeta";

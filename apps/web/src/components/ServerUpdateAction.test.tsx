@@ -1,7 +1,7 @@
 import { act, type ReactElement } from "react";
 import { create, type ReactTestRenderer } from "react-test-renderer";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { EnvironmentId } from "@vetra-code/contracts";
+import type { EnvironmentId } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";

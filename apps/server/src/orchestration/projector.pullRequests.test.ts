@@ -8,7 +8,7 @@ import {
   type RepositoryIdentity,
   type ThreadPullRequestLink,
   type ThreadPullRequestSnapshot,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 

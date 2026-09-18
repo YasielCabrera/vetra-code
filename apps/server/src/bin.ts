@@ -5,8 +5,8 @@ import * as Layer from "effect/Layer";
 import { Argument, Command } from "effect/unstable/cli";
 import * as CliError from "effect/unstable/cli/CliError";
 
-import * as NetService from "@vetra-code/shared/Net";
-import { PRODUCT_CLI_NAME, PRODUCT_NAME } from "@vetra-code/shared/productIdentity";
+import * as NetService from "@t3tools/shared/Net";
+import { PRODUCT_CLI_NAME, PRODUCT_NAME } from "@t3tools/shared/productIdentity";
 import packageJson from "../package.json" with { type: "json" };
 import { authCommand } from "./cli/auth.ts";
 import { appCommand } from "./cli/app.ts";

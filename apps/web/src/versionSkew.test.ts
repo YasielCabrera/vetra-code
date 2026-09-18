@@ -1,5 +1,5 @@
-import { EnvironmentId } from "@vetra-code/contracts";
-import type { ServerUpdateState } from "@vetra-code/client-runtime/state/server";
+import { EnvironmentId } from "@t3tools/contracts";
+import type { ServerUpdateState } from "@t3tools/client-runtime/state/server";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // Pinned so the direction cases below read as fixed versions instead of

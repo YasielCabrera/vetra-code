@@ -1,4 +1,4 @@
-import type { ServerProvider, ServerProviderVersionAdvisory } from "@vetra-code/contracts";
+import type { ServerProvider, ServerProviderVersionAdvisory } from "@t3tools/contracts";
 
 /**
  * Visual treatment for each server-reported provider status. Centralized so

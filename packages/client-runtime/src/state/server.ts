@@ -7,7 +7,7 @@ import {
   type ServerSelfUpdateProgressEvent,
   type ServerSelfUpdateResult,
   WS_METHODS,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Duration from "effect/Duration";
 import * as Deferred from "effect/Deferred";

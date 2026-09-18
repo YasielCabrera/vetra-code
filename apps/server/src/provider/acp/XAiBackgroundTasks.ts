@@ -4,7 +4,7 @@ import {
   type ProviderRuntimeTaskProgressEvent,
   type ProviderRuntimeTaskCompletedEvent,
   type TurnId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 type TaskEvent =
   | Pick<ProviderRuntimeTaskStartedEvent, "type" | "payload" | "turnId">

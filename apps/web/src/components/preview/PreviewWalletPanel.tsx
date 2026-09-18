@@ -7,13 +7,13 @@
  * actions. Reject always tells the page the user declined (`4001`); other
  * EIP-1193 codes stay on `preview_wallet_reject` for agent-driven tests.
  */
-import type { PreviewAutomationWalletConfigureInput } from "@vetra-code/contracts";
-import { enabledBuiltInNetworks, findCustomNetwork } from "@vetra-code/web3/networks";
+import type { PreviewAutomationWalletConfigureInput } from "@t3tools/contracts";
+import { enabledBuiltInNetworks, findCustomNetwork } from "@t3tools/web3/networks";
 import {
   DEFAULT_WEB3_REJECT_CODE,
   type Web3Account,
   type Web3PendingRequest,
-} from "@vetra-code/web3/schema";
+} from "@t3tools/web3/schema";
 import {
   CheckIcon,
   ChevronDownIcon,

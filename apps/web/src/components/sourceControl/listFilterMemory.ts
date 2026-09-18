@@ -18,7 +18,7 @@ import {
   TrimmedNonEmptyString,
   type EnvironmentId,
   type ProjectId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 
 import { getLocalStorageItem, setLocalStorageItem } from "~/hooks/useLocalStorage";

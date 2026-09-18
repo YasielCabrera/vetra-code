@@ -5,9 +5,9 @@ import {
   OrchestrationMessageContext,
   ThreadId,
   type PreviewAnnotationPayload,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
-import { upgradeLegacyContextMessage } from "@vetra-code/shared/composerContextLegacy";
+import { upgradeLegacyContextMessage } from "@t3tools/shared/composerContextLegacy";
 
 import {
   formatInlineContextReference,

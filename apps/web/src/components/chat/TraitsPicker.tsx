@@ -5,7 +5,7 @@ import {
   type ProviderOptionSelection,
   type ScopedThreadRef,
   type ServerProviderModel,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   applyClaudePromptEffortPrefix,
   buildProviderOptionSelectionsFromDescriptors,
@@ -14,7 +14,7 @@ import {
   getProviderOptionDescriptors,
   isClaudeUltrathinkPrompt,
   normalizeModelSlug,
-} from "@vetra-code/shared/model";
+} from "@t3tools/shared/model";
 import { memo, useCallback } from "react";
 import type { VariantProps } from "class-variance-authority";
 import { ZapIcon } from "lucide-react";

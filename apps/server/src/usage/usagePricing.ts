@@ -11,7 +11,7 @@ import type {
   UsageCostSource,
   UsageModelPriceOverride,
   UsageTokenTotals,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 /**
  * The subset of a LiteLLM entry we price against. All values are USD per token.

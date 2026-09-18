@@ -1,4 +1,4 @@
-import type { ServerSettings, ServerSettingsError } from "@vetra-code/contracts";
+import type { ServerSettings, ServerSettingsError } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Equal from "effect/Equal";
 import * as Stream from "effect/Stream";

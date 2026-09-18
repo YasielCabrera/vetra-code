@@ -1,4 +1,4 @@
-import type { PullRequestContextMetadata } from "@vetra-code/contracts";
+import type { PullRequestContextMetadata } from "@t3tools/contracts";
 import { CircleDashedIcon, FilmIcon, ImageIcon } from "lucide-react";
 import {
   useState,

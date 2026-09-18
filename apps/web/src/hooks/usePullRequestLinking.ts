@@ -1,23 +1,23 @@
 import { useMemo } from "react";
-import { sourceControlRepositorySelector } from "@vetra-code/shared/sourceControl";
+import { sourceControlRepositorySelector } from "@t3tools/shared/sourceControl";
 import type {
   EnvironmentId,
   ScopedThreadRef,
   ThreadLinkedPullRequest,
   ThreadPullRequestLink,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import {
   planThreadPullRequestMutation,
   threadPullRequestLinkMode,
-} from "@vetra-code/client-runtime/thread-pull-request-compatibility";
+} from "@t3tools/client-runtime/thread-pull-request-compatibility";
 import {
   threadPullRequestKeysEqual,
   visibleThreadPullRequests,
-} from "@vetra-code/shared/threadPullRequests";
+} from "@t3tools/shared/threadPullRequests";
 import {
   findProjectForChangeRequest,
   findProjectOnChangeRequestHost,

@@ -1,15 +1,15 @@
 import {
   canonicalRepositoryKey,
   sourceControlRepositorySelector,
-} from "@vetra-code/shared/sourceControl";
+} from "@t3tools/shared/sourceControl";
 import {
   CommandId,
   type OrchestrationEvent,
   type OrchestrationProjectShell,
   type ThreadId,
   type ThreadLinkedPullRequest,
-} from "@vetra-code/contracts";
-import { makeDrainableWorker } from "@vetra-code/shared/DrainableWorker";
+} from "@t3tools/contracts";
+import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -33,7 +33,7 @@ export class ThreadPullRequestReactor extends Context.Service<
     readonly start: () => Effect.Effect<void, never, Scope.Scope>;
     readonly drain: Effect.Effect<void>;
   }
->()("@vetra-code/server/orchestration/ThreadPullRequestReactor") {}
+>()("t3/orchestration/ThreadPullRequestReactor") {}
 
 function samePullRequest(
   left: ThreadLinkedPullRequest | null | undefined,

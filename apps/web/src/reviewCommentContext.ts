@@ -1,5 +1,5 @@
 import type { FileDiffMetadata, SelectedLineRange, SelectionSide } from "@pierre/diffs";
-import { PullRequestContextMetadata, type PullRequestReviewPosition } from "@vetra-code/contracts";
+import { PullRequestContextMetadata, type PullRequestReviewPosition } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 
 const ReviewCommentSelectionSchema = Schema.Struct({

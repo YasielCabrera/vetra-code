@@ -5,7 +5,7 @@ import {
   ProjectMonogramText,
   type ProjectIconColor,
   type ProjectIconOverride,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { DynamicIcon, type IconName } from "lucide-react/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {

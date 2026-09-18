@@ -83,8 +83,8 @@ pnpm dev --dry-run
 - Cloud/relay configuration is disabled when Vetra-owned Clerk and relay values are absent.
 - Desktop auto-update is disabled unless `VETRA_ENABLE_AUTO_UPDATE=true` and a Vetra release repository is configured.
 - Product analytics are off: `VETRA_TELEMETRY_ENABLED` defaults to false and no analytics project key ships, so nothing is sent unless you configure your own.
-- The `@vetra-code/server` package is private during bootstrap, so registry installation, background-service installation, and package-based SSH launch are not release-ready yet.
-- Internal workspace packages use the `@vetra-code/*` scope.
+- The `t3` package is private during bootstrap, so registry installation, background-service installation, and package-based SSH launch are not release-ready yet.
+- Internal workspace packages use the `@t3tools/*` scope.
 
 ## Planning and architecture
 

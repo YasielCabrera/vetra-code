@@ -1,4 +1,4 @@
-import type { PreviewSessionSnapshot, ProjectScript } from "@vetra-code/contracts";
+import type { PreviewSessionSnapshot, ProjectScript } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { getConfiguredPreviewUrls, shouldShowPreviewEmptyState } from "./previewEmptyStateLogic";

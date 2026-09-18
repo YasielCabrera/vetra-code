@@ -1,4 +1,4 @@
-import type { MessageId, ProviderUploadFeedbackResult } from "@vetra-code/contracts";
+import type { MessageId, ProviderUploadFeedbackResult } from "@t3tools/contracts";
 
 import {
   isAtomCommandInterrupted,

@@ -1,4 +1,4 @@
-import type { ClientSettings } from "@vetra-code/contracts/settings";
+import type { ClientSettings } from "@t3tools/contracts/settings";
 import * as Option from "effect/Option";
 import { act } from "react";
 import { create, type ReactTestRenderer } from "react-test-renderer";

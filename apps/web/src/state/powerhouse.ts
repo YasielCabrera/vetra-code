@@ -1,4 +1,4 @@
-import { createPowerhouseEnvironmentAtoms } from "@vetra-code/client-runtime/state/powerhouse";
+import { createPowerhouseEnvironmentAtoms } from "@t3tools/client-runtime/state/powerhouse";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

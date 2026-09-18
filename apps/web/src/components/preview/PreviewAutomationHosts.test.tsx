@@ -7,7 +7,7 @@ import {
   type PreviewAutomationStreamEvent,
   type PreviewOpenInput,
   type PreviewSessionSnapshot,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 import { act } from "react";
 import { create, type ReactTestRenderer } from "react-test-renderer";

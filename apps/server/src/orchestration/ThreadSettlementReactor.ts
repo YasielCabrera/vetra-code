@@ -3,9 +3,9 @@ import {
   type OrchestrationEvent,
   type ServerSettings as ServerSettingsValue,
   type ThreadId,
-} from "@vetra-code/contracts";
-import { resolveProjectSettings } from "@vetra-code/shared/projectSettings";
-import { makeDrainableWorker } from "@vetra-code/shared/DrainableWorker";
+} from "@t3tools/contracts";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
+import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -36,7 +36,7 @@ export class ThreadSettlementReactor extends Context.Service<
     readonly start: () => Effect.Effect<void, never, Scope.Scope>;
     readonly drain: Effect.Effect<void>;
   }
->()("@vetra-code/server/orchestration/ThreadSettlementReactor") {}
+>()("t3/orchestration/ThreadSettlementReactor") {}
 
 /** @public Service construction is part of the canonical Effect module API. */
 /** Whether any environment default or project override can settle a thread. */

@@ -1,4 +1,4 @@
-import { scopeProjectRef } from "@vetra-code/client-runtime/environment";
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
 import { useNavigate } from "@tanstack/react-router";
 import { CloudIcon, FolderPlusIcon, LayersIcon, SearchIcon, SquarePenIcon } from "lucide-react";
 import { memo, useCallback, useMemo, useState, type ReactNode } from "react";

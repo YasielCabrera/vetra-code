@@ -1,4 +1,4 @@
-import type { DesktopSnapShotState } from "@vetra-code/contracts";
+import type { DesktopSnapShotState } from "@t3tools/contracts";
 
 export type CaptureSetupStep = "access" | "shortcut";
 

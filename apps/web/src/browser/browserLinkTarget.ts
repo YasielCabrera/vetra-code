@@ -8,7 +8,7 @@
  *
  * @module browserLinkTarget
  */
-import type { BrowserLinkTarget } from "@vetra-code/contracts";
+import type { BrowserLinkTarget } from "@t3tools/contracts";
 
 import { ensureClientSettingsHydrated, getClientSettings } from "~/hooks/useSettings";
 import { isPreviewSupportedInRuntime } from "~/previewStateStore";

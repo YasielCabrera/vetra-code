@@ -8,7 +8,7 @@ import { afterEach, beforeEach, expect, it as test, vi } from "vite-plus/test";
 import { CaptureShortcutConfig, niriCaptureConfigPath } from "./CaptureShortcutConfig.ts";
 import { captureConfigBinding } from "./captureConfigEdit.ts";
 
-// oxlint-disable-next-line vetra/no-global-process-runtime -- Test collection checks the host before starting these Linux-native filesystem tests.
+// oxlint-disable-next-line t3code/no-global-process-runtime -- Test collection checks the host before starting these Linux-native filesystem tests.
 const it = test.runIf(process.platform === "linux");
 let directory: string;
 let path: string;

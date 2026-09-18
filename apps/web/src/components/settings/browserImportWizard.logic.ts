@@ -1,4 +1,4 @@
-import type { BrowserImportFailureReason, BrowserImportSource } from "@vetra-code/contracts";
+import type { BrowserImportFailureReason, BrowserImportSource } from "@t3tools/contracts";
 
 export interface WizardTargetProfile {
   readonly id: string;

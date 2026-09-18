@@ -2,7 +2,7 @@ import {
   WORKTREE_SETUP_ACTIVITY_KIND,
   WorktreeSetupSnapshot,
   type ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 

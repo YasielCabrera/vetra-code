@@ -4,7 +4,7 @@ import {
   ProviderApprovalOption,
   ProviderRequestKind,
   UserInputQuestion,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";

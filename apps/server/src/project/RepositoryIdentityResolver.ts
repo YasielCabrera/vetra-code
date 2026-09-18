@@ -1,8 +1,8 @@
-import type { RepositoryIdentity, SourceControlProviderError } from "@vetra-code/contracts";
+import type { RepositoryIdentity, SourceControlProviderError } from "@t3tools/contracts";
 import {
   detectSourceControlProviderFromGitRemoteUrl,
   normalizeGitRemoteUrl,
-} from "@vetra-code/shared/git";
+} from "@t3tools/shared/git";
 import * as Cache from "effect/Cache";
 import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
@@ -33,7 +33,7 @@ export class RepositoryIdentityResolver extends Context.Service<
       options?: { readonly refresh?: boolean },
     ) => Effect.Effect<RepositoryIdentity | null>;
   }
->()("@vetra-code/server/project/RepositoryIdentityResolver") {}
+>()("t3/project/RepositoryIdentityResolver") {}
 
 function parseRemoteFetchUrls(stdout: string): Map<string, string> {
   const remotes = new Map<string, string>();

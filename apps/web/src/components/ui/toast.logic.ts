@@ -1,4 +1,4 @@
-import type { ScopedThreadRef, ThreadId } from "@vetra-code/contracts";
+import type { ScopedThreadRef, ThreadId } from "@t3tools/contracts";
 
 /**
  * Base UI toast updates omit `undefined` fields, so callers that need to remove

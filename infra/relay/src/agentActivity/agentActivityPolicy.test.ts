@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
-import { EnvironmentId, ThreadId } from "@vetra-code/contracts";
-import type { RelayAgentActivityState } from "@vetra-code/contracts/relay";
+import { EnvironmentId, ThreadId } from "@t3tools/contracts";
+import type { RelayAgentActivityState } from "@t3tools/contracts/relay";
 import { makeAggregateState } from "./agentActivityAggregate.ts";
 import {
   attentionTransitionRows,

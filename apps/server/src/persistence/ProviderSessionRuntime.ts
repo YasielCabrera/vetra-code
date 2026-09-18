@@ -16,7 +16,7 @@ import {
   ProviderSessionRuntimeStatus,
   RuntimeMode,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import {
   PersistenceDecodeError,
@@ -118,7 +118,7 @@ export class ProviderSessionRuntimeRepository extends Context.Service<
       input: DeleteProviderSessionRuntimeInput,
     ) => Effect.Effect<void, ProviderSessionRuntimeRepositoryError>;
   }
->()("@vetra-code/server/persistence/ProviderSessionRuntime/ProviderSessionRuntimeRepository") {}
+>()("t3/persistence/ProviderSessionRuntime/ProviderSessionRuntimeRepository") {}
 
 const ProviderSessionRuntimeDbRowSchema = ProviderSessionRuntime.mapFields(
   Struct.assign({

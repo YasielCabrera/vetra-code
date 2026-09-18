@@ -11,10 +11,10 @@ import {
   RuntimeRequestId,
   type ThreadId,
   TurnId,
-} from "@vetra-code/contracts";
-import { HostProcessEnvironment, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { getModelSelectionStringOptionValue } from "@vetra-code/shared/model";
-import { stableStringify } from "@vetra-code/shared/relaySigning";
+} from "@t3tools/contracts";
+import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
+import { stableStringify } from "@t3tools/shared/relaySigning";
 import * as Clock from "effect/Clock";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -35,8 +35,8 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import * as SynchronizedRef from "effect/SynchronizedRef";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
-import * as EffectAcpErrors from "@vetra-code/effect-acp/errors";
-import type * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
+import * as EffectAcpErrors from "effect-acp/errors";
+import type * as EffectAcpSchema from "effect-acp/schema";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";

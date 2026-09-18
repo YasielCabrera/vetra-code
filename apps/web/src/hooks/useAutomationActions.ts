@@ -1,10 +1,10 @@
-import type { EnvironmentAutomation } from "@vetra-code/client-runtime/state/automations";
-import type { EnvironmentThreadShell } from "@vetra-code/client-runtime/state/models";
+import type { EnvironmentAutomation } from "@t3tools/client-runtime/state/automations";
+import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 import {
   type AtomCommandResult,
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import { useCallback, useMemo } from "react";
 
 import { newThreadId } from "../lib/utils";

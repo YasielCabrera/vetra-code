@@ -6,7 +6,7 @@ import {
   type OrchestrationReadModel,
   ProjectId,
   type ClientOrchestrationCommand,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Console from "effect/Console";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";

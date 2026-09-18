@@ -5,11 +5,11 @@ import {
   type ThreadId,
   type ToolActivitySource,
   type ToolLifecycleItemType,
-} from "@vetra-code/contracts";
-import { classifyMarkdownImageSource } from "@vetra-code/client-runtime/markdown-images";
-import { resolveMediaSource } from "@vetra-code/client-runtime/media-source";
-import { parseChangeRequestUrl } from "@vetra-code/shared/changeRequestUrl";
-import { isWorkspaceImagePreviewPath } from "@vetra-code/shared/filePreview";
+} from "@t3tools/contracts";
+import { classifyMarkdownImageSource } from "@t3tools/client-runtime/markdown-images";
+import { resolveMediaSource } from "@t3tools/client-runtime/media-source";
+import { parseChangeRequestUrl } from "@t3tools/shared/changeRequestUrl";
+import { isWorkspaceImagePreviewPath } from "@t3tools/shared/filePreview";
 
 /**
  * Activities the worktree setup card already represents. The settled record

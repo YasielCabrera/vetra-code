@@ -1,4 +1,4 @@
-import type { ResourceAttributionEntry, ResourceAttributionSnapshot } from "@vetra-code/contracts";
+import type { ResourceAttributionEntry, ResourceAttributionSnapshot } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -20,7 +20,7 @@ export class ResourceAttribution extends Context.Service<
     readonly record: (input: ResourceAttributionRecord) => Effect.Effect<void>;
     readonly snapshot: Effect.Effect<ResourceAttributionSnapshot>;
   }
->()("@vetra-code/server/resourceTelemetry/ResourceAttribution") {}
+>()("t3/resourceTelemetry/ResourceAttribution") {}
 
 function key(input: Pick<ResourceAttributionRecord, "component" | "operation">): string {
   return `${input.component}\u0000${input.operation}`;

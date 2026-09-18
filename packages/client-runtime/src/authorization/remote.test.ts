@@ -5,7 +5,7 @@ import * as Fiber from "effect/Fiber";
 import * as Schema from "effect/Schema";
 import * as TestClock from "effect/testing/TestClock";
 
-import { EnvironmentAuthInvalidError } from "@vetra-code/contracts";
+import { EnvironmentAuthInvalidError } from "@t3tools/contracts";
 import {
   appendClientConnectionParams,
   bootstrapRemoteBearerSession,

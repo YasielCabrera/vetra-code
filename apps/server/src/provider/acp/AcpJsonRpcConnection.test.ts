@@ -17,8 +17,8 @@ import * as Stream from "effect/Stream";
 import { describe, expect } from "vite-plus/test";
 
 import * as AcpSessionRuntime from "./AcpSessionRuntime.ts";
-import type * as EffectAcpProtocol from "@vetra-code/effect-acp/protocol";
-import * as EffectAcpErrors from "@vetra-code/effect-acp/errors";
+import type * as EffectAcpProtocol from "effect-acp/protocol";
+import * as EffectAcpErrors from "effect-acp/errors";
 
 const __dirname = NodePath.dirname(NodeURL.fileURLToPath(import.meta.url));
 const mockAgentPath = NodePath.join(__dirname, "../../../scripts/acp-mock-agent.ts");

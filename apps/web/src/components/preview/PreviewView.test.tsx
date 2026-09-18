@@ -7,7 +7,7 @@ import {
   EnvironmentId,
   FILL_PREVIEW_VIEWPORT,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { act, Profiler } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";

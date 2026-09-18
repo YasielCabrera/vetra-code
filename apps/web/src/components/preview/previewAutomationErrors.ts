@@ -11,7 +11,7 @@ import {
   PreviewTabId,
   ThreadId,
   TrimmedNonEmptyString,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 
 export interface PreviewAutomationOperationContext {

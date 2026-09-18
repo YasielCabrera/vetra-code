@@ -3,7 +3,7 @@ import type {
   OrchestrationShellSnapshot,
   OrchestrationThreadShell,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import { Atom } from "effect/unstable/reactivity";
 

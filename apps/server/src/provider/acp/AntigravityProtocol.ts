@@ -3,12 +3,12 @@ import type {
   ProviderApprovalOption,
   ProviderUserInputAnswers,
   UserInputQuestion,
-} from "@vetra-code/contracts";
-import { isWorkspaceImagePreviewPath } from "@vetra-code/shared/filePreview";
+} from "@t3tools/contracts";
+import { isWorkspaceImagePreviewPath } from "@t3tools/shared/filePreview";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
-import * as EffectAcpSchema from "@vetra-code/effect-acp/schema";
+import * as EffectAcpSchema from "effect-acp/schema";
 
 import type { AcpToolCallState } from "./AcpRuntimeModel.ts";
 

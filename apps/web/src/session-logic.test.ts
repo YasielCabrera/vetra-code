@@ -5,9 +5,9 @@ import {
   ThreadId,
   TurnId,
   type OrchestrationThreadActivity,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
-import { resolveWorkEntryToolPresentation } from "@vetra-code/client-runtime/work-log/presentation";
+import { resolveWorkEntryToolPresentation } from "@t3tools/client-runtime/work-log/presentation";
 
 import {
   createMessageAttachmentPreviewProjector,

@@ -107,12 +107,12 @@ export const createOxlintRuleHarness = (
     const sourcePath = path.join(fixtureDir, options.filename ?? "fixture.ts");
     const repoRoot = path.join(import.meta.dirname, "..", "..");
     const oxlintBin = path.join(path.dirname(oxlintPackageJsonPath), "bin", "oxlint");
-    const pluginPath = path.join(repoRoot, "oxlint-plugin-vetra", "index.ts");
+    const pluginPath = path.join(repoRoot, "oxlint-plugin-t3code", "index.ts");
 
     yield* fs.writeFileString(
       configPath,
       yield* encodeOxlintConfig({
-        jsPlugins: [{ name: "vetra", specifier: pluginPath }],
+        jsPlugins: [{ name: "t3code", specifier: pluginPath }],
         rules: { [ruleName]: ["error", ...(options.ruleOptions ?? [])] },
       }),
     );

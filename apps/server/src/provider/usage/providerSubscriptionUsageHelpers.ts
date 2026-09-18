@@ -4,7 +4,7 @@ import type {
   ProviderSubscriptionUsageCost,
   ProviderSubscriptionUsageInstanceResult,
   ProviderSubscriptionUsageWindow,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as NodeCrypto from "node:crypto";
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";

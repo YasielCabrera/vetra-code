@@ -12,10 +12,10 @@ import {
   type ProviderSession,
   type RuntimeMode,
   type TurnId,
-} from "@vetra-code/contracts";
-import { assistantCitationsToPlainText } from "@vetra-code/shared/assistantCitations";
-import { projectComposerContextForProvider } from "@vetra-code/shared/composerContextReferences";
-import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@vetra-code/shared/git";
+} from "@t3tools/contracts";
+import { assistantCitationsToPlainText } from "@t3tools/shared/assistantCitations";
+import { projectComposerContextForProvider } from "@t3tools/shared/composerContextReferences";
+import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@t3tools/shared/git";
 import * as Cache from "effect/Cache";
 import * as Cause from "effect/Cause";
 import * as Crypto from "effect/Crypto";
@@ -31,7 +31,7 @@ import * as Path from "effect/Path";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
-import { makeDrainableWorker } from "@vetra-code/shared/DrainableWorker";
+import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
 
 import { resolveThreadWorkspaceCwd } from "../../checkpointing/Utils.ts";
 import { increment, orchestrationEventsProcessedTotal } from "../../observability/Metrics.ts";
@@ -61,7 +61,7 @@ import {
   resolveSourceControlWriterModelSelection,
   ServerSettingsService,
 } from "../../serverSettings.ts";
-import { resolveProjectSettings } from "@vetra-code/shared/projectSettings";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import { VcsStatusBroadcaster } from "../../vcs/VcsStatusBroadcaster.ts";
 import { GitWorkflowService } from "../../git/GitWorkflowService.ts";
 const isProviderAdapterRequestError = Schema.is(ProviderAdapterRequestError);

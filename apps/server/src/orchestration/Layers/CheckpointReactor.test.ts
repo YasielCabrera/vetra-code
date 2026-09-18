@@ -9,7 +9,7 @@ import {
   ProviderRuntimeEvent,
   ProviderSession,
   ProviderInstanceId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   CommandId,
   CheckpointRef,
@@ -19,7 +19,7 @@ import {
   ProjectId,
   ThreadId,
   TurnId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Clock from "effect/Clock";
 import * as Deferred from "effect/Deferred";

@@ -14,8 +14,8 @@ import {
   WORKTREE_SETUP_ACTIVITY_KIND,
   WorktreeSetupSnapshot,
   worktreeSetupActivityId,
-} from "@vetra-code/contracts";
-import { resolveProjectSettings } from "@vetra-code/shared/projectSettings";
+} from "@t3tools/contracts";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import * as Cause from "effect/Cause";
 import * as Console from "effect/Console";
 import * as Context from "effect/Context";
@@ -87,7 +87,7 @@ export class ServerRuntimeStartup extends Context.Service<
       effect: Effect.Effect<A, E>,
     ) => Effect.Effect<A, E | ServerRuntimeStartupError>;
   }
->()("@vetra-code/server/serverRuntimeStartup") {}
+>()("t3/serverRuntimeStartup") {}
 
 interface QueuedCommand {
   readonly run: Effect.Effect<void, never>;

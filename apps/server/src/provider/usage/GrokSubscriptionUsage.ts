@@ -3,9 +3,9 @@ import type {
   ProviderSubscriptionUsageDetail,
   ProviderSubscriptionUsageInstanceResult,
   ProviderSubscriptionUsageWindow,
-} from "@vetra-code/contracts";
-import * as EffectAcpClient from "@vetra-code/effect-acp/client";
-import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+} from "@t3tools/contracts";
+import * as EffectAcpClient from "effect-acp/client";
+import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";

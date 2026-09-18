@@ -1,13 +1,23 @@
 /**
  * Public and persistence-bearing identity for this fork.
  *
- * Keep values that can collide with another installed application here. Public
- * and internal identifiers use Vetra-owned names; do not add fallback aliases
- * that could silently reconnect this runtime to another product's state.
+ * Keep values that can collide with another installed application here. Code
+ * that a user never sees keeps upstream's names so merges stay mechanical --
+ * workspace packages, import paths, and internal symbols are all `t3*`. What
+ * a user reads, what is persisted, and what is published stays Vetra-owned and
+ * lives in this file. Do not add fallback aliases that could silently
+ * reconnect this runtime to another product's state.
  */
 export const PRODUCT_NAME = "Vetra Code";
 export const PRODUCT_SLUG = "vetra-code";
 export const PRODUCT_CLI_NAME = "vetra";
+/**
+ * The npm package `service install` and `selfUpdate` resolve, and the spec the
+ * CLI suggests. Deliberately not the server workspace's name (`t3`, upstream's):
+ * that name is published by T3, so reusing it would point this fork's updater
+ * at another product's releases. Reserved and unpublished until Vetra ships a
+ * CLI, so an install attempt fails loudly instead of succeeding wrongly.
+ */
 export const PRODUCT_SERVER_PACKAGE = "@vetra-code/server";
 
 export const PRODUCT_HOME_DIRECTORY_NAME = ".vetra-code";

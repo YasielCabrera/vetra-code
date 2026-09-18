@@ -8,7 +8,7 @@ import {
   type AuthEnvironmentScope,
   type ClientSurface,
   type ServerAuthSessionMethod,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -417,7 +417,7 @@ export class SessionStore extends Context.Service<
       },
     ) => Effect.Effect<void, never>;
   }
->()("@vetra-code/server/auth/SessionStore") {}
+>()("t3/auth/SessionStore") {}
 
 const SIGNING_SECRET_NAME = "server-signing-key";
 const DEFAULT_SESSION_TTL = Duration.days(30);

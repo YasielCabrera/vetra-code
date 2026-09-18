@@ -7,8 +7,8 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerSettings as ContractServerSettings,
-} from "@vetra-code/contracts";
-import { symlinksSupported } from "@vetra-code/shared/testing/symlinks";
+} from "@t3tools/contracts";
+import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";

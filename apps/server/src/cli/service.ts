@@ -1,10 +1,10 @@
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Console from "effect/Console";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Terminal from "effect/Terminal";
 import { Command, Flag, GlobalFlag, Prompt } from "effect/unstable/cli";
-import { PRODUCT_CLI_NAME, PRODUCT_SERVER_PACKAGE } from "@vetra-code/shared/productIdentity";
+import { PRODUCT_CLI_NAME, PRODUCT_SERVER_PACKAGE } from "@t3tools/shared/productIdentity";
 import { FetchHttpClient } from "effect/unstable/http";
 
 import packageJson from "../../package.json" with { type: "json" };

@@ -1,4 +1,4 @@
-import { faviconUrlForOrigin as publicProviderFaviconUrl } from "@vetra-code/shared/favicon";
+import { faviconUrlForOrigin as publicProviderFaviconUrl } from "@t3tools/shared/favicon";
 
 /** Resolve the conventional root favicon for an HTTP(S) page URL. */
 export function faviconUrlForOrigin(rawUrl: string | null | undefined): string | null {

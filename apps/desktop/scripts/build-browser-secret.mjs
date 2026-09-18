@@ -4,9 +4,9 @@ import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 import * as NodeUtil from "node:util";
 
-// oxlint-disable-next-line vetra/no-global-process-runtime -- The native compiler targets the actual host; this script has no Effect runtime.
+// oxlint-disable-next-line t3code/no-global-process-runtime -- The native compiler targets the actual host; this script has no Effect runtime.
 const hostArch = process.arch;
-// oxlint-disable-next-line vetra/no-global-process-runtime -- Native compilation only runs on the actual Linux host.
+// oxlint-disable-next-line t3code/no-global-process-runtime -- Native compilation only runs on the actual Linux host.
 const hostPlatform = process.platform;
 
 const { values } = NodeUtil.parseArgs({

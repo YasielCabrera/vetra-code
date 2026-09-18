@@ -1,4 +1,4 @@
-import { EnvironmentId, MessageId, ThreadId, type AssistantCitation } from "@vetra-code/contracts";
+import { EnvironmentId, MessageId, ThreadId, type AssistantCitation } from "@t3tools/contracts";
 import {
   createMemoryHistory,
   createRootRoute,

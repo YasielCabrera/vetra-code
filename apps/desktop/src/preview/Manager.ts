@@ -6,7 +6,7 @@
  * here). Single layer-scoped browser session partition.
  */
 import * as NodeCrypto from "node:crypto";
-import { DESKTOP_PREVIEW_RECORDING_CAPTURE_TRIGGER } from "@vetra-code/contracts";
+import { DESKTOP_PREVIEW_RECORDING_CAPTURE_TRIGGER } from "@t3tools/contracts";
 import type {
   DesktopPreviewAnnotationTheme,
   DesktopPreviewAutomationStatus,
@@ -30,9 +30,9 @@ import type {
   PreviewAutomationSnapshot,
   PreviewAutomationTypeInput,
   PreviewAutomationWaitForInput,
-} from "@vetra-code/contracts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { normalizePreviewUrl } from "@vetra-code/shared/preview";
+} from "@t3tools/contracts";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { normalizePreviewUrl } from "@t3tools/shared/preview";
 import {
   BrowserWindow,
   ClipboardItem,
@@ -4929,7 +4929,7 @@ export class PreviewManager extends Context.Service<
       listener: RecordingFrameListener,
     ) => Effect.Effect<void, never, Scope.Scope>;
   }
->()("@vetra-code/desktop/preview/Manager/PreviewManager") {}
+>()("@t3tools/desktop/preview/Manager/PreviewManager") {}
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* PreviewManagerMake() {

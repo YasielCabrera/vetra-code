@@ -1,6 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
 import { useNavigate } from "@tanstack/react-router";
-import type { EnvironmentAutomation } from "@vetra-code/client-runtime/state/automations";
+import type { EnvironmentAutomation } from "@t3tools/client-runtime/state/automations";
 import {
   CalendarClockIcon,
   CheckCheckIcon,

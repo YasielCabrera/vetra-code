@@ -38,6 +38,4 @@ export interface ProviderRuntimeIngestionShape {
 export class ProviderRuntimeIngestionService extends Context.Service<
   ProviderRuntimeIngestionService,
   ProviderRuntimeIngestionShape
->()(
-  "@vetra-code/server/orchestration/Services/ProviderRuntimeIngestion/ProviderRuntimeIngestionService",
-) {}
+>()("t3/orchestration/Services/ProviderRuntimeIngestion/ProviderRuntimeIngestionService") {}

@@ -22,9 +22,9 @@ import {
   EnvironmentThemeFile,
   EnvironmentThemeId,
   environmentThemeFileHasColors,
-} from "@vetra-code/contracts";
-import { fromJsonStringPretty, fromLenientJson } from "@vetra-code/shared/schemaJson";
-import { BUILT_IN_THEME_IDS, UNPUBLISHABLE_THEME_IDS } from "@vetra-code/shared/themePalettes";
+} from "@t3tools/contracts";
+import { fromJsonStringPretty, fromLenientJson } from "@t3tools/shared/schemaJson";
+import { BUILT_IN_THEME_IDS, UNPUBLISHABLE_THEME_IDS } from "@t3tools/shared/themePalettes";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
 import * as DateTime from "effect/DateTime";

@@ -1,5 +1,5 @@
-import type { AssetResource, ThreadId } from "@vetra-code/contracts";
-import { mediaMimeType, mediaMimeTypeFromExtension } from "@vetra-code/shared/filePreview";
+import type { AssetResource, ThreadId } from "@t3tools/contracts";
+import { mediaMimeType, mediaMimeTypeFromExtension } from "@t3tools/shared/filePreview";
 
 import {
   classifyMarkdownImageSource,

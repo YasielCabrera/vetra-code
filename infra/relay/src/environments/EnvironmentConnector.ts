@@ -4,8 +4,8 @@ import {
   EnvironmentHttpForbiddenError,
   EnvironmentHttpInternalServerError,
   EnvironmentHttpUnauthorizedError,
-} from "@vetra-code/contracts";
-import { makeEnvironmentHttpApiClient } from "@vetra-code/client-runtime/rpc";
+} from "@t3tools/contracts";
+import { makeEnvironmentHttpApiClient } from "@t3tools/client-runtime/rpc";
 import {
   RelayCloudEnvironmentHealthProofPayload,
   RelayEnvironmentHealthResponse,
@@ -16,7 +16,7 @@ import {
   RelayEnvironmentConnectNotAuthorizedReason,
   type RelayEnvironmentConnectResponse,
   type RelayEnvironmentStatusResponse,
-} from "@vetra-code/contracts/relay";
+} from "@t3tools/contracts/relay";
 import {
   normalizeRelayIssuer,
   RELAY_HEALTH_REQUEST_TYP,
@@ -25,8 +25,8 @@ import {
   RELAY_MINT_RESPONSE_TYP,
   signRelayJwt,
   verifyRelayJwt,
-} from "@vetra-code/shared/relayJwt";
-import { stableStringify } from "@vetra-code/shared/relaySigning";
+} from "@t3tools/shared/relayJwt";
+import { stableStringify } from "@t3tools/shared/relaySigning";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -143,7 +143,7 @@ export class EnvironmentConnector extends Context.Service<
       readonly environmentId: string;
     }) => Effect.Effect<RelayEnvironmentStatusResponse, EnvironmentConnectorError>;
   }
->()("@vetra-code/relay/environments/EnvironmentConnector") {}
+>()("t3code-relay/environments/EnvironmentConnector") {}
 
 const decodeMintResponseProof = Schema.decodeUnknownEffect(
   RelayEnvironmentMintResponseProofPayload,

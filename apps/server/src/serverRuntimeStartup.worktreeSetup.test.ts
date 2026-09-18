@@ -7,7 +7,7 @@ import {
   WorktreeSetupSnapshot,
   worktreeSetupActivityId,
   type WorktreeSetupPhase,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";

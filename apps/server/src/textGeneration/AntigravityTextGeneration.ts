@@ -2,9 +2,9 @@ import {
   type ModelSelection,
   type ProviderSetupError,
   TextGenerationError,
-} from "@vetra-code/contracts";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@vetra-code/shared/git";
-import { extractJsonObject } from "@vetra-code/shared/schemaJson";
+} from "@t3tools/contracts";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@t3tools/shared/git";
+import { extractJsonObject } from "@t3tools/shared/schemaJson";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -15,7 +15,7 @@ import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
-import { type AcpError, AcpRequestError } from "@vetra-code/effect-acp/errors";
+import { type AcpError, AcpRequestError } from "effect-acp/errors";
 
 import { applyAntigravityAcpModelSelection } from "../provider/acp/AntigravityAcpSupport.ts";
 import { removeAntigravitySessionFiles } from "../provider/acp/AntigravitySessionFiles.ts";

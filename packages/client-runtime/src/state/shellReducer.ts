@@ -1,8 +1,5 @@
 import * as Arr from "effect/Array";
-import type {
-  OrchestrationShellSnapshot,
-  OrchestrationShellStreamEvent,
-} from "@vetra-code/contracts";
+import type { OrchestrationShellSnapshot, OrchestrationShellStreamEvent } from "@t3tools/contracts";
 
 /**
  * Reduce a single shell stream event into an existing snapshot, returning a new

@@ -3,7 +3,7 @@ import type {
   PullRequestCapabilities,
   PullRequestReaction,
   PullRequestViewerPermissions,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import * as GitLabPullRequestCli from "./GitLabPullRequestCli.ts";
 import {

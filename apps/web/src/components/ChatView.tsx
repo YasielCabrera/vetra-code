@@ -1,14 +1,14 @@
 import { useLoadBalancedEnvironment } from "../hooks/useLoadBalancedEnvironment";
-import { visibleThreadPullRequests } from "@vetra-code/shared/threadPullRequests";
-import type { UsageLimitSourceSnapshots } from "@vetra-code/contracts";
+import { visibleThreadPullRequests } from "@t3tools/shared/threadPullRequests";
+import type { UsageLimitSourceSnapshots } from "@t3tools/contracts";
 import {
   collectProviderUsageLimits,
   hasProviderUsageLimits,
   isUsageLimitsCommand,
-} from "@vetra-code/shared/usageLimits";
+} from "@t3tools/shared/usageLimits";
 import { feedbackBannerItem } from "./chat/ComposerFeedback";
 import { usageLimitsBannerItem } from "./chat/ComposerUsageLimits";
-import { derivePendingRequests } from "@vetra-code/client-runtime/pending-requests";
+import { derivePendingRequests } from "@t3tools/client-runtime/pending-requests";
 import {
   questionAttachmentDraftId,
   questionAttachmentDraftPrefix,
@@ -44,46 +44,46 @@ import {
   RuntimeMode,
   TerminalOpenInput,
   type WorktreeSetupSnapshot,
-} from "@vetra-code/contracts";
-import { type EnvironmentConnectionPresentation } from "@vetra-code/client-runtime/connection";
+} from "@t3tools/contracts";
+import { type EnvironmentConnectionPresentation } from "@t3tools/client-runtime/connection";
 import {
   wasBootstrapThreadDeleted,
   wasBootstrapThreadNotCreated,
-} from "@vetra-code/client-runtime/errors";
-import type { EnvironmentProject } from "@vetra-code/client-runtime/state/shell";
+} from "@t3tools/client-runtime/errors";
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import { readPastedComposerContext } from "./composerInlineTokenPaste";
-import { isPasteAsTextShortcut } from "@vetra-code/client-runtime/text-paste";
-import { type CodexArtifactTemplate } from "@vetra-code/client-runtime/codex-artifact-templates";
-import { effectiveSnoozed, threadWokeAt } from "@vetra-code/client-runtime/state/thread-settled";
+import { isPasteAsTextShortcut } from "@t3tools/client-runtime/text-paste";
+import { type CodexArtifactTemplate } from "@t3tools/client-runtime/codex-artifact-templates";
+import { effectiveSnoozed, threadWokeAt } from "@t3tools/client-runtime/state/thread-settled";
 import {
   parseCodexFeedbackCommand,
   submitCodexFeedback,
   type CodexFeedbackSubmission,
-} from "@vetra-code/client-runtime/state/threads";
+} from "@t3tools/client-runtime/state/threads";
 import {
   parseScopedThreadKey,
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@vetra-code/client-runtime/environment";
+} from "@t3tools/client-runtime/environment";
 import {
   applyClaudePromptEffortPrefix,
   createModelSelection,
   resolvePromptInjectedEffort,
-} from "@vetra-code/shared/model";
+} from "@t3tools/shared/model";
 import {
   projectScriptCwd,
   projectScriptRuntimeEnv,
   resolveProjectScripts,
-} from "@vetra-code/shared/projectScripts";
-import { resolveProjectSettings } from "@vetra-code/shared/projectSettings";
-import { truncate } from "@vetra-code/shared/String";
-import { resolveThreadReferenceCopyTarget } from "@vetra-code/shared/threadReference";
+} from "@t3tools/shared/projectScripts";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
+import { truncate } from "@t3tools/shared/String";
+import { resolveThreadReferenceCopyTarget } from "@t3tools/shared/threadReference";
 import {
   getTerminalLabel,
   nextTerminalId,
   resolveTerminalSessionLabel,
-} from "@vetra-code/shared/terminalLabels";
+} from "@t3tools/shared/terminalLabels";
 import { Debouncer } from "@tanstack/react-pacer";
 import { useAtomValue } from "@effect/atom-react";
 import { Atom } from "effect/unstable/reactivity";
@@ -102,7 +102,7 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { assistantCitationsToPlainText } from "@vetra-code/shared/assistantCitations";
+import { assistantCitationsToPlainText } from "@t3tools/shared/assistantCitations";
 import { assistantCitationFromLocation } from "../lib/assistantCitationNavigation";
 import { isMacPlatform } from "../lib/utils";
 import type { AssistantCitationSourceAnchor } from "~/lib/assistantTextSelection";
@@ -113,7 +113,7 @@ import {
   settlePromise,
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import * as Cause from "effect/Cause";
 import * as Schema from "effect/Schema";
 import { AsyncResult } from "effect/unstable/reactivity";
@@ -180,7 +180,7 @@ import {
   openCommandPalette,
 } from "../commandPaletteBus";
 import { subscribeSnapShotComposerFocus } from "../lib/desktopSnapShot";
-import { buildTemporaryWorktreeBranchName } from "@vetra-code/shared/git";
+import { buildTemporaryWorktreeBranchName } from "@t3tools/shared/git";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY } from "../rightPanelLayout";
 import {
@@ -232,7 +232,7 @@ import {
   deriveAgentControlState,
   deriveAgentPanelModel,
   foldSubagentActivities,
-} from "@vetra-code/client-runtime/state/subagentRuntime";
+} from "@t3tools/client-runtime/state/subagentRuntime";
 import { BranchToolbar, type BranchToolbarHandle } from "./BranchToolbar";
 import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings";
 import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
@@ -320,7 +320,7 @@ import {
   removeInlineContextReference,
   stripInlineContextReferences,
 } from "../lib/composerContextReferences";
-import { serializeLegacyContextMessage } from "@vetra-code/shared/composerContextLegacySend";
+import { serializeLegacyContextMessage } from "@t3tools/shared/composerContextLegacySend";
 import {
   buildMessageContext,
   previewAnnotationContextLabel,
@@ -353,12 +353,12 @@ import { threadEnvironment, useEnvironmentThread } from "../state/threads";
 import {
   requestOlderThreadTurns,
   threadHasOlderTurns,
-} from "@vetra-code/client-runtime/state/threads";
-import { resolveProviderSkillsForCwd } from "@vetra-code/client-runtime/providerSkills";
+} from "@t3tools/client-runtime/state/threads";
+import { resolveProviderSkillsForCwd } from "@t3tools/client-runtime/providerSkills";
 import { vcsEnvironment } from "../state/vcs";
 import { sourceControlEnvironment } from "../state/sourceControl";
 import { useProjectClone } from "../state/projectClones";
-import { projectCloneDisplayName, projectCloneProgressSummary } from "@vetra-code/contracts";
+import { projectCloneDisplayName, projectCloneProgressSummary } from "@t3tools/contracts";
 import { useEnvironments, usePrimaryEnvironment } from "../state/environments";
 import {
   useProject,
@@ -501,7 +501,7 @@ import {
 import { sanitizeThreadErrorMessage } from "~/rpc/transportError";
 import { RightPanelSheet } from "./RightPanelSheet";
 import { previewEnvironment } from "../state/preview";
-import { clampFileAttachmentUploadBytes } from "@vetra-code/client-runtime/state/attachments";
+import { clampFileAttachmentUploadBytes } from "@t3tools/client-runtime/state/attachments";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { fileAttachmentCapabilityBlockReason } from "./chat/composerAttachmentFiles";
 import { assetEnvironment } from "../state/assets";
@@ -8821,7 +8821,7 @@ export default function ChatView(props: ChatViewProps) {
       if (userInputResponsesInFlight.current.has(responseKey)) return;
       const attachmentsByQuestionId = new Map<
         string,
-        import("@vetra-code/contracts").UserInputAttachments[string]
+        import("@t3tools/contracts").UserInputAttachments[string]
       >();
       for (const question of activePendingUserInput.questions) {
         const target = questionAttachmentDraftId(
@@ -8844,7 +8844,7 @@ export default function ChatView(props: ChatViewProps) {
         }
         attachmentsByQuestionId.set(
           question.id,
-          uploaded as import("@vetra-code/contracts").UserInputAttachments[string],
+          uploaded as import("@t3tools/contracts").UserInputAttachments[string],
         );
       }
       userInputResponsesInFlight.current.add(responseKey);

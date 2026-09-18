@@ -3,8 +3,8 @@ import {
   ORCHESTRATION_PROTOCOL_VERSION,
   PROVIDER_SEND_TURN_MAX_FILE_BYTES,
   type ExecutionEnvironmentDescriptor,
-} from "@vetra-code/contracts";
-import { HostProcessArchitecture, HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+} from "@t3tools/contracts";
+import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
@@ -45,14 +45,14 @@ export class ServerEnvironment extends Context.Service<
     readonly getEnvironmentId: Effect.Effect<EnvironmentId>;
     readonly getDescriptor: Effect.Effect<ExecutionEnvironmentDescriptor>;
   }
->()("@vetra-code/server/environment/ServerEnvironment") {}
+>()("t3/environment/ServerEnvironment") {}
 
 export class ServerEnvironmentIdentity extends Context.Service<
   ServerEnvironmentIdentity,
   {
     readonly getEnvironmentId: Effect.Effect<EnvironmentId>;
   }
->()("@vetra-code/server/environment/ServerEnvironment/ServerEnvironmentIdentity") {}
+>()("t3/environment/ServerEnvironment/ServerEnvironmentIdentity") {}
 
 function platformOs(platform: NodeJS.Platform): ExecutionEnvironmentDescriptor["platform"]["os"] {
   switch (platform) {

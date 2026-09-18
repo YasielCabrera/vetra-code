@@ -1,4 +1,4 @@
-import * as CodexErrors from "@vetra-code/effect-codex-app-server/errors";
+import * as CodexErrors from "effect-codex-app-server/errors";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

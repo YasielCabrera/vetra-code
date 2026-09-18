@@ -15,10 +15,10 @@ import * as LogLevel from "effect/LogLevel";
 import * as Path from "effect/Path";
 import type * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
-import { PRODUCT_DEFAULT_SERVER_PORT } from "@vetra-code/shared/productIdentity";
+import { PRODUCT_DEFAULT_SERVER_PORT } from "@t3tools/shared/productIdentity";
 
 import { sweepStalePendingAttachments } from "./attachmentStore.ts";
-import { OtlpProtocol } from "@vetra-code/shared/observability";
+import { OtlpProtocol } from "@t3tools/shared/observability";
 
 export const DEFAULT_PORT = PRODUCT_DEFAULT_SERVER_PORT;
 
@@ -99,7 +99,7 @@ export class ServerConfig extends Context.Service<
     readonly tailscaleServeEnabled: boolean;
     readonly tailscaleServePort: number;
   }
->()("@vetra-code/server/config/ServerConfig") {
+>()("t3/config/ServerConfig") {
   /** @deprecated Import and use `layerTest` from this module. */
   static readonly layerTest = (
     cwd: string,

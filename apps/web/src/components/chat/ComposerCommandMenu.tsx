@@ -2,14 +2,14 @@ import {
   formatProviderSkillDisplayName,
   resolveProviderSkillSourceKind,
   type ProviderSkillSourceKind,
-} from "@vetra-code/client-runtime/providerSkills";
+} from "@t3tools/client-runtime/providerSkills";
 import {
   type ProjectEntry,
   type ProviderDriverKind,
   type PullRequestContextMetadata,
   type ServerProviderSkill,
   type ServerProviderSlashCommand,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   BlocksIcon,
   FolderIcon,

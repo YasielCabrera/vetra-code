@@ -1,4 +1,4 @@
-import type { ProviderInstanceId } from "@vetra-code/contracts";
+import type { ProviderInstanceId } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Data from "effect/Data";
@@ -48,7 +48,7 @@ const unavailable = (operation: ProviderSubscriptionCredentialStoreError["operat
  * production runtime overrides it with the encrypted ServerSecretStore layer.
  */
 export class ProviderSubscriptionCredentialStore extends Context.Reference<ProviderSubscriptionCredentialStoreShape>(
-  "@vetra-code/server/provider/usage/ProviderSubscriptionCredentialStore",
+  "t3/provider/usage/ProviderSubscriptionCredentialStore",
   {
     defaultValue: () => ({
       get: () => Effect.succeed(Option.none()),

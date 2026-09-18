@@ -4,7 +4,7 @@ import {
   DEFAULT_CLIENT_SETTINGS,
   EnvironmentId,
   ThreadId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { closeTab, createTab, stopBrowserRecording } = vi.hoisted(() => ({

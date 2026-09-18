@@ -6,9 +6,9 @@ import * as NodeURL from "node:url";
 import * as NodeChildProcess from "node:child_process";
 
 const require = NodeModule.createRequire(import.meta.url);
-// oxlint-disable-next-line vetra/no-global-process-runtime -- Standalone repair script has no Effect runtime.
+// oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone repair script has no Effect runtime.
 const hostPlatform = NodeOS.platform();
-// oxlint-disable-next-line vetra/no-global-process-runtime -- Standalone repair script has no Effect runtime.
+// oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone repair script has no Effect runtime.
 const hostArch = NodeOS.arch();
 
 function getPlatformPath() {

@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@vetra-code/contracts";
+import type { EnvironmentId } from "@t3tools/contracts";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useEffectEvent, useRef } from "react";
 

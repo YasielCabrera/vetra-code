@@ -1,8 +1,8 @@
-import type { ModelSelection } from "@vetra-code/contracts";
+import type { ModelSelection } from "@t3tools/contracts";
 import {
   getModelSelectionBooleanOptionValue,
   getModelSelectionStringOptionValue,
-} from "@vetra-code/shared/model";
+} from "@t3tools/shared/model";
 
 export function getCodexServiceTierOptionValue(
   modelSelection: ModelSelection | null | undefined,

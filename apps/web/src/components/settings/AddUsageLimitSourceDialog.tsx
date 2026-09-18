@@ -1,4 +1,4 @@
-import { type EnvironmentId, UsageLimitSourceId } from "@vetra-code/contracts";
+import { type EnvironmentId, UsageLimitSourceId } from "@t3tools/contracts";
 import { useState } from "react";
 
 import { useUpdateEnvironmentSettings } from "../../hooks/useSettings";

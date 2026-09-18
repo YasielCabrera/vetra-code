@@ -1,9 +1,9 @@
-import { httpHeaderRedactionLayer } from "@vetra-code/shared/httpObservability";
+import { httpHeaderRedactionLayer } from "@t3tools/shared/httpObservability";
 import {
   makeLocalFileTracer,
   makeTraceSink,
   otlpSerializationLayer,
-} from "@vetra-code/shared/observability";
+} from "@t3tools/shared/observability";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as References from "effect/References";

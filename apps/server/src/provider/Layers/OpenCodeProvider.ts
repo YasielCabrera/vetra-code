@@ -4,14 +4,14 @@ import {
   type ServerProviderModel,
   type ServerProviderSkill,
   type ServerProviderSlashCommand,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Data from "effect/Data";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 
-import { createModelCapabilities } from "@vetra-code/shared/model";
-import { compareSemverVersions } from "@vetra-code/shared/semver";
+import { createModelCapabilities } from "@t3tools/shared/model";
+import { compareSemverVersions } from "@t3tools/shared/semver";
 import {
   buildServerProvider,
   COMPACT_SLASH_COMMAND,

@@ -11,7 +11,7 @@ import {
   type IssueState,
   SourceControlProviderKind as SourceControlProviderKindSchema,
   type SourceControlProviderKind,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export const IssueProviderFailureReason = Schema.Literals([
   "missing-tool",

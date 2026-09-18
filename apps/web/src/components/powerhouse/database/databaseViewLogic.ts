@@ -5,7 +5,7 @@ import type {
   PowerhouseDatabaseRelationSummary,
   PowerhouseDatabaseTarget,
   PowerhouseDatabaseTargetId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 const CHAT_CONTEXT_CHARACTER_LIMIT = 12_000;
 

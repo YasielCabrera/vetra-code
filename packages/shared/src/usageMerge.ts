@@ -13,7 +13,7 @@ import {
   type UsageProviderKind,
   type UsageSourceFingerprint,
   type UsageSummary,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export interface EnvironmentUsage {
   readonly environmentId: EnvironmentId;

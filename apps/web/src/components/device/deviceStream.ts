@@ -16,9 +16,9 @@
  * The decoder only runs while frames arrive and the viewer is attached; a
  * hidden panel calls `stop()` so an idle device costs nothing on the GPU.
  */
-import type { DeviceHubAccess } from "@vetra-code/client-runtime/state/deviceHubAccess";
-import { withDeviceHubQuery } from "@vetra-code/client-runtime/state/deviceHubAccess";
-import type { DevicePlatform } from "@vetra-code/contracts";
+import type { DeviceHubAccess } from "@t3tools/client-runtime/state/deviceHubAccess";
+import { withDeviceHubQuery } from "@t3tools/client-runtime/state/deviceHubAccess";
+import type { DevicePlatform } from "@t3tools/contracts";
 
 export type DeviceStreamStatus = "connecting" | "streaming" | "error";
 

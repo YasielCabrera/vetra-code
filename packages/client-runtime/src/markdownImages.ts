@@ -1,5 +1,5 @@
-import { parseSourceControlAttachmentUrl } from "@vetra-code/shared/sourceControlAttachments";
-import { isWindowsAbsolutePath } from "@vetra-code/shared/path";
+import { parseSourceControlAttachmentUrl } from "@t3tools/shared/sourceControlAttachments";
+import { isWindowsAbsolutePath } from "@t3tools/shared/path";
 
 import {
   normalizeMarkdownLinkDestination,

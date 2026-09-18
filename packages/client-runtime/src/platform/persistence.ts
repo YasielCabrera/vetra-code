@@ -5,7 +5,7 @@ import {
   type ServerConfig,
   type ThreadId,
   type VcsListRefsResult,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -47,7 +47,7 @@ export class ConnectionTargetStore extends Context.Service<
     /** Saved environments the user switched off. See `ConnectionRegistrationStore.setEnabled`. */
     readonly listDisabled: Effect.Effect<ReadonlyArray<EnvironmentId>, ConnectionPersistenceError>;
   }
->()("@vetra-code/client-runtime/platform/persistence/ConnectionTargetStore") {}
+>()("@t3tools/client-runtime/platform/persistence/ConnectionTargetStore") {}
 
 export class ConnectionRegistrationStore extends Context.Service<
   ConnectionRegistrationStore,
@@ -61,7 +61,7 @@ export class ConnectionRegistrationStore extends Context.Service<
       enabled: boolean,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
   }
->()("@vetra-code/client-runtime/platform/persistence/ConnectionRegistrationStore") {}
+>()("@t3tools/client-runtime/platform/persistence/ConnectionRegistrationStore") {}
 
 export class EnvironmentCacheStore extends Context.Service<
   EnvironmentCacheStore,
@@ -128,11 +128,11 @@ export class EnvironmentCacheStore extends Context.Service<
       environmentId: EnvironmentId,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
   }
->()("@vetra-code/client-runtime/platform/persistence/EnvironmentCacheStore") {}
+>()("@t3tools/client-runtime/platform/persistence/EnvironmentCacheStore") {}
 
 export class EnvironmentOwnedDataCleanup extends Context.Reference<{
   readonly clear: (environmentId: EnvironmentId) => Effect.Effect<void>;
-}>("@vetra-code/client-runtime/platform/persistence/EnvironmentOwnedDataCleanup", {
+}>("@t3tools/client-runtime/platform/persistence/EnvironmentOwnedDataCleanup", {
   defaultValue: () => ({
     clear: () => Effect.void,
   }),

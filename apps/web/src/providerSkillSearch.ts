@@ -1,14 +1,14 @@
-import type { ServerProviderSkill } from "@vetra-code/contracts";
+import type { ServerProviderSkill } from "@t3tools/contracts";
 import {
   dedupeProviderSkillsByName,
   formatProviderSkillDisplayName,
   isProviderSkillUserInvocable,
-} from "@vetra-code/client-runtime/providerSkills";
+} from "@t3tools/client-runtime/providerSkills";
 import {
   insertRankedSearchResult,
   normalizeSearchQuery,
   scoreQueryMatch,
-} from "@vetra-code/shared/searchRanking";
+} from "@t3tools/shared/searchRanking";
 
 export function scoreProviderSkill(skill: ServerProviderSkill, query: string): number | null {
   const normalizedName = skill.name.toLowerCase();

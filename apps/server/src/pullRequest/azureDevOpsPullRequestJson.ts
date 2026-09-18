@@ -8,9 +8,9 @@ import type {
   PullRequestMergeMethod,
   PullRequestMergeability,
   PullRequestState,
-} from "@vetra-code/contracts";
-import { TrimmedNonEmptyString } from "@vetra-code/contracts";
-import { decodeJsonResult } from "@vetra-code/shared/schemaJson";
+} from "@t3tools/contracts";
+import { TrimmedNonEmptyString } from "@t3tools/contracts";
+import { decodeJsonResult } from "@t3tools/shared/schemaJson";
 
 import {
   azureDevOpsOrganizationBaseFromRestApiUrl,

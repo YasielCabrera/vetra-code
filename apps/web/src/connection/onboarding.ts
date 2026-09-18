@@ -1,9 +1,9 @@
-import { ConnectionOnboarding } from "@vetra-code/client-runtime/connection";
+import { ConnectionOnboarding } from "@t3tools/client-runtime/connection";
 import {
   createAtomCommandScheduler,
   createRuntimeCommand,
-} from "@vetra-code/client-runtime/state/runtime";
-import type { DesktopSshEnvironmentTarget } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/state/runtime";
+import type { DesktopSshEnvironmentTarget } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 
 import { connectionAtomRuntime } from "./runtime";

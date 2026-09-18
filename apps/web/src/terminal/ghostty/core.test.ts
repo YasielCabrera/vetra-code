@@ -7,7 +7,7 @@ import {
   readTerminalOutputUpdate,
   terminalOutputText,
   type TerminalBufferState,
-} from "@vetra-code/client-runtime/state/terminal";
+} from "@t3tools/client-runtime/state/terminal";
 
 import { writeTerminalOutputUpdate } from "../../components/ThreadTerminalDrawer";
 import { GHOSTTY_CELL_WIDE, GhosttyTerminalCore, ghosttyCellText } from "./core";

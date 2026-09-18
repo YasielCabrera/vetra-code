@@ -1,15 +1,12 @@
 // @effect-diagnostics nodeBuiltinImport:off - Effect has no incremental digest or free-space query.
 import * as EffectNodeStream from "@effect/platform-node/NodeStream";
-import { ProviderDriverKind, type ProviderInstallState } from "@vetra-code/contracts";
+import { ProviderDriverKind, type ProviderInstallState } from "@t3tools/contracts";
 import {
   HostProcessArchitecture,
   HostProcessEnvironment,
   HostProcessPlatform,
-} from "@vetra-code/shared/hostProcess";
-import {
-  resolveNodeExecutable,
-  nodeRuntimeUnavailableMessage,
-} from "@vetra-code/shared/nodeRuntime";
+} from "@t3tools/shared/hostProcess";
+import { resolveNodeExecutable, nodeRuntimeUnavailableMessage } from "@t3tools/shared/nodeRuntime";
 import * as Clock from "effect/Clock";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
@@ -110,7 +107,7 @@ interface AntigravityInstallationService {
 export class AntigravityInstallation extends Context.Service<
   AntigravityInstallation,
   AntigravityInstallationService
->()("@vetra-code/server/provider/AntigravityInstallation") {
+>()("t3/provider/AntigravityInstallation") {
   static readonly layer = Layer.effect(
     AntigravityInstallation,
     Effect.gen(function* () {

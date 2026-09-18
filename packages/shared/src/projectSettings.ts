@@ -7,7 +7,7 @@ import {
   type ServerSettings,
   type ThreadEnvMode,
   type WorktreeCleanupRules,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { isModelSelectionProviderEnabled } from "./serverSettings.ts";
 
 export type ProjectSettingSource = "environment" | "project";

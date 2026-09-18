@@ -1,13 +1,13 @@
 /** Multi-environment live provider subscription-limit state. */
 import { useAtomValue } from "@effect/atom-react";
-import type { EnvironmentConnectionPhase } from "@vetra-code/client-runtime/connection";
+import type { EnvironmentConnectionPhase } from "@t3tools/client-runtime/connection";
 import {
   PROVIDER_SUBSCRIPTION_USAGE_CONTRACT_VERSION,
   type EnvironmentId,
   type ProviderDriverKind,
   type ProviderInstanceId,
   type ProviderSubscriptionUsageReport,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";

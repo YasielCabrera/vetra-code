@@ -1,8 +1,8 @@
-import { filePreviewDelimiter } from "@vetra-code/shared/delimitedPreview";
-import type { EnvironmentId } from "@vetra-code/contracts";
-import { formatAttachmentSize } from "@vetra-code/client-runtime/state/attachments";
-import { readFilePreviewResponse } from "@vetra-code/client-runtime/file-preview";
-import { filePreviewKind, FILE_TEXT_PREVIEW_MAX_BYTES } from "@vetra-code/shared/filePreview";
+import { filePreviewDelimiter } from "@t3tools/shared/delimitedPreview";
+import type { EnvironmentId } from "@t3tools/contracts";
+import { formatAttachmentSize } from "@t3tools/client-runtime/state/attachments";
+import { readFilePreviewResponse } from "@t3tools/client-runtime/file-preview";
+import { filePreviewKind, FILE_TEXT_PREVIEW_MAX_BYTES } from "@t3tools/shared/filePreview";
 import {
   CheckIcon,
   ChevronRightIcon,

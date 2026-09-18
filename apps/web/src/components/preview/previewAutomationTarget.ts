@@ -1,4 +1,4 @@
-import type { PreviewSessionSnapshot } from "@vetra-code/contracts";
+import type { PreviewSessionSnapshot } from "@t3tools/contracts";
 
 interface PreviewAutomationSessionIndex {
   readonly snapshot: PreviewSessionSnapshot | null;

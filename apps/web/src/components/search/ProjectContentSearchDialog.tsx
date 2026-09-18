@@ -1,5 +1,5 @@
 import { Spinner } from "~/components/ui/spinner";
-import type { ProjectContentMatch } from "@vetra-code/contracts";
+import type { ProjectContentMatch } from "@t3tools/contracts";
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 

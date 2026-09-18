@@ -6,7 +6,7 @@ import {
   ProviderInstanceId,
   type ServerProvider,
   type ServerProviderModel,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { deriveProviderModelsForDisplay, ProviderInstanceCard } from "./ProviderInstanceCard";
 

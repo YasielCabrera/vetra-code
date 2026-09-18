@@ -1,4 +1,4 @@
-import type { PreviewAutomationPressInput } from "@vetra-code/contracts";
+import type { PreviewAutomationPressInput } from "@t3tools/contracts";
 
 interface KeyDefinition {
   readonly code: string;

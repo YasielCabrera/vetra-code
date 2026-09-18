@@ -2,9 +2,9 @@ import type {
   BrowserNavigationTarget,
   EnvironmentId,
   PreviewUrlResolution,
-} from "@vetra-code/contracts";
-import { isLoopbackHost, normalizePreviewUrl } from "@vetra-code/shared/preview";
-import { isLocalLoopbackHost, isPrivateNetworkHost } from "@vetra-code/shared/hostClassification";
+} from "@t3tools/contracts";
+import { isLoopbackHost, normalizePreviewUrl } from "@t3tools/shared/preview";
+import { isLocalLoopbackHost, isPrivateNetworkHost } from "@t3tools/shared/hostClassification";
 
 import { readPreparedConnection } from "~/state/session";
 
@@ -13,7 +13,7 @@ export {
   isLocalLoopbackHost,
   isPrivateNetworkHost,
   isPublicFaviconHost,
-} from "@vetra-code/shared/hostClassification";
+} from "@t3tools/shared/hostClassification";
 
 const readEnvironmentUrl = (environmentId: EnvironmentId): URL => {
   const connection = readPreparedConnection(environmentId);

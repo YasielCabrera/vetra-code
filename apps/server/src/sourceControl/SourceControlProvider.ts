@@ -8,7 +8,7 @@ import type {
   SourceControlProviderKind,
   SourceControlRepositoryCloneUrls,
   SourceControlRepositoryVisibility,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export interface SourceControlLinkSubject {
   readonly title: string;
@@ -142,4 +142,4 @@ export class SourceControlProvider extends Context.Service<
       readonly force?: boolean;
     }) => Effect.Effect<void, SourceControlProviderError>;
   }
->()("@vetra-code/server/sourceControl/SourceControlProvider") {}
+>()("t3/sourceControl/SourceControlProvider") {}

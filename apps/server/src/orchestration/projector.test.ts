@@ -5,7 +5,7 @@ import {
   ProviderDriverKind,
   ThreadId,
   type OrchestrationEvent,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import { it as effectIt } from "@effect/vitest";
 import { describe, expect, it } from "vite-plus/test";

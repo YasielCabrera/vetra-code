@@ -1,5 +1,5 @@
 import { useAtomValue } from "@effect/atom-react";
-import type { EnvironmentId } from "@vetra-code/contracts";
+import type { EnvironmentId } from "@t3tools/contracts";
 import { ChevronDownIcon, PlusIcon, RotateCcwIcon, XIcon } from "lucide-react";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";

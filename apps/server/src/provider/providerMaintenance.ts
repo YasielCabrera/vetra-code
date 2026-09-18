@@ -2,11 +2,11 @@ import {
   ProviderDriverKind,
   type ServerProvider,
   type ServerProviderVersionAdvisory,
-} from "@vetra-code/contracts";
-import { compareSemverVersions } from "@vetra-code/shared/semver";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
-import { causeErrorTag } from "@vetra-code/shared/observability";
-import { resolveCommandPath } from "@vetra-code/shared/shell";
+} from "@t3tools/contracts";
+import { compareSemverVersions } from "@t3tools/shared/semver";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { causeErrorTag } from "@t3tools/shared/observability";
+import { resolveCommandPath } from "@t3tools/shared/shell";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -119,7 +119,7 @@ export interface ProviderVersionCacheEntry {
 }
 
 export const ProviderVersionCache = Context.Reference<Map<string, ProviderVersionCacheEntry>>(
-  "@vetra-code/server/providerMaintenance/ProviderVersionCache",
+  "t3/providerMaintenance/ProviderVersionCache",
   {
     defaultValue: () => new Map(),
   },

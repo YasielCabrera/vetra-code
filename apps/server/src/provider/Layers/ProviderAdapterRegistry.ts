@@ -15,7 +15,7 @@
  *
  * @module ProviderAdapterRegistryLive
  */
-import { ProviderInstanceId } from "@vetra-code/contracts";
+import { ProviderInstanceId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 

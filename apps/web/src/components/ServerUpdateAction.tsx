@@ -1,10 +1,10 @@
-import type { EnvironmentId, ServerSelfUpdateCapability } from "@vetra-code/contracts";
-import type { ServerUpdateStage, ServerUpdateState } from "@vetra-code/client-runtime/state/server";
+import type { EnvironmentId, ServerSelfUpdateCapability } from "@t3tools/contracts";
+import type { ServerUpdateStage, ServerUpdateState } from "@t3tools/client-runtime/state/server";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
-import { PRODUCT_CLI_NAME } from "@vetra-code/shared/productIdentity";
+} from "@t3tools/client-runtime/state/runtime";
+import { PRODUCT_CLI_NAME } from "@t3tools/shared/productIdentity";
 import { CircleArrowUpIcon } from "lucide-react";
 import { type ComponentProps, useRef, useState } from "react";
 

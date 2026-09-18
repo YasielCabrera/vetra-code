@@ -1,9 +1,9 @@
 import { isElectron } from "~/env";
 import { isMacPlatform, isWindowsPlatform, normalizeSearchText } from "~/lib/utils";
-import { STATIC_KEYBINDING_COMMANDS, type KeybindingCommand } from "@vetra-code/contracts";
-import type { EnvironmentId } from "@vetra-code/contracts";
-import type { EnvironmentConnectionPhase } from "@vetra-code/client-runtime/connection";
-import { DEFAULT_KEYBINDINGS } from "@vetra-code/shared/keybindings";
+import { STATIC_KEYBINDING_COMMANDS, type KeybindingCommand } from "@t3tools/contracts";
+import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentConnectionPhase } from "@t3tools/client-runtime/connection";
+import { DEFAULT_KEYBINDINGS } from "@t3tools/shared/keybindings";
 import { commandLabel } from "./KeybindingsSettings.logic";
 import {
   validateSettingsScopeSearch,

@@ -4,9 +4,9 @@ import type {
   ThreadLinkedPullRequest,
   ThreadPullRequestKey,
   ThreadPullRequestLink,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
-import { pullRequestHostOf } from "@vetra-code/contracts";
+import { pullRequestHostOf } from "@t3tools/contracts";
 import { parseChangeRequestUrl } from "./changeRequestUrl.ts";
 import { canonicalRepositoryKey, sourceControlRepositorySelector } from "./sourceControl.ts";
 

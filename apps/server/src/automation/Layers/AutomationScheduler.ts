@@ -6,8 +6,8 @@ import {
   MessageId,
   PositiveInt,
   ThreadId,
-} from "@vetra-code/contracts";
-import { makeDrainableWorker } from "@vetra-code/shared/DrainableWorker";
+} from "@t3tools/contracts";
+import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
 import * as Cause from "effect/Cause";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";

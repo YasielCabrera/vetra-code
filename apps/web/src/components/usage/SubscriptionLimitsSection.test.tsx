@@ -5,7 +5,7 @@ import {
   type ProviderSubscriptionUsageInstanceResult,
   type ProviderSubscriptionUsageReport,
   type ProviderSubscriptionUsageWindow,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vite-plus/test";

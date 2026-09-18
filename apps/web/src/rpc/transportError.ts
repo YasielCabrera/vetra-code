@@ -1,1 +1,1 @@
-export { sanitizeThreadErrorMessage } from "@vetra-code/client-runtime/errors";
+export { sanitizeThreadErrorMessage } from "@t3tools/client-runtime/errors";

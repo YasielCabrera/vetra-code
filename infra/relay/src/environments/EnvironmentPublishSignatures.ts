@@ -2,14 +2,14 @@ import {
   RelayAgentActivityPublishProofPayload,
   RelayAgentActivityPublishProofInvalidReason,
   type RelayAgentActivityPublishRequest,
-} from "@vetra-code/contracts/relay";
+} from "@t3tools/contracts/relay";
 import {
   decodeRelayJwt,
   normalizeRelayIssuer,
   RELAY_ACTIVITY_PUBLISH_TYP,
   verifyRelayJwt,
-} from "@vetra-code/shared/relayJwt";
-import { stableStringify } from "@vetra-code/shared/relaySigning";
+} from "@t3tools/shared/relayJwt";
+import { stableStringify } from "@t3tools/shared/relaySigning";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -83,7 +83,7 @@ export class EnvironmentPublishSignatures extends Context.Service<
       readonly request: RelayAgentActivityPublishRequest;
     }) => Effect.Effect<void, EnvironmentPublishSignatureError>;
   }
->()("@vetra-code/relay/environments/EnvironmentPublishSignatures") {}
+>()("t3code-relay/environments/EnvironmentPublishSignatures") {}
 
 const decodeProof = Schema.decodeUnknownEffect(RelayAgentActivityPublishProofPayload);
 

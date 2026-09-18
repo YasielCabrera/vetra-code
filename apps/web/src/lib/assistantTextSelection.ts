@@ -1,4 +1,4 @@
-import { ASSISTANT_CITATION_CONTEXT_LENGTH, type AssistantCitation } from "@vetra-code/contracts";
+import { ASSISTANT_CITATION_CONTEXT_LENGTH, type AssistantCitation } from "@t3tools/contracts";
 
 export type AssistantTextSelector = {
   readonly text: string;

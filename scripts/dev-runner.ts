@@ -4,19 +4,15 @@ import * as NodeOS from "node:os";
 
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import * as NetService from "@vetra-code/shared/Net";
-import { resolveGitWorktreePath, resolveWorktreeVetraHome } from "@vetra-code/shared/devHome";
-import {
-  HostProcessEnvironment,
-  HostProcessWorkingDirectory,
-} from "@vetra-code/shared/hostProcess";
-import { resolveSpawnCommand } from "@vetra-code/shared/shell";
+import * as NetService from "@t3tools/shared/Net";
+import { resolveGitWorktreePath, resolveWorktreeVetraHome } from "@t3tools/shared/devHome";
+import { HostProcessEnvironment, HostProcessWorkingDirectory } from "@t3tools/shared/hostProcess";
+import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import {
   PRODUCT_DEV_SERVER_PORT,
   PRODUCT_DEV_WEB_PORT,
   PRODUCT_HOME_DIRECTORY_NAME,
-  PRODUCT_SERVER_PACKAGE,
-} from "@vetra-code/shared/productIdentity";
+} from "@t3tools/shared/productIdentity";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 import * as Hash from "effect/Hash";
@@ -83,15 +79,15 @@ export const DEFAULT_VETRA_HOME = Effect.map(Effect.service(Path.Path), (path) =
 const MODE_ARGS = {
   dev: [
     "run",
-    "--filter=@vetra-code/contracts",
-    "--filter=@vetra-code/web",
-    `--filter=${PRODUCT_SERVER_PACKAGE}`,
+    "--filter=@t3tools/contracts",
+    "--filter=@t3tools/web",
+    "--filter=t3",
     "--parallel",
     "dev",
   ],
-  "dev:server": ["run", `--filter=${PRODUCT_SERVER_PACKAGE}`, "dev"],
-  "dev:web": ["run", "--filter=@vetra-code/web", "dev"],
-  "dev:desktop": ["run", "--filter=@vetra-code/desktop", "--filter=@vetra-code/web", "dev"],
+  "dev:server": ["run", "--filter=t3", "dev"],
+  "dev:web": ["run", "--filter=@t3tools/web", "dev"],
+  "dev:desktop": ["run", "--filter=@t3tools/desktop", "--filter=@t3tools/web", "dev"],
 } as const satisfies Record<string, ReadonlyArray<string>>;
 
 type DevMode = keyof typeof MODE_ARGS;
@@ -685,7 +681,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
 
     const hostEnvironment = yield* HostProcessEnvironment;
     // A dev server started inside a worktree defaults to that worktree's own
-    // (gitignored) `.vetra-code` — see @vetra-code/shared/devHome for why this must
+    // (gitignored) `.vetra-code` — see @t3tools/shared/devHome for why this must
     // outrank an ambient VETRA_HOME. `--home-dir` still wins.
     const worktreeHome = yield* resolveWorktreeVetraHome(yield* HostProcessWorkingDirectory);
     // Trim before choosing: `--home-dir ""` is not a selection, and treating it

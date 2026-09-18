@@ -1,4 +1,4 @@
-import type { EnvironmentId, PowerhouseReactorDocumentViewFilter } from "@vetra-code/contracts";
+import type { EnvironmentId, PowerhouseReactorDocumentViewFilter } from "@t3tools/contracts";
 import { ArrowLeft, ChevronRight, FileText, RefreshCw } from "lucide-react";
 import { lazy, Suspense } from "react";
 

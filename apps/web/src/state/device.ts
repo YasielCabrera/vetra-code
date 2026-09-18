@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { useAtomValue } from "@effect/atom-react";
-import { createDeviceEnvironmentAtoms } from "@vetra-code/client-runtime/state/device";
+import { createDeviceEnvironmentAtoms } from "@t3tools/client-runtime/state/device";
 import {
   type DeviceHubAccess,
   resolveDeviceHubAccess,
-} from "@vetra-code/client-runtime/state/deviceHubAccess";
-import type { DeviceServiceState, EnvironmentId } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/state/deviceHubAccess";
+import type { DeviceServiceState, EnvironmentId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";

@@ -2,7 +2,7 @@ import {
   DEFAULT_SERVER_SETTINGS,
   resolveEnvironmentMachineKind,
   type ServerSettings,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { CheckIcon, LayersIcon } from "lucide-react";
 import * as Equal from "effect/Equal";
 

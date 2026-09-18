@@ -9,7 +9,7 @@ import {
   type LimitPoolMember,
   type LimitPoolWindow,
   remainingPercent,
-} from "@vetra-code/shared/usageLimits";
+} from "@t3tools/shared/usageLimits";
 import { AlertTriangleIcon, TicketIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 

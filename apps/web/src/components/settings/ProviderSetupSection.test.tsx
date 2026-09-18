@@ -6,7 +6,7 @@ import {
   type ProviderAuthState,
   type ProviderInstallState,
   type ServerProvider,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { visitElements } from "../../test/reactElementTree";

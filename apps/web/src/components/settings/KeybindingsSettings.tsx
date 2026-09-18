@@ -26,12 +26,12 @@ import {
   type KeybindingWhenNode,
   type ServerRemoveKeybindingInput,
   type ServerUpsertKeybindingInput,
-} from "@vetra-code/contracts";
-import { mergeWithDefaultKeybindings } from "@vetra-code/shared/keybindings";
+} from "@t3tools/contracts";
+import { mergeWithDefaultKeybindings } from "@t3tools/shared/keybindings";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 
 import { isElectron } from "../../env";
 import { useOpenInPreferredEditor } from "../../editorPreferences";

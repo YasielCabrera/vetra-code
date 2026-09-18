@@ -47,8 +47,8 @@ import {
   PRIMARY_LOCAL_ENVIRONMENT_ID,
   DesktopTelemetryControlMessage,
   type DesktopTelemetryControlMessage as DesktopTelemetryControlMessageValue,
-} from "@vetra-code/contracts";
-import { waitForHttpReady as waitForHttpReadyShared } from "@vetra-code/shared/httpReadiness";
+} from "@t3tools/contracts";
+import { waitForHttpReady as waitForHttpReadyShared } from "@t3tools/shared/httpReadiness";
 
 import * as DesktopObservability from "../app/DesktopObservability.ts";
 import * as DesktopTelemetryPublisher from "../telemetry/DesktopTelemetryPublisher.ts";

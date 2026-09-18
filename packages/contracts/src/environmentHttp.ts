@@ -350,7 +350,7 @@ export interface EnvironmentSessionPrincipalShape {
 export class EnvironmentAuthenticatedPrincipal extends Context.Service<
   EnvironmentAuthenticatedPrincipal,
   EnvironmentSessionPrincipalShape
->()("@vetra-code/contracts/environmentHttp/EnvironmentAuthenticatedPrincipal") {}
+>()("@t3tools/contracts/environmentHttp/EnvironmentAuthenticatedPrincipal") {}
 
 export class EnvironmentAuthenticatedAuth extends HttpApiMiddleware.Service<
   EnvironmentAuthenticatedAuth,

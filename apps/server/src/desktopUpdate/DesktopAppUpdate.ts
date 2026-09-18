@@ -4,7 +4,7 @@ import {
   type DesktopUpdateStatusReport,
   type ServerSelfUpdateProgressStage,
   type ServerSelfUpdateResult,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Duration from "effect/Duration";
@@ -60,7 +60,7 @@ export class DesktopAppUpdate extends Context.Service<
       onHandoffAccepted?: () => Effect.Effect<void>,
     ) => Effect.Effect<never, ServerSelfUpdateError>;
   }
->()("@vetra-code/server/desktopUpdate/DesktopAppUpdate") {}
+>()("t3/desktopUpdate/DesktopAppUpdate") {}
 
 export const make = Effect.fn("desktopUpdate.desktopAppUpdate.make")(function* () {
   const config = yield* ServerConfig;

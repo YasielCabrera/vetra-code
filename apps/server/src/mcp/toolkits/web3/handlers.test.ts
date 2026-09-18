@@ -1,6 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
-import { EnvironmentId, ProviderInstanceId, ThreadId } from "@vetra-code/contracts";
+import { EnvironmentId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Sink from "effect/Sink";

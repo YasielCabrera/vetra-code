@@ -8,7 +8,7 @@
  *
  * @module codexThreadCost
  */
-import type { UsageTokenTotals } from "@vetra-code/contracts";
+import type { UsageTokenTotals } from "@t3tools/contracts";
 
 import { totalTokens } from "./usageTranscripts.ts";
 

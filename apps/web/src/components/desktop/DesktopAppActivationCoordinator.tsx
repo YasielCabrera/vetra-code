@@ -1,5 +1,5 @@
-import { squashAtomCommandFailure } from "@vetra-code/client-runtime/state/runtime";
-import type { DesktopAppActivationRequest } from "@vetra-code/contracts";
+import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import type { DesktopAppActivationRequest } from "@t3tools/contracts";
 import { useEffect, useEffectEvent, useRef } from "react";
 
 import { handleDesktopAppActivationRequest } from "../../desktopAppActivation";

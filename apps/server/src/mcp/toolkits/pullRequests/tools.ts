@@ -4,7 +4,7 @@ import {
   PullRequestState,
   ThreadPullRequestLinkSource,
   TrimmedNonEmptyString,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import * as Tool from "effect/unstable/ai/Tool";
 import * as Toolkit from "effect/unstable/ai/Toolkit";

@@ -17,7 +17,7 @@ import {
   type PreviewAutomationSnapshot,
   type PreviewAutomationStatus,
   type PreviewTabId,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import {
   parseAttachmentUuid,
@@ -57,7 +57,7 @@ const invoke = Effect.fn("PreviewToolkit.invoke")(function* <A>(
   tabId?: PreviewTabId,
 ): Effect.fn.Return<
   { result: A; toolIcon?: ToolActivityIcon },
-  import("@vetra-code/contracts").PreviewAutomationError,
+  import("@t3tools/contracts").PreviewAutomationError,
   McpInvocationContext.McpInvocationContext | PreviewAutomationBroker.PreviewAutomationBroker
 > {
   const scope = yield* McpInvocationContext.requireMcpCapability("preview");

@@ -5,7 +5,7 @@ import type {
   PullRequestRef,
   PullRequestReviewThread,
   ScopedThreadRef,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import {
   ArrowDownUpIcon,
   ChevronDownIcon,

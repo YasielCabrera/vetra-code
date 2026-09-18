@@ -5,49 +5,49 @@ import * as NodeOS from "node:os";
 import * as NodeSea from "node:sea";
 
 export const HostProcessPlatform = Context.Reference<NodeJS.Platform>(
-  "@vetra-code/shared/hostProcess/HostProcessPlatform",
+  "@t3tools/shared/hostProcess/HostProcessPlatform",
   {
     defaultValue: () => process.platform,
   },
 );
 
 export const HostProcessArchitecture = Context.Reference<NodeJS.Architecture>(
-  "@vetra-code/shared/hostProcess/HostProcessArchitecture",
+  "@t3tools/shared/hostProcess/HostProcessArchitecture",
   {
     defaultValue: () => process.arch,
   },
 );
 
 export const HostProcessHostname = Context.Reference<string>(
-  "@vetra-code/shared/hostProcess/HostProcessHostname",
+  "@t3tools/shared/hostProcess/HostProcessHostname",
   {
     defaultValue: () => NodeOS.hostname(),
   },
 );
 
 export const HostProcessEnvironment = Context.Reference<NodeJS.ProcessEnv>(
-  "@vetra-code/shared/hostProcess/HostProcessEnvironment",
+  "@t3tools/shared/hostProcess/HostProcessEnvironment",
   {
     defaultValue: () => process.env,
   },
 );
 
 export const HostProcessWorkingDirectory = Context.Reference<string>(
-  "@vetra-code/shared/hostProcess/HostProcessWorkingDirectory",
+  "@t3tools/shared/hostProcess/HostProcessWorkingDirectory",
   {
     defaultValue: () => process.cwd(),
   },
 );
 
 export const HostProcessExecutablePath = Context.Reference<string>(
-  "@vetra-code/shared/hostProcess/HostProcessExecutablePath",
+  "@t3tools/shared/hostProcess/HostProcessExecutablePath",
   {
     defaultValue: () => process.execPath,
   },
 );
 
 export const HostProcessArguments = Context.Reference<ReadonlyArray<string>>(
-  "@vetra-code/shared/hostProcess/HostProcessArguments",
+  "@t3tools/shared/hostProcess/HostProcessArguments",
   {
     defaultValue: () => process.argv,
   },
@@ -59,7 +59,7 @@ export const HostProcessArguments = Context.Reference<ReadonlyArray<string>>(
  * path. `process.argv[0]` and `execPath` are always the resolved binary.
  */
 export const HostProcessInvokedAs = Context.Reference<string>(
-  "@vetra-code/shared/hostProcess/HostProcessInvokedAs",
+  "@t3tools/shared/hostProcess/HostProcessInvokedAs",
   {
     defaultValue: () => process.argv0,
   },
@@ -72,7 +72,7 @@ export const HostProcessInvokedAs = Context.Reference<string>(
  * subcommands of itself.
  */
 export const HostProcessIsExecutable = Context.Reference<boolean>(
-  "@vetra-code/shared/hostProcess/HostProcessIsExecutable",
+  "@t3tools/shared/hostProcess/HostProcessIsExecutable",
   {
     defaultValue: () => NodeSea.isSea(),
   },
@@ -89,7 +89,7 @@ export const HostProcessIsExecutable = Context.Reference<boolean>(
  * Best effort: a failed lookup just leaves the interface set.
  */
 export const HostProcessAddresses = Context.Reference<Effect.Effect<ReadonlySet<string>>>(
-  "@vetra-code/shared/hostProcess/HostProcessAddresses",
+  "@t3tools/shared/hostProcess/HostProcessAddresses",
   {
     defaultValue: () =>
       Effect.gen(function* () {
@@ -109,7 +109,7 @@ export const HostProcessAddresses = Context.Reference<Effect.Effect<ReadonlySet<
 
 /** Undefined on platforms without POSIX uids (Windows). */
 export const HostProcessUserId = Context.Reference<number | undefined>(
-  "@vetra-code/shared/hostProcess/HostProcessUserId",
+  "@t3tools/shared/hostProcess/HostProcessUserId",
   {
     defaultValue: () => process.getuid?.(),
   },

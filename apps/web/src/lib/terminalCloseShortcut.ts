@@ -1,4 +1,4 @@
-import type { ResolvedKeybindingsConfig } from "@vetra-code/contracts";
+import type { ResolvedKeybindingsConfig } from "@t3tools/contracts";
 
 import { isTerminalCloseShortcut, type ShortcutEventLike } from "../keybindings";
 

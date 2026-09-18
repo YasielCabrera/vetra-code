@@ -1,9 +1,9 @@
-import type { ClientSettings } from "@vetra-code/contracts/settings";
-import type { AssistantCitation } from "@vetra-code/contracts";
+import type { ClientSettings } from "@t3tools/contracts/settings";
+import type { AssistantCitation } from "@t3tools/contracts";
 import {
   serializeAssistantCitation,
   withAssistantCitationComment,
-} from "@vetra-code/shared/assistantCitations";
+} from "@t3tools/shared/assistantCitations";
 import {
   splitPromptIntoComposerSegments,
   type ComposerPromptSegment,

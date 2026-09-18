@@ -9,7 +9,7 @@ import noNativeTitleTooltip from "./rules/no-native-title-tooltip.ts";
 
 export default definePlugin({
   meta: {
-    name: "vetra",
+    name: "t3code",
   },
   rules: {
     "namespace-node-imports": namespaceNodeImports,

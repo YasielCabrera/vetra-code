@@ -17,7 +17,7 @@ import type {
   ProjectReadFileResult,
   ProjectWriteFileInput,
   ProjectWriteFileResult,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -130,7 +130,7 @@ export class WorkspaceFileSystem extends Context.Service<
       WorkspaceFileSystemError | WorkspacePaths.WorkspacePathOutsideRootError
     >;
   }
->()("@vetra-code/server/workspace/WorkspaceFileSystem") {}
+>()("t3/workspace/WorkspaceFileSystem") {}
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {

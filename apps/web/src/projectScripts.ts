@@ -3,7 +3,7 @@ import {
   SCRIPT_RUN_COMMAND_PATTERN,
   type KeybindingCommand,
   type ProjectScript,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 const isScriptRunCommand = Schema.is(SCRIPT_RUN_COMMAND_PATTERN);
 

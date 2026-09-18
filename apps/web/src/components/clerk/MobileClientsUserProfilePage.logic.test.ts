@@ -1,4 +1,4 @@
-import type { RelayClientDeviceRecord } from "@vetra-code/contracts/relay";
+import type { RelayClientDeviceRecord } from "@t3tools/contracts/relay";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

@@ -9,7 +9,7 @@ import type {
   PowerhouseDocumentModelSpecification,
   PowerhouseReactorConnection,
   PowerhouseReactorFailure,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 /** Index of the newest specification: highest version, last entry breaking ties. */
 export function latestSpecificationIndex(

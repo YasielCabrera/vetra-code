@@ -4,7 +4,7 @@ import {
   RelayAgentActivityAggregateState,
   RelayAgentAwarenessPreferences,
   type RelayDeliveryResult,
-} from "@vetra-code/contracts/relay";
+} from "@t3tools/contracts/relay";
 import * as Crypto from "effect/Crypto";
 import type * as PlatformError from "effect/PlatformError";
 import * as Context from "effect/Context";
@@ -133,7 +133,7 @@ export class FcmDeliveries extends Context.Service<
       | EnvironmentLinks.EnvironmentLinkUserListPersistenceError
     >;
   }
->()("@vetra-code/relay/agentActivity/FcmDeliveries") {}
+>()("t3code-relay/agentActivity/FcmDeliveries") {}
 
 export const make = Effect.gen(function* () {
   const config = yield* RelayConfiguration.RelayConfiguration;

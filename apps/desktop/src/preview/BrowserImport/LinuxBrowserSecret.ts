@@ -7,7 +7,7 @@ import { DesktopEnvironment } from "../../app/DesktopEnvironment.ts";
 
 /** Absolute path to the helper shipped with this desktop instance. */
 export const LinuxBrowserSecretPath = Context.Reference<string | undefined>(
-  "@vetra-code/desktop/preview/BrowserImport/LinuxBrowserSecretPath",
+  "@t3tools/desktop/preview/BrowserImport/LinuxBrowserSecretPath",
   { defaultValue: () => undefined },
 );
 

@@ -16,7 +16,7 @@ import {
   ProjectId,
   RuntimeMode,
   ThreadEnvMode,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
@@ -100,6 +100,4 @@ export interface ProjectionAutomationRepositoryShape {
 export class ProjectionAutomationRepository extends Context.Service<
   ProjectionAutomationRepository,
   ProjectionAutomationRepositoryShape
->()(
-  "@vetra-code/server/persistence/Services/ProjectionAutomations/ProjectionAutomationRepository",
-) {}
+>()("t3/persistence/Services/ProjectionAutomations/ProjectionAutomationRepository") {}

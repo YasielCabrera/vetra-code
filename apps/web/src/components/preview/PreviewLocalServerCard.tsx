@@ -1,4 +1,4 @@
-import type { ScopedThreadRef } from "@vetra-code/contracts";
+import type { ScopedThreadRef } from "@t3tools/contracts";
 import { DiscoveryListRow } from "../ui/discovery-list";
 
 import { PreviewFaviconIcon } from "./PreviewFaviconIcon";

@@ -1,4 +1,4 @@
-import { EDITORS, type EditorId } from "@vetra-code/contracts";
+import { EDITORS, type EditorId } from "@t3tools/contracts";
 
 import { getLocalFileManagerName } from "~/lib/utils";
 

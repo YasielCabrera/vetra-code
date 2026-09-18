@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { ProviderDriverKind } from "@vetra-code/contracts";
+import { ProviderDriverKind } from "@t3tools/contracts";
 
 import { DRIVER_OPTION_BY_VALUE } from "./providerDriverMeta";
 import {

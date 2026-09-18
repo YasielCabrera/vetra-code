@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vetra-code/contracts";
+import { EnvironmentId } from "@t3tools/contracts";
 
 import { ProjectSettingsPanel } from "./ProjectSettingsPanel";
 import { useSettingsScope } from "./SettingsScopeContext";

@@ -2,7 +2,7 @@ import type { FileDiffContentsLoader } from "@pierre/diffs";
 import {
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import type {
   EnvironmentId,
   PullRequestDiffFileContentsInput,
@@ -11,7 +11,7 @@ import type {
   ReviewDiffFileContentsInput,
   ReviewDiffFileContentsResult,
   ReviewDiffPreviewSourceKind,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { resolveFileDiffPath } from "./diffRendering";
 

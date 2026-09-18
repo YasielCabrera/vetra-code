@@ -1,4 +1,4 @@
-import type { VcsFileBlameCommit } from "@vetra-code/contracts";
+import type { VcsFileBlameCommit } from "@t3tools/contracts";
 
 import type { FileLineShift } from "./fileLineShift";
 import {

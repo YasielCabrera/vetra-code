@@ -8,7 +8,7 @@ import {
   ISSUE_ASSIGNEE_VIEWER,
   type IssueActivity,
   type IssueAssigneeCandidateList,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 import type { ProviderIssueListCursor } from "./IssueProvider.ts";
@@ -90,7 +90,7 @@ export class GitHubIssueCli extends Context.Service<
       readonly assigned: boolean;
     }) => Effect.Effect<void, GitHubIssueCliError>;
   }
->()("@vetra-code/server/issue/GitHubIssueCli") {}
+>()("t3/issue/GitHubIssueCli") {}
 
 function validRepository(repository: string): boolean {
   return REPOSITORY_PATTERN.test(repository);

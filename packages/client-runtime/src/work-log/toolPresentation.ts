@@ -3,7 +3,7 @@ import type {
   ToolActivityNativeAppReference,
   ToolActivitySource,
   ToolActivitySurface,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 export interface ExtractedToolActivityPresentation {
   readonly toolSurface?: ToolActivitySurface;

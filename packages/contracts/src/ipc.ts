@@ -81,8 +81,8 @@ import {
   PreviewAutomationWalletRequestList,
   PreviewAutomationWalletResolution,
 } from "./previewAutomation.ts";
-import { Web3CustomNetwork, Web3WalletStatus } from "@vetra-code/web3/schema";
-import type { Web3ProviderEvent } from "@vetra-code/web3/inpage";
+import { Web3CustomNetwork, Web3WalletStatus } from "@t3tools/web3/schema";
+import type { Web3ProviderEvent } from "@t3tools/web3/inpage";
 import type {
   ClientOrchestrationCommand,
   OrchestrationGetFullThreadDiffInput,

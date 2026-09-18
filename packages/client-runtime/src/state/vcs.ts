@@ -4,8 +4,8 @@ import {
   type VcsListRefsResult,
   type VcsStatusResult,
   WS_METHODS,
-} from "@vetra-code/contracts";
-import { applyGitStatusStreamEvent } from "@vetra-code/shared/git";
+} from "@t3tools/contracts";
+import { applyGitStatusStreamEvent } from "@t3tools/shared/git";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";

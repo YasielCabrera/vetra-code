@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId } from "@vetra-code/contracts";
+import { EnvironmentId, ProjectId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { EnvironmentProject } from "./models.ts";

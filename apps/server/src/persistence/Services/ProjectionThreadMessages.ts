@@ -14,7 +14,7 @@ import {
   ThreadId,
   TurnId,
   IsoDateTime,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
 import * as Struct from "effect/Struct";
@@ -126,6 +126,4 @@ export interface ProjectionThreadMessageRepositoryShape {
 export class ProjectionThreadMessageRepository extends Context.Service<
   ProjectionThreadMessageRepository,
   ProjectionThreadMessageRepositoryShape
->()(
-  "@vetra-code/server/persistence/Services/ProjectionThreadMessages/ProjectionThreadMessageRepository",
-) {}
+>()("t3/persistence/Services/ProjectionThreadMessages/ProjectionThreadMessageRepository") {}

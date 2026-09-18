@@ -1,6 +1,6 @@
 import * as NodeOS from "node:os";
-import type { HostResourcesSnapshot } from "@vetra-code/contracts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import type { HostResourcesSnapshot } from "@t3tools/contracts";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Cache from "effect/Cache";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -12,7 +12,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 export class HostResources extends Context.Service<
   HostResources,
   { readonly read: Effect.Effect<HostResourcesSnapshot> }
->()("@vetra-code/server/resourceTelemetry/HostResources") {}
+>()("t3/resourceTelemetry/HostResources") {}
 
 function readCpu() {
   const cpus = NodeOS.cpus();

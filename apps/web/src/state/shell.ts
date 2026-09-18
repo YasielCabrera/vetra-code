@@ -1,18 +1,18 @@
 import {
   AVAILABLE_CONNECTION_STATE,
   connectionProjectionPhase,
-} from "@vetra-code/client-runtime/connection";
+} from "@t3tools/client-runtime/connection";
 import {
   createEnvironmentShellAtoms,
   createEnvironmentSnapshotAtom,
   createShellEnvironmentAtoms,
   type EnvironmentShellState,
-} from "@vetra-code/client-runtime/state/shell";
+} from "@t3tools/client-runtime/state/shell";
 import {
   type EnvironmentCatalogState,
   enabledEnvironmentIds,
-} from "@vetra-code/client-runtime/state/connections";
-import type { EnvironmentId } from "@vetra-code/contracts";
+} from "@t3tools/client-runtime/state/connections";
+import type { EnvironmentId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 

@@ -1,4 +1,4 @@
-import type { ProviderInstanceId, UnifiedSettings } from "@vetra-code/contracts";
+import type { ProviderInstanceId, UnifiedSettings } from "@t3tools/contracts";
 import { useCallback } from "react";
 
 import { getCustomModelOptionsByInstance } from "../../modelSelection";

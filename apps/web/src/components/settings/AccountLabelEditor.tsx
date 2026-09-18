@@ -5,7 +5,7 @@
  * or blur commits. The preview popover mounts this already editing, from the
  * account options menu. Empty and Escape restore the previous label.
  */
-import { WEB3_ACCOUNT_LABEL_MAX_LENGTH } from "@vetra-code/web3/schema";
+import { WEB3_ACCOUNT_LABEL_MAX_LENGTH } from "@t3tools/web3/schema";
 import { PencilIcon } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 

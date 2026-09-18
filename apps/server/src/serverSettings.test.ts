@@ -9,8 +9,8 @@ import {
   resolveProviderInstanceEnabled,
   ServerSettings,
   ServerSettingsPatch,
-} from "@vetra-code/contracts";
-import { createModelSelection } from "@vetra-code/shared/model";
+} from "@t3tools/contracts";
+import { createModelSelection } from "@t3tools/shared/model";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Duration from "effect/Duration";

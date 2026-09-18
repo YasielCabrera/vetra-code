@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@vetra-code/contracts";
+import type { EnvironmentId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as PartitionedSemaphore from "effect/PartitionedSemaphore";
 import { Atom, type AtomRegistry } from "effect/unstable/reactivity";

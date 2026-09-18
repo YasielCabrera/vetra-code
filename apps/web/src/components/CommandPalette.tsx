@@ -1,9 +1,9 @@
 "use client";
 
-import { threadPullRequestLinkMode } from "@vetra-code/client-runtime/thread-pull-request-compatibility";
-import { visibleThreadPullRequests } from "@vetra-code/shared/threadPullRequests";
+import { threadPullRequestLinkMode } from "@t3tools/client-runtime/thread-pull-request-compatibility";
+import { visibleThreadPullRequests } from "@t3tools/shared/threadPullRequests";
 
-import { scopeProjectRef, scopeThreadRef } from "@vetra-code/client-runtime/environment";
+import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   canCreateProjectInEnvironment,
   getCloneDestinationBrowsePath,
@@ -11,21 +11,21 @@ import {
   getCloneDirectoryName,
   getDefaultCloneUrl,
   normalizePastedCloneUrl,
-} from "@vetra-code/client-runtime/operations/projects";
-import { connectionStatusText } from "@vetra-code/client-runtime/connection";
-import { threadSearchMatchKey } from "@vetra-code/client-runtime/state/thread-search";
-import { resolveThreadReferenceCopyTarget } from "@vetra-code/shared/threadReference";
+} from "@t3tools/client-runtime/operations/projects";
+import { connectionStatusText } from "@t3tools/client-runtime/connection";
+import { threadSearchMatchKey } from "@t3tools/client-runtime/state/thread-search";
+import { resolveThreadReferenceCopyTarget } from "@t3tools/shared/threadReference";
 import {
   canPreloadBrowsePath,
   createBrowseNavigationCoordinator,
   filterFilesystemBrowseEntries,
   getFilesystemBrowsePath,
-} from "@vetra-code/client-runtime/state/filesystem";
+} from "@t3tools/client-runtime/state/filesystem";
 import {
   isAtomCommandInterrupted,
   settlePromise,
   squashAtomCommandFailure,
-} from "@vetra-code/client-runtime/state/runtime";
+} from "@t3tools/client-runtime/state/runtime";
 import {
   type DesktopWslState,
   type EnvironmentId,
@@ -37,7 +37,7 @@ import {
   type SourceControlRepositoryInfo,
   PRIMARY_LOCAL_ENVIRONMENT_ID,
   resolveEnvironmentMachineKind,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import * as Option from "effect/Option";
 import {
@@ -86,7 +86,7 @@ import { useClientSettings } from "../hooks/useSettings";
 import { useTheme } from "../hooks/useTheme";
 import { useCustomThemes } from "../hooks/useCustomThemes";
 import { useEnvironmentThemeDefinitions } from "../hooks/useEnvironmentTheme";
-import { BUILT_IN_THEMES } from "@vetra-code/shared/themePalettes";
+import { BUILT_IN_THEMES } from "@t3tools/shared/themePalettes";
 import { getThemeDefinition } from "../themePalette";
 import {
   STANDARD_THEME_CARDS,

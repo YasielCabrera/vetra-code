@@ -4,7 +4,7 @@ import {
   WS_METHODS,
   type EnvironmentId,
   type OrchestrationShellSnapshot,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 
 import { createOptimisticThreadLifecycle } from "./threadLifecycle.ts";
 import { canSnooze } from "./threadSettled.ts";

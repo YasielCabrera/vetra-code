@@ -3,7 +3,7 @@ import {
   type ProjectScopedServerSettingKey,
   type ServerSettings,
   type UnifiedSettings,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { useCallback, useMemo } from "react";
 
 import {

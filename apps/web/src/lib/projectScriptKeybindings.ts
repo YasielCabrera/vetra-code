@@ -3,7 +3,7 @@ import {
   type KeybindingCommand,
   type KeybindingRule,
   type ResolvedKeybindingsConfig,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 
 export const PROJECT_SCRIPT_KEYBINDING_INVALID_MESSAGE = "Invalid keybinding.";

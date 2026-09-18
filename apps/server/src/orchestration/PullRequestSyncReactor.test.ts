@@ -14,7 +14,7 @@ import {
   type PullRequestSummary,
   type ThreadPullRequestLink,
   type ThreadPullRequestSnapshot,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { assert, describe, it } from "@effect/vitest";
 import * as Crypto from "effect/Crypto";
 import * as Deferred from "effect/Deferred";

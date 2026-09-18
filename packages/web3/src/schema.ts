@@ -1,8 +1,8 @@
 /**
  * Wire schemas for the preview wallet.
  *
- * This package is a leaf: it must not import `@vetra-code/contracts` or
- * `@vetra-code/shared`, because `@vetra-code/contracts` depends on *it*.
+ * This package is a leaf: it must not import `@t3tools/contracts` or
+ * `@t3tools/shared`, because `@t3tools/contracts` depends on *it*.
  * The few string primitives it needs are therefore redefined here rather
  * than borrowed from `contracts/baseSchemas.ts`.
  *

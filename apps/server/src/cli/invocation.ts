@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect";
 
-import { HostProcessArguments } from "@vetra-code/shared/hostProcess";
-import { PRODUCT_CLI_NAME, PRODUCT_SERVER_PACKAGE } from "@vetra-code/shared/productIdentity";
+import { HostProcessArguments } from "@t3tools/shared/hostProcess";
+import { PRODUCT_CLI_NAME, PRODUCT_SERVER_PACKAGE } from "@t3tools/shared/productIdentity";
 
 import packageJson from "../../package.json" with { type: "json" };
 

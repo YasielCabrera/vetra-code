@@ -8,11 +8,11 @@ import { routes, type VercelConfig } from "@vercel/config/v1";
  * infrastructure exists.
  */
 export const config: VercelConfig = {
-  buildCommand: "vp run --filter @vetra-code/web build",
+  buildCommand: "vp run --filter @t3tools/web build",
   git: {
     deploymentEnabled: false,
   },
   installCommand:
-    "npm install -g vite-plus && vp install --ignore-scripts --filter '@vetra-code/scripts...' --filter '@vetra-code/web...'",
+    "npm install -g vite-plus && vp install --ignore-scripts --filter '@t3tools/scripts...' --filter '@t3tools/web...'",
   rewrites: [routes.rewrite("/(.*)", "/index.html")],
 };

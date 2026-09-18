@@ -3,7 +3,7 @@ import {
   type ConfirmDialogOptions,
   type ContextMenuItem,
   type DesktopBridge,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const showContextMenuFallbackMock =

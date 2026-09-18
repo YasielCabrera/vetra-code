@@ -11,8 +11,8 @@
  *
  * @module provider/Drivers/CursorDriver
  */
-import { CursorSettings, ProviderDriverKind } from "@vetra-code/contracts";
-import { HostProcessPlatform } from "@vetra-code/shared/hostProcess";
+import { CursorSettings, ProviderDriverKind } from "@t3tools/contracts";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";

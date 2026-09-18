@@ -6,7 +6,7 @@ import {
   TurnId,
   type OrchestrationThreadShell,
   type ThreadPullRequestLink,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import { type SettlementPullRequest, resolveAutoSettlementAt } from "./ThreadSettlementPolicy.ts";
 
 const NOW = "2026-08-28T12:00:00.000Z";

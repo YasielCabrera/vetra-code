@@ -6,7 +6,7 @@
  *
  * @module usageTranscripts
  */
-import type { UsageProviderKind, UsageTokenTotals } from "@vetra-code/contracts";
+import type { UsageProviderKind, UsageTokenTotals } from "@t3tools/contracts";
 
 export interface UsageRecord {
   readonly provider: UsageProviderKind;

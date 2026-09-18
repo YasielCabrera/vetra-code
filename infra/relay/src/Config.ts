@@ -29,7 +29,7 @@ export class RelayConfiguration extends Context.Service<
     readonly managedEndpointBaseDomain: string | undefined;
     readonly managedEndpointNamespace: string | undefined;
   }
->()("@vetra-code/relay/Config/RelayConfiguration") {}
+>()("t3code-relay/Config/RelayConfiguration") {}
 
 export const make = (configuration: RelayConfiguration["Service"]) =>
   RelayConfiguration.of(configuration);

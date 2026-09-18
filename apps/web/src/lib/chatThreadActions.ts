@@ -1,10 +1,10 @@
-import { scopeProjectRef } from "@vetra-code/client-runtime/environment";
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
 import type {
   EnvironmentId,
   ModelSelection,
   ProjectId,
   ScopedProjectRef,
-} from "@vetra-code/contracts";
+} from "@t3tools/contracts";
 import type { ComposerThreadDraftState, DraftThreadEnvMode } from "../composerDraftStore";
 
 type ComposerModelSelectionState = Pick<
