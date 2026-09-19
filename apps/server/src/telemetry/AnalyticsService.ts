@@ -33,16 +33,16 @@ const TelemetryEnvConfig = Config.all({
   // No default project key. Vetra does not own a PostHog project yet, and the
   // inherited upstream key pointed at T3's. Telemetry stays off until an
   // operator supplies a destination we own.
-  posthogKey: Config.string("VETRA_POSTHOG_KEY").pipe(Config.withDefault("")),
-  posthogHost: Config.string("VETRA_POSTHOG_HOST").pipe(
+  posthogKey: Config.String("VETRA_POSTHOG_KEY").pipe(Config.withDefault("")),
+  posthogHost: Config.String("VETRA_POSTHOG_HOST").pipe(
     Config.withDefault("https://us.i.posthog.com"),
   ),
-  enabled: Config.boolean("VETRA_TELEMETRY_ENABLED").pipe(Config.withDefault(false)),
-  flushBatchSize: Config.number("VETRA_TELEMETRY_FLUSH_BATCH_SIZE").pipe(Config.withDefault(20)),
-  maxBufferedEvents: Config.number("VETRA_TELEMETRY_MAX_BUFFERED_EVENTS").pipe(
+  enabled: Config.Boolean("VETRA_TELEMETRY_ENABLED").pipe(Config.withDefault(false)),
+  flushBatchSize: Config.Number("VETRA_TELEMETRY_FLUSH_BATCH_SIZE").pipe(Config.withDefault(20)),
+  maxBufferedEvents: Config.Number("VETRA_TELEMETRY_MAX_BUFFERED_EVENTS").pipe(
     Config.withDefault(1_000),
   ),
-  wslDistroName: Config.string("WSL_DISTRO_NAME").pipe(Config.option),
+  wslDistroName: Config.String("WSL_DISTRO_NAME").pipe(Config.option),
 });
 
 export class AnalyticsService extends Context.Service<

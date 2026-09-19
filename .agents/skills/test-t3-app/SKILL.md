@@ -1,11 +1,15 @@
 ---
 name: test-t3-app
-description: Launch, retain, and test the Vetra Code web app in isolated development environments, including first-try browser authentication with one-time pairing URLs, pairing-token recovery, worktree-safe state directories, cross-turn dev server lifecycle, and direct SQLite inspection or fixture seeding. Use when an agent needs to run Vetra locally, iteratively test UI behavior with a human, recover from an expired or consumed pairing token, isolate dev state, or prepare test data in state.sqlite.
+description: Launch, retain, and test the Vetra Code web app in isolated development environments, including verification through the built-in Browser panel, first-try browser authentication with one-time pairing URLs, pairing-token recovery, worktree-safe state directories, cross-turn dev server lifecycle, and direct SQLite inspection or fixture seeding. Use when an agent needs to run Vetra locally, iteratively test UI behavior with a human, recover from an expired or consumed pairing token, isolate dev state, or prepare test data in state.sqlite.
 ---
 
 # Test Vetra Code
 
-## Start an isolated web environment
+Verify through Vetra Code's built-in Browser panel. If its tools are absent or
+the panel reports unavailable, explain the blocker and stop verifying. Do not
+install or switch to another automation system.
+
+## Start the app
 
 1. Run commands from the repository root.
 2. Choose a base directory that belongs only to the current worktree or test:
@@ -14,15 +18,21 @@ description: Launch, retain, and test the Vetra Code web app in isolated develop
 3. Start the full web stack with `vp run dev`. Add `--share` when the user needs to open it from another tailnet device. In a linked worktree it defaults to that worktree's gitignored `.vetra-code`; pass `--home-dir <base-dir>` only when the test needs a different isolated directory.
 4. Keep the terminal session alive and read the selected server port, web port, base directory, and pairing URL from its output.
 
+Reuse this task's healthy dev server before starting another one.
+
 Treat a base directory as disposable only when it was created or deliberately selected for the current test. Never delete or directly seed the shared `~/.vetra-code` directory. Prefer starting with a new temporary base directory over clearing state of uncertain ownership.
 
 The worktree-local default deliberately outranks an ambient `VETRA_HOME`; do not pass the shared home through to a worktree dev server.
 
-Ports are derived from the worktree path but can shift when occupied. Always read the actual values from the `[dev-runner]` line.
+## Use the Browser panel
 
-Shared browser dev is single-origin: Vite proxies the backend paths, so never set `VITE_HTTP_URL` or `VITE_WS_URL` for `dev`/`dev:web`.
+Call `preview_status`, then `preview_open` if the Browser panel is closed.
+Navigate to the complete startup pairing URL once with `preview_navigate`, then
+use `preview_snapshot` and the panel's interaction tools. If the token was
+consumed or expired, run `node apps/server/src/bin.ts pair` for a fresh one.
+Keep using the same tab.
 
-The dev runner disables browser auto-open by default. Do not pass `--browser` during automated testing: an automatically opened page can consume the one-time bootstrap token before the controlled browser uses it.
+Exercise the affected flow and capture the state that proves it works.
 
 ### Verify a shared environment before human handoff
 

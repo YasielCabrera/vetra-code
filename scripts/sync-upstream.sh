@@ -62,6 +62,10 @@ PRUNE_PATHS=(
   # Upstream's Connect operator guide is written for T3's hosted Clerk and
   # relay. Restore it only once Vetra owns those destinations.
   docs/operations/connect-setup.md
+  # Upstream's relay-state test reads the deploy step out of release.yml, which
+  # this fork prunes, so it can only fail here. scripts/release-smoke.ts drops
+  # the matching invocation.
+  .github/scripts/relay-state-output.test.cjs
   # Upstream's AUR publishing pipeline. The fork owns no AUR package, and
   # publish-aur.yml is only reachable from the release.yml we deleted. The
   # PKGBUILD directories also carry T3 identity in their *paths*, which the

@@ -46,7 +46,7 @@ import type { ServerProviderDraft } from "./providerSnapshot.ts";
  * Unset means bundled + on-disk only, and no network call.
  */
 const ModelManifestEnvConfig = Config.all({
-  url: Config.string("VETRA_MODEL_MANIFEST_URL").pipe(Config.withDefault("")),
+  url: Config.String("VETRA_MODEL_MANIFEST_URL").pipe(Config.withDefault("")),
 });
 
 /** How long a fetched manifest stays fresh before the next probe re-fetches. */

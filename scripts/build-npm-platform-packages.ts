@@ -109,7 +109,6 @@ export function npmPlatformPackageManifest(
     version,
     description: `Vetra Code CLI executable for ${platformKey}`,
     license: serverPackageJson.license,
-    repository: serverPackageJson.repository,
     os: [os],
     cpu: [cpu],
     files: ["vetra", "vetra.exe", "client", "resource-monitor", "node_modules"],
@@ -178,7 +177,6 @@ export function npmLauncherPackageManifest(
     version,
     description: "Vetra Code CLI. Installs the self-contained executable for this platform.",
     license: serverPackageJson.license,
-    repository: serverPackageJson.repository,
     bin: { vetra: "./bin/vetra.js" },
     files: ["bin", "dist"],
     optionalDependencies: Object.fromEntries(
@@ -462,16 +460,16 @@ export const buildNpmPlatformPackages = Effect.fn("buildNpmPlatformPackages")(fu
 const command = Command.make(
   "build-npm-platform-packages",
   {
-    archivesDir: Flag.string("archives-dir").pipe(
+    archivesDir: Flag.String("archives-dir").pipe(
       Flag.withDescription("Directory holding the release's vetra-<version>-<platform> archives."),
     ),
-    version: Flag.string("version").pipe(
+    version: Flag.String("version").pipe(
       Flag.withDescription(
         "Exact release version; selects the archives and versions the packages.",
       ),
     ),
-    outputDir: Flag.string("output-dir").pipe(Flag.withDefault("npm-packages")),
-    allowMissing: Flag.boolean("allow-missing").pipe(
+    outputDir: Flag.String("output-dir").pipe(Flag.withDefault("npm-packages")),
+    allowMissing: Flag.Boolean("allow-missing").pipe(
       Flag.withDefault(false),
       Flag.withDescription("Build a launcher that lists only the platforms present."),
     ),

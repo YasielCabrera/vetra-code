@@ -95,9 +95,9 @@ If reordering is unavailable for one environment, update the Vetra Code server r
 environment. Older servers can still pin and unpin threads, but do not understand synced ordering;
 their pinned threads keep the default newest-first order below the ones you have arranged.
 
-Change these rules in **Settings → General**. They continue to run when your apps
-are closed. On web and desktop, choose an environment at the top to change only
-its rules, or **All environments** to update connected environments together.
+Change these rules in **Settings → General** on web and desktop, or **Settings → Thread behavior** on mobile.
+They continue to run when your apps are closed. On web and desktop, choose an environment at the
+top to change only its rules, or **All environments** to update connected environments together.
 Mixed values show where the selected environments disagree. Mobile applies these
 rules to connected environments that support shared settings. Offline environments
 and older servers keep their previous values. Changing a rule does not reopen

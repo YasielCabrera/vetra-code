@@ -18,8 +18,8 @@ const resolveMockUpdateServerConfig = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const config = yield* Config.all({
-    port: Config.port("VETRA_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(Config.withDefault(3000)),
-    root: Config.string("VETRA_DESKTOP_MOCK_UPDATE_SERVER_ROOT").pipe(
+    port: Config.Port("VETRA_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(Config.withDefault(3000)),
+    root: Config.String("VETRA_DESKTOP_MOCK_UPDATE_SERVER_ROOT").pipe(
       Config.withDefault("../release-mock"),
     ),
   });

@@ -28,31 +28,6 @@ function Combobox<Value, Multiple extends boolean | undefined = false>(
   );
 }
 
-function ComboboxChipsInput({
-  className,
-  size,
-  ...props
-}: Omit<ComboboxPrimitive.Input.Props, "size"> & {
-  size?: "sm" | "default" | "lg" | number;
-  ref?: React.Ref<HTMLInputElement>;
-}) {
-  const sizeValue = (size ?? "default") as "sm" | "default" | "lg" | number;
-
-  return (
-    <ComboboxPrimitive.Input
-      className={cn(
-        "min-w-12 flex-1 text-base outline-none sm:text-sm [[data-slot=combobox-chip]+&]:ps-0.5",
-        sizeValue === "sm" ? "ps-1.5" : "ps-2",
-        className,
-      )}
-      data-size={typeof sizeValue === "string" ? sizeValue : undefined}
-      data-slot="combobox-chips-input"
-      size={typeof sizeValue === "number" ? sizeValue : undefined}
-      {...props}
-    />
-  );
-}
-
 function ComboboxInput({
   className,
   inputClassName,
@@ -132,7 +107,7 @@ function ComboboxInput({
 
 function ComboboxSearchInput(props: React.ComponentProps<typeof ComboboxInput>) {
   return (
-    <div className="shrink-0 px-3 pt-2.5">
+    <div className="min-w-0 shrink-0 px-3 pt-2.5">
       <div className="relative -translate-y-px border-b border-border/70 pb-1.5 transition-colors focus-within:border-ring">
         <SearchIcon
           aria-hidden="true"
@@ -240,36 +215,6 @@ function ComboboxItem({
   );
 }
 
-function ComboboxSeparator({ className, ...props }: ComboboxPrimitive.Separator.Props) {
-  return (
-    <ComboboxPrimitive.Separator
-      className={cn("mx-2 my-1 h-px bg-border last:hidden", className)}
-      data-slot="combobox-separator"
-      {...props}
-    />
-  );
-}
-
-function ComboboxGroup({ className, ...props }: ComboboxPrimitive.Group.Props) {
-  return (
-    <ComboboxPrimitive.Group
-      className={cn("[[role=group]+&]:mt-1.5", className)}
-      data-slot="combobox-group"
-      {...props}
-    />
-  );
-}
-
-function ComboboxGroupLabel({ className, ...props }: ComboboxPrimitive.GroupLabel.Props) {
-  return (
-    <ComboboxPrimitive.GroupLabel
-      className={cn("px-2 py-1.5 font-medium text-muted-foreground text-xs", className)}
-      data-slot="combobox-group-label"
-      {...props}
-    />
-  );
-}
-
 function ComboboxEmpty({ className, ...props }: ComboboxPrimitive.Empty.Props) {
   return (
     <ComboboxPrimitive.Empty
@@ -281,14 +226,6 @@ function ComboboxEmpty({ className, ...props }: ComboboxPrimitive.Empty.Props) {
       {...props}
     />
   );
-}
-
-function ComboboxRow({ className, ...props }: ComboboxPrimitive.Row.Props) {
-  return <ComboboxPrimitive.Row className={className} data-slot="combobox-row" {...props} />;
-}
-
-function ComboboxValue({ ...props }: ComboboxPrimitive.Value.Props) {
-  return <ComboboxPrimitive.Value data-slot="combobox-value" {...props} />;
 }
 
 function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
@@ -334,8 +271,51 @@ function ComboboxStatus({ className, ...props }: ComboboxPrimitive.Status.Props)
   );
 }
 
-function ComboboxCollection(props: ComboboxPrimitive.Collection.Props) {
-  return <ComboboxPrimitive.Collection data-slot="combobox-collection" {...props} />;
+// Chips and grouping are unused by upstream's own pickers but carry the
+// Powerhouse explorer's multi-select and the automations panels.
+function ComboboxChipsInput({
+  className,
+  size,
+  ...props
+}: Omit<ComboboxPrimitive.Input.Props, "size"> & {
+  size?: "sm" | "default" | "lg" | number;
+  ref?: React.Ref<HTMLInputElement>;
+}) {
+  const sizeValue = (size ?? "default") as "sm" | "default" | "lg" | number;
+
+  return (
+    <ComboboxPrimitive.Input
+      className={cn(
+        "min-w-12 flex-1 text-base outline-none sm:text-sm [[data-slot=combobox-chip]+&]:ps-0.5",
+        sizeValue === "sm" ? "ps-1.5" : "ps-2",
+        className,
+      )}
+      data-size={typeof sizeValue === "string" ? sizeValue : undefined}
+      data-slot="combobox-chips-input"
+      size={typeof sizeValue === "number" ? sizeValue : undefined}
+      {...props}
+    />
+  );
+}
+
+function ComboboxGroup({ className, ...props }: ComboboxPrimitive.Group.Props) {
+  return (
+    <ComboboxPrimitive.Group
+      className={cn("[[role=group]+&]:mt-1.5", className)}
+      data-slot="combobox-group"
+      {...props}
+    />
+  );
+}
+
+function ComboboxGroupLabel({ className, ...props }: ComboboxPrimitive.GroupLabel.Props) {
+  return (
+    <ComboboxPrimitive.GroupLabel
+      className={cn("px-2 py-1.5 font-medium text-muted-foreground text-xs", className)}
+      data-slot="combobox-group-label"
+      {...props}
+    />
+  );
 }
 
 function ComboboxChips({
@@ -412,24 +392,20 @@ const useComboboxFilter = ComboboxPrimitive.useFilter;
 
 export {
   Combobox,
+  ComboboxChips,
+  ComboboxChip,
   ComboboxChipsInput,
+  ComboboxGroup,
+  ComboboxGroupLabel,
   ComboboxInput,
   ComboboxSearchInput,
   ComboboxTrigger,
   ComboboxPopup,
   ComboboxItem,
-  ComboboxSeparator,
-  ComboboxGroup,
-  ComboboxGroupLabel,
   ComboboxEmpty,
-  ComboboxValue,
   ComboboxList,
   ComboboxListVirtualized,
   ComboboxClear,
   ComboboxStatus,
-  ComboboxRow,
-  ComboboxCollection,
-  ComboboxChips,
-  ComboboxChip,
   useComboboxFilter,
 };
