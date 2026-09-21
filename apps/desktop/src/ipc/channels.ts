@@ -120,3 +120,5 @@ export const PREVIEW_WALLET_STATE_CHANNEL = "desktop:preview-wallet-state";
 export const MAC_PERMISSION_HELPER_CHANNEL = "desktop:mac-permission-helper";
 
 export const CHECK_SYSTEM_PERMISSION_CHANNEL = "desktop:check-system-permission";
+
+export const PREVIEW_RECORDING_INPUT_CHANNEL = "desktop:preview-recording-input";

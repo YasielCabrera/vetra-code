@@ -72,6 +72,7 @@ import {
   type ComposerSubmissionIntent,
   type ComposerTrigger,
   collapseExpandedComposerCursor,
+  composerStateAtPromptEnd,
   composerSubmissionIntentForEnter,
   detectComposerTrigger,
   expandCollapsedComposerCursor,
@@ -205,6 +206,7 @@ import {
 import { useOpenPrLink } from "~/lib/openPullRequestLink";
 import {
   collectInlineContextIds,
+  stripInlineContextReferences,
   type ComposerContextReference,
   ensureInlineContextReferences,
   formatInlineContextReference,
@@ -1630,6 +1632,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const previewFile = composerFiles.find((file) => file.id === previewFileId);
   const composerContextActions = useMemo(
     () => ({
+      environmentId,
       expandImage: (imageId: string) => {
         const preview = buildExpandedImagePreview(composerImages, imageId);
         if (preview) onExpandImage(preview);
@@ -3093,6 +3096,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   useEffect(() => {
     const nextCustomAnswer = activePendingProgress?.customAnswer;
     if (typeof nextCustomAnswer !== "string") {
+      // The question is gone and the editor shows the thread draft again. The
+      // ref still holds the last answer text, and Send reads the ref. Place
+      // the caret at the end so the next keystroke appends.
+      if (lastSyncedPendingInputRef.current !== null) {
+        promptRef.current = prompt;
+        const { cursor, trigger } = composerStateAtPromptEnd(prompt);
+        setComposerCursor(cursor);
+        setComposerTrigger(trigger);
+      }
       lastSyncedPendingInputRef.current = null;
       return;
     }
@@ -3114,19 +3126,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     }
 
     promptRef.current = nextCustomAnswer;
-    const nextCursor = collapseExpandedComposerCursor(nextCustomAnswer, nextCustomAnswer.length);
-    setComposerCursor(nextCursor);
-    setComposerTrigger(
-      detectComposerTrigger(
-        nextCustomAnswer,
-        expandCollapsedComposerCursor(nextCustomAnswer, nextCursor),
-      ),
-    );
+    const { cursor, trigger } = composerStateAtPromptEnd(nextCustomAnswer);
+    setComposerCursor(cursor);
+    setComposerTrigger(trigger);
     setComposerHighlightedItemId(null);
   }, [
     activePendingProgress?.customAnswer,
     activePendingProgress?.activeQuestion?.id,
     activePendingUserInput?.requestId,
+    prompt,
     promptRef,
   ]);
 
@@ -5246,6 +5254,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     options?: {
       readonly source?: ChatFileAttachment["source"];
       readonly selection?: { start: number; end: number };
+      readonly skipImageInlineChip?: boolean;
     },
   ): Promise<boolean> => {
     if (!activeThreadId || files.length === 0 || isRevertingCheckpointRef.current) return false;
@@ -5265,6 +5274,20 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     // large image is being compressed, and the attachments and errors belong
     // to the thread the paste happened in.
     const threadId = activeThreadId;
+    // Images landing with no prose live on the shelf with no chip. Read before
+    // the awaits below: compression is async and the prompt may change while it
+    // runs. An explicit selection replace and states where the editor refuses
+    // input (connecting, approval, pending questions, project selection) still
+    // get chips so the image is never invisible, unless paste-as-text explicitly
+    // requests no inline image chip.
+    const imageAttachmentsGetChips =
+      !options?.skipImageInlineChip &&
+      (options?.selection !== undefined ||
+        isConnecting ||
+        isComposerApprovalState ||
+        pendingUserInputs.length > 0 ||
+        projectSelectionRequired ||
+        stripInlineContextReferences(promptRef.current).trim().length > 0);
 
     // Validation happens synchronously so concurrent pastes see each other:
     // accepted files reserve their attachment slots (via the pending counter)
@@ -5421,7 +5444,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             : [],
       );
       const storedImages = nextImages.filter((image) => storedImageIds.has(image.id));
-      if (storedImages.length > 0) {
+      if (storedImages.length > 0 && imageAttachmentsGetChips) {
         insertedAny =
           insertAttachmentReferences(storedImages.map(imageContextReference)) || insertedAny;
       }
@@ -5449,6 +5472,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   /**
    * Chips for freshly attached files land at the caret; when the editor cannot take
    * input (approval, pending questions) they are appended so the file is never invisible.
+   * Images skip this when they land with no prose and the editor takes input:
+   * the shelf thumbnail is enough.
    */
   const insertAttachmentReferences = (
     references: ReadonlyArray<ComposerContextReference>,
@@ -5587,7 +5612,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     ) {
       event.preventDefault();
       event.stopPropagation();
-      void addComposerAttachments(files);
+      void addComposerAttachments(files, { skipImageInlineChip: bypassAutoAttachment });
       return;
     }
 

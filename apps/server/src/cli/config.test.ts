@@ -17,6 +17,7 @@ import {
   type DesktopBackendBootstrap as DesktopBackendBootstrapValue,
 } from "@t3tools/contracts";
 import * as NetService from "@t3tools/shared/Net";
+import { DEFAULT_SIGNAL_EXPORT } from "@t3tools/shared/observability";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { deriveServerPaths } from "../config.ts";
 import { resolveServerConfig } from "./config.ts";
@@ -51,10 +52,10 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
     otlpTracesUrl: undefined,
     otlpMetricsUrl: undefined,
     otlpLogsUrl: undefined,
-    otlpExportIntervalMs: 10_000,
+    otlpTracesExport: DEFAULT_SIGNAL_EXPORT,
+    otlpMetricsExport: DEFAULT_SIGNAL_EXPORT,
+    otlpLogsExport: DEFAULT_SIGNAL_EXPORT,
     otlpServiceName: "vetra-server",
-    otlpHeaders: undefined,
-    otlpProtocol: "http/json",
     devAllowedOrigins: [],
     desktopTelemetryFd: undefined,
     desktopTelemetryControlFd: undefined,
@@ -772,7 +773,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         ),
       );
 
-      expect(resolved.otlpHeaders).toEqual({
+      expect(resolved.otlpTracesExport.headers).toEqual({
         authorization: "Basic abc==",
         "x-tenant": "t3",
       });
@@ -816,7 +817,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         ),
       );
 
-      expect(resolved.otlpHeaders).toEqual({
+      expect(resolved.otlpTracesExport.headers).toEqual({
         authorization: "Bearer abc==",
         "x-tenant": "t3",
       });
@@ -824,7 +825,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
     }),
   );
 
-  it.effect("reads the OTLP protocol from env", () =>
+  it.effect("gives every signal the protocol named without one", () =>
     Effect.gen(function* () {
       const { join } = yield* Path.Path;
       const baseDir = join(NodeOS.tmpdir(), "vetra-cli-config-otlp-protocol-base");
@@ -856,7 +857,11 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         ),
       );
 
-      expect(resolved.otlpProtocol).toBe("http/protobuf");
+      expect([
+        resolved.otlpTracesExport.protocol,
+        resolved.otlpMetricsExport.protocol,
+        resolved.otlpLogsExport.protocol,
+      ]).toEqual(["http/protobuf", "http/protobuf", "http/protobuf"]);
     }),
   );
 
