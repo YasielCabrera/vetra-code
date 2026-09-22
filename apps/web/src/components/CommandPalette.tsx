@@ -50,7 +50,6 @@ import {
   FileSearchIcon,
   FolderIcon,
   FolderPlusIcon,
-  FolderTreeIcon,
   HardDriveIcon,
   LinkIcon,
   MessageSquareIcon,
@@ -2114,17 +2113,6 @@ function OpenCommandPaletteDialog(props: {
     icon: <SettingsIcon className={ITEM_ICON_CLASS} />,
     run: async () => {
       await navigate({ to: "/settings" });
-    },
-  });
-
-  actionItems.push({
-    kind: "action",
-    value: "action:projects",
-    searchTerms: ["projects", "list", "all projects", "workspaces", "repositories"],
-    title: "Open projects",
-    icon: <FolderTreeIcon className={ITEM_ICON_CLASS} />,
-    run: async () => {
-      await navigate({ to: "/projects" });
     },
   });
 

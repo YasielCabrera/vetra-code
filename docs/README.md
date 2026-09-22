@@ -5,7 +5,6 @@
 - [Install Vetra Code](./user/install.md)
 - [First-run setup](./user/welcome-wizard.md)
 - [Create a project](./user/creating-projects.md)
-- [Browse your projects](./user/browsing-projects.md)
 - [Messages and context](./user/composer.md)
 - [Organizing threads](./user/thread-sidebar.md)
 - [Permission modes](./user/permission-modes.md)

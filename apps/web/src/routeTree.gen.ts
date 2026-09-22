@@ -15,7 +15,6 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PairRouteImport } from './routes/pair'
 import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as ChatRouteImport } from './routes/_chat'
-import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
 import { Route as AutomationsIndexRouteImport } from './routes/automations.index'
 import { Route as ChatIndexRouteImport } from './routes/_chat.index'
 import { Route as SettingsWeb3RouteImport } from './routes/settings.web3'
@@ -67,11 +66,6 @@ const ConnectRoute = ConnectRouteImport.update({
 } as any)
 const ChatRoute = ChatRouteImport.update({
   id: '/_chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
-  id: '/projects/',
-  path: '/projects/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AutomationsIndexRoute = AutomationsIndexRouteImport.update({
@@ -220,7 +214,6 @@ export interface FileRoutesByFullPath {
   '/settings/storage': typeof SettingsStorageRoute
   '/settings/web3': typeof SettingsWeb3Route
   '/automations/': typeof AutomationsIndexRoute
-  '/projects/': typeof ProjectsIndexRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
 }
@@ -251,7 +244,6 @@ export interface FileRoutesByTo {
   '/settings/web3': typeof SettingsWeb3Route
   '/': typeof ChatIndexRoute
   '/automations': typeof AutomationsIndexRoute
-  '/projects': typeof ProjectsIndexRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
 }
@@ -284,7 +276,6 @@ export interface FileRoutesById {
   '/settings/web3': typeof SettingsWeb3Route
   '/_chat/': typeof ChatIndexRoute
   '/automations/': typeof AutomationsIndexRoute
-  '/projects/': typeof ProjectsIndexRoute
   '/_chat/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/_chat/draft/$draftId': typeof ChatDraftDraftIdRoute
 }
@@ -317,7 +308,6 @@ export interface FileRouteTypes {
     | '/settings/storage'
     | '/settings/web3'
     | '/automations/'
-    | '/projects/'
     | '/$environmentId/$threadId'
     | '/draft/$draftId'
   fileRoutesByTo: FileRoutesByTo
@@ -348,7 +338,6 @@ export interface FileRouteTypes {
     | '/settings/web3'
     | '/'
     | '/automations'
-    | '/projects'
     | '/$environmentId/$threadId'
     | '/draft/$draftId'
   id:
@@ -380,7 +369,6 @@ export interface FileRouteTypes {
     | '/settings/web3'
     | '/_chat/'
     | '/automations/'
-    | '/projects/'
     | '/_chat/$environmentId/$threadId'
     | '/_chat/draft/$draftId'
   fileRoutesById: FileRoutesById
@@ -396,7 +384,6 @@ export interface RootRouteChildren {
   AutomationsNewRoute: typeof AutomationsNewRoute
   ProjectsProjectKeyRoute: typeof ProjectsProjectKeyRoute
   AutomationsIndexRoute: typeof AutomationsIndexRoute
-  ProjectsIndexRoute: typeof ProjectsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -441,13 +428,6 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof ChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projects/': {
-      id: '/projects/'
-      path: '/projects'
-      fullPath: '/projects/'
-      preLoaderRoute: typeof ProjectsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/automations/': {
@@ -681,7 +661,6 @@ const rootRouteChildren: RootRouteChildren = {
   AutomationsNewRoute: AutomationsNewRoute,
   ProjectsProjectKeyRoute: ProjectsProjectKeyRoute,
   AutomationsIndexRoute: AutomationsIndexRoute,
-  ProjectsIndexRoute: ProjectsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

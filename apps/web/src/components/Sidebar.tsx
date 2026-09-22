@@ -53,7 +53,6 @@ import {
   ClockIcon,
   EyeIcon,
   FolderIcon,
-  FolderTreeIcon,
   GitBranchIcon,
   MessageCircleQuestionIcon,
   PinIcon,
@@ -2160,12 +2159,6 @@ export default function Sidebar() {
   const projectOrder = useUiStateStore((store) => store.projectOrder);
   const threads = useThreadShells();
   const router = useRouter();
-  // A single project's own page is part of the section, so the row stays lit
-  // while the reader is inside one rather than only on the listing itself.
-  const isOnProjectsPage = useLocation({
-    select: (location) =>
-      location.pathname === "/projects" || location.pathname.startsWith("/projects/"),
-  });
   const isOnAutomationsPage = useLocation({
     select: (location) =>
       location.pathname === "/automations" || location.pathname.startsWith("/automations/"),
@@ -4453,11 +4446,6 @@ export default function Sidebar() {
     [isMobile, newThreadContext, projectGroups.length, setOpenMobile],
   );
 
-  const handleProjectsPageClick = useCallback(() => {
-    if (isMobile) setOpenMobile(false);
-    void router.navigate({ to: "/projects" });
-  }, [isMobile, router, setOpenMobile]);
-
   const handleAutomationsPageClick = useCallback(() => {
     if (isMobile) setOpenMobile(false);
     void router.navigate({ to: "/automations" });
@@ -4666,17 +4654,6 @@ export default function Sidebar() {
                   </TooltipPopup>
                 </Tooltip>
               ) : null}
-            </SidebarMenuButton>
-            {/* The workspace's projects as a page of their own, above the scope
-                menu that only ever narrows the thread list below it. */}
-            <SidebarMenuButton
-              type="button"
-              isActive={isOnProjectsPage}
-              className="ps-[calc(var(--sidebar-row-content-inset)-1px)] focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-              onClick={handleProjectsPageClick}
-            >
-              <FolderTreeIcon className="size-4 shrink-0" />
-              <span className="min-w-0 flex-1 truncate">Projects</span>
             </SidebarMenuButton>
           </SidebarGroup>
         }
