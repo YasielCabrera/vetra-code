@@ -1,0 +1,11 @@
+diff --git a/dist/model/gitStatus.js b/dist/model/gitStatus.js
+--- a/dist/model/gitStatus.js
++++ b/dist/model/gitStatus.js
+@@ -25,6 +25,7 @@ function resolveFileTreeGitStatusState(entries, previous = null) {
+ 		statusByPath.set(canonicalPath, entry.status);
+ 		if (entry.status === "ignored" && normalizedPath.isDirectory) ignoredDirectoryPaths.add(canonicalPath);
+ 		else if (normalizedPath.isDirectory) ignoredDirectoryPaths.delete(canonicalPath);
++		if (entry.status === "ignored") continue;
+ 		for (const ancestorPath of getAncestorDirectoryPaths(normalizedPath.path)) directoriesWithChanges.add(ancestorPath);
+ 	}
+ 	return {
