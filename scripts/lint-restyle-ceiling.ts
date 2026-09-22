@@ -12,7 +12,7 @@ import * as NodeURL from "node:url";
 // The number is this fork's own count, not upstream's: Vetra Code carries web surfaces
 // upstream does not ship, so it starts higher. A sync that changes it is measuring our tree,
 // not taking upstream's value.
-export const RESTYLE_CEILING = 1412;
+export const RESTYLE_CEILING = 828;
 
 const RULE = "shadcn(no-restyle)";
 
