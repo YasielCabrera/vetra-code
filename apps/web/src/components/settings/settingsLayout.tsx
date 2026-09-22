@@ -407,11 +407,13 @@ export function SettingsRow({
     ? { state: "mixed", summary: "Mixed across selected environments" }
     : source === "project"
       ? { state: "overridden", summary: "Overridden for this project" }
-      : source === "environment" && scopedKeys.length > 0
-        ? { state: "inherited", summary: `Inherited from ${inheritedFrom}` }
-        : customized
-          ? { state: "environment", summary: "Set on the environment" }
-          : { state: "default", summary: "Built-in default" };
+      : source === "vetra.json"
+        ? { state: "inherited", summary: "Inherited from the repository's vetra.json" }
+        : source === "environment" && scopedKeys.length > 0
+          ? { state: "inherited", summary: `Inherited from ${inheritedFrom}` }
+          : customized
+            ? { state: "environment", summary: "Set on the environment" }
+            : { state: "default", summary: "Built-in default" };
   const renderedInheritance =
     context && serverScoped && settingKeys.length > 0 ? (
       <SettingInheritance

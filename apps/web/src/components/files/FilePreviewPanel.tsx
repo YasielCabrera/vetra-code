@@ -192,7 +192,7 @@ function WorkspaceImagePreview(props: {
     </div>
   ) : (
     <div className="flex min-h-0 flex-1 items-center justify-center text-muted-foreground">
-      <Spinner className="size-5" />
+      <Spinner size="lg" />
     </div>
   );
 }
@@ -237,7 +237,7 @@ function WorkspaceBrowserPreview(props: {
   if (assetUrl._tag !== "Success") {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center text-muted-foreground">
-        <Spinner className="size-5" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -1382,7 +1382,7 @@ export default function FilePreviewPanel({
             </div>
           ) : relativePath && file.data === null ? (
             <div className="flex min-h-0 flex-1 items-center justify-center text-muted-foreground">
-              <Spinner className="size-5" />
+              <Spinner size="lg" />
             </div>
           ) : relativePath && file.data ? (
             isMarkdown && renderMarkdown ? (

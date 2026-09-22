@@ -2546,11 +2546,20 @@ export const make = Effect.gen(function* () {
         });
       }
 
-      const worktree = yield* gitCore.createWorktree({
-        cwd: input.cwd,
-        refName: localPullRequestBranch,
-        path: null,
-      });
+      const worktree = yield* gitCore.createWorktree(
+        {
+          cwd: input.cwd,
+          refName: localPullRequestBranch,
+          path: null,
+        },
+        {
+          // Best effort: a settings read failure falls back to the checkout's vetra.json.
+          submodules: yield* projectSettingsFor(input).pipe(
+            Effect.map((settings) => settings.worktreeSubmodules),
+            Effect.orElseSucceed(() => null),
+          ),
+        },
+      );
       yield* ensureExistingWorktreeUpstream(worktree.worktree.path);
       yield* maybeRunSetupScript(worktree.worktree.path);
 

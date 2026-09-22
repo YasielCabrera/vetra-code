@@ -104,7 +104,10 @@ export default defineConfig({
       "**/routeTree.gen.ts",
     ],
     plugins: ["eslint", "oxc", "react", "unicorn", "typescript"],
-    jsPlugins: ["./oxlint-plugin-t3code/index.ts"],
+    jsPlugins: ["./oxlint-plugin-t3code/index.ts", "@shadcn/lint"],
+    settings: {
+      shadcn: { ui: "~/components/ui" },
+    },
     categories: {
       correctness: "warn",
       suspicious: "warn",
@@ -157,6 +160,17 @@ export default defineConfig({
         // from its vocabulary. The other import restrictions still apply here.
         files: ["apps/web/src/components/pullRequest/pullRequestIcons.tsx"],
         rules: { "eslint/no-restricted-imports": ["error", { paths: RESTRICTED_IMPORT_PATHS }] },
+      },
+      {
+        // components/ui exports own their look. App code picks a variant or size instead
+        // of restyling with className; layout classes (width, flex, margin, position) stay
+        // allowed because placement belongs to the parent. Warn-only until the existing
+        // overrides are migrated to variants; the ceiling below stops the count growing.
+        files: ["apps/web/src/**"],
+        excludeFiles: ["apps/web/src/components/ui/**"],
+        rules: {
+          "shadcn/no-restyle": ["warn", { allow: ["layout"] }],
+        },
       },
       // Legacy manual Effect runners tracked as debt: no net-new occurrences.
       // Lower a ceiling when you migrate a file, and delete its entry at zero.
