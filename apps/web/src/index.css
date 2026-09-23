@@ -571,6 +571,12 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(vetra-mo
   ::highlight(vetra-assistant-citation-comment) {
     background-color: color-mix(in oklab, var(--primary) 45%, transparent);
   }
+  ::highlight(vetra-find-match) {
+    background-color: color-mix(in oklab, var(--warning) 30%, transparent);
+  }
+  ::highlight(vetra-find-current-match) {
+    background-color: color-mix(in oklab, var(--warning) 70%, transparent);
+  }
   :root {
     /* Vetra artwork defaults. Built-in themes override these pigments in the
        components layer; Nightly derives a darker matching palette. */

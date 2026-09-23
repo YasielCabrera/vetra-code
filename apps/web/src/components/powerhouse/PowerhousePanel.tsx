@@ -16,6 +16,7 @@ import type { EnvironmentId } from "@t3tools/contracts";
 import { FolderCog, Settings2 } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 
+import { FindScope } from "~/components/find/FindScope";
 import { Popover, PopoverPopup, PopoverTitle, PopoverTrigger } from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
 import type { PowerhousePanelKind } from "~/rightPanelStore";
@@ -270,15 +271,17 @@ export default function PowerhousePanel({
 
       <div className="min-h-0 flex-1">
         {kind === "powerhouse-models" ? (
-          <ModelsView
-            environmentId={environmentId}
-            cwd={cwd}
-            projectPath={projectPath}
-            selectedModel={modelSelection?.directoryName ?? null}
-            selectedSpecIndex={modelSelection?.specIndex ?? null}
-            onSelectModel={(directoryName) => selectModel(panelProjectKey, directoryName)}
-            onSelectSpec={(index) => selectSpec(panelProjectKey, index)}
-          />
+          <FindScope className="h-full">
+            <ModelsView
+              environmentId={environmentId}
+              cwd={cwd}
+              projectPath={projectPath}
+              selectedModel={modelSelection?.directoryName ?? null}
+              selectedSpecIndex={modelSelection?.specIndex ?? null}
+              onSelectModel={(directoryName) => selectModel(panelProjectKey, directoryName)}
+              onSelectSpec={(index) => selectSpec(panelProjectKey, index)}
+            />
+          </FindScope>
         ) : kind === "powerhouse-explorer" ? (
           <ExplorerView
             key={panelProjectKey}
