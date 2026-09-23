@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import type { FileDiffMetadata } from "@pierre/diffs";
 
+import { COMPOSER_MENTION_DRAG_TYPE } from "~/components/chat/composerMentionDrag";
+
 import { DiffFileTree, type DiffFileTreeEntry } from "./DiffFileTree";
 import { diffFileTreeEntries } from "./diffFileTree.logic";
 import { useCodeViewFileReveal } from "./useCodeViewFileReveal";
@@ -61,10 +63,43 @@ describe("diff tree file activation", () => {
 
   const model = (): FileTreeModel => renderer!.root.findByType(FileTree).props.model;
 
+  // The panel wires its drag listeners to a real node; react-test-renderer has
+  // none, so the mock records them for the drag test to fire.
+  const panelListeners = new Map<string, (event: unknown) => void>();
+  const panelNode = {
+    addEventListener: (type: string, handler: (event: unknown) => void) => {
+      panelListeners.set(type, handler);
+    },
+    removeEventListener: (type: string) => {
+      panelListeners.delete(type);
+    },
+  };
+
   async function mount(props: Parameters<typeof Panel>[0] = {}) {
     await act(async () => {
-      renderer = create(<Panel {...props} />);
+      renderer = create(<Panel {...props} />, {
+        createNodeMock: (element) => (element.type === "div" ? panelNode : null),
+      });
     });
+  }
+
+  /** The dragstart the tree fires, plus the selection it moves onto the dragged row. */
+  async function dragRow(path: string) {
+    const transfer = new Map<string, string>();
+    await act(async () => {
+      panelListeners.get("dragstart")?.({
+        dataTransfer: {
+          setData: (format: string, value: string) => void transfer.set(format, value),
+        },
+        composedPath: () => [new TreeRow(path), {}],
+      });
+      const tree = model();
+      for (const selected of tree.getSelectedPaths()) {
+        if (selected !== path) tree.getItem(selected)?.deselect();
+      }
+      tree.getItem(path)!.select();
+    });
+    return transfer;
   }
 
   // Exercise T3's capture handler before the real Pierre model's selection transition.
@@ -102,6 +137,7 @@ describe("diff tree file activation", () => {
 
   beforeEach(() => {
     targets.length = 0;
+    panelListeners.clear();
     vi.useFakeTimers();
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     vi.stubGlobal("HTMLElement", TreeRow);
@@ -212,6 +248,18 @@ describe("diff tree file activation", () => {
     const folder = model().getItem("src/features/")!;
     if (!("isExpanded" in folder)) throw new Error("Expected the directory handle");
     expect(folder.isExpanded()).toBe(false);
+  });
+
+  it("carries a dragged file to the composer without moving the diff off the open file", async () => {
+    await mount({ selectedPath: "02-short.ts" });
+    const transfer = await dragRow("01-tall.ts");
+
+    expect(transfer.get(COMPOSER_MENTION_DRAG_TYPE)).toBe("[01-tall.ts](01-tall.ts)");
+    expect(targets).toEqual([]);
+
+    await act(async () => panelListeners.get("dragend")?.(undefined));
+    expect(model().getSelectedPaths()).toEqual(["02-short.ts"]);
+    expect(targets).toEqual([]);
   });
 
   it("does not echo controlled selection, but lets the reader activate it", async () => {

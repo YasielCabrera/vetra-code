@@ -8,6 +8,7 @@ import { cn } from "~/lib/utils";
 import { VETRA_PIERRE_ICONS } from "~/pierre-icons";
 import { PIERRE_TREE_UNSAFE_CSS, pierreTreeStyle } from "~/pierre-tree-theme";
 
+import { createFileTreeDragMentionController } from "../files/fileTreeDragMention";
 import { areAllDirectoriesExpanded, setAllDirectoriesExpanded } from "../files/fileTreeExpansion";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -77,19 +78,45 @@ export function DiffFileTree({
   const syncingSelectionRef = useRef(false);
   const handledRevealRef = useRef<{ path: string; revealRequestId: number } | null>(null);
   const mountedPathsRef = useRef<ReadonlyArray<string> | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const treeModelRef = useRef<ReturnType<typeof useFileTree>["model"] | null>(null);
+  const selectedPathRef = useRef(selectedPath);
 
   useEffect(() => {
     filePathsRef.current = new Set(paths);
     onSelectFileRef.current = onSelectFile;
-  }, [onSelectFile, paths]);
+    selectedPathRef.current = selectedPath;
+  }, [onSelectFile, paths, selectedPath]);
+
+  const dragMention = useMemo(
+    () =>
+      createFileTreeDragMentionController({
+        // The file the diff is showing stays selected: its highlight tracks the
+        // view, not whichever row was last picked up.
+        deselect: (path) => {
+          if (path === selectedPathRef.current) return;
+          treeModelRef.current?.getItem(path)?.deselect();
+        },
+      }),
+    [],
+  );
 
   const { model } = useFileTree({
     density: "compact",
+    // Rows only need to be draggable so files can be dropped into the chat
+    // composer; rearranging a diff's files means nothing, so dropping stays off.
+    dragAndDrop: { canDrop: () => false },
     flattenEmptyDirectories: true,
     initialExpansion: "open",
     icons: VETRA_PIERRE_ICONS,
     onSelectionChange: (selectedPaths) => {
+      // The drag controller mirrors selection so a drag that starts on an
+      // already-selected row carries every selected file.
+      dragMention.handleSelectionChange(selectedPaths);
       if (syncingSelectionRef.current) return;
+      // Starting a drag selects the dragged row; that is a side effect of the
+      // gesture, not a request to show that file.
+      if (dragMention.isDragInProgress()) return;
       const path = selectedPaths.at(-1)?.replace(/\/$/, "");
       if (path && filePathsRef.current.has(path)) onSelectFileRef.current(path);
     },
@@ -130,6 +157,40 @@ export function DiffFileTree({
   }, [directoryPaths, gitStatus, model, ordering, paths, positions]);
 
   useEffect(() => {
+    treeModelRef.current = model;
+  }, [model]);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (panel === null) return;
+    const handleDragStart = (event: DragEvent) => dragMention.handleDragStart(event);
+    const handleDragEnd = () => {
+      dragMention.handleDragEnd();
+      // The tree hands selection to the row it picked up, so put it back on the
+      // file the diff is showing instead of leaving nothing highlighted.
+      const viewedPath = selectedPathRef.current;
+      const tree = treeModelRef.current;
+      if (viewedPath === null || tree === null) return;
+      if (tree.getSelectedPaths().includes(viewedPath)) return;
+      const item = tree.getItem(viewedPath);
+      if (item === null || item.isDirectory()) return;
+      syncingSelectionRef.current = true;
+      item.select();
+      queueMicrotask(() => {
+        syncingSelectionRef.current = false;
+      });
+    };
+    // Capture: the tree's own drag start moves selection, and the controller has
+    // to know a drag is running before that selection change arrives.
+    panel.addEventListener("dragstart", handleDragStart, true);
+    panel.addEventListener("dragend", handleDragEnd);
+    return () => {
+      panel.removeEventListener("dragstart", handleDragStart, true);
+      panel.removeEventListener("dragend", handleDragEnd);
+    };
+  }, [dragMention]);
+
+  useEffect(() => {
     if (selectedPath === null) {
       handledRevealRef.current = null;
       return;
@@ -164,7 +225,7 @@ export function DiffFileTree({
   }, [model, paths, revealRequestId, selectedPath]);
 
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col bg-background", className)}>
+    <div ref={panelRef} className={cn("flex min-h-0 flex-1 flex-col bg-background", className)}>
       <div
         className="flex h-10 min-h-10 shrink-0 items-center gap-1 border-b border-border/60 bg-background px-2 text-xs text-muted-foreground in-data-[preview-panel-mode=inline]:mb-3 in-data-[preview-panel-mode=inline]:h-7 in-data-[preview-panel-mode=inline]:min-h-7 in-data-[preview-panel-mode=inline]:border-b-transparent"
         data-surface-subheader
