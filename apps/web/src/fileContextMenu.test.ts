@@ -65,9 +65,17 @@ describe("buildFileContextMenuItems", () => {
       },
     });
 
-    expect(items.map((item) => item.id)).toEqual(["open", "reveal-in-folder", "open-with"]);
+    expect(items.map((item) => item.id)).toEqual([
+      "open",
+      "reveal-in-folder",
+      "open-with",
+      "copy-path",
+      "copy-relative-path",
+    ]);
     expect(items[0]).toMatchObject({ label: "Open" });
     expect(items[1]).toMatchObject({ label: "Reveal in Finder" });
+    expect(items[3]).toMatchObject({ label: "Copy path", separatorBefore: true });
+    expect(items[4]).toMatchObject({ label: "Copy relative path" });
     const openWith = items[2];
     NodeAssert.ok(openWith);
     expect(openWith.children?.map((child) => child.id)).toEqual(["editor:vscode", "editor:cursor"]);
@@ -83,20 +91,35 @@ describe("buildFileContextMenuItems", () => {
       },
     });
 
-    expect(items.map((item) => item.id)).toEqual(["reveal-in-folder"]);
+    expect(items.map((item) => item.id)).toEqual([
+      "reveal-in-folder",
+      "copy-path",
+      "copy-relative-path",
+    ]);
     expect(items[0]).toMatchObject({ label: "Reveal in File Explorer" });
   });
 
-  it("offers nothing when the path cannot be resolved", () => {
-    expect(
-      buildFileContextMenuItems({
-        hasAbsolutePath: false,
-        capabilities: {
-          revealLabel: "Reveal in Finder",
-          canOpenDefault: true,
-          editorIds: ["vscode"],
-        },
-      }),
-    ).toEqual([]);
+  it("keeps only the relative-path copy when the path cannot be resolved", () => {
+    const items = buildFileContextMenuItems({
+      hasAbsolutePath: false,
+      capabilities: {
+        revealLabel: "Reveal in Finder",
+        canOpenDefault: true,
+        editorIds: ["vscode"],
+      },
+    });
+
+    expect(items.map((item) => item.id)).toEqual(["copy-relative-path"]);
+    expect(items[0]?.separatorBefore).toBeUndefined();
+  });
+
+  it("offers the copy actions without a leading divider when no shell action exists", () => {
+    const items = buildFileContextMenuItems({
+      hasAbsolutePath: true,
+      capabilities: EMPTY_CAPABILITIES,
+    });
+
+    expect(items.map((item) => item.id)).toEqual(["copy-path", "copy-relative-path"]);
+    expect(items[0]?.separatorBefore).toBe(false);
   });
 });
