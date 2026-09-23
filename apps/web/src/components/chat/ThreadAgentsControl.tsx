@@ -114,7 +114,6 @@ export const ThreadAgentsControl = memo(function ThreadAgentsControl({
                 <Button
                   size="xs"
                   variant="outline"
-                  className="gap-1 px-[calc(--spacing(2)-1px)] tabular-nums"
                   aria-label={ariaLabel}
                   data-toolbar-control=""
                   data-thread-agents-control=""
@@ -127,7 +126,7 @@ export const ThreadAgentsControl = memo(function ThreadAgentsControl({
             aria-hidden
             className={cn("size-3.5", state.liveCount > 0 ? "text-info-foreground" : null)}
           />
-          <span className={cn(state.allSettled ? "text-success" : null)}>
+          <span className={cn("tabular-nums", state.allSettled ? "text-success" : null)}>
             {state.settled}/{state.total}
           </span>
         </TooltipTrigger>
@@ -143,7 +142,10 @@ export const ThreadAgentsControl = memo(function ThreadAgentsControl({
         padding="compact"
       >
         <div className="flex items-baseline gap-2 px-1.5 pb-1.5">
-          <PopoverTitle className="text-xs font-medium text-muted-foreground">Agents</PopoverTitle>
+          <PopoverTitle className="sr-only">Agents</PopoverTitle>
+          <span aria-hidden className="text-xs font-medium text-muted-foreground">
+            Agents
+          </span>
           <span className="ml-auto shrink-0 font-mono text-[.65rem] tabular-nums text-muted-foreground/80">
             {workingLabel ? (
               <span className="text-info-foreground">{state.liveCount} working</span>

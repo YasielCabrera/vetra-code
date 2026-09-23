@@ -72,7 +72,7 @@ function DiagramFallback() {
       aria-label="Preparing schema diagram"
     >
       <div className="flex w-44 flex-col items-center gap-2.5">
-        <Skeleton className="h-16 w-full rounded-lg" />
+        <Skeleton shape="card" className="h-16 w-full" />
         <Skeleton className="h-2.5 w-24" />
         <span className="sr-only">Preparing schema diagram…</span>
       </div>

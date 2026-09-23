@@ -285,16 +285,8 @@ export function ListFilterMenu({
 }) {
   return (
     <Menu>
-      <MenuTrigger
-        render={
-          <Button
-            className={cn(count > 0 && "[--control-icon-color:currentColor]")}
-            variant="outline"
-            aria-label={label}
-          />
-        }
-      >
-        <ListFilterIcon className="size-4" />
+      <MenuTrigger render={<Button variant="outline" aria-label={label} />}>
+        <ListFilterIcon className={cn("size-4", count > 0 && "text-foreground")} />
         <span>Filters</span>
         {count > 0 ? (
           <span className="rounded-full bg-primary/10 px-1.5 text-xs text-primary tabular-nums">

@@ -92,14 +92,13 @@ function CopyableAddress({ address }: { readonly address: string }) {
   return (
     <Button
       variant="ghost"
-      size="sm"
-      className="h-7 gap-1.5 font-mono text-xs"
+      size="compact"
       onClick={() => {
         void navigator.clipboard.writeText(address).then(() => setCopied(true));
       }}
       aria-label={`Copy ${address}`}
     >
-      {shortenAddress(address)}
+      <span className="font-mono">{shortenAddress(address)}</span>
       {copied ? (
         <CheckIcon className="size-3" aria-hidden />
       ) : (
@@ -574,14 +573,13 @@ export function Web3SettingsPanel() {
                     <CopyableAddress address={account.address} />
                     <div className="flex w-28 shrink-0 items-center justify-end">
                       {active ? (
-                        <span className="inline-flex h-7 items-center px-2.5 text-xs font-medium text-muted-foreground">
+                        <span className="inline-flex h-7 items-center px-2 text-xs font-medium text-muted-foreground">
                           Active
                         </span>
                       ) : (
                         <Button
                           variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs"
+                          size="compact"
                           onClick={() => void selectAccount(account.address)}
                         >
                           Make active
@@ -592,9 +590,8 @@ export function Web3SettingsPanel() {
                       <TooltipTrigger
                         render={
                           <Button
-                            variant="ghost"
+                            variant="ghost-destructive"
                             size="icon-xs"
-                            className="text-muted-foreground hover:text-destructive"
                             aria-label={`Remove ${account.label}`}
                             disabled={!bridge || !wallet.enabled}
                             onClick={() => void removeAccount(account)}
@@ -727,9 +724,8 @@ export function Web3SettingsPanel() {
                       <TooltipTrigger
                         render={
                           <Button
-                            variant="ghost"
+                            variant="ghost-muted"
                             size="icon-xs"
-                            className="text-muted-foreground"
                             aria-label={`Edit ${network.name}`}
                             disabled={!wallet.enabled}
                             onClick={() => setNetworkDialog(network)}
@@ -744,9 +740,8 @@ export function Web3SettingsPanel() {
                       <TooltipTrigger
                         render={
                           <Button
-                            variant="ghost"
+                            variant="ghost-destructive"
                             size="icon-xs"
-                            className="text-muted-foreground hover:text-destructive"
                             aria-label={`Remove ${network.name}`}
                             disabled={!wallet.enabled}
                             onClick={() => void removeCustomNetwork(network)}

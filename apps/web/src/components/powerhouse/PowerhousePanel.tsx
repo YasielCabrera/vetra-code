@@ -120,7 +120,7 @@ function ConnectionChip({
         side="bottom"
         className="w-[min(22rem,calc(100vw-1rem))] max-w-none"
       >
-        <PopoverTitle className="text-sm">Reactor connection</PopoverTitle>
+        <PopoverTitle>Reactor connection</PopoverTitle>
         <p className="mt-1 mb-4 text-xs leading-relaxed text-muted-foreground">
           {connected ? `Connected to ${label}.` : "Choose the reactor address for this project."}
         </p>

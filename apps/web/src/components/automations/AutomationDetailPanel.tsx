@@ -622,7 +622,8 @@ export function AutomationDetailPanel(props: {
                 <Input
                   nativeInput
                   aria-label="Cron expression"
-                  className="w-56 font-mono text-xs"
+                  font="mono"
+                  className="w-56"
                   value={draft.customCron}
                   onChange={(event) => {
                     const customCron = event.target.value;
@@ -817,12 +818,7 @@ export function AutomationDetailPanel(props: {
                   <PlayIcon />
                   Run now
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => void handleDelete()}
-                >
+                <Button size="sm" variant="destructive-outline" onClick={() => void handleDelete()}>
                   <Trash2Icon />
                   Delete
                 </Button>
@@ -847,8 +843,8 @@ export function AutomationDetailPanel(props: {
                       not need a click per run to go quiet. */}
                   <Button
                     size="sm"
-                    variant="ghost"
-                    className="ms-auto shrink-0 text-muted-foreground hover:text-foreground"
+                    variant="ghost-muted"
+                    className="ms-auto shrink-0"
                     onClick={() => markRunsRead(unreadRunThreads)}
                   >
                     <CheckCheckIcon />
@@ -907,14 +903,15 @@ export function AutomationDetailPanel(props: {
                         </span>
                       </button>
                       {thread.hiddenAt != null ? (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="shrink-0 opacity-0 transition-opacity group-hover/run-row:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
-                          onClick={() => void handleRevealRun(thread.environmentId, thread.id)}
-                        >
-                          Show in sidebar
-                        </Button>
+                        <span className="flex shrink-0 opacity-0 transition-opacity group-hover/run-row:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => void handleRevealRun(thread.environmentId, thread.id)}
+                          >
+                            Show in sidebar
+                          </Button>
+                        </span>
                       ) : (
                         <span className="shrink-0 px-3 text-xs text-muted-foreground/70">
                           In sidebar

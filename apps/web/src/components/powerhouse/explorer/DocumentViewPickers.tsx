@@ -11,12 +11,12 @@ import {
   Globe2,
   HardDrive,
   Layers3,
-  Search,
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { Button } from "~/components/ui/button";
 import {
   Combobox,
   ComboboxChip,
@@ -24,10 +24,10 @@ import {
   ComboboxChipsInput,
   ComboboxGroup,
   ComboboxGroupLabel,
-  ComboboxInput,
   ComboboxItem,
   ComboboxList,
   ComboboxPopup,
+  ComboboxSearchInput,
   ComboboxStatus,
   ComboboxTrigger,
 } from "~/components/ui/combobox";
@@ -41,6 +41,7 @@ import {
   POWERHOUSE_SCOPE_OPTIONS,
   type PowerhouseDocumentViewOption,
 } from "./documentViewOptions";
+import { PickerTriggerButton } from "./PickerTriggerButton";
 
 interface DocumentViewPickerProps {
   id: string;
@@ -101,41 +102,6 @@ function DocumentViewItem({
   );
 }
 
-function PickerSearch({
-  value,
-  placeholder,
-  label,
-  onChange,
-}: {
-  value: string;
-  placeholder: string;
-  label: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="shrink-0 px-3 pt-2.5">
-      <div className="relative -translate-y-px border-b border-border/70 pb-1.5 transition-colors focus-within:border-ring">
-        <Search
-          aria-hidden
-          className="pointer-events-none absolute top-1.5 left-0 size-4 text-muted-foreground/55"
-        />
-        <ComboboxInput
-          className="[&_input]:h-6.5 [&_input]:ps-5 [&_input]:font-sans [&_input]:leading-6.5"
-          placeholder={placeholder}
-          aria-label={label}
-          showTrigger={false}
-          size="sm"
-          unstyled
-          value={value}
-          maxLength={POWERHOUSE_REACTOR_OPERATION_TEXT_MAX_LENGTH}
-          spellCheck={false}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      </div>
-    </div>
-  );
-}
-
 export function BranchPicker({ id, value, invalid, autoFocus, onChange }: DocumentViewPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -182,11 +148,7 @@ export function BranchPicker({ id, value, invalid, autoFocus, onChange }: Docume
         id={id}
         autoFocus={autoFocus}
         aria-invalid={invalid}
-        className={cn(
-          "relative flex min-h-8 w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-input bg-background px-2.5 py-1.5 text-left text-sm text-foreground shadow-xs/5 outline-none ring-ring/24 transition-shadow before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 dark:bg-input/32",
-          invalid &&
-            "border-destructive/36 focus-visible:border-destructive/64 focus-visible:ring-destructive/16 dark:ring-destructive/24",
-        )}
+        render={<PickerTriggerButton />}
       >
         <GitBranch aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
         {value.length === 0 ? (
@@ -203,11 +165,13 @@ export function BranchPicker({ id, value, invalid, autoFocus, onChange }: Docume
       </ComboboxTrigger>
 
       <ComboboxPopup align="start" className={PICKER_POPUP_CLASS}>
-        <PickerSearch
+        <ComboboxSearchInput
           value={query}
           placeholder="Search or enter a branch…"
-          label="Search branches"
-          onChange={setQuery}
+          aria-label="Search branches"
+          maxLength={POWERHOUSE_REACTOR_OPERATION_TEXT_MAX_LENGTH}
+          spellCheck={false}
+          onChange={(event) => setQuery(event.target.value)}
         />
         <ComboboxList className="max-h-72 min-w-0 overflow-x-hidden">
           {visibleOptions.length === 0 ? null : (
@@ -306,8 +270,8 @@ export function ScopePicker({ id, value, invalid, autoFocus, onChange }: Documen
           onChange={(event) => setQuery(event.target.value)}
         />
         <ComboboxTrigger
-          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Open scope options"
+          render={<Button variant="ghost-muted" size="icon-xs" />}
         >
           <ChevronDown aria-hidden className="size-3.5" />
         </ComboboxTrigger>

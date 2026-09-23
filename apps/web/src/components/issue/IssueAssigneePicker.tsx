@@ -96,7 +96,7 @@ export function IssueAssigneePicker({
           </Button>
         }
       />
-      <MenuPopup align="start" side="bottom" className="w-72 p-0">
+      <MenuPopup align="start" side="bottom" className="w-72">
         {viewer !== null ? (
           <button
             type="button"

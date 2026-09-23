@@ -7,6 +7,7 @@
  * actions. Reject always tells the page the user declined (`4001`); other
  * EIP-1193 codes stay on `preview_wallet_reject` for agent-driven tests.
  */
+import { Select as SelectPrimitive } from "@base-ui/react/select";
 import type { PreviewAutomationWalletConfigureInput } from "@t3tools/contracts";
 import { enabledBuiltInNetworks, findCustomNetwork } from "@t3tools/web3/networks";
 import {
@@ -59,21 +60,38 @@ function CopyAddressButton({ address }: { readonly address: string }) {
 
   return (
     <Button
-      variant="ghost"
-      size="xs"
-      className="h-6 gap-1 px-1.5 font-mono text-[11px] text-muted-foreground"
+      variant="ghost-muted"
+      size="micro"
       onClick={() => {
         void navigator.clipboard.writeText(address).then(() => setCopied(true));
       }}
       aria-label={copied ? "Address copied" : `Copy ${address}`}
     >
-      {shortenAddress(address)}
+      <span className="font-mono">{shortenAddress(address)}</span>
       {copied ? (
         <CheckIcon className="size-3" aria-hidden />
       ) : (
         <CopyIcon className="size-3" aria-hidden />
       )}
     </Button>
+  );
+}
+
+/** The popover header's network picker: a ghost select trigger shaped as a filled pill. */
+function NetworkPillTrigger({
+  children,
+  ...props
+}: Omit<SelectPrimitive.Trigger.Props, "className">) {
+  return (
+    <SelectPrimitive.Trigger
+      className="relative inline-flex h-7 max-w-[13rem] cursor-pointer select-none items-center justify-between gap-1 rounded-full border border-transparent bg-accent/70 px-2 text-left text-sm text-secondary-label outline-none transition-[color,box-shadow,background-color] focus-visible:ring-2 focus-visible:ring-ring data-disabled:pointer-events-none data-disabled:opacity-64 data-pressed:bg-accent sm:text-xs [:hover,[data-pressed]]:bg-accent [:hover,[data-pressed]]:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3.5"
+      {...props}
+    >
+      {children}
+      <SelectPrimitive.Icon>
+        <ChevronDownIcon className="-me-1 size-3 opacity-50" />
+      </SelectPrimitive.Icon>
+    </SelectPrimitive.Trigger>
   );
 }
 
@@ -123,16 +141,14 @@ function AccountMenu({
       <SelectTrigger
         variant="ghost"
         size="xs"
-        className="h-7 w-auto min-w-0 max-w-[14rem] justify-start gap-1 px-1.5 font-medium text-foreground"
+        className="h-7 w-auto min-w-0 max-w-[14rem] justify-start"
         aria-label="Switch preview wallet account"
         disabled={disabled}
         icon={<ChevronDownIcon className="size-3.5 opacity-70" />}
       >
-        {selected === undefined ? (
-          <SelectValue>No account</SelectValue>
-        ) : (
-          <span className="truncate">{selected.label}</span>
-        )}
+        <span className="min-w-0 truncate font-medium text-foreground">
+          {selected === undefined ? <SelectValue>No account</SelectValue> : selected.label}
+        </span>
       </SelectTrigger>
       <SelectPopup alignItemWithTrigger={false} matchTriggerWidth={false}>
         {accounts.length === 0 ? (
@@ -316,17 +332,17 @@ function PendingRequestCard({
       </div>
       <div className="grid grid-cols-2 gap-1.5">
         <Button
-          size="sm"
+          size="compact"
           variant="outline"
-          className="h-8 text-xs"
+          className="h-8"
           disabled={busy}
           onClick={() => void resolve("reject")}
         >
           Reject
         </Button>
         <Button
-          size="sm"
-          className="h-8 text-xs"
+          size="compact"
+          className="h-8"
           disabled={busy}
           onClick={() => void resolve("approve")}
         >
@@ -563,16 +579,10 @@ export function PreviewWalletChip() {
                 );
               }}
             >
-              <SelectTrigger
-                variant="ghost"
-                size="xs"
-                className="h-7 max-w-[13rem] rounded-full bg-accent/70 px-2"
-                aria-label="Preview wallet network"
-                disabled={controlsDisabled}
-              >
+              <NetworkPillTrigger aria-label="Preview wallet network" disabled={controlsDisabled}>
                 {activeChainId === null ? null : <NetworkIcon chainId={activeChainId} />}
                 <SelectValue>{status.chain?.name ?? "No network"}</SelectValue>
-              </SelectTrigger>
+              </NetworkPillTrigger>
               <SelectPopup alignItemWithTrigger={false} matchTriggerWidth={false}>
                 {status.chain !== null &&
                 !activeChainUsesBundledRpc &&
@@ -642,8 +652,8 @@ export function PreviewWalletChip() {
               )}
               <Button
                 variant="outline"
-                size="sm"
-                className="mt-1 h-7 gap-1 px-2.5 text-xs"
+                size="compact"
+                className="mt-1"
                 disabled={controlsDisabled}
                 onClick={() =>
                   void configure(

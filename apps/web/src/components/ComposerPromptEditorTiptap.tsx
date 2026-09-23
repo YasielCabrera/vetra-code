@@ -484,10 +484,7 @@ function ComposerPowerhouseNodeView({ node }: NodeViewProps) {
     <NodeViewWrapper as="span" className={CHIP_NODE_SELECTION_CLASS_NAME}>
       <Tooltip>
         <TooltipTrigger render={chip} />
-        <TooltipPopup
-          side="top"
-          className="max-w-120 whitespace-normal leading-tight wrap-anywhere"
-        >
+        <TooltipPopup side="top" className="max-w-120">
           {detail}
         </TooltipPopup>
       </Tooltip>

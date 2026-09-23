@@ -79,7 +79,7 @@ function IndexDraftLanding() {
   }
 
   return (
-    <SidebarInset className="h-svh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground md:h-dvh">
+    <SidebarInset className="h-svh min-h-0 overflow-hidden overscroll-y-none md:h-dvh">
       <ChatView
         draftId={ROOT_PROJECT_DRAFT_ID}
         environmentId={draftSession.environmentId}
@@ -105,9 +105,7 @@ function DraftStartError({
       <Empty className="flex-1">
         <EmptyHeader className="max-w-md">
           <EmptyTitle>{title}</EmptyTitle>
-          <EmptyDescription>
-            {description}
-          </EmptyDescription>
+          <EmptyDescription>{description}</EmptyDescription>
           <div className="mt-5 flex justify-center">
             <Button size="sm" onClick={onRetry}>
               <RefreshIcon size="md" />
@@ -152,8 +150,8 @@ function HostedStaticOnboardingState() {
               </div>
               <EmptyTitle>Connect to a computer running Vetra Code</EmptyTitle>
               <EmptyDescription>
-                This app connects to Vetra Code running on your computer or a server. Start the Vetra Code
-                desktop app or command-line server on that machine and keep it running.
+                This app connects to Vetra Code running on your computer or a server. Start the
+                Vetra Code desktop app or command-line server on that machine and keep it running.
               </EmptyDescription>
               <EmptyDescription>{description}</EmptyDescription>
               <div className="mt-6 flex justify-center">

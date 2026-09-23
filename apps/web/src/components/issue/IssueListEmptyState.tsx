@@ -83,7 +83,7 @@ export function IssueListEmptyState({
   // Ahead of the search and the filters, because neither can produce a row until a project does.
   if (!hasProjects) {
     return (
-      <Empty className="py-16">
+      <Empty>
         <IssueMark found={false} />
         <EmptyHeader>
           <EmptyTitle>No projects in this workspace</EmptyTitle>
@@ -114,7 +114,7 @@ export function IssueListEmptyState({
 
   if (query.length > 0) {
     return (
-      <Empty className="py-16">
+      <Empty>
         <IssueMark found={false} />
         <EmptyHeader>
           {/* A pasted paragraph is still a search, but it is not a title. */}
@@ -125,7 +125,7 @@ export function IssueListEmptyState({
             The hosts were searched for it. Try fewer words, or search by number, author or label.
           </EmptyDescription>
         </EmptyHeader>
-        <EmptyContent className="flex-row flex-wrap justify-center gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
           <Button size="sm" variant="outline" onClick={onClearQuery}>
             <SearchIcon className="size-3.5" />
             Clear search
@@ -136,13 +136,13 @@ export function IssueListEmptyState({
             <RefreshCwIcon className="size-3.5" />
             {refreshing ? "Checking..." : "Check again"}
           </Button>
-        </EmptyContent>
+        </div>
       </Empty>
     );
   }
 
   return (
-    <Empty className="py-16">
+    <Empty>
       <IssueMark found={false} />
       <EmptyHeader>
         <EmptyTitle>{filtered ? "Nothing under these filters" : "No issues"}</EmptyTitle>
@@ -152,12 +152,12 @@ export function IssueListEmptyState({
             : "Issues from every project in this workspace appear here."}
         </EmptyDescription>
       </EmptyHeader>
-      <EmptyContent className="flex-row flex-wrap justify-center gap-2">
+      <div className="flex flex-wrap justify-center gap-2">
         <Button size="sm" variant="outline" disabled={refreshing} onClick={onRefresh}>
           <RefreshCwIcon className="size-3.5" />
           {refreshing ? "Checking..." : "Check again"}
         </Button>
-      </EmptyContent>
+      </div>
     </Empty>
   );
 }
@@ -172,7 +172,7 @@ export function IssuesUnavailableState({
   onRetry?: () => void;
 }) {
   return (
-    <Empty className="px-4 py-16 md:px-4">
+    <Empty>
       <IssueMark found={false} />
       <EmptyHeader>
         <EmptyTitle>{title}</EmptyTitle>

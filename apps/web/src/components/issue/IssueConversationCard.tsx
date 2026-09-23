@@ -36,15 +36,16 @@ export function IssueConversationCard({
           {action} {formatRelativeTimeLabel(createdAt)}
         </span>
         {url !== null && onOpen !== undefined ? (
-          <Button
-            aria-label="Open comment on GitHub"
-            className="-mt-1 ml-auto shrink-0 text-muted-foreground opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100"
-            size="icon-xs"
-            variant="ghost"
-            onClick={() => onOpen(url)}
-          >
-            <ExternalLinkIcon aria-hidden className="size-3" />
-          </Button>
+          <span className="-mt-1 ml-auto flex shrink-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 focus-within:opacity-100">
+            <Button
+              aria-label="Open comment on GitHub"
+              size="icon-xs"
+              variant="ghost-muted"
+              onClick={() => onOpen(url)}
+            >
+              <ExternalLinkIcon aria-hidden className="size-3" />
+            </Button>
+          </span>
         ) : null}
       </header>
       <div className="mt-2">

@@ -154,9 +154,9 @@ function EventItem({
         {sourceUrl !== null ? (
           <Button
             aria-label="Open referenced issue on GitHub"
-            className="-mr-1 -mt-1 shrink-0 text-muted-foreground"
+            className="-mr-1 -mt-1 shrink-0"
             size="icon-xs"
-            variant="ghost"
+            variant="ghost-muted"
             onClick={() => onOpen(sourceUrl)}
           >
             <ExternalLinkIcon aria-hidden className="size-3" />

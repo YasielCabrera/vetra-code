@@ -174,7 +174,7 @@ export function AutomationsPage(props?: {
   );
 
   return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground isolate">
+    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
       {/* The two columns sit side by side all the way up, rather than under a
           strip that spans both: the panel's rule and its title then start at
           the top of the window instead of below a band that belongs to the
@@ -476,18 +476,19 @@ const AutomationRow = memo(function AutomationRow({
       {/* Revealed on hover, and always on touch, where there is no hover to
           reveal it with. */}
       <Menu>
-        <MenuTrigger
-          render={
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              aria-label={`Options for ${automation.title}`}
-              className="shrink-0 opacity-0 transition-opacity group-hover/automation-row:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100 pointer-coarse:opacity-100"
-            />
-          }
-        >
-          <MoreHorizontalIcon aria-hidden className="size-4" />
-        </MenuTrigger>
+        <span className="flex shrink-0 opacity-0 transition-opacity group-hover/automation-row:opacity-100 focus-within:opacity-100 has-data-popup-open:opacity-100 pointer-coarse:opacity-100">
+          <MenuTrigger
+            render={
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                aria-label={`Options for ${automation.title}`}
+              />
+            }
+          >
+            <MoreHorizontalIcon aria-hidden className="size-4" />
+          </MenuTrigger>
+        </span>
         <MenuPopup align="end" className="w-44">
           <MenuItem onClick={() => void runNow(automation)}>
             <PlayIcon aria-hidden />

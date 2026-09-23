@@ -24,13 +24,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui
 import { Fieldset, FieldsetLegend } from "~/components/ui/fieldset";
 import { Input } from "~/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "~/components/ui/input-group";
-import {
-  Popover,
-  PopoverDescription,
-  PopoverPopup,
-  PopoverTitle,
-  PopoverTrigger,
-} from "~/components/ui/popover";
+import { Popover, PopoverPopup, PopoverTitle, PopoverTrigger } from "~/components/ui/popover";
 import { Textarea } from "~/components/ui/textarea";
 
 import {
@@ -343,104 +337,108 @@ export function DocumentFilterBar({
             align="end"
             side="bottom"
             className="w-[min(27rem,calc(100vw-1rem))] max-w-none"
+            aria-describedby={`${filterFormId}-description`}
           >
-            <PopoverTitle className="text-sm">Filter documents</PopoverTitle>
-            <PopoverDescription className="mt-1 mb-4 text-xs leading-relaxed">
+            <PopoverTitle>Filter documents</PopoverTitle>
+            <p
+              id={`${filterFormId}-description`}
+              className="mt-1 mb-4 text-xs leading-relaxed text-muted-foreground"
+            >
               Choose only the fields you need. Each row shows the matching behavior supported by
               Switchboard.
-            </PopoverDescription>
+            </p>
 
             <form className="flex flex-col gap-3" onSubmit={apply}>
               {selectedFields.length === 0 ? null : (
-                <Fieldset className="max-w-none gap-0 overflow-hidden rounded-lg border border-border/70 bg-background/50">
+                <Fieldset className="max-w-none">
                   <FieldsetLegend className="sr-only">Selected document filters</FieldsetLegend>
-                  {selectedFields.map((field) => {
-                    const definition = FILTER_FIELD_DEFINITIONS[field];
-                    const error = filterError(errors, missingFields, field);
-                    const inputId = `${filterFormId}-${field}`;
-                    const controlProps = {
-                      id: inputId,
-                      value: draft[field],
-                      maxLength: definition.maxLength,
-                      "aria-invalid": error !== null,
-                      placeholder:
-                        field === "parentId" && currentParentId !== null
-                          ? currentParentId
-                          : definition.placeholder,
-                      spellCheck: false,
-                      autoFocus: lastAddedField === field,
-                      onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-                        updateDraft(field, event.target.value),
-                    };
-                    return (
-                      <Field
-                        key={field}
-                        data-invalid={error !== null}
-                        className="gap-1.5 border-b border-border/60 p-3 last:border-b-0"
-                      >
-                        <div className="flex w-full min-w-0 items-center gap-2">
-                          <FieldLabel htmlFor={inputId} className="min-w-0 flex-1">
-                            <definition.Icon
-                              aria-hidden
-                              className="size-3.5 shrink-0 text-muted-foreground"
-                            />
-                            <span className="truncate">{definition.label}</span>
-                          </FieldLabel>
-                          <span className="shrink-0 rounded-sm bg-muted px-1.5 py-0.5 text-[.625rem] font-medium text-muted-foreground">
-                            {definition.operator}
-                          </span>
-                          <Button
-                            type="button"
-                            size="icon-micro"
-                            variant="ghost-muted"
-                            aria-label={`Remove ${definition.label} filter`}
-                            title={`Remove ${definition.label}`}
-                            onClick={() => removeDraftField(field)}
-                          >
-                            <X aria-hidden />
-                          </Button>
+                  <div className="overflow-hidden rounded-lg border border-border/70 bg-background/50">
+                    {selectedFields.map((field) => {
+                      const definition = FILTER_FIELD_DEFINITIONS[field];
+                      const error = filterError(errors, missingFields, field);
+                      const inputId = `${filterFormId}-${field}`;
+                      const controlProps = {
+                        id: inputId,
+                        value: draft[field],
+                        maxLength: definition.maxLength,
+                        "aria-invalid": error !== null,
+                        placeholder:
+                          field === "parentId" && currentParentId !== null
+                            ? currentParentId
+                            : definition.placeholder,
+                        spellCheck: false,
+                        autoFocus: lastAddedField === field,
+                        onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+                          updateDraft(field, event.target.value),
+                      };
+                      return (
+                        <div key={field} className="border-b border-border/60 p-3 last:border-b-0">
+                          <Field data-invalid={error !== null}>
+                            <div className="flex w-full min-w-0 items-center gap-2">
+                              <FieldLabel htmlFor={inputId} className="min-w-0 flex-1">
+                                <definition.Icon
+                                  aria-hidden
+                                  className="size-3.5 shrink-0 text-muted-foreground"
+                                />
+                                <span className="truncate">{definition.label}</span>
+                              </FieldLabel>
+                              <span className="shrink-0 rounded-sm bg-muted px-1.5 py-0.5 text-[.625rem] font-medium text-muted-foreground">
+                                {definition.operator}
+                              </span>
+                              <Button
+                                type="button"
+                                size="icon-micro"
+                                variant="ghost-muted"
+                                aria-label={`Remove ${definition.label} filter`}
+                                title={`Remove ${definition.label}`}
+                                onClick={() => removeDraftField(field)}
+                              >
+                                <X aria-hidden />
+                              </Button>
+                            </div>
+                            {field === "type" ? (
+                              <DocumentTypePicker
+                                id={inputId}
+                                value={draft.type}
+                                options={documentTypeOptions}
+                                catalogStatus={documentTypeCatalogStatus}
+                                invalid={error !== null}
+                                autoFocus={lastAddedField === field}
+                                onChange={(value) => updateDraft(field, value)}
+                              />
+                            ) : field === "branch" ? (
+                              <BranchPicker
+                                id={inputId}
+                                value={draft.branch}
+                                invalid={error !== null}
+                                autoFocus={lastAddedField === field}
+                                onChange={(value) => updateDraft(field, value)}
+                              />
+                            ) : field === "scopes" ? (
+                              <ScopePicker
+                                id={inputId}
+                                value={draft.scopes}
+                                invalid={error !== null}
+                                autoFocus={lastAddedField === field}
+                                onChange={(value) => updateDraft(field, value)}
+                              />
+                            ) : definition.multiline ? (
+                              <Textarea size="sm" {...controlProps} />
+                            ) : (
+                              <Input size="sm" {...controlProps} />
+                            )}
+                            {error === null ? (
+                              <FieldDescription>
+                                {filterDescription(field, currentParentId)}
+                              </FieldDescription>
+                            ) : (
+                              <FieldError>{error}</FieldError>
+                            )}
+                          </Field>
                         </div>
-                        {field === "type" ? (
-                          <DocumentTypePicker
-                            id={inputId}
-                            value={draft.type}
-                            options={documentTypeOptions}
-                            catalogStatus={documentTypeCatalogStatus}
-                            invalid={error !== null}
-                            autoFocus={lastAddedField === field}
-                            onChange={(value) => updateDraft(field, value)}
-                          />
-                        ) : field === "branch" ? (
-                          <BranchPicker
-                            id={inputId}
-                            value={draft.branch}
-                            invalid={error !== null}
-                            autoFocus={lastAddedField === field}
-                            onChange={(value) => updateDraft(field, value)}
-                          />
-                        ) : field === "scopes" ? (
-                          <ScopePicker
-                            id={inputId}
-                            value={draft.scopes}
-                            invalid={error !== null}
-                            autoFocus={lastAddedField === field}
-                            onChange={(value) => updateDraft(field, value)}
-                          />
-                        ) : definition.multiline ? (
-                          <Textarea size="sm" {...controlProps} />
-                        ) : (
-                          <Input size="sm" {...controlProps} />
-                        )}
-                        {error === null ? (
-                          <FieldDescription>
-                            {filterDescription(field, currentParentId)}
-                          </FieldDescription>
-                        ) : (
-                          <FieldError>{error}</FieldError>
-                        )}
-                      </Field>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </Fieldset>
               )}
 

@@ -69,7 +69,9 @@ export function ReactorUrlForm({
             aria-invalid={!isValid}
             aria-describedby={hintId}
             onChange={(event) => setDraft(event.target.value)}
-            className="h-8 min-w-0 font-mono text-xs"
+            size="compact"
+            font="mono"
+            className="min-w-0"
           />
           <Button type="submit" size="sm" variant="outline" disabled={!isValid}>
             {submitLabel}

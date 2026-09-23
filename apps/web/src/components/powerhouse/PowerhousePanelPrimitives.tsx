@@ -19,14 +19,14 @@ export function PowerhousePanelLoading({ label = "Loading Powerhouse…" }: { la
       <span className="sr-only">{label}</span>
       <div className="mb-1 flex items-center justify-between gap-4">
         <Skeleton className="h-4 w-28" />
-        <Skeleton className="size-7 rounded-md" />
+        <Skeleton className="size-7" />
       </div>
       {["w-4/5", "w-2/3", "w-3/4"].map((width) => (
         <div
           key={width}
           className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/60 p-3"
         >
-          <Skeleton className="size-8 shrink-0 rounded-lg" />
+          <Skeleton shape="card" className="size-8 shrink-0" />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <Skeleton className={cn("h-3", width)} />
             <Skeleton className="h-2.5 w-1/2" />

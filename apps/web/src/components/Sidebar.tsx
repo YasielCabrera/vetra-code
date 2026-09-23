@@ -4615,7 +4615,6 @@ export default function Sidebar() {
             <SidebarMenuButton
               type="button"
               isActive={isOnAutomationsPage}
-              className="ps-[calc(var(--sidebar-row-content-inset)-1px)] focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
               onClick={handleAutomationsPageClick}
             >
               <CalendarClockIcon className="size-4 shrink-0" />

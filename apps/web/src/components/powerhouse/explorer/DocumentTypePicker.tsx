@@ -1,19 +1,18 @@
 import { POWERHOUSE_REACTOR_DOCUMENT_TYPE_MAX_LENGTH } from "@t3tools/contracts";
-import { Braces, ChevronDown, FileType2, Folder, HardDrive, Search } from "lucide-react";
+import { Braces, ChevronDown, FileType2, Folder, HardDrive } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
   Combobox,
   ComboboxGroup,
   ComboboxGroupLabel,
-  ComboboxInput,
   ComboboxItem,
   ComboboxList,
   ComboboxPopup,
+  ComboboxSearchInput,
   ComboboxStatus,
   ComboboxTrigger,
 } from "~/components/ui/combobox";
-import { cn } from "~/lib/utils";
 
 import {
   customDocumentTypeValue,
@@ -21,6 +20,7 @@ import {
   type PowerhouseDocumentTypeCatalogStatus,
   type PowerhouseDocumentTypeOption,
 } from "./documentTypeOptions";
+import { PickerTriggerButton } from "./PickerTriggerButton";
 
 interface DocumentTypePickerProps {
   id: string;
@@ -105,11 +105,7 @@ export function DocumentTypePicker({
         id={id}
         autoFocus={autoFocus}
         aria-invalid={invalid}
-        className={cn(
-          "relative flex min-h-8 w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-input bg-background px-2.5 py-1.5 text-left text-sm text-foreground shadow-xs/5 outline-none ring-ring/24 transition-shadow before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 dark:bg-input/32",
-          invalid &&
-            "border-destructive/36 focus-visible:border-destructive/64 focus-visible:ring-destructive/16 dark:ring-destructive/24",
-        )}
+        render={<PickerTriggerButton />}
       >
         <FileType2 aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
         {value.length === 0 ? (
@@ -131,26 +127,14 @@ export function DocumentTypePicker({
         align="start"
         className="w-[min(24rem,calc(100vw-1rem))] min-w-0 overflow-hidden [&>[data-slot=combobox-popup]]:min-w-0"
       >
-        <div className="shrink-0 px-3 pt-2.5">
-          <div className="relative -translate-y-px border-b border-border/70 pb-1.5 transition-colors focus-within:border-ring">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1.5 left-0 size-4 text-muted-foreground/55"
-            />
-            <ComboboxInput
-              className="[&_input]:h-6.5 [&_input]:ps-5 [&_input]:font-sans [&_input]:leading-6.5"
-              placeholder="Search names or type IDs…"
-              aria-label="Search document types"
-              showTrigger={false}
-              size="sm"
-              unstyled
-              value={query}
-              maxLength={POWERHOUSE_REACTOR_DOCUMENT_TYPE_MAX_LENGTH}
-              spellCheck={false}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </div>
-        </div>
+        <ComboboxSearchInput
+          placeholder="Search names or type IDs…"
+          aria-label="Search document types"
+          value={query}
+          maxLength={POWERHOUSE_REACTOR_DOCUMENT_TYPE_MAX_LENGTH}
+          spellCheck={false}
+          onChange={(event) => setQuery(event.target.value)}
+        />
 
         {catalogStatus === "loading" ? (
           <ComboboxStatus>Loading project document types…</ComboboxStatus>

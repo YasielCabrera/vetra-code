@@ -934,7 +934,7 @@ function IssuesRouteView() {
   const panelEnvironmentId = (activeIssueSurface?.environmentId ?? null) as EnvironmentId | null;
 
   return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
+    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none">
       <div className="relative flex min-h-0 flex-1">
         {issuesSupported && rightPanelState.isOpen ? openPanelControls : null}
         <IssuesColumn

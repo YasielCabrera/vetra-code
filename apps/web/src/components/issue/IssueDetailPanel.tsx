@@ -202,7 +202,7 @@ export function IssueDetailPanel({
     if (detailQuery.error !== null) {
       return (
         <div className="flex h-full min-h-0 w-full flex-col items-center justify-center bg-background">
-          <Empty className="px-4 py-16 md:px-4">
+          <Empty>
             <EmptyMedia variant="icon">
               <CircleDotIcon />
             </EmptyMedia>
@@ -295,7 +295,8 @@ export function IssueDetailPanel({
             </h1>
             <Badge
               variant={detail.state === "open" ? "success" : "secondary"}
-              className="h-5 shrink-0 gap-1 rounded px-1.5 text-[10px]"
+              size="sm"
+              className="shrink-0"
             >
               <StateIcon
                 aria-hidden
@@ -358,9 +359,8 @@ export function IssueDetailPanel({
                     ? "Show oldest activity first"
                     : "Show newest activity first"
                 }
-                className="h-7 px-2 text-[10px] text-muted-foreground"
                 size="xs"
-                variant="ghost"
+                variant="ghost-muted"
                 onClick={() =>
                   setTimelineOrder((value) => (value === "newest" ? "oldest" : "newest"))
                 }
@@ -445,8 +445,8 @@ export function IssueDetailPanel({
                 detail.comments.length > 1 ? (
                   <Button
                     size="xs"
-                    variant="ghost"
-                    className="h-7 shrink-0 px-2 text-[10px] text-muted-foreground"
+                    variant="ghost-muted"
+                    className="shrink-0"
                     aria-label={
                       commentOrder === "newest"
                         ? "Show oldest comments first"

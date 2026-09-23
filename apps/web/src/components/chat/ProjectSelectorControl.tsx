@@ -94,10 +94,14 @@ export function ProjectSelectorControl(props: ProjectSelectorControlProps) {
   return (
     <Menu>
       <MenuTrigger
-        type="button"
         aria-label={props.selectedProjectRef ? "Change project" : "Select project"}
         title={label}
-        className="flex h-8 max-w-52 min-w-32 items-center gap-1.5 rounded-lg border border-border/70 bg-background/55 px-2.5 text-sm text-secondary-label outline-hidden transition-colors hover:border-primary/35 hover:bg-accent/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        render={
+          <button
+            type="button"
+            className="flex h-8 max-w-52 min-w-32 items-center gap-1.5 rounded-lg border border-border/70 bg-background/55 px-2.5 text-sm text-secondary-label outline-hidden transition-colors hover:border-primary/35 hover:bg-accent/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        }
       >
         <FolderIcon className="size-3.5 shrink-0 text-primary" />
         <span className="min-w-0 flex-1 truncate text-left">{label}</span>

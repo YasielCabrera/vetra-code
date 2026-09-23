@@ -230,8 +230,8 @@ export function OperationsList({ environmentId, url, documentId, view }: Operati
               aria-label="Loading operations…"
             >
               <span className="sr-only">Loading operations…</span>
-              <Skeleton className="h-10 w-full rounded-lg" />
-              <Skeleton className="h-10 w-full rounded-lg" />
+              <Skeleton shape="card" className="h-10 w-full" />
+              <Skeleton shape="card" className="h-10 w-full" />
             </div>
           ) : null}
           {items.length === 0 && !status.pending && status.error === null ? (
