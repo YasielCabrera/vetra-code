@@ -521,7 +521,7 @@ export function PreviewWalletChip() {
         align="end"
         sideOffset={6}
         className="w-[22.5rem]"
-        viewportClassName="px-3 py-3 [--viewport-inline-padding:--spacing(3)]"
+        padding="compact"
         onPointerEnter={() => {
           pointerInsidePopup.current = true;
         }}

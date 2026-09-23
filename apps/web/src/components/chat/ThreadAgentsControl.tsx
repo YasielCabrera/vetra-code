@@ -140,7 +140,7 @@ export const ThreadAgentsControl = memo(function ThreadAgentsControl({
         side="bottom"
         sideOffset={6}
         className="min-w-64 max-w-80"
-        viewportClassName="px-2 py-2 [--viewport-inline-padding:--spacing(2)]"
+        padding="compact"
       >
         <div className="flex items-baseline gap-2 px-1.5 pb-1.5">
           <PopoverTitle className="text-xs font-medium text-muted-foreground">Agents</PopoverTitle>

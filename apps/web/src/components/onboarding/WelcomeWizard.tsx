@@ -358,12 +358,13 @@ function ConnectionStep({
               render={
                 <Button
                   variant="ghost"
-                  className="h-auto min-h-14 w-full justify-start gap-3 px-3 py-3 text-left whitespace-normal sm:h-auto"
+                  size="sm-multiline"
+                  className="min-h-14 w-full justify-start"
                 />
               }
             >
               <LinkIcon className="size-4 text-muted-foreground" />
-              <span className="flex-1">Add a computer</span>
+              <span className="flex-1 text-left">Add a computer</span>
               <ChevronRightIcon
                 className={cn("size-4 text-muted-foreground", pairingOpen && "rotate-90")}
               />
@@ -430,14 +431,11 @@ function ConnectAccountOption({
             }
           }}
           render={
-            <Button
-              variant="ghost"
-              className="h-auto min-h-14 w-full justify-start gap-3 px-3 py-3 text-left whitespace-normal sm:h-auto"
-            />
+            <Button variant="ghost" size="sm-multiline" className="min-h-14 w-full justify-start" />
           }
         >
           <CloudIcon className="size-4 text-muted-foreground" />
-          <span className="flex-1">Vetra Connect</span>
+          <span className="flex-1 text-left">Vetra Connect</span>
           <span className="text-xs text-muted-foreground">
             {!isLoaded
               ? "Loading sign-in…"
@@ -585,8 +583,8 @@ function PairingForm({
               {isPairing ? "Pairing..." : "Pair"}
             </Button>
           </div>
-          <CollapsiblePanel className="pt-3">
-            <p className="text-sm text-muted-foreground">
+          <CollapsiblePanel>
+            <p className="pt-3 text-sm text-muted-foreground">
               Run this on the computer with your code.
             </p>
             <CommandBlock command="vetra pair" className="mt-2" />

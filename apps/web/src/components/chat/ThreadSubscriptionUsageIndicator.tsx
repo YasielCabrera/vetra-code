@@ -183,7 +183,7 @@ export const ThreadSubscriptionUsageIndicator = memo(function ThreadSubscription
         align="start"
         sideOffset={8}
         initialFocus={false}
-        viewportClassName="p-0"
+        padding="none"
         className="w-[min(26rem,calc(100vw-2rem))] max-w-none text-left whitespace-normal"
         aria-label={`${displayName} subscription usage details`}
       >
