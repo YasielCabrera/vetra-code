@@ -10,6 +10,7 @@ export const RELAY_HEALTH_REQUEST_TYP = "vetra-cloud-health+jwt";
 export const RELAY_MINT_RESPONSE_TYP = "vetra-env-mint+jwt";
 export const RELAY_HEALTH_RESPONSE_TYP = "vetra-env-health+jwt";
 export const RELAY_ACTIVITY_PUBLISH_TYP = "vetra-env-activity+jwt";
+export const RELAY_MANAGED_TUNNEL_RECOVERY_TYP = "vetra-env-managed-tunnel-recovery+jwt";
 
 export class RelayJwtError extends Schema.TaggedError<RelayJwtError>()("RelayJwtError", {
   operation: Schema.Literals(["sign", "verify"]),

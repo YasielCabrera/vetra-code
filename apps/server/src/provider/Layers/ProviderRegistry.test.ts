@@ -40,7 +40,7 @@ import * as BackgroundPolicy from "../../background/BackgroundPolicy.ts";
 import { AntigravityInstallation } from "../AntigravityInstallation.ts";
 import * as ModelManifest from "../ModelManifest.ts";
 import { applyProviderCompatibility } from "../providerCompatibility.ts";
-import * as CodexResetCredit from "./codexResetCredit.ts";
+import * as ResetCreditCoordinator from "./resetCreditCoordinator.ts";
 import * as OpenCodeRuntime from "../opencodeRuntime.ts";
 import * as ProviderEventLoggers from "./ProviderEventLoggers.ts";
 import { ProviderInstanceRegistryHydrationLive } from "./ProviderInstanceRegistryHydration.ts";
@@ -1070,7 +1070,7 @@ it.layer(
         }).pipe(
           Effect.provide(
             ServerConfig.layerTest(process.cwd(), {
-              prefix: "vetra-codex-retired-model-cache-",
+              prefix: "t3-codex-retired-model-cache-",
             }).pipe(Layer.provideMerge(NodeServices.layer)),
           ),
         ),
@@ -1410,7 +1410,7 @@ it.layer(
             Layer.provideMerge(instanceRegistryLayer),
             Layer.provideMerge(
               ServerConfig.layerTest(process.cwd(), {
-                prefix: "vetra-provider-registry-background-refresh-",
+                prefix: "t3-provider-registry-background-refresh-",
               }),
             ),
             Layer.provideMerge(NodeServices.layer),
@@ -1529,7 +1529,7 @@ it.layer(
             Layer.provideMerge(instanceRegistryLayer),
             Layer.provideMerge(
               ServerConfig.layerTest(process.cwd(), {
-                prefix: "vetra-provider-registry-workspace-snapshot-",
+                prefix: "t3-provider-registry-workspace-snapshot-",
               }),
             ),
             Layer.provideMerge(NodeServices.layer),
@@ -1725,7 +1725,7 @@ it.layer(
             Layer.provideMerge(instanceRegistryLayer),
             Layer.provideMerge(
               ServerConfig.layerTest(process.cwd(), {
-                prefix: "vetra-provider-registry-reconnect-refresh-",
+                prefix: "t3-provider-registry-reconnect-refresh-",
               }),
             ),
             Layer.provideMerge(NodeServices.layer),
@@ -1849,7 +1849,7 @@ it.layer(
             Layer.provideMerge(instanceRegistryLayer),
             Layer.provideMerge(
               ServerConfig.layerTest(process.cwd(), {
-                prefix: "vetra-provider-registry-merged-persist-",
+                prefix: "t3-provider-registry-merged-persist-",
               }),
             ),
             Layer.provideMerge(BackgroundPolicyAlwaysRunLayer),
@@ -1977,7 +1977,7 @@ it.layer(
               Layer.provideMerge(instanceRegistryLayer),
               Layer.provideMerge(
                 ServerConfig.layerTest(process.cwd(), {
-                  prefix: "vetra-provider-registry-opencode-authoritative-persist-",
+                  prefix: "t3-provider-registry-opencode-authoritative-persist-",
                 }),
               ),
               Layer.provideMerge(NodeServices.layer),
@@ -2080,7 +2080,7 @@ it.layer(
             Layer.provideMerge(instanceRegistryLayer),
             Layer.provideMerge(
               ServerConfig.layerTest(process.cwd(), {
-                prefix: "vetra-provider-registry-refresh-failure-",
+                prefix: "t3-provider-registry-refresh-failure-",
               }),
             ),
             Layer.provideMerge(BackgroundPolicyAlwaysRunLayer),
@@ -2196,7 +2196,7 @@ it.layer(
             Layer.provideMerge(instanceRegistryLayer),
             Layer.provideMerge(
               ServerConfig.layerTest(process.cwd(), {
-                prefix: "vetra-provider-registry-sync-failure-",
+                prefix: "t3-provider-registry-sync-failure-",
               }),
             ),
             Layer.provideMerge(BackgroundPolicyAlwaysRunLayer),
@@ -2247,7 +2247,7 @@ it.layer(
     // assertions below fail.
     it.effect("propagates real Codex probe failures to the aggregator at boot", () =>
       Effect.gen(function* () {
-        const missingBinary = `vetra-code_codex_missing_`;
+        const missingBinary = `t3code_codex_missing_`;
         const serverSettings = yield* makeMutableServerSettingsService(
           decodeServerSettings(
             deepMerge(encodedDefaultServerSettings, {
@@ -2269,7 +2269,7 @@ it.layer(
               // accepts + decodes them. Cast the patch to `unknown` so
               // the `Schema.decodeSync` below does the real validation.
               providerInstances: {
-                // Matches the shape the user had in `.vetra-code/dev/settings.json`
+                // Matches the shape the user had in `.t3/dev/settings.json`
                 // when the bug was reported: a custom enabled Codex instance
                 // pointing at a binary the server has to actually spawn.
                 codex_personal: {
@@ -2295,7 +2295,7 @@ it.layer(
           ),
           Layer.provideMerge(
             ServerConfig.layerTest(process.cwd(), {
-              prefix: "vetra-provider-registry-",
+              prefix: "t3-provider-registry-",
             }),
           ),
           Layer.provideMerge(TestHttpClientLive),
@@ -2306,7 +2306,7 @@ it.layer(
             ),
           ),
           Layer.provideMerge(ModelManifest.layerTest),
-          Layer.provideMerge(CodexResetCredit.layerTest),
+          Layer.provideMerge(ResetCreditCoordinator.layerTest),
           Layer.provideMerge(OpenCodeRuntime.OpenCodeRuntimeLive),
           Layer.provideMerge(BackgroundPolicyAlwaysRunLayer),
           // NO spawner mock — `ChildProcessSpawner` is supplied by the
@@ -2357,8 +2357,8 @@ it.layer(
     // A binary path change must rebuild Codex and publish its new probe result.
     it.effect("re-probes when settings change the codex binaryPath", () =>
       Effect.gen(function* () {
-        const firstMissing = `vetra-code_codex_first_`;
-        const secondMissing = `vetra-code_codex_second_`;
+        const firstMissing = `t3code_codex_first_`;
+        const secondMissing = `t3code_codex_second_`;
         const spawnedCommands: Array<string> = [];
         const secondProbeStarted = yield* Deferred.make<void>();
         const releaseSecondProbe = yield* Deferred.make<void>();
@@ -2394,7 +2394,7 @@ it.layer(
           ),
           Layer.provideMerge(
             ServerConfig.layerTest(process.cwd(), {
-              prefix: "vetra-provider-registry-",
+              prefix: "t3-provider-registry-",
             }),
           ),
           Layer.provideMerge(TestHttpClientLive),
@@ -2405,7 +2405,7 @@ it.layer(
             ),
           ),
           Layer.provideMerge(ModelManifest.layerTest),
-          Layer.provideMerge(CodexResetCredit.layerTest),
+          Layer.provideMerge(ResetCreditCoordinator.layerTest),
           Layer.provideMerge(OpenCodeRuntime.OpenCodeRuntimeLive),
           Layer.updateService(ChildProcessSpawner.ChildProcessSpawner, (spawner) =>
             ChildProcessSpawner.make((command) => {
@@ -2510,7 +2510,7 @@ it.layer(
           ),
           Layer.provideMerge(
             ServerConfig.layerTest(process.cwd(), {
-              prefix: "vetra-provider-registry-",
+              prefix: "t3-provider-registry-",
             }),
           ),
           Layer.provideMerge(TestHttpClientLive),
@@ -2521,7 +2521,7 @@ it.layer(
             ),
           ),
           Layer.provideMerge(ModelManifest.layerTest),
-          Layer.provideMerge(CodexResetCredit.layerTest),
+          Layer.provideMerge(ResetCreditCoordinator.layerTest),
           Layer.provideMerge(OpenCodeRuntime.OpenCodeRuntimeLive),
           Layer.provideMerge(NodeServices.layer),
           Layer.provideMerge(BackgroundPolicyAlwaysRunLayer),
@@ -2572,7 +2572,7 @@ it.layer(
             ),
             Layer.provideMerge(
               ServerConfig.layerTest(process.cwd(), {
-                prefix: "vetra-provider-registry-",
+                prefix: "t3-provider-registry-",
               }),
             ),
             Layer.provideMerge(TestHttpClientLive),
@@ -2583,8 +2583,7 @@ it.layer(
               ),
             ),
             Layer.provideMerge(ModelManifest.layerTest),
-            Layer.provideMerge(CodexResetCredit.layerTest),
-            Layer.provideMerge(CodexResetCredit.layerTest),
+            Layer.provideMerge(ResetCreditCoordinator.layerTest),
             Layer.provideMerge(OpenCodeRuntime.OpenCodeRuntimeLive),
             Layer.provideMerge(BackgroundPolicyAlwaysRunLayer),
             Layer.provideMerge(
@@ -2737,6 +2736,42 @@ it.layer(
       ),
     );
 
+    it.effect("reads banked resets only for subscription logins", () =>
+      Effect.gen(function* () {
+        const check = (overrides: Partial<TestClaudeCapabilities>) =>
+          checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            () =>
+              Effect.succeed({
+                email: undefined,
+                subscriptionType: undefined,
+                tokenSource: undefined,
+                apiProvider: undefined,
+                slashCommands: [],
+                usage: { rate_limits_available: true, rate_limits: {} },
+                ...overrides,
+              }),
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            () => Effect.succeed({ availableCount: 2 }),
+          );
+        const subscription = yield* check({ subscriptionType: "max" });
+        const bedrock = yield* check({ apiProvider: "bedrock" });
+        assert.deepStrictEqual(subscription.usageLimits?.resetCredits, { availableCount: 2 });
+        assert.strictEqual(bedrock.usageLimits?.resetCredits, undefined);
+      }).pipe(
+        Effect.provide(
+          mockSpawnerLayer((args) => {
+            const joined = args.join(" ");
+            if (joined === "--version") return { stdout: "1.0.0\n", stderr: "", code: 0 };
+            throw new Error(`Unexpected args: ${joined}`);
+          }),
+        ),
+      ),
+    );
+
     it.effect("does not duplicate Claude in full subscription labels", () =>
       Effect.gen(function* () {
         const status = yield* checkClaudeProviderStatus(
@@ -2808,7 +2843,7 @@ it.layer(
     );
 
     it.effect("runs Claude status probes with the configured CLAUDE_CONFIG_DIR", () => {
-      const claudeConfigDir = "/tmp/vetra-code-claude-home";
+      const claudeConfigDir = "/tmp/t3code-claude-home";
       const recorded = recordingMockSpawnerLayer((args) => {
         const joined = args.join(" ");
         if (joined === "--version") return { stdout: "1.0.0\n", stderr: "", code: 0 };

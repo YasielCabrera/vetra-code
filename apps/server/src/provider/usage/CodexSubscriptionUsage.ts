@@ -374,7 +374,7 @@ export const makeCodexSubscriptionUsageCapability = (input: {
         details: [],
       });
     }
-    const response = yield* client.request("account/rateLimits/read", undefined);
+    const response = yield* client.request("account/rateLimits/read", null);
     return parseCodexSubscriptionUsage({
       identity,
       fetchedAt,

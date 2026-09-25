@@ -226,7 +226,7 @@ const providerSessionDirectoryTestLayer = Layer.succeed(ProviderSessionDirectory
   recordImportedTranscript: () => Effect.die("unused"),
   getProvider: () =>
     Effect.die(new Error("ProviderSessionDirectory.getProvider is not used in test")),
-  getBinding: () => Effect.succeed(Option.none()),
+  getBinding: () => Effect.succeedNone,
   listThreadIds: () => Effect.succeed([]),
   listBindings: () => Effect.succeed([]),
 });
@@ -2384,6 +2384,7 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
           method: "item/tool/requestUserInput",
           requestId: ApprovalRequestId.make("req-user-input-1"),
           payload: {
+            isBlocking: true,
             itemId: "item-user-input-1",
             threadId: "thread-1",
             turnId: "turn-1",
@@ -2647,6 +2648,7 @@ const threadCostLayer = it.layer(
             outputCostPerToken: 0.02,
             cacheReadCostPerToken: 0.001,
             cacheCreationCostPerToken: 0.0125,
+            fastMultiplier: 1,
           },
         ],
       ]);
@@ -2654,7 +2656,7 @@ const threadCostLayer = it.layer(
       return yield* makeCodexAdapter(codexConfig, {
         makeRuntime: threadCostRuntimeFactory.factory,
         priceUsage: (model, totals, reportedCostUsd) =>
-          Effect.succeed(priceUsage(rates, model, totals, reportedCostUsd)),
+          Effect.succeed(priceUsage(rates, { model, totals, fast: false, reportedCostUsd })),
       });
     }),
   ).pipe(

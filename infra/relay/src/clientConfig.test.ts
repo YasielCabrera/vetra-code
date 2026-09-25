@@ -80,13 +80,7 @@ describe("PublishClientConfig", () => {
         ConfigProvider.layer(ConfigProvider.fromUnknown({ VETRA_RELAY_CLIENT_CONFIG_ENV: target })),
       );
 
-      yield* stack
-        .deploy(
-          Effect.gen(function* () {
-            return yield* PublishClientConfig(clientConfig("v1"));
-          }),
-        )
-        .pipe(configured);
+      yield* stack.deploy(PublishClientConfig(clientConfig("v1"))).pipe(configured);
       const first = yield* fs.readFileString(target);
       expect(first).toContain("KEEP=yes\n");
       expect(first).toContain("VETRA_RELAY_URL=https://relay.example.com\n");
@@ -95,23 +89,11 @@ describe("PublishClientConfig", () => {
 
       // Same input: the action is skipped, so a change made by hand survives.
       yield* fs.writeFileString(target, `${first}MANUAL=1\n`);
-      yield* stack
-        .deploy(
-          Effect.gen(function* () {
-            return yield* PublishClientConfig(clientConfig("v1"));
-          }),
-        )
-        .pipe(configured);
+      yield* stack.deploy(PublishClientConfig(clientConfig("v1"))).pipe(configured);
       expect(yield* fs.readFileString(target)).toContain("MANUAL=1\n");
 
       // A rotated token changes the input, so it runs again and replaces the line.
-      yield* stack
-        .deploy(
-          Effect.gen(function* () {
-            return yield* PublishClientConfig(clientConfig("v2"));
-          }),
-        )
-        .pipe(configured);
+      yield* stack.deploy(PublishClientConfig(clientConfig("v2"))).pipe(configured);
       const third = yield* fs.readFileString(target);
       expect(third).toContain("VETRA_RELAY_CLIENT_OTLP_TRACES_TOKEN=client-v2\n");
       expect(third).not.toContain("client-v1");
@@ -126,11 +108,7 @@ describe("PublishClientConfig", () => {
       const dir = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-relay-client-config-" });
       const target = path.join(dir, "client.env");
       const exit = yield* stack
-        .deploy(
-          Effect.gen(function* () {
-            return yield* PublishClientConfig({ ...clientConfig("v1"), url: undefined });
-          }),
-        )
+        .deploy(PublishClientConfig({ ...clientConfig("v1"), url: undefined }))
         .pipe(
           Effect.provide(
             ConfigProvider.layer(
@@ -153,11 +131,9 @@ describe("PublishClientConfig", () => {
       const target = path.join(dir, "client.env");
       const exit = yield* stack
         .deploy(
-          Effect.gen(function* () {
-            return yield* PublishClientConfig({
-              ...clientConfig("v1"),
-              clientTracingDataset: "relay-traces\nINJECTED=1",
-            });
+          PublishClientConfig({
+            ...clientConfig("v1"),
+            clientTracingDataset: "relay-traces\nINJECTED=1",
           }),
         )
         .pipe(

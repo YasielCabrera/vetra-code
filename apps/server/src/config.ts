@@ -19,6 +19,7 @@ import { PRODUCT_DEFAULT_SERVER_PORT } from "@t3tools/shared/productIdentity";
 
 import { sweepStalePendingAttachments } from "./attachmentStore.ts";
 import { DEFAULT_SIGNAL_EXPORT, type SignalExport } from "@t3tools/shared/observability";
+import * as OtelEnvironment from "@t3tools/shared/otelEnvironment";
 
 export const DEFAULT_PORT = PRODUCT_DEFAULT_SERVER_PORT;
 
@@ -85,6 +86,7 @@ export class ServerConfig extends Context.Service<
     readonly otlpMetricsExport: SignalExport;
     readonly otlpLogsExport: SignalExport;
     readonly otlpServiceName: string;
+    readonly otelEnvironment: OtelEnvironment.OtelEnvironment;
     readonly mode: RuntimeMode;
     readonly port: number;
     readonly host: string | undefined;
@@ -226,6 +228,7 @@ const makeTest = Effect.fn("ServerConfig.makeTest")(function* (
     otlpMetricsExport: DEFAULT_SIGNAL_EXPORT,
     otlpLogsExport: DEFAULT_SIGNAL_EXPORT,
     otlpServiceName: "vetra-server",
+    otelEnvironment: OtelEnvironment.none,
     cwd,
     baseDir,
     ...derivedPaths,

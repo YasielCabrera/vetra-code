@@ -7,6 +7,7 @@ const baseState: ThreadActionMenuState = {
   projectFilter: null,
   isPinned: false,
   isSettled: false,
+  autoSettleEnabled: true,
   isSnoozed: false,
   canSnoozeNow: true,
   isAutomationRun: false,
@@ -14,6 +15,7 @@ const baseState: ThreadActionMenuState = {
   isRunning: false,
   supports: {
     settlement: true,
+    autoSettleOptOut: true,
     snooze: true,
     pinning: true,
     titleRegeneration: true,
@@ -41,6 +43,7 @@ describe("buildThreadActionMenuItems", () => {
         ...baseState,
         supports: {
           settlement: false,
+          autoSettleOptOut: false,
           snooze: false,
           pinning: false,
           titleRegeneration: false,
@@ -79,7 +82,7 @@ describe("buildThreadActionMenuItems", () => {
     const filterIndex = items.findIndex((candidate) => candidate.id === "filter-by-project");
     expect(items[filterIndex]).toMatchObject({ label: "Show all projects", icon: "folder-tree" });
     expect(items[filterIndex - 1]?.id).toBe("mark-unread");
-    expect(items[filterIndex + 1]?.id).toBe("copy");
+    expect(items[filterIndex + 1]?.id).toBe("auto-settle");
   });
 
   it("includes branch items only for threads with a branch", () => {
@@ -95,6 +98,25 @@ describe("buildThreadActionMenuItems", () => {
       expect.arrayContaining(["unpin", "unsettle", "unsnooze"]),
     );
     expect(ids(baseState)).toEqual(expect.arrayContaining(["pin", "settle", "snooze"]));
+  });
+
+  it("offers auto-settle as a submenu with the current option checked", () => {
+    const find = (state: ThreadActionMenuState) =>
+      buildThreadActionMenuItems(state).find((item) => item.id === "auto-settle");
+    const on = find(baseState);
+    expect(on?.label).toBe("Auto-settle behavior");
+    expect(on?.children?.map((child) => [child.id, child.checked])).toEqual([
+      ["auto-settle:enabled", true],
+      ["auto-settle:disabled", false],
+    ]);
+    const off = find({ ...baseState, autoSettleEnabled: false });
+    expect(off?.children?.map((child) => child.checked)).toEqual([false, true]);
+    // Sits with the per-thread settings after Mark unread, not the lifecycle verbs.
+    const items = buildThreadActionMenuItems(baseState);
+    expect(items[items.findIndex((item) => item.id === "mark-unread") + 1]?.id).toBe("auto-settle");
+    expect(
+      ids({ ...baseState, supports: { ...baseState.supports, autoSettleOptOut: false } }),
+    ).not.toContain("auto-settle");
   });
 
   it("disables snooze when the thread cannot snooze, keeping presets visible", () => {
@@ -147,6 +169,7 @@ describe("buildThreadActionMenuItems", () => {
         ...baseState,
         supports: {
           settlement: false,
+          autoSettleOptOut: false,
           snooze: false,
           pinning: false,
           titleRegeneration: false,
