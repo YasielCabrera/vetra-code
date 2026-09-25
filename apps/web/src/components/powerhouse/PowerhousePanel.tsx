@@ -271,7 +271,7 @@ export default function PowerhousePanel({
 
       <div className="min-h-0 flex-1">
         {kind === "powerhouse-models" ? (
-          <FindScope className="h-full">
+          <FindScope key={kind} className="h-full">
             <ModelsView
               environmentId={environmentId}
               cwd={cwd}
@@ -283,19 +283,21 @@ export default function PowerhousePanel({
             />
           </FindScope>
         ) : kind === "powerhouse-explorer" ? (
-          <ExplorerView
-            key={panelProjectKey}
-            environmentId={environmentId}
-            cwd={cwd}
-            projectPath={projectPath}
-            overrideUrl={preferences.reactorUrlOverride}
-            selection={explorerSelection}
-            onSetOverride={(url) => setReactorUrlOverride(projectKey, url)}
-            onSelectDrive={(drive) => selectDrive(panelProjectKey, drive)}
-            onEnterFolder={(folder) => enterFolder(panelProjectKey, folder)}
-            onPopToDepth={(depth) => popToDepth(panelProjectKey, depth)}
-            onSelectDocument={(documentId) => selectDocument(panelProjectKey, documentId)}
-          />
+          <FindScope key={kind} className="h-full">
+            <ExplorerView
+              key={panelProjectKey}
+              environmentId={environmentId}
+              cwd={cwd}
+              projectPath={projectPath}
+              overrideUrl={preferences.reactorUrlOverride}
+              selection={explorerSelection}
+              onSetOverride={(url) => setReactorUrlOverride(projectKey, url)}
+              onSelectDrive={(drive) => selectDrive(panelProjectKey, drive)}
+              onEnterFolder={(folder) => enterFolder(panelProjectKey, folder)}
+              onPopToDepth={(depth) => popToDepth(panelProjectKey, depth)}
+              onSelectDocument={(documentId) => selectDocument(panelProjectKey, documentId)}
+            />
+          </FindScope>
         ) : kind === "powerhouse-database" ? (
           <DatabaseView
             key={panelProjectKey}

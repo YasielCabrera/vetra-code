@@ -9,10 +9,12 @@ import {
 /* oxlint-enable eslint/no-restricted-imports */
 import type { Ref } from "react";
 
+import { FIND_HIGHLIGHT_UNSAFE_CSS } from "~/components/find/findSource";
 import { DIFF_SURFACE_THEME_UNSAFE_CSS } from "~/lib/diffRendering";
 import { DiffWorkerPoolProvider } from "../DiffWorkerPoolProvider";
 
 const DIFF_VIEW_UNSAFE_CSS = `${DIFF_SURFACE_THEME_UNSAFE_CSS}
+${FIND_HIGHLIGHT_UNSAFE_CSS}
 :is(
   [data-line],
   [data-line-annotation],

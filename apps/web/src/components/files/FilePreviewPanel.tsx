@@ -90,6 +90,9 @@ import {
 import SourceFilePreview from "./ReadOnlySourcePreview";
 import { resolveCenteredFileLineScrollTop } from "./fileLineReveal";
 import { DiffCommentAnnotation } from "../diffs/DiffCommentAnnotation";
+import { FindScope, FindSourceHost } from "../find/FindScope";
+import { FIND_HIGHLIGHT_UNSAFE_CSS } from "../find/findSource";
+import { usePierreFileFindSource } from "../find/pierreFindSources";
 import { projectFileCacheKey, projectFileEditorCacheKey } from "./fileContentRevision";
 import {
   isMarkdownPreviewFile,
@@ -886,64 +889,67 @@ function EditableFileSurface({
       syncEditorCaretLine,
     ],
   );
+  const find = usePierreFileFindSource(contents, handlePostRender);
 
   return (
     <EditProvider editor={editor}>
       <div ref={surfaceRef} className="flex min-h-0 flex-1">
-        <Virtualizer
-          className="file-preview-virtualizer min-h-0 flex-1 overflow-auto"
-          config={{
-            overscrollSize: 600,
-            intersectionObserverMargin: 1200,
-          }}
-        >
-          <File<FileCommentAnnotationGroup>
-            file={{
-              name: relativePath,
-              contents,
-              cacheKey: projectFileEditorCacheKey(
-                environmentId,
-                cwd,
-                relativePath,
+        <FindSourceHost source={find.source}>
+          <Virtualizer
+            className="file-preview-virtualizer min-h-0 flex-1 overflow-auto"
+            config={{
+              overscrollSize: 600,
+              intersectionObserverMargin: 1200,
+            }}
+          >
+            <File<FileCommentAnnotationGroup>
+              file={{
+                name: relativePath,
                 contents,
-                editor.getFile(),
-              ),
-            }}
-            options={{
-              disableFileHeader: true,
-              enableGutterUtility: !hasOpenCommentForm,
-              enableLineSelection: !hasOpenCommentForm,
-              onGutterUtilityClick: setSelectedRange,
-              onLineSelectionChange: setSelectedRange,
-              onLineSelectionEnd: handleLineSelectionEnd,
-              overflow: wordWrap ? "wrap" : "scroll",
-              theme: resolveDiffThemeName(resolvedTheme),
-              preferredHighlighter: PREFERRED_HIGHLIGHTER,
-              themeType: resolvedTheme,
-              unsafeCSS: `${FILE_LINK_REVEAL_UNSAFE_CSS}\n${FILE_LINE_DECORATIONS_UNSAFE_CSS}`,
-              onPostRender: handlePostRender,
-            }}
-            selectedLines={selectedRange}
-            lineAnnotations={lineAnnotations}
-            renderAnnotation={(annotation) => (
-              <div className="py-1">
-                {annotation.metadata.entries.map((entry) => (
-                  <DiffCommentAnnotation
-                    key={entry.id}
-                    kind={entry.kind}
-                    rangeLabel={formatFileCommentRange(entry.startLine, entry.endLine)}
-                    text={entry.text}
-                    onCancel={() => removeAnnotationEntry(entry.id)}
-                    onComment={(text) => submitAnnotationEntry(entry.id, text)}
-                    onDelete={() => removeAnnotationEntry(entry.id)}
-                  />
-                ))}
-              </div>
-            )}
-            className="min-h-full"
-            contentEditable
-          />
-        </Virtualizer>
+                cacheKey: projectFileEditorCacheKey(
+                  environmentId,
+                  cwd,
+                  relativePath,
+                  contents,
+                  editor.getFile(),
+                ),
+              }}
+              options={{
+                disableFileHeader: true,
+                enableGutterUtility: !hasOpenCommentForm,
+                enableLineSelection: !hasOpenCommentForm,
+                onGutterUtilityClick: setSelectedRange,
+                onLineSelectionChange: setSelectedRange,
+                onLineSelectionEnd: handleLineSelectionEnd,
+                overflow: wordWrap ? "wrap" : "scroll",
+                theme: resolveDiffThemeName(resolvedTheme),
+                preferredHighlighter: PREFERRED_HIGHLIGHTER,
+                themeType: resolvedTheme,
+                unsafeCSS: `${FILE_LINK_REVEAL_UNSAFE_CSS}\n${FILE_LINE_DECORATIONS_UNSAFE_CSS}\n${FIND_HIGHLIGHT_UNSAFE_CSS}`,
+                onPostRender: find.onPostRender,
+              }}
+              selectedLines={selectedRange}
+              lineAnnotations={lineAnnotations}
+              renderAnnotation={(annotation) => (
+                <div className="py-1">
+                  {annotation.metadata.entries.map((entry) => (
+                    <DiffCommentAnnotation
+                      key={entry.id}
+                      kind={entry.kind}
+                      rangeLabel={formatFileCommentRange(entry.startLine, entry.endLine)}
+                      text={entry.text}
+                      onCancel={() => removeAnnotationEntry(entry.id)}
+                      onComment={(text) => submitAnnotationEntry(entry.id, text)}
+                      onDelete={() => removeAnnotationEntry(entry.id)}
+                    />
+                  ))}
+                </div>
+              )}
+              className="min-h-full"
+              contentEditable
+            />
+          </Virtualizer>
+        </FindSourceHost>
       </div>
     </EditProvider>
   );
@@ -1330,112 +1336,114 @@ export default function FilePreviewPanel({
         <div
           className={cn("min-w-0 flex-1 flex-col overflow-hidden", previewPath ? "flex" : "hidden")}
         >
-          {isDirectory ? null : relativePath && attachment ? (
-            <AttachmentFilePreview
-              key={`${environmentId}:${attachment.id}`}
-              name={attachment.name}
-              mimeType={attachment.mimeType}
-              sizeBytes={attachment.sizeBytes}
-              asset={{ environmentId, attachmentId: attachment.id }}
-            />
-          ) : relativePath && isVideo && absolutePath ? (
-            <WorkspaceVideoPreview
-              key={`${environmentId}:${threadRef.threadId}:${absolutePath}`}
-              environmentId={environmentId}
-              threadRef={threadRef}
-              absolutePath={absolutePath}
-              workspaceRoot={cwd}
-              name={relativePath}
-              workspaceMutationId={workspaceMutationId}
-            />
-          ) : relativePath && isAudio && absolutePath ? (
-            <WorkspaceAudioPreview
-              key={`${environmentId}:${threadRef.threadId}:${absolutePath}`}
-              environmentId={environmentId}
-              threadRef={threadRef}
-              absolutePath={absolutePath}
-              name={relativePath}
-              workspaceMutationId={workspaceMutationId}
-            />
-          ) : relativePath && isImage && absolutePath ? (
-            <WorkspaceImagePreview
-              key={absolutePath}
-              environmentId={environmentId}
-              threadRef={threadRef}
-              absolutePath={absolutePath}
-              workspaceRoot={cwd}
-              alt={relativePath}
-              workspaceMutationId={workspaceMutationId}
-            />
-          ) : relativePath && renderBrowserFile && absolutePath ? (
-            <WorkspaceBrowserPreview
-              key={absolutePath}
-              environmentId={environmentId}
-              threadRef={threadRef}
-              absolutePath={absolutePath}
-              workspaceRoot={cwd}
-              title={relativePath}
-              workspaceMutationId={workspaceMutationId}
-            />
-          ) : relativePath && file.error && file.data === null ? (
-            <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-xs leading-relaxed text-destructive">
-              {file.error}
-            </div>
-          ) : relativePath && file.data === null ? (
-            <div className="flex min-h-0 flex-1 items-center justify-center text-muted-foreground">
-              <Spinner size="lg" />
-            </div>
-          ) : relativePath && file.data ? (
-            isMarkdown && renderMarkdown ? (
-              // Markdown reconciles in place across text updates, so a file
-              // switch needs a new key or the previous file's disclosure and
-              // wrap state carries into the next document.
-              <RenderedMarkdownSurface
-                key={relativePath}
+          <FindScope className="min-h-0 flex-1">
+            {isDirectory ? null : relativePath && attachment ? (
+              <AttachmentFilePreview
+                key={`${environmentId}:${attachment.id}`}
+                name={attachment.name}
+                mimeType={attachment.mimeType}
+                sizeBytes={attachment.sizeBytes}
+                asset={{ environmentId, attachmentId: attachment.id }}
+              />
+            ) : relativePath && isVideo && absolutePath ? (
+              <WorkspaceVideoPreview
+                key={`${environmentId}:${threadRef.threadId}:${absolutePath}`}
                 environmentId={environmentId}
-                cwd={cwd}
-                relativePath={relativePath}
                 threadRef={threadRef}
-                contents={file.data.contents}
-                readOnly={isHostFile}
-                onPendingChange={onPendingChange}
-              />
-            ) : tableDelimiter && renderTable ? (
-              <DelimitedTablePreview
-                key={relativePath}
+                absolutePath={absolutePath}
+                workspaceRoot={cwd}
                 name={relativePath}
-                text={file.data.contents}
-                delimiter={tableDelimiter}
+                workspaceMutationId={workspaceMutationId}
               />
-            ) : file.data.truncated || isHostFile ? (
-              <SourceFilePreview
+            ) : relativePath && isAudio && absolutePath ? (
+              <WorkspaceAudioPreview
+                key={`${environmentId}:${threadRef.threadId}:${absolutePath}`}
+                environmentId={environmentId}
+                threadRef={threadRef}
+                absolutePath={absolutePath}
                 name={relativePath}
-                text={file.data.contents}
-                cacheKey={projectFileCacheKey(cwd, relativePath, file.data.contents)}
-                onPostRender={onFilePostRender}
+                workspaceMutationId={workspaceMutationId}
               />
-            ) : (
-              <DiffWorkerPoolProvider>
-                <EditableFileSurface
-                  key={`${relativePath}:${resolvedTheme}`}
+            ) : relativePath && isImage && absolutePath ? (
+              <WorkspaceImagePreview
+                key={absolutePath}
+                environmentId={environmentId}
+                threadRef={threadRef}
+                absolutePath={absolutePath}
+                workspaceRoot={cwd}
+                alt={relativePath}
+                workspaceMutationId={workspaceMutationId}
+              />
+            ) : relativePath && renderBrowserFile && absolutePath ? (
+              <WorkspaceBrowserPreview
+                key={absolutePath}
+                environmentId={environmentId}
+                threadRef={threadRef}
+                absolutePath={absolutePath}
+                workspaceRoot={cwd}
+                title={relativePath}
+                workspaceMutationId={workspaceMutationId}
+              />
+            ) : relativePath && file.error && file.data === null ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-xs leading-relaxed text-destructive">
+                {file.error}
+              </div>
+            ) : relativePath && file.data === null ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center text-muted-foreground">
+                <Spinner size="lg" />
+              </div>
+            ) : relativePath && file.data ? (
+              isMarkdown && renderMarkdown ? (
+                // Markdown reconciles in place across text updates, so a file
+                // switch needs a new key or the previous file's disclosure and
+                // wrap state carries into the next document.
+                <RenderedMarkdownSurface
+                  key={relativePath}
                   environmentId={environmentId}
                   cwd={cwd}
                   relativePath={relativePath}
-                  composerDraftTarget={composerDraftTarget}
-                  confirmedContents={file.confirmedData?.contents ?? file.data.contents}
-                  confirmationToken={file.confirmationToken}
+                  threadRef={threadRef}
                   contents={file.data.contents}
-                  headOid={vcsStatus.data?.headOid}
-                  resolvedTheme={resolvedTheme}
-                  revealRequestId={revealRequestId}
-                  wordWrap={wordWrap}
-                  fileLineBlameEnabled={fileLineBlameEnabled}
-                  onPostRender={onFilePostRender}
+                  readOnly={isHostFile}
                   onPendingChange={onPendingChange}
                 />
-              </DiffWorkerPoolProvider>
-            )
-          ) : null}
+              ) : tableDelimiter && renderTable ? (
+                <DelimitedTablePreview
+                  key={relativePath}
+                  name={relativePath}
+                  text={file.data.contents}
+                  delimiter={tableDelimiter}
+                />
+              ) : file.data.truncated || isHostFile ? (
+                <SourceFilePreview
+                  name={relativePath}
+                  text={file.data.contents}
+                  cacheKey={projectFileCacheKey(cwd, relativePath, file.data.contents)}
+                  onPostRender={onFilePostRender}
+                />
+              ) : (
+                <DiffWorkerPoolProvider>
+                  <EditableFileSurface
+                    key={`${relativePath}:${resolvedTheme}`}
+                    environmentId={environmentId}
+                    cwd={cwd}
+                    relativePath={relativePath}
+                    composerDraftTarget={composerDraftTarget}
+                    confirmedContents={file.confirmedData?.contents ?? file.data.contents}
+                    confirmationToken={file.confirmationToken}
+                    contents={file.data.contents}
+                    headOid={vcsStatus.data?.headOid}
+                    resolvedTheme={resolvedTheme}
+                    revealRequestId={revealRequestId}
+                    wordWrap={wordWrap}
+                    fileLineBlameEnabled={fileLineBlameEnabled}
+                    onPostRender={onFilePostRender}
+                    onPendingChange={onPendingChange}
+                  />
+                </DiffWorkerPoolProvider>
+              )
+            ) : null}
+          </FindScope>
         </div>
         {showExplorer ? (
           // Ordered with CSS rather than by moving the aside among its siblings:

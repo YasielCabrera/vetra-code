@@ -1,5 +1,8 @@
 import { ArrowDown, ArrowUp, X } from "lucide-react";
 import {
+  createContext,
+  useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -12,53 +15,94 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn, isMacPlatform } from "~/lib/utils";
 
-import { findSegmentMatches, MAX_FIND_MATCHES } from "./findScope.logic";
+import { MAX_FIND_MATCHES } from "./findScope.logic";
+import {
+  CURRENT_MATCH_HIGHLIGHT_NAME,
+  isRangeUnobscured,
+  MATCH_HIGHLIGHT_NAME,
+  textNodeRanges,
+  type FindResult,
+  type FindSource,
+} from "./findSource";
 
-const MATCH_HIGHLIGHT_NAME = "vetra-find-match";
-const CURRENT_MATCH_HIGHLIGHT_NAME = "vetra-find-current-match";
 const DECORATIVE_TEXT_SELECTOR = '[aria-hidden="true"]';
-// Chromium hit-tests up to a pixel into the neighbouring inline box at a span boundary.
-const HIT_TEST_INSET_PX = 2;
+const OBSERVED_MUTATIONS = { childList: true, subtree: true, characterData: true };
+
+type RegisterFindSource = (host: Element, source: FindSource) => () => void;
+
+const FindSourceContext = createContext<RegisterFindSource | null>(null);
 
 interface FoundMatches {
   readonly query: string;
-  readonly ranges: ReadonlyArray<Range>;
+  /** DOM text runs and registered sources, in reading order. */
+  readonly parts: ReadonlyArray<FindResult>;
+  readonly count: number;
   readonly truncated: boolean;
 }
 
-const NO_MATCHES: FoundMatches = { query: "", ranges: [], truncated: false };
+const NO_MATCHES: FoundMatches = { query: "", parts: [], count: 0, truncated: false };
 
-function searchableTextNodes(root: Element): Text[] {
-  const nodes: Text[] = [];
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    acceptNode: (node) => {
-      const parent = node.parentElement;
-      return parent !== null &&
-        parent.checkVisibility() &&
-        parent.closest(DECORATIVE_TEXT_SELECTOR) === null
-        ? NodeFilter.FILTER_ACCEPT
-        : NodeFilter.FILTER_REJECT;
+function domTextResult(nodes: ReadonlyArray<Text>, query: string, limit: number): FindResult {
+  const { ranges, truncated } = textNodeRanges(nodes, query, limit);
+  return {
+    count: ranges.length,
+    truncated,
+    ranges: () => ranges,
+    reveal: (index) => {
+      const range = ranges[index];
+      if (range === undefined || isRangeUnobscured(range)) return;
+      range.startContainer.parentElement?.scrollIntoView({ block: "center", inline: "center" });
     },
-  });
-  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-    nodes.push(node as Text);
-  }
-  return nodes;
+  };
 }
 
-function findMatches(root: Element, query: string): FoundMatches {
-  const nodes = searchableTextNodes(root);
-  const { matches, truncated } = findSegmentMatches(
-    nodes.map((node) => node.data),
-    query,
-  );
-  const ranges = matches.map(({ start, end }) => {
-    const range = document.createRange();
-    range.setStart(nodes[start.segment]!, start.offset);
-    range.setEnd(nodes[end.segment]!, end.offset);
-    return range;
-  });
-  return { query, ranges, truncated };
+/** Walks rendered text in reading order and lets each registered host's source search itself. */
+function findMatches(
+  root: Element,
+  sources: ReadonlyMap<Element, FindSource>,
+  query: string,
+): FoundMatches {
+  const parts: FindResult[] = [];
+  let count = 0;
+  let truncated = false;
+  let run: Text[] = [];
+  const add = (part: FindResult) => {
+    parts.push(part);
+    count += part.count;
+    truncated ||= part.truncated;
+  };
+  const flushRun = () => {
+    if (run.length > 0 && !truncated) add(domTextResult(run, query, MAX_FIND_MATCHES - count));
+    run = [];
+  };
+  const visit = (parent: Element) => {
+    for (let node = parent.firstChild; node !== null; node = node.nextSibling) {
+      if (truncated) return;
+      if (node.nodeType === Node.TEXT_NODE) {
+        run.push(node as Text);
+      } else if (node instanceof Element) {
+        const source = sources.get(node);
+        if (source !== undefined) {
+          flushRun();
+          if (!truncated) add(source.find(node, query, MAX_FIND_MATCHES - count));
+        } else if (node.checkVisibility() && !node.matches(DECORATIVE_TEXT_SELECTOR)) {
+          visit(node);
+        }
+      }
+    }
+  };
+  visit(root);
+  flushRun();
+  return { query, parts, count, truncated };
+}
+
+function locateMatch(found: FoundMatches, index: number) {
+  let offset = index;
+  for (const part of found.parts) {
+    if (offset < part.count) return { part, index: offset };
+    offset -= part.count;
+  }
+  return null;
 }
 
 /** One registry entry per name, shared so several open scopes can highlight at once. */
@@ -72,40 +116,46 @@ function sharedHighlight(name: string, priority: number): Highlight | null {
   return created;
 }
 
-function rangeOwner(range: Range): Element | null {
-  const ancestor = range.commonAncestorContainer;
-  return ancestor instanceof Element ? ancestor : ancestor.parentElement;
-}
-
-/** Hit-tests both ends, so a sticky gutter or the find bar painted over the match counts as hidden. */
-function isRangeUnobscured(range: Range, owner: Element): boolean {
-  const target = range.getBoundingClientRect();
-  const middle = target.top + target.height / 2;
-  const inset = Math.min(HIT_TEST_INSET_PX, target.width / 2);
-  return [target.left + inset, target.right - inset].every((x) => {
-    const hit = document.elementFromPoint(x, middle);
-    return hit !== null && owner.contains(hit);
-  });
-}
-
-function revealRange(range: Range) {
-  const owner = rangeOwner(range);
-  if (owner === null || isRangeUnobscured(range, owner)) return;
-  range.startContainer.parentElement?.scrollIntoView({ block: "center", inline: "center" });
-}
-
 function isFindShortcut(event: KeyboardEvent): boolean {
   const mod = isMacPlatform(navigator.platform) ? event.metaKey : event.ctrlKey;
   return mod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "f";
 }
 
 function matchSummary(current: number, found: FoundMatches): string {
-  if (found.ranges.length === 0) return "No results";
-  const total = found.truncated ? `${MAX_FIND_MATCHES}+` : `${found.ranges.length}`;
+  if (found.count === 0) return "No results";
+  const total = found.truncated ? `${MAX_FIND_MATCHES}+` : `${found.count}`;
   return `${current + 1} of ${total}`;
 }
 
-/** Editor-style find (mod+F) over the text rendered in `children` while focus is inside. */
+/**
+ * Hands the text under `children` to `source` instead of the scope's DOM walk. Use it around
+ * virtualized surfaces, whose DOM holds only the rendered window of their text. It renders
+ * no box, so it can wrap a surface without changing its layout.
+ */
+export function FindSourceHost({
+  source,
+  children,
+}: {
+  source: FindSource | null;
+  children: ReactNode;
+}) {
+  const register = useContext(FindSourceContext);
+  const [host, setHost] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (register === null || host === null || source === null) return;
+    return register(host, source);
+  }, [host, register, source]);
+  return (
+    <div ref={setHost} className="contents">
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Editor-style find (mod+F) over the text rendered in `children` while focus is inside.
+ * The shortcut is taken in the capture phase so editors inside do not open their own panel.
+ */
 export function FindScope({
   children,
   className,
@@ -117,6 +167,7 @@ export function FindScope({
   const contentRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const revealPendingRef = useRef(false);
+  const [sources, setSources] = useState<ReadonlyMap<Element, FindSource>>(() => new Map());
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<FoundMatches>(NO_MATCHES);
@@ -125,45 +176,87 @@ export function FindScope({
 
   const searching = open && query.length > 0;
   const shownMatches = searching && found.query === query ? found : NO_MATCHES;
-  const current = Math.min(currentIndex, Math.max(shownMatches.ranges.length - 1, 0));
+  const current = Math.min(currentIndex, Math.max(shownMatches.count - 1, 0));
 
+  const registerSource = useCallback<RegisterFindSource>((host, source) => {
+    setSources((previous) => new Map(previous).set(host, source));
+    return () =>
+      setSources((previous) => {
+        if (previous.get(host) !== source) return previous;
+        const next = new Map(previous);
+        next.delete(host);
+        return next;
+      });
+  }, []);
+
+  // Text changes outside a source re-run the search. A source rendering a different window of
+  // the same text only needs repainting, which a new identity for the same matches triggers.
   useEffect(() => {
     const content = contentRef.current;
     if (!searching || content === null) return;
-    let frame = 0;
+    let collectFrame = 0;
+    let paintFrame = 0;
     const collect = () => {
-      frame = 0;
-      setFound(findMatches(content, query));
+      collectFrame = 0;
+      setFound(findMatches(content, sources, query));
+    };
+    const repaint = () => {
+      if (paintFrame !== 0) return;
+      paintFrame = requestAnimationFrame(() => {
+        paintFrame = 0;
+        setFound((previous) => ({ ...previous }));
+      });
+    };
+    const isInsideSource = (node: Node) => {
+      for (let ancestor: Node | null = node; ancestor !== content; ancestor = ancestor.parentNode) {
+        if (ancestor === null) return false;
+        if (ancestor instanceof Element && sources.has(ancestor)) return true;
+      }
+      return false;
     };
     collect();
-    const observer = new MutationObserver(() => {
-      if (frame === 0) frame = requestAnimationFrame(collect);
+    const observer = new MutationObserver((records) => {
+      if (records.every((record) => isInsideSource(record.target))) repaint();
+      else if (collectFrame === 0) collectFrame = requestAnimationFrame(collect);
     });
-    observer.observe(content, { childList: true, subtree: true, characterData: true });
+    observer.observe(content, OBSERVED_MUTATIONS);
+    const stopSources = Array.from(sources, ([host, source]) => source.observe?.(host, repaint));
     return () => {
       observer.disconnect();
-      cancelAnimationFrame(frame);
+      for (const stop of stopSources) stop?.();
+      cancelAnimationFrame(collectFrame);
+      cancelAnimationFrame(paintFrame);
     };
-  }, [query, searching]);
+  }, [query, searching, sources]);
 
   useEffect(() => {
     const matchHighlight = sharedHighlight(MATCH_HIGHLIGHT_NAME, 0);
     const currentHighlight = sharedHighlight(CURRENT_MATCH_HIGHLIGHT_NAME, 1);
-    const currentRange = shownMatches.ranges[current];
     if (matchHighlight === null || currentHighlight === null) return;
-    for (const range of shownMatches.ranges) matchHighlight.add(range);
-    if (currentRange !== undefined) currentHighlight.add(currentRange);
+    const painted: Range[] = [];
+    let currentRange: Range | null = null;
+    let offset = 0;
+    for (const part of shownMatches.parts) {
+      for (const [index, range] of part.ranges().entries()) {
+        if (range === null) continue;
+        painted.push(range);
+        if (offset + index === current) currentRange = range;
+      }
+      offset += part.count;
+    }
+    for (const range of painted) matchHighlight.add(range);
+    if (currentRange !== null) currentHighlight.add(currentRange);
     return () => {
-      for (const range of shownMatches.ranges) matchHighlight.delete(range);
-      if (currentRange !== undefined) currentHighlight.delete(currentRange);
+      for (const range of painted) matchHighlight.delete(range);
+      if (currentRange !== null) currentHighlight.delete(currentRange);
     };
   }, [current, shownMatches]);
 
   useEffect(() => {
-    const currentRange = shownMatches.ranges[current];
-    if (!revealPendingRef.current || currentRange === undefined) return;
+    const match = locateMatch(shownMatches, current);
+    if (!revealPendingRef.current || match === null) return;
     revealPendingRef.current = false;
-    revealRange(currentRange);
+    match.part.reveal(match.index);
   }, [current, shownMatches]);
 
   useLayoutEffect(() => {
@@ -173,7 +266,7 @@ export function FindScope({
   }, [focusRequest]);
 
   const step = (direction: 1 | -1) => {
-    const count = shownMatches.ranges.length;
+    const count = shownMatches.count;
     if (count === 0) return;
     revealPendingRef.current = true;
     setCurrentIndex((current + direction + count) % count);
@@ -185,17 +278,19 @@ export function FindScope({
     scopeRef.current?.focus({ preventScroll: true });
   };
 
+  const onScopeKeyDownCapture = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!isFindShortcut(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!open && query.length > 0) revealPendingRef.current = true;
+    setOpen(true);
+    setFocusRequest((request) => request + 1);
+  };
+
   const onScopeKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (isFindShortcut(event)) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!open && query.length > 0) revealPendingRef.current = true;
-      setOpen(true);
-      setFocusRequest((request) => request + 1);
-    } else if (open && event.key === "Escape") {
-      event.preventDefault();
-      close();
-    }
+    if (!open || event.key !== "Escape") return;
+    event.preventDefault();
+    close();
   };
 
   const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -208,6 +303,7 @@ export function FindScope({
     <div
       ref={scopeRef}
       tabIndex={-1}
+      onKeyDownCapture={onScopeKeyDownCapture}
       onKeyDown={onScopeKeyDown}
       className={cn("relative flex min-h-0 flex-col outline-none", className)}
     >
@@ -236,7 +332,7 @@ export function FindScope({
             aria-live="polite"
             className={cn(
               "min-w-16 px-1 text-[.65rem] whitespace-nowrap tabular-nums",
-              query.length > 0 && shownMatches.ranges.length === 0
+              query.length > 0 && shownMatches.count === 0
                 ? "text-destructive"
                 : "text-muted-foreground",
             )}
@@ -248,7 +344,7 @@ export function FindScope({
             variant="ghost"
             title="Previous match (Shift+Enter)"
             aria-label="Previous match"
-            disabled={shownMatches.ranges.length === 0}
+            disabled={shownMatches.count === 0}
             onClick={() => step(-1)}
           >
             <ArrowUp aria-hidden />
@@ -258,7 +354,7 @@ export function FindScope({
             variant="ghost"
             title="Next match (Enter)"
             aria-label="Next match"
-            disabled={shownMatches.ranges.length === 0}
+            disabled={shownMatches.count === 0}
             onClick={() => step(1)}
           >
             <ArrowDown aria-hidden />
@@ -274,8 +370,8 @@ export function FindScope({
           </Button>
         </div>
       ) : null}
-      <div ref={contentRef} className="min-h-0 flex-1">
-        {children}
+      <div ref={contentRef} className="flex min-h-0 flex-1 flex-col">
+        <FindSourceContext value={registerSource}>{children}</FindSourceContext>
       </div>
     </div>
   );

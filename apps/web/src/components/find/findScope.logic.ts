@@ -15,8 +15,20 @@ export interface SegmentMatches {
   readonly truncated: boolean;
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export interface LineOccurrence {
+  /** Index into the searched lines. */
+  readonly line: number;
+  /** Which match on that line, counting from zero. */
+  readonly occurrence: number;
+}
+
+export interface LineOccurrences {
+  readonly matches: ReadonlyArray<LineOccurrence>;
+  readonly truncated: boolean;
+}
+
+function queryPattern(query: string): RegExp {
+  return new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "giu");
 }
 
 /** Case-insensitive literal matches that may span consecutive segments. */
@@ -47,11 +59,34 @@ export function findSegmentMatches(
   };
 
   const matches: SegmentMatch[] = [];
-  for (const match of text.matchAll(new RegExp(escapeRegExp(query), "giu"))) {
+  for (const match of text.matchAll(queryPattern(query))) {
     if (matches.length === limit) return { matches, truncated: true };
     const start = locate(match.index, false);
     const end = locate(match.index + match[0].length, true);
     matches.push({ start, end });
+  }
+  return { matches, truncated: false };
+}
+
+/**
+ * The same matching as `findSegmentMatches`, over a text model instead of the DOM, so a
+ * virtualized surface can count and order matches on lines it has not rendered.
+ */
+export function findLineOccurrences(
+  lines: ReadonlyArray<string>,
+  query: string,
+  limit: number = MAX_FIND_MATCHES,
+): LineOccurrences {
+  if (query.length === 0) return { matches: [], truncated: false };
+  const pattern = queryPattern(query);
+  const matches: LineOccurrence[] = [];
+  for (const [line, text] of lines.entries()) {
+    let occurrence = 0;
+    for (const _match of text.matchAll(pattern)) {
+      if (matches.length === limit) return { matches, truncated: true };
+      matches.push({ line, occurrence });
+      occurrence += 1;
+    }
   }
   return { matches, truncated: false };
 }

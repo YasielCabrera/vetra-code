@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { findSegmentMatches } from "./findScope.logic";
+import { findLineOccurrences, findSegmentMatches } from "./findScope.logic";
 
 describe("findSegmentMatches", () => {
   it("matches case-insensitively inside a single segment", () => {
@@ -41,5 +41,24 @@ describe("findSegmentMatches", () => {
 
   it("finds nothing for an empty query", () => {
     expect(findSegmentMatches(["abc"], "")).toEqual({ matches: [], truncated: false });
+  });
+});
+
+describe("findLineOccurrences", () => {
+  it("counts matches per line so the nth rendered match can be located", () => {
+    expect(findLineOccurrences(["foo foo", "bar", "Foo"], "foo")).toEqual({
+      matches: [
+        { line: 0, occurrence: 0 },
+        { line: 0, occurrence: 1 },
+        { line: 2, occurrence: 0 },
+      ],
+      truncated: false,
+    });
+  });
+
+  it("stops at the limit across lines", () => {
+    const result = findLineOccurrences(["aa", "aa"], "a", 3);
+    expect(result.matches).toHaveLength(3);
+    expect(result.truncated).toBe(true);
   });
 });

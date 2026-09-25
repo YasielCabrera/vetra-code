@@ -1,7 +1,10 @@
 import { json } from "@codemirror/lang-json";
 import { foldGutter, syntaxHighlighting } from "@codemirror/language";
 import CodeMirror, { EditorView, lineNumbers, oneDarkHighlightStyle } from "@uiw/react-codemirror";
+import { useMemo, useState } from "react";
 
+import { codeMirrorFindSource } from "~/components/find/codeMirrorFindSource";
+import { FindSourceHost } from "~/components/find/FindScope";
 import { useTheme } from "~/hooks/useTheme";
 
 const VETRA_CODE_MIRROR_THEME_RULES = {
@@ -68,24 +71,32 @@ const JSON_EXTENSIONS = {
 
 export function JsonStateView({ code }: { code: string }) {
   const { resolvedTheme } = useTheme();
+  const [view, setView] = useState<EditorView | null>(null);
+  const findSource = useMemo(
+    () => (view === null ? null : codeMirrorFindSource(view, code)),
+    [code, view],
+  );
 
   return (
-    <CodeMirror
-      value={code}
-      theme={VETRA_CODE_MIRROR_THEMES[resolvedTheme]}
-      extensions={JSON_EXTENSIONS[resolvedTheme]}
-      editable={false}
-      readOnly
-      basicSetup={{
-        lineNumbers: false,
-        foldGutter: false,
-        highlightActiveLine: false,
-        highlightActiveLineGutter: false,
-        drawSelection: false,
-        autocompletion: false,
-      }}
-      aria-label="Document state JSON"
-      className="text-[length:var(--font-size-code,0.8125rem)] [&_.cm-content]:py-2.5 [&_.cm-editor]:outline-none [&_.cm-foldGutter_.cm-gutterElement]:cursor-pointer [&_.cm-gutterElement]:leading-5 [&_.cm-line]:px-3 [&_.cm-line]:leading-5 [&_.cm-lineNumbers_.cm-gutterElement]:px-2 [&_.cm-scroller]:font-mono"
-    />
+    <FindSourceHost source={findSource}>
+      <CodeMirror
+        value={code}
+        onCreateEditor={setView}
+        theme={VETRA_CODE_MIRROR_THEMES[resolvedTheme]}
+        extensions={JSON_EXTENSIONS[resolvedTheme]}
+        editable={false}
+        readOnly
+        basicSetup={{
+          lineNumbers: false,
+          foldGutter: false,
+          highlightActiveLine: false,
+          highlightActiveLineGutter: false,
+          drawSelection: false,
+          autocompletion: false,
+        }}
+        aria-label="Document state JSON"
+        className="text-[length:var(--font-size-code,0.8125rem)] [&_.cm-content]:py-2.5 [&_.cm-editor]:outline-none [&_.cm-foldGutter_.cm-gutterElement]:cursor-pointer [&_.cm-gutterElement]:leading-5 [&_.cm-line]:px-3 [&_.cm-line]:leading-5 [&_.cm-lineNumbers_.cm-gutterElement]:px-2 [&_.cm-scroller]:font-mono"
+      />
+    </FindSourceHost>
   );
 }

@@ -37,6 +37,15 @@ to copy its URL and `mod+shift+k` to copy its number with a `#` prefix.
 Both shortcuts can be changed in Settings. Search for “Copy Link or Thread ID”
 or “Copy Number”. They copy the selected PR and leave terminal input alone.
 
+## Find in a panel
+
+Click into the diff panel, a file preview, or the Powerhouse document models or document
+explorer panel, then press `mod+f` to find text in it. The search covers the whole diff,
+file, or document state, including lines that are scrolled out of view. In the diff panel,
+find skips collapsed files and the unchanged lines between hunks, even after you expand them.
+`Enter` and `Shift+Enter` move between matches, and `Escape` closes the find bar.
+This shortcut is fixed and does not appear in Settings.
+
 ## iPad
 
 With a hardware keyboard, use `Cmd+1` through `Cmd+9` to open the first nine
