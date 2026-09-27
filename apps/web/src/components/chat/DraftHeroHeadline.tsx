@@ -36,14 +36,12 @@ interface DraftHeroHeadlineProps {
   readonly draftId: DraftId | null;
   readonly activeProjectRef: ScopedProjectRef | null;
   readonly activeProjectTitle: string | null;
-  readonly pendingProject?: boolean;
 }
 
 export function DraftHeroHeadline({
   draftId,
   activeProjectRef,
   activeProjectTitle,
-  pendingProject = false,
 }: DraftHeroHeadlineProps) {
   const projects = useProjects();
   const threads = useThreadShells();
@@ -232,20 +230,6 @@ export function DraftHeroHeadline({
       {activeProjectTitle ?? "Add a project"}
     </button>
   );
-
-  if (pendingProject) {
-    return (
-      <div className="mx-auto grid w-full max-w-3xl gap-2 px-5 text-center">
-        <h1 className="text-balance font-heading font-semibold text-3xl text-foreground tracking-[-0.035em] sm:text-4xl">
-          What <span className="text-primary">product</span> do you want to build?
-        </h1>
-        <p className="mx-auto max-w-2xl text-pretty text-sm leading-6 text-muted-foreground sm:text-[15px]">
-          Describe your idea, then select an existing project or create a new one before starting
-          the thread.
-        </p>
-      </div>
-    );
-  }
 
   // The composer hero is a sentence, so the heading's accessible name must be
   // a complete sentence too. The project picker is a control rendered inline

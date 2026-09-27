@@ -1416,7 +1416,6 @@ export interface ChatComposerProps {
   keybindings: ResolvedKeybindingsConfig;
   terminalOpen: boolean;
   gitCwd: string | null;
-  projectControl?: ReactNode;
   pullRequestProjectId: ProjectId | null;
   pullRequestRepository: string | null;
   restingControlsHost: HTMLDivElement | null;
@@ -1542,7 +1541,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     keybindings,
     terminalOpen,
     gitCwd,
-    projectControl,
     pullRequestProjectId,
     pullRequestRepository,
     restingControlsHost,
@@ -5241,7 +5239,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         setIsStashMenuOpen((open) => !open);
         return;
       }
-      if (isComposerApprovalState || activePendingProgress !== null) {
+      if (isComposerApprovalState || projectSelectionRequired || activePendingProgress !== null) {
         return;
       }
       void stashCurrentPrompt();
@@ -5254,6 +5252,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     isComposerModelPickerOpen,
     keybindings,
     pendingUserInputs.length,
+    projectSelectionRequired,
     stashCurrentPrompt,
     isRevertingCheckpoint,
     terminalOpen,
@@ -6084,6 +6083,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       isComposerApprovalState,
       isChoiceOnlyPendingQuestion,
       pendingUserInputs.length,
+      projectSelectionRequired,
       applyPromptReplacement,
       isComposerModelPickerOpen,
       openModelPicker,
@@ -6380,6 +6380,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             className={cn(
               "rounded-3xl transition-[background-color] duration-200",
               isDragOverComposer ? "bg-accent/45 ring-1 ring-primary/70" : null,
+              projectSelectionRequired ? "opacity-75" : null,
               composerProviderState.composerSurfaceClassName,
             )}
           >
@@ -6898,7 +6899,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                           : showPlanFollowUpPrompt && activeProposedPlan
                             ? "Add feedback to refine the plan, or leave this blank to implement it"
                             : projectSelectionRequired
-                              ? "Describe your idea, then choose a project below"
+                              ? "Choose a project above to start a thread"
                               : showProviderUnavailable
                                 ? "Enable a provider in Settings to send a message"
                                 : phase === "disconnected"
@@ -7022,7 +7023,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       </Tooltip>
                     </>
                   ) : null}
-                  {projectControl}
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}
                     activeContextWindow={

@@ -323,17 +323,6 @@ const PersistedDraftThreadState = Schema.Struct({
   worktreePath: Schema.NullOr(Schema.String),
   envMode: DraftThreadEnvModeSchema,
   startFromOrigin: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
-  pendingProject: Schema.optionalKey(
-    Schema.Struct({
-      association: Schema.Literals(["unselected", "create"]).pipe(
-        Schema.withDecodingDefault(Effect.succeed("create" as const)),
-      ),
-      parentDirectory: Schema.String,
-      folderName: Schema.String,
-      locationConfirmed: Schema.Boolean,
-      materialized: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
-    }),
-  ),
   promotedTo: Schema.optionalKey(
     Schema.NullOr(
       Schema.Struct({
@@ -461,16 +450,7 @@ export interface DraftSessionState {
   worktreePath: string | null;
   envMode: DraftThreadEnvMode;
   startFromOrigin: boolean;
-  pendingProject?: PendingProjectDraftState;
   promotedTo?: ScopedThreadRef | null;
-}
-
-export interface PendingProjectDraftState {
-  association: "unselected" | "create";
-  parentDirectory: string;
-  folderName: string;
-  locationConfirmed: boolean;
-  materialized: boolean;
 }
 
 export type DraftThreadState = DraftSessionState;
@@ -542,7 +522,6 @@ interface ComposerDraftStoreState {
       startFromOrigin?: boolean;
       runtimeMode?: RuntimeMode;
       interactionMode?: ProviderInteractionMode;
-      pendingProject?: PendingProjectDraftState | null;
       environmentSelection?: "auto" | "manual";
       loadBalancedEnvironmentId?: EnvironmentId | null;
     },
@@ -560,7 +539,6 @@ interface ComposerDraftStoreState {
       startFromOrigin?: boolean;
       runtimeMode?: RuntimeMode;
       interactionMode?: ProviderInteractionMode;
-      pendingProject?: PendingProjectDraftState | null;
       environmentSelection?: "auto" | "manual";
       loadBalancedEnvironmentId?: EnvironmentId | null;
     },
@@ -577,7 +555,6 @@ interface ComposerDraftStoreState {
       startFromOrigin?: boolean;
       runtimeMode?: RuntimeMode;
       interactionMode?: ProviderInteractionMode;
-      pendingProject?: PendingProjectDraftState | null;
       environmentSelection?: "auto" | "manual";
       loadBalancedEnvironmentId?: EnvironmentId | null;
     },
@@ -1529,7 +1506,6 @@ function createDraftThreadState(
     startFromOrigin?: boolean;
     runtimeMode?: RuntimeMode;
     interactionMode?: ProviderInteractionMode;
-    pendingProject?: PendingProjectDraftState | null;
     environmentSelection?: "auto" | "manual";
     loadBalancedEnvironmentId?: EnvironmentId | null;
   },
@@ -1584,13 +1560,6 @@ function createDraftThreadState(
     envMode:
       options?.envMode ?? (nextWorktreePath ? "worktree" : (existingThread?.envMode ?? "local")),
     startFromOrigin: nextStartFromOrigin,
-    ...(options?.pendingProject !== undefined
-      ? options.pendingProject
-        ? { pendingProject: options.pendingProject }
-        : {}
-      : existingThread?.pendingProject
-        ? { pendingProject: existingThread.pendingProject }
-        : {}),
     promotedTo: null,
   };
 }
@@ -1625,7 +1594,6 @@ function draftThreadsEqual(left: DraftThreadState | undefined, right: DraftThrea
     left.worktreePath === right.worktreePath &&
     left.envMode === right.envMode &&
     left.startFromOrigin === right.startFromOrigin &&
-    JSON.stringify(left.pendingProject ?? null) === JSON.stringify(right.pendingProject ?? null) &&
     scopedThreadRefsEqual(left.promotedTo, right.promotedTo)
   );
 }
@@ -1726,27 +1694,6 @@ function normalizePersistedDraftThreads(
       const branch = candidateDraftThread.branch;
       const worktreePath = candidateDraftThread.worktreePath;
       const startFromOrigin = candidateDraftThread.startFromOrigin === true;
-      const pendingProjectCandidate = candidateDraftThread.pendingProject;
-      const pendingProjectRecord =
-        pendingProjectCandidate && typeof pendingProjectCandidate === "object"
-          ? (pendingProjectCandidate as Record<string, unknown>)
-          : null;
-      const pendingProject =
-        pendingProjectRecord &&
-        typeof pendingProjectRecord.parentDirectory === "string" &&
-        typeof pendingProjectRecord.folderName === "string" &&
-        typeof pendingProjectRecord.locationConfirmed === "boolean"
-          ? {
-              association:
-                pendingProjectRecord.association === "unselected"
-                  ? ("unselected" as const)
-                  : ("create" as const),
-              parentDirectory: pendingProjectRecord.parentDirectory,
-              folderName: pendingProjectRecord.folderName,
-              locationConfirmed: pendingProjectRecord.locationConfirmed,
-              materialized: pendingProjectRecord.materialized === true,
-            }
-          : null;
       const normalizedWorktreePath = typeof worktreePath === "string" ? worktreePath : null;
       const promotedToCandidate = candidateDraftThread.promotedTo;
       const promotedToRecord =
@@ -1795,7 +1742,6 @@ function normalizePersistedDraftThreads(
         worktreePath: normalizedWorktreePath,
         envMode: normalizeDraftThreadEnvMode(candidateDraftThread.envMode, normalizedWorktreePath),
         startFromOrigin,
-        ...(pendingProject ? { pendingProject } : {}),
         ...(candidateDraftThread.environmentSelection === "manual" ||
         candidateDraftThread.environmentSelection === "auto"
           ? { environmentSelection: candidateDraftThread.environmentSelection }
@@ -2550,9 +2496,6 @@ function toHydratedDraftThreadState(
             persistedDraftThread.loadBalancedEnvironmentId as EnvironmentId | null,
         }
       : {}),
-    ...(persistedDraftThread.pendingProject
-      ? { pendingProject: { ...persistedDraftThread.pendingProject } }
-      : {}),
     promotedTo: persistedDraftThread.promotedTo
       ? scopeThreadRef(
           persistedDraftThread.promotedTo.environmentId as EnvironmentId,
@@ -2847,13 +2790,6 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
               envMode:
                 options.envMode ?? (nextWorktreePath ? "worktree" : (existing.envMode ?? "local")),
               startFromOrigin: nextStartFromOrigin,
-              ...(options.pendingProject !== undefined
-                ? options.pendingProject
-                  ? { pendingProject: options.pendingProject }
-                  : {}
-                : existing.pendingProject
-                  ? { pendingProject: existing.pendingProject }
-                  : {}),
               promotedTo: existing.promotedTo ?? null,
             };
             const isUnchanged =
@@ -2869,8 +2805,6 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
               nextDraftThread.worktreePath === existing.worktreePath &&
               nextDraftThread.envMode === existing.envMode &&
               nextDraftThread.startFromOrigin === existing.startFromOrigin &&
-              JSON.stringify(nextDraftThread.pendingProject ?? null) ===
-                JSON.stringify(existing.pendingProject ?? null) &&
               scopedThreadRefsEqual(nextDraftThread.promotedTo, existing.promotedTo);
             if (isUnchanged) {
               return state;

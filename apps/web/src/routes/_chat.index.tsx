@@ -1,10 +1,9 @@
-import { useAtomValue } from "@effect/atom-react";
 import { RefreshIcon } from "~/components/ui/refresh-icon";
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { LinkIcon, PlusIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import ChatView from "../components/ChatView";
 import { isLocalEnvironmentDisabled } from "../localEnvironment";
 import { isElectron } from "../env";
 import { NoProjectsHero } from "../components/NoProjectsHero";
@@ -13,11 +12,13 @@ import { Button } from "../components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
 import { SidebarInset } from "../components/ui/sidebar";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
-import { useDraftPromotionNavigation } from "../hooks/useDraftPromotionNavigation";
-import { ensureRootProjectDraft, ROOT_PROJECT_DRAFT_ID } from "../lib/rootProjectDraft";
-import { useAllEnvironmentShellsBootstrapped } from "../state/entities";
-import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
-import { primaryServerSettingsAtom } from "../state/server";
+import { useNewThreadHandler } from "../hooks/useHandleNewThread";
+import {
+  useAllEnvironmentShellsBootstrapped,
+  useProjects,
+  useThreadShells,
+} from "../state/entities";
+import { useEnvironments } from "../state/environments";
 import { APP_DISPLAY_NAME } from "~/branding";
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
 
@@ -33,79 +34,69 @@ function ChatIndexRouteView() {
   return <IndexDraftLanding />;
 }
 
+/**
+ * Landing on the index route drops straight into a draft thread for the most
+ * recently active project, so the first screen is a prompt instead of a dead
+ * end. Falls back to an add-project hero when no project exists yet.
+ */
 function IndexDraftLanding() {
+  const projects = useProjects();
+  const threads = useThreadShells();
   const bootstrapped = useAllEnvironmentShellsBootstrapped();
-  const primaryEnvironmentId = usePrimaryEnvironmentId();
-  const primaryServerSettings = useAtomValue(primaryServerSettingsAtom);
-  const { draftSession } = useDraftPromotionNavigation(ROOT_PROJECT_DRAFT_ID);
+  const handleNewThread = useNewThreadHandler();
+  const startingRef = useRef(false);
   const [startState, setStartState] = useState({ failed: false, retryRequest: 0 });
 
+  const mostRecentProject = useMemo(
+    () =>
+      bootstrapped
+        ? (sortScopedProjectsForSidebar(projects, threads, "updated_at")[0] ?? null)
+        : null,
+    [bootstrapped, projects, threads],
+  );
+
   useEffect(() => {
-    if (!bootstrapped || primaryEnvironmentId === null || draftSession) {
+    if (mostRecentProject === null || startingRef.current) {
       return;
     }
-    try {
-      ensureRootProjectDraft({
-        environmentId: primaryEnvironmentId,
-        defaultParentDirectory: primaryServerSettings.addProjectBaseDirectory,
-      });
-    } catch {
+    startingRef.current = true;
+    void handleNewThread(scopeProjectRef(mostRecentProject.environmentId, mostRecentProject.id), {
+      replace: true,
+    }).catch(() => {
+      startingRef.current = false;
       setStartState((state) => ({ ...state, failed: true }));
-    }
-  }, [
-    bootstrapped,
-    draftSession,
-    primaryEnvironmentId,
-    primaryServerSettings.addProjectBaseDirectory,
-    startState.retryRequest,
-  ]);
+    });
+  }, [handleNewThread, mostRecentProject, startState.retryRequest]);
 
   if (!bootstrapped) {
     return null;
   }
-  if (startState.failed || primaryEnvironmentId === null) {
-    return (
+  if (mostRecentProject !== null) {
+    return startState.failed ? (
       <DraftStartError
-        title="Couldn’t start a new project"
-        description="Try opening the project draft again. Nothing has been created on disk."
         onRetry={() => {
-          setStartState((state) => ({ failed: false, retryRequest: state.retryRequest + 1 }));
+          setStartState((state) => ({
+            failed: false,
+            retryRequest: state.retryRequest + 1,
+          }));
         }}
       />
-    );
+    ) : null;
   }
-  if (!draftSession) {
-    return null;
-  }
-
-  return (
-    <SidebarInset className="h-svh min-h-0 overflow-hidden overscroll-y-none md:h-dvh">
-      <ChatView
-        draftId={ROOT_PROJECT_DRAFT_ID}
-        environmentId={draftSession.environmentId}
-        threadId={draftSession.threadId}
-        routeKind="draft"
-        forceExpandedMobileComposer
-      />
-    </SidebarInset>
-  );
+  // First-run routing to the welcome wizard happens in FirstRunGate at the
+  // root, before this route ever renders.
+  return <NoProjectsHero />;
 }
 
-function DraftStartError({
-  onRetry,
-  title = "Couldn’t start a new thread",
-  description = "The project is still available. Try opening the draft again.",
-}: {
-  readonly onRetry: () => void;
-  readonly title?: string;
-  readonly description?: string;
-}) {
+function DraftStartError({ onRetry }: { readonly onRetry: () => void }) {
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none">
       <Empty className="flex-1">
         <EmptyHeader className="max-w-md">
-          <EmptyTitle>{title}</EmptyTitle>
-          <EmptyDescription>{description}</EmptyDescription>
+          <EmptyTitle>Couldn’t start a new thread</EmptyTitle>
+          <EmptyDescription>
+            The project is still available. Try opening the draft again.
+          </EmptyDescription>
           <div className="mt-5 flex justify-center">
             <Button size="sm" onClick={onRetry}>
               <RefreshIcon size="md" />

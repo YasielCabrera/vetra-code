@@ -50,7 +50,6 @@ import {
   wasBootstrapThreadDeleted,
   wasBootstrapThreadNotCreated,
 } from "@t3tools/client-runtime/errors";
-import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import { readPastedComposerContext } from "./composerInlineTokenPaste";
 import { isPasteAsTextShortcut } from "@t3tools/client-runtime/text-paste";
 import { type CodexArtifactTemplate } from "@t3tools/client-runtime/codex-artifact-templates";
@@ -176,11 +175,7 @@ import {
 } from "../types";
 import { useTheme } from "../hooks/useTheme";
 import { writeTextToClipboard } from "../hooks/useCopyToClipboard";
-import {
-  isCommandPaletteOpen,
-  onCommandPaletteProjectSelected,
-  openCommandPalette,
-} from "../commandPaletteBus";
+import { isCommandPaletteOpen } from "../commandPaletteBus";
 import { subscribeSnapShotComposerFocus } from "../lib/desktopSnapShot";
 import { buildTemporaryWorktreeBranchName } from "@t3tools/shared/git";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -493,7 +488,6 @@ import { usePowerhouseProjects } from "./powerhouse/usePowerhouseProject";
 import { usePowerhousePanelStore } from "./powerhouse/powerhousePanelStore";
 import { PowerhousePanelLoading } from "./powerhouse/PowerhousePanelPrimitives";
 import { useComposerHandleContext } from "../composerHandleContext";
-import { ProjectSelectorControl } from "./chat/ProjectSelectorControl";
 import {
   awaitAttachmentUploads,
   getUploadedAttachments,
@@ -1587,7 +1581,6 @@ export default function ChatView(props: ChatViewProps) {
         ? store.getDraftSession(draftId)
         : null,
   );
-  const pendingProject = draftThread?.pendingProject ?? null;
   const routeServerThreadShell = useThreadShell(routeKind === "server" ? routeThreadRef : null);
   const serverThread = useThread(routeThreadRef, { waitForShell: draftThread !== null });
   const loadingServerThread = useMemo(
@@ -1754,10 +1747,6 @@ export default function ChatView(props: ChatViewProps) {
     Record<string, LocalThreadErrorEntry>
   >({});
   const [isConnecting, _setIsConnecting] = useState(false);
-  // Set while this composer is the one borrowing the command palette's
-  // add-project flow, so a selection published by another form's flow does not
-  // repoint this draft.
-  const awaitingPaletteProjectRef = useRef(false);
   const isRevertingCheckpoint = useComposerDraftStore((store) =>
     store.rewindingThreadKeys.has(routeThreadKey),
   );
@@ -7764,7 +7753,7 @@ export default function ChatView(props: ChatViewProps) {
         stackedThreadToast({
           type: "warning",
           title: "Choose a project first",
-          description: "Select an existing project or create a new one before starting the thread.",
+          description: "This draft no longer points to an available project.",
         }),
       );
       return;
@@ -8748,57 +8737,6 @@ export default function ChatView(props: ChatViewProps) {
       resetLocalDispatch();
     }
   };
-
-  const handleSelectProject = (project: EnvironmentProject) => {
-    if (!draftId) {
-      return;
-    }
-    setDraftThreadContext(draftId, {
-      projectRef: scopeProjectRef(project.environmentId, project.id),
-      pendingProject: null,
-    });
-    if (activeThread) {
-      setThreadError(activeThread.id, null);
-    }
-  };
-
-  // Borrows the command palette's whole add-project flow — local folder, git
-  // URL, GitHub, and the rest — rather than keeping a second, thinner "where
-  // should this live?" dialog. It hands the project back here instead of
-  // opening a thread in it.
-  const handleCreateProjectSelection = () => {
-    if (!draftId) {
-      return;
-    }
-    awaitingPaletteProjectRef.current = true;
-    openCommandPalette({ open: "add-project", completion: "select" });
-  };
-
-  useEffect(() => {
-    if (!draftId) {
-      return;
-    }
-    return onCommandPaletteProjectSelected((selected) => {
-      if (!awaitingPaletteProjectRef.current) {
-        return;
-      }
-      awaitingPaletteProjectRef.current = false;
-      setDraftThreadContext(draftId, {
-        projectRef: scopeProjectRef(
-          selected.environmentId as EnvironmentId,
-          selected.projectId as ProjectId,
-        ),
-        pendingProject: null,
-      });
-      const draftThreadId = useComposerDraftStore.getState().getDraftSession(draftId)?.threadId;
-      if (draftThreadId) {
-        setThreadError(draftThreadId, null);
-      }
-      // The palette took focus on the way in; hand it back so the prompt the
-      // user was already writing stays typeable.
-      scheduleComposerFocus();
-    });
-  }, [draftId, scheduleComposerFocus, setDraftThreadContext, setThreadError]);
 
   // Sends the oldest queued message once it is due: a tool call finished
   // after it was queued, or the turn ended. Only one leaves per boundary; the
@@ -10233,7 +10171,6 @@ export default function ChatView(props: ChatViewProps) {
                           draftId={draftId}
                           activeProjectRef={activeProjectRef}
                           activeProjectTitle={activeProject?.title ?? null}
-                          pendingProject={pendingProject !== null}
                         />
                       </div>
                     </div>
@@ -10332,16 +10269,6 @@ export default function ChatView(props: ChatViewProps) {
                             keybindings={keybindings}
                             terminalOpen={Boolean(terminalUiState.terminalOpen)}
                             gitCwd={gitCwd}
-                            projectControl={
-                              isLocalDraftThread && draftId ? (
-                                <ProjectSelectorControl
-                                  selectedProjectRef={activeProject ? activeProjectRef : null}
-                                  selectedProjectTitle={activeProject?.title ?? null}
-                                  onSelectProject={handleSelectProject}
-                                  onCreateProject={handleCreateProjectSelection}
-                                />
-                              ) : undefined
-                            }
                             pullRequestProjectId={
                               supportsPullRequests ? (activeProject?.id ?? null) : null
                             }
