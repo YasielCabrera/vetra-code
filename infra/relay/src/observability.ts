@@ -222,8 +222,9 @@ export const makeRelayTraceLayer = (input: {
     OtlpTracer.make({
       url: input.tracesEndpoint,
       resource: {
-        serviceName: "vetra-code-relay-worker",
+        serviceName: "vetra-relay",
         attributes: {
+          "service.namespace": "vetra",
           "service.runtime": "cloudflare-worker",
           "service.component": "relay",
         },

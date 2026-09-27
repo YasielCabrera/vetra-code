@@ -7,7 +7,7 @@ const relayClientTracingConfig = resolveRelayClientTracingConfig();
 export const headlessRelayClientTracingLayer = makeRelayClientTracingLayer(
   relayClientTracingConfig,
   {
-    serviceName: "vetra-headless-relay-client",
+    serviceName: "vetra-server",
     runtime: "node",
     client: "headless-cli",
   },

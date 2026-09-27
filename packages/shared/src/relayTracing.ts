@@ -142,6 +142,7 @@ export function makeRelayClientTracingLayer(
       serviceName: resource.serviceName,
       serviceVersion: resource.serviceVersion,
       attributes: {
+        "service.namespace": "vetra",
         "service.runtime": resource.runtime,
         "service.component": resource.component ?? "relay-client",
         "vetra.client.surface": resource.client,

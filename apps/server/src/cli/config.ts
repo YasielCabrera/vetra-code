@@ -82,16 +82,20 @@ const tailscaleServePortFlag = Flag.Int("tailscale-serve-port").pipe(
   Flag.optional,
 );
 
+// Trace file location, shared by the server and `vetra trace summary`.
+export const traceFileConfig = Config.String("VETRA_TRACE_FILE").pipe(
+  Config.option,
+  Config.map(Option.getOrUndefined),
+);
+export const traceMaxFilesConfig = Config.Int("VETRA_TRACE_MAX_FILES").pipe(Config.withDefault(10));
+
 const EnvServerConfig = Config.all({
   logLevel: Config.LogLevel("VETRA_LOG_LEVEL").pipe(Config.withDefault("Info")),
   traceMinLevel: Config.LogLevel("VETRA_TRACE_MIN_LEVEL").pipe(Config.withDefault("Info")),
   traceTimingEnabled: Config.Boolean("VETRA_TRACE_TIMING_ENABLED").pipe(Config.withDefault(true)),
-  traceFile: Config.String("VETRA_TRACE_FILE").pipe(
-    Config.option,
-    Config.map(Option.getOrUndefined),
-  ),
+  traceFile: traceFileConfig,
   traceMaxBytes: Config.Int("VETRA_TRACE_MAX_BYTES").pipe(Config.withDefault(10 * 1024 * 1024)),
-  traceMaxFiles: Config.Int("VETRA_TRACE_MAX_FILES").pipe(Config.withDefault(10)),
+  traceMaxFiles: traceMaxFilesConfig,
   traceBatchWindowMs: Config.Int("VETRA_TRACE_BATCH_WINDOW_MS").pipe(Config.withDefault(1_000)),
   otlpTracesUrl: Config.String("VETRA_OTLP_TRACES_URL").pipe(
     Config.option,
@@ -107,9 +111,6 @@ const EnvServerConfig = Config.all({
   ),
   otlpExportIntervalMs: Config.Int("VETRA_OTLP_EXPORT_INTERVAL_MS").pipe(
     Config.withDefault(10_000),
-  ),
-  otlpServiceName: Config.String("VETRA_OTLP_SERVICE_NAME").pipe(
-    Config.withDefault("vetra-server"),
   ),
   otlpHeaders: Config.schema(OtlpHeadersFromString, "VETRA_OTLP_HEADERS").pipe(
     Config.option,
@@ -398,6 +399,27 @@ export const resolveServerConfig = (
       headers: env.otlpHeaders,
       exportIntervalMs: env.otlpExportIntervalMs,
     };
+    const traces = OtelEnvironment.resolveSignalEndpoint(
+      otel,
+      "traces",
+      { url: env.otlpTracesUrl, export: signalExport },
+      bootstrap?.otlpTracesUrl,
+      persistedObservabilitySettings.otlpTracesUrl,
+    );
+    const metrics = OtelEnvironment.resolveSignalEndpoint(
+      otel,
+      "metrics",
+      { url: env.otlpMetricsUrl, export: signalExport },
+      bootstrap?.otlpMetricsUrl,
+      persistedObservabilitySettings.otlpMetricsUrl,
+    );
+    const logs = OtelEnvironment.resolveSignalEndpoint(
+      otel,
+      "logs",
+      { url: env.otlpLogsUrl, export: signalExport },
+      bootstrap?.otlpLogsUrl,
+      persistedObservabilitySettings.otlpLogsUrl,
+    );
 
     const config: ServerConfig.ServerConfig["Service"] = {
       logLevel,
@@ -406,23 +428,12 @@ export const resolveServerConfig = (
       traceBatchWindowMs: env.traceBatchWindowMs,
       traceMaxBytes: env.traceMaxBytes,
       traceMaxFiles: env.traceMaxFiles,
-      otlpTracesUrl: otel.disabled
-        ? undefined
-        : (env.otlpTracesUrl ??
-          bootstrap?.otlpTracesUrl ??
-          persistedObservabilitySettings.otlpTracesUrl),
-      otlpMetricsUrl: otel.disabled
-        ? undefined
-        : (env.otlpMetricsUrl ??
-          bootstrap?.otlpMetricsUrl ??
-          persistedObservabilitySettings.otlpMetricsUrl),
-      otlpLogsUrl: otel.disabled
-        ? undefined
-        : (env.otlpLogsUrl ?? bootstrap?.otlpLogsUrl ?? persistedObservabilitySettings.otlpLogsUrl),
-      otlpTracesExport: signalExport,
-      otlpMetricsExport: signalExport,
-      otlpLogsExport: signalExport,
-      otlpServiceName: env.otlpServiceName,
+      otlpTracesUrl: traces?.url,
+      otlpMetricsUrl: metrics?.url,
+      otlpLogsUrl: logs?.url,
+      otlpTracesExport: traces?.export ?? signalExport,
+      otlpMetricsExport: metrics?.export ?? signalExport,
+      otlpLogsExport: logs?.export ?? signalExport,
       otelEnvironment: otel,
       mode,
       port,

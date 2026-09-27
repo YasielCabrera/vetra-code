@@ -17,6 +17,7 @@ const DEFAULT_EXPORT_INTERVAL_MS = 1_000;
 const CLIENT_TRACING_RESOURCE = {
   serviceName: "vetra-web",
   attributes: {
+    "service.namespace": "vetra",
     "service.runtime": "vetra-web",
     "service.mode": isElectron ? "electron" : "browser",
     "service.version": APP_VERSION,

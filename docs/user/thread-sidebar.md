@@ -95,7 +95,9 @@ Choose **Settle thread** from its menu to move finished work out of the active l
 without deleting the conversation. **Un-settle thread** restores it to active work
 and prevents automatic settlement until new activity resumes the usual rules.
 Manually settling an idle thread dismisses unanswered async questions without
-sending an answer or restarting the agent.
+sending an answer or restarting the agent. Settling also closes the thread's
+terminals that wait at an idle prompt, and keeps their output. A terminal that
+runs a command, such as a dev server, stays open.
 
 If reordering is unavailable for one environment, update the Vetra Code server running in that
 environment. Older servers can still pin and unpin threads, but do not understand synced ordering;

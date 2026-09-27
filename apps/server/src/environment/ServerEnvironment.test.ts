@@ -59,7 +59,6 @@ const makeServerConfig = Effect.fn(function* (baseDir: string) {
     otlpTracesExport: DEFAULT_SIGNAL_EXPORT,
     otlpMetricsExport: DEFAULT_SIGNAL_EXPORT,
     otlpLogsExport: DEFAULT_SIGNAL_EXPORT,
-    otlpServiceName: "vetra-server",
     otelEnvironment: OtelEnvironment.none,
     cwd: process.cwd(),
     baseDir,
