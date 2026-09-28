@@ -68,4 +68,5 @@ need a live connection to the environment.
 
 Until Vetra-owned Clerk and relay settings are present, that page stays hidden with the rest of
 Vetra Connect. Device-local connect and disconnect controls remain in **Settings** →
-**Connections**.
+**Connections**. Removing an environment there only forgets it on that device; it stays
+registered to your account.
