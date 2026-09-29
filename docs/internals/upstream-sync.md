@@ -378,6 +378,7 @@ list):
 | `com.t3tools.*` / `/com/t3tools/`                      | `com.vetra.*` / `/com/vetra/`                                   |
 | `T3SnapShot` / `snap-shot@t3.codes`                    | `VetraSnapShot` / `snap-shot@vetra.code`                        |
 | `x-scheme-handler/t3code` / `t3code://`                | `x-scheme-handler/vetra` / `vetra://`                           |
+| `t3code-dev:`                                          | `vetra-dev:`                                                    |
 | `t3code.service` / `t3.json`                           | `vetra-code.service` / `vetra.json`                             |
 | `t3_session` / `t3_code`                               | `vetra_session` / `vetra_code`                                  |
 | `"t3code.` / `"t3code:` / `t3.pullRequests.`           | `"vetra.` / `"vetra:` / `vetra.pullRequests.`                   |

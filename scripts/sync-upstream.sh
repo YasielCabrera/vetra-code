@@ -150,6 +150,8 @@ RENAMES=(
   # needs a human, so check every scheme fixture after a merge that touches URL
   # handling.
   'x-scheme-handler/t3code-dev=x-scheme-handler/vetra-dev'
+  # The dev scheme in bare form, as return-URL allowlists and handoff links spell it.
+  't3code-dev:=vetra-dev:'
   'x-scheme-handler/t3code=x-scheme-handler/vetra'
   't3code://=vetra://'
   # The systemd unit the CLI installs. Two units cannot share a name.

@@ -51,6 +51,16 @@ notifications. The item has `type: "agentMessage"`, `delivery: "async"`, and a `
 Each question has a `title` and an optional `options` array of strings. The tool returns `{"accepted":true}`
 without waiting. This is separate from the `item/tool/requestUserInput` server request.
 See the [Codex tool handler](https://github.com/openai/codex/blob/d979df154cf60e13eafb5453e75b6d84f21c67bf/codex-rs/core/src/tools/handlers/request_user_input_async.rs).
+Managed ChatGPT sign-in for a remote environment can finish on a local primary. The
+[primary handoff](../../apps/server/src/provider/CodexChatGptHandoff.ts) uses an ephemeral
+credential store and the destination's environment ID. It exchanges and verifies the code before
+transferring the issued client registration and tokens. Only the destination persists and refreshes
+that session; retaining a primary refresh session would race refresh-token rotation. Without a local
+primary, the client uses the remote callback completion flow.
+
+Antigravity sign-out closes admission to new processes and stops existing processes before clearing account
+metadata. Otherwise a helper or resumed session could retain the old account. Cached model lists
+do not establish current access, and an authoritative empty catalog must clear the old list.
 
 The Codex adapter maps completed question items to `user-input.requested` with
 `responseMode: "message"` and stable request and event IDs. Questions use the existing web,

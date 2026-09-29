@@ -71,6 +71,10 @@ import {
 } from "./CodexHomeLayout.ts";
 import { makeCodexSubscriptionUsageCapability } from "../usage/CodexSubscriptionUsage.ts";
 import { readProviderLocalUsageCost } from "../usage/ProviderLocalUsageCost.ts";
+import { makeManagedCodexProvider } from "./CodexManagedProvider.ts";
+import { CodexInstallation } from "../CodexInstallation.ts";
+import { ServerSecretStore } from "../../auth/ServerSecretStore.ts";
+import { ServerEnvironmentIdentity } from "../../environment/ServerEnvironment.ts";
 const decodeCodexSettings = Schema.decodeSync(CodexSettings);
 
 const DRIVER_KIND = ProviderDriverKind.make("codex");
@@ -115,7 +119,10 @@ export type CodexDriverEnv =
   | ProviderEventLoggers
   | ServerConfig
   | ServerSettingsService
-  | UsageService.UsageService;
+  | UsageService.UsageService
+  | ServerSecretStore
+  | ServerEnvironmentIdentity
+  | CodexInstallation;
 
 export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
   driverKind: DRIVER_KIND,
@@ -127,6 +134,15 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
   defaultConfig: (): CodexSettings => decodeCodexSettings({}),
   create: ({ instanceId, displayName, accentColor, environment, enabled, config }) =>
     Effect.gen(function* () {
+      if (config.setupMode === "managed")
+        return yield* makeManagedCodexProvider({
+          instanceId,
+          displayName,
+          accentColor,
+          environment,
+          enabled,
+          config,
+        });
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
       const path = yield* Path.Path;
       const serverConfig = yield* ServerConfig;
