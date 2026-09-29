@@ -57,6 +57,7 @@ import {
   MoonIcon,
   PaletteIcon,
   SettingsIcon,
+  SquareIcon,
   SquarePenIcon,
   SunIcon,
   TextSearchIcon,
@@ -195,6 +196,7 @@ import { ComposerHandleContext, useComposerHandleContext } from "../composerHand
 import type { ChatComposerHandle } from "./chat/ChatComposer";
 import { getProjectOrderKey, selectProjectGroupingSettings } from "../logicalProject";
 import { legacyProjectCwdPreferenceKey, useUiStateStore } from "../uiStateStore";
+import { stopSpeech, useSpeechPlayback } from "../readAloud";
 import {
   buildSidebarProjectPickerEntries,
   buildSidebarProjectSnapshots,
@@ -724,6 +726,7 @@ function OpenCommandPaletteDialog(props: {
   const isActionsOnly = deferredQuery.startsWith(">");
   const [highlightedItemValue, setHighlightedItemValue] = useState<string | null>(null);
   const clientSettings = useClientSettings();
+  const speechPlayback = useSpeechPlayback();
   const createProject = useAtomCommand(projectEnvironment.create, {
     reportFailure: false,
   });
@@ -1809,6 +1812,19 @@ function OpenCommandPaletteDialog(props: {
       icon: <SquarePenIcon className={ITEM_ICON_CLASS} />,
       addonIcon: <SquarePenIcon className={ADDON_ICON_CLASS} />,
       groups: [{ value: "projects", label: "Projects", items: projectThreadItems }],
+    });
+  }
+
+  if (speechPlayback !== null) {
+    actionItems.push({
+      kind: "action",
+      value: "action:stop-reading-aloud",
+      searchTerms: ["stop", "read aloud", "speech", "voice", "audio"],
+      title: "Stop reading aloud",
+      icon: <SquareIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        stopSpeech();
+      },
     });
   }
 

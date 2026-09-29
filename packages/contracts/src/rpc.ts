@@ -13,6 +13,13 @@ import {
   ProviderSetupError,
   ProviderSetupInput,
 } from "./providerSetup.ts";
+import {
+  TextToSpeechError,
+  TextToSpeechModelInput,
+  TextToSpeechModelState,
+  TextToSpeechSpeakInput,
+  TextToSpeechSpeech,
+} from "./textToSpeech.ts";
 
 import { ExternalLauncherError, LaunchEditorInput } from "./editor.ts";
 import {
@@ -370,6 +377,13 @@ export const WS_METHODS = {
   providerInstallSubscribe: "provider.install.subscribe",
   providerInstallRemove: "provider.install.remove",
 
+  // Local text-to-speech
+  textToSpeechSubscribe: "textToSpeech.subscribe",
+  textToSpeechInstall: "textToSpeech.install",
+  textToSpeechCancelInstall: "textToSpeech.cancelInstall",
+  textToSpeechRemove: "textToSpeech.remove",
+  textToSpeechSpeak: "textToSpeech.speak",
+
   // Powerhouse panel methods
   powerhouseListProjects: "powerhouse.listProjects",
   powerhouseListDocumentModels: "powerhouse.listDocumentModels",
@@ -652,6 +666,39 @@ const WsProviderInstallRemoveRpc = Rpc.make(WS_METHODS.providerInstallRemove, {
   payload: ProviderSetupInput,
   success: ProviderInstallState,
   error: ProviderSetupRpcError,
+});
+
+const TextToSpeechRpcError = Schema.Union([TextToSpeechError, EnvironmentAuthorizationError]);
+
+const WsTextToSpeechSubscribeRpc = Rpc.make(WS_METHODS.textToSpeechSubscribe, {
+  payload: Schema.Struct({}),
+  success: Schema.Array(TextToSpeechModelState),
+  error: TextToSpeechRpcError,
+  stream: true,
+});
+
+const WsTextToSpeechInstallRpc = Rpc.make(WS_METHODS.textToSpeechInstall, {
+  payload: TextToSpeechModelInput,
+  success: TextToSpeechModelState,
+  error: TextToSpeechRpcError,
+});
+
+const WsTextToSpeechCancelInstallRpc = Rpc.make(WS_METHODS.textToSpeechCancelInstall, {
+  payload: TextToSpeechModelInput,
+  success: TextToSpeechModelState,
+  error: TextToSpeechRpcError,
+});
+
+const WsTextToSpeechRemoveRpc = Rpc.make(WS_METHODS.textToSpeechRemove, {
+  payload: TextToSpeechModelInput,
+  success: TextToSpeechModelState,
+  error: TextToSpeechRpcError,
+});
+
+const WsTextToSpeechSpeakRpc = Rpc.make(WS_METHODS.textToSpeechSpeak, {
+  payload: TextToSpeechSpeakInput,
+  success: TextToSpeechSpeech,
+  error: TextToSpeechRpcError,
 });
 
 const WsServerUpdateServerRpc = Rpc.make(WS_METHODS.serverUpdateServer, {
@@ -1727,6 +1774,11 @@ export const WsRpcGroup = RpcGroup.make(
   WsProviderInstallCancelRpc,
   WsProviderInstallSubscribeRpc,
   WsProviderInstallRemoveRpc,
+  WsTextToSpeechSubscribeRpc,
+  WsTextToSpeechInstallRpc,
+  WsTextToSpeechCancelInstallRpc,
+  WsTextToSpeechRemoveRpc,
+  WsTextToSpeechSpeakRpc,
   WsServerUpdateServerRpc,
   WsServerUpdateServerWithProgressRpc,
   WsServerCommitDesktopUpdateRpc,

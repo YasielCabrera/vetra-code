@@ -1060,6 +1060,31 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "environment-data:provider:install-remove",
       tag: WS_METHODS.providerInstallRemove,
     }),
+    textToSpeechModels: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
+      label: "environment-data:text-to-speech:models",
+      tag: WS_METHODS.textToSpeechSubscribe,
+      idleTtlMs: 0,
+    }),
+    installTextToSpeechModel: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:text-to-speech:install",
+      tag: WS_METHODS.textToSpeechInstall,
+      concurrency: {
+        mode: "singleFlight",
+        key: ({ environmentId }) => environmentId,
+      },
+    }),
+    cancelTextToSpeechInstall: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:text-to-speech:cancel-install",
+      tag: WS_METHODS.textToSpeechCancelInstall,
+    }),
+    removeTextToSpeechModel: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:text-to-speech:remove",
+      tag: WS_METHODS.textToSpeechRemove,
+    }),
+    speakText: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:text-to-speech:speak",
+      tag: WS_METHODS.textToSpeechSpeak,
+    }),
     traceDiagnostics: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:trace-diagnostics",
       tag: WS_METHODS.serverGetTraceDiagnostics,

@@ -21,6 +21,7 @@ import { Route as SettingsWeb3RouteImport } from './routes/settings.web3'
 import { Route as SettingsStorageRouteImport } from './routes/settings.storage'
 import { Route as SettingsSourceControlRouteImport } from './routes/settings.source-control'
 import { Route as SettingsSnapShotRouteImport } from './routes/settings.snap-shot'
+import { Route as SettingsReadAloudRouteImport } from './routes/settings.read-aloud'
 import { Route as SettingsProvidersRouteImport } from './routes/settings.providers'
 import { Route as SettingsProjectsRouteImport } from './routes/settings.projects'
 import { Route as SettingsOpenSourceLicensesRouteImport } from './routes/settings.open-source-licenses'
@@ -96,6 +97,11 @@ const SettingsSourceControlRoute = SettingsSourceControlRouteImport.update({
 const SettingsSnapShotRoute = SettingsSnapShotRouteImport.update({
   id: '/snap-shot',
   path: '/snap-shot',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsReadAloudRoute = SettingsReadAloudRouteImport.update({
+  id: '/read-aloud',
+  path: '/read-aloud',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsProvidersRoute = SettingsProvidersRouteImport.update({
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/settings/open-source-licenses': typeof SettingsOpenSourceLicensesRoute
   '/settings/projects': typeof SettingsProjectsRoute
   '/settings/providers': typeof SettingsProvidersRoute
+  '/settings/read-aloud': typeof SettingsReadAloudRoute
   '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/settings/storage': typeof SettingsStorageRoute
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/settings/open-source-licenses': typeof SettingsOpenSourceLicensesRoute
   '/settings/projects': typeof SettingsProjectsRoute
   '/settings/providers': typeof SettingsProvidersRoute
+  '/settings/read-aloud': typeof SettingsReadAloudRoute
   '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/settings/storage': typeof SettingsStorageRoute
@@ -270,6 +278,7 @@ export interface FileRoutesById {
   '/settings/open-source-licenses': typeof SettingsOpenSourceLicensesRoute
   '/settings/projects': typeof SettingsProjectsRoute
   '/settings/providers': typeof SettingsProvidersRoute
+  '/settings/read-aloud': typeof SettingsReadAloudRoute
   '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/settings/storage': typeof SettingsStorageRoute
@@ -303,6 +312,7 @@ export interface FileRouteTypes {
     | '/settings/open-source-licenses'
     | '/settings/projects'
     | '/settings/providers'
+    | '/settings/read-aloud'
     | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/storage'
@@ -332,6 +342,7 @@ export interface FileRouteTypes {
     | '/settings/open-source-licenses'
     | '/settings/projects'
     | '/settings/providers'
+    | '/settings/read-aloud'
     | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/storage'
@@ -363,6 +374,7 @@ export interface FileRouteTypes {
     | '/settings/open-source-licenses'
     | '/settings/projects'
     | '/settings/providers'
+    | '/settings/read-aloud'
     | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/storage'
@@ -470,6 +482,13 @@ declare module '@tanstack/react-router' {
       path: '/snap-shot'
       fullPath: '/settings/snap-shot'
       preLoaderRoute: typeof SettingsSnapShotRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/read-aloud': {
+      id: '/settings/read-aloud'
+      path: '/read-aloud'
+      fullPath: '/settings/read-aloud'
+      preLoaderRoute: typeof SettingsReadAloudRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/providers': {
@@ -623,6 +642,7 @@ interface SettingsRouteChildren {
   SettingsOpenSourceLicensesRoute: typeof SettingsOpenSourceLicensesRoute
   SettingsProjectsRoute: typeof SettingsProjectsRoute
   SettingsProvidersRoute: typeof SettingsProvidersRoute
+  SettingsReadAloudRoute: typeof SettingsReadAloudRoute
   SettingsSnapShotRoute: typeof SettingsSnapShotRoute
   SettingsSourceControlRoute: typeof SettingsSourceControlRoute
   SettingsStorageRoute: typeof SettingsStorageRoute
@@ -640,6 +660,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsOpenSourceLicensesRoute: SettingsOpenSourceLicensesRoute,
   SettingsProjectsRoute: SettingsProjectsRoute,
   SettingsProvidersRoute: SettingsProvidersRoute,
+  SettingsReadAloudRoute: SettingsReadAloudRoute,
   SettingsSnapShotRoute: SettingsSnapShotRoute,
   SettingsSourceControlRoute: SettingsSourceControlRoute,
   SettingsStorageRoute: SettingsStorageRoute,

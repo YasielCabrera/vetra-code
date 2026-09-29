@@ -48,6 +48,7 @@ import {
   Web3RpcUrl,
 } from "@t3tools/web3/schema";
 import { PullRequestMergeMethod } from "./pullRequest.ts";
+import { TextToSpeechSettings, TextToSpeechSettingsPatch } from "./textToSpeech.ts";
 
 // ── Client Settings (local-only) ───────────────────────────────
 
@@ -1356,6 +1357,7 @@ export const ServerSettings = Schema.Struct({
   ),
   observability: ObservabilitySettings.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   web3Wallet: Web3WalletSettings,
+  textToSpeech: TextToSpeechSettings,
   // Keyed by a user-chosen id so a source keeps its rows across edits. Entries
   // this build cannot decode round-trip untouched, as provider instances do.
   usageLimitSources: Schema.Record(UsageLimitSourceId, UsageLimitSourceConfig).pipe(
@@ -1629,6 +1631,7 @@ export const ServerSettingsPatch = Schema.Struct({
       autoConnectLoopback: Schema.optionalKey(Schema.Boolean),
     }),
   ),
+  textToSpeech: Schema.optionalKey(TextToSpeechSettingsPatch),
   providers: Schema.optionalKey(
     Schema.Struct({
       codex: Schema.optionalKey(CodexSettingsPatch),

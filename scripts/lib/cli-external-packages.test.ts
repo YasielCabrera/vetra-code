@@ -83,7 +83,7 @@ describe("selectCliRuntimeExternalDependencies", () => {
   it("selects every external root declared by the server", () => {
     assert.deepStrictEqual(
       Object.keys(selectCliRuntimeExternalDependencies(serverPackageJson.dependencies)).sort(),
-      ["@ff-labs/fff-node", "@napi-rs/keyring", "node-pty"],
+      ["@ff-labs/fff-node", "@napi-rs/keyring", "node-pty", "onnxruntime-node", "phonemizer"],
     );
   });
 });
@@ -145,6 +145,22 @@ it.layer(NodeServices.layer)("external package dependency closure", (it) => {
     return installed;
   }).pipe(Effect.cached, Effect.runSync);
 
+  // `"parent>child": "-"` overrides in pnpm-workspace.yaml delete an edge from every
+  // install, including the staged production one, so a cut edge never reaches runtime.
+  const readCutDependencyEdges = Effect.gen(function* () {
+    const fileSystem = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const workspace = yield* fileSystem.readFileString(
+      path.resolve(
+        path.dirname(NodeURL.fileURLToPath(import.meta.url)),
+        "../../pnpm-workspace.yaml",
+      ),
+    );
+    return new Set(
+      [...workspace.matchAll(/^\s*"([^"]+>[^"]+)":\s*"-"\s*$/gm)].map((match) => match[1]),
+    );
+  }).pipe(Effect.cached, Effect.runSync);
+
   // Runtime-external only. The build-only entries resolve `bun:*` and are never
   // loaded by Node, so their closure genuinely does not need to be external.
   const isRuntimeExternal = (name: string) =>
@@ -176,6 +192,7 @@ it.layer(NodeServices.layer)("external package dependency closure", (it) => {
   it.effect("keeps every runtime dependency of an external package external too", () =>
     Effect.gen(function* () {
       const installed = yield* readInstalledPackages;
+      const cutDependencyEdges = yield* readCutDependencyEdges;
       const violations: string[] = [];
       const seen = new Set<string>();
       // Seeded from what is actually installed and matches a prefix, so scoped
@@ -197,6 +214,7 @@ it.layer(NodeServices.layer)("external package dependency closure", (it) => {
           ...(manifest.peerDependencies ?? {}),
         };
         for (const dependency of Object.keys(declared)) {
+          if (cutDependencyEdges.has(`${name}>${dependency}`)) continue;
           if (!isRuntimeExternal(dependency)) {
             violations.push(`${name} -> ${dependency}`);
           }

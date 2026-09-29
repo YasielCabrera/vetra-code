@@ -975,15 +975,30 @@ export const DESKTOP_FILE_EXCLUSIONS = [
 export const MAC_FILE_EXCLUSIONS = [
   "!**/node_modules/node-pty/prebuilds/win32-*/**/*",
   "!**/node_modules/node-pty/third_party/conpty/**/*",
+  // onnxruntime-node ships every platform's runtime in one package (about 200 MB of it foreign).
+  "!**/node_modules/onnxruntime-node/bin/napi-v6/win32/**/*",
+  "!**/node_modules/onnxruntime-node/bin/napi-v6/linux/**/*",
 ] as const;
 // Linux builds node-pty from source, so every prebuild in the package is for
 // another platform (58 MB of it Windows debug symbols).
 export const LINUX_FILE_EXCLUSIONS = [
-  ...MAC_FILE_EXCLUSIONS,
+  "!**/node_modules/node-pty/prebuilds/win32-*/**/*",
+  "!**/node_modules/node-pty/third_party/conpty/**/*",
   "!**/node_modules/node-pty/prebuilds/darwin-*/**/*",
+  "!**/node_modules/onnxruntime-node/bin/napi-v6/win32/**/*",
+  "!**/node_modules/onnxruntime-node/bin/napi-v6/darwin/**/*",
 ] as const;
 
-// node-pty publishes both Darwin prebuilds in one package. Single-architecture
+export function resolveLinuxFileExclusions(arch?: typeof BuildArch.Type) {
+  if (arch !== "arm64" && arch !== "x64") return LINUX_FILE_EXCLUSIONS;
+  const unusedArch = arch === "arm64" ? "x64" : "arm64";
+  return [
+    ...LINUX_FILE_EXCLUSIONS,
+    `!**/node_modules/onnxruntime-node/bin/napi-v6/linux/${unusedArch}/**/*`,
+  ];
+}
+
+// node-pty and onnxruntime-node publish both Darwin builds in one package. Single-architecture
 // apps only need the native target; universal apps need both. An omitted arch
 // preserves the existing common exclusions for callers that only inspect the
 // generic platform config.
@@ -993,7 +1008,11 @@ export function resolveMacFileExclusions(arch?: typeof BuildArch.Type) {
   }
 
   const unusedArch = arch === "arm64" ? "x64" : "arm64";
-  return [...MAC_FILE_EXCLUSIONS, `!**/node_modules/node-pty/prebuilds/darwin-${unusedArch}/**/*`];
+  return [
+    ...MAC_FILE_EXCLUSIONS,
+    `!**/node_modules/node-pty/prebuilds/darwin-${unusedArch}/**/*`,
+    `!**/node_modules/onnxruntime-node/bin/napi-v6/darwin/${unusedArch}/**/*`,
+  ];
 }
 // Windows ships the server tree (bundle + node_modules) as a separate
 // resources/server.asar sidecar instead of loose files: the NSIS installer
@@ -1024,13 +1043,17 @@ export function resolveWindowsServerAsarIgnoreGlobs(arch: typeof BuildArch.Type)
   const unusedArch = arch === "arm64" ? "x64" : "arm64";
   const unusedPrebuild = `**/node_modules/node-pty/prebuilds/win32-${unusedArch}`;
   const unusedConpty = `**/node_modules/node-pty/third_party/conpty/*/win10-${unusedArch}`;
+  const onnx = "**/node_modules/onnxruntime-node/bin/napi-v6";
 
   return [
     ...WINDOWS_SERVER_ASAR_IGNORE_GLOBS,
-    unusedPrebuild,
-    `${unusedPrebuild}/**`,
-    unusedConpty,
-    `${unusedConpty}/**`,
+    ...[
+      unusedPrebuild,
+      unusedConpty,
+      `${onnx}/darwin`,
+      `${onnx}/linux`,
+      `${onnx}/win32/${unusedArch}`,
+    ].flatMap((glob) => [glob, `${glob}/**`]),
   ];
 }
 
@@ -2653,7 +2676,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       ...(platform === "mac"
         ? resolveMacFileExclusions(arch)
         : platform === "linux"
-          ? LINUX_FILE_EXCLUSIONS
+          ? resolveLinuxFileExclusions(arch)
           : []),
     ],
     directories: {

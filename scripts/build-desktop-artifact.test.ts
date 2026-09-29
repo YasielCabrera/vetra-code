@@ -56,6 +56,7 @@ import {
   resolveDesktopWebAssetBrand,
   resolveResourceMonitorRustTargets,
   resolveWindowsServerAsarIgnoreGlobs,
+  resolveLinuxFileExclusions,
   resourceMonitorExecutableName,
   resolveGitHubPublishConfig,
   resolveMockUpdateServerPort,
@@ -723,15 +724,28 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
 
-  it("excludes foreign node-pty prebuilds from macOS and Linux packages", () => {
-    assert.deepStrictEqual(MAC_FILE_EXCLUSIONS, [
-      "!**/node_modules/node-pty/prebuilds/win32-*/**/*",
-      "!**/node_modules/node-pty/third_party/conpty/**/*",
-    ]);
-    assert.deepStrictEqual(LINUX_FILE_EXCLUSIONS, [
-      ...MAC_FILE_EXCLUSIONS,
-      "!**/node_modules/node-pty/prebuilds/darwin-*/**/*",
-    ]);
+  it("excludes foreign native prebuilds from macOS and Linux packages", () => {
+    const foreign = (platform: "mac" | "linux", file: string) =>
+      (platform === "mac" ? MAC_FILE_EXCLUSIONS : LINUX_FILE_EXCLUSIONS).some((glob) =>
+        NodePath.matchesGlob(file, glob.slice(1)),
+      );
+    const onnx = (target: string) =>
+      `node_modules/onnxruntime-node/bin/napi-v6/${target}/onnxruntime_binding.node`;
+
+    assert.isTrue(foreign("mac", "node_modules/node-pty/prebuilds/win32-x64/pty.node"));
+    assert.isTrue(foreign("mac", onnx("win32/x64")));
+    assert.isTrue(foreign("mac", onnx("linux/arm64")));
+    assert.isFalse(foreign("mac", onnx("darwin/arm64")));
+    assert.isTrue(foreign("linux", "node_modules/node-pty/prebuilds/darwin-arm64/pty.node"));
+    assert.isTrue(foreign("linux", onnx("darwin/arm64")));
+    assert.isTrue(foreign("linux", onnx("win32/arm64")));
+    assert.isFalse(foreign("linux", onnx("linux/x64")));
+
+    const linuxX64 = resolveLinuxFileExclusions("x64");
+    assert.isTrue(
+      linuxX64.some((glob) => NodePath.matchesGlob(onnx("linux/arm64"), glob.slice(1))),
+    );
+    assert.isFalse(linuxX64.some((glob) => NodePath.matchesGlob(onnx("linux/x64"), glob.slice(1))));
   });
 
   it("unpacks native binaries while keeping their JavaScript and metadata archived", () => {
@@ -807,23 +821,6 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     );
   });
 
-  it("excludes node-pty binaries for the other Windows architecture", () => {
-    assert.deepStrictEqual(resolveWindowsServerAsarIgnoreGlobs("x64"), [
-      ...WINDOWS_SERVER_ASAR_IGNORE_GLOBS,
-      "**/node_modules/node-pty/prebuilds/win32-arm64",
-      "**/node_modules/node-pty/prebuilds/win32-arm64/**",
-      "**/node_modules/node-pty/third_party/conpty/*/win10-arm64",
-      "**/node_modules/node-pty/third_party/conpty/*/win10-arm64/**",
-    ]);
-    assert.deepStrictEqual(resolveWindowsServerAsarIgnoreGlobs("arm64"), [
-      ...WINDOWS_SERVER_ASAR_IGNORE_GLOBS,
-      "**/node_modules/node-pty/prebuilds/win32-x64",
-      "**/node_modules/node-pty/prebuilds/win32-x64/**",
-      "**/node_modules/node-pty/third_party/conpty/*/win10-x64",
-      "**/node_modules/node-pty/third_party/conpty/*/win10-x64/**",
-    ]);
-  });
-
   it.effect("keeps target native files while excluding the other Windows architecture", () =>
     Effect.scoped(
       Effect.gen(function* () {
@@ -838,6 +835,9 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           "node_modules/node-pty/prebuilds/win32-arm64/conpty/OpenConsole.exe",
           "node_modules/node-pty/third_party/conpty/1.0.0/win10-x64/OpenConsole.exe",
           "node_modules/node-pty/third_party/conpty/1.0.0/win10-arm64/OpenConsole.exe",
+          ...["win32/x64", "win32/arm64", "darwin/arm64", "linux/x64"].map(
+            (target) => `node_modules/onnxruntime-node/bin/napi-v6/${target}/onnxruntime.dll`,
+          ),
         ];
 
         for (const nativeFile of nativeFiles) {
@@ -866,6 +866,9 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
             path.join(unpackedRoot, "node_modules/node-pty/third_party/conpty/1.0.0/win10-arm64"),
           ),
         );
+        const onnx = path.join(unpackedRoot, "node_modules/onnxruntime-node/bin/napi-v6");
+        assert.deepStrictEqual(yield* fs.readDirectory(onnx), ["win32"]);
+        assert.deepStrictEqual(yield* fs.readDirectory(path.join(onnx, "win32")), ["x64"]);
       }),
     ),
   );

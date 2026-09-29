@@ -41,6 +41,8 @@ overrides:
   '@exodus/bytes>@noble/hashes': 1.8.0
   '@react-navigation/core': 7.21.13
   dbus-next>usocket: '-'
+  onnxruntime-node>adm-zip: '-'
+  onnxruntime-node>global-agent: '-'
   '@anthropic-ai/claude-agent-sdk>@anthropic-ai/claude-agent-sdk-darwin-arm64': '-'
   '@anthropic-ai/claude-agent-sdk>@anthropic-ai/claude-agent-sdk-darwin-x64': '-'
   '@anthropic-ai/claude-agent-sdk>@anthropic-ai/claude-agent-sdk-linux-arm64': '-'
@@ -228,12 +230,18 @@ importers:
       node-pty:
         specifier: ^1.2.0-beta.15
         version: 1.2.0-beta.15
+      onnxruntime-node:
+        specifier: 1.30.0
+        version: 1.30.0
       pg:
         specifier: 8.23.0
         version: 8.23.0
       pg-cursor:
         specifier: 2.22.0
         version: 2.22.0(pg@8.23.0)
+      phonemizer:
+        specifier: 1.2.1
+        version: 1.2.1
       stream-chain:
         specifier: ^4.2.5
         version: 4.2.5
@@ -8622,6 +8630,13 @@ packages:
   oniguruma-to-es@4.3.6:
     resolution: {integrity: sha512-csuQ9x3Yr0cEIs/Zgx/OEt9iBw9vqIunAPQkx19R/fiMq2oGVTgcMqO/V3Ybqefr1TBvosI6jU539ksaBULJyA==}
 
+  onnxruntime-common@1.30.0:
+    resolution: {integrity: sha512-7fdVWjAID1dVhH/G8qK3APARunV4VkBFoCQAP7qp4Wkab0mrorvmc+sqiT+mKXOzDqdjN5j+/Z9nb4gzNPWcyA==}
+
+  onnxruntime-node@1.30.0:
+    resolution: {integrity: sha512-twhs1C2C/BFkz1yc5OY0KIU2GUq6DURO7hD4bx5Q2Qy3nAMJwRXW8xU3NVczE29VA9lolLOYepoD8fjTGOfIqw==}
+    os: [win32, darwin, linux]
+
   open@7.4.2:
     resolution: {integrity: sha512-MVHddDVweXZF3awtlAS+6pgKLlm/JgxZ90+/NBurBoQctVOOB/zDdVjcyPzQ+0laDGbsWgrRkflI65sQeOgT9Q==}
     engines: {node: '>=8'}
@@ -8818,6 +8833,9 @@ packages:
 
   pgpass@1.0.5:
     resolution: {integrity: sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==}
+
+  phonemizer@1.2.1:
+    resolution: {integrity: sha512-v0KJ4mi2T4Q7eJQ0W15Xd4G9k4kICSXE8bpDeJ8jisL4RyJhNWsweKTOi88QXFc4r4LZlz5jVL5lCHhkpdT71A==}
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -18655,6 +18673,12 @@ snapshots:
       regex: 6.1.0
       regex-recursion: 6.0.2
 
+  onnxruntime-common@1.30.0: {}
+
+  onnxruntime-node@1.30.0:
+    dependencies:
+      onnxruntime-common: 1.30.0
+
   open@7.4.2:
     dependencies:
       is-docker: 2.2.1
@@ -18997,6 +19021,8 @@ snapshots:
   pgpass@1.0.5:
     dependencies:
       split2: 4.2.0
+
+  phonemizer@1.2.1: {}
 
   picocolors@1.1.1: {}
 

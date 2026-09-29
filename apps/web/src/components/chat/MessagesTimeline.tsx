@@ -164,6 +164,8 @@ import {
   timelineContentOverflowsViewport,
 } from "./timelineScrollAnchoring";
 import { MessageCopyButton } from "./MessageCopyButton";
+import { MessageReadAloudButton } from "./MessageReadAloudButton";
+import { type ReadAloud, stopSpeech, useReadAloud } from "../../readAloud";
 import { PierreEntryIcon } from "./PierreEntryIcon";
 import { inferEntryKindFromPath } from "../../pierre-icons";
 import { AssistantSelectionToolbar } from "./AssistantSelectionToolbar";
@@ -267,6 +269,7 @@ import { ComputerUseAppIcon } from "~/components/Icons";
 // ---------------------------------------------------------------------------
 
 interface TimelineRowSharedState {
+  readAloud: ReadAloud;
   citationRequest: AssistantCitationTarget | null;
   listRef: React.RefObject<LegendListRef | null>;
   timestampFormat: TimestampFormat;
@@ -527,6 +530,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   onRemoveQueuedMessage = NOOP_QUEUED_MESSAGE_ACTION,
 }: MessagesTimelineProps) {
   const listIdentityKey = displayThreadKey ?? routeThreadKey;
+  // A reply read aloud belongs to its thread; leaving the thread takes its stop button away.
+  useEffect(() => stopSpeech, [routeThreadKey]);
+  const readAloud = useReadAloud(activeThreadEnvironmentId);
   const rememberedPosition = useMemo(
     () => readTimelinePosition(listIdentityKey),
     [listIdentityKey],
@@ -1140,6 +1146,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
 
   const sharedState = useMemo<TimelineRowSharedState>(
     () => ({
+      readAloud,
       citationRequest: readyCitationRequest,
       listRef,
       timestampFormat,
@@ -1177,6 +1184,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       onRemoveQueuedMessage,
     }),
     [
+      readAloud,
       readyCitationRequest,
       listRef,
       timestampFormat,
@@ -2472,6 +2480,13 @@ function AssistantMessageMeta({
         showCopyButton={showCopyButton}
         streaming={copyStreaming}
       />
+      {!message.streaming && (
+        <MessageReadAloudButton
+          readAloud={ctx.readAloud}
+          messageId={message.id}
+          text={message.text}
+        />
+      )}
       {!message.streaming && (
         <Tooltip>
           <TooltipTrigger render={<p className="text-muted-foreground text-xs tabular-nums" />}>

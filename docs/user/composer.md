@@ -89,6 +89,20 @@ The quoted text and comment count toward the message limit.
 Mobile displays saved quotes and comments, but does not create citations or
 navigate to their sources.
 
+## Read a reply aloud
+
+Open **Settings → Read aloud**, choose an environment, and download the voice model (about
+340 MB). The model is stored on that environment's machine and runs on its CPU, so replies are
+never sent to a speech service. Then turn on **Read aloud** and choose a voice and reading speed.
+
+Any finished assistant reply can then be read aloud from its actions, next to Copy. Audio starts
+with the first sentence while the rest is still being generated, code blocks are skipped, and file
+paths are read as just the file name. To stop, use the same action again, run **Stop reading
+aloud** from the command palette, or switch threads.
+
+Read aloud speaks English. It is not available when the environment runs on an Intel Mac.
+Removing the model in Settings deletes its files.
+
 ## Recall a sent prompt
 
 Press `ArrowUp` in an empty composer to bring back the last prompt you sent in this thread. Press

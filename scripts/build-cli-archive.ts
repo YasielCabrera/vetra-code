@@ -221,14 +221,26 @@ const stageRuntimeExternals = Effect.fn("stageRuntimeExternals")(function* (inpu
 
   // pnpm's bookkeeping and the manifest only matter to pnpm; the runtime
   // resolves packages by directory. node-pty ships every platform's prebuilds
-  // in one package (58 MB); only the archive's own platform loads.
+  // in one package (58 MB), and onnxruntime-node every platform's runtime
+  // (about 300 MB); only the archive's own platform loads.
   const platformKey = cliArchivePlatformKey(input.platform, input.arch);
-  const prebuildsDir = path.join(input.stageDir, "node_modules/node-pty/prebuilds");
-  const foreignPrebuilds = (yield* fs
-    .readDirectory(prebuildsDir)
-    .pipe(Effect.orElseSucceed((): ReadonlyArray<string> => []))).filter(
-    (entry) => entry !== platformKey,
-  );
+  const list = (directory: string) =>
+    fs
+      .readDirectory(path.join(input.stageDir, directory))
+      .pipe(Effect.orElseSucceed((): ReadonlyArray<string> => []));
+  const prebuilds = "node_modules/node-pty/prebuilds";
+  const foreignPrebuilds = (yield* list(prebuilds))
+    .filter((entry) => entry !== platformKey)
+    .map((entry) => `${prebuilds}/${entry}`);
+  const onnxBinaries = "node_modules/onnxruntime-node/bin/napi-v6";
+  const foreignOnnxBinaries: string[] = [];
+  for (const platform of yield* list(onnxBinaries)) {
+    for (const arch of yield* list(`${onnxBinaries}/${platform}`)) {
+      if (`${platform}-${arch}` !== platformKey) {
+        foreignOnnxBinaries.push(`${onnxBinaries}/${platform}/${arch}`);
+      }
+    }
+  }
   for (const entry of [
     "package.json",
     "pnpm-workspace.yaml",
@@ -238,7 +250,8 @@ const stageRuntimeExternals = Effect.fn("stageRuntimeExternals")(function* (inpu
     "node_modules/.modules.yaml",
     "node_modules/.pnpm-workspace-state-v1.json",
     "node_modules/.bin",
-    ...foreignPrebuilds.map((entry) => `node_modules/node-pty/prebuilds/${entry}`),
+    ...foreignPrebuilds,
+    ...foreignOnnxBinaries,
   ]) {
     yield* fs.remove(path.join(input.stageDir, entry), { recursive: true, force: true });
   }

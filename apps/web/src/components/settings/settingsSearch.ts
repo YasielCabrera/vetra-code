@@ -15,6 +15,7 @@ export type SettingsPath =
   | "/settings/projects"
   | "/settings/general"
   | "/settings/appearance"
+  | "/settings/read-aloud"
   | "/settings/keybindings"
   | "/settings/snap-shot"
   | "/settings/providers"
@@ -87,6 +88,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/projects": "Project",
   "/settings/general": "General",
   "/settings/appearance": "Appearance",
+  "/settings/read-aloud": "Read aloud",
   "/settings/keybindings": "Keybindings",
   "/settings/snap-shot": "SnapShots",
   "/settings/providers": "Providers",
@@ -843,6 +845,33 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["restore reopen deleted history projects"],
   },
   {
+    id: "read-aloud",
+    title: "Read aloud",
+    to: "/settings/read-aloud",
+    searchTerms: ["text to speech tts speak listen voice kokoro"],
+  },
+  {
+    id: "read-aloud-model",
+    title: "Voice model",
+    to: "/settings/read-aloud",
+    searchTerms: ["text to speech download kokoro local model"],
+    scope: "environment",
+  },
+  {
+    id: "read-aloud-voice",
+    title: "Voice",
+    to: "/settings/read-aloud",
+    searchTerms: ["text to speech speaker accent preview"],
+    scope: "environment",
+  },
+  {
+    id: "read-aloud-speed",
+    title: "Reading speed",
+    to: "/settings/read-aloud",
+    searchTerms: ["text to speech rate faster slower pace"],
+    scope: "environment",
+  },
+  {
     id: "web3-wallet-enabled",
     title: "Preview wallet",
     to: "/settings/web3",
@@ -888,6 +917,8 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/projects": "project",
   "/settings/general": null,
   "/settings/appearance": null,
+  // The model is downloaded to, and speaks from, one environment's server.
+  "/settings/read-aloud": "environment",
   "/settings/snap-shot": null,
   // Keybindings fan out to the selection; Providers shows the representative
   // environment at any selection. Neither needs a particular scope to render.

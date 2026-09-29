@@ -20,6 +20,7 @@ import {
   KeyboardIcon,
   Link2Icon,
   PaletteIcon,
+  Volume2Icon,
   SearchIcon,
   Settings2Icon,
   WalletIcon,
@@ -79,6 +80,7 @@ const SETTINGS_SECTION_ICONS: Readonly<
 > = {
   "/settings/general": Settings2Icon,
   "/settings/appearance": PaletteIcon,
+  "/settings/read-aloud": Volume2Icon,
   "/settings/projects": PanelsTopLeftIcon,
   "/settings/keybindings": KeyboardIcon,
   "/settings/snap-shot": SnapShotIcon,
