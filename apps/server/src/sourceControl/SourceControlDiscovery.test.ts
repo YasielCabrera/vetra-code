@@ -423,7 +423,7 @@ it.effect("reports implemented tools separately from locally available executabl
             account: Option.none(),
             host: Option.some("bitbucket.org"),
             detail: Option.some(
-              "Set VETRA_BITBUCKET_EMAIL and VETRA_BITBUCKET_API_TOKEN, or VETRA_BITBUCKET_ACCESS_TOKEN.",
+              "Add a Bitbucket token in Settings → Source Control, or set the VETRA_BITBUCKET_* environment variables on the server.",
             ),
           }),
         },

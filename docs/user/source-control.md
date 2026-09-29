@@ -182,25 +182,28 @@ You can now clone, publish, and create pull requests.
 
 ### For Bitbucket
 
-Bitbucket uses tokens instead of a CLI tool. Two options, both set as environment variables on the
-machine running Vetra Code.
+Open **Settings → Source Control**, expand **Bitbucket**, and choose how to sign in:
 
-Recommended, a Bitbucket access token:
+- **Access token**: a token created for one repository, project, or workspace. It can only reach
+  what it was created for.
+- **API token**: an Atlassian API token for your account, used with your account email. It can
+  reach every repository you can. Give it read/write access to repositories and pull requests, plus
+  user read access (`read:user:bitbucket`).
+
+Choose **Save**; the change applies right away, and replaces any credential saved with the other
+method. Credentials are saved on the environment's server, so select a remote environment to
+configure it. Saved tokens can't be viewed again; enter a new one to replace it, or choose
+**Remove**.
+
+If no credentials are saved, Vetra Code falls back to these variables in the server's environment.
+Restart the server after changing them:
 
 ```bash
 export VETRA_BITBUCKET_ACCESS_TOKEN="your-access-token"
-```
-
-Or use an Atlassian account email and API token with read/write access to repositories and pull
-requests, plus user read access (`read:user:bitbucket`):
-
-```bash
+# or
 export VETRA_BITBUCKET_EMAIL="you@example.com"
 export VETRA_BITBUCKET_API_TOKEN="your-token"
 ```
-
-If both are set, the access token wins. Restart Vetra Code and verify the connection in **Source
-Control settings**.
 
 ### Azure DevOps
 
@@ -227,7 +230,7 @@ toast or from the banner above the composer.
 
 - **Provider shows "Not authenticated"** – Run the login command for that provider (e.g., `gh auth login`) in a terminal on the server, then rescan in Settings
 - **GitHub says it could not verify sign-in status** – Vetra Code needs GitHub CLI 2.81.0 or newer to check sign-in status. Update `gh` (e.g., `brew upgrade gh`), then rescan
-- **Bitbucket not connecting** – Double-check your environment variables are set in the correct shell profile and the server was restarted
+- **Bitbucket not connecting** – Check the credentials saved in **Settings → Source Control**, or, if you use environment variables, confirm they are set in the server's shell profile and the server was restarted
 - **Can't push to a remote** – Verify your Git remote URL matches the provider you've authenticated with (SSH vs HTTPS remotes may need different credentials)
 
 Choose the writing style and model in **Settings → Source Control**. **Repository conventions**
@@ -278,7 +281,8 @@ does not show its diff, so marks are made and read on web and desktop.
 ## Troubleshooting
 
 - **Not authenticated:** run the provider's login command on the server, then rescan. For Bitbucket,
-  confirm the running server received the environment variables.
+  check the credentials saved in Settings → Source Control, or confirm the running server received
+  the environment variables.
 - **GitHub sign-in cannot be verified:** update GitHub CLI to at least 2.81.0.
 - **Push fails despite a connected account:** check the Git remote's credentials. SSH and HTTPS
   remotes can require separate setup from the hosting provider's API access.

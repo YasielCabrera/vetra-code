@@ -95,6 +95,7 @@ patchedDependencies:
   '@pierre/trees@1.0.0-beta.4': c094fc731b690e1b2c36653b7d14355ae700980b0e714a323e290879c20026ed
   dbus-next@0.10.2: 5eb25c54ee772459516309da80f71dfe5afa3adbb4ae8f88d28bef43f8ef469d
   effect@4.0.0-rc.115: 0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5
+  node-pty@1.2.0-beta.15: f2fe901c61cde17986240002d05c172d5d0272d83ffaab8d0ebeb922763be414
 
 importers:
 
@@ -229,7 +230,7 @@ importers:
         version: 4.0.0-rc.115(patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5)
       node-pty:
         specifier: ^1.2.0-beta.15
-        version: 1.2.0-beta.15
+        version: 1.2.0-beta.15(patch_hash=f2fe901c61cde17986240002d05c172d5d0272d83ffaab8d0ebeb922763be414)
       onnxruntime-node:
         specifier: 1.30.0
         version: 1.30.0
@@ -18566,7 +18567,7 @@ snapshots:
 
   node-int64@0.4.0: {}
 
-  node-pty@1.2.0-beta.15:
+  node-pty@1.2.0-beta.15(patch_hash=f2fe901c61cde17986240002d05c172d5d0272d83ffaab8d0ebeb922763be414):
     dependencies:
       node-addon-api: 7.1.1
 

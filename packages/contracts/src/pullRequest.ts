@@ -1277,9 +1277,9 @@ const PROVIDER_REQUIREMENT: Partial<
   },
   bitbucket: {
     missing:
-      "Bitbucket needs API credentials on the server. Set VETRA_BITBUCKET_EMAIL and VETRA_BITBUCKET_API_TOKEN, or VETRA_BITBUCKET_ACCESS_TOKEN.",
+      "Bitbucket needs API credentials on the server. Add them in Settings → Source Control.",
     unauthenticated:
-      "Bitbucket rejected the configured credentials. Check VETRA_BITBUCKET_EMAIL and VETRA_BITBUCKET_API_TOKEN.",
+      "Bitbucket rejected the configured credentials. Check them in Settings → Source Control.",
   },
 };
 

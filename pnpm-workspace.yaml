@@ -171,6 +171,7 @@ patchedDependencies:
   "@pierre/trees@1.0.0-beta.4": patches/@pierre%2Ftrees@1.0.0-beta.4.patch
   dbus-next@0.10.2: patches/dbus-next@0.10.2.patch
   effect@4.0.0-rc.115: patches/effect@4.0.0-rc.115.patch
+  node-pty@1.2.0-beta.15: patches/node-pty@1.2.0-beta.15.patch
 
 peerDependencyRules:
   allowAny:
