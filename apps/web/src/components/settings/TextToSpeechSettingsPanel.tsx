@@ -232,7 +232,7 @@ function ReadAloudSettings({ environmentId }: { environmentId: EnvironmentId }) 
             >
               {previewing === "loading" ? (
                 <Spinner />
-              ) : previewing === "playing" ? (
+              ) : previewing ? (
                 <SquareIcon />
               ) : (
                 <Volume2Icon />

@@ -97,8 +97,9 @@ never sent to a speech service. Then turn on **Read aloud** and choose a voice a
 
 Any finished assistant reply can then be read aloud from its actions, next to Copy. Audio starts
 with the first sentence while the rest is still being generated, code blocks are skipped, and file
-paths are read as just the file name. To stop, use the same action again, run **Stop reading
-aloud** from the command palette, or switch threads.
+paths are read as just the file name. While it plays, **Pause** keeps your place and **Resume**
+continues from the same word. **Stop** ends the reading, so the next one starts from the
+beginning. The command palette has the same actions, and switching threads stops reading.
 
 Read aloud speaks English. It is not available when the environment runs on an Intel Mac.
 Removing the model in Settings deletes its files.

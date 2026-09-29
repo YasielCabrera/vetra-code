@@ -56,6 +56,8 @@ import {
   MonitorIcon,
   MoonIcon,
   PaletteIcon,
+  PauseIcon,
+  PlayIcon,
   SettingsIcon,
   SquareIcon,
   SquarePenIcon,
@@ -196,7 +198,7 @@ import { ComposerHandleContext, useComposerHandleContext } from "../composerHand
 import type { ChatComposerHandle } from "./chat/ChatComposer";
 import { getProjectOrderKey, selectProjectGroupingSettings } from "../logicalProject";
 import { legacyProjectCwdPreferenceKey, useUiStateStore } from "../uiStateStore";
-import { stopSpeech, useSpeechPlayback } from "../readAloud";
+import { pauseSpeech, resumeSpeech, stopSpeech, useSpeechPlayback } from "../readAloud";
 import {
   buildSidebarProjectPickerEntries,
   buildSidebarProjectSnapshots,
@@ -1812,6 +1814,32 @@ function OpenCommandPaletteDialog(props: {
       icon: <SquarePenIcon className={ITEM_ICON_CLASS} />,
       addonIcon: <SquarePenIcon className={ADDON_ICON_CLASS} />,
       groups: [{ value: "projects", label: "Projects", items: projectThreadItems }],
+    });
+  }
+
+  if (speechPlayback?.phase === "playing") {
+    actionItems.push({
+      kind: "action",
+      value: "action:pause-reading-aloud",
+      searchTerms: ["pause", "read aloud", "speech", "voice", "audio"],
+      title: "Pause reading aloud",
+      icon: <PauseIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        pauseSpeech();
+      },
+    });
+  }
+
+  if (speechPlayback?.phase === "paused") {
+    actionItems.push({
+      kind: "action",
+      value: "action:resume-reading-aloud",
+      searchTerms: ["resume", "continue", "play", "read aloud", "speech", "voice", "audio"],
+      title: "Resume reading aloud",
+      icon: <PlayIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        resumeSpeech();
+      },
     });
   }
 

@@ -16,7 +16,7 @@ import { useAtomCommand } from "./state/use-atom-command";
 export interface SpeechPlayback {
   /** Caller-chosen identity of what is being read, e.g. one markdown block. */
   readonly key: string;
-  readonly phase: "loading" | "playing";
+  readonly phase: "loading" | "playing" | "paused";
 }
 
 export interface PreparedSpeech {
@@ -67,6 +67,22 @@ export function stopSpeech() {
   active.abort.abort();
   for (const source of active.sources) source.stop();
   end(active);
+}
+
+/**
+ * Freezes the audio clock mid-word. Chunks still streaming in queue up behind it, and
+ * `resumeSpeech` carries on from the same sample.
+ */
+export function pauseSpeech() {
+  if (playback?.phase !== "playing") return;
+  void audioContext?.suspend();
+  publish({ key: playback.key, phase: "paused" });
+}
+
+export function resumeSpeech() {
+  if (playback?.phase !== "paused") return;
+  void audioContext?.resume();
+  publish({ key: playback.key, phase: "playing" });
 }
 
 /**

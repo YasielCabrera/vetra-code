@@ -1,7 +1,14 @@
 import type { MessageId } from "@t3tools/contracts";
-import { SquareIcon, Volume2Icon } from "lucide-react";
+import { PauseIcon, PlayIcon, SquareIcon, Volume2Icon } from "lucide-react";
+import type { ReactNode } from "react";
 
-import { type ReadAloud, useSpeechPhase } from "../../readAloud";
+import {
+  pauseSpeech,
+  type ReadAloud,
+  resumeSpeech,
+  stopSpeech,
+  useSpeechPhase,
+} from "../../readAloud";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -36,7 +43,41 @@ function replySpeechText(messageId: MessageId, markdown: string) {
   return clone.textContent?.trim() ?? "";
 }
 
-/** Reads a whole assistant reply aloud from the reply's action bar, beside Copy. */
+function ReadAloudAction({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost-muted"
+            aria-label={label}
+            onClick={onClick}
+          />
+        }
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipPopup>
+        <p>{label}</p>
+      </TooltipPopup>
+    </Tooltip>
+  );
+}
+
+/**
+ * Reads a whole assistant reply aloud from the reply's action bar, beside Copy. Once
+ * audio plays it splits into pause or resume, which keeps the place, and stop.
+ */
 export function MessageReadAloudButton({
   readAloud,
   messageId,
@@ -49,32 +90,32 @@ export function MessageReadAloudButton({
   const key = `message:${messageId}`;
   const phase = useSpeechPhase(key);
   if (!readAloud.available) return null;
-  const label = phase === null ? "Read aloud" : "Stop reading";
+
+  if (phase === null || phase === "loading") {
+    return (
+      <ReadAloudAction
+        label={phase === null ? "Read aloud" : "Stop reading"}
+        onClick={() => readAloud.toggle(key, replySpeechText(messageId, text))}
+      >
+        {phase === null ? <Volume2Icon className="size-3" /> : <Spinner />}
+      </ReadAloudAction>
+    );
+  }
 
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            type="button"
-            size="xs"
-            variant="ghost-muted"
-            aria-label={label}
-            onClick={() => readAloud.toggle(key, replySpeechText(messageId, text))}
-          />
-        }
-      >
-        {phase === "loading" ? (
-          <Spinner />
-        ) : phase === "playing" ? (
-          <SquareIcon className="size-3" />
-        ) : (
-          <Volume2Icon className="size-3" />
-        )}
-      </TooltipTrigger>
-      <TooltipPopup>
-        <p>{label}</p>
-      </TooltipPopup>
-    </Tooltip>
+    <>
+      {phase === "playing" ? (
+        <ReadAloudAction label="Pause reading" onClick={pauseSpeech}>
+          <PauseIcon className="size-3" />
+        </ReadAloudAction>
+      ) : (
+        <ReadAloudAction label="Resume reading" onClick={resumeSpeech}>
+          <PlayIcon className="size-3" />
+        </ReadAloudAction>
+      )}
+      <ReadAloudAction label="Stop reading" onClick={stopSpeech}>
+        <SquareIcon className="size-3" />
+      </ReadAloudAction>
+    </>
   );
 }
