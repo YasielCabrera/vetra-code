@@ -51,8 +51,8 @@ catalog:
   tailwindcss: 4.3.3
   typescript: 7.0.2
   viem: 2.55.11
-  vite: npm:@voidzero-dev/vite-plus-core@0.3.3
-  vite-plus: 0.3.3
+  vite: npm:@voidzero-dev/vite-plus-core@1.0.0
+  vite-plus: 1.0.0
   yaml: ^2.9.0
 
 minimumReleaseAgeExclude:
@@ -164,6 +164,7 @@ packageExtensions:
       vite: "catalog:"
 
 patchedDependencies:
+  alchemy@2.0.0-beta.79: patches/alchemy@2.0.0-beta.79.patch
   "@effect/vitest@4.0.0-rc.115": patches/@effect__vitest@4.0.0-rc.115.patch
   "@ff-labs/fff-node@0.9.4": patches/@ff-labs__fff-node@0.9.4.patch
   "@legendapp/list@3.3.5": patches/@legendapp__list@3.3.5.patch

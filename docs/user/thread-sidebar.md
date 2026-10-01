@@ -18,6 +18,21 @@ live background work keep the thread active. Vetra Code settles from a closed or
 only when its timestamp is not older than the user's latest activity. If that timestamp is not
 available, the inactivity rule still applies. A manual un-settle also keeps the thread active.
 
+### Start without a project
+
+A thread does not need a project. To start one without a project, click **or
+start without a project** under a new thread's heading, pick **No project** from
+the project menu in that heading or from **New thread in...** in the command
+palette, or press `mod+alt+n`. To move a draft into a project, pick the project in the heading.
+
+Each thread without a project works in its own folder under `~/.vetra-code/scratch` (the
+`scratch` folder of your Vetra Code data directory), named after its date, the first words
+of its first message, and a short id, like
+`2026-09-25-convert-these-pngs-to-webp-a1b2c3d4`. Deleting a thread keeps its
+folder, so the files the agent wrote stay until you delete them. Branch, worktree, and diff controls stay hidden because
+these folders are not Git repositories. This is unavailable when the data
+directory itself sits inside a Git checkout.
+
 ### Start in the background
 
 In a desktop browser or the desktop app, press `Cmd+Enter` on macOS or `Ctrl+Enter`

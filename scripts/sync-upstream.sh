@@ -35,6 +35,11 @@ PRUNE_PATHS=(
   # destination.
   .github/ISSUE_TEMPLATE/via-triage.yml
   .github/triage
+  # Upstream's PR moderation automation closes PRs against T3's own policy,
+  # resolved from pingdotgg/t3code, and exempts T3 maintainers. The rename pass
+  # would make it read as Vetra Code's policy.
+  .agents/skills/contribution-triage
+  .github/TRIAGE_EXEMPTIONS.td
   # Upstream's security policy routes reports to security@ping.gg and links
   # t3.codes/security-policy. The rename pass makes it read as Vetra Code's
   # policy while still pointing at T3, which is worse than shipping none.

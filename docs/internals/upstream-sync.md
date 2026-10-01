@@ -81,6 +81,7 @@ Surfaces this fork deleted and will not ship:
 | ---------------------------------------------------------------------------- | --------------------------------- |
 | `.agents/skills/test-t3-mobile/`                                             | Mobile-only testing skill.        |
 | `.github/ISSUE_TEMPLATE/via-triage.yml`, `.github/triage/`                   | T3-owned support workflow.        |
+| `.agents/skills/contribution-triage/`, `.github/TRIAGE_EXEMPTIONS.td`        | T3-owned PR moderation.           |
 | `apps/mobile/`                                                               | Mobile client removed.            |
 | `apps/marketing/`                                                            | Marketing site removed.           |
 | `apps/server/src/cli/triage*`                                                | Files issues in T3's repo.        |
