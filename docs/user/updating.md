@@ -25,3 +25,10 @@ default. It only takes effect once a versioned server update path exists: when e
 update resumes supported provider threads after the replacement server is ready, using native
 promptless continuation where the provider has it and a short continue instruction otherwise.
 Terminal commands and other running work are still interrupted by the restart.
+
+## Update providers
+
+**Settings → Providers** shows provider updates for the selected environment.
+**Update all** updates every outdated provider on every connected environment
+at once. Hover it to see which providers it will update. Providers that only
+offer a manual update command are not included.

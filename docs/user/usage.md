@@ -209,13 +209,6 @@ This connection supplies usage information; configure
 the provider separately to send agent requests through the hub. Remove the hub from the same
 settings section when you no longer need it.
 
-## Subscription usage widget
-
-Add **Subscription usage** from your iOS or Android widget gallery to see remaining Codex and
-Claude quotas. Tap it to open **Usage → Limits**. On iOS, use **Edit Widget** to choose Session,
-Weekly, or both for each provider. Reopen T3 to refresh expired readings. The Android widget
-requires Android 12L or later.
-
 ## Keyboard shortcuts
 
 On web and desktop, open Usage from the command palette. While on Usage,
