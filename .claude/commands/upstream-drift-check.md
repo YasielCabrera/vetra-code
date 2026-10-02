@@ -6,7 +6,7 @@ allowed-tools: Bash(git fetch:*), Bash(git log:*), Bash(git diff:*), Bash(git me
 # Upstream drift check
 
 You are producing a **daily read-only status report** on how far this fork
-(`vetra-code`, product branch `vetra-studio`) has drifted from its upstream,
+(`vetra-code`, product branch `main`) has drifted from its upstream,
 [`pingdotgg/t3code`](https://github.com/pingdotgg/t3code) (Git remote `upstream`).
 
 Answer two questions, and nothing else:
@@ -51,9 +51,6 @@ A dirty working tree does **not** block this check: every measurement below read
 commits, not the index. Note the dirty state in the report (it blocks a _sync_, not
 this _check_) and move on. Never "clean up" to make a command work.
 
-If local `main` lags `upstream/main`, **report it, do not fix it.** Fast-forwarding
-the mirror is `sync-upstream.sh`'s job.
-
 ## Step 1 — Establish the refs
 
 ```bash
@@ -61,7 +58,7 @@ git remote -v
 git rev-parse --abbrev-ref HEAD
 git fetch upstream --prune --tags
 MB=$(git merge-base HEAD upstream/main)
-git rev-parse HEAD upstream/main main
+git rev-parse HEAD upstream/main
 git rev-list --count HEAD..upstream/main
 ```
 
@@ -78,7 +75,7 @@ Notes that keep this honest:
 
 **Early exit.** If `git rev-list --count HEAD..upstream/main` is `0`, the fork already
 contains upstream. Emit the short `UP TO DATE` report (see Output) and stop — do not
-manufacture analysis. Still report whether `main` equals `upstream/main`.
+manufacture analysis.
 
 ## Step 2 — Measure volume
 
@@ -195,10 +192,9 @@ State plainly **which rules fired**. A verdict with no cited rule is not a verdi
 If signals genuinely straddle a boundary, pick the higher tier and say so in one line —
 the cost of syncing early is much lower than the cost of syncing late.
 
-Two independent flags to add when true, which do not change the tier:
+One flag to add when true, which does not change the tier:
 
 - `⚠ Working tree dirty` — a sync cannot start until it is clean.
-- `⚠ Local main lags upstream/main` — the mirror is stale; the script fixes it.
 
 ## Output
 
@@ -214,12 +210,11 @@ report so consecutive days can be compared.
 
 ### Snapshot
 
-| Ref                   | Commit                          |
-| --------------------- | ------------------------------- |
-| `vetra-studio` (HEAD) | `abc1234`                       |
-| `upstream/main`       | `def5678`                       |
-| local `main` (mirror) | `def5678` <or "lags — ghi9012"> |
-| merge base            | `jkl3456`                       |
+| Ref             | Commit    |
+| --------------- | --------- |
+| `main` (HEAD)   | `abc1234` |
+| `upstream/main` | `def5678` |
+| merge base      | `jkl3456` |
 
 ### Volume
 
@@ -277,7 +272,5 @@ Rules for the bullet list:
   the _last_ fetch, and stamp the report `stale — fetch failed, refs as of <date of
 .git/FETCH_HEAD>`. Never present stale numbers as current.
 - **`upstream` remote missing**: report that and stop. Do not add the remote.
-- **`upstream/main` is already an ancestor of HEAD but `main` differs**: that is
-  `UP TO DATE` with the mirror-lag flag, not drift.
 - **Uncertain classification**: put the commit under **Review** rather than guessing
   Take or Drop. Review is the safe default; a wrong Drop is how a fix gets silently lost.

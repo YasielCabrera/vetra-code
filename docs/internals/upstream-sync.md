@@ -33,13 +33,12 @@ all merge conflicts.
 
 ## Git layout
 
-| Ref                  | Role                                                                                                                                   |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `upstream`           | `https://github.com/pingdotgg/t3code.git`. Fetch-only source of T3 Code.                                                               |
-| `upstream/main`      | The T3 Code default branch we sync from.                                                                                               |
-| local `main`         | A pristine mirror of `upstream/main`. Never commit product work here. The script fast-forwards this ref after fetch.                   |
-| Vetra product branch | Where fork work lives (currently `vetra-studio`). Merge upstream _into this branch_.                                                   |
-| `origin`             | Optional Vetra-owned GitHub remote. Add it only once that repository exists. Do not push local `main` there as if it were the product. |
+| Ref             | Role                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------- |
+| `upstream`      | `https://github.com/pingdotgg/t3code.git`. Fetch-only source of T3 Code.                            |
+| `upstream/main` | The T3 Code default branch we sync from. It is the only mirror of upstream; there is no local copy. |
+| `main`          | The Vetra product branch. Merge upstream _into this branch_; feature branches start and land here.  |
+| `origin`        | `YasielCabrera/vetra-code`, private. `main` pushes here and tracks `origin/main`, never `upstream`. |
 
 Confirm remotes before the first sync on a machine:
 
@@ -54,9 +53,7 @@ git remote add upstream https://github.com/pingdotgg/t3code.git
 git fetch upstream --prune --tags
 ```
 
-Keep the working tree on the Vetra product branch. The script refuses to run if `HEAD` is `main`
-only in the sense that it will not rewrite `main` while you are on it; still, do not do product
-work on `main`.
+Run the sync on `main`.
 
 ## What we take, drop, and keep disabled
 
@@ -128,17 +125,16 @@ It will:
 
 1. Exit if the working tree is dirty. Commit or stash first.
 2. `git fetch upstream --prune --tags`.
-3. Fast-forward local `main` to the fetched upstream ref, so `main` stays a mirror.
-4. `git merge --no-commit --no-ff <ref>` into the current branch. Merge conflicts do not abort the
+3. `git merge --no-commit --no-ff <ref>` into the current branch. Merge conflicts do not abort the
    rest of the script (`|| true` after merge).
-5. `git rm` the prune paths and globs above, including files upstream newly added inside them.
-6. Walk files this merge changed (`ACMR` vs `HEAD`). For text files that still contain `t3` / `T3`,
+4. `git rm` the prune paths and globs above, including files upstream newly added inside them.
+5. Walk files this merge changed (`ACMR` vs `HEAD`). For text files that still contain `t3` / `T3`,
    apply the ordered `RENAMES` table in the script. The table holds product identity only:
    `t3.codes` domains are absent on purpose, and so are package names, import paths, and internal
    symbols.
-7. Stage rewritten files that merged cleanly. Leave conflicted files unstaged: staging one would
+6. Stage rewritten files that merged cleanly. Leave conflicted files unstaged: staging one would
    mark it resolved with conflict markers still inside.
-8. Print remaining unmerged paths, then two greps: T3 identity that should have been renamed, and
+7. Print remaining unmerged paths, then two greps: T3 identity that should have been renamed, and
    `@vetra-code/` names that escaped outside the published-package surface. Noisy hits in
    `.repos/`, lockfiles, and the script itself are excluded from both.
 
@@ -186,7 +182,7 @@ Do not hand-edit a hundred occurrences of a new pattern.
 
 ## Run a sync
 
-Do this on the Vetra product branch, with no unrelated local changes.
+Do this on `main`, with no unrelated local changes.
 
 Before fetching, identify the branch and inspect the worktree:
 
@@ -220,15 +216,8 @@ is not part of the sync and must not be left behind silently.
 
    The final ancestry command exits successfully when the product branch already contains the
    fetched upstream ref. If it succeeds and the incoming log/file list are empty, there is nothing
-   to merge: do not manufacture an empty merge commit. Confirm local `main` also points at
-   `upstream/main`, then run only the post-sync audit needed for the task:
-
-   ```bash
-   git rev-parse main upstream/main
-   ```
-
-   If those two hashes differ while `upstream/main` is already in `HEAD`, a clean-tree run of the
-   script will fast-forward the local mirror and otherwise make no merge.
+   to merge: do not manufacture an empty merge commit. Run only the post-sync audit needed for the
+   task.
 
 2. **Run the script.**
 
@@ -354,12 +343,12 @@ is not part of the sync and must not be left behind silently.
 
    ```bash
    git merge-base --is-ancestor upstream/main HEAD
-   git rev-parse HEAD upstream/main main
+   git rev-parse HEAD upstream/main
    git status --short --branch
    ```
 
-   The ancestry check must exit zero, local `main` must equal `upstream/main`, and the status may
-   contain only the changes intentionally kept outside the merge.
+   The ancestry check must exit zero, and the status may contain only the changes intentionally
+   kept outside the merge. Then `git push` to `origin`.
 
 ## Identity map
 
@@ -435,7 +424,8 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
 - Before commit: `git merge --abort`.
 - After a bad merge commit that has not been pushed: do not `reset --hard` unless a human
   explicitly asked. Prefer a follow-up commit that restores identity and prune.
-- Never commit to local `main`. Never force-push `upstream`.
+- Never rebase, squash, or force-push `main` across a sync merge; later syncs need it as their
+  merge base. Never push to `upstream`.
 
 ## Related docs
 

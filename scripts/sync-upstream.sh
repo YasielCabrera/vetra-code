@@ -233,14 +233,6 @@ fi
 say "Fetching upstream"
 git fetch upstream --prune --tags
 
-# Keep local `main` a pristine mirror of upstream so diffs against it stay
-# meaningful. Never commit to main in this fork.
-if git rev-parse --verify --quiet main >/dev/null \
-  && [[ "$(git symbolic-ref --quiet --short HEAD || true)" != "main" ]] \
-  && git merge-base --is-ancestor main "$UPSTREAM_REF"; then
-  git update-ref refs/heads/main "$(git rev-parse "$UPSTREAM_REF")"
-fi
-
 say "Merging $UPSTREAM_REF ($(git rev-list --count HEAD.."$UPSTREAM_REF") new commits)"
 git merge --no-commit --no-ff "$UPSTREAM_REF" || true
 
