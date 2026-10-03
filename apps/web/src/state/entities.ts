@@ -13,7 +13,6 @@ import type { ScopedProjectRef, ScopedThreadRef, ServerConfig } from "@t3tools/c
 import type { EnvironmentId, OrchestrationV2ProjectedTurnItem } from "@t3tools/contracts";
 import { Atom } from "effect/unstable/reactivity";
 import { appAtomRegistry } from "../rpc/atomRegistry";
-import { automationOwnedProjectKey, automationOwnedProjectKeysAtom } from "./automations";
 import { environmentProjects } from "./projects";
 import { environmentServerConfigsAtom } from "./server";
 import {
@@ -75,33 +74,8 @@ export function useEnvironmentThreadRefs(
   );
 }
 
-/**
- * Projects an automation created for itself under Vetra home are navigation
- * noise: the automation's page is where its runs belong, so every listing and
- * picker reads this list. Lookups by ref still find them.
- */
-let previousListedProjects: ReadonlyArray<EnvironmentProject> = [];
-const listedProjectsAtom = Atom.make((get): ReadonlyArray<EnvironmentProject> => {
-  const projects = get(environmentProjects.projectsAtom);
-  const owned = get(automationOwnedProjectKeysAtom);
-  const next =
-    owned.size === 0
-      ? projects
-      : projects.filter(
-          (project) => !owned.has(automationOwnedProjectKey(project.environmentId, project.id)),
-        );
-  if (
-    next.length === previousListedProjects.length &&
-    next.every((project, index) => project === previousListedProjects[index])
-  ) {
-    return previousListedProjects;
-  }
-  previousListedProjects = next;
-  return next;
-}).pipe(Atom.withLabel("web-listed-projects"));
-
 export function useProjects(): ReadonlyArray<EnvironmentProject> {
-  return useAtomValue(listedProjectsAtom);
+  return useAtomValue(environmentProjects.projectsAtom);
 }
 
 export function useServerConfigs(): ReadonlyMap<EnvironmentId, ServerConfig> {
@@ -179,7 +153,7 @@ export function readProject(ref: ScopedProjectRef): EnvironmentProject | null {
 }
 
 export function readProjects(): ReadonlyArray<EnvironmentProject> {
-  return appAtomRegistry.get(listedProjectsAtom);
+  return appAtomRegistry.get(environmentProjects.projectsAtom);
 }
 
 /** Resolves when the project event reaches the live client store. */

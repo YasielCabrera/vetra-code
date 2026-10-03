@@ -8,7 +8,8 @@ import {
 import { useCallback, useMemo } from "react";
 
 import { readLocalApi } from "../localApi";
-import { automationEnvironment, readAutomationRun } from "../state/automations";
+import { readAutomationRun } from "../state/automations";
+import { serverEnvironment } from "../state/server";
 import { useAtomCommand } from "../state/use-atom-command";
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
 
@@ -24,9 +25,8 @@ export interface AutomationActions {
   readonly runNow: (automation: EnvironmentAutomation) => Promise<boolean>;
   readonly setEnabled: (automation: EnvironmentAutomation, enabled: boolean) => Promise<boolean>;
   /**
-   * Confirms first, spelling out what goes with it — an automation that owns
-   * its workspace takes every run in it, including ones promoted to the
-   * sidebar. Resolves false when the user backs out.
+   * Confirms first, spelling out what goes with it: hidden runs are archived,
+   * runs moved to the sidebar stay. Resolves false when the user backs out.
    */
   readonly confirmAndDelete: (
     automation: EnvironmentAutomation,
@@ -34,32 +34,20 @@ export interface AutomationActions {
   ) => Promise<boolean>;
 }
 
-export function describeAutomationDeletion(input: {
-  readonly ownsProject: boolean;
-  readonly runCount: number;
-  readonly revealedRunCount: number;
-}): string {
-  if (input.ownsProject) {
-    return input.revealedRunCount > 0
-      ? `This deletes the automation, its workspace, and all ${input.runCount} of its runs — including ${input.revealedRunCount} in your sidebar.`
-      : "This deletes the automation, its workspace, and its runs.";
-  }
+export function describeAutomationDeletion(input: { readonly revealedRunCount: number }): string {
   return input.revealedRunCount > 0
-    ? `This deletes the automation and its hidden runs. The ${input.revealedRunCount} run(s) you moved to the sidebar stay.`
-    : "This deletes the automation and its runs.";
+    ? `This deletes the automation and archives its hidden runs. The ${input.revealedRunCount} run(s) you moved to the sidebar stay.`
+    : "This deletes the automation and archives its runs.";
 }
 
 export function useAutomationActions(): AutomationActions {
-  const enableAutomation = useAtomCommand(automationEnvironment.enable, {
+  const setAutomationEnabled = useAtomCommand(serverEnvironment.setScheduledTaskEnabled, {
     reportFailure: false,
   });
-  const disableAutomation = useAtomCommand(automationEnvironment.disable, {
+  const deleteAutomation = useAtomCommand(serverEnvironment.deleteScheduledTask, {
     reportFailure: false,
   });
-  const deleteAutomation = useAtomCommand(automationEnvironment.delete, {
-    reportFailure: false,
-  });
-  const runAutomationNow = useAtomCommand(automationEnvironment.runNow, {
+  const runAutomationNow = useAtomCommand(serverEnvironment.runScheduledTaskNow, {
     reportFailure: false,
   });
 
@@ -90,7 +78,7 @@ export function useAutomationActions(): AutomationActions {
     async (automation: EnvironmentAutomation) => {
       const result = await runAutomationNow({
         environmentId: automation.environmentId,
-        input: { automationId: automation.id },
+        input: { id: automation.id },
       });
       if (!settled("Could not start a run", result)) return false;
       toastManager.add({ type: "success", title: "Run started" });
@@ -101,14 +89,13 @@ export function useAutomationActions(): AutomationActions {
 
   const setEnabled = useCallback(
     async (automation: EnvironmentAutomation, enabled: boolean) => {
-      const command = enabled ? enableAutomation : disableAutomation;
-      const result = await command({
+      const result = await setAutomationEnabled({
         environmentId: automation.environmentId,
-        input: { automationId: automation.id },
+        input: { id: automation.id, enabled },
       });
       return settled(enabled ? "Could not resume" : "Could not pause", result);
     },
-    [disableAutomation, enableAutomation, settled],
+    [setAutomationEnabled, settled],
   );
 
   const confirmAndDelete = useCallback(
@@ -122,8 +109,6 @@ export function useAutomationActions(): AutomationActions {
           [
             `Delete automation "${automation.title}"?`,
             describeAutomationDeletion({
-              ownsProject: automation.ownsProject,
-              runCount: runThreads.length,
               revealedRunCount: runThreads.filter((thread) => {
                 const run = readAutomationRun(thread);
                 return run !== null && run.hiddenAt === null;
@@ -136,7 +121,7 @@ export function useAutomationActions(): AutomationActions {
       }
       const result = await deleteAutomation({
         environmentId: automation.environmentId,
-        input: { automationId: automation.id, force: true },
+        input: { id: automation.id },
       });
       return settled("Could not delete the automation", result);
     },

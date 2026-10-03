@@ -7,16 +7,16 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
-import {
-  AUTOMATION_PROMPT_MAX_CHARS,
-  AUTOMATION_TITLE_MAX_CHARS,
-  type AutomationSchedule,
-  type EnvironmentId,
-  type ModelSelection,
-  type ProviderDriverKind,
-  type RuntimeMode,
-  type ThreadEnvMode,
-  type ThreadId,
+import type {
+  EnvironmentId,
+  ModelSelection,
+  OrchestrationV2ThreadLaunchWorkspaceStrategy,
+  ProjectId,
+  ProviderDriverKind,
+  RuntimeMode,
+  ScheduledTaskSchedule,
+  ScheduledTaskUpsertInput,
+  ThreadId,
 } from "@t3tools/contracts";
 import { createModelSelection } from "@t3tools/shared/model";
 import {
@@ -45,7 +45,7 @@ import { useProjectGroups } from "../../hooks/useProjectGroups";
 import { useResizableWidth } from "../../hooks/useResizableWidth";
 import { useClientSettings, usePrimarySettings } from "../../hooks/useSettings";
 import { useViewportWidth } from "../../hooks/useViewportWidth";
-import { cn, newProjectId } from "../../lib/utils";
+import { cn } from "../../lib/utils";
 import { getCustomModelOptionsByInstance } from "../../modelSelection";
 import {
   applyProviderInstanceSettings,
@@ -59,10 +59,14 @@ import {
   useAutomationRunsByThreadKey,
 } from "../../state/automations";
 import { useUiStateStore } from "../../uiStateStore";
-import { primaryServerProvidersAtom } from "../../state/server";
+import { projectEnvironment } from "../../state/projects";
+import { useEnvironmentQuery } from "../../state/query";
+import { primaryServerProvidersAtom, serverEnvironment } from "../../state/server";
+import { vcsEnvironment } from "../../state/vcs";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { TraitsPicker } from "../chat/TraitsPicker";
 import { RightPanelResizeHandle } from "../preview/RightPanelResizeHandle";
+import { WorktreeBaseBranchPicker } from "../WorktreeBaseBranchPicker";
 import { useProjects, useThreadShells } from "../../state/entities";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useAtomCommand } from "../../state/use-atom-command";
@@ -89,13 +93,12 @@ import {
   unreadRunCountLabel,
 } from "./automationsList.logic";
 import {
-  cronFromPreset,
   DEFAULT_SCHEDULE_PRESET,
   describeAutomationSchedule,
   formatMinutesOfDay,
   parseMinutesOfDay,
-  presetFromCron,
-  resolveLocalTimeZone,
+  presetFromSchedule,
+  scheduleFromPreset,
   WEEKDAY_LABELS,
   type SchedulePreset,
   type SchedulePresetKind,
@@ -120,13 +123,23 @@ const RUNTIME_MODE_OPTIONS: ReadonlyArray<{ value: RuntimeMode; label: string }>
 ];
 
 /** Distinct from any project key, which is always `environmentId:projectId`. */
-const OWNED_PROJECT_VALUE = "__owned__";
+const NEW_PROJECT_VALUE = "__new__";
 const ADD_PROJECT_VALUE = "__add__";
 
-const ENV_MODE_OPTIONS: ReadonlyArray<{ value: ThreadEnvMode; label: string }> = [
-  { value: "local", label: "The project's checkout" },
+type WorkspaceMode = OrchestrationV2ThreadLaunchWorkspaceStrategy["type"];
+
+const WORKSPACE_MODE_OPTIONS: ReadonlyArray<{ value: WorkspaceMode; label: string }> = [
+  { value: "root", label: "The project's checkout" },
   { value: "worktree", label: "A fresh worktree each run" },
 ];
+/** Only an agent or the scheduled-tasks API pins a task to one checkout. */
+const EXISTING_WORKTREE_OPTION = {
+  value: "existing_worktree",
+  label: "Its saved checkout",
+} as const;
+
+/** A new project's first commit is on whatever branch git defaults to. */
+const NEW_PROJECT_BASE_REF = "HEAD";
 
 const WEEKDAY_SELECT_ITEMS: ReadonlyArray<{ value: string; label: string }> = WEEKDAY_LABELS.map(
   (label, index) => ({ value: String(index), label }),
@@ -137,8 +150,8 @@ const PRESET_OPTIONS: ReadonlyArray<{ value: SchedulePresetKind; label: string }
   { value: "weekdays", label: "Weekdays" },
   { value: "weekly", label: "Every week" },
   { value: "hourly", label: "Every few hours" },
-  { value: "custom", label: "Custom (cron)" },
 ];
+const KEPT_PRESET_OPTION = { value: "kept", label: "As saved" } as const;
 
 interface AutomationDraft {
   readonly title: string;
@@ -147,44 +160,64 @@ interface AutomationDraft {
       thinking level) — the same selection a composer builds. */
   readonly modelSelection: ModelSelection | null;
   readonly preset: SchedulePreset;
-  readonly customCron: string;
-  readonly timeZone: string;
+  /** A saved schedule the picker cannot express, kept as it is while `kept` is selected. */
+  readonly keptSchedule: ScheduledTaskSchedule | null;
   readonly projectKey: string | null;
-  readonly envMode: ThreadEnvMode;
-  readonly runtimeMode: RuntimeMode;
+  readonly workspaceMode: WorkspaceMode;
+  /** Empty until chosen: the project's current branch at save. */
+  readonly baseRef: string;
   readonly startFromOrigin: boolean;
+  readonly runtimeMode: RuntimeMode;
   readonly enabled: boolean;
 }
 
-function draftSchedule(draft: AutomationDraft): AutomationSchedule {
-  return {
-    kind: "recurring",
-    cron: draft.preset.kind === "custom" ? draft.customCron.trim() : cronFromPreset(draft.preset),
-    timeZone: draft.timeZone,
-  };
+function draftSchedule(draft: AutomationDraft): ScheduledTaskSchedule {
+  return draft.preset.kind === "kept" && draft.keptSchedule !== null
+    ? draft.keptSchedule
+    : scheduleFromPreset(draft.preset);
 }
 
 function draftFromAutomation(automation: EnvironmentAutomation): AutomationDraft {
-  const cron = automation.schedule.kind === "recurring" ? automation.schedule.cron : "0 9 * * *";
-  const preset = presetFromCron(cron);
+  const preset = presetFromSchedule(automation.schedule);
+  const strategy = automation.workspaceStrategy;
   return {
     title: automation.title,
     prompt: automation.prompt,
-    // A cron the picker cannot express keeps its expression rather than being
-    // rounded off into the nearest preset.
-    preset: preset ?? { ...DEFAULT_SCHEDULE_PRESET, kind: "custom" },
-    customCron: cron,
-    timeZone:
-      automation.schedule.kind === "recurring"
-        ? automation.schedule.timeZone
-        : resolveLocalTimeZone(),
+    preset: preset ?? { ...DEFAULT_SCHEDULE_PRESET, kind: "kept" },
+    keptSchedule: preset === null ? automation.schedule : null,
     modelSelection: automation.modelSelection,
     projectKey: `${automation.environmentId}:${automation.projectId}`,
-    envMode: automation.envMode,
+    workspaceMode: strategy.type,
+    baseRef: strategy.type === "worktree" ? strategy.baseRef : "",
+    startFromOrigin: strategy.type === "worktree" && strategy.startFromOrigin === true,
     runtimeMode: automation.runtimeMode,
-    startFromOrigin: automation.startFromOrigin,
     enabled: automation.enabled,
   };
+}
+
+/**
+ * The draft's workspace as the task stores it. A strategy the form did not
+ * change keeps everything it carried, such as a pinned branch.
+ */
+function draftWorkspaceStrategy(
+  draft: AutomationDraft,
+  saved: OrchestrationV2ThreadLaunchWorkspaceStrategy | null,
+  baseRef: string,
+): OrchestrationV2ThreadLaunchWorkspaceStrategy {
+  switch (draft.workspaceMode) {
+    case "worktree":
+      return {
+        ...(saved?.type === "worktree" ? saved : {}),
+        type: "worktree",
+        baseRef,
+        startFromOrigin: draft.startFromOrigin,
+      };
+    case "existing_worktree":
+      if (saved?.type === "existing_worktree") return saved;
+      return { type: "root" };
+    case "root":
+      return saved?.type === "root" ? saved : { type: "root" };
+  }
 }
 
 export function AutomationDetailPanel(props: {
@@ -219,12 +252,12 @@ export function AutomationDetailPanel(props: {
     title: template?.title ?? "",
     prompt: template?.prompt ?? "",
     preset: template?.preset ?? DEFAULT_SCHEDULE_PRESET,
+    keptSchedule: null,
     // Null until the provider list arrives, then the server's default.
     modelSelection: null,
-    customCron: "0 9 * * *",
-    timeZone: resolveLocalTimeZone(),
     projectKey: null,
-    envMode: "local",
+    workspaceMode: "root",
+    baseRef: "",
     // Unattended work parks forever on the first approval request.
     runtimeMode: "full-access",
     startFromOrigin: false,
@@ -238,8 +271,8 @@ export function AutomationDetailPanel(props: {
     setDraft(draftFromAutomation(automation));
   }
 
-  const createAutomation = useAtomCommand(automationEnvironment.create);
-  const updateAutomation = useAtomCommand(automationEnvironment.update);
+  const upsertAutomation = useAtomCommand(serverEnvironment.upsertScheduledTask);
+  const createProject = useAtomCommand(projectEnvironment.createNew);
   const setRunHidden = useAtomCommand(automationEnvironment.setRunHidden);
   // The same actions the list's row menu offers, so Run now, Pause, and Delete
   // behave identically wherever they are invoked from.
@@ -253,7 +286,7 @@ export function AutomationDetailPanel(props: {
       .filter(
         (thread) =>
           thread.environmentId === automation.environmentId &&
-          runsByThreadKey.get(automationRunVisitKey(thread))?.automationId === automation.id,
+          runsByThreadKey.get(automationRunVisitKey(thread))?.scheduledTaskId === automation.id,
       )
       .toSorted((left, right) => right.createdAt.localeCompare(left.createdAt));
   }, [automation, runsByThreadKey, threads]);
@@ -286,7 +319,7 @@ export function AutomationDetailPanel(props: {
   const projectSelectItems = useMemo(
     () => [
       { value: ADD_PROJECT_VALUE, label: "Add a location…" },
-      { value: OWNED_PROJECT_VALUE, label: "Its own workspace" },
+      { value: NEW_PROJECT_VALUE, label: "A new project" },
       ...projectGroups.map((group) => ({
         value: `${group.environmentId}:${group.id}`,
         label: group.displayName,
@@ -322,20 +355,42 @@ export function AutomationDetailPanel(props: {
     () => getCustomModelOptionsByInstance(settings, serverProviders),
     [serverProviders, settings],
   );
-  // A draft with no selection yet falls back to the chosen project's default,
-  // then the server's — so the picker always has something real to show.
-  const resolvedModelSelection = useMemo(() => {
-    const selectedProject =
+  const selectedProject = useMemo(
+    () =>
       draft.projectKey === null
         ? null
         : (projects.find(
             (project) => `${project.environmentId}:${project.id}` === draft.projectKey,
-          ) ?? null);
-    return resolveDefaultProviderModelSelection(
-      serverProviders,
-      draft.modelSelection ?? selectedProject?.defaultModelSelection ?? null,
-    );
-  }, [draft.modelSelection, draft.projectKey, projects, serverProviders]);
+          ) ?? null),
+    [draft.projectKey, projects],
+  );
+  // A worktree task needs a base branch; until one is picked it is the
+  // project's current branch, the one a new thread would start from.
+  const currentRefQuery = useEnvironmentQuery(
+    selectedProject !== null && draft.workspaceMode === "worktree" && draft.baseRef === ""
+      ? vcsEnvironment.listRefs({
+          environmentId: selectedProject.environmentId,
+          input: { cwd: selectedProject.workspaceRoot, limit: 100 },
+        })
+      : null,
+  );
+  const currentRefs = currentRefQuery.data?.refs ?? [];
+  const defaultBaseRef =
+    currentRefs.find((ref) => ref.current && ref.isRemote !== true)?.name ??
+    currentRefs.find((ref) => ref.isDefault && ref.isRemote !== true)?.name ??
+    null;
+  const effectiveBaseRef = draft.baseRef !== "" ? draft.baseRef : defaultBaseRef;
+
+  // A draft with no selection yet falls back to the chosen project's default,
+  // then the server's — so the picker always has something real to show.
+  const resolvedModelSelection = useMemo(
+    () =>
+      resolveDefaultProviderModelSelection(
+        serverProviders,
+        draft.modelSelection ?? selectedProject?.defaultModelSelection ?? null,
+      ),
+    [draft.modelSelection, selectedProject, serverProviders],
+  );
   const activeInstanceEntry = instanceEntries.find(
     (entry) => entry.instanceId === resolvedModelSelection?.instanceId,
   );
@@ -383,51 +438,72 @@ export function AutomationDetailPanel(props: {
       toastManager.add({ type: "error", title: "No provider is available to run this" });
       return;
     }
+    if (
+      draft.workspaceMode === "worktree" &&
+      selectedProject !== null &&
+      effectiveBaseRef === null
+    ) {
+      toastManager.add({ type: "error", title: "Pick a base branch for the worktree" });
+      return;
+    }
+    const schedule = draftSchedule(draft);
     if (automation !== null) {
-      const result = await updateAutomation({
-        environmentId: automation.environmentId,
-        input: {
-          automationId: automation.id,
-          title,
-          prompt,
-          schedule: draftSchedule(draft),
-          modelSelection: resolvedModelSelection,
-          envMode: draft.envMode,
-          runtimeMode: draft.runtimeMode,
-          startFromOrigin: draft.startFromOrigin,
-        },
-      });
+      const baseRef = effectiveBaseRef ?? NEW_PROJECT_BASE_REF;
+      const input: ScheduledTaskUpsertInput = {
+        id: automation.id,
+        requireExisting: true,
+        title,
+        prompt,
+        enabled: draft.enabled,
+        schedule,
+        projectId: automation.projectId,
+        // Upsert clears a thread it is not sent, so a task that posts into a
+        // thread keeps posting there.
+        threadId: automation.threadId,
+        workspaceStrategy: draftWorkspaceStrategy(draft, automation.workspaceStrategy, baseRef),
+        modelSelection: resolvedModelSelection,
+        runtimeMode: draft.runtimeMode,
+        interactionMode: automation.interactionMode,
+        creationSource: automation.creationSource,
+      };
+      const result = await upsertAutomation({ environmentId: automation.environmentId, input });
       if (!settled("Could not save the automation", result)) return;
       toastManager.add({ type: "success", title: "Automation saved" });
       return;
     }
 
-    const selectedProject =
-      draft.projectKey === null
-        ? null
-        : (projects.find(
-            (project) => `${project.environmentId}:${project.id}` === draft.projectKey,
-          ) ?? null);
+    // No project chosen means a new one, named after the automation, made
+    // where the server keeps new projects.
+    const environmentId = selectedProject?.environmentId ?? targetEnvironmentId;
+    let projectId: ProjectId;
+    if (selectedProject !== null) {
+      projectId = selectedProject.id;
+    } else {
+      const created = await createProject({ environmentId, input: { name: title } });
+      if (!settled("Could not create the project", created)) return;
+      if (created._tag !== "Success") return;
+      projectId = created.value.projectId;
+    }
     const automationId = newAutomationId();
-    const result = await createAutomation({
-      environmentId: selectedProject?.environmentId ?? targetEnvironmentId,
+    const result = await upsertAutomation({
+      environmentId,
       input: {
-        automationId,
+        id: automationId,
         title,
         prompt,
-        schedule: draftSchedule(draft),
-        // No project chosen means the automation gets one of its own, under
-        // Vetra home; only the server knows where that is.
-        project:
-          selectedProject === null
-            ? { kind: "owned", projectId: newProjectId() }
-            : { kind: "existing", projectId: selectedProject.id },
+        enabled: draft.enabled,
+        schedule,
+        projectId,
+        threadId: null,
+        workspaceStrategy: draftWorkspaceStrategy(
+          draft,
+          null,
+          effectiveBaseRef ?? NEW_PROJECT_BASE_REF,
+        ),
         modelSelection: resolvedModelSelection,
         runtimeMode: draft.runtimeMode,
-        envMode: draft.envMode,
-        baseBranch: null,
-        startFromOrigin: draft.startFromOrigin,
-        enabled: draft.enabled,
+        interactionMode: "default",
+        creationSource: "web",
       },
     });
     // Only navigate to the automation once it exists — the route would
@@ -436,21 +512,20 @@ export function AutomationDetailPanel(props: {
     toastManager.add({ type: "success", title: "Automation created" });
     void navigate({
       to: "/automations/$automationKey",
-      params: {
-        automationKey: `${selectedProject?.environmentId ?? targetEnvironmentId}:${automationId}`,
-      },
+      params: { automationKey: `${environmentId}:${automationId}` },
       replace: true,
     });
   }, [
     automation,
-    createAutomation,
+    createProject,
     draft,
+    effectiveBaseRef,
     navigate,
-    projects,
     resolvedModelSelection,
+    selectedProject,
     settled,
     targetEnvironmentId,
-    updateAutomation,
+    upsertAutomation,
   ]);
 
   const handleToggleEnabled = useCallback(
@@ -493,6 +568,20 @@ export function AutomationDetailPanel(props: {
         project.environmentId === automation?.environmentId && project.id === automation?.projectId,
     )?.workspaceRoot ?? null;
 
+  const presetOptions =
+    draft.keptSchedule === null ? PRESET_OPTIONS : [...PRESET_OPTIONS, KEPT_PRESET_OPTION];
+  const workspaceModeOptions =
+    automation?.workspaceStrategy.type === "existing_worktree"
+      ? [...WORKSPACE_MODE_OPTIONS, EXISTING_WORKTREE_OPTION]
+      : WORKSPACE_MODE_OPTIONS;
+  const postsIntoThread =
+    automation?.threadId == null
+      ? null
+      : (threads.find(
+          (thread) =>
+            thread.environmentId === automation.environmentId && thread.id === automation.threadId,
+        )?.title ?? "a thread");
+
   if (!isNew && automation === null) {
     return (
       <AutomationPanelFrame title="Automation" onClose={props.onClose}>
@@ -513,7 +602,6 @@ export function AutomationDetailPanel(props: {
             <Input
               nativeInput
               value={draft.title}
-              maxLength={AUTOMATION_TITLE_MAX_CHARS}
               placeholder="Morning briefing"
               onChange={(event) => {
                 const title = event.target.value;
@@ -527,7 +615,6 @@ export function AutomationDetailPanel(props: {
             <Textarea
               value={draft.prompt}
               rows={6}
-              maxLength={AUTOMATION_PROMPT_MAX_CHARS}
               placeholder="What should the agent do each time this runs?"
               // Capped on the control itself so a long prompt scrolls inside
               // the box instead of pushing everything below it off the panel.
@@ -557,7 +644,7 @@ export function AutomationDetailPanel(props: {
 
             <div className="flex flex-wrap items-center gap-2">
               <Select
-                items={PRESET_OPTIONS}
+                items={presetOptions}
                 value={draft.preset.kind}
                 onValueChange={(value) =>
                   value &&
@@ -571,7 +658,7 @@ export function AutomationDetailPanel(props: {
                   <SelectValue placeholder="How often" />
                 </SelectTrigger>
                 <SelectContent>
-                  {PRESET_OPTIONS.map((option) => (
+                  {presetOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -623,19 +710,7 @@ export function AutomationDetailPanel(props: {
                 />
               ) : null}
 
-              {draft.preset.kind === "custom" ? (
-                <Input
-                  nativeInput
-                  aria-label="Cron expression"
-                  font="mono"
-                  className="w-56"
-                  value={draft.customCron}
-                  onChange={(event) => {
-                    const customCron = event.target.value;
-                    setDraft((current) => ({ ...current, customCron }));
-                  }}
-                />
-              ) : (
+              {draft.preset.kind === "kept" || draft.preset.kind === "hourly" ? null : (
                 <Input
                   nativeInput
                   type="time"
@@ -654,8 +729,8 @@ export function AutomationDetailPanel(props: {
               )}
             </div>
             <p className="text-xs text-muted-foreground/70">
-              Runs in {draft.timeZone}. A run needs this machine awake unless the environment is
-              remote.
+              Runs in the server's local time. A run needs this machine awake unless the environment
+              is remote.
             </p>
           </section>
 
@@ -735,7 +810,7 @@ export function AutomationDetailPanel(props: {
             {isNew ? (
               <Select
                 items={projectSelectItems}
-                value={draft.projectKey ?? OWNED_PROJECT_VALUE}
+                value={draft.projectKey ?? NEW_PROJECT_VALUE}
                 onValueChange={(value) => {
                   if (value === ADD_PROJECT_VALUE) {
                     addProjectLocation();
@@ -743,7 +818,8 @@ export function AutomationDetailPanel(props: {
                   }
                   setDraft((current) => ({
                     ...current,
-                    projectKey: value === OWNED_PROJECT_VALUE || !value ? null : value,
+                    projectKey: value === NEW_PROJECT_VALUE || !value ? null : value,
+                    baseRef: "",
                   }));
                 }}
               >
@@ -758,7 +834,7 @@ export function AutomationDetailPanel(props: {
                     </span>
                   </SelectItem>
                   <SelectSeparator />
-                  <SelectItem value={OWNED_PROJECT_VALUE}>Its own workspace</SelectItem>
+                  <SelectItem value={NEW_PROJECT_VALUE}>A new project</SelectItem>
                   {projectGroups.map((group) => (
                     <SelectItem key={group.projectKey} value={`${group.environmentId}:${group.id}`}>
                       {group.displayName}
@@ -768,25 +844,29 @@ export function AutomationDetailPanel(props: {
               </Select>
             ) : (
               <p className="break-all text-xs text-muted-foreground">
-                {automation?.ownsProject
-                  ? "Its own workspace, under Vetra home."
-                  : (projectTitle ?? "Unknown project")}
+                {projectTitle ?? "Unknown project"}
               </p>
             )}
+            {postsIntoThread !== null ? (
+              <p className="text-xs text-muted-foreground">
+                Posts each run into “{postsIntoThread}” instead of starting a new thread.
+              </p>
+            ) : null}
 
             <div className="flex flex-wrap items-center gap-2">
               <Select
-                items={ENV_MODE_OPTIONS}
-                value={draft.envMode}
+                items={workspaceModeOptions}
+                value={draft.workspaceMode}
                 onValueChange={(value) =>
-                  value && setDraft((current) => ({ ...current, envMode: value as ThreadEnvMode }))
+                  value &&
+                  setDraft((current) => ({ ...current, workspaceMode: value as WorkspaceMode }))
                 }
               >
                 <SelectTrigger size="sm" className="w-52">
                   <SelectValue placeholder="Checkout" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ENV_MODE_OPTIONS.map((option) => (
+                  {workspaceModeOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -794,16 +874,19 @@ export function AutomationDetailPanel(props: {
                 </SelectContent>
               </Select>
             </div>
-            {draft.envMode === "worktree" ? (
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Switch
-                  checked={draft.startFromOrigin}
-                  onCheckedChange={(checked) =>
-                    setDraft((current) => ({ ...current, startFromOrigin: checked === true }))
+            {draft.workspaceMode === "worktree" && selectedProject !== null ? (
+              <div className="w-72 max-w-full">
+                <WorktreeBaseBranchPicker
+                  environmentId={selectedProject.environmentId}
+                  cwd={selectedProject.workspaceRoot}
+                  value={effectiveBaseRef ?? ""}
+                  onValueChange={(baseRef) => setDraft((current) => ({ ...current, baseRef }))}
+                  startFromOrigin={draft.startFromOrigin}
+                  onStartFromOriginChange={(startFromOrigin) =>
+                    setDraft((current) => ({ ...current, startFromOrigin }))
                   }
                 />
-                Start each run from the latest origin
-              </label>
+              </div>
             ) : null}
           </section>
         </div>

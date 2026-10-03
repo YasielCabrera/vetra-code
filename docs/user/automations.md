@@ -4,7 +4,8 @@ Select **Automations** in the sidebar, above Projects, to open a page listing ev
 your workspace. It is also available from the command palette as **Open automations**.
 
 An automation is a prompt plus a schedule. Each time it fires, Vetra opens a new thread and sends
-your prompt to it, exactly as if you had done it yourself.
+your prompt to it, exactly as if you had done it yourself. Agents can schedule work too, through
+Vetra's scheduled-task tools; what they create is listed here alongside your own.
 
 ## Creating one
 
@@ -12,18 +13,20 @@ Select **New automation**, then give it:
 
 - **A name**, which is also the title of every thread it opens.
 - **A prompt** — what the agent should do each time it runs.
-- **A schedule**: every day, weekdays, every week on a chosen day, every few hours, or a cron
-  expression of your own. Schedules run in your time zone, so a run set for 8:00 AM stays at 8:00 AM
-  across daylight saving.
+- **A schedule**: every day, weekdays, or every week on a chosen day at a set time, or every few
+  hours. Times are in the local time of the machine that runs the environment, so a run set for
+  8:00 AM stays at 8:00 AM across daylight saving. An interval counts from when the previous run
+  started, not from the top of the hour.
 - **An agent**: the provider, model, and reasoning level a run starts with — the same pickers the
   composer uses. It defaults to the chosen project's model, or this environment's.
-- **Where it runs**: an existing project, or a workspace of its own that Vetra creates for it.
-  Automations with their own workspace do not appear in your projects list. If the project you want
-  is not in Vetra yet, choose **Add a location…** — it opens the same importer you use to add a
+- **Where it runs**: an existing project, or **A new project**, which Vetra creates under its new
+  projects folder, named after the automation, and adds to your projects list. If the project you
+  want is not in Vetra yet, choose **Add a location…** — it opens the same importer you use to add a
   project, from a local folder or a repository to clone, and selects the result here.
-- **Which checkout**: the project's own, or a fresh git worktree for each run. A worktree keeps an
-  unattended agent away from the files you are working in, which is usually what you want when the
-  automation edits code.
+- **Which checkout**: the project's own, or a fresh git worktree for each run, branched from the base
+  branch you pick (the project's current branch by default). A worktree keeps an unattended agent
+  away from the files you are working in, which is usually what you want when the automation edits
+  code.
 - **Permissions**, beside the model. Automations default to full access, because a run that stops to
   ask for approval waits for you and may sit unfinished until you open it.
 
@@ -52,23 +55,24 @@ like any thread you started yourself, while still counting as one of the automat
 it back, choose **Hide from sidebar** in the thread's menu.
 
 **Run now** starts a run immediately without waiting for the schedule, which is the quickest way to
-see whether a prompt does what you meant. It works on a paused automation too. If a run is already
-in progress, Vetra tells you instead of starting a second one beside it.
+see whether a prompt does what you meant. It works on a paused automation too, and starts a new run
+even if an earlier one is still working.
+
+An automation an agent set up to post into an existing thread says so under **Where it runs**; its
+runs arrive in that thread instead of opening new ones.
 
 ## When a run is missed
 
 A run needs the machine that holds its environment to be awake. If yours was asleep when a run was
-due, Vetra does not run it late: a recurring automation skips to its next occurrence and its row
-shows **Missed**, with **Run now** available if you still want it. A one-time schedule is the
-exception — it still fires when the machine wakes, as long as it is within a day.
+due, Vetra does not run it hours late: a run more than ten minutes overdue is skipped, and the
+automation waits for its next occurrence. **Run now** is there if you still want it. If a run could
+not start, the row says **Failed** and Vetra keeps the reason.
 
 Automations on a remote environment run on that environment's own machine, so they keep going with
 this client closed. The list names the environment for any automation that does not run here.
 
 ## Deleting
 
-Deleting an automation — from its panel or the row's ⋯ menu — removes its hidden runs along with it,
-since those are only reachable through the automation. Runs you moved to the sidebar are kept.
-
-An automation with a workspace of its own is different: deleting it deletes that workspace and
-everything in it, including runs you moved to the sidebar. Vetra says so before it does.
+Deleting an automation — from its panel or the row's ⋯ menu — archives its hidden runs, since those
+are only reachable through the automation; you can still find them under **Settings → Archived**.
+Runs you moved to the sidebar are kept, and so is the project it ran in.

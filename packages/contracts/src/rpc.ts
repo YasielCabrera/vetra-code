@@ -228,13 +228,9 @@ import {
   PullRequestUpdateInput,
 } from "./pullRequest.ts";
 import {
-  AutomationCreateInput,
-  AutomationDeleteInput,
   AutomationError,
   AutomationRunVisibilityInput,
-  AutomationSnapshot,
-  AutomationTargetInput,
-  AutomationUpdateInput,
+  AutomationRunsSnapshot,
 } from "./automation.ts";
 import {
   IssueActivity,
@@ -580,15 +576,9 @@ export const WS_METHODS = {
   scheduledTasksDelete: "scheduledTasks.delete",
   scheduledTasksRunNow: "scheduledTasks.runNow",
 
-  // Automation methods
-  automationsSubscribe: "automations.subscribe",
-  automationsCreate: "automations.create",
-  automationsUpdate: "automations.update",
-  automationsEnable: "automations.enable",
-  automationsDisable: "automations.disable",
-  automationsDelete: "automations.delete",
-  automationsRunNow: "automations.runNow",
-  automationsSetRunHidden: "automations.setRunHidden",
+  // Automation run tracking; the automations themselves are scheduled tasks
+  automationRunsSubscribe: "automationRuns.subscribe",
+  automationRunsSetHidden: "automationRuns.setHidden",
 
   // Cloud environment methods
   cloudGetRelayClientStatus: "cloud.getRelayClientStatus",
@@ -2049,45 +2039,15 @@ const WsScheduledTasksRunNowRpc = Rpc.make(WS_METHODS.scheduledTasksRunNow, {
 
 const AutomationRpcError = Schema.Union([AutomationError, EnvironmentAuthorizationError]);
 
-/** Streams the whole automation snapshot: once on subscribe, then after every change. */
-const WsAutomationsSubscribeRpc = Rpc.make(WS_METHODS.automationsSubscribe, {
+/** Streams every tracked automation run: once on subscribe, then after every change. */
+const WsAutomationRunsSubscribeRpc = Rpc.make(WS_METHODS.automationRunsSubscribe, {
   payload: Schema.Struct({}),
-  success: AutomationSnapshot,
+  success: AutomationRunsSnapshot,
   error: AutomationRpcError,
   stream: true,
 });
 
-const WsAutomationsCreateRpc = Rpc.make(WS_METHODS.automationsCreate, {
-  payload: AutomationCreateInput,
-  error: AutomationRpcError,
-});
-
-const WsAutomationsUpdateRpc = Rpc.make(WS_METHODS.automationsUpdate, {
-  payload: AutomationUpdateInput,
-  error: AutomationRpcError,
-});
-
-const WsAutomationsEnableRpc = Rpc.make(WS_METHODS.automationsEnable, {
-  payload: AutomationTargetInput,
-  error: AutomationRpcError,
-});
-
-const WsAutomationsDisableRpc = Rpc.make(WS_METHODS.automationsDisable, {
-  payload: AutomationTargetInput,
-  error: AutomationRpcError,
-});
-
-const WsAutomationsDeleteRpc = Rpc.make(WS_METHODS.automationsDelete, {
-  payload: AutomationDeleteInput,
-  error: AutomationRpcError,
-});
-
-const WsAutomationsRunNowRpc = Rpc.make(WS_METHODS.automationsRunNow, {
-  payload: AutomationTargetInput,
-  error: AutomationRpcError,
-});
-
-const WsAutomationsSetRunHiddenRpc = Rpc.make(WS_METHODS.automationsSetRunHidden, {
+const WsAutomationRunsSetHiddenRpc = Rpc.make(WS_METHODS.automationRunsSetHidden, {
   payload: AutomationRunVisibilityInput,
   error: AutomationRpcError,
 });
@@ -2176,14 +2136,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsScheduledTasksSetEnabledRpc,
   WsScheduledTasksDeleteRpc,
   WsScheduledTasksRunNowRpc,
-  WsAutomationsSubscribeRpc,
-  WsAutomationsCreateRpc,
-  WsAutomationsUpdateRpc,
-  WsAutomationsEnableRpc,
-  WsAutomationsDisableRpc,
-  WsAutomationsDeleteRpc,
-  WsAutomationsRunNowRpc,
-  WsAutomationsSetRunHiddenRpc,
+  WsAutomationRunsSubscribeRpc,
+  WsAutomationRunsSetHiddenRpc,
   WsServerReportClientActivityRpc,
   WsServerReportHostPowerStateRpc,
   WsServerGetBackgroundPolicyRpc,

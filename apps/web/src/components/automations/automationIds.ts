@@ -1,5 +1,7 @@
-import { AutomationId } from "@t3tools/contracts";
+import { ScheduledTaskId } from "@t3tools/contracts";
 
 import { randomUUID } from "../../lib/utils";
 
-export const newAutomationId = (): AutomationId => AutomationId.make(randomUUID());
+/** Same shape upstream's service mints, so tasks made here and elsewhere read alike. */
+export const newAutomationId = (): ScheduledTaskId =>
+  ScheduledTaskId.make(`scheduled-task:${randomUUID()}`);

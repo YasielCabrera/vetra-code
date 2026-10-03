@@ -374,15 +374,10 @@ function statusPresentation(
         className: "text-muted-foreground",
         icon: <PauseIcon aria-hidden className="size-3" />,
       };
-    case "missed":
+    case "failed":
       return {
-        label: `Missed ${formatRelativeTimeLabel(status.scheduledFor)}`,
-        className: "text-warning-foreground",
-        icon: <CircleAlertIcon aria-hidden className="size-3" />,
-      };
-    case "skipped":
-      return {
-        label: `Skipped ${formatRelativeTimeLabel(status.scheduledFor)}`,
+        label:
+          status.at === null ? "Last run failed" : `Failed ${formatRelativeTimeLabel(status.at)}`,
         className: "text-warning-foreground",
         icon: <CircleAlertIcon aria-hidden className="size-3" />,
       };

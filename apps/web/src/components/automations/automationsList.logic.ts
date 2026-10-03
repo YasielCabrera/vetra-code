@@ -104,14 +104,13 @@ export function countUnreadAutomationRuns(input: {
 }
 
 /**
- * What the row leads with. `missed` and `skipped` outcomes matter more than the
- * next run: they are the cases where the user may want to press Run now.
+ * What the row leads with. A failed last run matters more than the next one:
+ * it is the case where the user may want to fix something and press Run now.
  */
 export type AutomationRowStatus =
   | { readonly kind: "paused" }
   | { readonly kind: "running" }
-  | { readonly kind: "missed"; readonly scheduledFor: string }
-  | { readonly kind: "skipped"; readonly scheduledFor: string }
+  | { readonly kind: "failed"; readonly at: string | null; readonly error: string | null }
   | { readonly kind: "scheduled"; readonly nextRunAt: string }
   | { readonly kind: "idle" };
 
@@ -120,21 +119,14 @@ export function resolveAutomationRowStatus(input: {
   readonly runThreads: ReadonlyArray<EnvironmentThreadShell>;
 }): AutomationRowStatus {
   const { automation } = input;
-  if (input.runThreads.some(isAutomationRunWorking)) {
+  if (automation.lastRunStatus === "running" || input.runThreads.some(isAutomationRunWorking)) {
     return { kind: "running" };
   }
   if (!automation.enabled) {
     return { kind: "paused" };
   }
-  const lastRun = automation.lastRun;
-  if (lastRun !== null && lastRun.outcome === "missed") {
-    return { kind: "missed", scheduledFor: lastRun.scheduledFor };
-  }
-  if (
-    lastRun !== null &&
-    (lastRun.outcome === "skipped-overlap" || lastRun.outcome === "skipped-disabled")
-  ) {
-    return { kind: "skipped", scheduledFor: lastRun.scheduledFor };
+  if (automation.lastRunStatus === "failed") {
+    return { kind: "failed", at: automation.lastRunAt, error: automation.lastRunError };
   }
   if (automation.nextRunAt !== null) {
     return { kind: "scheduled", nextRunAt: automation.nextRunAt };
@@ -157,7 +149,7 @@ export function buildAutomationRowModels(input: {
   for (const thread of input.threads) {
     const run = input.runsByThreadKey.get(automationRunVisitKey(thread));
     if (run === undefined) continue;
-    const key = `${thread.environmentId}:${run.automationId}`;
+    const key = `${thread.environmentId}:${run.scheduledTaskId}`;
     const bucket = runThreadsByAutomation.get(key);
     if (bucket === undefined) {
       runThreadsByAutomation.set(key, [thread]);

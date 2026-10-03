@@ -20,7 +20,7 @@ const legacyReaderFiles: Record<string, string> = {
   // Provider history for settings migration reads V1 thread sessions once at load.
   "serverSettings.ts": "one-time provider history for settings migration",
   // Run threads from V1 automations carry their owner and hidden state on V1 rows.
-  "automation/AutomationService.ts": "one-time backfill of V1 automation runs",
+  "automation/AutomationRuns.ts": "one-time backfill of V1 automation runs",
 };
 const retiredPaths = [
   "orchestration",

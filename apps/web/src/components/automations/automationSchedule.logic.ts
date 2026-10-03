@@ -1,11 +1,12 @@
-import type { AutomationSchedule } from "@t3tools/contracts";
+import type { ScheduledTaskSchedule } from "@t3tools/contracts";
 
 /**
  * The schedule vocabulary the form offers, and its translation to and from
- * cron. The picker is the common ground; anything it cannot express stays
- * editable as a raw expression rather than being silently rounded off.
+ * the scheduled-task schedule the server runs. `kept` is a schedule the
+ * picker cannot express (an agent or the scheduled-tasks API made it); the
+ * form leaves it untouched rather than silently rounding it off.
  */
-export type SchedulePresetKind = "daily" | "weekdays" | "weekly" | "hourly" | "custom" | "once";
+export type SchedulePresetKind = "daily" | "weekdays" | "weekly" | "hourly" | "kept";
 
 export const WEEKDAY_LABELS = [
   "Sunday",
@@ -34,6 +35,9 @@ export const DEFAULT_SCHEDULE_PRESET: SchedulePreset = {
   everyHours: 6,
 };
 
+const HOUR_MS = 60 * 60 * 1000;
+const WEEKDAYS_MASK = [1, 2, 3, 4, 5] as const;
+
 export function formatMinutesOfDay(minutesOfDay: number): string {
   const normalized = ((Math.trunc(minutesOfDay) % 1_440) + 1_440) % 1_440;
   const hours = Math.floor(normalized / 60);
@@ -50,70 +54,51 @@ export function parseMinutesOfDay(value: string): number | null {
   return hours * 60 + minutes;
 }
 
-/** The picker's state as a cron expression. Custom is passed through by the caller. */
-export function cronFromPreset(preset: SchedulePreset): string {
-  const minutes = ((Math.trunc(preset.minutesOfDay) % 1_440) + 1_440) % 1_440;
-  const minute = minutes % 60;
-  const hour = Math.floor(minutes / 60);
+/** The picker's state as the schedule to save. `kept` is resolved by the caller. */
+export function scheduleFromPreset(preset: SchedulePreset): ScheduledTaskSchedule {
+  const timeOfDay = formatMinutesOfDay(preset.minutesOfDay);
   switch (preset.kind) {
     case "weekdays":
-      return `${minute} ${hour} * * 1-5`;
+      return { type: "fixed_time", timeOfDay, weekdays: [...WEEKDAYS_MASK] };
     case "weekly":
-      return `${minute} ${hour} * * ${preset.weekday}`;
+      return { type: "fixed_time", timeOfDay, weekdays: [preset.weekday] };
     case "hourly":
-      return `${minute} */${Math.max(1, Math.min(23, Math.trunc(preset.everyHours)))} * * *`;
+      return {
+        type: "interval",
+        everyMs: Math.max(1, Math.min(23, Math.trunc(preset.everyHours))) * HOUR_MS,
+      };
     case "daily":
-    case "custom":
-    case "once":
-      return `${minute} ${hour} * * *`;
+    case "kept":
+      return { type: "fixed_time", timeOfDay };
   }
 }
 
+function distinctWeekdays(weekdays: ReadonlyArray<number> | undefined): ReadonlyArray<number> {
+  return [...new Set(weekdays ?? [])].toSorted((left, right) => left - right);
+}
+
 /**
- * Read a cron expression back into the picker, or null when the picker cannot
- * express it — the form then shows the raw expression instead of pretending.
+ * Read a saved schedule back into the picker, or null when the picker cannot
+ * express it — the form then keeps it as it is instead of pretending.
  */
-export function presetFromCron(cron: string): SchedulePreset | null {
-  const segments = cron.trim().split(/\s+/);
-  if (segments.length !== 5) return null;
-  const [minute, hour, dayOfMonth, month, weekday] = segments as [
-    string,
-    string,
-    string,
-    string,
-    string,
-  ];
-  if (dayOfMonth !== "*" || month !== "*") return null;
-  if (!/^\d{1,2}$/.test(minute) || Number(minute) > 59) return null;
-
-  const hourlyMatch = /^\*\/(\d{1,2})$/.exec(hour);
-  if (hourlyMatch !== null && weekday === "*") {
-    const everyHours = Number(hourlyMatch[1]);
-    if (everyHours < 1 || everyHours > 23) return null;
-    return {
-      ...DEFAULT_SCHEDULE_PRESET,
-      kind: "hourly",
-      everyHours,
-      minutesOfDay: Number(minute),
-    };
+export function presetFromSchedule(schedule: ScheduledTaskSchedule): SchedulePreset | null {
+  if (schedule.type === "interval") {
+    const everyHours = schedule.everyMs / HOUR_MS;
+    return Number.isInteger(everyHours) && everyHours >= 1 && everyHours <= 23
+      ? { ...DEFAULT_SCHEDULE_PRESET, kind: "hourly", everyHours }
+      : null;
   }
-  if (!/^\d{1,2}$/.test(hour)) return null;
-  const minutesOfDay = Number(hour) * 60 + Number(minute);
-  if (minutesOfDay > 1_439) return null;
-
-  if (weekday === "*") {
+  const minutesOfDay = parseMinutesOfDay(schedule.timeOfDay);
+  if (minutesOfDay === null) return null;
+  const weekdays = distinctWeekdays(schedule.weekdays);
+  if (weekdays.length === 0 || weekdays.length === 7) {
     return { ...DEFAULT_SCHEDULE_PRESET, kind: "daily", minutesOfDay };
   }
-  if (weekday === "1-5") {
+  if (weekdays.join(",") === WEEKDAYS_MASK.join(",")) {
     return { ...DEFAULT_SCHEDULE_PRESET, kind: "weekdays", minutesOfDay };
   }
-  if (/^[0-6]$/.test(weekday)) {
-    return {
-      ...DEFAULT_SCHEDULE_PRESET,
-      kind: "weekly",
-      minutesOfDay,
-      weekday: Number(weekday),
-    };
+  if (weekdays.length === 1) {
+    return { ...DEFAULT_SCHEDULE_PRESET, kind: "weekly", minutesOfDay, weekday: weekdays[0]! };
   }
   return null;
 }
@@ -130,44 +115,37 @@ function formatClockLabel(minutesOfDay: number, use24Hour: boolean): string {
   return `${displayHour}:${String(minutes).padStart(2, "0")} ${suffix}`;
 }
 
-/**
- * How a schedule reads in a list: "Weekdays at 8:00 AM". A cron the picker
- * cannot express falls back to the expression itself — honest, and still
- * scannable next to the ones that do.
- */
+function describeInterval(everyMs: number): string {
+  const minutes = Math.max(1, Math.round(everyMs / 60_000));
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return hours === 1 ? "Every hour" : `Every ${hours} hours`;
+  }
+  return minutes === 1 ? "Every minute" : `Every ${minutes} minutes`;
+}
+
+/** How a schedule reads in a list: "Weekdays at 8:00 AM". */
 export function describeAutomationSchedule(
-  schedule: AutomationSchedule,
+  schedule: ScheduledTaskSchedule,
   options?: { readonly use24Hour?: boolean },
 ): string {
+  if (schedule.type === "interval") return describeInterval(schedule.everyMs);
   const use24Hour = options?.use24Hour === true;
-  if (schedule.kind === "once") {
-    return "Once";
-  }
-  const preset = presetFromCron(schedule.cron);
-  if (preset === null) {
-    return schedule.cron;
-  }
-  const at = formatClockLabel(preset.minutesOfDay, use24Hour);
-  switch (preset.kind) {
+  const minutesOfDay = parseMinutesOfDay(schedule.timeOfDay);
+  const at = minutesOfDay === null ? schedule.timeOfDay : formatClockLabel(minutesOfDay, use24Hour);
+  const preset = presetFromSchedule(schedule);
+  switch (preset?.kind) {
     case "weekdays":
       return `Weekdays at ${at}`;
     case "weekly":
       return `Every ${WEEKDAY_LABELS[preset.weekday] ?? "week"} at ${at}`;
-    case "hourly":
-      return preset.everyHours === 1 ? "Every hour" : `Every ${preset.everyHours} hours`;
     case "daily":
-    case "custom":
-    case "once":
       return `Every day at ${at}`;
-  }
-}
-
-/** The zone an automation created here should be evaluated in. */
-export function resolveLocalTimeZone(): string {
-  try {
-    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return typeof zone === "string" && zone.length > 0 ? zone : "UTC";
-  } catch {
-    return "UTC";
+    default: {
+      const days = distinctWeekdays(schedule.weekdays)
+        .map((day) => WEEKDAY_LABELS[day]?.slice(0, 3))
+        .filter((label) => label !== undefined);
+      return `${days.join(", ")} at ${at}`;
+    }
   }
 }

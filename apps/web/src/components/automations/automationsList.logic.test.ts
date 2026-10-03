@@ -4,7 +4,13 @@ import {
   type EnvironmentAutomationRun,
 } from "@t3tools/client-runtime/state/automations";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
-import type { AutomationId, EnvironmentId, ProjectId, RunId, ThreadId } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  ProjectId,
+  RunId,
+  ScheduledTaskId,
+  ThreadId,
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { describeAutomationDeletion } from "../../hooks/useAutomationActions";
@@ -18,12 +24,13 @@ import {
   unreadRunBadgeLabel,
 } from "./automationsList.logic";
 import {
-  cronFromPreset,
   DEFAULT_SCHEDULE_PRESET,
   describeAutomationSchedule,
   formatMinutesOfDay,
   parseMinutesOfDay,
-  presetFromCron,
+  presetFromSchedule,
+  scheduleFromPreset,
+  type SchedulePreset,
 } from "./automationSchedule.logic";
 
 const ENVIRONMENT_ID = "env-1" as EnvironmentId;
@@ -31,20 +38,24 @@ const ENVIRONMENT_ID = "env-1" as EnvironmentId;
 function makeAutomation(overrides?: Partial<EnvironmentAutomation>): EnvironmentAutomation {
   return {
     environmentId: ENVIRONMENT_ID,
-    id: "automation-1" as AutomationId,
+    id: "automation-1" as ScheduledTaskId,
     title: "Daily briefing",
     prompt: "Summarize what changed.",
-    schedule: { kind: "recurring", cron: "0 8 * * 1-5", timeZone: "America/New_York" },
+    schedule: { type: "fixed_time", timeOfDay: "08:00", weekdays: [1, 2, 3, 4, 5] },
     projectId: "project-1" as ProjectId,
-    ownsProject: false,
+    threadId: null,
+    workspaceStrategy: { type: "root" },
     modelSelection: { instanceId: "codex", model: "gpt-5" },
     runtimeMode: "full-access",
-    envMode: "local",
-    baseBranch: null,
-    startFromOrigin: false,
+    interactionMode: "default",
+    createdBy: "user",
+    creationSource: "web",
     enabled: true,
     nextRunAt: "2026-08-13T12:00:00.000Z",
-    lastRun: null,
+    lastRunAt: null,
+    lastRunStatus: "never",
+    lastRunError: null,
+    runCount: 0,
     createdAt: "2026-08-12T10:00:00.000Z",
     updatedAt: "2026-08-12T10:00:00.000Z",
     ...overrides,
@@ -112,9 +123,7 @@ function runsFor(
     const run = {
       environmentId: thread.environmentId,
       threadId: thread.id,
-      automationId: automationId as AutomationId,
-      scheduledFor: thread.createdAt,
-      reason: "schedule",
+      scheduledTaskId: automationId as ScheduledTaskId,
       createdAt: thread.createdAt,
       hiddenAt: thread.createdAt,
     } satisfies EnvironmentAutomationRun;
@@ -124,67 +133,60 @@ function runsFor(
 }
 
 describe("schedule presets", () => {
-  it("round-trips every preset the picker can express", () => {
-    const presets = [
-      { ...DEFAULT_SCHEDULE_PRESET, kind: "daily" as const, minutesOfDay: 9 * 60 + 30 },
-      { ...DEFAULT_SCHEDULE_PRESET, kind: "weekdays" as const, minutesOfDay: 8 * 60 },
-      { ...DEFAULT_SCHEDULE_PRESET, kind: "weekly" as const, minutesOfDay: 16 * 60, weekday: 5 },
-      { ...DEFAULT_SCHEDULE_PRESET, kind: "hourly" as const, everyHours: 6, minutesOfDay: 0 },
-    ];
-    for (const preset of presets) {
-      const parsed = presetFromCron(cronFromPreset(preset));
-      expect(parsed?.kind).toBe(preset.kind);
-      if (preset.kind === "hourly") {
-        expect(parsed?.everyHours).toBe(preset.everyHours);
-      } else {
-        expect(parsed?.minutesOfDay).toBe(preset.minutesOfDay);
-      }
-      if (preset.kind === "weekly") {
-        expect(parsed?.weekday).toBe(preset.weekday);
-      }
-    }
+  it.each<SchedulePreset>([
+    { ...DEFAULT_SCHEDULE_PRESET, kind: "daily", minutesOfDay: 9 * 60 + 30 },
+    { ...DEFAULT_SCHEDULE_PRESET, kind: "weekdays", minutesOfDay: 8 * 60 },
+    { ...DEFAULT_SCHEDULE_PRESET, kind: "weekly", minutesOfDay: 16 * 60, weekday: 5 },
+    { ...DEFAULT_SCHEDULE_PRESET, kind: "hourly", everyHours: 6 },
+  ])("round-trips the $kind preset", (preset) => {
+    const parsed = presetFromSchedule(scheduleFromPreset(preset));
+    expect(parsed?.kind).toBe(preset.kind);
+    expect(parsed?.[preset.kind === "hourly" ? "everyHours" : "minutesOfDay"]).toBe(
+      preset[preset.kind === "hourly" ? "everyHours" : "minutesOfDay"],
+    );
+    expect(parsed?.weekday).toBe(preset.kind === "weekly" ? preset.weekday : 1);
   });
 
-  it("refuses to round off a cron the picker cannot express", () => {
-    // Read back as a preset these would silently become something else.
-    expect(presetFromCron("0 9 1 * *")).toBeNull();
-    expect(presetFromCron("*/15 * * * *")).toBeNull();
-    expect(presetFromCron("0 9 * * 1,3,5")).toBeNull();
-    expect(presetFromCron("0 9 * *")).toBeNull();
+  it.each([
+    { type: "fixed_time", timeOfDay: "09:00", weekdays: [1, 3, 5] },
+    { type: "interval", everyMs: 15 * 60_000 },
+    { type: "interval", everyMs: 24 * 60 * 60_000 },
+  ] as const)("refuses to round off a schedule the picker cannot express", (schedule) => {
+    expect(presetFromSchedule(schedule)).toBeNull();
   });
 
   it("reads a schedule the way a list should", () => {
     expect(
       describeAutomationSchedule({
-        kind: "recurring",
-        cron: "0 8 * * 1-5",
-        timeZone: "America/New_York",
+        type: "fixed_time",
+        timeOfDay: "08:00",
+        weekdays: [1, 2, 3, 4, 5],
       }),
     ).toBe("Weekdays at 8:00 AM");
     expect(
-      describeAutomationSchedule({ kind: "recurring", cron: "0 16 * * 5", timeZone: "UTC" }),
+      describeAutomationSchedule({ type: "fixed_time", timeOfDay: "16:00", weekdays: [5] }),
     ).toBe("Every Friday at 4:00 PM");
-    expect(
-      describeAutomationSchedule({ kind: "recurring", cron: "0 9 * * *", timeZone: "UTC" }),
-    ).toBe("Every day at 9:00 AM");
-    expect(
-      describeAutomationSchedule({ kind: "recurring", cron: "0 */6 * * *", timeZone: "UTC" }),
-    ).toBe("Every 6 hours");
-    expect(describeAutomationSchedule({ kind: "once", runAt: "2026-08-13T09:00:00.000Z" })).toBe(
-      "Once",
+    expect(describeAutomationSchedule({ type: "fixed_time", timeOfDay: "09:00" })).toBe(
+      "Every day at 9:00 AM",
+    );
+    expect(describeAutomationSchedule({ type: "interval", everyMs: 6 * 60 * 60_000 })).toBe(
+      "Every 6 hours",
+    );
+    expect(describeAutomationSchedule({ type: "interval", everyMs: 15 * 60_000 })).toBe(
+      "Every 15 minutes",
     );
   });
 
-  it("shows an unrecognized expression rather than a wrong summary", () => {
+  it("names the days of a schedule no preset covers", () => {
     expect(
-      describeAutomationSchedule({ kind: "recurring", cron: "0 9 1 * *", timeZone: "UTC" }),
-    ).toBe("0 9 1 * *");
+      describeAutomationSchedule({ type: "fixed_time", timeOfDay: "09:00", weekdays: [1, 3, 5] }),
+    ).toBe("Mon, Wed, Fri at 9:00 AM");
   });
 
   it("honors a 24-hour clock preference", () => {
     expect(
       describeAutomationSchedule(
-        { kind: "recurring", cron: "0 16 * * 5", timeZone: "UTC" },
+        { type: "fixed_time", timeOfDay: "16:00", weekdays: [5] },
         { use24Hour: true },
       ),
     ).toBe("Every Friday at 16:00");
@@ -217,37 +219,23 @@ describe("automation row status", () => {
     ).toEqual({ kind: "paused" });
   });
 
-  it("surfaces a missed run over the next one", () => {
+  it("surfaces a failed run over the next one", () => {
     expect(
       resolveAutomationRowStatus({
         automation: makeAutomation({
-          lastRun: {
-            scheduledFor: "2026-08-12T12:00:00.000Z",
-            occurredAt: "2026-08-12T18:00:00.000Z",
-            outcome: "missed",
-            reason: "schedule",
-            threadId: null,
-          },
+          lastRunAt: "2026-08-12T12:00:00.000Z",
+          lastRunStatus: "failed",
+          lastRunError: "Project not found.",
         }),
         runThreads: [],
       }),
-    ).toEqual({ kind: "missed", scheduledFor: "2026-08-12T12:00:00.000Z" });
+    ).toEqual({ kind: "failed", at: "2026-08-12T12:00:00.000Z", error: "Project not found." });
   });
 
-  it("has nothing to say once a one-time automation has run", () => {
+  it("has nothing to say once nothing is scheduled", () => {
     expect(
       resolveAutomationRowStatus({
-        automation: makeAutomation({
-          schedule: { kind: "once", runAt: "2026-08-12T12:00:00.000Z" },
-          nextRunAt: null,
-          lastRun: {
-            scheduledFor: "2026-08-12T12:00:00.000Z",
-            occurredAt: "2026-08-12T12:00:00.000Z",
-            outcome: "claimed",
-            reason: "schedule",
-            threadId: "run-1" as ThreadId,
-          },
-        }),
+        automation: makeAutomation({ nextRunAt: null, lastRunStatus: "succeeded" }),
         runThreads: [makeFinishedRunThread("2026-08-12T12:05:00.000Z")],
       }),
     ).toEqual({ kind: "idle" });
@@ -304,10 +292,10 @@ describe("automation rows", () => {
 
   it("puts the soonest run first and sinks paused automations", () => {
     const rows = build([
-      makeAutomation({ id: "later" as AutomationId, nextRunAt: "2026-08-14T12:00:00.000Z" }),
-      makeAutomation({ id: "paused" as AutomationId, enabled: false }),
-      makeAutomation({ id: "sooner" as AutomationId, nextRunAt: "2026-08-13T12:00:00.000Z" }),
-      makeAutomation({ id: "unscheduled" as AutomationId, nextRunAt: null }),
+      makeAutomation({ id: "later" as ScheduledTaskId, nextRunAt: "2026-08-14T12:00:00.000Z" }),
+      makeAutomation({ id: "paused" as ScheduledTaskId, enabled: false }),
+      makeAutomation({ id: "sooner" as ScheduledTaskId, nextRunAt: "2026-08-13T12:00:00.000Z" }),
+      makeAutomation({ id: "unscheduled" as ScheduledTaskId, nextRunAt: null }),
     ]);
     expect(sortAutomationRows(rows).map((row) => row.automation.id)).toEqual([
       "sooner",
@@ -428,22 +416,11 @@ describe("unread runs", () => {
 });
 
 describe("automation deletion copy", () => {
-  it("warns that an owned workspace takes promoted runs with it", () => {
-    expect(
-      describeAutomationDeletion({ ownsProject: true, runCount: 4, revealedRunCount: 2 }),
-    ).toContain("including 2 in your sidebar");
-  });
-
-  it("promises promoted runs survive when the project is not the automation's", () => {
-    expect(
-      describeAutomationDeletion({ ownsProject: false, runCount: 4, revealedRunCount: 2 }),
-    ).toContain("stay");
+  it("promises promoted runs stay in the sidebar", () => {
+    expect(describeAutomationDeletion({ revealedRunCount: 2 })).toContain("stay");
   });
 
   it("stays quiet about the sidebar when nothing was promoted", () => {
-    for (const ownsProject of [true, false]) {
-      const copy = describeAutomationDeletion({ ownsProject, runCount: 3, revealedRunCount: 0 });
-      expect(copy).not.toContain("sidebar");
-    }
+    expect(describeAutomationDeletion({ revealedRunCount: 0 })).not.toContain("sidebar");
   });
 });

@@ -157,9 +157,9 @@ export const ExecutionEnvironmentCapabilities = Schema.Struct({
       threadSettlement: clients keep their local visited state against
       servers that lack this. */
   threadVisitedTracking: Schema.optionalKey(Schema.Boolean),
-  /** Server serves the automations.* RPCs. Same version-skew contract as
-      threadSettlement: absent means this environment cannot hold automations,
-      so clients offer none for it and never subscribe. */
+  /** Server tracks which threads its scheduled tasks launched (the
+      automationRuns.* RPCs), so automation runs can stay out of the sidebar.
+      Absent means clients never subscribe and treat runs as plain threads. */
   automations: Schema.optionalKey(Schema.Boolean),
   /** Server persists a pull request reference on thread.meta.update. */
   threadPullRequestLinking: Schema.optionalKey(Schema.Boolean),

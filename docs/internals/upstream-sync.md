@@ -166,6 +166,13 @@ backends leak back in.
   boundary fails with a missing table rather than a wrong number. Do not add fork migrations to the
   ledger: fork-owned tables such as `automation_runs` are created by their service outside the
   migrator (see [legacy orchestration migration](./legacy-orchestration-migration.md)).
+- Keep Automations on upstream's scheduled tasks. The Automations page is a second editor for
+  `ScheduledTaskService`; the only fork backend is run tracking in
+  [AutomationRuns](../../apps/server/src/automation/AutomationRuns.ts), which wraps
+  `ThreadLaunchService` for the scheduler alone to hide each run and give it a stable thread id. If
+  upstream changes how the scheduler launches threads (another service, a `threadId` it picks
+  itself), runs stop being tracked and flood the sidebar — re-point the wrapper rather than patch
+  `ScheduledTaskService`.
 - Prune GitHub workflows. Upstream still has `release.yml`, `deploy-relay.yml`, and the
   `mobile-*.yml` workflows. A merge can restore them or conflict on the deletion. Delete them again
   if they return.

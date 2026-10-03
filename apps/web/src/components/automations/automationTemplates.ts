@@ -9,11 +9,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 
-import {
-  cronFromPreset,
-  DEFAULT_SCHEDULE_PRESET,
-  type SchedulePreset,
-} from "./automationSchedule.logic";
+import { DEFAULT_SCHEDULE_PRESET, type SchedulePreset } from "./automationSchedule.logic";
 
 /**
  * Starting points for the empty state. Deliberately shaped for a coding
@@ -115,9 +111,4 @@ export const AUTOMATION_TEMPLATES: ReadonlyArray<AutomationTemplate> = [
 export function findAutomationTemplate(id: string | undefined): AutomationTemplate | null {
   if (id === undefined) return null;
   return AUTOMATION_TEMPLATES.find((template) => template.id === id) ?? null;
-}
-
-/** A template's schedule as the cron the form will save. */
-export function templateCron(template: AutomationTemplate): string {
-  return cronFromPreset(template.preset);
 }

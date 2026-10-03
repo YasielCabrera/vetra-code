@@ -50,8 +50,7 @@ import { layer as threadLifecycleServiceLayer } from "./ThreadLifecycleService.t
 import { layer as threadForkServiceLayer } from "./ThreadForkService.ts";
 import { layer as turnItemPositionStoreLayer } from "./TurnItemPositionStore.ts";
 import { layer as scheduledTaskServiceLayer } from "../scheduledTasks/ScheduledTaskService.ts";
-import { layer as automationServiceLayer } from "../automation/AutomationService.ts";
-import { ProjectionAutomationRepositoryLive } from "../persistence/Layers/ProjectionAutomations.ts";
+import * as AutomationRuns from "../automation/AutomationRuns.ts";
 
 /** The shared application event log and its command receipts. */
 export const OrchestrationEventInfrastructureLayerLive = Layer.mergeAll(
@@ -250,18 +249,22 @@ const threadLaunchProvided = threadLaunchServiceLayer.pipe(
 const threadLifecycleProvided = threadLifecycleServiceLayer.pipe(
   Layer.provide(threadManagementProvided),
 );
+// Scheduled tasks launch through a ThreadLaunchService that records each run
+// for the Automations page; see automation/AutomationRuns.ts.
+const automationRunsProvided = AutomationRuns.layer.pipe(Layer.provide(ProjectServiceLayerLive));
 const scheduledTaskProvided = scheduledTaskServiceLayer.pipe(
-  Layer.provide(Layer.mergeAll(threadLaunchProvided, threadManagementProvided)),
-);
-const automationProvided = automationServiceLayer.pipe(
   Layer.provide(
     Layer.mergeAll(
-      ProjectionAutomationRepositoryLive,
-      ProjectServiceLayerLive,
-      threadLaunchProvided,
-      threadLifecycleProvided,
+      AutomationRuns.trackingThreadLaunchLayer.pipe(
+        Layer.provide(Layer.mergeAll(threadLaunchProvided, automationRunsProvided)),
+      ),
       threadManagementProvided,
     ),
+  ),
+);
+const automationRunCleanupProvided = AutomationRuns.cleanupLive.pipe(
+  Layer.provide(
+    Layer.mergeAll(scheduledTaskProvided, threadLifecycleProvided, automationRunsProvided),
   ),
 );
 const providerContinuationWorkerProvided = providerContinuationWorkerLive.pipe(
@@ -319,7 +322,8 @@ export const OrchestrationV2ProductionLayerLive = Layer.mergeAll(
   threadLaunchProvided,
   threadLifecycleProvided,
   scheduledTaskProvided,
-  automationProvided,
+  automationRunsProvided,
+  automationRunCleanupProvided,
   UsageLimitRecoveryWorker.workerLive.pipe(
     Layer.provide(Layer.mergeAll(projectionStoreLayer, threadManagementProvided)),
   ),

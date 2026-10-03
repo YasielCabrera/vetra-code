@@ -120,7 +120,7 @@ import * as ThreadLaunchService from "./orchestration-v2/ThreadLaunchService.ts"
 import * as ThreadMessageIntake from "./orchestration-v2/ThreadMessageIntake.ts";
 import * as IdAllocator from "./orchestration-v2/IdAllocator.ts";
 import * as ScheduledTasks from "./scheduledTasks/ScheduledTaskService.ts";
-import * as Automations from "./automation/AutomationService.ts";
+import * as AutomationRuns from "./automation/AutomationRuns.ts";
 import {
   archivedShellStreamItemFromThreadShell,
   buildActiveShellSnapshot,
@@ -1156,7 +1156,7 @@ const makeWsRpcLayer = (
       const threadLaunch = yield* ThreadLaunchService.ThreadLaunchService;
       const providerSessionManager = yield* ProviderSessionManager.ProviderSessionManagerV2;
       const scheduledTasks = yield* ScheduledTasks.ScheduledTaskService;
-      const automations = yield* Automations.AutomationService;
+      const automationRuns = yield* AutomationRuns.AutomationRuns;
       const pullRequests = yield* PullRequestService.PullRequestService;
       const issues = yield* IssueService.IssueService;
       const pullRequestSync = yield* PullRequestSyncReactor.PullRequestSyncReactor;
@@ -2066,43 +2066,13 @@ const makeWsRpcLayer = (
             "rpc.aggregate": "scheduledTasks",
             "scheduled_task.id": input.id,
           }),
-        [WS_METHODS.automationsSubscribe]: (_input) =>
-          observeRpcStream(WS_METHODS.automationsSubscribe, automations.subscribe(), {
-            "rpc.aggregate": "automations",
+        [WS_METHODS.automationRunsSubscribe]: (_input) =>
+          observeRpcStream(WS_METHODS.automationRunsSubscribe, automationRuns.subscribe(), {
+            "rpc.aggregate": "automationRuns",
           }),
-        [WS_METHODS.automationsCreate]: (input) =>
-          observeRpcEffect(WS_METHODS.automationsCreate, automations.create(input), {
-            "rpc.aggregate": "automations",
-            "automation.id": input.automationId,
-          }),
-        [WS_METHODS.automationsUpdate]: (input) =>
-          observeRpcEffect(WS_METHODS.automationsUpdate, automations.update(input), {
-            "rpc.aggregate": "automations",
-            "automation.id": input.automationId,
-          }),
-        [WS_METHODS.automationsEnable]: (input) =>
-          observeRpcEffect(WS_METHODS.automationsEnable, automations.enable(input), {
-            "rpc.aggregate": "automations",
-            "automation.id": input.automationId,
-          }),
-        [WS_METHODS.automationsDisable]: (input) =>
-          observeRpcEffect(WS_METHODS.automationsDisable, automations.disable(input), {
-            "rpc.aggregate": "automations",
-            "automation.id": input.automationId,
-          }),
-        [WS_METHODS.automationsDelete]: (input) =>
-          observeRpcEffect(WS_METHODS.automationsDelete, automations.delete(input), {
-            "rpc.aggregate": "automations",
-            "automation.id": input.automationId,
-          }),
-        [WS_METHODS.automationsRunNow]: (input) =>
-          observeRpcEffect(WS_METHODS.automationsRunNow, automations.runNow(input), {
-            "rpc.aggregate": "automations",
-            "automation.id": input.automationId,
-          }),
-        [WS_METHODS.automationsSetRunHidden]: (input) =>
-          observeRpcEffect(WS_METHODS.automationsSetRunHidden, automations.setRunHidden(input), {
-            "rpc.aggregate": "automations",
+        [WS_METHODS.automationRunsSetHidden]: (input) =>
+          observeRpcEffect(WS_METHODS.automationRunsSetHidden, automationRuns.setHidden(input), {
+            "rpc.aggregate": "automationRuns",
           }),
         [WS_METHODS.serverProbe]: (_input) =>
           observeRpcEffect(WS_METHODS.serverProbe, Effect.succeed({}), {
