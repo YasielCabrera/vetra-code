@@ -314,6 +314,7 @@ function makeTestLayer(input: {
         Layer.mock(PreviewManager.PreviewManager)({
           getBrowserSession: () => Effect.succeed({} as Electron.Session),
           setMainWindow: () => Effect.void,
+          prepareWebview: () => Effect.void,
           isBrowserPartition: (partition) => partition.startsWith("persist:vetra-code-preview-"),
           getBrowserPartition: () => Effect.succeed("persist:vetra-code-preview-test"),
           reapplyZoom: () =>
