@@ -6,18 +6,30 @@ import { type EnvironmentTicket, ticketKey } from "@t3tools/client-runtime/state
 import { type EnvironmentId, resolveEnvironmentMachineKind } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { Atom } from "effect/unstable/reactivity";
+import { gitHubLoginAvatarUrl } from "@t3tools/shared/githubActor";
 import {
+  BotIcon,
   ChevronRightIcon,
+  CircleDashedIcon,
+  EyeIcon,
   EyeOffIcon,
+  FolderIcon,
   LaptopIcon,
   ListIcon,
   MessageSquareIcon,
   MessageSquareOffIcon,
   PlusIcon,
   SearchIcon,
+  ServerIcon,
   SquareKanbanIcon,
   TagIcon,
+  TicketIcon,
   TriangleAlertIcon,
+  UserCheckIcon,
+  UserIcon,
+  UserPenIcon,
+  UserXIcon,
+  WorkflowIcon,
 } from "lucide-react";
 import {
   memo,
@@ -43,6 +55,8 @@ import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { GitHubIcon } from "../Icons";
 import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
 import { ProjectFavicon } from "../ProjectFavicon";
+import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
+import { SourceControlActorAvatar } from "../SourceControlActorAvatar";
 import { Button } from "../ui/button";
 import { RefreshIcon } from "../ui/refresh-icon";
 import { SidebarInset } from "../ui/sidebar";
@@ -64,7 +78,10 @@ import {
   TICKET_BOARD_SEARCH_SETTLED,
   ticketBoardEnvironmentPhase,
   ticketStatusGroupKey,
+  TICKET_NO_ASSIGNEE,
   type TicketBoardRow,
+  type TicketCreatorFilter,
+  type TicketLinkFilter,
   type TicketBoardSearch,
   type TicketStatusGroup,
   validateTicketBoardSearch,
@@ -74,12 +91,116 @@ import {
   rememberTicketBoardSearch,
 } from "./ticketBoardPreferences";
 import { TicketKanban } from "./TicketKanban";
-import { TicketFilterMenu, TicketStatusIcon } from "./ticketPresentation";
+import {
+  TicketFilterButton,
+  TicketFilterChip,
+  type TicketFilterOption,
+  type TicketFilterSection,
+  TicketStatusIcon,
+} from "./ticketPresentation";
 import { useRunning } from "../../hooks/useRunning";
 import { summarizeGitHubSync } from "./ticketGitHub.logic";
 import { TicketRow, TICKET_LIST_ROW_HEIGHT } from "./TicketListRow";
 
 const ROW_HEIGHT = TICKET_LIST_ROW_HEIGHT;
+
+const TICKET_KIND_OPTIONS: ReadonlyArray<TicketFilterOption> = [
+  { value: "local", label: "Local", icon: <LaptopIcon aria-hidden className="size-3.5" /> },
+  { value: "github", label: "GitHub", icon: <GitHubIcon aria-hidden className="size-3.5" /> },
+];
+const TICKET_THREAD_OPTIONS: ReadonlyArray<TicketFilterOption> = [
+  {
+    value: "linked",
+    label: "Has a linked thread",
+    icon: <MessageSquareIcon aria-hidden className="size-3.5" />,
+  },
+  {
+    value: "unlinked",
+    label: "No linked thread",
+    icon: <MessageSquareOffIcon aria-hidden className="size-3.5" />,
+  },
+];
+const TICKET_PULL_REQUEST_OPTIONS: ReadonlyArray<TicketFilterOption> = [
+  {
+    value: "linked",
+    label: "Has a linked pull request",
+    icon: <PullRequestGlyph.pullRequest aria-hidden className="size-3.5" />,
+  },
+  {
+    value: "unlinked",
+    label: "No linked pull request",
+    icon: <PullRequestGlyph.unlink aria-hidden className="size-3.5" />,
+  },
+];
+const TICKET_CREATOR_OPTIONS = [
+  { value: "user", label: "You", icon: <UserIcon aria-hidden className="size-3.5" /> },
+  { value: "agent", label: "An agent", icon: <BotIcon aria-hidden className="size-3.5" /> },
+  {
+    value: "automation",
+    label: "An automation",
+    icon: <WorkflowIcon aria-hidden className="size-3.5" />,
+  },
+  { value: "sync", label: "GitHub sync", icon: <GitHubIcon aria-hidden className="size-3.5" /> },
+] as const satisfies ReadonlyArray<TicketFilterOption & { value: TicketCreatorFilter }>;
+const TICKET_VISIBILITY_OPTIONS: ReadonlyArray<TicketFilterOption> = [
+  {
+    value: "hidden",
+    label: "Hidden tickets",
+    icon: <EyeOffIcon aria-hidden className="size-3.5" />,
+  },
+];
+
+function linkFilter(value: string | undefined): TicketLinkFilter | undefined {
+  return value === "linked" || value === "unlinked" ? value : undefined;
+}
+
+function compareText(left: TicketFilterOption, right: TicketFilterOption): number {
+  return left.label.localeCompare(right.label, undefined, { sensitivity: "base" });
+}
+
+function loginOption(login: string, host: string): TicketFilterOption {
+  return {
+    value: login,
+    label: login,
+    icon: (
+      <SourceControlActorAvatar actor={{ login, avatarUrl: gitHubLoginAvatarUrl(login, host) }} />
+    ),
+  };
+}
+
+/** The repositories and people the GitHub tickets on the board mention, for its filters. */
+function ticketGitHubFilterOptions(tickets: ReadonlyArray<EnvironmentTicket>) {
+  const repositories = new Set<string>();
+  const authors = new Map<string, string>();
+  const assignees = new Map<string, string>();
+  for (const ticket of tickets) {
+    if (ticket.kind !== "github") continue;
+    const { host, repository, author } = ticket.github;
+    repositories.add(repository);
+    if (author !== null && !authors.has(author)) authors.set(author, host);
+    for (const login of ticket.github.assignees) {
+      if (!assignees.has(login)) assignees.set(login, host);
+    }
+  }
+  return {
+    repositories: [...repositories]
+      .map((repository): TicketFilterOption => ({
+        value: repository,
+        label: repository,
+        icon: <GitHubIcon aria-hidden className="size-3.5" />,
+      }))
+      .toSorted(compareText),
+    authors: [...authors].map(([login, host]) => loginOption(login, host)).toSorted(compareText),
+    assignees: [
+      {
+        value: TICKET_NO_ASSIGNEE,
+        label: "No assignee",
+        icon: <UserXIcon aria-hidden className="size-3.5" />,
+      },
+      ...[...assignees].map(([login, host]) => loginOption(login, host)).toSorted(compareText),
+    ],
+  };
+}
 const NO_MATCHES: ReadonlySet<string> = new Set();
 
 /**
@@ -241,6 +362,10 @@ export function TicketsPage() {
               connectionPhase: environment.connection.phase,
             }),
             projectIds: liveProjectIds?.get(environment.environmentId),
+            ticketsSupported:
+              environment.serverConfig === null
+                ? undefined
+                : environment.serverConfig.environment.capabilities.tickets === true,
             statusGroups:
               statusSet === undefined
                 ? undefined
@@ -284,6 +409,11 @@ export function TicketsPage() {
       project: boardSearch.project,
       label: boardSearch.label,
       thread: boardSearch.thread,
+      pullRequest: boardSearch.pr,
+      creator: boardSearch.creator,
+      author: boardSearch.author,
+      assignee: boardSearch.assignee,
+      repository: boardSearch.repo,
       environment: environmentFilter,
       query,
       hidden: boardSearch.hidden,
@@ -303,9 +433,8 @@ export function TicketsPage() {
     [collapsedOverrides, groups],
   );
 
-  const projectTitleByKey = useMemo(
-    () =>
-      new Map(projects.map((project) => [`${project.environmentId}:${project.id}`, project.title])),
+  const projectByKey = useMemo(
+    () => new Map(projects.map((project) => [`${project.environmentId}:${project.id}`, project])),
     [projects],
   );
   const statusOptions = useMemo(
@@ -418,6 +547,165 @@ export function TicketsPage() {
     [board.tickets],
   );
   const hasHidden = trackedCount < board.tickets.length;
+  const githubOptions = useMemo(() => ticketGitHubFilterOptions(board.tickets), [board.tickets]);
+  const creatorOptions = useMemo(
+    () =>
+      TICKET_CREATOR_OPTIONS.filter(
+        (option) =>
+          option.value === boardSearch.creator ||
+          board.tickets.some((ticket) => ticket.createdBy.type === option.value),
+      ),
+    [board.tickets, boardSearch.creator],
+  );
+
+  const filterSections = useMemo(
+    (): ReadonlyArray<TicketFilterSection> => [
+      {
+        fields: [
+          {
+            key: "status",
+            label: "Status",
+            icon: <CircleDashedIcon aria-hidden className="size-3.5" />,
+            value: boardSearch.status,
+            options: statusOptions,
+            onChange: (status) => setSearch({ status }),
+          },
+          {
+            key: "kind",
+            label: "Kind",
+            icon: <TicketIcon aria-hidden className="size-3.5" />,
+            value: boardSearch.kind,
+            options: TICKET_KIND_OPTIONS,
+            onChange: (kind) =>
+              setSearch({ kind: kind === "local" || kind === "github" ? kind : undefined }),
+          },
+          {
+            key: "project",
+            label: "Project",
+            icon: <FolderIcon aria-hidden className="size-3.5" />,
+            value: boardSearch.project,
+            options: projectOptions,
+            onChange: (project) => setSearch({ project }),
+          },
+          {
+            key: "label",
+            label: "Label",
+            icon: <TagIcon aria-hidden className="size-3.5" />,
+            value: boardSearch.label,
+            options: labelOptions,
+            onChange: (label) => setSearch({ label }),
+          },
+          {
+            key: "creator",
+            label: "Created by",
+            icon: <UserIcon aria-hidden className="size-3.5" />,
+            anyLabel: "Anyone",
+            value: boardSearch.creator,
+            options: creatorOptions,
+            onChange: (creator) =>
+              setSearch({
+                creator: TICKET_CREATOR_OPTIONS.find((option) => option.value === creator)?.value,
+              }),
+          },
+        ],
+      },
+      {
+        label: "Links",
+        fields: [
+          {
+            key: "thread",
+            label: "Thread",
+            icon: <MessageSquareIcon aria-hidden className="size-3.5" />,
+            value: boardSearch.thread,
+            options: TICKET_THREAD_OPTIONS,
+            onChange: (thread) => setSearch({ thread: linkFilter(thread) }),
+          },
+          {
+            key: "pr",
+            label: "Pull request",
+            icon: <PullRequestGlyph.pullRequest aria-hidden className="size-3.5" />,
+            value: boardSearch.pr,
+            options: TICKET_PULL_REQUEST_OPTIONS,
+            onChange: (pr) => setSearch({ pr: linkFilter(pr) }),
+          },
+        ],
+      },
+      {
+        label: "GitHub",
+        fields: [
+          {
+            key: "repo",
+            label: "Repository",
+            icon: <GitHubIcon aria-hidden className="size-3.5" />,
+            value: boardSearch.repo,
+            options: githubOptions.repositories,
+            offered: githubOptions.repositories.length > 1,
+            onChange: (repo) => setSearch({ repo }),
+          },
+          {
+            key: "author",
+            label: "Author",
+            icon: <UserPenIcon aria-hidden className="size-3.5" />,
+            anyLabel: "Any author",
+            value: boardSearch.author,
+            options: githubOptions.authors,
+            onChange: (author) => setSearch({ author }),
+          },
+          {
+            key: "assignee",
+            label: "Assignee",
+            icon: <UserCheckIcon aria-hidden className="size-3.5" />,
+            value: boardSearch.assignee,
+            options: githubOptions.assignees,
+            offered: githubOptions.repositories.length > 0,
+            onChange: (assignee) => setSearch({ assignee }),
+          },
+        ],
+      },
+      {
+        fields: [
+          {
+            key: "env",
+            label: "Environment",
+            icon: <ServerIcon aria-hidden className="size-3.5" />,
+            value: environmentFilter,
+            options: environmentOptions,
+            offered: environmentOptions.length > 1,
+            onChange: (env) => setSearch({ env }),
+          },
+          {
+            key: "hidden",
+            label: "Visibility",
+            icon: <EyeIcon aria-hidden className="size-3.5" />,
+            anyLabel: "Tracked tickets",
+            value: boardSearch.hidden ? "hidden" : undefined,
+            options: TICKET_VISIBILITY_OPTIONS,
+            offered: hasHidden,
+            onChange: (hidden) => setSearch({ hidden: hidden === "hidden" ? true : undefined }),
+          },
+        ],
+      },
+    ],
+    [
+      boardSearch,
+      creatorOptions,
+      environmentFilter,
+      environmentOptions,
+      githubOptions,
+      hasHidden,
+      labelOptions,
+      projectOptions,
+      setSearch,
+      statusOptions,
+    ],
+  );
+  const activeFilterFields = useMemo(
+    () =>
+      filterSections
+        .flatMap((section) => section.fields)
+        .filter((field) => field.value !== undefined),
+    [filterSections],
+  );
 
   const focusRow = (index: number) => {
     const next = Math.max(0, Math.min(rows.length - 1, index));
@@ -492,6 +780,7 @@ export function TicketsPage() {
                 <SquareKanbanIcon className="size-3.5" />
               </Toggle>
             </ToggleGroup>
+            <TicketFilterButton sections={filterSections} />
             <TicketsSyncControl />
             <Button
               size="sm"
@@ -505,90 +794,16 @@ export function TicketsPage() {
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1">
-            <TicketFilterMenu
-              label="Status"
-              value={boardSearch.status}
-              options={statusOptions}
-              onChange={(status) => setSearch({ status })}
-            />
-            <TicketFilterMenu
-              label="Kind"
-              value={boardSearch.kind}
-              options={[
-                {
-                  value: "local",
-                  label: "Local",
-                  icon: <LaptopIcon aria-hidden className="size-3.5" />,
-                },
-                {
-                  value: "github",
-                  label: "GitHub",
-                  icon: <GitHubIcon aria-hidden className="size-3.5" />,
-                },
-              ]}
-              onChange={(kind) =>
-                setSearch({ kind: kind === "local" || kind === "github" ? kind : undefined })
-              }
-            />
-            <TicketFilterMenu
-              label="Project"
-              value={boardSearch.project}
-              options={projectOptions}
-              onChange={(project) => setSearch({ project })}
-            />
-            <TicketFilterMenu
-              label="Label"
-              value={boardSearch.label}
-              options={labelOptions}
-              onChange={(label) => setSearch({ label })}
-            />
-            <TicketFilterMenu
-              label="Thread"
-              value={boardSearch.thread}
-              options={[
-                {
-                  value: "linked",
-                  label: "Has a linked thread",
-                  icon: <MessageSquareIcon aria-hidden className="size-3.5" />,
-                },
-                {
-                  value: "unlinked",
-                  label: "No linked thread",
-                  icon: <MessageSquareOffIcon aria-hidden className="size-3.5" />,
-                },
-              ]}
-              onChange={(thread) =>
-                setSearch({
-                  thread: thread === "linked" || thread === "unlinked" ? thread : undefined,
-                })
-              }
-            />
-            {hasHidden || boardSearch.hidden ? (
-              <Button
-                size="xs"
-                variant={boardSearch.hidden ? "outline" : "ghost"}
-                aria-pressed={boardSearch.hidden === true}
-                onClick={() => setSearch({ hidden: boardSearch.hidden ? undefined : true })}
-              >
-                <EyeOffIcon aria-hidden />
-                Hidden
-              </Button>
-            ) : null}
-            {environmentOptions.length > 1 ? (
-              <TicketFilterMenu
-                label="Environment"
-                value={environmentFilter}
-                options={environmentOptions}
-                onChange={(env) => setSearch({ env })}
-              />
-            ) : null}
-            {hasFilters ? (
-              <Button size="xs" variant="ghost" aria-label="Clear filters" onClick={clearFilters}>
+          {hasFilters ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {activeFilterFields.map((field) => (
+                <TicketFilterChip key={field.key} field={field} />
+              ))}
+              <Button size="xs" variant="ghost" onClick={clearFilters}>
                 Clear
               </Button>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
 
           {bodyMatches.truncated ? (
             <p role="status" className="px-4 text-xs text-muted-foreground">
@@ -634,7 +849,7 @@ export function TicketsPage() {
               statusFilter={boardSearch.status}
               collapsedOverrides={collapsedOverrides}
               environmentLabels={environmentLabels}
-              projectTitleByKey={projectTitleByKey}
+              projectByKey={projectByKey}
               onToggleColumn={toggleGroup}
               onOpen={openTicket}
             />
@@ -655,7 +870,7 @@ export function TicketsPage() {
                 estimatedItemSize={ROW_HEIGHT}
                 getFixedItemSize={(row) => (row.type === "group" ? 40 : ROW_HEIGHT)}
                 drawDistance={ROW_HEIGHT * 10}
-                extraData={projectTitleByKey}
+                extraData={projectByKey}
                 recycleItems
                 style={{ height: "100%" }}
                 contentContainerStyle={{ paddingBottom: 48 }}
@@ -674,7 +889,7 @@ export function TicketsPage() {
                         .get(item.ticket.environmentId)
                         ?.statuses.find((status) => status.id === item.ticket.statusId)}
                       rowIndex={index}
-                      projectTitleByKey={projectTitleByKey}
+                      projectByKey={projectByKey}
                       onOpen={openTicket}
                       onTrackAgain={trackAgain}
                     />

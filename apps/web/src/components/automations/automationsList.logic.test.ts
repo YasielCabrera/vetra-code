@@ -313,7 +313,7 @@ describe("unread runs", () => {
     expect(
       isAutomationRunUnread({
         thread: makeFinishedRunThread(COMPLETED_AT),
-        lastVisitedAt: undefined,
+        localLastVisitedAt: undefined,
       }),
     ).toBe(true);
   });
@@ -322,14 +322,31 @@ describe("unread runs", () => {
     expect(
       isAutomationRunUnread({
         thread: makeFinishedRunThread(COMPLETED_AT),
-        lastVisitedAt: COMPLETED_AT,
+        localLastVisitedAt: COMPLETED_AT,
       }),
     ).toBe(false);
     // Opened while it was still working, then left before it landed.
     expect(
       isAutomationRunUnread({
         thread: makeFinishedRunThread(COMPLETED_AT),
-        lastVisitedAt: "2026-08-12T12:00:00.000Z",
+        localLastVisitedAt: "2026-08-12T12:00:00.000Z",
+      }),
+    ).toBe(true);
+  });
+
+  it("trusts the server's visit over this browser's when the server tracks visits", () => {
+    // Opened on any device: the server stamp clears it with no local stamp.
+    expect(
+      isAutomationRunUnread({
+        thread: makeFinishedRunThread(COMPLETED_AT, { lastVisitedAt: COMPLETED_AT }),
+        localLastVisitedAt: undefined,
+      }),
+    ).toBe(false);
+    // Marked unread on the server: a stale local stamp must not hide it.
+    expect(
+      isAutomationRunUnread({
+        thread: makeFinishedRunThread(COMPLETED_AT, { lastVisitedAt: null }),
+        localLastVisitedAt: COMPLETED_AT,
       }),
     ).toBe(true);
   });
@@ -338,20 +355,20 @@ describe("unread runs", () => {
     expect(
       isAutomationRunUnread({
         thread: makeFinishedRunThread(COMPLETED_AT),
-        lastVisitedAt: "not-a-date",
+        localLastVisitedAt: "not-a-date",
       }),
     ).toBe(true);
   });
 
   it("says nothing about runs with no result to read", () => {
     // Still running, or archived.
-    expect(isAutomationRunUnread({ thread: makeRunThread(), lastVisitedAt: undefined })).toBe(
+    expect(isAutomationRunUnread({ thread: makeRunThread(), localLastVisitedAt: undefined })).toBe(
       false,
     );
     expect(
       isAutomationRunUnread({
         thread: makeFinishedRunThread(COMPLETED_AT, { archivedAt: "2026-08-12T13:00:00.000Z" }),
-        lastVisitedAt: undefined,
+        localLastVisitedAt: undefined,
       }),
     ).toBe(false);
   });

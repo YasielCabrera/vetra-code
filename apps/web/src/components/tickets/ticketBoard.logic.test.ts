@@ -2,6 +2,7 @@ import { type EnvironmentTicket, ticketKey } from "@t3tools/client-runtime/state
 import {
   EnvironmentId,
   TicketId,
+  ThreadId,
   TicketStatusId,
   type TicketStatusDefinition,
   type TicketStatusSet,
@@ -17,6 +18,7 @@ import {
   reconcileTicketBoardSearch,
   resetTicketBoardFilters,
   resolveTicketBoardCatalogs,
+  TICKET_NO_ASSIGNEE,
   ticketBoardQueryUrlUpdate,
   resolveTicketBoardEntrySearch,
   ticketBoardEnvironmentPhase,
@@ -174,6 +176,56 @@ describe("filterTickets", () => {
   });
 });
 
+describe("GitHub, link and creator filters", () => {
+  const issue = (
+    id: string,
+    github: { readonly repository: string; readonly author: string | null },
+    assignees: ReadonlyArray<string>,
+  ): EnvironmentTicket => ({
+    ...ticket({ id, title: `Issue ${id}`, statusId: "local-todo", createdBy: { type: "sync" } }),
+    kind: "github",
+    github: {
+      host: "github.com",
+      number: 12,
+      state: "open",
+      stateReason: null,
+      assignees,
+      updatedAt: "2026-10-01T00:00:00.000Z",
+      syncedAt: "2026-10-01T00:00:00.000Z",
+      url: `https://github.com/${github.repository}/issues/12`,
+      ...github,
+    },
+    hiddenAt: null,
+  });
+  const web = issue("web", { repository: "acme/web", author: "octocat" }, ["hubot"]);
+  const api = issue("api", { repository: "acme/api", author: "hubot" }, []);
+  const ghost = issue("ghost", { repository: "acme/api", author: null }, ["octocat", "hubot"]);
+  const agentMade = ticket({
+    id: "agent-made",
+    statusId: "local-todo",
+    createdBy: { type: "agent", threadId: ThreadId.make("thread-9") },
+    linkRefs: [{ kind: "pull_request", targetKey: "github.com/acme/web#3" }],
+  });
+  const BOARD = [LOGIN, web, api, ghost, agentMade];
+  const matching = (filters: Parameters<typeof filterTickets>[1]) =>
+    ids(filterTickets(BOARD, filters, STATUS_SETS));
+
+  it("narrows GitHub issues by author, assignee and repository, never matching local tickets", () => {
+    expect(matching({ author: "octocat" })).toEqual(["web"]);
+    expect(matching({ assignee: "hubot" })).toEqual(["web", "ghost"]);
+    expect(matching({ assignee: TICKET_NO_ASSIGNEE })).toEqual(["api"]);
+    expect(matching({ repository: "acme/api" })).toEqual(["api", "ghost"]);
+    expect(matching({ repository: "acme/api", assignee: "octocat" })).toEqual(["ghost"]);
+  });
+
+  it("narrows by linked pull request and by who created the ticket", () => {
+    expect(matching({ pullRequest: "linked" })).toEqual(["agent-made"]);
+    expect(matching({ pullRequest: "unlinked", kind: "local" })).toEqual(["login"]);
+    expect(matching({ creator: "agent" })).toEqual(["agent-made"]);
+    expect(matching({ creator: "sync" })).toEqual(["web", "api", "ghost"]);
+  });
+});
+
 describe("hidden GitHub tickets", () => {
   const github = (id: string, hiddenAt: string | null): EnvironmentTicket => ({
     ...ticket({ id, title: `Issue ${id}`, statusId: "local-todo" }),
@@ -254,6 +306,11 @@ describe("validateTicketBoardSearch", () => {
         q: 42,
         env: "env-local",
         hidden: true,
+        pr: "linked",
+        creator: "robot",
+        author: "octocat",
+        assignee: TICKET_NO_ASSIGNEE,
+        repo: "",
       }),
     ).toEqual({
       view: "board",
@@ -261,6 +318,9 @@ describe("validateTicketBoardSearch", () => {
       status: "open:todo",
       env: "env-local",
       hidden: true,
+      pr: "linked",
+      author: "octocat",
+      assignee: TICKET_NO_ASSIGNEE,
     });
     expect(validateTicketBoardSearch({ hidden: "yes" })).toEqual({});
     expect(validateTicketBoardSearch({ view: "list" })).toEqual({ view: "list" });
@@ -353,6 +413,11 @@ describe("Ticket board preferences", () => {
         project: "env-local:project-web",
         label: "bug",
         thread: "linked",
+        pr: "unlinked",
+        creator: "user",
+        author: "octocat",
+        assignee: "hubot",
+        repo: "acme/web",
         env: "env-local",
         hidden: true,
         q: "search",
@@ -373,6 +438,11 @@ describe("Ticket board preferences", () => {
     { project: "env-local:project-web" },
     { label: "bug" },
     { thread: "unlinked" },
+    { pr: "linked" },
+    { creator: "agent" },
+    { author: "octocat" },
+    { assignee: "hubot" },
+    { repo: "acme/web" },
     { env: "env-remote" },
     { hidden: true },
     { q: "search" },
@@ -530,6 +600,7 @@ describe("ticket board catalogs", () => {
           id: "env-local",
           phase: "connected",
           projectIds: ["project-web"],
+          ticketsSupported: true,
           statusGroups: ["open:todo"],
         },
         { id: "env-remote", phase: "offline" },
@@ -559,6 +630,30 @@ describe("ticket board catalogs", () => {
       kind: "github",
     });
     expect(catalogs.statuses).toEqual(["open:todo"]);
+  });
+
+  it("keeps the status filter until a connected environment says whether it keeps tickets", () => {
+    // On reload the socket connects before the server config, so the board briefly loads
+    // with no ticket environments at all.
+    const beforeConfig = resolveTicketBoardCatalogs({
+      environmentsReady: true,
+      ticketsLoaded: true,
+      ticketEnvironmentIds: [],
+      environments: [{ id: "env-local", phase: "connected", projectIds: ["project-web"] }],
+    });
+    expect(beforeConfig.statuses).toBeUndefined();
+    expect(reconcileTicketBoardSearch({ status: "open:todo" }, beforeConfig)).toEqual({
+      status: "open:todo",
+    });
+
+    expect(
+      resolveTicketBoardCatalogs({
+        environmentsReady: true,
+        ticketsLoaded: true,
+        ticketEnvironmentIds: [],
+        environments: [{ id: "env-local", phase: "connected", ticketsSupported: false }],
+      }).statuses,
+    ).toEqual([]);
   });
 
   it("prunes nothing while a ticket environment is missing from the presentation", () => {

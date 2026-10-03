@@ -59,10 +59,12 @@ uses its repository; otherwise the panel offers to open it on GitHub.
 ## Find tickets
 
 The board lists tickets grouped by status. Collapse a group by selecting its name. Search matches
-titles, references, labels, and description text. Narrow the list by status, kind, project, label,
-or whether a thread is linked; with more than one environment connected, filter by environment
-too. The search and filters stay in the page address, so going back or sharing the link keeps
-them. Use the arrow keys to move through the list and Enter to open a ticket.
+titles, references, labels, and description text. Select the filter button next to the view
+switcher to narrow the list by status, kind, project, label, who created the ticket, or whether a
+thread or pull request is linked. GitHub tickets can also be filtered by repository, author, and
+assignee; with more than one environment connected, filter by environment too. Active filters show
+under the search box, where you can change or remove each one. The search and filters stay in the
+page address, so going back or sharing the link keeps them. Use the arrow keys to move through the list and Enter to open a ticket.
 
 Switch to the board view to see one column per status, and drag a ticket to change its status or
 its place in a column. Moving a GitHub ticket into or out of a closed status asks first, because it
@@ -106,8 +108,8 @@ Status and issue state follow each other:
   such as **Todo**.
 
 You can also close or reopen the issue from the ticket's **⋯** menu. To take an issue off the
-board, choose **Stop tracking** there; sync leaves it alone from then on. Turn on the **Hidden**
-filter on the board to find it again and select **Track again**. Removing a source hides its
+board, choose **Stop tracking** there; sync leaves it alone from then on. Set the **Visibility**
+filter on the board to **Hidden tickets** to find it again and select **Track again**. Removing a source hides its
 tickets, or deletes them if you choose **Remove and also delete cached tickets**. Either way the
 issues stay on GitHub. Adding the repository again brings back the tickets its removal hid; ones
 you stopped tracking stay hidden.

@@ -5,6 +5,7 @@ import type {
 } from "@t3tools/client-runtime/state/automations";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 
+import { resolveThreadLastVisitedAt } from "../Sidebar.logic";
 import { describeAutomationSchedule } from "./automationSchedule.logic";
 
 export interface AutomationRowModel {
@@ -25,7 +26,8 @@ export interface AutomationRowModel {
   readonly unreadRunThreads: ReadonlyArray<EnvironmentThreadShell>;
 }
 
-/** Where a thread's read stamp lives: `uiStateStore.threadLastVisitedAtById`. */
+/** This browser's read stamps: `uiStateStore.threadLastVisitedAtById`. Only
+    consulted for servers without visited tracking. */
 export type ThreadLastVisitedAtByKey = Readonly<Record<string, string>>;
 
 /** Run records keyed by `scopedThreadKey`, from the automations stream. */
@@ -57,12 +59,16 @@ export function automationRunVisitKey(thread: EnvironmentThreadShell): string {
  * threads you started yourself — the schedule fired while nobody was watching,
  * so "never opened" is exactly the state worth reporting. Archiving a run is
  * how you say you are done with it, so archived runs are read by definition.
+ *
+ * The server's visited stamp on the shell wins when it tracks visits; the
+ * browser-local stamp only carries servers that do not.
  */
 export function isAutomationRunUnread(input: {
   readonly thread: EnvironmentThreadShell;
-  readonly lastVisitedAt: string | undefined;
+  readonly localLastVisitedAt: string | undefined;
 }): boolean {
-  const { lastVisitedAt, thread } = input;
+  const { thread } = input;
+  const lastVisitedAt = resolveThreadLastVisitedAt(thread.lastVisitedAt, input.localLastVisitedAt);
   if (thread.archivedAt !== null) return false;
   if (isAutomationRunWorking(thread)) return false;
   const completedAt = thread.latestRun?.completedAt;
@@ -96,7 +102,12 @@ export function countUnreadAutomationRuns(input: {
   for (const thread of input.threads) {
     const key = automationRunVisitKey(thread);
     if (!input.runsByThreadKey.has(key)) continue;
-    if (isAutomationRunUnread({ thread, lastVisitedAt: input.lastVisitedAtByThreadKey[key] })) {
+    if (
+      isAutomationRunUnread({
+        thread,
+        localLastVisitedAt: input.lastVisitedAtByThreadKey[key],
+      })
+    ) {
       count += 1;
     }
   }
@@ -186,7 +197,7 @@ export function buildAutomationRowModels(input: {
       unreadRunThreads: newestFirst.filter((thread) =>
         isAutomationRunUnread({
           thread,
-          lastVisitedAt: lastVisitedAtByThreadKey[automationRunVisitKey(thread)],
+          localLastVisitedAt: lastVisitedAtByThreadKey[automationRunVisitKey(thread)],
         }),
       ),
     };

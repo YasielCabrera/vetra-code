@@ -1,6 +1,7 @@
 import { type EnvironmentTicket, ticketKey } from "@t3tools/client-runtime/state/tickets";
 import type {
   EnvironmentId,
+  TicketActor,
   TicketStatusCategory,
   TicketStatusColor,
   TicketStatusDefinition,
@@ -11,7 +12,12 @@ import * as Schema from "effect/Schema";
 import { formatTicketRef } from "./ticketRefs";
 
 export type TicketKindFilter = EnvironmentTicket["kind"];
-export type TicketThreadFilter = "linked" | "unlinked";
+/** Whether a ticket links at least one thread or pull request. */
+export type TicketLinkFilter = "linked" | "unlinked";
+export type TicketCreatorFilter = TicketActor["type"];
+
+/** The assignee filter value for GitHub issues nobody is assigned to; no GitHub login has a colon. */
+export const TICKET_NO_ASSIGNEE = ":none";
 
 /** What the board's toolbar narrows to; every field is optional and they combine with AND. */
 export interface TicketBoardFilters {
@@ -21,7 +27,15 @@ export interface TicketBoardFilters {
   /** `environmentId:projectId`. */
   readonly project?: string | undefined;
   readonly label?: string | undefined;
-  readonly thread?: TicketThreadFilter | undefined;
+  readonly thread?: TicketLinkFilter | undefined;
+  readonly pullRequest?: TicketLinkFilter | undefined;
+  readonly creator?: TicketCreatorFilter | undefined;
+  /** The GitHub login that opened the issue; local tickets never match. */
+  readonly author?: string | undefined;
+  /** A GitHub login, or `TICKET_NO_ASSIGNEE`; local tickets never match. */
+  readonly assignee?: string | undefined;
+  /** A GitHub `owner/name`; local tickets never match. */
+  readonly repository?: string | undefined;
   readonly environment?: EnvironmentId | undefined;
   readonly query?: string | undefined;
   /** Show only the GitHub tickets the user stopped tracking, which the board otherwise leaves out. */
@@ -75,6 +89,30 @@ function matchesQuery(ticket: EnvironmentTicket, query: string): boolean {
   );
 }
 
+function matchesLink(
+  ticket: EnvironmentTicket,
+  kind: "thread" | "pull_request",
+  filter: TicketLinkFilter,
+): boolean {
+  return ticket.linkRefs.some((ref) => ref.kind === kind) === (filter === "linked");
+}
+
+function matchesGitHub(ticket: EnvironmentTicket, filters: TicketBoardFilters): boolean {
+  if (
+    filters.author === undefined &&
+    filters.assignee === undefined &&
+    filters.repository === undefined
+  ) {
+    return true;
+  }
+  if (ticket.kind !== "github") return false;
+  const { author, assignees, repository } = ticket.github;
+  if (filters.author !== undefined && author !== filters.author) return false;
+  if (filters.repository !== undefined && repository !== filters.repository) return false;
+  if (filters.assignee === TICKET_NO_ASSIGNEE) return assignees.length === 0;
+  return filters.assignee === undefined || assignees.includes(filters.assignee);
+}
+
 /**
  * Narrows the board. A query matches the title, the `T-42` ref, labels and a GitHub ticket's
  * issue ref here; `bodyMatchKeys` adds the tickets server search found by body text.
@@ -105,10 +143,17 @@ export function filterTickets(
       );
       if (!linked) return false;
     }
-    if (filters.thread !== undefined) {
-      const hasThread = ticket.linkRefs.some((ref) => ref.kind === "thread");
-      if (hasThread !== (filters.thread === "linked")) return false;
+    if (filters.thread !== undefined && !matchesLink(ticket, "thread", filters.thread)) {
+      return false;
     }
+    if (
+      filters.pullRequest !== undefined &&
+      !matchesLink(ticket, "pull_request", filters.pullRequest)
+    ) {
+      return false;
+    }
+    if (filters.creator !== undefined && ticket.createdBy.type !== filters.creator) return false;
+    if (!matchesGitHub(ticket, filters)) return false;
     if (filters.query !== undefined && filters.query.trim().length > 0) {
       return (
         matchesQuery(ticket, filters.query) ||
@@ -215,7 +260,12 @@ export interface TicketBoardSearch {
   readonly kind?: TicketKindFilter;
   readonly project?: string;
   readonly label?: string;
-  readonly thread?: TicketThreadFilter;
+  readonly thread?: TicketLinkFilter;
+  readonly pr?: TicketLinkFilter;
+  readonly creator?: TicketCreatorFilter;
+  readonly author?: string;
+  readonly assignee?: string;
+  readonly repo?: string;
   readonly env?: string;
   readonly q?: string;
   readonly hidden?: true;
@@ -228,6 +278,11 @@ const SEARCH_KEYS = [
   "project",
   "label",
   "thread",
+  "pr",
+  "creator",
+  "author",
+  "assignee",
+  "repo",
   "env",
   "q",
   "hidden",
@@ -241,12 +296,23 @@ function searchText(value: unknown, maxLength = 200): string | undefined {
     : undefined;
 }
 
+function isLinkFilter(value: unknown): value is TicketLinkFilter {
+  return value === "linked" || value === "unlinked";
+}
+
+function isCreatorFilter(value: unknown): value is TicketCreatorFilter {
+  return value === "user" || value === "agent" || value === "sync" || value === "automation";
+}
+
 /** Drops anything malformed rather than failing the route; an empty field is no filter. */
 export function validateTicketBoardSearch(raw: unknown): TicketBoardSearch {
   if (!isSearchInput(raw)) return {};
   const status = searchText(raw.status);
   const project = searchText(raw.project);
   const label = searchText(raw.label);
+  const author = searchText(raw.author);
+  const assignee = searchText(raw.assignee);
+  const repo = searchText(raw.repo);
   const env = searchText(raw.env);
   const q = searchText(raw.q);
   return {
@@ -255,7 +321,12 @@ export function validateTicketBoardSearch(raw: unknown): TicketBoardSearch {
     ...(raw.kind === "local" || raw.kind === "github" ? { kind: raw.kind } : {}),
     ...(project === undefined ? {} : { project }),
     ...(label === undefined ? {} : { label }),
-    ...(raw.thread === "linked" || raw.thread === "unlinked" ? { thread: raw.thread } : {}),
+    ...(isLinkFilter(raw.thread) ? { thread: raw.thread } : {}),
+    ...(isLinkFilter(raw.pr) ? { pr: raw.pr } : {}),
+    ...(isCreatorFilter(raw.creator) ? { creator: raw.creator } : {}),
+    ...(author === undefined ? {} : { author }),
+    ...(assignee === undefined ? {} : { assignee }),
+    ...(repo === undefined ? {} : { repo }),
     ...(env === undefined ? {} : { env }),
     ...(q === undefined ? {} : { q }),
     ...(raw.hidden === true || raw.hidden === "true" ? { hidden: true as const } : {}),
@@ -374,6 +445,11 @@ export interface TicketBoardCatalogEnvironment {
   readonly phase: TicketBoardEnvironmentPhase;
   /** Present once that environment's project snapshot is live. */
   readonly projectIds?: ReadonlyArray<string> | undefined;
+  /**
+   * Present once that environment's server config says whether it keeps tickets. Until then
+   * it is not among the ticket environments, which must not read as having no statuses.
+   */
+  readonly ticketsSupported?: boolean | undefined;
   /** Present once that environment's status set has arrived. */
   readonly statusGroups?: ReadonlyArray<string> | undefined;
 }
@@ -431,13 +507,13 @@ export function resolveTicketBoardCatalogs(input: {
   if (input.ticketsLoaded) {
     const groups = new Set<string>();
     let settled = true;
-    for (const id of input.ticketEnvironmentIds) {
-      const environment = byId.get(id);
-      if (environment === undefined || environment.phase !== "connected") {
-        if (environment?.phase === "starting") settled = false;
-        continue;
-      }
-      if (environment.statusGroups === undefined) {
+    for (const environment of input.environments) {
+      if (environment.phase === "offline" || environment.ticketsSupported === false) continue;
+      if (
+        environment.phase === "starting" ||
+        environment.ticketsSupported === undefined ||
+        environment.statusGroups === undefined
+      ) {
         settled = false;
         continue;
       }

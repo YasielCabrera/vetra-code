@@ -1,23 +1,32 @@
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import type { EnvironmentTicket } from "@t3tools/client-runtime/state/tickets";
 import { type TicketStatusCategory, TicketStatusColor } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
-import { CheckIcon, LayersIcon, MessageSquareIcon } from "lucide-react";
+import { CheckIcon, LayersIcon, ListFilterIcon, MessageSquareIcon, XIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "../../lib/utils";
 import { PROJECT_ICON_COLORS, projectIconColorClassName } from "../../projectIconColors";
 import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Group } from "../ui/group";
 import {
   Menu,
   MenuGroup,
+  MenuGroupLabel,
   MenuPopup,
   MenuRadioGroup,
   MenuRadioItem,
   MenuRadioItemIndicator,
   MenuSeparator,
+  MenuSub,
+  MenuSubPopup,
+  MenuSubTrigger,
   MenuTrigger,
 } from "../ui/menu";
+import { SelectButton } from "../ui/select";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 const isTicketStatusColor = Schema.is(TicketStatusColor);
 
@@ -69,78 +78,196 @@ export interface TicketFilterOption {
   readonly icon?: ReactNode;
 }
 
-export function TicketFilterMenu(props: {
+/** One way to narrow the board: a submenu in the filter menu, and a chip while it is set. */
+export interface TicketFilterField {
+  readonly key: string;
   readonly label: string;
+  readonly icon: ReactNode;
+  /** The choice that clears the filter. Defaults to "Any <label>". */
+  readonly anyLabel?: string;
   readonly value: string | undefined;
+  /** Every known choice, so a set filter can name its value even when the menu leaves it out. */
   readonly options: ReadonlyArray<TicketFilterOption>;
+  /** Whether the menu offers this field while it is unset. Defaults to having options. */
+  readonly offered?: boolean;
   readonly onChange: (value: string | undefined) => void;
+}
+
+export interface TicketFilterSection {
+  readonly label?: string;
+  readonly fields: ReadonlyArray<TicketFilterField>;
+}
+
+function TicketFilterOptionRow(props: { readonly icon: ReactNode; readonly label: string }) {
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <span className="inline-flex size-4 shrink-0 items-center justify-center">{props.icon}</span>
+      <span className="min-w-0 flex-1 truncate">{props.label}</span>
+      <span className="inline-flex size-4 shrink-0 items-center justify-center">
+        <MenuRadioItemIndicator />
+      </span>
+    </span>
+  );
+}
+
+function TicketFilterOptions(props: { readonly field: TicketFilterField }) {
+  const { field } = props;
+  return (
+    <div className="max-h-80 w-64 max-w-[calc(100vw-2.5rem)] overflow-y-auto">
+      <MenuRadioGroup
+        value={field.value ?? ""}
+        onValueChange={(value: string) => field.onChange(value === "" ? undefined : value)}
+      >
+        <MenuRadioItem value="">
+          <TicketFilterOptionRow
+            icon={<LayersIcon aria-hidden className="size-3.5" />}
+            label={field.anyLabel ?? `Any ${field.label.toLowerCase()}`}
+          />
+        </MenuRadioItem>
+        {field.options.length > 0 ? <MenuSeparator /> : null}
+        {field.options.map((option) => (
+          <MenuRadioItem key={option.value} value={option.value}>
+            <TicketFilterOptionRow icon={option.icon} label={option.label} />
+          </MenuRadioItem>
+        ))}
+      </MenuRadioGroup>
+    </div>
+  );
+}
+
+/** A selected value the options no longer list (a label nobody uses now) still shows as itself. */
+function selectedFilterOption(field: TicketFilterField): TicketFilterOption | undefined {
+  if (field.value === undefined) return undefined;
+  return (
+    field.options.find((option) => option.value === field.value) ?? {
+      value: field.value,
+      label: field.value,
+    }
+  );
+}
+
+/** The toolbar's filter menu: one submenu per field, grouped into sections. */
+export function TicketFilterButton(props: {
+  readonly sections: ReadonlyArray<TicketFilterSection>;
 }) {
-  const selected = props.options.find((option) => option.value === props.value);
+  const activeCount = props.sections
+    .flatMap((section) => section.fields)
+    .filter((field) => field.value !== undefined).length;
+  const sections = props.sections
+    .map((section) => ({
+      ...section,
+      fields: section.fields.filter(
+        (field) => field.value !== undefined || (field.offered ?? field.options.length > 0),
+      ),
+    }))
+    .filter((section) => section.fields.length > 0);
   return (
     <Menu>
-      <MenuTrigger
-        render={<Button size="xs" variant={selected === undefined ? "ghost" : "outline"} />}
-      >
-        <span className="flex min-w-0 max-w-64 items-center gap-1.5">
-          {selected?.icon ? (
-            <span className="inline-flex size-4 shrink-0 items-center justify-center">
-              {selected.icon}
-            </span>
-          ) : null}
-          <span className="min-w-0 truncate">
-            {selected === undefined ? props.label : `${props.label}: ${selected.label}`}
-          </span>
-        </span>
-      </MenuTrigger>
-      <MenuPopup align="start">
-        <div className="max-h-80 w-64 max-w-[calc(100vw-2.5rem)] overflow-y-auto">
-          <MenuGroup>
-            <MenuRadioGroup
-              value={props.value ?? ""}
-              onValueChange={(value: string) => props.onChange(value === "" ? undefined : value)}
-            >
-              <MenuRadioItem value="">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="inline-flex size-4 shrink-0 items-center justify-center">
-                    <LayersIcon aria-hidden className="size-3.5" />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">Any {props.label.toLowerCase()}</span>
-                  <span className="inline-flex size-4 shrink-0 items-center justify-center">
-                    <MenuRadioItemIndicator />
-                  </span>
-                </span>
-              </MenuRadioItem>
-              {props.options.length > 0 ? <MenuSeparator /> : null}
-              {props.options.map((option) => (
-                <MenuRadioItem key={option.value} value={option.value}>
-                  <span className="flex min-w-0 items-center gap-2">
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <MenuTrigger
+              render={
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={
+                    activeCount === 0 ? "Filter tickets" : `Filter tickets, ${activeCount} active`
+                  }
+                />
+              }
+            />
+          }
+        >
+          <ListFilterIcon aria-hidden />
+          {activeCount === 0 ? null : (
+            <Badge aria-hidden size="sm" className="absolute -top-1 -right-1">
+              {activeCount}
+            </Badge>
+          )}
+        </TooltipTrigger>
+        <TooltipPopup side="bottom">Filter</TooltipPopup>
+      </Tooltip>
+      <MenuPopup align="end">
+        {sections.map((section, index) => (
+          <MenuGroup key={section.label ?? index}>
+            {index > 0 ? <MenuSeparator /> : null}
+            {section.label === undefined ? null : <MenuGroupLabel>{section.label}</MenuGroupLabel>}
+            {section.fields.map((field) => {
+              const selected = selectedFilterOption(field);
+              return (
+                <MenuSub key={field.key}>
+                  <MenuSubTrigger>
                     <span className="inline-flex size-4 shrink-0 items-center justify-center">
-                      {option.icon}
+                      {field.icon}
                     </span>
-                    <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                    <span className="inline-flex size-4 shrink-0 items-center justify-center">
-                      <MenuRadioItemIndicator />
-                    </span>
-                  </span>
-                </MenuRadioItem>
-              ))}
-            </MenuRadioGroup>
+                    <span className="min-w-0 flex-1 truncate">{field.label}</span>
+                    {selected === undefined ? null : (
+                      <span className="max-w-32 truncate text-xs text-muted-foreground">
+                        {selected.label}
+                      </span>
+                    )}
+                  </MenuSubTrigger>
+                  <MenuSubPopup>
+                    <TicketFilterOptions field={field} />
+                  </MenuSubPopup>
+                </MenuSub>
+              );
+            })}
           </MenuGroup>
-        </div>
+        ))}
       </MenuPopup>
     </Menu>
   );
 }
 
-/** Titles of the projects a ticket links to, from a map keyed `environmentId:projectId`. */
-export function ticketProjectTitles(
+/** A set filter under the toolbar: opens the same choices, and the cross clears it. */
+export function TicketFilterChip(props: { readonly field: TicketFilterField }) {
+  const { field } = props;
+  const selected = selectedFilterOption(field);
+  if (selected === undefined) return null;
+  return (
+    <Group>
+      <Menu>
+        <MenuTrigger
+          render={<SelectButton size="xs" />}
+          className="w-auto min-w-0"
+          aria-label={`${field.label}: ${selected.label}. Change filter`}
+        >
+          <span className="flex min-w-0 max-w-64 items-center gap-1.5">
+            <span className="inline-flex size-4 shrink-0 items-center justify-center">
+              {selected.icon ?? field.icon}
+            </span>
+            <span className="min-w-0 truncate">
+              <span className="text-muted-foreground">{field.label}:</span> {selected.label}
+            </span>
+          </span>
+        </MenuTrigger>
+        <MenuPopup align="start">
+          <TicketFilterOptions field={field} />
+        </MenuPopup>
+      </Menu>
+      <Button
+        size="icon-xs"
+        variant="outline"
+        aria-label={`Remove ${field.label.toLowerCase()} filter`}
+        onClick={() => field.onChange(undefined)}
+      >
+        <XIcon aria-hidden />
+      </Button>
+    </Group>
+  );
+}
+
+/** The projects a ticket links to, from a map keyed `environmentId:projectId`. */
+export function ticketProjects(
   ticket: EnvironmentTicket,
-  projectTitleByKey: ReadonlyMap<string, string>,
-): ReadonlyArray<string> {
+  projectByKey: ReadonlyMap<string, EnvironmentProject>,
+): ReadonlyArray<EnvironmentProject> {
   return ticket.linkRefs.flatMap((ref) => {
     if (ref.kind !== "project") return [];
-    const title = projectTitleByKey.get(`${ticket.environmentId}:${ref.targetKey}`);
-    return title === undefined ? [] : [title];
+    const project = projectByKey.get(`${ticket.environmentId}:${ref.targetKey}`);
+    return project === undefined ? [] : [project];
   });
 }
 

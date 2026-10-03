@@ -297,7 +297,7 @@ export function AutomationDetailPanel(props: {
       runThreads.filter((thread) =>
         isAutomationRunUnread({
           thread,
-          lastVisitedAt: threadLastVisitedAtById[automationRunVisitKey(thread)],
+          localLastVisitedAt: threadLastVisitedAtById[automationRunVisitKey(thread)],
         }),
       ),
     [runThreads, threadLastVisitedAtById],

@@ -1,17 +1,19 @@
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import type { EnvironmentTicket } from "@t3tools/client-runtime/state/tickets";
 import type { TicketStatusDefinition } from "@t3tools/contracts";
 import { gitHubLoginAvatarUrl } from "@t3tools/shared/githubActor";
-import { FolderIcon, TicketIcon } from "lucide-react";
+import { TicketIcon } from "lucide-react";
 import { memo } from "react";
 
 import { formatRelativeTimeLabel } from "../../timestampFormat";
+import { ProjectFavicon } from "../ProjectFavicon";
 import { GitHubIcon } from "../Icons";
 import { SourceControlActorAvatar } from "../SourceControlActorAvatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { isHiddenTicket } from "./ticketBoard.logic";
-import { TicketLinkCounts, TicketStatusIcon, ticketProjectTitles } from "./ticketPresentation";
+import { TicketLinkCounts, TicketStatusIcon, ticketProjects } from "./ticketPresentation";
 import { formatTicketRef } from "./ticketRefs";
 
 export const TICKET_LIST_ROW_HEIGHT = 64;
@@ -88,9 +90,9 @@ export function TicketAssignees(props: { readonly ticket: EnvironmentTicket }) {
 
 export function TicketTags(props: {
   readonly ticket: EnvironmentTicket;
-  readonly projectTitleByKey: ReadonlyMap<string, string>;
+  readonly projectByKey: ReadonlyMap<string, EnvironmentProject>;
 }) {
-  const projects = [...new Set(ticketProjectTitles(props.ticket, props.projectTitleByKey))];
+  const projects = ticketProjects(props.ticket, props.projectByKey);
   const extraProjects = Math.max(0, projects.length - 2);
   const extraLabels = Math.max(0, props.ticket.labels.length - 2);
   if (projects.length === 0 && props.ticket.labels.length === 0) return null;
@@ -99,13 +101,13 @@ export function TicketTags(props: {
       <TooltipTrigger
         render={<span className="flex min-w-0 items-center gap-1.5 overflow-hidden" />}
       >
-        {projects.slice(0, 2).map((title) => (
+        {projects.slice(0, 2).map((project) => (
           <span
-            key={title}
+            key={project.id}
             className="inline-flex h-5 min-w-0 shrink items-center gap-1 rounded border border-primary/20 bg-primary/8 px-1.5 text-xs text-foreground"
           >
-            <FolderIcon aria-hidden className="size-3 shrink-0 text-primary" />
-            <span className="max-w-40 truncate">{title}</span>
+            <ProjectFavicon project={project} className="size-3" />
+            <span className="max-w-40 truncate">{project.title}</span>
           </span>
         ))}
         {extraProjects > 0 ? (
@@ -129,7 +131,9 @@ export function TicketTags(props: {
         ) : null}
       </TooltipTrigger>
       <TooltipPopup>
-        {projects.length > 0 ? <div>Projects: {projects.join(", ")}</div> : null}
+        {projects.length > 0 ? (
+          <div>Projects: {projects.map((project) => project.title).join(", ")}</div>
+        ) : null}
         {props.ticket.labels.length > 0 ? (
           <div>Labels: {props.ticket.labels.join(", ")}</div>
         ) : null}
@@ -161,7 +165,7 @@ export const TicketRow = memo(function TicketRow(props: {
   readonly ticket: EnvironmentTicket;
   readonly status: Pick<TicketStatusDefinition, "name" | "color" | "category"> | undefined;
   readonly rowIndex: number;
-  readonly projectTitleByKey: ReadonlyMap<string, string>;
+  readonly projectByKey: ReadonlyMap<string, EnvironmentProject>;
   readonly onOpen: (ticket: EnvironmentTicket) => void;
   readonly onTrackAgain: (ticket: EnvironmentTicket) => void;
 }) {
@@ -185,7 +189,7 @@ export const TicketRow = memo(function TicketRow(props: {
           <span className="min-w-0 max-w-[40%] shrink-0">
             <TicketSource ticket={ticket} />
           </span>
-          <TicketTags ticket={ticket} projectTitleByKey={props.projectTitleByKey} />
+          <TicketTags ticket={ticket} projectByKey={props.projectByKey} />
         </span>
       </div>
       <span className="flex shrink-0 flex-col items-end gap-1">

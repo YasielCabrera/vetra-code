@@ -1,3 +1,4 @@
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import {
   type Active,
   type CollisionDetection,
@@ -88,7 +89,7 @@ export function TicketKanban(props: {
   readonly statusFilter: string | undefined;
   readonly collapsedOverrides: ReadonlyMap<string, boolean>;
   readonly environmentLabels: ReadonlyMap<EnvironmentId, string>;
-  readonly projectTitleByKey: ReadonlyMap<string, string>;
+  readonly projectByKey: ReadonlyMap<string, EnvironmentProject>;
   readonly onToggleColumn: (group: TicketStatusGroup, collapsed: boolean) => void;
   readonly onOpen: (ticket: EnvironmentTicket) => void;
 }) {
@@ -241,7 +242,7 @@ export function TicketKanban(props: {
               collapsed={collapsed}
               dropSlot={dropTarget?.columnKey === column.key ? dropTarget.slot : null}
               movingKeys={movingKeys}
-              projectTitleByKey={props.projectTitleByKey}
+              projectByKey={props.projectByKey}
               onToggle={props.onToggleColumn}
               onOpen={props.onOpen}
             />
@@ -256,7 +257,7 @@ export function TicketKanban(props: {
               status={statusSets
                 .get(activeTicket.environmentId)
                 ?.statuses.find((status) => status.id === activeTicket.statusId)}
-              projectTitleByKey={props.projectTitleByKey}
+              projectByKey={props.projectByKey}
               lifted
             />
           </div>
@@ -271,7 +272,7 @@ const TicketColumn = memo(function TicketColumn(props: {
   readonly collapsed: boolean;
   readonly dropSlot: number | null;
   readonly movingKeys: ReadonlySet<string>;
-  readonly projectTitleByKey: ReadonlyMap<string, string>;
+  readonly projectByKey: ReadonlyMap<string, EnvironmentProject>;
   readonly onToggle: (group: TicketStatusGroup, collapsed: boolean) => void;
   readonly onOpen: (ticket: EnvironmentTicket) => void;
 }) {
@@ -283,10 +284,10 @@ const TicketColumn = memo(function TicketColumn(props: {
     [column.name, column.color, column.category],
   );
   // LegendList re-renders a mounted card only when its item or `extraData` changes.
-  const { movingKeys, projectTitleByKey } = props;
+  const { movingKeys, projectByKey } = props;
   const virtualizedCardInputs = useMemo(
-    () => ({ dropSlot, movingKeys, projectTitleByKey }),
-    [dropSlot, movingKeys, projectTitleByKey],
+    () => ({ dropSlot, movingKeys, projectByKey }),
+    [dropSlot, movingKeys, projectByKey],
   );
 
   if (collapsed) {
@@ -322,7 +323,7 @@ const TicketColumn = memo(function TicketColumn(props: {
             ? "after"
             : null
       }
-      projectTitleByKey={props.projectTitleByKey}
+      projectByKey={props.projectByKey}
       onOpen={props.onOpen}
     />
   );
@@ -375,7 +376,7 @@ const DraggableTicketCard = memo(function DraggableTicketCard(props: {
   readonly status: Pick<TicketStatusDefinition, "name" | "color" | "category">;
   readonly moving: boolean;
   readonly dropLine: "before" | "after" | null;
-  readonly projectTitleByKey: ReadonlyMap<string, string>;
+  readonly projectByKey: ReadonlyMap<string, EnvironmentProject>;
   readonly onOpen: (ticket: EnvironmentTicket) => void;
 }) {
   const id = keyOf(props.ticket);
@@ -388,7 +389,7 @@ const DraggableTicketCard = memo(function DraggableTicketCard(props: {
         <TicketCard
           ticket={props.ticket}
           status={props.status}
-          projectTitleByKey={props.projectTitleByKey}
+          projectByKey={props.projectByKey}
           onOpen={props.onOpen}
         />
       </div>
@@ -411,7 +412,7 @@ function DropLine(props: { readonly position: "before" | "after" }) {
 const TicketCard = memo(function TicketCard(props: {
   readonly ticket: EnvironmentTicket;
   readonly status: Pick<TicketStatusDefinition, "name" | "color" | "category"> | undefined;
-  readonly projectTitleByKey: ReadonlyMap<string, string>;
+  readonly projectByKey: ReadonlyMap<string, EnvironmentProject>;
   readonly onOpen?: (ticket: EnvironmentTicket) => void;
   readonly lifted?: boolean;
 }) {
@@ -437,7 +438,7 @@ const TicketCard = memo(function TicketCard(props: {
         <span className="line-clamp-2 font-medium leading-5 text-foreground">{ticket.title}</span>
       </span>
       <span className="flex h-5 w-full shrink-0 items-center">
-        <TicketTags ticket={ticket} projectTitleByKey={props.projectTitleByKey} />
+        <TicketTags ticket={ticket} projectByKey={props.projectByKey} />
       </span>
       <span className="flex w-full shrink-0 items-center gap-2">
         <span className="min-w-0 flex-1">
