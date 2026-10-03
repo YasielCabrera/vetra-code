@@ -1,6 +1,8 @@
 import * as Context from "effect/Context";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 
 import {
   GitManagerError,
@@ -13,6 +15,8 @@ import {
   type VcsCreateWorktreeResult,
   type VcsListRefsInput,
   type VcsListRefsResult,
+  type VcsListRemotesResult,
+  type VcsError,
   type GitManagerServiceError,
   type GitPreparePullRequestThreadInput,
   type GitPreparePullRequestThreadResult,
@@ -67,6 +71,7 @@ export class GitWorkflowService extends Context.Service<
     readonly listRefs: (
       input: VcsListRefsInput,
     ) => Effect.Effect<VcsListRefsResult, GitCommandError>;
+    readonly listRemotes: (input: VcsStatusInput) => Effect.Effect<VcsListRemotesResult, VcsError>;
     readonly createWorktree: (
       input: VcsCreateWorktreeInput,
       options?: GitVcsDriver.CreateWorktreeOptions,
@@ -345,6 +350,18 @@ export const make = Effect.gen(function* () {
           isGitRepository ? git.listRefs(input) : Effect.succeed(nonRepositoryListRefs()),
         ),
       ),
+    listRemotes: Effect.fn("GitWorkflowService.listRemotes")(function* (input) {
+      const handle = yield* registry.detect(input);
+      if (handle !== null) return yield* handle.driver.listRemotes(input.cwd);
+      return {
+        remotes: [],
+        freshness: {
+          source: "live-local" as const,
+          observedAt: yield* DateTime.now,
+          expiresAt: Option.none(),
+        },
+      };
+    }),
     createWorktree: (input, options) =>
       ensureGitCommand("GitWorkflowService.createWorktree", input.cwd).pipe(
         Effect.andThen(git.createWorktree(input, options)),

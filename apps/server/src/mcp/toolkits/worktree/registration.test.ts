@@ -20,6 +20,7 @@ import * as ProjectSetupScriptRunner from "../../../project/ProjectSetupScriptRu
 import * as ProviderRegistry from "../../../provider/Services/ProviderRegistry.ts";
 import * as ScheduledTaskService from "../../../scheduledTasks/ScheduledTaskService.ts";
 import * as ServerSettings from "../../../serverSettings.ts";
+import * as TicketService from "../../../ticket/TicketService.ts";
 import * as VcsStatusBroadcaster from "../../../vcs/VcsStatusBroadcaster.ts";
 import * as McpHttpServer from "../../McpHttpServer.ts";
 import * as McpSessionRegistry from "../../McpSessionRegistry.ts";
@@ -38,6 +39,7 @@ const StubServicesLive = Layer.mergeAll(
   Layer.mock(GitWorkflowService.GitWorkflowService)({}),
   Layer.mock(ProjectSetupScriptRunner.ProjectSetupScriptRunner)({}),
   Layer.mock(VcsStatusBroadcaster.VcsStatusBroadcaster)({}),
+  Layer.mock(TicketService.TicketService)({}),
 );
 
 const ToolsListPayload = Schema.fromJsonString(

@@ -48,8 +48,14 @@ rows at or below the recorded maximum are skipped without checking names. A data
 local or fork migration under an id this build later assigns to a different migration therefore
 never receives this build's migration at that id. `runMigrations` logs each recorded id whose name
 differs from the manifest so the skipped schema change is diagnosable. There is no safe id range
-for a fork inside this ledger: any id at or below a future upstream id masks it forever, so fork
-schema changes belong in a separate migration table or outside the migrator entirely.
+for a fork inside this ledger: any id at or below a future upstream id masks it forever.
+
+Fork-owned schema therefore goes in its own ledger. Append an entry to
+[`VetraMigrations.ts`](../../apps/server/src/persistence/VetraMigrations.ts); it runs after
+upstream's migrator in the same setup layer and records applied ids in `vetra_schema_migrations`.
+That ledger records each id rather than a high-water mark, so an entry merged below one a database
+already ran still applies. `automation_runs` predates it and is still created by
+`AutomationRuns` itself.
 
 ## Recovery
 

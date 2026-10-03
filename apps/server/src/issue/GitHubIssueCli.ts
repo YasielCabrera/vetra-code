@@ -11,7 +11,7 @@ import {
 } from "@t3tools/contracts";
 
 import * as GitHubCli from "../sourceControl/GitHubCli.ts";
-import type { ProviderIssueListCursor } from "./IssueProvider.ts";
+import type { IssueStateChange, ProviderIssueListCursor } from "./IssueProvider.ts";
 import {
   decodeIssueAssigneeCandidatesJson,
   decodeIssueDetailJson,
@@ -23,7 +23,7 @@ import {
 
 const LIST_FIELDS =
   "assignees,author,closedAt,createdAt,labels,milestone,number,state,title,updatedAt,url";
-const DETAIL_FIELDS = `${LIST_FIELDS},body,comments`;
+const DETAIL_FIELDS = `${LIST_FIELDS},body,comments,stateReason`;
 const MAX_LIST_OUTPUT_BYTES = 2 * 1024 * 1024;
 const MAX_DETAIL_OUTPUT_BYTES = 4 * 1024 * 1024;
 const MAX_TIMELINE_PAGE_OUTPUT_BYTES = 4 * 1024 * 1024;
@@ -62,6 +62,7 @@ export class GitHubIssueCli extends Context.Service<
       readonly query?: string;
       readonly assignee?: string;
       readonly cursor?: ProviderIssueListCursor;
+      readonly includeBody?: boolean;
     }) => Effect.Effect<GitHubIssueBatch, GitHubIssueCliError>;
     readonly getIssue: (input: {
       readonly cwd: string;
@@ -88,6 +89,20 @@ export class GitHubIssueCli extends Context.Service<
       readonly number: number;
       readonly assignees: ReadonlyArray<string>;
       readonly assigned: boolean;
+    }) => Effect.Effect<void, GitHubIssueCliError>;
+    readonly setState: (input: {
+      readonly cwd: string;
+      readonly host: string;
+      readonly repository: string;
+      readonly number: number;
+      readonly change: IssueStateChange;
+    }) => Effect.Effect<void, GitHubIssueCliError>;
+    readonly addComment: (input: {
+      readonly cwd: string;
+      readonly host: string;
+      readonly repository: string;
+      readonly number: number;
+      readonly body: string;
     }) => Effect.Effect<void, GitHubIssueCliError>;
   }
 >()("t3/issue/GitHubIssueCli") {}
@@ -227,11 +242,12 @@ export const make = Effect.gen(function* () {
             "--limit",
             String(usableRows + 1),
             "--json",
-            LIST_FIELDS,
+            input.includeBody === true ? `${LIST_FIELDS},body` : LIST_FIELDS,
             "--search",
             searchQuery(input),
           ],
-          maxOutputBytes: MAX_LIST_OUTPUT_BYTES,
+          maxOutputBytes:
+            input.includeBody === true ? MAX_DETAIL_OUTPUT_BYTES : MAX_LIST_OUTPUT_BYTES,
         })
         .pipe(
           Effect.flatMap((output) => {
@@ -378,6 +394,47 @@ export const make = Effect.gen(function* () {
             "-",
           ],
           stdin: encodeJson({ assignees: input.assignees }),
+        })
+        .pipe(Effect.asVoid);
+    },
+    setState: (input) => {
+      if (!validRepository(input.repository)) return rejectRepository(input.cwd, "setState");
+      return github
+        .execute({
+          cwd: input.cwd,
+          args:
+            input.change.state === "open"
+              ? [
+                  "issue",
+                  "reopen",
+                  String(input.number),
+                  ...repositoryArgs(input.host, input.repository),
+                ]
+              : [
+                  "issue",
+                  "close",
+                  String(input.number),
+                  ...repositoryArgs(input.host, input.repository),
+                  "--reason",
+                  input.change.reason === "not_planned" ? "not planned" : "completed",
+                ],
+        })
+        .pipe(Effect.asVoid);
+    },
+    addComment: (input) => {
+      if (!validRepository(input.repository)) return rejectRepository(input.cwd, "addComment");
+      return github
+        .execute({
+          cwd: input.cwd,
+          args: [
+            "issue",
+            "comment",
+            String(input.number),
+            ...repositoryArgs(input.host, input.repository),
+            "--body-file",
+            "-",
+          ],
+          stdin: input.body,
         })
         .pipe(Effect.asVoid);
     },

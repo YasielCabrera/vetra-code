@@ -127,6 +127,12 @@ const ICON_PATHS: Record<string, ReadonlyArray<{ tag: string; attrs: Record<stri
     },
     { tag: "circle", attrs: { cx: "12", cy: "12", r: "3" } },
   ],
+  "square-kanban": [
+    { tag: "rect", attrs: { width: "18", height: "18", x: "3", y: "3", rx: "2" } },
+    { tag: "path", attrs: { d: "M8 7v7" } },
+    { tag: "path", attrs: { d: "M12 7v4" } },
+    { tag: "path", attrs: { d: "M16 7v9" } },
+  ],
   "folder-tree": [
     {
       tag: "path",

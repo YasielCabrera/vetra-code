@@ -171,6 +171,7 @@ import * as ProjectStore from "./orchestration-v2/ProjectStore.ts";
 import * as ThreadSearch from "./orchestration-v2/ThreadSearch.ts";
 import * as ResourceCleanupService from "./orchestration-v2/ResourceCleanupService.ts";
 import * as ThreadSettlementService from "./orchestration-v2/ThreadSettlementService.ts";
+import * as TicketLinkReactor from "./ticket/TicketLinkReactor.ts";
 import * as ThreadPullRequestService from "./orchestration-v2/ThreadPullRequestService.ts";
 import * as RunFinalizationService from "./orchestration-v2/RunFinalizationService.ts";
 import * as ProjectionStoreV2 from "./orchestration-v2/ProjectionStore.ts";
@@ -501,6 +502,10 @@ const ThreadSettlementWorkerLive = Layer.effectDiscard(
   ThreadSettlementService.make.pipe(Effect.flatMap((service) => service.start())),
 ).pipe(Layer.provide(PullRequestServiceLive), Layer.provide(ProjectionStoreV2.layer));
 
+const TicketLinkReactorLive = Layer.effectDiscard(
+  TicketLinkReactor.make.pipe(Effect.flatMap((reactor) => reactor.start())),
+);
+
 const ThreadPullRequestWorkerLive = Layer.effectDiscard(
   ThreadPullRequestService.make.pipe(Effect.flatMap((service) => service.start())),
 ).pipe(Layer.provide(PullRequestServiceLive));
@@ -544,6 +549,7 @@ const RuntimeCoreDependenciesBaseLive = Layer.mergeAll(
     Layer.provide(ProjectionStoreV2.layer),
   ),
   ThreadPullRequestWorkerLive,
+  TicketLinkReactorLive,
   Layer.effectDiscard(
     Effect.gen(function* () {
       const service = yield* PullRequestSyncReactor.PullRequestSyncReactor;

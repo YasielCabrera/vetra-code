@@ -25,7 +25,7 @@ import * as DateTime from "effect/DateTime";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCodeViewFileReveal } from "./diffs/useCodeViewFileReveal";
 import { useOpenInPreferredEditor } from "../editorPreferences";
-import { useFileContextMenuHandler } from "../fileContextMenu";
+import { useFileContextMenuHandlerWithTicket, useTicketCapture } from "./tickets/useTicketCapture";
 import { type DraftId } from "../composerDraftStore";
 import { openDiffFilePrimaryAction } from "../diffFileActions";
 import { useCheckpointDiff } from "~/lib/checkpointDiffState";
@@ -185,7 +185,15 @@ export default function DiffPanel({
   const serverConfig = useAtomValue(
     serverEnvironment.configValueAtom(activeThread?.environmentId ?? null),
   );
-  const onFileContextMenu = useFileContextMenuHandler(activeThread?.environmentId ?? null);
+  const ticketCapture = useTicketCapture({
+    environmentId: activeThread?.environmentId ?? null,
+    sourceThreadId: activeThread?.id ?? null,
+    projectId: activeThread?.projectId ?? null,
+  });
+  const onFileContextMenu = useFileContextMenuHandlerWithTicket(
+    activeThread?.environmentId ?? null,
+    ticketCapture,
+  );
   const openInPreferredEditor = useOpenInPreferredEditor(
     activeThread?.environmentId ?? null,
     serverConfig?.availableEditors ?? [],
@@ -1107,6 +1115,7 @@ export default function DiffPanel({
                         sectionId={reviewSectionId}
                         sectionTitle={reviewSectionTitle}
                         composerDraftTarget={composerDraftTarget}
+                        onCreateTicket={ticketCapture?.reviewComment}
                         renderHeaderFilenameSuffix={(fileDiff) => {
                           const path = resolveFileDiffPath(fileDiff);
                           const stat = fileStats.get(path);

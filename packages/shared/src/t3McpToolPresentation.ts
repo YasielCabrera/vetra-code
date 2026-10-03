@@ -55,6 +55,13 @@ export type T3McpToolSummaryAction =
   | "link-pr"
   | "unlink-pr"
   | "list-prs"
+  | "ticket-list"
+  | "ticket-read"
+  | "ticket-create"
+  | "ticket-update"
+  | "ticket-link"
+  | "ticket-unlink"
+  | "ticket-note"
   | "browser"
   | "device";
 
@@ -275,6 +282,13 @@ const VETRA_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     "attachment-discard",
   ),
   t3_thread_send_attachments: tool(["Send", "Sending", "Sent", "attachments"], "attachment-send"),
+  t3_ticket_list: tool(["List", "Listing", "Listed", "tickets"], "ticket-list"),
+  t3_ticket_get: tool(["Read", "Reading", "Read", "a ticket"], "ticket-read"),
+  t3_ticket_create: tool(["Create", "Creating", "Created", "a ticket"], "ticket-create"),
+  t3_ticket_update: tool(["Update", "Updating", "Updated", "a ticket"], "ticket-update"),
+  t3_ticket_link: tool(["Link", "Linking", "Linked", "a ticket"], "ticket-link"),
+  t3_ticket_unlink: tool(["Unlink", "Unlinking", "Unlinked", "a ticket"], "ticket-unlink"),
+  t3_ticket_note: tool(["Add", "Adding", "Added", "a ticket note"], "ticket-note"),
 };
 
 /**

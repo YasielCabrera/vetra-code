@@ -232,6 +232,7 @@ import {
   AutomationRunVisibilityInput,
   AutomationRunsSnapshot,
 } from "./automation.ts";
+import { TICKET_WS_METHODS, TicketsRpcGroup } from "./ticketRpc.ts";
 import {
   IssueActivity,
   IssueAssigneeCandidateList,
@@ -404,7 +405,7 @@ import {
   SourceControlRepositoryInfo,
   SourceControlRepositoryLookupInput,
 } from "./sourceControl.ts";
-import { VcsError } from "./vcs.ts";
+import { VcsError, VcsListRemotesResult } from "./vcs.ts";
 import { Project, ProjectMutation, ProjectMutationError } from "./project.ts";
 
 export const WS_METHODS = {
@@ -479,6 +480,7 @@ export const WS_METHODS = {
   vcsPull: "vcs.pull",
   vcsRefreshStatus: "vcs.refreshStatus",
   vcsListRefs: "vcs.listRefs",
+  vcsListRemotes: "vcs.listRemotes",
   vcsCreateWorktree: "vcs.createWorktree",
   vcsRemoveWorktree: "vcs.removeWorktree",
   vcsCreateRef: "vcs.createRef",
@@ -579,6 +581,8 @@ export const WS_METHODS = {
   // Automation run tracking; the automations themselves are scheduled tasks
   automationRunsSubscribe: "automationRuns.subscribe",
   automationRunsSetHidden: "automationRuns.setHidden",
+
+  ...TICKET_WS_METHODS,
 
   // Cloud environment methods
   cloudGetRelayClientStatus: "cloud.getRelayClientStatus",
@@ -1661,6 +1665,12 @@ const WsVcsListRefsRpc = Rpc.make(WS_METHODS.vcsListRefs, {
   error: Schema.Union([GitCommandError, EnvironmentAuthorizationError]),
 });
 
+const WsVcsListRemotesRpc = Rpc.make(WS_METHODS.vcsListRemotes, {
+  payload: VcsStatusInput,
+  success: VcsListRemotesResult,
+  error: Schema.Union([VcsError, EnvironmentAuthorizationError]),
+});
+
 const WsVcsCreateWorktreeRpc = Rpc.make(WS_METHODS.vcsCreateWorktree, {
   payload: VcsCreateWorktreeInput,
   success: VcsCreateWorktreeResult,
@@ -2073,7 +2083,7 @@ const WsSubscribeResourceTelemetryRpc = Rpc.make(WS_METHODS.subscribeResourceTel
   stream: true,
 });
 
-export const WsRpcGroup = RpcGroup.make(
+export const WsCoreRpcGroup = RpcGroup.make(
   WsServerProbeRpc,
   WsServerGetConfigRpc,
   WsServerRefreshProvidersRpc,
@@ -2213,6 +2223,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsGitResolvePullRequestRpc,
   WsGitPreparePullRequestThreadRpc,
   WsVcsListRefsRpc,
+  WsVcsListRemotesRpc,
   WsVcsCreateWorktreeRpc,
   WsVcsRemoveWorktreeRpc,
   WsVcsCreateRefRpc,
@@ -2282,3 +2293,5 @@ export const WsRpcGroup = RpcGroup.make(
   WsPowerhouseDatabaseExecuteQueryRpc,
   WsPowerhouseDatabaseRefreshSnapshotRpc,
 );
+
+export const WsRpcGroup = WsCoreRpcGroup.merge(TicketsRpcGroup);

@@ -118,6 +118,17 @@ const knownRecords: Record<(typeof COMPOSER_CONTEXT_KINDS)[number], Record<strin
     threadId: "thread-1",
     title: "Fix login flow",
   },
+  ticket: {
+    ...base,
+    kind: "ticket",
+    label: "T-42 Fix login flow",
+    environmentId: "environment-1",
+    ticketId: "ticket-1",
+    ref: "T-42",
+    title: "Fix login flow",
+    body: "Users bounce back to /login after SSO.",
+    links: [{ kind: "project", targetKey: "project-1" }],
+  },
 };
 
 describe("ComposerContextRecord", () => {

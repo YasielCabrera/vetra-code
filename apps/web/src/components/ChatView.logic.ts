@@ -19,7 +19,6 @@ import {
   type ServerProvider,
   type ScopedProjectRef,
   type ScopedThreadRef,
-  type ThreadContextRecord,
   type ThreadId,
   type ThreadLinkedPullRequest,
   type RunId,
@@ -48,6 +47,7 @@ import {
   type TurnDiffSummary,
 } from "../types";
 import { type ComposerImageAttachment, type DraftThreadState } from "../composerDraftStore";
+import type { AttachedContextRecord } from "../composerDraftStore";
 import * as Schema from "effect/Schema";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { environmentThreadShells, environmentThreadDetails } from "../state/threads";
@@ -1322,7 +1322,7 @@ export interface PlanFollowUpComposerSnapshot {
   readonly terminalContexts: ReadonlyArray<TerminalContextDraft>;
   readonly reviewComments: ReadonlyArray<ReviewCommentContext>;
   readonly previewAnnotations: ReadonlyArray<PreviewAnnotationPayload>;
-  readonly threadContexts: ReadonlyArray<ThreadContextRecord>;
+  readonly threadContexts: ReadonlyArray<AttachedContextRecord>;
 }
 
 /**
@@ -1336,7 +1336,7 @@ export function restorePlanFollowUpComposer(input: {
   readonly writeTerminalContexts: (contexts: ReadonlyArray<TerminalContextDraft>) => void;
   readonly writeReviewComments: (comments: ReadonlyArray<ReviewCommentContext>) => void;
   readonly writePreviewAnnotations: (annotations: ReadonlyArray<PreviewAnnotationPayload>) => void;
-  readonly writeThreadContexts: (records: ReadonlyArray<ThreadContextRecord>) => void;
+  readonly writeThreadContexts: (records: ReadonlyArray<AttachedContextRecord>) => void;
   readonly resetCursor: (options: {
     cursor: number;
     prompt: string;

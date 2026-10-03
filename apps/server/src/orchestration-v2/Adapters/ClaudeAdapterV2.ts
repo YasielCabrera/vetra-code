@@ -892,8 +892,8 @@ export function makeClaudeQueryOptions(input: {
 
 export const CLAUDE_VETRA_MCP_TOOL_WILDCARD = "mcp__vetra-code__*";
 
-// Must stay in sync with the Tool.Readonly annotations on OrchestratorToolkit;
-// ClaudeAdapterV2.test.ts cross-checks this list against the toolkit.
+// Must stay in sync with the Tool.Readonly annotations on the vetra-code toolkits;
+// ClaudeAdapterV2.test.ts cross-checks this list against them.
 export const CLAUDE_READ_ONLY_VETRA_MCP_ALLOWED_TOOLS: ReadonlyArray<string> = [
   "mcp__vetra-code__orchestrator_capabilities",
   "mcp__vetra-code__list_scheduled_tasks",
@@ -912,6 +912,8 @@ export const CLAUDE_READ_ONLY_VETRA_MCP_ALLOWED_TOOLS: ReadonlyArray<string> = [
   "mcp__vetra-code__t3_environment_read",
   "mcp__vetra-code__t3_queue_list",
   "mcp__vetra-code__t3_queue_read",
+  "mcp__vetra-code__t3_ticket_list",
+  "mcp__vetra-code__t3_ticket_get",
 ];
 
 // Claude Code aborts an HTTP MCP call after 60 s ("The operation timed out.")

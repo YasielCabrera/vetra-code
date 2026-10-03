@@ -69,6 +69,12 @@ export function t3ToolResultIndicatesFailure(output: unknown): boolean {
   return readResult(output).failed;
 }
 
+/** The structured result of a successful call, unwrapped from the provider's envelope. */
+export function readT3ToolResult(output: unknown): Record<string, unknown> | undefined {
+  const result = readResult(output);
+  return result.failed ? undefined : result.data;
+}
+
 function countEntities(ids: ReadonlyArray<string | undefined>): number {
   return (
     new Set(ids.filter((value) => value !== undefined)).size +
@@ -109,6 +115,10 @@ export function summarizeT3ToolCalls(
       id(call.output?.threadId) ??
       id(asRecord(call.output?.thread)?.threadId) ??
       id(call.input?.threadId),
+  );
+  const ticketIds = selected.map(
+    (call) =>
+      id(call.output?.id) ?? id(asRecord(call.output?.summary)?.id) ?? id(call.input?.ticket),
   );
   let label: string;
   switch (action) {
@@ -378,6 +388,27 @@ export function summarizeT3ToolCalls(
         "check",
         `linked pull requests${selected.length === 1 ? "" : ` ${times}`}`,
       );
+      break;
+    case "ticket-list":
+      label = phrase("Listed", "list", `tickets ${times}`);
+      break;
+    case "ticket-read":
+      label = phrase("Read", "read", quantity(countEntities(ticketIds), "ticket"));
+      break;
+    case "ticket-create":
+      label = phrase("Created", "create", quantity(countEntities(ticketIds), "ticket"));
+      break;
+    case "ticket-update":
+      label = phrase("Updated", "update", quantity(countEntities(ticketIds), "ticket"));
+      break;
+    case "ticket-link":
+      label = phrase("Added", "add", quantity(selected.length, "ticket link"));
+      break;
+    case "ticket-unlink":
+      label = phrase("Removed", "remove", quantity(selected.length, "ticket link"));
+      break;
+    case "ticket-note":
+      label = phrase("Added", "add", quantity(selected.length, "ticket note"));
       break;
     case "browser":
       label = phrase("Used", "use", `browser ${times}`);

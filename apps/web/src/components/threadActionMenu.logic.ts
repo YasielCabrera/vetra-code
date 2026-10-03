@@ -24,6 +24,7 @@ export type ThreadActionMenuId =
   | "rename"
   | "regenerate-title"
   | "mark-unread"
+  | "create-ticket"
   | "copy"
   | "copy-path"
   | "copy-branch"
@@ -61,6 +62,7 @@ export interface ThreadActionMenuState {
     readonly pinning: boolean;
     readonly titleRegeneration: boolean;
     readonly automations: boolean;
+    readonly tickets: boolean;
   };
   readonly snoozePresets: ReadonlyArray<SnoozePreset>;
 }
@@ -82,6 +84,9 @@ export function buildThreadActionMenuItems(
             icon: "message-square-plus",
           },
         ]
+      : []),
+    ...(state.supports.tickets
+      ? [{ id: "create-ticket" as const, label: "Create ticket…", icon: "square-kanban" }]
       : []),
     ...(state.supports.pinning
       ? [

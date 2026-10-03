@@ -99,6 +99,7 @@ import {
   type PullRequestRef,
   WS_METHODS,
   WsRpcGroup,
+  WsCoreRpcGroup,
 } from "@t3tools/contracts";
 import { resolveServerBackgroundActivitySettings } from "@t3tools/shared/backgroundActivitySettings";
 import {
@@ -121,6 +122,7 @@ import * as ThreadMessageIntake from "./orchestration-v2/ThreadMessageIntake.ts"
 import * as IdAllocator from "./orchestration-v2/IdAllocator.ts";
 import * as ScheduledTasks from "./scheduledTasks/ScheduledTaskService.ts";
 import * as AutomationRuns from "./automation/AutomationRuns.ts";
+import { makeTicketRpcLayer } from "./ticket/ticketRpcLayer.ts";
 import {
   archivedShellStreamItemFromThreadShell,
   buildActiveShellSnapshot,
@@ -1116,13 +1118,74 @@ export const subscribeOrchestrationV2Shell = Effect.fn("ws.orchestrationV2.subsc
   },
 );
 
+const makeRpcObservers = (currentSession: EnvironmentAuth.AuthenticatedSession) => {
+  const authorizationError = (requiredScope: AuthEnvironmentScope) =>
+    new EnvironmentAuthorizationError({
+      message: `The authenticated token is missing required scope: ${requiredScope}.`,
+      requiredScope,
+    });
+  const authorizeEffect = <A, E, R>(
+    requiredScope: AuthEnvironmentScope,
+    effect: Effect.Effect<A, E, R>,
+  ): Effect.Effect<A, E | EnvironmentAuthorizationError, R> =>
+    currentSession.scopes.includes(requiredScope)
+      ? effect
+      : Effect.fail(authorizationError(requiredScope));
+  const authorizeStream = <A, E, R>(
+    requiredScope: AuthEnvironmentScope,
+    stream: Stream.Stream<A, E, R>,
+  ): Stream.Stream<A, E | EnvironmentAuthorizationError, R> =>
+    currentSession.scopes.includes(requiredScope)
+      ? stream
+      : Stream.fail(authorizationError(requiredScope));
+  return {
+    authorizeEffect,
+    observeRpcEffect: <A, E, R>(
+      method: string,
+      effect: Effect.Effect<A, E, R>,
+      traceAttributes?: Readonly<Record<string, unknown>>,
+    ) =>
+      instrumentRpcEffect(
+        method,
+        authorizeEffect(requiredScopeForRpcMethod(method), effect),
+        traceAttributes,
+      ),
+    observeRpcStream: <A, E, R>(
+      method: string,
+      stream: Stream.Stream<A, E, R>,
+      traceAttributes?: Readonly<Record<string, unknown>>,
+    ) =>
+      instrumentRpcStream(
+        method,
+        authorizeStream(requiredScopeForRpcMethod(method), stream),
+        traceAttributes,
+      ),
+    observeRpcStreamEffect: <A, StreamError, StreamContext, EffectError, EffectContext>(
+      method: string,
+      effect: Effect.Effect<
+        Stream.Stream<A, StreamError, StreamContext>,
+        EffectError,
+        EffectContext
+      >,
+      traceAttributes?: Readonly<Record<string, unknown>>,
+    ) =>
+      instrumentRpcStreamEffect(
+        method,
+        authorizeEffect(requiredScopeForRpcMethod(method), effect),
+        traceAttributes,
+      ),
+  };
+};
+
+export type RpcObservers = ReturnType<typeof makeRpcObservers>;
+
 const makeWsRpcLayer = (
   currentSession: EnvironmentAuth.AuthenticatedSession,
   clientOrigin: OrchestrationClientOrigin,
   clientAnalyticsProps: Readonly<Record<string, unknown>>,
   previewAutomationBroker: PreviewAutomationBroker.PreviewAutomationBroker["Service"],
 ) =>
-  ServerWsRpcGroup.toLayer(
+  WsCoreRpcGroup.toLayer(
     Effect.gen(function* () {
       const currentSessionId = currentSession.sessionId;
       const sql = yield* SqlClient.SqlClient;
@@ -1260,25 +1323,8 @@ const makeWsRpcLayer = (
       const processResourceMonitor = yield* ProcessResourceMonitor.ProcessResourceMonitor;
       const resourceTelemetry = yield* ResourceTelemetry.ResourceTelemetry;
       const relayClient = yield* RelayClient.RelayClient;
-      const authorizationError = (requiredScope: AuthEnvironmentScope) =>
-        new EnvironmentAuthorizationError({
-          message: `The authenticated token is missing required scope: ${requiredScope}.`,
-          requiredScope,
-        });
-      const authorizeEffect = <A, E, R>(
-        requiredScope: AuthEnvironmentScope,
-        effect: Effect.Effect<A, E, R>,
-      ): Effect.Effect<A, E | EnvironmentAuthorizationError, R> =>
-        currentSession.scopes.includes(requiredScope)
-          ? effect
-          : Effect.fail(authorizationError(requiredScope));
-      const authorizeStream = <A, E, R>(
-        requiredScope: AuthEnvironmentScope,
-        stream: Stream.Stream<A, E, R>,
-      ): Stream.Stream<A, E | EnvironmentAuthorizationError, R> =>
-        currentSession.scopes.includes(requiredScope)
-          ? stream
-          : Stream.fail(authorizationError(requiredScope));
+      const { authorizeEffect, observeRpcEffect, observeRpcStream, observeRpcStreamEffect } =
+        makeRpcObservers(currentSession);
 
       const acpRegistryProject = Effect.fn("ws.acpRegistry.project")(function* (
         projectId: ProjectId,
@@ -1602,40 +1648,6 @@ const makeWsRpcLayer = (
         yield* providerRegistry.refreshInstance(input.instanceId);
         return { disabled: true } as const;
       });
-      const observeRpcEffect = <A, E, R>(
-        method: string,
-        effect: Effect.Effect<A, E, R>,
-        traceAttributes?: Readonly<Record<string, unknown>>,
-      ) =>
-        instrumentRpcEffect(
-          method,
-          authorizeEffect(requiredScopeForRpcMethod(method), effect),
-          traceAttributes,
-        );
-      const observeRpcStream = <A, E, R>(
-        method: string,
-        stream: Stream.Stream<A, E, R>,
-        traceAttributes?: Readonly<Record<string, unknown>>,
-      ) =>
-        instrumentRpcStream(
-          method,
-          authorizeStream(requiredScopeForRpcMethod(method), stream),
-          traceAttributes,
-        );
-      const observeRpcStreamEffect = <A, StreamError, StreamContext, EffectError, EffectContext>(
-        method: string,
-        effect: Effect.Effect<
-          Stream.Stream<A, StreamError, StreamContext>,
-          EffectError,
-          EffectContext
-        >,
-        traceAttributes?: Readonly<Record<string, unknown>>,
-      ) =>
-        instrumentRpcStreamEffect(
-          method,
-          authorizeEffect(requiredScopeForRpcMethod(method), effect),
-          traceAttributes,
-        );
       const loadAuthAccessSnapshot = () =>
         Effect.all({
           pairingLinks: serverAuth.listPairingLinks(),
@@ -1798,7 +1810,7 @@ const makeWsRpcLayer = (
         return result;
       });
 
-      const handlers = ServerWsRpcGroup.of({
+      const handlers = WsCoreRpcGroup.of({
         ...powerhouseHandlers,
         [ORCHESTRATION_V2_WS_METHODS.dispatchCommand]: (command) =>
           observeRpcEffect(
@@ -3463,6 +3475,10 @@ const makeWsRpcLayer = (
           observeRpcEffect(WS_METHODS.vcsListRefs, gitWorkflow.listRefs(input), {
             "rpc.aggregate": "vcs",
           }),
+        [WS_METHODS.vcsListRemotes]: (input) =>
+          observeRpcEffect(WS_METHODS.vcsListRemotes, gitWorkflow.listRemotes(input), {
+            "rpc.aggregate": "vcs",
+          }),
         [WS_METHODS.vcsCreateWorktree]: (input) =>
           observeRpcEffect(
             WS_METHODS.vcsCreateWorktree,
@@ -3929,11 +3945,9 @@ export const websocketRpcRouteLayer = Layer.unwrap(
           return httpEffect;
         }).pipe(
           Effect.provide(
-            makeWsRpcLayer(
-              session,
-              clientOrigin,
-              clientAnalyticsProps,
-              previewAutomationBroker,
+            Layer.merge(
+              makeWsRpcLayer(session, clientOrigin, clientAnalyticsProps, previewAutomationBroker),
+              makeTicketRpcLayer(makeRpcObservers(session)),
             ).pipe(
               Layer.provideMerge(RpcSerialization.layerJson),
               Layer.provide(Layer.succeed(SqlClient.SqlClient, sql)),

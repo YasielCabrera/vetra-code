@@ -51,6 +51,7 @@ import { layer as threadForkServiceLayer } from "./ThreadForkService.ts";
 import { layer as turnItemPositionStoreLayer } from "./TurnItemPositionStore.ts";
 import { layer as scheduledTaskServiceLayer } from "../scheduledTasks/ScheduledTaskService.ts";
 import * as AutomationRuns from "../automation/AutomationRuns.ts";
+import * as Tickets from "../ticket/Tickets.ts";
 
 /** The shared application event log and its command receipts. */
 export const OrchestrationEventInfrastructureLayerLive = Layer.mergeAll(
@@ -324,6 +325,7 @@ export const OrchestrationV2ProductionLayerLive = Layer.mergeAll(
   scheduledTaskProvided,
   automationRunsProvided,
   automationRunCleanupProvided,
+  Tickets.layer.pipe(Layer.provide(Layer.merge(threadLaunchProvided, ProjectServiceLayerLive))),
   UsageLimitRecoveryWorker.workerLive.pipe(
     Layer.provide(Layer.mergeAll(projectionStoreLayer, threadManagementProvided)),
   ),

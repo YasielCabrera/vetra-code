@@ -68,6 +68,7 @@ import {
   RotateCcwIcon,
   SettingsIcon,
   SquareIcon,
+  SquareKanbanIcon,
   SquarePenIcon,
   SunIcon,
   TextSearchIcon,
@@ -225,6 +226,8 @@ import {
 import type { Project } from "../types";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { readPullRequestListPreferences } from "~/components/pullRequest/pullRequestListPreferences";
+import { openCreateTicketDialog } from "./tickets/CreateTicketDialog";
+import { threadTicketCapture } from "./tickets/ticketCapture";
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
 
@@ -577,6 +580,13 @@ export function CommandPalette({ children }: { children: ReactNode }) {
         event.stopPropagation();
         setOpen(false);
         void navigate({ to: "/usage" });
+        return;
+      }
+      if (command === "ticket.new") {
+        event.preventDefault();
+        event.stopPropagation();
+        setOpen(false);
+        void navigate({ to: "/tickets/new", search: {} });
         return;
       }
       const mode = overlayModeForCommand(command);
@@ -2380,6 +2390,42 @@ function OpenCommandPaletteDialog(props: {
       await navigate({ to: "/automations/new", search: { template: undefined } });
     },
   });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:tickets",
+    searchTerms: ["tickets", "board", "issues", "backlog", "todo", "kanban", "work"],
+    title: "Go to tickets",
+    icon: <SquareKanbanIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/tickets", search: {} });
+    },
+  });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:tickets:new",
+    searchTerms: ["new ticket", "create ticket", "add ticket", "todo", "backlog"],
+    title: "New ticket",
+    icon: <SquareKanbanIcon className={ITEM_ICON_CLASS} />,
+    shortcutCommand: "ticket.new",
+    run: async () => {
+      await navigate({ to: "/tickets/new", search: {} });
+    },
+  });
+
+  if (activeThread && activeThreadServerConfig?.environment.capabilities.tickets === true) {
+    actionItems.push({
+      kind: "action",
+      value: "action:tickets:from-thread",
+      searchTerms: ["create ticket from thread", "file a ticket", "draft ticket", "agent ticket"],
+      title: "Create ticket from this thread",
+      icon: <SquareKanbanIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        openCreateTicketDialog(threadTicketCapture(activeThread));
+      },
+    });
+  }
 
   // Project settings is the one project, not the listing: it targets the
   // contextual project (active thread/draft, falling back to the first

@@ -21,7 +21,16 @@ import {
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import { mediaFileReference } from "@t3tools/client-runtime/media-reference";
-import { ArrowLeftRight, Code2, Eye, FolderTree, Globe2, Table2, WrapTextIcon } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Code2,
+  Eye,
+  FolderTree,
+  Globe2,
+  SquareKanbanIcon,
+  Table2,
+  WrapTextIcon,
+} from "lucide-react";
 import * as Schema from "effect/Schema";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -46,6 +55,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { stackedThreadToast, toastManager } from "~/components/ui/toast";
 import { type DraftId, useComposerDraftStore } from "~/composerDraftStore";
 import { buildFileReviewComment } from "~/reviewCommentContext";
+import { useTicketCapture } from "../tickets/useTicketCapture";
 import { assetEnvironment } from "~/state/assets";
 import { useEnvironmentHttpBaseUrl, usePrimaryEnvironmentId } from "~/state/environments";
 import { previewEnvironment } from "~/state/preview";
@@ -783,6 +793,12 @@ function EditableFileSurface({
     ],
   );
 
+  const ticketCapture = useTicketCapture({
+    environmentId,
+    sourceThreadId: typeof composerDraftTarget === "string" ? null : composerDraftTarget.threadId,
+    projectId: null,
+  });
+
   const beginComment = useCallback(
     (range: SelectedLineRange) => {
       editor.setSelections([]);
@@ -942,6 +958,28 @@ function EditableFileSurface({
                       onCancel={() => removeAnnotationEntry(entry.id)}
                       onComment={(text) => submitAnnotationEntry(entry.id, text)}
                       onDelete={() => removeAnnotationEntry(entry.id)}
+                      {...(entry.kind === "draft" && ticketCapture
+                        ? {
+                            secondaryAction: {
+                              label: "Create ticket",
+                              icon: <SquareKanbanIcon />,
+                              allowEmpty: true,
+                              onAction: (text) => {
+                                ticketCapture.reviewComment(
+                                  buildFileReviewComment({
+                                    id: entry.id,
+                                    filePath: relativePath,
+                                    startLine: entry.startLine,
+                                    endLine: entry.endLine,
+                                    text,
+                                    contents,
+                                  }),
+                                );
+                                removeAnnotationEntry(entry.id);
+                              },
+                            },
+                          }
+                        : {})}
                     />
                   ))}
                 </div>
@@ -1479,6 +1517,9 @@ export default function FilePreviewPanel({
               selectedPathRevealId={revealRequestId}
               onOpenFile={onOpenFile}
               workspaceMutationId={workspaceMutationId}
+              sourceThreadId={
+                typeof composerDraftTarget === "string" ? null : composerDraftTarget.threadId
+              }
               {...(previewPath && !isMedia && !isPdf
                 ? { onRefreshSelectedFile: file.refresh }
                 : {})}

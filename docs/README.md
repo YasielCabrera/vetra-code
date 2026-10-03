@@ -13,6 +13,7 @@
 - [Source control](./user/source-control.md)
 - [Inspect Powerhouse projects](./user/powerhouse-panel.md)
 - [Run work on a schedule](./user/automations.md)
+- [Track work with tickets](./user/tickets.md)
 - [Project settings](./user/project-settings.md)
 - [Appearance and themes](./user/appearance.md)
 - [Environment themes](./user/environment-theme.md)

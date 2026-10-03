@@ -110,6 +110,7 @@ import remarkGfm from "remark-gfm";
 import type { Root, RootContent } from "mdast";
 import { T3Wordmark } from "../T3Wordmark";
 import { ThreadContextChip } from "../ThreadContextChip";
+import { TicketContextChip } from "../tickets/TicketContextChip";
 import {
   BotIcon,
   BrainIcon,
@@ -174,6 +175,9 @@ import { type ReadAloud, stopSpeech, useReadAloud } from "../../readAloud";
 import { PierreEntryIcon } from "./PierreEntryIcon";
 import { inferEntryKindFromPath } from "../../pierre-icons";
 import { AssistantSelectionToolbar } from "./AssistantSelectionToolbar";
+import { TicketToolCallCard } from "../tickets/TicketToolCallCard";
+import { createdTicketFromToolItem } from "../tickets/ticketToolCall";
+import { useTicketCapture } from "../tickets/useTicketCapture";
 import type { AssistantCitationSourceAnchor } from "~/lib/assistantTextSelection";
 import {
   AssistantCitationSource,
@@ -589,6 +593,11 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   }
   const citationThreadRef = useMemo(() => parseScopedThreadKey(routeThreadKey), [routeThreadKey]);
   const openPullRequest = useOpenPrLink(citationThreadRef ?? undefined);
+  const ticketCapture = useTicketCapture({
+    environmentId: citationThreadRef?.environmentId ?? null,
+    sourceThreadId: citationThreadRef?.threadId ?? null,
+    projectId: null,
+  });
   const expandCitedRun = useCallback((runId: RunId) => {
     setExpandedRunIds((current) => (current.has(runId) ? current : new Set([...current, runId])));
   }, []);
@@ -1321,6 +1330,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
               viewport={timelineViewportElement}
               threadRef={citationThreadRef}
               onCite={onCiteAssistantText}
+              onCreateTicket={ticketCapture?.quote}
             />
           ) : null}
           <LegendList<MessagesTimelineRow>
@@ -4097,6 +4107,16 @@ const userMessageContextPresentationRegistry = createContextPresentationRegistry
         ),
     },
     {
+      kind: "ticket",
+      canRender: (record) => record.kind === "ticket",
+      render: (record, context) =>
+        record.kind === "ticket" ? (
+          <TicketContextChip record={record} copyMarkdown={context.copyMarkdown} />
+        ) : (
+          <UnavailableUserMessageContextChip {...context} />
+        ),
+    },
+    {
       kind: "image",
       canRender: (record, context) =>
         record.kind === "image" &&
@@ -4957,6 +4977,9 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
     workEntry.projectedItem?.item.type === "thread_created"
       ? workEntry.projectedItem.item
       : undefined;
+  const createdTicket = createdTicketFromToolItem(
+    workEntry.projectedItem?.item ?? workEntry.structuredPayload,
+  );
   const notifiedSubagentThreadId =
     workEntry.projectedItem?.item.type === "notification"
       ? notificationChildThreadId(workEntry.projectedItem.item.source)
@@ -5231,6 +5254,11 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
         </>
       }
     >
+      {createdTicket && threadRef ? (
+        <WorkLogDetails kind="panel">
+          <TicketToolCallCard environmentId={threadRef.environmentId} ticket={createdTicket} />
+        </WorkLogDetails>
+      ) : null}
       {expanded && viewedImage && threadRef ? (
         <WorkLogDetails kind="media">
           <ChatMarkdownAssetImage

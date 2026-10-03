@@ -63,7 +63,84 @@ import ChatMarkdown, {
   canUseMarkdownFileShellActions,
   hasMarkdownFilePrimaryAction,
   shouldUseMarkdownFileBrowserPrimaryAction,
+  transformMarkdownUrl,
 } from "./ChatMarkdown";
+
+describe("transformMarkdownUrl", () => {
+  it("removes filesystem destinations when local file links are disabled", () => {
+    expect(
+      [
+        "file:///Users/alice/.ssh/id_rsa",
+        "FILE:///tmp/secret.txt",
+        "file:///oddpath",
+        "/Users/alice/.ssh/id_rsa",
+        "/etc/passwd",
+        "/%65tc/passwd",
+        "C:\\Users\\alice\\secret.txt",
+        "file:///C:/Users/alice/secret.txt",
+        "./src/cart.ts",
+        "src/cart.ts:12",
+      ].map((href) => transformMarkdownUrl(href, false)),
+    ).toEqual(["", "", "", "", "", "", "", "", "", ""]);
+  });
+
+  it("keeps web links, fragments and attachments available on ticket surfaces", () => {
+    expect(
+      [
+        "https://github.com/acme/app/issues/7",
+        "#acceptance-criteria",
+        "vetra-attachment://upload_1",
+      ].map((href) => transformMarkdownUrl(href, false)),
+    ).toEqual([
+      "https://github.com/acme/app/issues/7",
+      "#acceptance-criteria",
+      "vetra-attachment://upload_1",
+    ]);
+  });
+
+  it("preserves chat's default local file destinations", () => {
+    expect(transformMarkdownUrl("file:///Users/alice/cart.ts#L12")).toBe(
+      "/Users/alice/cart.ts#L12",
+    );
+    expect(transformMarkdownUrl("C:\\Users\\alice\\cart.ts")).toBe("C:\\Users\\alice\\cart.ts");
+  });
+});
+
+describe("ChatMarkdown with local file links disabled", () => {
+  it("leaves local destinations and inline paths as text while keeping web links", async () => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    let renderer: ReactTestRenderer | undefined;
+    try {
+      await act(async () => {
+        renderer = create(
+          <ChatMarkdown
+            allowLocalFileLinks={false}
+            cwd="/Users/alice/project"
+            environmentId={EnvironmentId.make("environment-1")}
+            text={[
+              "[Key](file:///Users/alice/.ssh/id_rsa) [Password](/etc/passwd)",
+              "[Windows](C:/Users/alice/secret.txt) [Relative](./src/cart.ts)",
+              '<a href="file:///tmp/secret.txt">Raw file link</a>',
+              "`/Users/alice/.ssh/id_rsa` `src/cart.ts:12`",
+              "[GitHub](https://github.com/acme/app/issues/7)",
+            ].join("\n\n")}
+          />,
+        );
+      });
+      expect(renderer!.root.findAllByType("a").map((anchor) => anchor.props.href)).toEqual([
+        "https://github.com/acme/app/issues/7",
+      ]);
+      expect(renderer!.root.findAllByType("button")).toHaveLength(0);
+      expect(renderer!.root.findAllByType("code").map((code) => code.children.join(""))).toEqual([
+        "/Users/alice/.ssh/id_rsa",
+        "src/cart.ts:12",
+      ]);
+    } finally {
+      await act(async () => renderer?.unmount());
+      vi.unstubAllGlobals();
+    }
+  });
+});
 
 function codeButton(renderer: ReactTestRenderer, label: string) {
   const button = renderer.root

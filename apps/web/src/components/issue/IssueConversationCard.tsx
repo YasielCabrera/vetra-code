@@ -51,6 +51,7 @@ export function IssueConversationCard({
       <div className="mt-2">
         {body.trim() ? (
           <ChatMarkdown
+            allowLocalFileLinks={false}
             className="max-w-none text-sm"
             cwd={undefined}
             environmentId={environmentId}

@@ -19,6 +19,7 @@ import {
   type PreviewAnnotationPayload,
   RuntimeMode,
   ThreadContextRecord,
+  TicketContextRecord,
   type ServerProvider,
   type ScopedProjectRef,
   type ScopedThreadRef,
@@ -82,7 +83,9 @@ import { ReviewCommentContextSchema, type ReviewCommentContext } from "./reviewC
 const isRuntimeMode = Schema.is(RuntimeMode);
 const isProviderDriverKind = Schema.is(ProviderDriverKind);
 const isReviewCommentContext = Schema.is(ReviewCommentContextSchema);
-const isThreadContextRecord = Schema.is(ThreadContextRecord);
+const AttachedContextRecord = Schema.Union([ThreadContextRecord, TicketContextRecord]);
+export type AttachedContextRecord = typeof AttachedContextRecord.Type;
+const isAttachedContextRecord = Schema.is(AttachedContextRecord);
 const isSnapShotSource = Schema.is(SnapShotSource);
 const isPreviewAnnotationPayload = Schema.is(PreviewAnnotationPayloadSchema);
 
@@ -238,7 +241,7 @@ const PersistedComposerThreadDraftState = Schema.Struct({
   terminalContexts: Schema.optionalKey(Schema.Array(PersistedTerminalContextDraft)),
   previewAnnotations: Schema.optionalKey(Schema.Array(PreviewAnnotationPayloadSchema)),
   reviewComments: Schema.optionalKey(Schema.Array(ReviewCommentContextSchema)),
-  threadContexts: Schema.optionalKey(Schema.Array(ThreadContextRecord)),
+  threadContexts: Schema.optionalKey(Schema.Array(AttachedContextRecord)),
   // Keyed by `ProviderInstanceId` (open branded slug) so custom provider
   // instances (e.g. `codex_personal`) round-trip alongside the built-in
   // `codex` / `claudeAgent` / ... entries. Every prior `ProviderDriverKind`
@@ -393,7 +396,7 @@ export interface ComposerThreadDraftState {
   terminalContexts: TerminalContextDraft[];
   previewAnnotations: PreviewAnnotationPayload[];
   reviewComments: ReviewCommentContext[];
-  threadContexts: ThreadContextRecord[];
+  threadContexts: AttachedContextRecord[];
   /**
    * Per-instance model selection. Keyed by `ProviderInstanceId` (open
    * branded slug) so a default `codex` instance and a user-authored
@@ -698,15 +701,14 @@ interface ComposerDraftStoreState {
     comments: ReadonlyArray<ReviewCommentContext>,
   ) => void;
   removeReviewComment: (threadRef: ComposerThreadTarget, commentId: string) => void;
-  /** Attaches threads as context; already-attached threads are skipped. */
   addThreadContexts: (
     threadRef: ComposerThreadTarget,
-    records: ReadonlyArray<ThreadContextRecord>,
+    records: ReadonlyArray<AttachedContextRecord>,
     options?: ComposerContextAddOptions,
   ) => void;
   setThreadContexts: (
     threadRef: ComposerThreadTarget,
-    records: ReadonlyArray<ThreadContextRecord>,
+    records: ReadonlyArray<AttachedContextRecord>,
   ) => void;
   clearPersistedAttachments: (threadRef: ComposerThreadTarget) => void;
   syncPersistedAttachments: (
@@ -836,7 +838,7 @@ const EMPTY_PERSISTED_ATTACHMENTS: PersistedComposerImageAttachment[] = [];
 const EMPTY_TERMINAL_CONTEXTS: TerminalContextDraft[] = [];
 const EMPTY_PREVIEW_ANNOTATIONS: PreviewAnnotationPayload[] = [];
 const EMPTY_REVIEW_COMMENTS: ReviewCommentContext[] = [];
-const EMPTY_THREAD_CONTEXTS: ThreadContextRecord[] = [];
+const EMPTY_THREAD_CONTEXTS: AttachedContextRecord[] = [];
 Object.freeze(EMPTY_IMAGES);
 Object.freeze(EMPTY_FILES);
 Object.freeze(EMPTY_IDS);
@@ -1954,7 +1956,7 @@ function normalizePersistedDraftsByThreadId(
       ? draftCandidate.reviewComments.filter(isReviewCommentContext)
       : [];
     const threadContexts = Array.isArray(draftCandidate.threadContexts)
-      ? draftCandidate.threadContexts.filter(isThreadContextRecord)
+      ? draftCandidate.threadContexts.filter(isAttachedContextRecord)
       : [];
     const previewAnnotations = Array.isArray(draftCandidate.previewAnnotations)
       ? draftCandidate.previewAnnotations.filter(isPreviewAnnotationPayload)
@@ -2269,7 +2271,11 @@ export function partializeComposerDraftStoreState(
           }
         : {}),
       ...(draft.threadContexts.length > 0
-        ? { threadContexts: draft.threadContexts.map((record) => ({ ...record })) }
+        ? {
+            threadContexts: draft.threadContexts.map((record) =>
+              record.kind === "ticket" ? { ...record, links: [...record.links] } : { ...record },
+            ),
+          }
         : {}),
       ...(hasModelData
         ? {
@@ -4073,7 +4079,7 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
           const threadKey = resolveComposerDraftKey(get(), threadRef);
           if (!threadKey) return;
           const threadContexts = records
-            .filter(isThreadContextRecord)
+            .filter(isAttachedContextRecord)
             .map((record) => ({ ...record }));
           set((state) => {
             const existing = state.draftsByThreadKey[threadKey] ?? createEmptyThreadDraft();

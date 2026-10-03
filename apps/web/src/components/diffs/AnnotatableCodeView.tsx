@@ -8,6 +8,7 @@ import type {
 } from "@pierre/diffs";
 import type { CodeViewHandle } from "@pierre/diffs/react";
 import type { ScopedThreadRef } from "@t3tools/contracts";
+import { SquareKanbanIcon } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactNode, type Ref } from "react";
 
 import { type DraftId, useComposerDraftStore } from "~/composerDraftStore";
@@ -95,6 +96,7 @@ interface AnnotatableCodeViewProps {
     fileKey: string,
     collapsed: boolean,
   ) => ReactNode;
+  onCreateTicket?: ((comment: ReviewCommentContext) => void) | undefined;
 }
 
 interface DiffSelectionContext {
@@ -115,6 +117,7 @@ export function AnnotatableCodeView({
   renderHeaderMetadata,
   renderHeaderFilenameSuffix,
   renderHeaderPrefix,
+  onCreateTicket,
 }: AnnotatableCodeViewProps) {
   const addReviewComment = useComposerDraftStore((store) => store.addReviewComment);
   const removeReviewComment = useComposerDraftStore((store) => store.removeReviewComment);
@@ -188,8 +191,8 @@ export function AnnotatableCodeView({
     [composerDraftTarget, draft, removeReviewComment],
   );
 
-  const submitEntry = useCallback(
-    (entryId: string, text: string) => {
+  const completeEntry = useCallback(
+    (entryId: string, text: string, destination: (comment: ReviewCommentContext) => void) => {
       const entry = draft?.annotation.metadata.entries.find(
         (candidate) => candidate.id === entryId,
       );
@@ -204,12 +207,27 @@ export function AnnotatableCodeView({
         range: entry.range,
         text,
       });
-      if (comment) addReviewComment(composerDraftTarget, comment);
+      if (comment) destination(comment);
       setSelectedLines(null);
       setDraft(null);
       setDraftText("");
     },
-    [addReviewComment, composerDraftTarget, draft, filesByKey, sectionId, sectionTitle],
+    [draft, filesByKey, sectionId, sectionTitle],
+  );
+
+  const submitEntry = useCallback(
+    (entryId: string, text: string) => {
+      completeEntry(entryId, text, (comment) => addReviewComment(composerDraftTarget, comment));
+    },
+    [addReviewComment, completeEntry, composerDraftTarget],
+  );
+
+  const createTicketFromEntry = useCallback(
+    (entryId: string, text: string) => {
+      if (!onCreateTicket) return;
+      completeEntry(entryId, text, onCreateTicket);
+    },
+    [completeEntry, onCreateTicket],
   );
 
   const beginComment = useCallback(
@@ -292,6 +310,16 @@ export function AnnotatableCodeView({
                 onCancel={() => removeEntry(entry.id)}
                 onComment={(text) => submitEntry(entry.id, text)}
                 onDelete={() => removeEntry(entry.id)}
+                {...(entry.kind === "draft" && onCreateTicket
+                  ? {
+                      secondaryAction: {
+                        label: "Create ticket",
+                        icon: <SquareKanbanIcon />,
+                        allowEmpty: true,
+                        onAction: (text: string) => createTicketFromEntry(entry.id, text),
+                      },
+                    }
+                  : {})}
               />
             ))}
           </div>

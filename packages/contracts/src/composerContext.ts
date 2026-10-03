@@ -6,8 +6,10 @@ import {
   NonNegativeInt,
   PositiveInt,
   ThreadId,
+  TicketId,
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
+import { TicketLinkRef } from "./ticket.ts";
 
 /**
  * Inline context records: the typed payload behind every composer chip.
@@ -28,6 +30,7 @@ export const COMPOSER_CONTEXT_KINDS = [
   "mention",
   "skill",
   "thread",
+  "ticket",
 ] as const;
 export type KnownComposerContextKind = (typeof COMPOSER_CONTEXT_KINDS)[number];
 
@@ -231,6 +234,27 @@ export const ThreadContextRecord = Schema.Struct({
 });
 export type ThreadContextRecord = typeof ThreadContextRecord.Type;
 
+/** Longest ticket body a chip snapshots; the agent reads the rest with `t3_ticket_get`. */
+export const COMPOSER_CONTEXT_TICKET_BODY_MAX_CHARS = 4_000;
+
+/**
+ * A ticket in the thread's environment. Identity leads: sending it links the thread to the
+ * ticket. Title, body and links are a snapshot for the agent; a chip picked from a list has no
+ * body.
+ */
+export const TicketContextRecord = Schema.Struct({
+  ...recordBase,
+  kind: Schema.Literal("ticket"),
+  environmentId: EnvironmentId,
+  ticketId: TicketId,
+  /** `T-42`. */
+  ref: TrimmedNonEmptyString.check(Schema.isMaxLength(32)),
+  title: ShortString,
+  body: Schema.optional(BoundedString(COMPOSER_CONTEXT_TICKET_BODY_MAX_CHARS)),
+  links: Schema.Array(TicketLinkRef).check(Schema.isMaxLength(50)),
+});
+export type TicketContextRecord = typeof TicketContextRecord.Type;
+
 /**
  * Catch-all for kinds this build does not know. Known discriminators are excluded so a
  * malformed known record fails its own schema instead of sliding through unchecked.
@@ -262,6 +286,7 @@ export const KnownComposerContextRecord = Schema.Union([
   MentionContextRecord,
   SkillContextRecord,
   ThreadContextRecord,
+  TicketContextRecord,
 ]);
 export type KnownComposerContextRecord = typeof KnownComposerContextRecord.Type;
 

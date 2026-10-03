@@ -17,6 +17,7 @@ import {
   MessagesSquareIcon,
   PackageIcon,
   SettingsIcon,
+  SquareKanbanIcon,
   UserRoundIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -25,7 +26,8 @@ import { memo, useLayoutEffect, useRef } from "react";
 import { type ComposerSlashCommand, type ComposerTriggerKind } from "../../composer-logic";
 import { cn } from "~/lib/utils";
 import { Badge } from "../ui/badge";
-import { Command, CommandGroup, CommandItem, CommandList } from "../ui/command";
+import { Command, CommandGroup, CommandGroupLabel, CommandItem, CommandList } from "../ui/command";
+import { groupComposerItems, type ComposerTicketItem } from "../tickets/composerTicketItems";
 import { PierreEntryIcon } from "./PierreEntryIcon";
 import { ComposerBanner } from "./ComposerBanner";
 import { resolvePullRequestState } from "../pullRequest/pullRequestPresentation";
@@ -75,7 +77,8 @@ export type ComposerCommandItem =
       thread: ScopedThreadRef;
       label: string;
       description: string;
-    };
+    }
+  | ComposerTicketItem;
 
 export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
   listId: string;
@@ -116,23 +119,32 @@ export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
         {props.items.length > 0 ? (
           <CommandList
             id={props.listId}
-            aria-label={props.triggerKind ? LISTBOX_LABEL_BY_TRIGGER[props.triggerKind] : undefined}
+            aria-label={
+              props.items.some((item) => item.type === "ticket")
+                ? "Tickets and pull requests"
+                : props.triggerKind
+                  ? LISTBOX_LABEL_BY_TRIGGER[props.triggerKind]
+                  : undefined
+            }
             className="max-h-72 min-h-0 scroll-pb-6"
           >
-            <CommandGroup>
-              {props.items.map((item) => (
-                <ComposerCommandMenuItem
-                  key={item.id}
-                  optionId={composerSuggestionOptionId(props.listId, item.id)}
-                  item={item}
-                  triggerKind={props.triggerKind}
-                  resolvedTheme={props.resolvedTheme}
-                  isActive={props.activeItemId === item.id}
-                  onHighlight={props.onHighlightedItemChange}
-                  onSelect={props.onSelect}
-                />
-              ))}
-            </CommandGroup>
+            {groupComposerItems(props.items).map((group) => (
+              <CommandGroup key={group.items[0]!.id}>
+                {group.label ? <CommandGroupLabel>{group.label}</CommandGroupLabel> : null}
+                {group.items.map((item) => (
+                  <ComposerCommandMenuItem
+                    key={item.id}
+                    optionId={composerSuggestionOptionId(props.listId, item.id)}
+                    item={item}
+                    triggerKind={props.triggerKind}
+                    resolvedTheme={props.resolvedTheme}
+                    isActive={props.activeItemId === item.id}
+                    onHighlight={props.onHighlightedItemChange}
+                    onSelect={props.onSelect}
+                  />
+                ))}
+              </CommandGroup>
+            ))}
           </CommandList>
         ) : (
           <div className="px-5 pt-3.5 pb-7">
@@ -199,6 +211,9 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
       ) : null}
       {props.item.type === "thread" ? (
         <MessagesSquareIcon aria-hidden="true" className="size-4 shrink-0 text-secondary-label" />
+      ) : null}
+      {props.item.type === "ticket" ? (
+        <SquareKanbanIcon aria-hidden="true" className="size-4 shrink-0 text-secondary-label" />
       ) : null}
       {pullRequestPresentation ? (
         <pullRequestPresentation.Icon

@@ -44,6 +44,22 @@ describe("summarizeT3ToolCalls", () => {
     ).toEqual({ label, failedCount: 0 });
   });
 
+  it("counts distinct tickets whether the result is a detail or a summary", () => {
+    expect(
+      summarizeT3ToolCalls("ticket-read", [
+        completed({ ticket: "T-1" }, { summary: { id: "ticket-1" } }),
+        completed({ ticket: "T-1" }, { summary: { id: "ticket-1" } }),
+        completed({ ticket: "T-2" }, { summary: { id: "ticket-2" } }),
+      ]).label,
+    ).toBe("Read 2 tickets");
+    expect(
+      summarizeT3ToolCalls("ticket-update", [
+        completed({ ticket: "T-1" }, { id: "ticket-1" }),
+        completed({ ticket: "T-1" }, { id: "ticket-1" }),
+      ]).label,
+    ).toBe("Updated 1 ticket");
+  });
+
   it("counts answered requests rather than pretending every request contains one question", () => {
     expect(
       summarizeT3ToolCalls("question-respond", [

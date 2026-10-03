@@ -18,6 +18,9 @@ import {
 } from "../components/threadActionMenu.logic";
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
 import { threadEnvironment } from "../state/threads";
+import { readEnvironmentSupportsTickets } from "../state/tickets";
+import { openCreateTicketDialog } from "../components/tickets/CreateTicketDialog";
+import { threadTicketCapture } from "../components/tickets/ticketCapture";
 import { useAtomCommand } from "../state/use-atom-command";
 import {
   automationEnvironment,
@@ -147,6 +150,7 @@ export function useThreadActionMenu(input: {
           pinning: readEnvironmentSupportsPinning(threadRef.environmentId),
           titleRegeneration: readEnvironmentSupportsTitleRegeneration(threadRef.environmentId),
           automations: readEnvironmentSupportsAutomations(threadRef.environmentId),
+          tickets: readEnvironmentSupportsTickets(threadRef.environmentId),
         };
         const isRegeneratingTitle = thread.titleRegeneration != null;
         const snoozePresets = resolveSnoozePresets(now, timestampFormat);
@@ -265,6 +269,9 @@ export function useThreadActionMenu(input: {
             return;
           case "mark-unread":
             markThreadUnread(threadRef);
+            return;
+          case "create-ticket":
+            openCreateTicketDialog(threadTicketCapture(thread));
             return;
           case "copy-path": {
             const workspacePath = thread.worktreePath ?? projectCwd;

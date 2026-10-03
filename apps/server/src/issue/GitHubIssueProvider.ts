@@ -125,4 +125,7 @@ export const make = Effect.map(GitHubIssueCli.GitHubIssueCli, (github): IssuePro
     github.listAssigneeCandidates(input).pipe(Effect.mapError(providerError("assigneeCandidates"))),
   setAssignees: (input) =>
     github.setAssignees(input).pipe(Effect.mapError(providerError("setAssignees"))),
+  setState: (input) => github.setState(input).pipe(Effect.mapError(providerError("setState"))),
+  addComment: (input) =>
+    github.addComment(input).pipe(Effect.mapError(providerError("addComment"))),
 }));

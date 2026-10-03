@@ -93,6 +93,7 @@ const RawIssue = Schema.Struct({
   url: Schema.String,
   author: Schema.optional(Schema.NullOr(RawActor)),
   state: Schema.String,
+  stateReason: Schema.optional(Schema.NullOr(Schema.String)),
   body: Schema.optional(Schema.String),
   createdAt: Schema.String,
   updatedAt: Schema.String,
@@ -164,6 +165,8 @@ export interface GitHubIssue {
   readonly url: string;
   readonly author: IssueActor | null;
   readonly state: IssueState;
+  /** Lowercase, as `completed`, `not_planned`, `duplicate` or `reopened`. */
+  readonly stateReason?: string;
   readonly body: string;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -344,12 +347,14 @@ function issueOf(raw: RawIssue): GitHubIssue | null {
     return normalized === null ? [] : [normalized];
   });
   const commentCount = raw.comments?.length ?? 0;
+  const stateReason = raw.stateReason?.trim().toLowerCase();
   return {
     number: raw.number,
     title,
     url,
     author: actorOf(raw.author),
     state,
+    ...(stateReason ? { stateReason } : {}),
     body: raw.body ?? "",
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,

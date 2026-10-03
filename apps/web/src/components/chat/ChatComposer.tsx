@@ -27,7 +27,6 @@ import type {
   PullRequestListInput,
   PreviewAnnotationPayload,
   ProviderApprovalDecision,
-  ThreadContextRecord,
   ProviderInteractionMode,
   ResolvedKeybindingsConfig,
   RuntimeMode,
@@ -103,6 +102,7 @@ import {
   isInsideRestingComposerControlScope,
 } from "./composerEventScope";
 import {
+  type AttachedContextRecord,
   type ComposerFileAttachment,
   type ComposerImageAttachment,
   type DraftId,
@@ -235,6 +235,9 @@ import {
   threadContextRecord,
   threadContextReference,
 } from "~/lib/composerContextRecords";
+import { matchComposerTicketItems } from "../tickets/composerTicketItems";
+import { ticketContextRecord } from "../tickets/ticketContextRecord";
+import { useEnvironmentSupportsTickets, useEnvironmentTickets } from "~/state/tickets";
 import { matchComposerThreadItems } from "@t3tools/client-runtime/composerThreadItems";
 import { THREAD_CONTEXT_DROP_EVENT, threadContextDropTargetProps } from "./threadContextDrag";
 import { readThreadShell, useThreadShells } from "~/state/entities";
@@ -1477,7 +1480,7 @@ export interface ChatComposerHandle {
     terminalContexts: TerminalContextDraft[];
     previewAnnotations: PreviewAnnotationPayload[];
     reviewComments: ReviewCommentContext[];
-    threadContexts: ThreadContextRecord[];
+    threadContexts: AttachedContextRecord[];
     selectedPromptEffort: string | null;
     selectedModelOptionsForDispatch: unknown;
     selectedModelSelection: ModelSelection;
@@ -2484,6 +2487,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   // Derived: composer trigger / menu
   // ------------------------------------------------------------------
   const composerTriggerKind = composerTrigger?.kind ?? null;
+  const supportsTickets = useEnvironmentSupportsTickets(environmentId);
+  const pickerTickets = useEnvironmentTickets(
+    composerTriggerKind === "pull-request" ? environmentId : null,
+  );
   const pathTriggerQuery = composerTrigger?.kind === "path" ? composerTrigger.query : "";
   const pullRequestTriggerQuery =
     composerTrigger?.kind === "pull-request" ? composerTrigger.query : "";
@@ -2675,6 +2682,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           (skill.scope ? `${skill.scope} skill` : "Run provider skill"),
       }));
     }
+    const ticketItems =
+      composerTrigger.kind === "pull-request"
+        ? matchComposerTicketItems({
+            tickets: pickerTickets,
+            environmentId,
+            query: composerTrigger.query,
+          })
+        : [];
     if (
       composerTrigger.kind === "pull-request" &&
       pullRequestProjectId !== null &&
@@ -2710,23 +2725,26 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             }),
             composerTrigger.query,
           ).slice(0, COMPOSER_PULL_REQUEST_RESULT_LIMIT);
-      return matches.map((pullRequest) => ({
-        id: `pull-request:${pullRequest.projectId}:${pullRequest.repository}:${pullRequest.number}`,
-        type: "pull-request",
-        pullRequest: {
-          number: pullRequest.number,
-          title: pullRequest.title,
-          url: pullRequest.url,
-          headBranch: pullRequest.headBranch,
-          baseBranch: pullRequest.baseBranch,
-          state: pullRequest.state,
-          isDraft: pullRequest.isDraft,
-        },
-        label: `#${pullRequest.number}`,
-        description: pullRequest.title,
-      }));
+      return [
+        ...ticketItems,
+        ...matches.map((pullRequest) => ({
+          id: `pull-request:${pullRequest.projectId}:${pullRequest.repository}:${pullRequest.number}`,
+          type: "pull-request" as const,
+          pullRequest: {
+            number: pullRequest.number,
+            title: pullRequest.title,
+            url: pullRequest.url,
+            headBranch: pullRequest.headBranch,
+            baseBranch: pullRequest.baseBranch,
+            state: pullRequest.state,
+            isDraft: pullRequest.isDraft,
+          },
+          label: `#${pullRequest.number}`,
+          description: pullRequest.title,
+        })),
+      ];
     }
-    return [];
+    return ticketItems;
   }, [
     activeThreadId,
     compactSlashCommandAvailable,
@@ -2734,6 +2752,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     environmentId,
     environmentThreadShells,
     exactPullRequestLookup.data,
+    pickerTickets,
     planModeUiEnabled,
     pullRequestLookup.data,
     pullRequestProjectId,
@@ -2830,14 +2849,20 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       return "No skills found. Try / to browse provider commands.";
     }
     if (composerTriggerKind === "pull-request") {
+      // Bare `#` and digits never search tickets (see matchComposerTicketItems).
+      const searchedTickets = supportsTickets && /\D/.test(composerTrigger?.query ?? "");
+      const noTickets = searchedTickets ? "No matching tickets. " : "";
       if (pullRequestProjectId === null || pullRequestRepository === null) {
-        return "Pull requests are not available for this project.";
+        return `${noTickets}Pull requests are not available for this project.`;
       }
       if (
         pullRequestLookup.error !== null ||
         pullRequestLookup.data?.errors.some((error) => error.projectId === pullRequestProjectId)
       ) {
-        return "Pull requests could not be read for this project.";
+        return `${noTickets}Pull requests could not be read for this project.`;
+      }
+      if (searchedTickets) {
+        return `No ticket or pull request matches ${composerTrigger?.query}.`;
       }
       return composerTrigger?.query
         ? `No pull request matches ${composerTrigger.query}.`
@@ -2853,6 +2878,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     pullRequestLookup.error,
     pullRequestProjectId,
     pullRequestRepository,
+    supportsTickets,
   ]);
 
   // ------------------------------------------------------------------
@@ -3224,7 +3250,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               ? reviewCommentContextRecord(existing.record)
               : existing?.kind === "preview-annotation"
                 ? previewAnnotationContextRecord(existing.record)
-                : existing?.kind === "thread"
+                : existing?.kind === "thread" || existing?.kind === "ticket"
                   ? existing.record
                   : existing
                     ? (uploadedContextRecordFromDraft(existing) ?? undefined)
@@ -3273,7 +3299,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             rewritten.set(record.contextId, previewAnnotationContextId(annotation.id));
             break;
           }
-          case "thread": {
+          case "thread":
+          case "ticket": {
             // The agent can only read threads on its own server; a pasted foreign one is dropped.
             if (record.environmentId !== environmentId) break;
             addComposerDraftThreadContexts(composerDraftTarget, [record], {
@@ -3595,7 +3622,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const removedContextPayloadsRef = useRef<{
     terminals: Map<string, TerminalContextDraft>;
     reviewComments: Map<string, ReviewCommentContext>;
-    threads: Map<string, ThreadContextRecord>;
+    threads: Map<string, AttachedContextRecord>;
   }>({ terminals: new Map(), reviewComments: new Map(), threads: new Map() });
   const removedAttachmentContextPayloadsRef = useRef<RetainedAttachmentContextPayloads>({
     files: new Map(),
@@ -3996,11 +4023,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         }
         return;
       }
-      if (item.type === "thread") {
-        if (trigger.kind !== "path") return;
-        const shell = readThreadShell(item.thread);
-        if (!shell) return;
-        const record = threadContextRecord(item.thread, shell.title);
+      if (item.type === "thread" || item.type === "ticket") {
+        const shell =
+          item.type === "thread" && trigger.kind === "path" ? readThreadShell(item.thread) : null;
+        const record =
+          item.type === "ticket" && trigger.kind === "pull-request"
+            ? ticketContextRecord({ environmentId: item.ticket.environmentId, ticket: item.ticket })
+            : item.type === "thread" && shell
+              ? threadContextRecord(item.thread, shell.title)
+              : null;
+        if (record === null) return;
         const replacement = `${formatInlineContextReference(threadContextReference(record))} `;
         const replacementRangeEnd = extendReplacementRangeForTrailingSpace(
           snapshot.value,

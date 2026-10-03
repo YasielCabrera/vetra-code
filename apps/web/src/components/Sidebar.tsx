@@ -76,6 +76,7 @@ import {
   PlusIcon,
   SettingsIcon,
   ShieldQuestionIcon,
+  SquareKanbanIcon,
   SquarePenIcon,
   TerminalIcon,
   Undo2Icon,
@@ -180,6 +181,8 @@ import { cn } from "~/lib/utils";
 import { EnvironmentMachineIcon } from "./EnvironmentMachineIcon";
 import { ProjectEnvironmentBadge } from "./ProjectEnvironmentBadge";
 import { buildThreadActionMenuItems } from "./threadActionMenu.logic";
+import { openCreateTicketDialog } from "./tickets/CreateTicketDialog";
+import { threadTicketCapture } from "./tickets/ticketCapture";
 import {
   animateSidebarLayoutChanges,
   applySidebarThreadDrop,
@@ -2303,6 +2306,10 @@ export default function Sidebar() {
     select: (location) =>
       location.pathname === "/automations" || location.pathname.startsWith("/automations/"),
   });
+  const isOnTicketsPage = useLocation({
+    select: (location) =>
+      location.pathname === "/tickets" || location.pathname.startsWith("/tickets/"),
+  });
   const { isMobile, setOpenMobile } = useSidebar();
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const confirmThreadDelete = useClientSettings((s) => s.confirmThreadDelete);
@@ -4406,6 +4413,9 @@ export default function Sidebar() {
                 automations:
                   serverConfigs.get(thread.environmentId)?.environment.capabilities.automations ===
                   true,
+                tickets:
+                  serverConfigs.get(thread.environmentId)?.environment.capabilities.tickets ===
+                  true,
               },
               snoozePresets,
             }),
@@ -4518,6 +4528,9 @@ export default function Sidebar() {
           }
           case "mark-unread":
             markThreadUnread(threadRef);
+            return;
+          case "create-ticket":
+            openCreateTicketDialog(threadTicketCapture(thread));
             return;
           case "copy-path":
             if (!threadWorkspacePath) {
@@ -4740,6 +4753,11 @@ export default function Sidebar() {
     void router.navigate({ to: "/automations" });
   }, [isMobile, router, setOpenMobile]);
 
+  const handleTicketsPageClick = useCallback(() => {
+    if (isMobile) setOpenMobile(false);
+    void router.navigate({ to: "/tickets", search: {} });
+  }, [isMobile, router, setOpenMobile]);
+
   // The button mirrors chat.new: in multi-project setups both route through
   // the command palette's "New thread in..." picker, and in single-project
   // setups both create immediately. In multi-project setups the label is only
@@ -4941,6 +4959,14 @@ export default function Sidebar() {
                   </TooltipPopup>
                 </Tooltip>
               ) : null}
+            </SidebarMenuButton>
+            <SidebarMenuButton
+              type="button"
+              isActive={isOnTicketsPage}
+              onClick={handleTicketsPageClick}
+            >
+              <SquareKanbanIcon className="size-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">Tickets</span>
             </SidebarMenuButton>
           </SidebarGroup>
         }

@@ -38,6 +38,8 @@ export interface ProviderIssue {
   readonly url: string;
   readonly author: IssueActor | null;
   readonly state: IssueState;
+  /** The host's lowercase close reason, such as `completed` or `not_planned`; only issue reads carry it. */
+  readonly stateReason?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly closedAt: string | null;
@@ -45,6 +47,8 @@ export interface ProviderIssue {
   readonly assignees: ReadonlyArray<IssueActor>;
   readonly milestone: IssueMilestone | null;
   readonly commentCount?: number;
+  /** Present when `listIssues` was asked for bodies. */
+  readonly body?: string;
 }
 
 export interface ProviderIssueDetail extends ProviderIssue {
@@ -65,6 +69,10 @@ export interface ProviderIssueListCursor {
   readonly seenAt: ReadonlyArray<number>;
 }
 
+export type IssueStateChange =
+  | { readonly state: "open" }
+  | { readonly state: "closed"; readonly reason: "completed" | "not_planned" };
+
 export interface IssueProviderApi {
   readonly kind: SourceControlProviderKind;
   readonly repositoryLinks: (input: {
@@ -81,6 +89,8 @@ export interface IssueProviderApi {
     /** One `assignee:` narrowing, applied by the host. See `IssueAssigneeFilter`. */
     readonly assignee?: string;
     readonly cursor?: ProviderIssueListCursor;
+    /** Also read each issue's body, as ticket sync does. Keep pages small when set. */
+    readonly includeBody?: boolean;
   }) => Effect.Effect<ProviderIssueBatch, IssueProviderError>;
   readonly getIssue: (input: {
     readonly cwd: string;
@@ -108,5 +118,19 @@ export interface IssueProviderApi {
     readonly number: number;
     readonly assignees: ReadonlyArray<string>;
     readonly assigned: boolean;
+  }) => Effect.Effect<void, IssueProviderError>;
+  readonly setState: (input: {
+    readonly cwd: string;
+    readonly host: string;
+    readonly repository: string;
+    readonly number: number;
+    readonly change: IssueStateChange;
+  }) => Effect.Effect<void, IssueProviderError>;
+  readonly addComment: (input: {
+    readonly cwd: string;
+    readonly host: string;
+    readonly repository: string;
+    readonly number: number;
+    readonly body: string;
   }) => Effect.Effect<void, IssueProviderError>;
 }

@@ -319,4 +319,90 @@ layer("GitHubIssueCli.layer", (it) => {
       });
     }),
   );
+
+  it.effect("closes with GitHub's reason wording, reopens, and comments from stdin", () =>
+    Effect.gen(function* () {
+      execute.mockReturnValue(Effect.succeed(output("")));
+      const cli = yield* GitHubIssueCli.GitHubIssueCli;
+      const issue = { cwd: "/w", host: "github.com", repository: "acme/web", number: 7 } as const;
+
+      yield* cli.setState({ ...issue, change: { state: "closed", reason: "not_planned" } });
+      yield* cli.setState({ ...issue, change: { state: "open" } });
+      yield* cli.addComment({ ...issue, body: "--not-a-flag" });
+
+      expect(execute.mock.calls.map(([call]) => call.args)).toEqual([
+        ["issue", "close", "7", "--repo", "github.com/acme/web", "--reason", "not planned"],
+        ["issue", "reopen", "7", "--repo", "github.com/acme/web"],
+        ["issue", "comment", "7", "--repo", "github.com/acme/web", "--body-file", "-"],
+      ]);
+      expect(execute.mock.calls[2]?.[0].stdin).toBe("--not-a-flag");
+    }),
+  );
+
+  it.effect("addresses Enterprise fork reads and writes explicitly", () =>
+    Effect.gen(function* () {
+      const cli = yield* GitHubIssueCli.GitHubIssueCli;
+      const target = {
+        cwd: "/fork",
+        host: "github.acme.com",
+        repository: "YasielCabrera/vetra-code",
+        number: 7,
+      };
+      execute.mockReturnValueOnce(
+        Effect.succeed(
+          output(encodeJson(issue(7, "https://github.acme.com/YasielCabrera/vetra-code/issues/7"))),
+        ),
+      );
+      yield* cli.getIssue(target);
+      execute.mockReturnValue(Effect.succeed(output("")));
+      yield* cli.setState({ ...target, change: { state: "closed", reason: "completed" } });
+      yield* cli.addComment({ ...target, body: "Fixed" });
+      for (const [call] of execute.mock.calls) {
+        expect(call.cwd).toBe("/fork");
+        expect(call.args[call.args.indexOf("--repo") + 1]).toBe(
+          "github.acme.com/YasielCabrera/vetra-code",
+        );
+      }
+      yield* cli.setAssignees({ ...target, assigned: true, assignees: ["octocat"] });
+      const assignment = execute.mock.calls.at(-1)?.[0];
+      expect(assignment?.args).toContain("github.acme.com");
+      expect(assignment?.args).toContain("repos/YasielCabrera/vetra-code/issues/7/assignees");
+    }),
+  );
+
+  it.effect("lists bodies when asked and reads close reasons from the issue detail", () =>
+    Effect.gen(function* () {
+      execute
+        .mockReturnValueOnce(Effect.succeed(output(encodeJson([{ ...issue(1), body: "Why" }]))))
+        .mockReturnValueOnce(
+          Effect.succeed(
+            output(encodeJson({ ...issue(2), state: "CLOSED", stateReason: "NOT_PLANNED" })),
+          ),
+        );
+      const cli = yield* GitHubIssueCli.GitHubIssueCli;
+      const repository = { cwd: "/w", host: "github.com", repository: "acme/web" } as const;
+
+      const listed = yield* cli.listIssues({
+        ...repository,
+        state: "open",
+        limit: 50,
+        includeBody: true,
+      });
+      const closed = yield* cli.getIssue({ ...repository, number: 2 });
+
+      const fieldsOf = (index: number) => {
+        const args = execute.mock.calls[index]?.[0].args ?? [];
+        return args[args.indexOf("--json") + 1];
+      };
+      expect([fieldsOf(0), fieldsOf(1)]).toEqual([
+        "assignees,author,closedAt,createdAt,labels,milestone,number,state,title,updatedAt,url,body",
+        "assignees,author,closedAt,createdAt,labels,milestone,number,state,title,updatedAt,url,body,comments,stateReason",
+      ]);
+      expect([listed.issues[0]?.body, closed.state, closed.stateReason]).toEqual([
+        "Why",
+        "closed",
+        "not_planned",
+      ]);
+    }),
+  );
 });

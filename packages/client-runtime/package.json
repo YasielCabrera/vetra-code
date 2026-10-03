@@ -123,6 +123,10 @@
       "types": "./src/state/automations.ts",
       "default": "./src/state/automations.ts"
     },
+    "./state/tickets": {
+      "types": "./src/state/tickets.ts",
+      "default": "./src/state/tickets.ts"
+    },
     "./state/assets": {
       "types": "./src/state/assets.ts",
       "default": "./src/state/assets.ts"

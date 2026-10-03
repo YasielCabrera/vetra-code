@@ -23,6 +23,7 @@ import {
   Volume2Icon,
   SearchIcon,
   Settings2Icon,
+  SquareKanbanIcon,
   WalletIcon,
   XIcon,
 } from "lucide-react";
@@ -87,6 +88,7 @@ const SETTINGS_SECTION_ICONS: Readonly<
   "/settings/providers": BotIcon,
   "/settings/integrations": BlocksIcon,
   "/settings/source-control": GitBranchIcon,
+  "/settings/tickets": SquareKanbanIcon,
   "/settings/storage": HardDriveIcon,
   "/settings/connections": Link2Icon,
   "/settings/web3": WalletIcon,

@@ -3,7 +3,7 @@ import type {
   ContextMenuItem as TreeContextMenuItem,
   ContextMenuOpenContext as TreeContextMenuOpenContext,
 } from "@pierre/trees";
-import type { EnvironmentId, ProjectEntry, VcsStatusResult } from "@t3tools/contracts";
+import type { EnvironmentId, ProjectEntry, ThreadId, VcsStatusResult } from "@t3tools/contracts";
 import { FileTree, useFileTree, useFileTreeSearch, useFileTreeSelector } from "@pierre/trees/react";
 import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
 import { ChevronsDownUpIcon, ChevronsUpDownIcon } from "lucide-react";
@@ -31,6 +31,7 @@ import { buildFileTreeGitStatus } from "./fileTreeGitStatus";
 import { buildFileTreePathUpdates } from "./fileTreePathReconciliation";
 import { useDirectoryEntries } from "./useDirectoryEntries";
 import { useProjectPathSearch } from "~/state/queries";
+import { useTicketCapture } from "../tickets/useTicketCapture";
 
 interface FileBrowserPanelProps {
   environmentId: EnvironmentId;
@@ -44,6 +45,8 @@ interface FileBrowserPanelProps {
   onOpenFile: (relativePath: string, options?: { preview?: boolean }) => void;
   onRefreshSelectedFile?: () => void;
   workspaceMutationId: string | null;
+  /** The thread a ticket created from a file links; absent for a draft thread. */
+  sourceThreadId?: ThreadId | null;
 }
 
 const EMPTY_WORKING_TREE_FILES: VcsStatusResult["workingTree"]["files"] = [];
@@ -119,8 +122,10 @@ export default function FileBrowserPanel({
   onOpenFile,
   onRefreshSelectedFile,
   workspaceMutationId,
+  sourceThreadId = null,
 }: FileBrowserPanelProps) {
   const { resolvedTheme } = useTheme();
+  const ticketCapture = useTicketCapture({ environmentId, sourceThreadId, projectId: null });
   const composerRef = useComposerHandleContext();
   const fileContextMenu = useFileContextMenu(environmentId);
   const {
@@ -216,6 +221,7 @@ export default function FileBrowserPanel({
           ...fileMenuItems,
           { id: "copy-mention", label: "Copy mention" },
           { id: "add-to-chat", label: "Add to chat" },
+          ...(ticketCapture?.fileMenuItems ?? []),
         ],
         position,
       );
@@ -228,6 +234,7 @@ export default function FileBrowserPanel({
         await fileContextMenu.activate(clicked as FileContextMenuAction, fileTarget);
         return;
       }
+      if (ticketCapture?.activateFileMenuItem(clicked, relativePath)) return;
       if (clicked === "copy-mention") {
         try {
           await writeTextToClipboard(mention);

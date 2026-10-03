@@ -4,7 +4,7 @@ import {
   type AssistantCitation,
   type ScopedThreadRef,
 } from "@t3tools/contracts";
-import { QuoteIcon } from "lucide-react";
+import { QuoteIcon, SquareKanbanIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -22,17 +22,19 @@ export function AssistantSelectionToolbar({
   viewport,
   threadRef,
   onCite,
+  onCreateTicket,
 }: {
   viewport: HTMLElement | null;
   threadRef: ScopedThreadRef;
   onCite: (citation: AssistantCitation, sourceAnchor: AssistantCitationSourceAnchor) => boolean;
+  onCreateTicket?: ((citation: AssistantCitation) => void) | undefined;
 }) {
   const [selection, setSelection] = useState<{
     citation: AssistantCitation;
     position: SelectionActionPoint;
     sourceAnchor: AssistantCitationSourceAnchor;
   } | null>(null);
-  const toolbarRef = useRef<HTMLButtonElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<ReturnType<typeof observeSelectionActions> | null>(null);
 
   useLayoutEffect(() => {
@@ -99,10 +101,11 @@ export function AssistantSelectionToolbar({
       ) {
         return;
       }
-      if (toolbar.disabled) return;
+      const firstAction = toolbar.querySelector<HTMLButtonElement>("button:enabled");
+      if (!firstAction) return;
       event.preventDefault();
       event.stopPropagation();
-      toolbar.focus({ preventScroll: true });
+      firstAction.focus({ preventScroll: true });
     };
     document.addEventListener("keydown", focusActions, true);
     document.addEventListener("selectionchange", actions.selectionChanged);
@@ -126,18 +129,18 @@ export function AssistantSelectionToolbar({
     dismiss();
     return true;
   };
+  const createTicket = () => {
+    if (tooLong || !onCreateTicket) return;
+    onCreateTicket(selection.citation);
+    window.getSelection()?.removeAllRanges();
+    dismiss();
+  };
   return createPortal(
-    <Button
+    <div
       ref={toolbarRef}
-      type="button"
-      size="xs"
-      variant="glass"
-      disabled={tooLong}
-      aria-label={tooLong ? "Selection is too long to cite" : "Cite selection in composer"}
-      className="fixed z-50 max-w-[calc(100vw-1rem)]"
+      className="fixed z-50 flex max-w-[calc(100vw-1rem)] gap-1"
       style={{ left: selection.position.x, top: selection.position.y }}
       onPointerDown={(event) => event.preventDefault()}
-      onClick={cite}
       onKeyDown={(event) => {
         event.stopPropagation();
         if (event.key === "Escape" && !event.nativeEvent.isComposing) {
@@ -146,9 +149,30 @@ export function AssistantSelectionToolbar({
         }
       }}
     >
-      <QuoteIcon aria-hidden="true" className="size-3.5" />
-      {tooLong ? "Shorten selection" : "Cite"}
-    </Button>,
+      <Button
+        type="button"
+        size="xs"
+        variant="glass"
+        disabled={tooLong}
+        aria-label={tooLong ? "Selection is too long to cite" : "Cite selection in composer"}
+        onClick={cite}
+      >
+        <QuoteIcon aria-hidden="true" className="size-3.5" />
+        {tooLong ? "Shorten selection" : "Cite"}
+      </Button>
+      {onCreateTicket && !tooLong ? (
+        <Button
+          type="button"
+          size="xs"
+          variant="glass"
+          aria-label="Create a ticket from the selection"
+          onClick={createTicket}
+        >
+          <SquareKanbanIcon aria-hidden="true" className="size-3.5" />
+          Create ticket
+        </Button>
+      ) : null}
+    </div>,
     document.body,
   );
 }

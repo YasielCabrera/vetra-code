@@ -161,6 +161,9 @@ export const ExecutionEnvironmentCapabilities = Schema.Struct({
       automationRuns.* RPCs), so automation runs can stay out of the sidebar.
       Absent means clients never subscribe and treat runs as plain threads. */
   automations: Schema.optionalKey(Schema.Boolean),
+  /** Server keeps a ticket board (the tickets.* RPCs). Absent means clients
+      never subscribe and hide Tickets for this environment. */
+  tickets: Schema.optionalKey(Schema.Boolean),
   /** Server persists a pull request reference on thread.meta.update. */
   threadPullRequestLinking: Schema.optionalKey(Schema.Boolean),
   /** Server resolves message delivery and model-selection context and validates

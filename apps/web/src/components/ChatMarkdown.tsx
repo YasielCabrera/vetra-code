@@ -50,7 +50,10 @@ import {
   classifyMarkdownImageSource,
   markdownImageSourceFragment,
 } from "@t3tools/client-runtime/markdown-images";
-import { inlineCodeFilePathCandidate } from "@t3tools/client-runtime/markdown-links";
+import {
+  inlineCodeFilePathCandidate,
+  parseMarkdownFileLink,
+} from "@t3tools/client-runtime/markdown-links";
 import { mediaFileReference, mediaUrlReference } from "@t3tools/client-runtime/media-reference";
 import { mediaKindFromPath, mediaMimeTypeFromExtension } from "@t3tools/shared/filePreview";
 import * as Cause from "effect/Cause";
@@ -87,6 +90,7 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkBreaks from "remark-breaks";
 import { parseAssistantCitationHref } from "@t3tools/shared/assistantCitations";
 import { parseComposerContextHref } from "@t3tools/shared/composerContextReferences";
+import { parseAttachmentReferenceHref } from "../lib/attachmentReferences";
 import { AssistantCitationChip } from "./chat/AssistantCitationChip";
 import remarkGfm from "remark-gfm";
 import type { Processor } from "unified";
@@ -216,6 +220,8 @@ interface ChatMarkdownProps {
   lineBreaks?: boolean;
   /** Parse sanitized raw HTML instead of displaying its source text. */
   parseRawHtml?: boolean;
+  /** Disable filesystem links and inline file chips for untrusted ticket or issue content. */
+  allowLocalFileLinks?: boolean;
   /** Append a prompt that invokes a newly created artifact-template skill. */
   onUseArtifactTemplate?: ((template: CodexArtifactTemplate) => void) | undefined;
   onRunShellCommand?: ((command: string) => void) | undefined;
@@ -226,6 +232,10 @@ interface ChatMarkdownProps {
   extraRemarkPlugins?: NonNullable<ReactMarkdownOptions["remarkPlugins"]>;
   /** Renders a `vetra-context://` link as a chip; without it the link shows its label as text. */
   renderContextReference?: ((reference: ChatMarkdownContextReference) => ReactNode) | undefined;
+  /** Renders a `vetra-attachment://` image or link; without it the reference shows its label. */
+  renderAttachmentReference?:
+    | ((reference: ChatMarkdownAttachmentReference) => ReactNode)
+    | undefined;
   /** Loads GitHub-hosted media through `cwd`'s GitHub credential, which a private repository's
       uploads need; without it those images and videos load unauthenticated and 404. */
   githubMedia?: boolean | undefined;
@@ -241,12 +251,31 @@ export interface ChatMarkdownContextReference {
   label: string;
 }
 
+export interface ChatMarkdownAttachmentReference {
+  attachmentId: string;
+  label: string;
+  embed: boolean;
+}
+
 export function canUseMarkdownFileShellActions(
   environmentId: EnvironmentId | null,
   remoteOpenMode: RemoteOpenMode,
   isRemoteOpenResolved: boolean,
 ): boolean {
   return environmentId !== null && isRemoteOpenResolved && remoteOpenMode === "local-exec";
+}
+
+export function transformMarkdownUrl(href: string, allowLocalFileLinks = true): string {
+  if (parseAssistantCitationHref(href)) return href;
+  if (parseComposerContextHref(href)) return href;
+  if (parseAttachmentReferenceHref(href)) return href;
+  if (
+    !allowLocalFileLinks &&
+    (href.trim().toLowerCase().startsWith("file:") || parseMarkdownFileLink(href))
+  )
+    return "";
+  if (isWindowsDrivePathHref(href)) return href;
+  return rewriteMarkdownFileUriHref(href) ?? defaultUrlTransform(href);
 }
 
 export function hasMarkdownFilePrimaryAction(input: {
@@ -485,8 +514,14 @@ const CHAT_MARKDOWN_SANITIZE_SCHEMA = {
   },
   protocols: {
     ...defaultSchema.protocols,
-    href: [...(defaultSchema.protocols?.href ?? []), "file", "vetra-citation", "vetra-context"],
-    src: [...(defaultSchema.protocols?.src ?? []), "file", "vetra-context"],
+    href: [
+      ...(defaultSchema.protocols?.href ?? []),
+      "file",
+      "vetra-citation",
+      "vetra-context",
+      "vetra-attachment",
+    ],
+    src: [...(defaultSchema.protocols?.src ?? []), "file", "vetra-context", "vetra-attachment"],
   },
 } satisfies Parameters<typeof rehypeSanitize>[0];
 
@@ -515,6 +550,24 @@ const CHAT_MARKDOWN_REHYPE_PLUGINS = [
   rehypeRaw,
   rehypePreserveImageSourceMeta,
   [rehypeSanitize, CHAT_MARKDOWN_SANITIZE_SCHEMA],
+] satisfies NonNullable<ReactMarkdownOptions["rehypePlugins"]>;
+
+const CHAT_MARKDOWN_REHYPE_PLUGINS_WITHOUT_LOCAL_FILES = [
+  rehypeRaw,
+  rehypePreserveImageSourceMeta,
+  [
+    rehypeSanitize,
+    {
+      ...CHAT_MARKDOWN_SANITIZE_SCHEMA,
+      protocols: {
+        ...CHAT_MARKDOWN_SANITIZE_SCHEMA.protocols,
+        href: CHAT_MARKDOWN_SANITIZE_SCHEMA.protocols.href.filter(
+          (protocol) => protocol !== "file",
+        ),
+        src: CHAT_MARKDOWN_SANITIZE_SCHEMA.protocols.src.filter((protocol) => protocol !== "file"),
+      },
+    },
+  ],
 ] satisfies NonNullable<ReactMarkdownOptions["rehypePlugins"]>;
 
 /** GitHub's own five alert kinds, in its colors: the glyph names the urgency, the title says it. */
@@ -2371,8 +2424,10 @@ function useChatMarkdownState({
   imageBaseDir,
   onImageExpand,
   renderContextReference,
+  renderAttachmentReference,
   headingLevelOffset = 0,
   githubMedia = false,
+  allowLocalFileLinks = true,
 }: ChatMarkdownProps) {
   const { resolvedTheme } = useTheme();
   const [localMediaPreview, setLocalMediaPreview] = useState<ExpandedImagePreview | null>(null);
@@ -2485,6 +2540,7 @@ function useChatMarkdownState({
       string,
       NonNullable<ReturnType<typeof resolveMarkdownFileLinkMeta>>
     >();
+    if (!allowLocalFileLinks) return metaByHref;
     for (const href of extractMarkdownLinkHrefs(renderCodexFileCitationsAsMarkdown(text))) {
       if (parseComposerContextHref(href)) continue;
       const normalizedHref = normalizeMarkdownLinkHrefKey(href);
@@ -2495,9 +2551,10 @@ function useChatMarkdownState({
       }
     }
     return metaByHref;
-  }, [cwd, imageBaseDir, text]);
+  }, [allowLocalFileLinks, cwd, imageBaseDir, text]);
   const inlineCodeFileLinkMetaByText = useMemo(() => {
     const metaByText = new Map<string, MarkdownFileLinkMeta>();
+    if (!allowLocalFileLinks) return metaByText;
     for (const span of extractInlineCodeSpans(text)) {
       if (metaByText.has(span)) continue;
       const meta = resolveInlineCodeFileLinkMeta(span, cwd, imageBaseDir ?? cwd);
@@ -2506,7 +2563,7 @@ function useChatMarkdownState({
       }
     }
     return metaByText;
-  }, [cwd, imageBaseDir, text]);
+  }, [allowLocalFileLinks, cwd, imageBaseDir, text]);
   const fileLinkParentSuffixByPath = useMemo(() => {
     const filePaths = [
       ...[...markdownFileLinkMetaByHref.values()].map((meta) => meta.filePath),
@@ -2514,12 +2571,10 @@ function useChatMarkdownState({
     ];
     return buildFileLinkParentSuffixByPath(filePaths);
   }, [inlineCodeFileLinkMetaByText, markdownFileLinkMetaByHref]);
-  const markdownUrlTransform = useCallback((href: string) => {
-    if (parseAssistantCitationHref(href)) return href;
-    if (parseComposerContextHref(href)) return href;
-    if (isWindowsDrivePathHref(href)) return href;
-    return rewriteMarkdownFileUriHref(href) ?? defaultUrlTransform(href);
-  }, []);
+  const markdownUrlTransform = useCallback(
+    (href: string) => transformMarkdownUrl(href, allowLocalFileLinks),
+    [allowLocalFileLinks],
+  );
   // Re-emit highlighted content as markdown so copying out of the rendered
   // view keeps links, emphasis, lists, and code fences intact.
   const handleCopy = useCallback((event: ReactClipboardEvent<HTMLDivElement>) => {
@@ -2759,6 +2814,7 @@ function useChatMarkdownState({
 
   const componentState = useMemo(
     () => ({
+      allowLocalFileLinks,
       cwd,
       diffThemeName,
       environmentId,
@@ -2766,6 +2822,7 @@ function useChatMarkdownState({
       fileLinkChip,
       githubMedia,
       renderContextReference,
+      renderAttachmentReference,
       headingLevelOffset,
       imageBaseDir,
       inlineCodeFileLinkMetaByText,
@@ -2790,6 +2847,7 @@ function useChatMarkdownState({
       updateThreadPullRequestLink,
     }),
     [
+      allowLocalFileLinks,
       cwd,
       diffThemeName,
       environmentId,
@@ -2797,6 +2855,7 @@ function useChatMarkdownState({
       fileLinkChip,
       githubMedia,
       renderContextReference,
+      renderAttachmentReference,
       headingLevelOffset,
       imageBaseDir,
       inlineCodeFileLinkMetaByText,
@@ -2944,6 +3003,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
   },
   a: function MarkdownAnchor({ node, href, children, title: _title, ...props }) {
     const {
+      allowLocalFileLinks,
       cwd,
       environmentId,
       imageBaseDir,
@@ -2961,9 +3021,19 @@ const CHAT_MARKDOWN_COMPONENTS = {
       updateThreadPullRequestLink,
       fileLinkChip,
       renderContextReference,
+      renderAttachmentReference,
     } = use(ChatMarkdownRendererContext);
     const citation = href ? parseAssistantCitationHref(href) : null;
     if (citation) return <AssistantCitationChip citation={citation} />;
+    const attachmentId = href ? parseAttachmentReferenceHref(href) : null;
+    if (attachmentId) {
+      const label = hastPlainTextDeep(node) || attachmentId;
+      return renderAttachmentReference ? (
+        renderAttachmentReference({ attachmentId, label, embed: false })
+      ) : (
+        <span>{label}</span>
+      );
+    }
     const contextReference = href ? parseComposerContextHref(href) : null;
     if (contextReference) {
       const label = hastPlainTextDeep(node) || contextReference.contextId;
@@ -2974,10 +3044,12 @@ const CHAT_MARKDOWN_COMPONENTS = {
       );
     }
     const normalizedHref = href ? normalizeMarkdownLinkHrefKey(href) : "";
-    const fileLinkMeta = normalizedHref
-      ? (markdownFileLinkMetaByHref.get(normalizedHref) ??
-        resolveMarkdownFileLinkMeta(normalizedHref, cwd, imageBaseDir ?? cwd))
-      : null;
+    if (!allowLocalFileLinks && !normalizedHref) return <span>{children}</span>;
+    const fileLinkMeta =
+      allowLocalFileLinks && normalizedHref
+        ? (markdownFileLinkMetaByHref.get(normalizedHref) ??
+          resolveMarkdownFileLinkMeta(normalizedHref, cwd, imageBaseDir ?? cwd))
+        : null;
     if (!fileLinkMeta) {
       const faviconHost = resolveExternalWebLinkHost(href);
       const pullRequestAutolink = String(
@@ -3179,10 +3251,9 @@ const CHAT_MARKDOWN_COMPONENTS = {
     );
   },
   code: function MarkdownCode({ node, children, className, ...props }) {
-    const { cwd, imageBaseDir, inlineCodeFileLinkMetaByText, fileLinkChip } = use(
-      ChatMarkdownRendererContext,
-    );
-    if (node?.properties?.dataInlineCode != null) {
+    const { allowLocalFileLinks, cwd, imageBaseDir, inlineCodeFileLinkMetaByText, fileLinkChip } =
+      use(ChatMarkdownRendererContext);
+    if (allowLocalFileLinks && node?.properties?.dataInlineCode != null) {
       const codeText = nodeToPlainText(children);
       const fileLinkMeta =
         inlineCodeFileLinkMetaByText.get(codeText.trim()) ??
@@ -3203,6 +3274,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
   },
   img: function MarkdownImage({ node, title, src, alt, ...props }) {
     const {
+      allowLocalFileLinks,
       expandMedia,
       cwd,
       environmentId,
@@ -3210,8 +3282,18 @@ const CHAT_MARKDOWN_COMPONENTS = {
       imageBaseDir,
       threadRef,
       renderContextReference,
+      renderAttachmentReference,
     } = use(ChatMarkdownRendererContext);
     const imageExpand = use(MarkdownLinkContext) ? undefined : expandMedia;
+    const attachmentId = typeof src === "string" ? parseAttachmentReferenceHref(src) : null;
+    if (attachmentId) {
+      const label = alt || attachmentId;
+      return renderAttachmentReference ? (
+        renderAttachmentReference({ attachmentId, label, embed: true })
+      ) : (
+        <span>{label}</span>
+      );
+    }
     const contextReference = typeof src === "string" ? parseComposerContextHref(src) : null;
     if (contextReference) {
       const label = alt || contextReference.contextId;
@@ -3235,6 +3317,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
     const { className, style: _style, width, height, ...imageProps } = props;
     const authoredSizeStyle = authoredImageSizeStyle(width, height);
     const imageSource = classifyMarkdownImageSource(classifiedSrc, imageBaseDir ?? cwd);
+    if (!allowLocalFileLinks && imageSource._tag === "WorkspaceFile") return <span>{altText}</span>;
     const kind = mediaKindFromPath(classifiedSrc) ?? "image";
     const directUri = imageSource._tag === "Direct" ? imageSource.uri : null;
     const githubMediaUrl =
@@ -3446,7 +3529,13 @@ function ChatMarkdown({
       <ChatMarkdownRendererContext value={componentState}>
         <ReactMarkdown
           remarkPlugins={remarkPlugins}
-          rehypePlugins={parseRawHtml ? CHAT_MARKDOWN_REHYPE_PLUGINS : undefined}
+          rehypePlugins={
+            parseRawHtml
+              ? props.allowLocalFileLinks === false
+                ? CHAT_MARKDOWN_REHYPE_PLUGINS_WITHOUT_LOCAL_FILES
+                : CHAT_MARKDOWN_REHYPE_PLUGINS
+              : undefined
+          }
           skipHtml={false}
           components={CHAT_MARKDOWN_COMPONENTS}
           urlTransform={markdownUrlTransform}

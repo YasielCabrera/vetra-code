@@ -10,6 +10,12 @@ describe("buildRuntimeInstructions", () => {
     expect(instructions).toContain("call list_thread_pull_requests and link any PR");
   });
 
+  it("leaves a thread's pull requests to the automatic ticket links", () => {
+    const instructions = buildRuntimeInstructions({ harness: "Claude" });
+    expect(instructions).toContain("link the ticket to this thread");
+    expect(instructions).toContain("do not also link them with t3_ticket_link");
+  });
+
   it("keeps known model and effort metadata on one line", () => {
     expect(
       buildRuntimeInstructions({

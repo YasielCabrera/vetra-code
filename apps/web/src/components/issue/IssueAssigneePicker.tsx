@@ -1,9 +1,15 @@
 /** Assigning an issue from the same compact people picker used for pull-request reviewers. */
-import type { EnvironmentId, IssueAssigneeCandidate, IssueRef } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  IssueAssigneeCandidate,
+  IssueRef,
+  TicketGitHubIssueRef,
+} from "@t3tools/contracts";
 import { CheckIcon, UserPlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 
+import { ticketEnvironment } from "~/state/tickets";
 import { issueEnvironment } from "~/state/issues";
 import { useEnvironmentQuery } from "~/state/query";
 import { useAtomCommand } from "~/state/use-atom-command";
@@ -43,16 +49,23 @@ export function IssueAssigneePicker({
   onAssigned,
 }: {
   readonly environmentId: EnvironmentId;
-  readonly reference: IssueRef;
+  readonly reference: IssueRef | TicketGitHubIssueRef;
   readonly onAssigned: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [pending, setPending] = useState<string | null>(null);
   const candidatesQuery = useEnvironmentQuery(
-    open ? issueEnvironment.assigneeCandidates({ environmentId, input: reference }) : null,
+    !open
+      ? null
+      : "ticketId" in reference
+        ? ticketEnvironment.githubIssueAssigneeCandidates({ environmentId, input: reference })
+        : issueEnvironment.assigneeCandidates({ environmentId, input: reference }),
   );
   const setAssignees = useAtomCommand(issueEnvironment.setAssignees, { reportFailure: false });
+  const setTicketAssignees = useAtomCommand(ticketEnvironment.githubIssueSetAssignees, {
+    reportFailure: false,
+  });
   const allCandidates = candidatesQuery.data?.candidates ?? EMPTY_ASSIGNEE_CANDIDATES;
   const viewer = allCandidates.find((candidate) => candidate.isViewer) ?? null;
   const candidates = useMemo(
@@ -64,10 +77,16 @@ export function IssueAssigneePicker({
     if (pending !== null) return;
     setPending(candidate.id);
     const assigned = !candidate.isAssigned;
-    const result = await setAssignees({
-      environmentId,
-      input: { ...reference, assignees: [candidate.id], assigned },
-    });
+    const result =
+      "ticketId" in reference
+        ? await setTicketAssignees({
+            environmentId,
+            input: { ...reference, assignees: [candidate.id], assigned },
+          })
+        : await setAssignees({
+            environmentId,
+            input: { ...reference, assignees: [candidate.id], assigned },
+          });
     setPending(null);
     if (result._tag === "Failure") {
       toastManager.add({

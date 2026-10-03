@@ -31,7 +31,11 @@ import {
   producerIdFromComposerContextId,
   toKindScopedComposerContextId,
 } from "./composerContextReferences";
-import type { ComposerFileAttachment, ComposerImageAttachment } from "~/composerDraftStore";
+import type {
+  AttachedContextRecord,
+  ComposerFileAttachment,
+  ComposerImageAttachment,
+} from "~/composerDraftStore";
 import type { AttachmentUploadState } from "./attachmentUploadState";
 import { normalizeElementContextSelection } from "./elementContext";
 import {
@@ -162,8 +166,8 @@ function threadContextId(threadId: ThreadId): ComposerContextId {
   return toKindScopedComposerContextId("thread", threadId);
 }
 
-export function threadContextReference(record: ThreadContextRecord): ComposerContextReference {
-  return { kind: "thread", contextId: record.contextId, label: record.label };
+export function threadContextReference(record: AttachedContextRecord): ComposerContextReference {
+  return { kind: record.kind, contextId: record.contextId, label: record.label };
 }
 
 export function threadContextRecord(ref: ScopedThreadRef, title: string): ThreadContextRecord {
@@ -319,7 +323,7 @@ export function buildMessageContext(input: {
   terminalContexts: ReadonlyArray<TerminalContextDraft>;
   reviewComments: ReadonlyArray<ReviewCommentContext>;
   previewAnnotations: ReadonlyArray<PreviewAnnotationPayload>;
-  threadContexts?: ReadonlyArray<ThreadContextRecord>;
+  threadContexts?: ReadonlyArray<AttachedContextRecord>;
   attachments?: ReadonlyArray<BoundComposerAttachment>;
 }): OrchestrationMessageContext | undefined {
   // An annotation's screenshot travels as the image attachment that reuses its id.

@@ -163,9 +163,9 @@ backends leak back in.
   the incoming file, `git mv` it past our highest number, and shift the `toMigrationInclusive`
   boundaries in its test, and in any test that imports migrations by file name, by the same offset —
   the migration test asserts on the schema _before_ and _after_ its own migration, so a stale
-  boundary fails with a missing table rather than a wrong number. Do not add fork migrations to the
-  ledger: fork-owned tables such as `automation_runs` are created by their service outside the
-  migrator (see [legacy orchestration migration](./legacy-orchestration-migration.md)).
+  boundary fails with a missing table rather than a wrong number. Do not add fork migrations to
+  upstream's ledger: fork-owned schema goes in the fork ledger, `VetraMigrations.ts` (see
+  [divergent migration ids](./legacy-orchestration-migration.md#divergent-migration-ids)).
 - Keep Automations on upstream's scheduled tasks. The Automations page is a second editor for
   `ScheduledTaskService`; the only fork backend is run tracking in
   [AutomationRuns](../../apps/server/src/automation/AutomationRuns.ts), which wraps
@@ -430,6 +430,14 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
 - **Clean merge, wrong names.** If the script printed `rewrote N file(s)` but `git diff --cached`
   still shows `T3 Code`, the rewrite was not staged. That was a real bug once; the script now
   stages clean rewrites. If it happens again, stop and fix the script rather than committing.
+- **Fork RPCs inside upstream's RPC files.** Upstream edits `rpc.ts`, `ws.ts` and
+  `runtimeLayer.ts` constantly, so ticket RPCs and handlers live in files the fork owns:
+  [`ticketRpc.ts`](../../packages/contracts/src/ticketRpc.ts),
+  [`ticketRpcLayer.ts`](../../apps/server/src/ticket/ticketRpcLayer.ts), and
+  [`Tickets.ts`](../../apps/server/src/ticket/Tickets.ts). Upstream files carry small additive
+  hooks: `rpc.ts` spreads the method names and merges the ticket RPC group onto `WsCoreRpcGroup`,
+  `ws.ts` provides the ticket RPC layer, and `runtimeLayer.ts` provides the service layer.
+  Incoming RPCs stay in `WsCoreRpcGroup`.
 
 ## Abort and recovery
 

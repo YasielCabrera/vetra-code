@@ -20,6 +20,7 @@ const baseState: ThreadActionMenuState = {
     pinning: true,
     titleRegeneration: true,
     automations: true,
+    tickets: true,
   },
   snoozePresets: [
     { id: "hour", label: "In 1 hour", whenLabel: "3:00 PM", snoozedUntil: "2026-08-07T15:00:00Z" },
@@ -48,6 +49,7 @@ describe("buildThreadActionMenuItems", () => {
           pinning: false,
           titleRegeneration: false,
           automations: false,
+          tickets: false,
         },
       }),
     ).toEqual(["rename", "mark-unread", "copy", "project-settings", "archive", "delete"]);
@@ -174,9 +176,20 @@ describe("buildThreadActionMenuItems", () => {
           pinning: false,
           titleRegeneration: false,
           automations: false,
+          tickets: false,
         },
       }),
     ).toContain("archive");
+  });
+
+  it("offers a ticket from the thread only where the environment keeps tickets", () => {
+    expect(ids({ ...baseState, branch: "feat/menu" }).slice(0, 2)).toEqual([
+      "new-thread-on-branch",
+      "create-ticket",
+    ]);
+    expect(
+      ids({ ...baseState, supports: { ...baseState.supports, tickets: false } }),
+    ).not.toContain("create-ticket");
   });
 
   it("disables archive while the thread is running", () => {

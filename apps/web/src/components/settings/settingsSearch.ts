@@ -21,6 +21,7 @@ export type SettingsPath =
   | "/settings/providers"
   | "/settings/integrations"
   | "/settings/source-control"
+  | "/settings/tickets"
   | "/settings/storage"
   | "/settings/connections"
   | "/settings/web3"
@@ -94,6 +95,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/providers": "Providers",
   "/settings/integrations": "Integrations",
   "/settings/source-control": "Source Control",
+  "/settings/tickets": "Tickets",
   "/settings/storage": "Storage",
   "/settings/connections": "Connections",
   "/settings/web3": "Web3",
@@ -884,6 +886,30 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["restore reopen deleted history projects"],
   },
   {
+    id: "ticket-statuses",
+    title: "Ticket statuses",
+    to: "/settings/tickets",
+    searchTerms: [
+      "tickets board kanban status columns backlog todo in progress review done canceled category default color reorder close reason",
+    ],
+  },
+  {
+    id: "ticket-github-sources",
+    title: "GitHub sources",
+    to: "/settings/tickets",
+    searchTerms: [
+      "tickets github issues sync repository import track remote gh refresh last error",
+    ],
+  },
+  {
+    id: "ticket-auto-advance",
+    title: "Auto-advance tickets",
+    to: "/settings/tickets",
+    searchTerms: [
+      "tickets status automation move thread started pull request linked merged in progress review done",
+    ],
+  },
+  {
     id: "read-aloud",
     title: "Read aloud",
     to: "/settings/read-aloud",
@@ -965,6 +991,7 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/providers": null,
   "/settings/integrations": null,
   "/settings/source-control": "environment-defaults",
+  "/settings/tickets": "environment",
   "/settings/storage": "project-defaults",
   "/settings/connections": "connections",
   "/settings/archived": "project-defaults",

@@ -46,6 +46,7 @@ import {
 } from "@t3tools/web3/schema";
 import { PullRequestMergeMethod } from "./pullRequest.ts";
 import { TextToSpeechSettings, TextToSpeechSettingsPatch } from "./textToSpeech.ts";
+import { TicketAutoAdvanceSettings, TicketAutoAdvanceSettingsPatch } from "./ticket.ts";
 
 // ── Client Settings (local-only) ───────────────────────────────
 
@@ -1471,6 +1472,7 @@ export const ServerSettings = Schema.Struct({
   observability: ObservabilitySettings.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   web3Wallet: Web3WalletSettings,
   textToSpeech: TextToSpeechSettings,
+  ticketAutoAdvance: TicketAutoAdvanceSettings,
   bitbucket: BitbucketSettings.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   // Keyed by a user-chosen id so a source keeps its rows across edits. Entries
   // this build cannot decode round-trip untouched, as provider instances do.
@@ -1759,6 +1761,7 @@ export const ServerSettingsPatch = Schema.Struct({
     }),
   ),
   textToSpeech: Schema.optionalKey(TextToSpeechSettingsPatch),
+  ticketAutoAdvance: Schema.optionalKey(TicketAutoAdvanceSettingsPatch),
   /** An empty token clears it; an omitted one keeps what the server has. */
   bitbucket: Schema.optionalKey(
     Schema.Struct({

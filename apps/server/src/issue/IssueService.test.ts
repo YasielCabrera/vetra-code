@@ -65,6 +65,8 @@ function githubProvider(overrides: Partial<IssueProviderApi> = {}): IssueProvide
     getIssueActivity: () => Effect.die("unused"),
     listAssigneeCandidates: () => Effect.die("unused"),
     setAssignees: () => Effect.die("unused"),
+    setState: () => Effect.die("unused"),
+    addComment: () => Effect.die("unused"),
     ...overrides,
   };
 }

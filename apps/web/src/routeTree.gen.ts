@@ -15,9 +15,13 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PairRouteImport } from './routes/pair'
 import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as ChatRouteImport } from './routes/_chat'
+import { Route as TicketsIndexRouteImport } from './routes/tickets.index'
 import { Route as AutomationsIndexRouteImport } from './routes/automations.index'
 import { Route as ChatIndexRouteImport } from './routes/_chat.index'
+import { Route as TicketsNewRouteImport } from './routes/tickets.new'
+import { Route as TicketsTicketKeyRouteImport } from './routes/tickets.$ticketKey'
 import { Route as SettingsWeb3RouteImport } from './routes/settings.web3'
+import { Route as SettingsTicketsRouteImport } from './routes/settings.tickets'
 import { Route as SettingsStorageRouteImport } from './routes/settings.storage'
 import { Route as SettingsSourceControlRouteImport } from './routes/settings.source-control'
 import { Route as SettingsSnapShotRouteImport } from './routes/settings.snap-shot'
@@ -70,6 +74,11 @@ const ChatRoute = ChatRouteImport.update({
   id: '/_chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TicketsIndexRoute = TicketsIndexRouteImport.update({
+  id: '/tickets/',
+  path: '/tickets/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AutomationsIndexRoute = AutomationsIndexRouteImport.update({
   id: '/automations/',
   path: '/automations/',
@@ -80,9 +89,24 @@ const ChatIndexRoute = ChatIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ChatRoute,
 } as any)
+const TicketsNewRoute = TicketsNewRouteImport.update({
+  id: '/tickets/new',
+  path: '/tickets/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TicketsTicketKeyRoute = TicketsTicketKeyRouteImport.update({
+  id: '/tickets/$ticketKey',
+  path: '/tickets/$ticketKey',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsWeb3Route = SettingsWeb3RouteImport.update({
   id: '/web3',
   path: '/web3',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsTicketsRoute = SettingsTicketsRouteImport.update({
+  id: '/tickets',
+  path: '/tickets',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsStorageRoute = SettingsStorageRouteImport.update({
@@ -226,8 +250,12 @@ export interface FileRoutesByFullPath {
   '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/settings/storage': typeof SettingsStorageRoute
+  '/settings/tickets': typeof SettingsTicketsRoute
   '/settings/web3': typeof SettingsWeb3Route
+  '/tickets/$ticketKey': typeof TicketsTicketKeyRoute
+  '/tickets/new': typeof TicketsNewRoute
   '/automations/': typeof AutomationsIndexRoute
+  '/tickets/': typeof TicketsIndexRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
 }
@@ -257,9 +285,13 @@ export interface FileRoutesByTo {
   '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/settings/storage': typeof SettingsStorageRoute
+  '/settings/tickets': typeof SettingsTicketsRoute
   '/settings/web3': typeof SettingsWeb3Route
+  '/tickets/$ticketKey': typeof TicketsTicketKeyRoute
+  '/tickets/new': typeof TicketsNewRoute
   '/': typeof ChatIndexRoute
   '/automations': typeof AutomationsIndexRoute
+  '/tickets': typeof TicketsIndexRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
 }
@@ -291,9 +323,13 @@ export interface FileRoutesById {
   '/settings/snap-shot': typeof SettingsSnapShotRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/settings/storage': typeof SettingsStorageRoute
+  '/settings/tickets': typeof SettingsTicketsRoute
   '/settings/web3': typeof SettingsWeb3Route
+  '/tickets/$ticketKey': typeof TicketsTicketKeyRoute
+  '/tickets/new': typeof TicketsNewRoute
   '/_chat/': typeof ChatIndexRoute
   '/automations/': typeof AutomationsIndexRoute
+  '/tickets/': typeof TicketsIndexRoute
   '/_chat/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/_chat/draft/$draftId': typeof ChatDraftDraftIdRoute
 }
@@ -326,8 +362,12 @@ export interface FileRouteTypes {
     | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/storage'
+    | '/settings/tickets'
     | '/settings/web3'
+    | '/tickets/$ticketKey'
+    | '/tickets/new'
     | '/automations/'
+    | '/tickets/'
     | '/$environmentId/$threadId'
     | '/draft/$draftId'
   fileRoutesByTo: FileRoutesByTo
@@ -357,9 +397,13 @@ export interface FileRouteTypes {
     | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/storage'
+    | '/settings/tickets'
     | '/settings/web3'
+    | '/tickets/$ticketKey'
+    | '/tickets/new'
     | '/'
     | '/automations'
+    | '/tickets'
     | '/$environmentId/$threadId'
     | '/draft/$draftId'
   id:
@@ -390,9 +434,13 @@ export interface FileRouteTypes {
     | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/storage'
+    | '/settings/tickets'
     | '/settings/web3'
+    | '/tickets/$ticketKey'
+    | '/tickets/new'
     | '/_chat/'
     | '/automations/'
+    | '/tickets/'
     | '/_chat/$environmentId/$threadId'
     | '/_chat/draft/$draftId'
   fileRoutesById: FileRoutesById
@@ -407,7 +455,10 @@ export interface RootRouteChildren {
   AutomationsAutomationKeyRoute: typeof AutomationsAutomationKeyRoute
   AutomationsNewRoute: typeof AutomationsNewRoute
   ProjectsProjectKeyRoute: typeof ProjectsProjectKeyRoute
+  TicketsTicketKeyRoute: typeof TicketsTicketKeyRoute
+  TicketsNewRoute: typeof TicketsNewRoute
   AutomationsIndexRoute: typeof AutomationsIndexRoute
+  TicketsIndexRoute: typeof TicketsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -454,6 +505,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tickets/': {
+      id: '/tickets/'
+      path: '/tickets'
+      fullPath: '/tickets/'
+      preLoaderRoute: typeof TicketsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/automations/': {
       id: '/automations/'
       path: '/automations'
@@ -468,11 +526,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatIndexRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/tickets/new': {
+      id: '/tickets/new'
+      path: '/tickets/new'
+      fullPath: '/tickets/new'
+      preLoaderRoute: typeof TicketsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tickets/$ticketKey': {
+      id: '/tickets/$ticketKey'
+      path: '/tickets/$ticketKey'
+      fullPath: '/tickets/$ticketKey'
+      preLoaderRoute: typeof TicketsTicketKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings/web3': {
       id: '/settings/web3'
       path: '/web3'
       fullPath: '/settings/web3'
       preLoaderRoute: typeof SettingsWeb3RouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/tickets': {
+      id: '/settings/tickets'
+      path: '/tickets'
+      fullPath: '/settings/tickets'
+      preLoaderRoute: typeof SettingsTicketsRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/storage': {
@@ -666,6 +745,7 @@ interface SettingsRouteChildren {
   SettingsSnapShotRoute: typeof SettingsSnapShotRoute
   SettingsSourceControlRoute: typeof SettingsSourceControlRoute
   SettingsStorageRoute: typeof SettingsStorageRoute
+  SettingsTicketsRoute: typeof SettingsTicketsRoute
   SettingsWeb3Route: typeof SettingsWeb3Route
 }
 
@@ -685,6 +765,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsSnapShotRoute: SettingsSnapShotRoute,
   SettingsSourceControlRoute: SettingsSourceControlRoute,
   SettingsStorageRoute: SettingsStorageRoute,
+  SettingsTicketsRoute: SettingsTicketsRoute,
   SettingsWeb3Route: SettingsWeb3Route,
 }
 
@@ -702,7 +783,10 @@ const rootRouteChildren: RootRouteChildren = {
   AutomationsAutomationKeyRoute: AutomationsAutomationKeyRoute,
   AutomationsNewRoute: AutomationsNewRoute,
   ProjectsProjectKeyRoute: ProjectsProjectKeyRoute,
+  TicketsTicketKeyRoute: TicketsTicketKeyRoute,
+  TicketsNewRoute: TicketsNewRoute,
   AutomationsIndexRoute: AutomationsIndexRoute,
+  TicketsIndexRoute: TicketsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
