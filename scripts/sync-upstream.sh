@@ -95,6 +95,10 @@ PRUNE_PATHS=(
   # self-contained .github/workflows/desktop-macos-preview.yml owns that surface.
   .github/workflows/release-desktop.yml
   .github/workflows/desktop-macos-preview-publish.yml
+  # Upgrades upstream's V2 preview ledger, where OrchestrationV2 sat at 53 or
+  # 54. This fork's ids run one past upstream's from 41 on, so no fork database
+  # has that layout and the test's expected ledger can never match ours.
+  apps/server/src/persistence/reconcileV2PreviewMigration.test.ts
   # Deleted during fork isolation: the fork's dev setup lives in AGENTS.md, and
   # upstream's file documents the T3 CLI and t3.json worktree scripts.
   docs/operations/development.md
@@ -111,6 +115,7 @@ PRUNE_GLOBS=(
 # Ordered: most specific first, since later patterns are substrings of earlier
 # ones. `pingdotgg/t3code` is excluded -- that is the real upstream repo URL and
 # must survive verbatim. Likewise t3.codes domains are deliberately absent.
+# A `re:` prefix makes the left side a Perl regex instead of a literal.
 #
 # Every pair below is product identity. There is deliberately no pair for
 # `@t3tools/`, `t3code`, `t3tools`, or any bare internal symbol: those are the
@@ -181,6 +186,9 @@ RENAMES=(
   # remote-open-hint-seen); renaming them is a migration, not a sync.
   '"t3code:="vetra:'
   't3.pullRequests.=vetra.pullRequests.'
+  # Hidden git refs written into users' repositories (checkpoints). Two products
+  # sharing one repo must not share a ref namespace.
+  'refs/t3/=refs/vetra/'
   # The environment discovery document's well-known path.
   '.well-known/t3/=.well-known/vetra/'
   # Vetra Connect's HTTP routes. Keyed on the trailing slash so the
@@ -197,6 +205,13 @@ RENAMES=(
   't3-chat=vetra-chat'
   # The MCP server name agents address tools by.
   't3_code=vetra_code'
+  # The same server in its hyphenated spelling: the name every provider adapter
+  # registers, and the `mcp__vetra-code__*` prefix agents and users' permission
+  # allowlists see. A regex pair, because the literal would also rewrite the
+  # `t3-codex-*` scratch prefixes that stay upstream's.
+  're:t3-code(?!x)=vetra-code'
+  # The loose matcher for that server name in tool-call titles and metadata.
+  't3[-_ ]?code=vetra[-_ ]?code'
 
   # Generated names written into a user's home: scratch and backup files beside
   # a compositor config, the staged GNOME extension directory, the XDG portal
@@ -214,6 +229,14 @@ RENAMES=(
   'T3-Code=Vetra-Code'
   'T3 Connect=Vetra Connect'
   'T3 Chat=Vetra Chat'
+  # The product name as it reaches users in MCP tool labels and as it reaches
+  # agents in tool descriptions and runtime instructions.
+  'T3 thread=Vetra Code thread'
+  'T3-owned=Vetra-owned'
+  'T3 tool=Vetra Code tool'
+  'T3 orchestration=Vetra Code orchestration'
+  'T3 transport=Vetra Code transport'
+  'when T3 runs as=when Vetra Code runs as'
   # Upstream's GitHub org / winget publisher, never a TypeScript identifier.
   'T3Tools=Vetra-Code'
   # The project file this fork reads. Upstream's own t3.json is pruned above.
@@ -267,7 +290,11 @@ while IFS= read -r file; do
   for pair in "${RENAMES[@]}"; do
     from="${pair%%=*}"
     to="${pair#*=}"
-    FROM="$from" TO="$to" perl -pi -e 's{\Q$ENV{FROM}\E}{$ENV{TO}}g' "$file"
+    if [[ "$from" == re:* ]]; then
+      FROM="${from#re:}" TO="$to" perl -pi -e 's{$ENV{FROM}}{$ENV{TO}}g' "$file"
+    else
+      FROM="$from" TO="$to" perl -pi -e 's{\Q$ENV{FROM}\E}{$ENV{TO}}g' "$file"
+    fi
   done
   if [[ "$(shasum "$file" | cut -d' ' -f1)" != "$before" ]]; then
     rewritten=$((rewritten + 1))

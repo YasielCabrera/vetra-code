@@ -19,7 +19,7 @@ set of product identity strings. A plain `git merge` therefore:
 - restores deleted apps and workflows;
 - reintroduces `T3 Code`, `T3CODE_*`, `t3.json`, `com.t3tools.*` application ids, and the other
   identity spellings mapped below;
-- can re-enable Clerk, relay, PostHog, and desktop auto-update against T3-owned destinations.
+- can re-enable Clerk, relay, PostHog, and desktop auto-update against Vetra-owned destinations.
 
 The script merges, prunes the trees we deleted on purpose, and re-applies that rename to files the
 merge actually changed. Anything it cannot decide is left as a real conflict.
@@ -77,8 +77,8 @@ Surfaces this fork deleted and will not ship:
 | Path                                                                         | Why                               |
 | ---------------------------------------------------------------------------- | --------------------------------- |
 | `.agents/skills/test-t3-mobile/`                                             | Mobile-only testing skill.        |
-| `.github/ISSUE_TEMPLATE/via-triage.yml`, `.github/triage/`                   | T3-owned support workflow.        |
-| `.agents/skills/contribution-triage/`, `.github/TRIAGE_EXEMPTIONS.td`        | T3-owned PR moderation.           |
+| `.github/ISSUE_TEMPLATE/via-triage.yml`, `.github/triage/`                   | Vetra-owned support workflow.     |
+| `.agents/skills/contribution-triage/`, `.github/TRIAGE_EXEMPTIONS.td`        | Vetra-owned PR moderation.        |
 | `apps/mobile/`                                                               | Mobile client removed.            |
 | `apps/marketing/`                                                            | Marketing site removed.           |
 | `apps/server/src/cli/triage*`                                                | Files issues in T3's repo.        |
@@ -159,10 +159,13 @@ backends leak back in.
   keys such as `t3.pullRequests.list` therefore survive until a specific `RENAMES` pair exists or
   you fix them by hand. Search `` `t3. `` / `"t3.` in code (not docs) after every sync.
 - Renumber an incoming migration. This fork inserted `041_ProjectionAutomations`, so every upstream
-  migration after it collides one number low. Take the incoming file, `git mv` it past our highest
-  number, and shift the `toMigrationInclusive` boundaries in its test by the same offset — the
-  migration test asserts on the schema _before_ and _after_ its own migration, so a stale boundary
-  fails with a missing table rather than a wrong number.
+  migration after it collides one number low (upstream's `055_OrchestrationV2` is our `056`). Take
+  the incoming file, `git mv` it past our highest number, and shift the `toMigrationInclusive`
+  boundaries in its test, and in any test that imports migrations by file name, by the same offset —
+  the migration test asserts on the schema _before_ and _after_ its own migration, so a stale
+  boundary fails with a missing table rather than a wrong number. Do not add fork migrations to the
+  ledger: fork-owned tables such as `automation_runs` are created by their service outside the
+  migrator (see [legacy orchestration migration](./legacy-orchestration-migration.md)).
 - Prune GitHub workflows. Upstream still has `release.yml`, `deploy-relay.yml`, and the
   `mobile-*.yml` workflows. A merge can restore them or conflict on the deletion. Delete them again
   if they return.
@@ -371,6 +374,8 @@ list):
 | `t3code-dev:`                                          | `vetra-dev:`                                                    |
 | `t3code.service` / `t3.json`                           | `vetra-code.service` / `vetra.json`                             |
 | `t3_session` / `t3_code`                               | `vetra_session` / `vetra_code`                                  |
+| `t3-code` (MCP server name, not `t3-codex`)            | `vetra-code`                                                    |
+| `T3 thread` / `T3-owned` / `T3 tool`                   | `Vetra Code thread` / `Vetra-owned` / `Vetra Code tool`         |
 | `"t3code.` / `"t3code:` / `t3.pullRequests.`           | `"vetra.` / `"vetra:` / `vetra.pullRequests.`                   |
 | `.well-known/t3/` / `t3-env:`                          | `.well-known/vetra/` / `vetra-env:`                             |
 | `t3-citation` / `t3-context` / `t3-assistant-citation` | `vetra-citation` / `vetra-context` / `vetra-assistant-citation` |
@@ -404,7 +409,7 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
 | Desktop IDs    | `com.vetra.code`, `com.vetra.code.dev`                      |
 | Launch agent   | `com.vetra.code.service`                                    |
 | Protocols      | `vetra://`, `vetra-dev://`                                  |
-| Git refs       | `refs/vetra/checkpoints`, `refs/vetra/pre-refresh`          |
+| Git refs       | `refs/vetra/**` (V1 and V2 checkpoints, pre-refresh)        |
 | Env prefix     | `VETRA_*` only. No `T3CODE_*` aliases.                      |
 
 ## Conflict patterns that keep coming back

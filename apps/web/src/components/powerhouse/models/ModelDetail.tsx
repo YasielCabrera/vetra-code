@@ -196,12 +196,12 @@ export function ModelDetail({
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <h2 className="min-w-0 truncate text-base font-semibold">{model.name}</h2>
                 {displayModelExtension(model.extension).length > 0 ? (
-                  <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 font-mono text-[.65rem] text-muted-foreground">
+                  <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 font-mono text-3xs text-muted-foreground">
                     {displayModelExtension(model.extension)}
                   </span>
                 ) : null}
               </div>
-              <p className="mt-0.5 font-mono text-[.65rem] break-all text-muted-foreground">
+              <p className="mt-0.5 font-mono text-3xs break-all text-muted-foreground">
                 {model.id}
               </p>
               {model.description.length > 0 ? (
@@ -210,7 +210,7 @@ export function ModelDetail({
                 </p>
               ) : null}
               {model.author !== null && model.author.name.length > 0 ? (
-                <p className="mt-1 text-[.65rem] text-muted-foreground">By {model.author.name}</p>
+                <p className="mt-1 text-3xs text-muted-foreground">By {model.author.name}</p>
               ) : null}
             </div>
           </div>

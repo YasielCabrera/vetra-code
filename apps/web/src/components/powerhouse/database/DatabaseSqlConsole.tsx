@@ -127,7 +127,7 @@ export default function DatabaseSqlConsole({
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
         <div>
           <h2 className="text-xs font-medium">SQL console</h2>
-          <p className="text-[.66rem] text-muted-foreground">
+          <p className="text-2xs text-muted-foreground">
             Read-only · one statement · transaction always rolled back
           </p>
         </div>
@@ -166,7 +166,7 @@ export default function DatabaseSqlConsole({
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <label className="flex items-center gap-1.5 text-[.68rem] text-muted-foreground">
+              <label className="flex items-center gap-1.5 text-2xs text-muted-foreground">
                 Rows
                 <select
                   value={rowLimit}
@@ -183,7 +183,7 @@ export default function DatabaseSqlConsole({
                 </select>
               </label>
               {history.length === 0 ? null : (
-                <label className="flex min-w-0 items-center gap-1.5 text-[.68rem] text-muted-foreground">
+                <label className="flex min-w-0 items-center gap-1.5 text-2xs text-muted-foreground">
                   <Clock3 aria-hidden className="size-3" />
                   <span className="sr-only">Query history</span>
                   <select
@@ -206,7 +206,7 @@ export default function DatabaseSqlConsole({
             <Button size="sm" onClick={() => void run()} disabled={pending || draft.trim() === ""}>
               <Play aria-hidden className="size-3" />
               {pending ? "Running…" : "Run"}
-              <kbd className="ml-1 hidden rounded border border-primary-foreground/25 px-1 font-mono text-[.58rem] opacity-75 sm:inline">
+              <kbd className="ml-1 hidden rounded border border-primary-foreground/25 px-1 font-mono text-3xs opacity-75 sm:inline">
                 {typeof navigator !== "undefined" && navigator.platform.includes("Mac")
                   ? "⌘"
                   : "Ctrl"}

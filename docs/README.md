@@ -27,7 +27,7 @@
 - [Preview wallet (Web3)](./user/preview-wallet.md)
 - [Background service (Linux)](./user/background-service.md)
 - [Product usage data](./user/telemetry.md)
-- Providers: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [Cursor](./user/providers-cursor.md) · [OpenCode](./user/providers-opencode.md) · [Antigravity](./user/providers-antigravity.md)
+- Providers: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md) · [Cursor](./user/providers-cursor.md) · [OpenCode](./user/providers-opencode.md) · [Antigravity](./user/providers-antigravity.md) · [Pi](./user/providers-pi.md)
 
 ---
 

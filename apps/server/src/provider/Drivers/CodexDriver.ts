@@ -32,12 +32,16 @@ import { ChildProcessSpawner } from "effect/unstable/process";
 
 import { makeCodexTextGeneration } from "../../textGeneration/CodexTextGeneration.ts";
 import * as BackgroundPolicy from "../../background/BackgroundPolicy.ts";
-import { ServerConfig } from "../../config.ts";
+import * as ServerConfig from "../../config.ts";
 import { expandHomePath } from "../../pathExpansion.ts";
-import { ServerSettingsService } from "../../serverSettings.ts";
+import * as ProviderEventLoggers from "../Layers/ProviderEventLoggers.ts";
+import {
+  createCodexAdapterV2,
+  type CodexAdapterV2DriverEnv,
+} from "../../orchestration-v2/Adapters/CodexAdapterV2.ts";
+import * as ServerSettings from "../../serverSettings.ts";
 import * as UsageService from "../../usage/UsageService.ts";
 import { ProviderDriverError } from "../Errors.ts";
-import { makeCodexAdapter } from "../Layers/CodexAdapter.ts";
 import * as ResetCreditCoordinator from "../Layers/resetCreditCoordinator.ts";
 import {
   checkCodexProviderStatus,
@@ -46,7 +50,6 @@ import {
   withCodexAppServerClient,
 } from "../Layers/CodexProvider.ts";
 import { resolveCodexLaunchArgs } from "../Layers/codexLaunchArgs.ts";
-import { ProviderEventLoggers } from "../Layers/ProviderEventLoggers.ts";
 import { makeManagedServerProvider } from "../makeManagedServerProvider.ts";
 import * as ModelManifest from "../ModelManifest.ts";
 import type { ProviderDriver, ProviderInstance } from "../ProviderDriver.ts";
@@ -72,9 +75,9 @@ import {
 import { makeCodexSubscriptionUsageCapability } from "../usage/CodexSubscriptionUsage.ts";
 import { readProviderLocalUsageCost } from "../usage/ProviderLocalUsageCost.ts";
 import { makeManagedCodexProvider } from "./CodexManagedProvider.ts";
-import { CodexInstallation } from "../CodexInstallation.ts";
-import { ServerSecretStore } from "../../auth/ServerSecretStore.ts";
-import { ServerEnvironmentIdentity } from "../../environment/ServerEnvironment.ts";
+import * as CodexInstallation from "../CodexInstallation.ts";
+import * as ServerSecretStore from "../../auth/ServerSecretStore.ts";
+import * as ServerEnvironment from "../../environment/ServerEnvironment.ts";
 const decodeCodexSettings = Schema.decodeSync(CodexSettings);
 
 const DRIVER_KIND = ProviderDriverKind.make("codex");
@@ -108,6 +111,7 @@ function makeCodexMaintenanceResolver(sharedHomePath: string) {
  * registered driver and the runtime satisfies them once.
  */
 export type CodexDriverEnv =
+  | CodexAdapterV2DriverEnv
   | BackgroundPolicy.BackgroundPolicy
   | ChildProcessSpawner.ChildProcessSpawner
   | ResetCreditCoordinator.ResetCreditCoordinator
@@ -116,13 +120,13 @@ export type CodexDriverEnv =
   | HttpClient.HttpClient
   | ModelManifest.ModelManifest
   | Path.Path
-  | ProviderEventLoggers
-  | ServerConfig
-  | ServerSettingsService
+  | ProviderEventLoggers.ProviderEventLoggers
+  | ServerConfig.ServerConfig
+  | ServerSettings.ServerSettingsService
   | UsageService.UsageService
-  | ServerSecretStore
-  | ServerEnvironmentIdentity
-  | CodexInstallation;
+  | ServerSecretStore.ServerSecretStore
+  | ServerEnvironment.ServerEnvironmentIdentity
+  | CodexInstallation.CodexInstallation;
 
 export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
   driverKind: DRIVER_KIND,
@@ -144,14 +148,12 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
           config,
         });
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-      const path = yield* Path.Path;
-      const serverConfig = yield* ServerConfig;
+      const serverConfig = yield* ServerConfig.ServerConfig;
       const resetCreditCoordinator = yield* ResetCreditCoordinator.ResetCreditCoordinator;
       const fileSystem = yield* FileSystem.FileSystem;
       const pathService = yield* Path.Path;
       const httpClient = yield* HttpClient.HttpClient;
-      const serverSettings = yield* ServerSettingsService;
-      const eventLoggers = yield* ProviderEventLoggers;
+      const serverSettings = yield* ServerSettings.ServerSettingsService;
       const usage = yield* UsageService.UsageService;
       const modelManifest = yield* ModelManifest.ModelManifest;
       const processEnv = mergeProviderInstanceEnvironment(environment);
@@ -204,9 +206,31 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
         localCost: readProviderLocalUsageCost({
           usage,
           provider: "codex",
-          transcriptRoot: path.join(homeLayout.sharedHomePath, "sessions"),
+          transcriptRoot: pathService.join(homeLayout.sharedHomePath, "sessions"),
         }),
       });
+
+      const orchestrationAdapter = yield* createCodexAdapterV2(
+        {
+          instanceId,
+          displayName,
+          accentColor,
+          environment,
+          enabled,
+          config,
+        },
+        { onUsageLimits: (update) => snapshot.applyUsageLimits(update) },
+      ).pipe(
+        Effect.mapError(
+          (cause) =>
+            new ProviderDriverError({
+              driver: DRIVER_KIND,
+              instanceId,
+              detail: "Failed to build Codex orchestration adapter.",
+              cause,
+            }),
+        ),
+      );
 
       // Build a managed snapshot whose settings never change — mutations come
       // in as instance rebuilds from the registry rather than in-place
@@ -262,21 +286,11 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
             }),
         ),
       );
-      const models = snapshot.getSnapshot.pipe(Effect.map((value) => value.models));
-      // `makeCodexAdapter` and `makeCodexTextGeneration` have `never` error
-      // channels at construction time — their failure modes are all on the
-      // per-operation closures they return. No `mapError` wrapper is needed
-      // here; the registry only has to worry about snapshot-build and
-      // spawner-availability failures surfaced from `checkCodexProviderStatus`
-      // above.
-      const adapter = yield* makeCodexAdapter(effectiveConfig, {
-        instanceId,
-        environment: processEnv,
-        models,
-        priceUsage: usage.price,
-        ...(eventLoggers.native ? { nativeEventLogger: eventLoggers.native } : {}),
-      });
-      const textGeneration = yield* makeCodexTextGeneration(effectiveConfig, processEnv, models);
+      const textGeneration = yield* makeCodexTextGeneration(
+        effectiveConfig,
+        processEnv,
+        snapshot.getSnapshot.pipe(Effect.map((value) => value.models)),
+      );
       const snapshotForCwd = (cwd: string) =>
         !effectiveConfig.enabled
           ? snapshot.getSnapshot
@@ -381,7 +395,7 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
         snapshot,
         snapshotForCwd,
         consumeResetCredit,
-        adapter,
+        orchestrationAdapter,
         textGeneration,
         subscriptionUsage,
       } satisfies ProviderInstance;

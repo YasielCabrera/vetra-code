@@ -331,7 +331,7 @@ export function FindScope({
           <span
             aria-live="polite"
             className={cn(
-              "min-w-16 px-1 text-[.65rem] whitespace-nowrap tabular-nums",
+              "min-w-16 px-1 text-3xs whitespace-nowrap tabular-nums",
               query.length > 0 && shownMatches.count === 0
                 ? "text-destructive"
                 : "text-muted-foreground",

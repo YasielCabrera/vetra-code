@@ -1,5 +1,8 @@
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
-import type { EnvironmentAutomation } from "@t3tools/client-runtime/state/automations";
+import type {
+  EnvironmentAutomation,
+  EnvironmentAutomationRun,
+} from "@t3tools/client-runtime/state/automations";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 
 import { describeAutomationSchedule } from "./automationSchedule.logic";
@@ -25,6 +28,23 @@ export interface AutomationRowModel {
 /** Where a thread's read stamp lives: `uiStateStore.threadLastVisitedAtById`. */
 export type ThreadLastVisitedAtByKey = Readonly<Record<string, string>>;
 
+/** Run records keyed by `scopedThreadKey`, from the automations stream. */
+export type AutomationRunsByThreadKey = ReadonlyMap<string, EnvironmentAutomationRun>;
+
+const WORKING_RUN_STATUSES: ReadonlySet<string> = new Set([
+  "preparing",
+  "queued",
+  "starting",
+  "running",
+  "waiting",
+]);
+
+/** Whether a run thread's latest run is still working, waiting on approval included. */
+export function isAutomationRunWorking(thread: EnvironmentThreadShell): boolean {
+  const status = thread.latestRun?.status;
+  return status !== undefined && WORKING_RUN_STATUSES.has(status);
+}
+
 export function automationRunVisitKey(thread: EnvironmentThreadShell): string {
   return scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id));
 }
@@ -43,9 +63,9 @@ export function isAutomationRunUnread(input: {
   readonly lastVisitedAt: string | undefined;
 }): boolean {
   const { lastVisitedAt, thread } = input;
-  if (thread.automationId == null) return false;
   if (thread.archivedAt !== null) return false;
-  const completedAt = thread.latestTurn?.completedAt;
+  if (isAutomationRunWorking(thread)) return false;
+  const completedAt = thread.latestRun?.completedAt;
   if (!completedAt) return false;
   const completedAtMs = Date.parse(completedAt);
   if (Number.isNaN(completedAtMs)) return false;
@@ -62,27 +82,21 @@ export function isAutomationRunUnread(input: {
  */
 export function countUnreadAutomationRuns(input: {
   readonly threads: ReadonlyArray<EnvironmentThreadShell>;
-  readonly lastVisitedAtByThreadKey: ThreadLastVisitedAtByKey;
   /**
-   * Keyed `environmentId:automationId`. A run whose automation is gone — deleted
+   * Runs of live automations only. A run whose automation is gone — deleted
    * while the run itself was promoted to the sidebar — is a plain thread now,
-   * and the sidebar's own unread treatment owns it. Counting it here would leave
-   * a badge the automations page has nothing to clear.
+   * and the sidebar's own unread treatment owns it. Counting it here would
+   * leave a badge the automations page has nothing to clear.
    */
-  readonly knownAutomationKeys: ReadonlySet<string>;
+  readonly runsByThreadKey: AutomationRunsByThreadKey;
+  readonly lastVisitedAtByThreadKey: ThreadLastVisitedAtByKey;
 }): number {
+  if (input.runsByThreadKey.size === 0) return 0;
   let count = 0;
   for (const thread of input.threads) {
-    // The sidebar hands this every thread in the workspace, so the cheap tests
-    // come before the keys a lookup would need.
-    if (thread.automationId == null) continue;
-    if (!input.knownAutomationKeys.has(`${thread.environmentId}:${thread.automationId}`)) continue;
-    if (
-      isAutomationRunUnread({
-        thread,
-        lastVisitedAt: input.lastVisitedAtByThreadKey[automationRunVisitKey(thread)],
-      })
-    ) {
+    const key = automationRunVisitKey(thread);
+    if (!input.runsByThreadKey.has(key)) continue;
+    if (isAutomationRunUnread({ thread, lastVisitedAt: input.lastVisitedAtByThreadKey[key] })) {
       count += 1;
     }
   }
@@ -106,13 +120,7 @@ export function resolveAutomationRowStatus(input: {
   readonly runThreads: ReadonlyArray<EnvironmentThreadShell>;
 }): AutomationRowStatus {
   const { automation } = input;
-  const isRunning = input.runThreads.some(
-    (thread) =>
-      thread.session?.status === "starting" ||
-      thread.session?.status === "running" ||
-      thread.latestTurn?.state === "running",
-  );
-  if (isRunning) {
+  if (input.runThreads.some(isAutomationRunWorking)) {
     return { kind: "running" };
   }
   if (!automation.enabled) {
@@ -137,6 +145,7 @@ export function resolveAutomationRowStatus(input: {
 export function buildAutomationRowModels(input: {
   readonly automations: ReadonlyArray<EnvironmentAutomation>;
   readonly threads: ReadonlyArray<EnvironmentThreadShell>;
+  readonly runsByThreadKey: AutomationRunsByThreadKey;
   readonly resolveProjectName: (automation: EnvironmentAutomation) => string | null;
   readonly resolveModelLabel: (automation: EnvironmentAutomation) => string | null;
   readonly resolveEnvironmentLabel: (automation: EnvironmentAutomation) => string | null;
@@ -146,8 +155,9 @@ export function buildAutomationRowModels(input: {
 }): ReadonlyArray<AutomationRowModel> {
   const runThreadsByAutomation = new Map<string, EnvironmentThreadShell[]>();
   for (const thread of input.threads) {
-    if (thread.automationId == null) continue;
-    const key = `${thread.environmentId}:${thread.automationId}`;
+    const run = input.runsByThreadKey.get(automationRunVisitKey(thread));
+    if (run === undefined) continue;
+    const key = `${thread.environmentId}:${run.automationId}`;
     const bucket = runThreadsByAutomation.get(key);
     if (bucket === undefined) {
       runThreadsByAutomation.set(key, [thread]);

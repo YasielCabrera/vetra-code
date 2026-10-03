@@ -2,12 +2,16 @@ import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
-import { AutomationSchedule, resolveAutomationNextRunAt } from "./automation.ts";
-import { ClientOrchestrationCommand, OrchestrationAutomation } from "./orchestration.ts";
+import {
+  Automation,
+  AutomationCreateInput,
+  AutomationSchedule,
+  resolveAutomationNextRunAt,
+} from "./automation.ts";
 
 const decodeSchedule = Schema.decodeUnknownEffect(AutomationSchedule);
-const decodeAutomation = Schema.decodeUnknownEffect(OrchestrationAutomation);
-const decodeClientCommand = Schema.decodeUnknownEffect(ClientOrchestrationCommand);
+const decodeAutomation = Schema.decodeUnknownEffect(Automation);
+const decodeCreateInput = Schema.decodeUnknownEffect(AutomationCreateInput);
 
 const baseAutomation = {
   id: "automation-1",
@@ -26,7 +30,6 @@ const baseAutomation = {
   lastRun: null,
   createdAt: "2026-08-12T10:00:00.000Z",
   updatedAt: "2026-08-12T10:00:00.000Z",
-  deletedAt: null,
 } as const;
 
 it.effect("decodes a recurring schedule", () =>
@@ -75,11 +78,9 @@ it.effect("decodes an automation and its run state", () =>
   }),
 );
 
-it.effect("decodes an owned-project automation.create from a client", () =>
+it.effect("decodes an owned-project create from a client", () =>
   Effect.gen(function* () {
-    const parsed = yield* decodeClientCommand({
-      type: "automation.create",
-      commandId: "command-1",
+    const parsed = yield* decodeCreateInput({
       automationId: "automation-1",
       title: "Daily briefing",
       prompt: "Summarize what changed since yesterday.",
@@ -91,12 +92,10 @@ it.effect("decodes an owned-project automation.create from a client", () =>
       baseBranch: null,
       startFromOrigin: false,
       enabled: true,
-      createdAt: "2026-08-12T10:00:00.000Z",
     });
-    assert.strictEqual(parsed.type, "automation.create");
     // The client asks for an owned project without naming a root: only the
     // server knows where its Vetra home is.
-    assert.isFalse("workspaceRoot" in (parsed as { project: object }).project);
+    assert.deepStrictEqual(parsed.project, { kind: "owned", projectId: "project-1" });
   }),
 );
 

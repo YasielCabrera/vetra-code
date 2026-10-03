@@ -241,7 +241,7 @@ export function IssueDetailPanel({
             type="button"
             className={cn(
               "shrink-0 font-medium underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              detail.state === "open" ? "text-success" : "text-violet-600 dark:text-violet-300/90",
+              detail.state === "open" ? "text-success" : "text-merged",
             )}
             aria-label={`Open issue #${detail.number} on its host`}
             onClick={() => openExternal(detail.url)}
@@ -300,11 +300,7 @@ export function IssueDetailPanel({
             >
               <StateIcon
                 aria-hidden
-                className={cn(
-                  "size-3",
-                  detail.state === "closed" &&
-                    "text-violet-600 opacity-100 dark:text-violet-300/90",
-                )}
+                className={cn("size-3", detail.state === "closed" && "text-merged opacity-100")}
               />
               {detail.state === "open" ? "Open" : "Closed"}
             </Badge>
@@ -341,7 +337,7 @@ export function IssueDetailPanel({
           {tab === "timeline" ? (
             <div className="ml-auto flex shrink-0 items-center gap-2">
               <span
-                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground"
+                className="inline-flex items-center gap-1 text-2xs text-muted-foreground"
                 aria-label={
                   activityError
                     ? "Issue activity unavailable"
@@ -463,7 +459,7 @@ export function IssueDetailPanel({
               }
             >
               {detail.commentsTruncated ? (
-                <p className="mb-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1.5 text-xs">
+                <p className="mb-2 rounded-md border border-warning/30 bg-warning/5 px-2 py-1.5 text-xs">
                   This conversation is longer than this panel reads in one go. Open it on GitHub to
                   read the rest.
                 </p>

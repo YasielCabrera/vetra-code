@@ -821,7 +821,7 @@ function IssuesRouteView() {
       )}
 
       {unavailableProviders.length > 0 || (listData?.errors.length ?? 0) > 0 || pageHasErrors ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs">
           <span className="min-w-0 flex-1">
             {unavailableProviders[0]?.detail ??
               listQuery.error ??
@@ -885,7 +885,11 @@ function IssuesRouteView() {
         rightPanelOpen={rightPanelState.isOpen}
         rightPanelShortcutLabel={null}
         rightPanelUnavailableLabel="Select an issue first"
-        liveAgentCount={0}
+        threadPanelOpen={false}
+        threadPanelPresentation="inline"
+        threadPanelShortcutLabel={null}
+        threadPanelHasAttention={false}
+        onToggleThreadPanel={() => undefined}
         onToggleTerminal={() => undefined}
         onToggleRightPanel={toggleRightPanel}
       />
@@ -1006,7 +1010,6 @@ function IssuesRouteView() {
             onAddFiles={() => undefined}
             onAddPullRequest={() => undefined}
             onAddPullRequests={() => undefined}
-            onAddAgents={() => undefined}
             onAddPowerhouse={() => undefined}
             onAddDevice={() => undefined}
             browserAvailable={false}
@@ -1015,10 +1018,8 @@ function IssuesRouteView() {
             filesAvailable={false}
             pullRequestAvailable={false}
             pullRequestsAvailable={false}
-            agentsAvailable={false}
             powerhouseAvailable={false}
             deviceAvailable={false}
-            liveAgentCount={0}
             issueStatuses={issueTabStatuses}
           >
             <IssueDetailPanel

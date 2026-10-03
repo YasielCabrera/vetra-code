@@ -17,7 +17,7 @@ export function useMarkAutomationRunsRead(): (runs: ReadonlyArray<EnvironmentThr
   return useCallback(
     (runs) => {
       const entries = runs.flatMap((thread) => {
-        const completedAt = thread.latestTurn?.completedAt;
+        const completedAt = thread.latestRun?.completedAt;
         // An unfinished run has no completion to acknowledge.
         return completedAt
           ? [{ threadKey: automationRunVisitKey(thread), visitedAt: completedAt }]

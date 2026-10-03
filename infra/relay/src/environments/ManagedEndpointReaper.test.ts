@@ -221,7 +221,7 @@ function harness(input?: {
     apnsDeliveryJobSigningSecret: Redacted.make("job-secret"),
     clerkSecretKey: Redacted.make("clerk-secret"),
     clerkPublishableKey: "pk_test_test",
-    clerkJwtAudience: "t3-code-relay",
+    clerkJwtAudience: "vetra-code-relay",
     cloudMintPrivateKey: Redacted.make("cloud-private-key"),
     cloudMintPublicKey: "cloud-public-key",
     managedEndpointBaseDomain: "example.test",

@@ -21,14 +21,18 @@ export function PowerhousePanelLoading({ label = "Loading Powerhouse…" }: { la
         <Skeleton className="h-4 w-28" />
         <Skeleton className="size-7" />
       </div>
-      {["w-4/5", "w-2/3", "w-3/4"].map((width) => (
+      {(["long", "short", "medium"] as const).map((width) => (
         <div
           key={width}
           className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/60 p-3"
         >
           <Skeleton shape="card" className="size-8 shrink-0" />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <Skeleton className={cn("h-3", width)} />
+            <Skeleton
+              className={
+                width === "short" ? "h-3 w-2/3" : width === "medium" ? "h-3 w-3/4" : "h-3 w-4/5"
+              }
+            />
             <Skeleton className="h-2.5 w-1/2" />
           </div>
         </div>
@@ -148,9 +152,7 @@ export function PowerhouseDisclosure({
           )}
           <span className="min-w-0 flex-1 truncate text-xs font-medium">{title}</span>
           {meta === undefined ? null : (
-            <span className="shrink-0 text-[.65rem] tabular-nums text-muted-foreground">
-              {meta}
-            </span>
+            <span className="shrink-0 text-3xs tabular-nums text-muted-foreground">{meta}</span>
           )}
         </button>
         {action === undefined ? null : <div className="shrink-0 pr-1.5">{action}</div>}

@@ -22,12 +22,17 @@ import { useAllEnvironmentShellsBootstrapped, useThreadShells } from "../../stat
 import { useAutomationActions } from "../../hooks/useAutomationActions";
 import { useMarkAutomationRunsRead } from "../../hooks/useAutomationRunsRead";
 import { useUiStateStore } from "../../uiStateStore";
-import { useAutomations, useEnvironmentSupportsAutomations } from "../../state/automations";
+import {
+  useAutomationRunsByThreadKey,
+  useAutomations,
+  useEnvironmentSupportsAutomations,
+} from "../../state/automations";
 import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
 import { useProjects } from "../../state/entities";
 import { useClientSettings, usePrimarySettings } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
-import { formatRelativeTimeLabel } from "../../timestampFormat";
+import type { TimestampFormat } from "@t3tools/contracts/settings";
+import { formatRelativeTimeLabel, formatUpcomingTimestamp } from "../../timestampFormat";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "../../workspaceTitlebar";
 import {
   applyProviderInstanceSettings,
@@ -62,6 +67,7 @@ export function AutomationsPage(props?: {
   const panelOpen = props?.automationKey !== undefined || props?.isNew === true;
   const automations = useAutomations();
   const threads = useThreadShells();
+  const runsByThreadKey = useAutomationRunsByThreadKey();
   const projects = useProjects();
   const { environments } = useEnvironments();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
@@ -113,6 +119,7 @@ export function AutomationsPage(props?: {
         buildAutomationRowModels({
           automations,
           threads,
+          runsByThreadKey,
           resolveProjectName: (automation) =>
             projectTitleByKey.get(`${automation.environmentId}:${automation.projectId}`) ?? null,
           resolveModelLabel: (automation) =>
@@ -135,6 +142,7 @@ export function AutomationsPage(props?: {
       modelLabelBySlug,
       primaryEnvironmentId,
       projectTitleByKey,
+      runsByThreadKey,
       threadLastVisitedAtById,
       threads,
       timestampFormat,
@@ -198,7 +206,7 @@ export function AutomationsPage(props?: {
           {!isElectron && (
             <header
               className={cn(
-                "workspace-topbar px-3 transition-[padding-left] duration-200 ease-linear motion-reduce:transition-none sm:px-5",
+                "flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center px-3 transition-[padding-left] duration-200 ease-linear motion-reduce:transition-none sm:px-5",
                 COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
               )}
             >
@@ -212,8 +220,7 @@ export function AutomationsPage(props?: {
                 // Only this column reaches the right edge, and only while the
                 // panel is closed; otherwise the panel clears the native
                 // window controls itself.
-                !panelOpen &&
-                  "wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]",
+                !panelOpen && "wco:pr-(--workspace-native-controls-inset)",
                 COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
               )}
             >
@@ -244,7 +251,7 @@ export function AutomationsPage(props?: {
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Search automations"
                     aria-label="Search automations"
-                    className="h-9 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground/72 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 sm:h-8"
+                    className="h-9 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground/72 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/24 sm:h-8"
                   />
                 </div>
                 {/* Sheds its label before the search field starves. */}
@@ -313,10 +320,7 @@ export function AutomationsPage(props?: {
                   matches. */}
               {automationsKnown && query.trim().length === 0 ? (
                 <>
-                  <div
-                    aria-hidden
-                    className="mt-2 h-px bg-[repeating-linear-gradient(to_right,var(--color-border)_0,var(--color-border)_4px,transparent_4px,transparent_8px)]"
-                  />
+                  <div aria-hidden className="mt-2 border-t border-dashed border-border" />
                   {rows.length > 0 ? (
                     <p className="px-2 text-xs font-medium text-muted-foreground">
                       Start from a template
@@ -349,7 +353,10 @@ export function AutomationsPage(props?: {
   );
 }
 
-function statusPresentation(status: AutomationRowStatus): {
+function statusPresentation(
+  status: AutomationRowStatus,
+  timestampFormat: TimestampFormat,
+): {
   readonly label: string;
   readonly className: string;
   readonly icon: ReactNode;
@@ -370,18 +377,18 @@ function statusPresentation(status: AutomationRowStatus): {
     case "missed":
       return {
         label: `Missed ${formatRelativeTimeLabel(status.scheduledFor)}`,
-        className: "text-amber-700 dark:text-amber-300",
+        className: "text-warning-foreground",
         icon: <CircleAlertIcon aria-hidden className="size-3" />,
       };
     case "skipped":
       return {
         label: `Skipped ${formatRelativeTimeLabel(status.scheduledFor)}`,
-        className: "text-amber-700 dark:text-amber-300",
+        className: "text-warning-foreground",
         icon: <CircleAlertIcon aria-hidden className="size-3" />,
       };
     case "scheduled":
       return {
-        label: `Next ${formatRelativeTimeLabel(status.nextRunAt)}`,
+        label: `Next ${formatUpcomingTimestamp(status.nextRunAt, timestampFormat)}`,
         className: "text-muted-foreground",
         icon: <CalendarClockIcon aria-hidden className="size-3" />,
       };
@@ -405,7 +412,8 @@ const AutomationRow = memo(function AutomationRow({
   row: AutomationRowModel;
   onOpen: (automation: EnvironmentAutomation) => void;
 }) {
-  const status = statusPresentation(row.status);
+  const timestampFormat = useClientSettings((settings) => settings.timestampFormat);
+  const status = statusPresentation(row.status, timestampFormat);
   const { confirmAndDelete, runNow, setEnabled } = useAutomationActions();
   const markRunsRead = useMarkAutomationRunsRead();
   const automation = row.automation;
@@ -465,7 +473,7 @@ const AutomationRow = memo(function AutomationRow({
               read is the more useful of the two numbers, and the total is one
               click away in the panel. */}
           {unreadRunCount > 0 ? (
-            <span className="font-medium text-emerald-700 dark:text-emerald-300">
+            <span className="font-medium text-success-foreground">
               {unreadRunCountLabel(unreadRunCount)}
             </span>
           ) : (

@@ -175,7 +175,7 @@ export function DocumentList({
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-sm font-medium">{filtered ? "Search results" : "Documents"}</h2>
-            <p className="truncate font-mono text-[.65rem] text-muted-foreground">
+            <p className="truncate font-mono text-3xs text-muted-foreground">
               {search.parentId ?? "Across reactor"}
             </p>
           </div>
@@ -251,7 +251,7 @@ export function DocumentList({
                     <span className="min-w-0 truncate text-sm font-medium">
                       {documentDisplayName(document)}
                     </span>
-                    <span className="min-w-0 truncate font-mono text-[.65rem] text-muted-foreground">
+                    <span className="min-w-0 truncate font-mono text-3xs text-muted-foreground">
                       {document.documentType}
                     </span>
                   </span>
@@ -272,13 +272,13 @@ export function DocumentList({
         {items.length > 0 ? (
           <div className="flex items-center justify-between gap-2">
             {/* Never "N of M": the reactor reports page length as its total. */}
-            <span className="text-[.65rem] text-muted-foreground">
+            <span className="text-3xs text-muted-foreground">
               {searchingText
                 ? `${visibleItems.length} matching · ${describeLoadedCount(items.length, "document")}`
                 : describeLoadedCount(items.length, "document")}
             </span>
             {loadingMore ? (
-              <span role="status" className="text-[.65rem] text-muted-foreground">
+              <span role="status" className="text-3xs text-muted-foreground">
                 Loading more…
               </span>
             ) : null}

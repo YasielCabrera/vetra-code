@@ -7,9 +7,8 @@ import {
 } from "@t3tools/client-runtime/state/runtime";
 import { useCallback, useMemo } from "react";
 
-import { newThreadId } from "../lib/utils";
 import { readLocalApi } from "../localApi";
-import { automationEnvironment } from "../state/automations";
+import { automationEnvironment, readAutomationRun } from "../state/automations";
 import { useAtomCommand } from "../state/use-atom-command";
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
 
@@ -60,7 +59,7 @@ export function useAutomationActions(): AutomationActions {
   const deleteAutomation = useAtomCommand(automationEnvironment.delete, {
     reportFailure: false,
   });
-  const claimAutomationRun = useAtomCommand(automationEnvironment.claimRun, {
+  const runAutomationNow = useAtomCommand(automationEnvironment.runNow, {
     reportFailure: false,
   });
 
@@ -89,22 +88,15 @@ export function useAutomationActions(): AutomationActions {
 
   const runNow = useCallback(
     async (automation: EnvironmentAutomation) => {
-      const result = await claimAutomationRun({
+      const result = await runAutomationNow({
         environmentId: automation.environmentId,
-        input: {
-          automationId: automation.id,
-          // A manual run is scheduled for the moment it was asked for, which
-          // is also what keeps its command id distinct from the timer's.
-          scheduledFor: new Date().toISOString(),
-          reason: "manual",
-          threadId: newThreadId(),
-        },
+        input: { automationId: automation.id },
       });
       if (!settled("Could not start a run", result)) return false;
       toastManager.add({ type: "success", title: "Run started" });
       return true;
     },
-    [claimAutomationRun, settled],
+    [runAutomationNow, settled],
   );
 
   const setEnabled = useCallback(
@@ -132,7 +124,10 @@ export function useAutomationActions(): AutomationActions {
             describeAutomationDeletion({
               ownsProject: automation.ownsProject,
               runCount: runThreads.length,
-              revealedRunCount: runThreads.filter((thread) => thread.hiddenAt == null).length,
+              revealedRunCount: runThreads.filter((thread) => {
+                const run = readAutomationRun(thread);
+                return run !== null && run.hiddenAt === null;
+              }).length,
             }),
           ].join("\n"),
           { variant: "destructive" },

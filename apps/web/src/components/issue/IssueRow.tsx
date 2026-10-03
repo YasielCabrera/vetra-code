@@ -43,10 +43,7 @@ function IssueRowImpl({
     >
       <StateIcon
         aria-label={entry.state === "open" ? "Open issue" : "Closed issue"}
-        className={cn(
-          "size-4 shrink-0",
-          entry.state === "open" ? "text-success" : "text-violet-600 dark:text-violet-300/90",
-        )}
+        className={cn("size-4 shrink-0", entry.state === "open" ? "text-success" : "text-merged")}
       />
       <span className="min-w-0">
         <span className="flex min-w-0 items-center gap-1.5">

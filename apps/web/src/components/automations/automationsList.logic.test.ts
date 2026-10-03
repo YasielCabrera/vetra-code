@@ -1,6 +1,10 @@
-import type { EnvironmentAutomation } from "@t3tools/client-runtime/state/automations";
+import {
+  automationRunKey,
+  type EnvironmentAutomation,
+  type EnvironmentAutomationRun,
+} from "@t3tools/client-runtime/state/automations";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
-import type { AutomationId, EnvironmentId, ProjectId, ThreadId, TurnId } from "@t3tools/contracts";
+import type { AutomationId, EnvironmentId, ProjectId, RunId, ThreadId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { describeAutomationDeletion } from "../../hooks/useAutomationActions";
@@ -43,7 +47,6 @@ function makeAutomation(overrides?: Partial<EnvironmentAutomation>): Environment
     lastRun: null,
     createdAt: "2026-08-12T10:00:00.000Z",
     updatedAt: "2026-08-12T10:00:00.000Z",
-    deletedAt: null,
     ...overrides,
   } as EnvironmentAutomation;
 }
@@ -59,15 +62,19 @@ function makeRunThread(overrides?: Partial<EnvironmentThreadShell>): Environment
     interactionMode: "default",
     branch: null,
     worktreePath: null,
-    latestTurn: null,
+    latestRun: {
+      runId: "run-run-1" as RunId,
+      status: "running",
+      requestedAt: "2026-08-12T12:00:00.000Z",
+      startedAt: "2026-08-12T12:00:00.000Z",
+      completedAt: null,
+      assistantMessageId: null,
+    },
     createdAt: "2026-08-12T12:00:00.000Z",
     updatedAt: "2026-08-12T12:00:00.000Z",
     archivedAt: null,
     settledOverride: null,
     settledAt: null,
-    hiddenAt: "2026-08-12T12:00:00.000Z",
-    automationId: "automation-1" as AutomationId,
-    session: null,
     latestUserMessageAt: null,
     hasPendingApprovals: false,
     hasPendingUserInput: false,
@@ -81,9 +88,9 @@ function makeFinishedRunThread(
   overrides?: Partial<EnvironmentThreadShell>,
 ): EnvironmentThreadShell {
   return makeRunThread({
-    latestTurn: {
-      turnId: "turn-1" as TurnId,
-      state: "completed",
+    latestRun: {
+      runId: "run-run-1" as RunId,
+      status: "completed",
       requestedAt: completedAt,
       startedAt: completedAt,
       completedAt,
@@ -91,6 +98,29 @@ function makeFinishedRunThread(
     },
     ...overrides,
   });
+}
+
+/** Every thread given is a run of `automationId` unless it is listed in `others`. */
+function runsFor(
+  threads: ReadonlyArray<EnvironmentThreadShell>,
+  others: Readonly<Record<string, string | null>> = {},
+): ReadonlyMap<string, EnvironmentAutomationRun> {
+  const runs = new Map<string, EnvironmentAutomationRun>();
+  for (const thread of threads) {
+    const automationId = thread.id in others ? others[thread.id] : "automation-1";
+    if (automationId === null || automationId === undefined) continue;
+    const run = {
+      environmentId: thread.environmentId,
+      threadId: thread.id,
+      automationId: automationId as AutomationId,
+      scheduledFor: thread.createdAt,
+      reason: "schedule",
+      createdAt: thread.createdAt,
+      hiddenAt: thread.createdAt,
+    } satisfies EnvironmentAutomationRun;
+    runs.set(automationRunKey(run), run);
+  }
+  return runs;
 }
 
 describe("schedule presets", () => {
@@ -173,19 +203,7 @@ describe("automation row status", () => {
     expect(
       resolveAutomationRowStatus({
         automation: makeAutomation(),
-        runThreads: [
-          makeRunThread({
-            session: {
-              threadId: "run-1" as ThreadId,
-              status: "running",
-              providerName: "codex",
-              runtimeMode: "full-access",
-              activeTurnId: null,
-              lastError: null,
-              updatedAt: "2026-08-12T12:00:00.000Z",
-            },
-          }),
-        ],
+        runThreads: [makeRunThread()],
       }),
     ).toEqual({ kind: "running" });
   });
@@ -230,17 +248,22 @@ describe("automation row status", () => {
             threadId: "run-1" as ThreadId,
           },
         }),
-        runThreads: [makeRunThread()],
+        runThreads: [makeFinishedRunThread("2026-08-12T12:05:00.000Z")],
       }),
     ).toEqual({ kind: "idle" });
   });
 });
 
 describe("automation rows", () => {
-  const build = (automations: ReadonlyArray<EnvironmentAutomation>, threads = [makeRunThread()]) =>
+  const build = (
+    automations: ReadonlyArray<EnvironmentAutomation>,
+    threads = [makeRunThread()],
+    others: Readonly<Record<string, string | null>> = {},
+  ) =>
     buildAutomationRowModels({
       automations,
       threads,
+      runsByThreadKey: runsFor(threads, others),
       resolveProjectName: () => "vetra-code",
       resolveModelLabel: () => "GPT-5",
       resolveEnvironmentLabel: () => null,
@@ -253,15 +276,16 @@ describe("automation rows", () => {
         makeRunThread({ id: "run-1" as ThreadId, createdAt: "2026-08-11T12:00:00.000Z" }),
         makeRunThread({ id: "run-2" as ThreadId, createdAt: "2026-08-12T12:00:00.000Z" }),
         // A different automation's run must not be counted here.
-        makeRunThread({ id: "run-3" as ThreadId, automationId: "automation-2" as AutomationId }),
+        makeRunThread({ id: "run-3" as ThreadId }),
       ],
+      { "run-3": "automation-2" },
     );
     expect(rows[0]?.runCount).toBe(2);
     expect(rows[0]?.lastRunAt).toBe("2026-08-12T12:00:00.000Z");
   });
 
   it("ignores threads that belong to no automation", () => {
-    const rows = build([makeAutomation()], [makeRunThread({ automationId: null })]);
+    const rows = build([makeAutomation()], [makeRunThread()], { "run-1": null });
     expect(rows[0]?.runCount).toBe(0);
   });
 
@@ -332,19 +356,13 @@ describe("unread runs", () => {
   });
 
   it("says nothing about runs with no result to read", () => {
-    // Still running, archived, or not an automation's thread at all.
+    // Still running, or archived.
     expect(isAutomationRunUnread({ thread: makeRunThread(), lastVisitedAt: undefined })).toBe(
       false,
     );
     expect(
       isAutomationRunUnread({
         thread: makeFinishedRunThread(COMPLETED_AT, { archivedAt: "2026-08-12T13:00:00.000Z" }),
-        lastVisitedAt: undefined,
-      }),
-    ).toBe(false);
-    expect(
-      isAutomationRunUnread({
-        thread: makeFinishedRunThread(COMPLETED_AT, { automationId: null }),
         lastVisitedAt: undefined,
       }),
     ).toBe(false);
@@ -359,36 +377,39 @@ describe("unread runs", () => {
         environmentId: "env-2" as EnvironmentId,
       }),
       // Not an automation run, and a run still in flight: neither counts.
-      makeFinishedRunThread(COMPLETED_AT, { id: "chat-1" as ThreadId, automationId: null }),
+      makeFinishedRunThread(COMPLETED_AT, { id: "chat-1" as ThreadId }),
       makeRunThread({ id: "run-4" as ThreadId }),
     ];
 
     expect(
       countUnreadAutomationRuns({
         threads,
+        runsByThreadKey: runsFor(threads, { "chat-1": null }),
         lastVisitedAtByThreadKey: { "env-1:run-1": COMPLETED_AT },
-        knownAutomationKeys: new Set(["env-1:automation-1", "env-2:automation-1"]),
       }),
     ).toBe(2);
   });
 
   it("leaves a deleted automation's promoted run to the sidebar", () => {
     expect(
+      // The stream only carries runs of live automations.
       countUnreadAutomationRuns({
-        threads: [makeFinishedRunThread(COMPLETED_AT, { hiddenAt: null })],
+        threads: [makeFinishedRunThread(COMPLETED_AT)],
+        runsByThreadKey: new Map(),
         lastVisitedAtByThreadKey: {},
-        knownAutomationKeys: new Set(),
       }),
     ).toBe(0);
   });
 
   it("hands each row the runs it still owes a read", () => {
+    const threads = [
+      makeFinishedRunThread(COMPLETED_AT, { id: "run-1" as ThreadId }),
+      makeFinishedRunThread(COMPLETED_AT, { id: "run-2" as ThreadId }),
+    ];
     const rows = buildAutomationRowModels({
       automations: [makeAutomation()],
-      threads: [
-        makeFinishedRunThread(COMPLETED_AT, { id: "run-1" as ThreadId }),
-        makeFinishedRunThread(COMPLETED_AT, { id: "run-2" as ThreadId }),
-      ],
+      threads,
+      runsByThreadKey: runsFor(threads),
       resolveProjectName: () => null,
       resolveModelLabel: () => null,
       resolveEnvironmentLabel: () => null,

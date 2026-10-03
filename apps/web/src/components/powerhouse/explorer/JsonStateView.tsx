@@ -95,7 +95,7 @@ export function JsonStateView({ code }: { code: string }) {
           autocompletion: false,
         }}
         aria-label="Document state JSON"
-        className="text-[length:var(--font-size-code,0.8125rem)] [&_.cm-content]:py-2.5 [&_.cm-editor]:outline-none [&_.cm-foldGutter_.cm-gutterElement]:cursor-pointer [&_.cm-gutterElement]:leading-5 [&_.cm-line]:px-3 [&_.cm-line]:leading-5 [&_.cm-lineNumbers_.cm-gutterElement]:px-2 [&_.cm-scroller]:font-mono"
+        className="text-(length:--font-size-code,0.8125rem) [&_.cm-content]:py-2.5 [&_.cm-editor]:outline-none [&_.cm-foldGutter_.cm-gutterElement]:cursor-pointer [&_.cm-gutterElement]:leading-5 [&_.cm-line]:px-3 [&_.cm-line]:leading-5 [&_.cm-lineNumbers_.cm-gutterElement]:px-2 [&_.cm-scroller]:font-mono"
       />
     </FindSourceHost>
   );

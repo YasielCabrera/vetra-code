@@ -46,7 +46,7 @@ function SchemaViewControl({
                 aria-pressed={value === id}
                 onClick={() => onChange(id)}
                 className={cn(
-                  "flex h-6 items-center gap-1 rounded-md px-1.5 text-[.65rem] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex h-6 items-center gap-1 rounded-md px-1.5 text-3xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   value === id
                     ? "bg-background text-foreground shadow-xs dark:bg-input/64"
                     : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
@@ -67,7 +67,7 @@ function SchemaViewControl({
 function DiagramFallback() {
   return (
     <div
-      className="flex h-[clamp(24rem,62vh,44rem)] items-center justify-center bg-[var(--code-background)]"
+      className="flex h-[clamp(24rem,62vh,44rem)] items-center justify-center bg-code"
       role="status"
       aria-label="Preparing schema diagram"
     >

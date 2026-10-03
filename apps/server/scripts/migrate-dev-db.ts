@@ -5,7 +5,7 @@
  * Vetra Code database, then run this checkout's migrations against it.
  *
  * `vp run migrate-dev-db` from a worktree:
- *   1. Replaces `<worktree>/.vetra-code/userdata/state.sqlite`.
+ *   1. Replaces `<worktree>/.vetra-code/userdata/statev2.sqlite`.
  *   2. Snapshots the real db (read-only VACUUM INTO) and prunes it to the
  *      most recently updated projects and, per project, the most recent
  *      threads that have fully stopped. Working, settled, and monitored
@@ -377,7 +377,7 @@ export const runMigrateDevDb = Effect.fn("runMigrateDevDb")(function* (
     return yield* new MigrateDevDbNotInWorktreeError();
   }
   const stateDir = path.join(baseDir, "userdata");
-  const databasePath = path.join(stateDir, "state.sqlite");
+  const databasePath = path.join(stateDir, "statev2.sqlite");
   const snapshotPath = `${databasePath}.migrate-dev-db-tmp`;
 
   if (!(yield* fs.exists(sourcePath))) {

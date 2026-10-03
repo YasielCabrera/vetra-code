@@ -177,7 +177,7 @@ function ConnectedExplorer({
       {selection.path.length > 0 ? (
         <nav
           aria-label="Reactor explorer breadcrumb"
-          className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-1 px-3 pt-3 text-[.7rem] @[32rem]:px-5"
+          className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-1 px-3 pt-3 text-2xs @[32rem]:px-5"
         >
           <button
             type="button"

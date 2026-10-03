@@ -110,48 +110,46 @@ function OperationRow({ operation }: { operation: PowerhouseReactorOperation }) 
         ) : (
           <ChevronRight aria-hidden className="size-3 shrink-0 text-muted-foreground" />
         )}
-        <span className="w-10 shrink-0 text-right font-mono text-[.65rem] text-muted-foreground">
+        <span className="w-10 shrink-0 text-right font-mono text-3xs text-muted-foreground">
           {operation.index}
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="flex min-w-0 items-baseline gap-1.5">
             <span
               className={cn(
-                "min-w-0 truncate font-mono text-[.7rem]",
+                "min-w-0 truncate font-mono text-2xs",
                 failed ? "text-destructive" : undefined,
               )}
             >
               {operation.actionType ?? "—"}
             </span>
             {operation.scope === null ? null : (
-              <span className="shrink-0 text-[.65rem] text-muted-foreground">
-                {operation.scope}
-              </span>
+              <span className="shrink-0 text-3xs text-muted-foreground">{operation.scope}</span>
             )}
           </span>
           {metadata.length === 0 ? null : (
-            <span className="min-w-0 truncate text-[.65rem] text-muted-foreground">{metadata}</span>
+            <span className="min-w-0 truncate text-3xs text-muted-foreground">{metadata}</span>
           )}
         </span>
       </button>
       {expanded ? (
-        <div id={contentId} className="flex flex-col gap-2 px-3 pb-3 pl-[4.25rem]">
+        <div id={contentId} className="flex flex-col gap-2 px-3 pb-3 pl-17">
           {operation.error === null ? null : (
-            <p className="text-[.7rem] text-destructive">Error: {operation.error}</p>
+            <p className="text-2xs text-destructive">Error: {operation.error}</p>
           )}
           {operation.hash === null ? null : (
-            <span className="font-mono text-[.65rem] break-all text-muted-foreground">
+            <span className="font-mono text-3xs break-all text-muted-foreground">
               {operation.hash}
             </span>
           )}
           {operation.actionInputTruncated ? (
-            <p className="text-[.7rem] text-muted-foreground">
+            <p className="text-2xs text-muted-foreground">
               Input omitted because it is too large to display safely.
             </p>
           ) : hasInput ? (
             <SdlBlock code={JSON.stringify(operation.actionInput, null, 2)} language="json" />
           ) : (
-            <span className="text-[.7rem] text-muted-foreground">No input.</span>
+            <span className="text-2xs text-muted-foreground">No input.</span>
           )}
         </div>
       ) : null}
@@ -251,11 +249,11 @@ export function OperationsList({ environmentId, url, documentId, view }: Operati
           ) : null}
           {items.length > 0 ? (
             <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="text-[.65rem] text-muted-foreground">
+              <span className="text-3xs text-muted-foreground">
                 {describeLoadedCount(items.length, "operation")}
               </span>
               {loadingMore ? (
-                <span role="status" className="text-[.65rem] text-muted-foreground">
+                <span role="status" className="text-3xs text-muted-foreground">
                   Loading more…
                 </span>
               ) : null}

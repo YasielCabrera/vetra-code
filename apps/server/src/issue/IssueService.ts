@@ -26,7 +26,7 @@ import {
 } from "@t3tools/contracts";
 import { detectSourceControlProviderFromRemoteUrl } from "@t3tools/shared/sourceControl";
 
-import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
+import * as ProjectService from "../project/ProjectService.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
 import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
 import { IssueProviderError, type IssueProviderApi } from "./IssueProvider.ts";
@@ -194,7 +194,7 @@ function providerSummaryDetail(error: IssueProviderError): string {
 
 export const make = Effect.gen(function* () {
   const registry = yield* IssueProviderRegistry;
-  const projections = yield* ProjectionSnapshotQuery.ProjectionSnapshotQuery;
+  const projectService = yield* ProjectService.ProjectService;
   const sourceControlProviders = yield* SourceControlProviderRegistry.SourceControlProviderRegistry;
   const rateLimits = yield* SourceControlRateLimit.SourceControlRateLimit;
 
@@ -296,7 +296,8 @@ export const make = Effect.gen(function* () {
   const listWorkspaceProjects = (
     filter: Pick<IssueListInput, "projectId" | "projectIds" | "host">,
   ): Effect.Effect<WorkspaceProjects, IssueError> =>
-    projections.getShellSnapshot().pipe(
+    projectService.listShells().pipe(
+      Effect.map((projects) => ({ projects })),
       Effect.mapError(
         (error) =>
           new IssueOperationError({

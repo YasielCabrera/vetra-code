@@ -382,7 +382,7 @@ export function DocumentFilterBar({
                                 />
                                 <span className="truncate">{definition.label}</span>
                               </FieldLabel>
-                              <span className="shrink-0 rounded-sm bg-muted px-1.5 py-0.5 text-[.625rem] font-medium text-muted-foreground">
+                              <span className="shrink-0 rounded-sm bg-muted px-1.5 py-0.5 text-3xs font-medium text-muted-foreground">
                                 {definition.operator}
                               </span>
                               <Button
@@ -446,12 +446,12 @@ export function DocumentFilterBar({
                 {selectedFields.length === 0 ? (
                   <div>
                     <p className="text-xs font-medium text-foreground">Choose a filter field</p>
-                    <p className="mt-0.5 text-[.6875rem] text-muted-foreground">
+                    <p className="mt-0.5 text-2xs text-muted-foreground">
                       Fields appear here only after you add them.
                     </p>
                   </div>
                 ) : availableFields.length === 0 ? (
-                  <p className="text-[.6875rem] text-muted-foreground">All fields are selected.</p>
+                  <p className="text-2xs text-muted-foreground">All fields are selected.</p>
                 ) : (
                   <Button
                     type="button"
@@ -486,7 +486,7 @@ export function DocumentFilterBar({
                           <span className="text-xs font-medium text-foreground">
                             {definition.label}
                           </span>
-                          <span className="truncate text-[.625rem] text-muted-foreground">
+                          <span className="truncate text-3xs text-muted-foreground">
                             {definition.operator} {definition.placeholder}
                           </span>
                         </span>
@@ -542,7 +542,7 @@ export function DocumentFilterBar({
               >
                 <button
                   type="button"
-                  className="flex min-w-0 items-center gap-1.5 px-2 text-[.6875rem] outline-none transition-colors hover:bg-accent/60 focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                  className="flex min-w-0 items-center gap-1.5 px-2 text-2xs outline-none transition-colors hover:bg-accent/60 focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   aria-label={`Edit ${definition.label} filter, ${definition.operator} ${value}`}
                   onClick={() => editAppliedFilter(field)}
                 >

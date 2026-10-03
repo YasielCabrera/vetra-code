@@ -45,12 +45,14 @@ function subscribe(listener: () => void) {
 }
 
 export function useSpeechPlayback(): SpeechPlayback | null {
-  return useSyncExternalStore(subscribe, () => playback);
+  const snapshot = () => playback;
+  return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
 
 /** The phase of `key` alone, so only the control reading it re-renders. */
 export function useSpeechPhase(key: string): SpeechPlayback["phase"] | null {
-  return useSyncExternalStore(subscribe, () => (playback?.key === key ? playback.phase : null));
+  const snapshot = () => (playback?.key === key ? playback.phase : null);
+  return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
 
 function end(run: SpeechRun) {

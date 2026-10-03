@@ -410,7 +410,7 @@ describe("subscription limit presentation", () => {
     expect(html).toContain("25% left");
     expect(html).not.toContain("work@example.com");
     expect(html.match(/aria-label="Toggle subscription account visibility"/gu)).toHaveLength(2);
-    expect(html.match(/blur-\[2px\]/gu)).toHaveLength(2);
+    expect(html.match(/blur-xs/gu)).toHaveLength(2);
   });
 
   it("renders loading, offline, and old-environment states independently", () => {
@@ -482,7 +482,7 @@ describe("subscription limit presentation", () => {
     expect(needsAuth).toContain("/settings/providers#provider-instance/remote/");
     expect(needsAuth).not.toContain("private@example.com");
     expect(needsAuth).toContain('aria-label="Toggle subscription account visibility"');
-    expect(needsAuth).toContain("blur-[2px]");
+    expect(needsAuth).toContain("blur-xs");
     expect(stateCard("unsupported")).toContain("unsupported message");
     expect(stateCard("error")).toContain("error message");
   });

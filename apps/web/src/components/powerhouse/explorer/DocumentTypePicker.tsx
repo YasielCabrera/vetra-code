@@ -48,9 +48,7 @@ function DocumentTypeItem({ option }: { option: PowerhouseDocumentTypeOption }) 
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-xs font-medium text-foreground">{option.label}</span>
-          <span className="truncate font-mono text-[.625rem] text-muted-foreground">
-            {option.value}
-          </span>
+          <span className="truncate font-mono text-3xs text-muted-foreground">{option.value}</span>
         </span>
       </div>
     </ComboboxItem>
@@ -117,7 +115,7 @@ export function DocumentTypePicker({
             <span className="truncate text-xs font-medium">
               {selectedOption?.label ?? "Custom document type"}
             </span>
-            <span className="truncate font-mono text-[.625rem] text-muted-foreground">{value}</span>
+            <span className="truncate font-mono text-3xs text-muted-foreground">{value}</span>
           </span>
         )}
         <ChevronDown aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
@@ -183,7 +181,7 @@ export function DocumentTypePicker({
                         ? "Custom document type"
                         : "Use this type"}
                     </span>
-                    <span className="truncate font-mono text-[.625rem] text-muted-foreground">
+                    <span className="truncate font-mono text-3xs text-muted-foreground">
                       {customValue}
                     </span>
                   </span>

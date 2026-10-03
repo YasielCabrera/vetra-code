@@ -25,7 +25,7 @@ import {
   Minus,
   Plus,
 } from "lucide-react";
-import { useCallback, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
 
 import { Button } from "~/components/ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "~/components/ui/menu";
@@ -99,12 +99,12 @@ function SchemaDeclarationCard({ data }: NodeProps<SchemaDeclarationNode>) {
         <span className="min-w-0 flex-1 truncate font-mono text-xs font-semibold">
           {declaration.name}
         </span>
-        <span className="shrink-0 rounded-sm border border-border/70 bg-background/70 px-1.5 py-0.5 text-[.6rem] font-medium tracking-wide text-muted-foreground uppercase">
+        <span className="shrink-0 rounded-sm border border-border/70 bg-background/70 px-1.5 py-0.5 text-3xs font-medium tracking-wide text-muted-foreground uppercase">
           {kindLabel}
         </span>
       </div>
       {presentation.items.length === 0 ? (
-        <div className="flex h-[2.125rem] items-center px-3 text-[.65rem] text-muted-foreground">
+        <div className="flex h-[2.125rem] items-center px-3 text-3xs text-muted-foreground">
           {declaration.kind === "scalar" ? "Custom scalar" : "No members"}
         </div>
       ) : (
@@ -112,7 +112,7 @@ function SchemaDeclarationCard({ data }: NodeProps<SchemaDeclarationNode>) {
           {presentation.items.map((item) => (
             <div
               key={`${item.name}:${item.detail ?? ""}`}
-              className="flex h-[1.6875rem] min-w-0 items-center gap-3 px-3 font-mono text-[.65rem]"
+              className="flex h-[1.6875rem] min-w-0 items-center gap-3 px-3 font-mono text-3xs"
             >
               <span className="min-w-0 flex-1 truncate text-foreground">{item.name}</span>
               {item.detail === null ? null : (
@@ -125,7 +125,8 @@ function SchemaDeclarationCard({ data }: NodeProps<SchemaDeclarationNode>) {
           {presentation.expandable ? (
             <button
               type="button"
-              className="nodrag nopan flex h-[1.8125rem] w-full items-center justify-between bg-muted/25 px-3 text-[.65rem] text-muted-foreground outline-none hover:bg-muted/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              // oxlint-disable-next-line shadcn/no-unknown-classes -- React Flow's drag and pan opt-outs, read by the library rather than styled
+              className="nodrag nopan flex h-[1.8125rem] w-full items-center justify-between bg-muted/25 px-3 text-3xs text-muted-foreground outline-none hover:bg-muted/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               aria-expanded={expanded}
               aria-label={
                 expanded
@@ -159,6 +160,15 @@ function SchemaDeclarationCard({ data }: NodeProps<SchemaDeclarationNode>) {
 }
 
 const NODE_TYPES = { schemaDeclaration: SchemaDeclarationCard };
+
+/** React Flow's theme variables, pointed at the app's code surface so the canvas follows the theme. */
+const REACT_FLOW_THEME = {
+  "--xy-background-color": "var(--code-background)",
+  "--xy-background-pattern-color": "color-mix(in srgb, var(--border) 72%, transparent)",
+  "--xy-edge-stroke": "var(--muted-foreground)",
+  "--xy-handle-background-color": "var(--primary)",
+  "--xy-handle-border-color": "var(--card)",
+} as CSSProperties;
 
 function relationLabel(relation: GraphqlSchemaRelation): string {
   const labels = relation.labels.join(", ");
@@ -337,6 +347,7 @@ function DiagramControls({
 
   return (
     <Panel position="bottom-left" className="m-2!">
+      {/* oxlint-disable-next-line shadcn/no-unknown-classes -- React Flow's drag and pan opt-outs, read by the library rather than styled */}
       <div className="nodrag nopan flex items-center gap-0.5 rounded-lg border border-border/70 bg-popover/95 p-0.5 shadow-sm">
         <Tooltip>
           <TooltipTrigger
@@ -430,7 +441,7 @@ function DiagramControls({
 
 function DiagramState({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="flex h-[clamp(24rem,62vh,44rem)] items-center justify-center bg-[var(--code-background)] px-6 py-10 text-center">
+    <div className="flex h-[clamp(24rem,62vh,44rem)] items-center justify-center bg-code px-6 py-10 text-center">
       <div className="max-w-sm space-y-1">
         <p className="text-xs font-medium text-foreground">{title}</p>
         <p className="text-xs leading-relaxed text-muted-foreground">{detail}</p>
@@ -519,7 +530,7 @@ export function SchemaDiagram({ source, label }: { source: string; label: string
   return (
     <div
       ref={rootRef}
-      className="min-w-0 bg-[var(--code-background)] text-[var(--code-foreground)]"
+      className="min-w-0 bg-code text-code-foreground"
       role="region"
       aria-label="GraphQL schema relationship diagram"
     >
@@ -545,11 +556,11 @@ export function SchemaDiagram({ source, label }: { source: string; label: string
           panOnScroll={false}
           onlyRenderVisibleElements={!exporting}
           proOptions={{ hideAttribution: true }}
-          className="[--xy-background-color:var(--code-background)] [--xy-background-pattern-color:color-mix(in_srgb,var(--border)_72%,transparent)] [--xy-edge-stroke:var(--muted-foreground)] [--xy-handle-background-color:var(--primary)] [--xy-handle-border-color:var(--card)]"
+          style={REACT_FLOW_THEME}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Panel position="top-right" className="m-2!">
-            <span className="pointer-events-none rounded-md border border-border/70 bg-popover/92 px-2 py-1 font-mono text-[.6rem] text-muted-foreground shadow-xs">
+            <span className="pointer-events-none rounded-md border border-border/70 bg-popover/92 px-2 py-1 font-mono text-3xs text-muted-foreground shadow-xs">
               {diagram.nodes.length} declaration{diagram.nodes.length === 1 ? "" : "s"},{" "}
               {diagram.edges.length} relation{diagram.edges.length === 1 ? "" : "s"}
             </span>
@@ -564,7 +575,7 @@ export function SchemaDiagram({ source, label }: { source: string; label: string
         </ReactFlow>
       </div>
       {hasLimits ? (
-        <p className="border-t border-border/60 px-3 py-2 text-[.65rem] leading-relaxed text-muted-foreground">
+        <p className="border-t border-border/60 px-3 py-2 text-3xs leading-relaxed text-muted-foreground">
           Diagram simplified for performance: {limitMessages.join(", ")}.
           {collapsedDeclarationCount > 0 ? " Select a +N more row to expand it." : null}
         </p>

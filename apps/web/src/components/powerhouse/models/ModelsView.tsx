@@ -86,7 +86,7 @@ export function ModelsView({
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-sm font-medium text-foreground">Document models</h2>
-            <p className="truncate font-mono text-[.65rem] text-muted-foreground">
+            <p className="truncate font-mono text-3xs text-muted-foreground">
               {listing.documentModelsDir}
             </p>
           </div>
@@ -125,7 +125,7 @@ export function ModelsView({
               {listing.failures.map((failure) => (
                 <span
                   key={failure.directoryName}
-                  className="font-mono text-[.65rem] break-all text-muted-foreground"
+                  className="font-mono text-3xs break-all text-muted-foreground"
                 >
                   {describeModelFailure(failure)}
                 </span>
@@ -167,7 +167,7 @@ export function ModelsView({
                     <span className="flex min-w-0 items-baseline gap-2">
                       <span className="min-w-0 truncate text-sm font-medium">{model.name}</span>
                       {displayModelExtension(model.extension).length > 0 ? (
-                        <span className="shrink-0 font-mono text-[.65rem] text-muted-foreground">
+                        <span className="shrink-0 font-mono text-3xs text-muted-foreground">
                           {displayModelExtension(model.extension)}
                         </span>
                       ) : null}
@@ -177,7 +177,7 @@ export function ModelsView({
                         {model.description}
                       </span>
                     ) : null}
-                    <span className="mt-0.5 flex flex-wrap gap-x-2 font-mono text-[.65rem] text-muted-foreground">
+                    <span className="mt-0.5 flex flex-wrap gap-x-2 font-mono text-3xs text-muted-foreground">
                       <span>
                         {model.latestVersion === null ? "No version" : `v${model.latestVersion}`}
                       </span>

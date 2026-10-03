@@ -162,7 +162,7 @@ function AccountMenu({
                 <AccountIdenticon address={account.address} size={20} />
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate">{account.label}</span>
-                  <span className="font-mono text-[11px] text-muted-foreground">
+                  <span className="font-mono text-2xs text-muted-foreground">
                     {shortenAddress(account.address)}
                   </span>
                 </span>
@@ -322,7 +322,7 @@ function PendingRequestCard({
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-accent/30 p-3">
       <div className="flex flex-col gap-1">
-        <span className="truncate text-[11px] text-muted-foreground">
+        <span className="truncate text-2xs text-muted-foreground">
           {originHostname(request.origin)}
         </span>
         <span className="text-sm font-medium">{pendingRequestTitle(request.method)}</span>
@@ -526,7 +526,7 @@ export function PreviewWalletChip() {
         >
           <WalletIcon aria-hidden />
           {pendingCount > 0 ? (
-            <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-destructive text-[8px] font-medium text-white">
+            <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-destructive text-4xs font-medium text-white">
               {pendingCount > 9 ? "9+" : pendingCount}
             </span>
           ) : null}
@@ -629,11 +629,11 @@ export function PreviewWalletChip() {
                 ))}
               </SelectPopup>
             </Select>
-            <span className="text-[11px] text-muted-foreground">Test wallet</span>
+            <span className="text-2xs text-muted-foreground">Test wallet</span>
           </div>
 
           {status.chain !== null && !status.rpcReachable ? (
-            <div className="flex items-start gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-900 dark:text-amber-200">
+            <div className="flex items-start gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-1.5 text-2xs text-warning-foreground">
               <TriangleAlertIcon className="mt-0.5 size-3 shrink-0" aria-hidden />
               <span>RPC endpoint unreachable. Reads and transactions will fail.</span>
             </div>
@@ -685,7 +685,7 @@ export function PreviewWalletChip() {
 
           {pendingCount === 0 ? null : (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
-              <span className="text-[11px] font-medium">
+              <span className="text-2xs font-medium">
                 {pendingCount === 1 ? "Approval request" : `${pendingCount} approval requests`}
               </span>
               {status.pendingRequests.map((request) => (

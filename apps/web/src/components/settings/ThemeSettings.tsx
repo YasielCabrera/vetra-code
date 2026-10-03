@@ -884,7 +884,7 @@ export function ThemeLibrary({
 
   return (
     <div className="space-y-3">
-      <p className="px-3 text-[13px] leading-[1.45] text-muted-foreground/80 sm:px-4">
+      <p className="px-3 text-xs leading-normal text-muted-foreground/80 sm:px-4">
         Choose how Vetra Code looks. Use a built-in theme or make your own.
       </p>
       <h3 className="px-3 text-sm font-normal text-foreground/70 sm:px-4">

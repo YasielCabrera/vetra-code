@@ -32,7 +32,6 @@ import type {
 } from "@t3tools/contracts";
 import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
 import {
-  Bot,
   Braces,
   Smartphone,
   ChevronDown,
@@ -87,6 +86,7 @@ import { ScrollArea } from "~/components/ui/scroll-area";
 import { PanelTabCloseButton } from "~/components/ui/panel-tab-close-button";
 import { useTheme } from "~/hooks/useTheme";
 import { useDeviceState } from "~/state/device";
+import type { PreviewPanelInlineSize } from "~/hooks/usePreviewPanelInlineSize";
 import {
   newestPullRequestSummary,
   pullRequestEnvironment,
@@ -110,6 +110,7 @@ interface RightPanelTabsProps {
   widthStorageKey?: string;
   /** Forwarded to PreviewPanelShell as the initial width before a user resize. */
   defaultWidth?: number;
+  inlineSize?: PreviewPanelInlineSize;
   layoutControls?: ReactNode;
   surfaces: readonly RightPanelSurface[];
   /** Fallback environment for surfaces that do not carry their own. */
@@ -151,7 +152,6 @@ interface RightPanelTabsProps {
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
-  onAddAgents: () => void;
   onAddPowerhouse: (kind: PowerhousePanelKind) => void;
   onAddDevice: () => void;
   browserAvailable: boolean;
@@ -160,14 +160,11 @@ interface RightPanelTabsProps {
   filesAvailable: boolean;
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
-  agentsAvailable: boolean;
   /** Powerhouse projects only; Powerhouse tool surfaces are hidden everywhere else. */
   powerhouseAvailable: boolean;
   deviceAvailable: boolean;
   pullRequestStatusSeeds?: Readonly<Record<string, PullRequestTabStatusSeed>>;
   issueStatuses?: Readonly<Record<string, IssueTabStatus>>;
-  /** Running + waiting subagents; badges the Agents card in the empty state. */
-  liveAgentCount: number;
   children: ReactNode;
 }
 
@@ -224,7 +221,6 @@ const SURFACE_DISABLED_REASONS = {
   diff: "Diff is only available for projects in Git repositories.",
   pullRequest: "This thread's branch has no pull request yet.",
   pullRequests: "No linked pull requests are available for this thread.",
-  agents: "Agents are only available from a thread.",
   device: "Devices are only available from a thread.",
 } as const;
 
@@ -248,7 +244,6 @@ const SURFACE_UNAVAILABLE_HINTS = {
   diff: "Available for Git projects.",
   pullRequest: "No pull request on this branch yet.",
   pullRequests: "No linked pull requests available.",
-  agents: "Available from a thread.",
   device: "Available from a thread.",
 } as const;
 
@@ -389,7 +384,6 @@ function RightPanelEmptyState(props: {
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
-  onAddAgents: () => void;
   onAddPowerhouse: (kind: PowerhousePanelKind) => void;
   onAddDevice: () => void;
   browserAvailable: boolean;
@@ -398,10 +392,8 @@ function RightPanelEmptyState(props: {
   filesAvailable: boolean;
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
-  agentsAvailable: boolean;
   powerhouseAvailable: boolean;
   deviceAvailable: boolean;
-  liveAgentCount: number;
 }) {
   // -1 means no highlight: it only appears on hover or arrow use.
   const [highlight, setHighlight] = useState(-1);
@@ -414,7 +406,6 @@ function RightPanelEmptyState(props: {
       available: props.browserAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.browser,
       onClick: props.onAddBrowser,
-      badgeCount: 0,
     },
     {
       label: "Terminal",
@@ -423,7 +414,6 @@ function RightPanelEmptyState(props: {
       available: props.terminalAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.terminal,
       onClick: props.onAddTerminal,
-      badgeCount: 0,
     },
     {
       label: "Files",
@@ -432,7 +422,6 @@ function RightPanelEmptyState(props: {
       available: props.filesAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.files,
       onClick: props.onAddFiles,
-      badgeCount: 0,
     },
     {
       label: "Diff",
@@ -441,7 +430,6 @@ function RightPanelEmptyState(props: {
       available: props.diffAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.diff,
       onClick: props.onAddDiff,
-      badgeCount: 0,
     },
     {
       label: "Pull request",
@@ -450,7 +438,6 @@ function RightPanelEmptyState(props: {
       available: props.pullRequestAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.pullRequest,
       onClick: props.onAddPullRequest,
-      badgeCount: 0,
     },
     {
       label: "Linked pull requests",
@@ -459,16 +446,6 @@ function RightPanelEmptyState(props: {
       available: props.pullRequestsAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.pullRequests,
       onClick: props.onAddPullRequests,
-      badgeCount: 0,
-    },
-    {
-      label: "Agents",
-      icon: Bot,
-      shortcut: "A",
-      available: props.agentsAvailable,
-      disabledReason: SURFACE_UNAVAILABLE_HINTS.agents,
-      onClick: props.onAddAgents,
-      badgeCount: props.liveAgentCount,
     },
     {
       label: "Device",
@@ -477,7 +454,6 @@ function RightPanelEmptyState(props: {
       available: props.deviceAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.device,
       onClick: props.onAddDevice,
-      badgeCount: 0,
     },
     // Absent rather than dimmed outside a Powerhouse project, where it could
     // never be opened.
@@ -490,7 +466,6 @@ function RightPanelEmptyState(props: {
             available: true,
             disabledReason: "",
             onClick: () => props.onAddPowerhouse("powerhouse-models"),
-            badgeCount: 0,
           },
           {
             label: "Document explorer",
@@ -499,7 +474,6 @@ function RightPanelEmptyState(props: {
             available: true,
             disabledReason: "",
             onClick: () => props.onAddPowerhouse("powerhouse-explorer"),
-            badgeCount: 0,
           },
           {
             label: "Powerhouse Database",
@@ -508,7 +482,6 @@ function RightPanelEmptyState(props: {
             available: true,
             disabledReason: "",
             onClick: () => props.onAddPowerhouse("powerhouse-database"),
-            badgeCount: 0,
           },
           {
             label: "Switchboard",
@@ -517,7 +490,6 @@ function RightPanelEmptyState(props: {
             available: true,
             disabledReason: "",
             onClick: () => props.onAddPowerhouse("powerhouse-switchboard"),
-            badgeCount: 0,
           },
         ]
       : []),
@@ -593,14 +565,6 @@ function RightPanelEmptyState(props: {
     return (
       <span className="relative inline-flex shrink-0">
         <Icon className={iconClassName} />
-        {action.badgeCount > 0 ? (
-          <span
-            aria-hidden
-            className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-info px-1 text-3xs font-semibold tabular-nums text-white"
-          >
-            {action.badgeCount}
-          </span>
-        ) : null}
       </span>
     );
   };
@@ -737,8 +701,6 @@ function surfaceTitle(
       return `#${surface.number}`;
     case "pull-requests":
       return "Pull requests";
-    case "agents":
-      return "Agents";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
     case "powerhouse-models":
@@ -832,8 +794,6 @@ function SurfaceIcon({
       );
     case "pull-requests":
       return <PullRequestGlyph.link className="size-3 shrink-0" />;
-    case "agents":
-      return <Bot className="size-3 shrink-0" />;
     case "device":
       return surface.target?.platform === "ios" ? (
         <AppleIcon className="size-3 shrink-0" />
@@ -851,16 +811,14 @@ function SurfaceIcon({
           className={cn(
             "size-3 shrink-0",
             state === "open"
-              ? "text-emerald-600 dark:text-emerald-300/90"
+              ? "text-success"
               : state === "closed"
-                ? "text-violet-600 dark:text-violet-300/90"
+                ? "text-merged"
                 : "text-muted-foreground",
           )}
         />
       );
     }
-    case "agents":
-      return <Bot className="size-3 shrink-0" />;
     case "powerhouse-models":
       return <Braces className="size-3 shrink-0" />;
     case "powerhouse-explorer":
@@ -1062,14 +1020,6 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       available: props.pullRequestsAvailable,
       disabledReason: SURFACE_DISABLED_REASONS.pullRequests,
       onClick: props.onAddPullRequests,
-    },
-    {
-      label: "Agents",
-      icon: Bot,
-      shortcut: "A",
-      available: props.agentsAvailable,
-      disabledReason: SURFACE_DISABLED_REASONS.agents,
-      onClick: props.onAddAgents,
     },
     {
       label: "Device",
@@ -1306,6 +1256,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       {...(props.open !== undefined ? { open: props.open } : {})}
       {...(props.widthStorageKey !== undefined ? { widthStorageKey: props.widthStorageKey } : {})}
       {...(props.defaultWidth !== undefined ? { defaultWidth: props.defaultWidth } : {})}
+      {...(props.inlineSize ? { inlineSize: props.inlineSize } : {})}
     >
       <div
         className={cn(
@@ -1656,7 +1607,6 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddFiles={props.onAddFiles}
             onAddPullRequest={props.onAddPullRequest}
             onAddPullRequests={props.onAddPullRequests}
-            onAddAgents={props.onAddAgents}
             onAddPowerhouse={props.onAddPowerhouse}
             onAddDevice={props.onAddDevice}
             browserAvailable={props.browserAvailable}
@@ -1665,10 +1615,8 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             filesAvailable={props.filesAvailable}
             pullRequestAvailable={props.pullRequestAvailable}
             pullRequestsAvailable={props.pullRequestsAvailable}
-            agentsAvailable={props.agentsAvailable}
             powerhouseAvailable={props.powerhouseAvailable}
             deviceAvailable={props.deviceAvailable}
-            liveAgentCount={props.liveAgentCount}
           />
         ) : (
           props.children

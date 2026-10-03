@@ -253,13 +253,13 @@ export function ProviderSubscriptionWindow({
             aria-hidden
             className={cn(
               "absolute inset-y-0 w-[5px] -translate-x-1/2 bg-card/90 after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2",
-              pace.isDeficit ? "after:bg-destructive" : "after:bg-emerald-400",
+              pace.isDeficit ? "after:bg-destructive" : "after:bg-success",
             )}
             style={{ left: `${pace.markerPercent}%` }}
           />
         ) : null}
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 text-[11px] leading-4 tabular-nums">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 text-2xs leading-4 tabular-nums">
         <span className="font-medium text-foreground">{percentage.format(remaining)}% left</span>
         {reset ? <span className="text-right text-muted-foreground">{reset}</span> : <span />}
         {pace ? (
@@ -359,7 +359,7 @@ function ProviderCostDashboard({
         <dl className="grid grid-cols-2 gap-x-8 gap-y-1.5">
           {metrics.map((metric) => (
             <div key={metric.label} className="min-w-0">
-              <dt className="truncate text-[11px] font-medium text-muted-foreground">
+              <dt className="truncate text-2xs font-medium text-muted-foreground">
                 {metric.label}
               </dt>
               <dd className="truncate text-sm font-semibold text-foreground tabular-nums">
@@ -374,13 +374,13 @@ function ProviderCostDashboard({
           aria-label={`${cost.periodDays}-day ${presentation.name} ${chartKind} history`}
           className="space-y-1"
         >
-          <figcaption className="text-right text-[10px] text-muted-foreground tabular-nums">
+          <figcaption className="text-right text-3xs text-muted-foreground tabular-nums">
             {chartKind === "cost"
               ? formatCompactMoney(chartMaximum, cost.currencyCode)
               : formatTokens(chartMaximum)}
           </figcaption>
           <div
-            className="grid h-11 items-end gap-[2px] border-b border-border/70"
+            className="grid h-11 items-end gap-0.5 border-b border-border/70"
             style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}
           >
             {points.map((point) => {
@@ -397,7 +397,7 @@ function ProviderCostDashboard({
                 <span
                   key={point.date}
                   aria-hidden
-                  className="min-w-0 rounded-t-[2px]"
+                  className="min-w-0 rounded-t-xs"
                   style={{ height: `${height}%`, backgroundColor: presentation.accentColor }}
                   onPointerEnter={(event) => setHoveredBar({ element: event.currentTarget, label })}
                   onPointerLeave={() =>
@@ -412,7 +412,7 @@ function ProviderCostDashboard({
           </Tooltip>
         </figure>
       ) : null}
-      <div className="space-y-0.5 text-[11px] leading-4 text-muted-foreground">
+      <div className="space-y-0.5 text-2xs leading-4 text-muted-foreground">
         {cost.topModel ? (
           <Tooltip>
             <TooltipTrigger
@@ -453,7 +453,7 @@ function DetailList({ details }: { readonly details: readonly ProviderSubscripti
           <dt className="min-w-0 text-muted-foreground">
             <span className="block truncate">{detail.label}</span>
             {detail.description ? (
-              <span className="block truncate text-[11px] leading-4 text-muted-foreground/80">
+              <span className="block truncate text-2xs leading-4 text-muted-foreground/80">
                 {detail.description}
               </span>
             ) : null}
@@ -483,7 +483,7 @@ function DetailSection({
         <h4 id={headingId} className="text-sm font-semibold text-foreground">
           {heading}
         </h4>
-        <p className="text-[11px] leading-4 text-muted-foreground">{subtitle}</p>
+        <p className="text-2xs leading-4 text-muted-foreground">{subtitle}</p>
       </div>
       <DetailList details={details} />
     </section>
@@ -513,7 +513,7 @@ function ClaudeExtraUsage({
         <h4 id={headingId} className="text-sm font-semibold text-foreground">
           Extra usage
         </h4>
-        <p className="text-[11px] leading-4 text-muted-foreground">
+        <p className="text-2xs leading-4 text-muted-foreground">
           On-demand usage beyond included plan limits.
         </p>
       </div>
@@ -533,7 +533,7 @@ function ClaudeExtraUsage({
               style={{ width: `${clampedUsed}%`, backgroundColor: accentColor }}
             />
           </div>
-          <div className="flex items-baseline justify-between gap-3 text-[11px] leading-4">
+          <div className="flex items-baseline justify-between gap-3 text-2xs leading-4">
             <span className="font-medium text-foreground tabular-nums">
               {percentage.format(used)}% used
             </span>
@@ -702,7 +702,7 @@ export function ProviderSubscriptionLimitCard({
           <Tooltip>
             <TooltipTrigger
               render={
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-2xs text-muted-foreground">
                   Updated {formatUpdated(instance.fetchedAt, renderTime)}
                 </span>
               }
@@ -711,7 +711,7 @@ export function ProviderSubscriptionLimitCard({
           </Tooltip>
           <span
             className={cn(
-              "text-right text-[11px] text-muted-foreground",
+              "text-right text-2xs text-muted-foreground",
               isStale && "font-semibold text-warning",
             )}
           >

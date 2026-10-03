@@ -81,7 +81,7 @@ const makeInstance = (input: {
         auth: { email: input.runtimeEmail },
       } as never),
     } as unknown as ProviderInstance["snapshot"],
-    adapter: {} as ProviderInstance["adapter"],
+    orchestrationAdapter: {} as ProviderInstance["orchestrationAdapter"],
     textGeneration: {} as ProviderInstance["textGeneration"],
     subscriptionUsage: {
       fingerprint: input.fingerprint ?? Effect.succeed(`fingerprint:${input.id}`),

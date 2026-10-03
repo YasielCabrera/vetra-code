@@ -17,7 +17,7 @@ import {
 } from "./previewAutomation.ts";
 import { Web3CustomNetwork, Web3WalletStatus } from "@t3tools/web3/schema";
 import type { Web3ProviderEvent } from "@t3tools/web3/inpage";
-import { SnapShotSource } from "./orchestration.ts";
+import { SnapShotSource } from "./chatAttachment.ts";
 import { EnvironmentId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { BrowserProfileId } from "./browserProfile.ts";
 import type {

@@ -71,7 +71,7 @@ const DEFAULTS = DEFAULT_SERVER_SETTINGS.web3Wallet;
 
 function TestWalletWarning() {
   return (
-    <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
+    <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-warning-foreground">
       <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
       <p>
         This is a <strong>test wallet</strong>. Keys are unencrypted, and agents can use, create, or
@@ -564,7 +564,7 @@ export function Web3SettingsPanel() {
                       onCommit={(address, nextLabel) => void renameAccount(address, nextLabel)}
                     />
                     {account.source === "imported" ? (
-                      <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">
+                      <span className="rounded bg-muted px-1 text-3xs text-muted-foreground">
                         imported
                       </span>
                     ) : null}
@@ -656,13 +656,11 @@ export function Web3SettingsPanel() {
                 <div className="flex min-w-0 items-center gap-2">
                   <NetworkIcon chainId={network.chainId} />
                   <span className="truncate text-xs font-medium">{network.name}</span>
-                  <span className="font-mono text-[10px] text-muted-foreground">
+                  <span className="font-mono text-3xs text-muted-foreground">
                     {network.chainId}
                   </span>
                   {active ? (
-                    <span className="px-1 text-[10px] font-medium text-muted-foreground">
-                      Active
-                    </span>
+                    <span className="px-1 text-3xs font-medium text-muted-foreground">Active</span>
                   ) : null}
                 </div>
                 <Switch
@@ -710,11 +708,11 @@ export function Web3SettingsPanel() {
                   <div className="flex min-w-0 items-center gap-2">
                     <NetworkIcon chainId={network.chainId} />
                     <span className="truncate text-xs font-medium">{network.name}</span>
-                    <span className="font-mono text-[10px] text-muted-foreground">
+                    <span className="font-mono text-3xs text-muted-foreground">
                       {network.chainId}
                     </span>
                     {active ? (
-                      <span className="px-1 text-[10px] font-medium text-muted-foreground">
+                      <span className="px-1 text-3xs font-medium text-muted-foreground">
                         Active
                       </span>
                     ) : null}

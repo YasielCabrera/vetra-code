@@ -4,7 +4,7 @@ import { deviceToolInstallMessage } from "@t3tools/contracts";
  * The device host that is this machine.
  *
  * Runs expo-device-hub as a supervised child on a loopback port and starts the
- * agent-device daemon in HTTP mode under a T3-owned state directory. Both are
+ * agent-device daemon in HTTP mode under a Vetra-owned state directory. Both are
  * lazy: the device service requires explicit setup consent before it calls
  * ensureReady to install tools or start helper processes.
  *

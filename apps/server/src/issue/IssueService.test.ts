@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import type { OrchestrationProjectShell, ProjectId } from "@t3tools/contracts";
 
-import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
+import * as ProjectService from "../project/ProjectService.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
 import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
 import { IssueProviderError, type IssueProviderApi } from "./IssueProvider.ts";
@@ -83,15 +83,8 @@ function makeService(
           resolveHandle,
           resolveLink: () => undefined,
         }),
-        Layer.mock(ProjectionSnapshotQuery.ProjectionSnapshotQuery)({
-          getShellSnapshot: () =>
-            Effect.succeed({
-              snapshotSequence: 1,
-              projects,
-              threads: [],
-              automations: [],
-              updatedAt: "2026-08-01T00:00:00Z",
-            }),
+        Layer.mock(ProjectService.ProjectService)({
+          listShells: () => Effect.succeed(projects),
         }),
         SourceControlRateLimit.layer,
       ),

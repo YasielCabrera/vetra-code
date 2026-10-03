@@ -46,7 +46,7 @@ import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 
-import { ServerConfig } from "../config.ts";
+import * as ServerConfig from "../config.ts";
 import { expandHomePath } from "../pathExpansion.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import { resolveCodexHomeLayout } from "../provider/Drivers/CodexHomeLayout.ts";
@@ -149,6 +149,15 @@ export class UsageService extends Context.Service<
       totals: UsageTokenTotals,
       reportedCostUsd: number | null,
     ) => Effect.Effect<PricedUsage>;
+    /**
+     * `price` for hot paths: uses the rates already in memory and never waits
+     * on a fetch, warming them in the background when they are missing or
+     * stale. Null until a rate table has loaded.
+     */
+    readonly priceCached: (
+      model: string,
+      totals: UsageTokenTotals,
+    ) => Effect.Effect<PricedUsage | null>;
     /** Refetches the rate table ahead of its TTL. See `ensureRates`. */
     readonly refreshRates: Effect.Effect<UsagePricing>;
   }
@@ -190,6 +199,7 @@ export const layerTest = Layer.succeed(
     }),
     price: (model, totals, reportedCostUsd) =>
       Effect.succeed(priceUsage(new Map(), { model, totals, fast: false, reportedCostUsd })),
+    priceCached: () => Effect.succeed(null),
     refreshRates: Effect.succeed(EMPTY_PRICING),
   }),
 );
@@ -198,7 +208,7 @@ export const make = Effect.gen(function* () {
   const crypto = yield* Crypto.Crypto;
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const config = yield* ServerConfig;
+  const config = yield* ServerConfig.ServerConfig;
   const settingsService = yield* ServerSettings.ServerSettingsService;
   const httpClient = yield* HttpClient.HttpClient;
   const hostEnvironment = yield* HostProcessEnvironment;
@@ -946,6 +956,18 @@ export const make = Effect.gen(function* () {
     return priceUsage(rates, { model, totals, fast: false, reportedCostUsd });
   });
 
+  const priceCached = Effect.fn("UsageService.priceCached")(function* (
+    model: string,
+    totals: UsageTokenTotals,
+  ) {
+    if (ratesStatus !== "fresh") {
+      yield* ensureRates(false).pipe(Effect.ignoreCause, Effect.forkDetach);
+    }
+    return rates.size === 0
+      ? null
+      : priceUsage(rates, { model, totals, fast: false, reportedCostUsd: null });
+  });
+
   const readSubscriptionSummary = yield* Effect.cachedWithTTL(
     Effect.gen(function* () {
       const zone = DateTime.zoneMakeLocal();
@@ -962,7 +984,7 @@ export const make = Effect.gen(function* () {
     "1 hour",
   );
 
-  return { readSummary, readSubscriptionSummary, price, refreshRates } as const;
+  return { readSummary, readSubscriptionSummary, price, priceCached, refreshRates } as const;
 });
 
 export const layer = Layer.effect(UsageService, make);

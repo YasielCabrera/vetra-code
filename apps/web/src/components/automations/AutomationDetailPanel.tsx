@@ -52,7 +52,12 @@ import {
   deriveProviderInstanceEntries,
   resolveDefaultProviderModelSelection,
 } from "../../providerInstances";
-import { automationEnvironment, useAutomation } from "../../state/automations";
+import {
+  automationEnvironment,
+  isHiddenAutomationRun,
+  useAutomation,
+  useAutomationRunsByThreadKey,
+} from "../../state/automations";
 import { useUiStateStore } from "../../uiStateStore";
 import { primaryServerProvidersAtom } from "../../state/server";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
@@ -61,7 +66,6 @@ import { RightPanelResizeHandle } from "../preview/RightPanelResizeHandle";
 import { useProjects, useThreadShells } from "../../state/entities";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useAtomCommand } from "../../state/use-atom-command";
-import { threadEnvironment } from "../../state/threads";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { Button } from "../ui/button";
@@ -192,6 +196,7 @@ export function AutomationDetailPanel(props: {
   const projects = useProjects();
   const projectGroups = useProjectGroups();
   const threads = useThreadShells();
+  const runsByThreadKey = useAutomationRunsByThreadKey();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const timestampFormat = useClientSettings((settings) => settings.timestampFormat);
   const settings = usePrimarySettings();
@@ -235,7 +240,7 @@ export function AutomationDetailPanel(props: {
 
   const createAutomation = useAtomCommand(automationEnvironment.create);
   const updateAutomation = useAtomCommand(automationEnvironment.update);
-  const revealThread = useAtomCommand(threadEnvironment.reveal);
+  const setRunHidden = useAtomCommand(automationEnvironment.setRunHidden);
   // The same actions the list's row menu offers, so Run now, Pause, and Delete
   // behave identically wherever they are invoked from.
   const { confirmAndDelete, runNow, setEnabled } = useAutomationActions();
@@ -248,10 +253,10 @@ export function AutomationDetailPanel(props: {
       .filter(
         (thread) =>
           thread.environmentId === automation.environmentId &&
-          thread.automationId === automation.id,
+          runsByThreadKey.get(automationRunVisitKey(thread))?.automationId === automation.id,
       )
       .toSorted((left, right) => right.createdAt.localeCompare(left.createdAt));
-  }, [automation, threads]);
+  }, [automation, runsByThreadKey, threads]);
   // Which runs still owe the reader a look. Opening one clears its own mark
   // (ChatView stamps the visit), so this list shrinks as they are read.
   const unreadRunThreads = useMemo(
@@ -475,11 +480,11 @@ export function AutomationDetailPanel(props: {
 
   const handleRevealRun = useCallback(
     async (environmentId: EnvironmentId, threadId: ThreadId) => {
-      const result = await revealThread({ environmentId, input: { threadId } });
+      const result = await setRunHidden({ environmentId, input: { threadId, hidden: false } });
       if (!settled("Could not move the run", result)) return;
       toastManager.add({ type: "success", title: "Moved to the sidebar" });
     },
-    [revealThread, settled],
+    [setRunHidden, settled],
   );
 
   const projectTitle =
@@ -717,7 +722,7 @@ export function AutomationDetailPanel(props: {
               <p className="text-xs text-muted-foreground">No providers available.</p>
             )}
             {draft.runtimeMode === "approval-required" ? (
-              <p className="text-xs text-amber-700 dark:text-amber-300">
+              <p className="text-xs text-warning-foreground">
                 A run that stops for approval waits for you, so it may sit unfinished until you open
                 it.
               </p>
@@ -836,7 +841,7 @@ export function AutomationDetailPanel(props: {
               <span className="text-sm font-medium text-foreground">Runs</span>
               {unreadRunThreads.length > 0 ? (
                 <>
-                  <span className="text-xs font-medium text-emerald-700 tabular-nums dark:text-emerald-300">
+                  <span className="text-xs font-medium text-success-foreground tabular-nums">
                     {unreadRunCountLabel(unreadRunThreads.length)}
                   </span>
                   {/* The way out at scale: a schedule that ran all week should
@@ -885,7 +890,7 @@ export function AutomationDetailPanel(props: {
                             aria-hidden
                             className={cn(
                               "size-1.5 shrink-0 rounded-full",
-                              isUnread ? "bg-emerald-500 dark:bg-emerald-400" : "bg-transparent",
+                              isUnread ? "bg-success" : "bg-transparent",
                             )}
                           />
                           <span
@@ -902,7 +907,7 @@ export function AutomationDetailPanel(props: {
                           {formatRelativeTimeLabel(thread.createdAt)}
                         </span>
                       </button>
-                      {thread.hiddenAt != null ? (
+                      {isHiddenAutomationRun(runsByThreadKey, thread) ? (
                         <span className="flex shrink-0 opacity-0 transition-opacity group-hover/run-row:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100">
                           <Button
                             size="sm"
@@ -968,11 +973,11 @@ function AutomationPanelFrame(props: {
           desktop it is the drag region for its half of the titlebar. */}
       <header
         className={cn(
-          "workspace-topbar w-full gap-2 px-5",
-          isElectron && "drag-region wco:pr-[var(--workspace-native-controls-inset)]",
+          "flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] w-full shrink-0 items-center gap-2 px-5",
+          isElectron && "drag-region wco:pr-(--workspace-native-controls-inset)",
           // Below lg the list column is gone and the panel starts at the
           // window's left edge, where the titlebar controls are.
-          "max-lg:[[data-sidebar-state=collapsed]_&]:ps-[var(--workspace-titlebar-content-left)]",
+          "max-lg:[[data-sidebar-state=collapsed]_&]:ps-(--workspace-titlebar-content-left)",
         )}
       >
         <h1 className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">

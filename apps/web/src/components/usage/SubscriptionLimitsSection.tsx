@@ -160,7 +160,7 @@ export function EnvironmentSubscriptionLimits({
           {environment.label}
         </h2>
         {environment.report ? (
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-2xs text-muted-foreground">
             Read {formatTimestamp(environment.report.readAt)}
           </span>
         ) : null}
@@ -221,7 +221,7 @@ export function SubscriptionLimitCard({
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <h3 className="truncate text-sm font-medium text-foreground">{instance.displayName}</h3>
             {instance.planLabel ? (
-              <span className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+              <span className="text-3xs font-medium tracking-wide text-muted-foreground uppercase">
                 {instance.planLabel}
               </span>
             ) : null}

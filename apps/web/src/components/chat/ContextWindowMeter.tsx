@@ -4,7 +4,10 @@ import { formatThreadCostUsd } from "@t3tools/shared/usageFormat";
 import { CircularUsageMeterButton } from "../ui/circular-usage-meter";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Skeleton } from "../ui/skeleton";
-import { formatContextWindowCompactionMessage } from "./ContextWindowMeter.logic";
+import {
+  formatContextWindowCompactionMessage,
+  formatContextWindowCost,
+} from "./ContextWindowMeter.logic";
 import { Minimize2Icon } from "lucide-react";
 import { composerFloatingLayerProps } from "./composerEventScope";
 
@@ -119,7 +122,7 @@ export function ContextWindowMeter(props: {
             </div>
           ) : null}
           {showThreadCost || showThreadCostLoading ? (
-            <div className="flex items-center justify-between gap-3 text-[11px] leading-4">
+            <div className="flex items-center justify-between gap-3 text-2xs leading-4">
               <span className="text-secondary-label">Thread cost</span>
               {showThreadCost ? (
                 <span className="font-medium tabular-nums text-secondary-label">
@@ -132,8 +135,16 @@ export function ContextWindowMeter(props: {
             </div>
           ) : null}
           {showApiRateFootnote ? (
-            <div className="text-pretty text-secondary-label text-[11px] font-medium">
+            <div className="text-pretty text-secondary-label text-2xs font-medium">
               * if billed at full API rate
+            </div>
+          ) : null}
+          {!showThreadCost && !showThreadCostLoading && usage.cost != null ? (
+            <div className="flex items-center justify-between gap-3 text-2xs leading-4">
+              <span className="text-secondary-label">Cost</span>
+              <span className="font-medium tabular-nums text-secondary-label">
+                {formatContextWindowCost(usage.cost)}
+              </span>
             </div>
           ) : null}
           {usage.compactsAutomatically ? (

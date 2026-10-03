@@ -186,7 +186,7 @@ export const runSqliteState = Effect.fn("runSqliteState")(function* (
   const sharedHome = path.resolve(
     options.sharedHome ?? path.join(NodeOS.homedir(), PRODUCT_HOME_DIRECTORY_NAME),
   );
-  const databasePath = path.join(baseDir, "userdata", "state.sqlite");
+  const databasePath = path.join(baseDir, "userdata", "statev2.sqlite");
   const source = yield* resolveSqlSource(input.sql, input.file);
 
   if (!(yield* fs.exists(databasePath))) {
@@ -256,7 +256,7 @@ const vetraSqliteStateCommand = Command.make(
       Argument.withDescription("Run a read-only query or a backed-up fixture mutation."),
     ),
     baseDir: Flag.String("base-dir").pipe(
-      Flag.withDescription("Explicit Vetra base directory containing userdata/state.sqlite."),
+      Flag.withDescription("Explicit Vetra base directory containing userdata/statev2.sqlite."),
     ),
     sql: Flag.String("sql").pipe(
       Flag.optional,

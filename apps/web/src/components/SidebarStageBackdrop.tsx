@@ -223,7 +223,7 @@ function DevBlueprintArt({ compact = false }: { compact?: boolean }) {
 
   return (
     <>
-      <span className="stage-art stage-vetra-blueprint h-full w-full" />
+      <span className="stage-vetra-blueprint h-full w-full" />
       <svg
         data-stage-art="blueprint"
         className="h-full w-full"

@@ -1,4 +1,4 @@
-body.switchboard-theme-bridge .switchboard-graphiql.graphiql-container,
+body.switchboard-theme-bridge [data-switchboard-graphiql] .graphiql-container,
 body.switchboard-theme-bridge .graphiql-dialog,
 body.switchboard-theme-bridge .graphiql-tooltip,
 body.switchboard-theme-bridge .graphiql-dropdown-content,
@@ -26,7 +26,7 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   font-family: var(--font-sans);
 }
 
-.switchboard-graphiql.graphiql-container {
+[data-switchboard-graphiql] .graphiql-container {
   --sidebar-width: 40px;
   --toolbar-width: 28px;
   --session-header-height: 36px;
@@ -36,7 +36,7 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   font-family: var(--font-sans);
 }
 
-.switchboard-graphiql .graphiql-sidebar {
+[data-switchboard-graphiql] .graphiql-sidebar {
   width: var(--sidebar-width);
   padding: 6px;
   gap: 4px;
@@ -48,7 +48,7 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   scrollbar-width: thin;
 }
 
-.switchboard-graphiql .graphiql-sidebar > button {
+[data-switchboard-graphiql] .graphiql-sidebar > button {
   width: 28px;
   height: 28px;
   border-radius: calc(var(--radius) - 4px);
@@ -56,32 +56,32 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   touch-action: manipulation;
 }
 
-.switchboard-graphiql .graphiql-sidebar > button[data-value="short-keys"],
-.switchboard-graphiql .graphiql-sidebar > button[data-value="settings"] {
+[data-switchboard-graphiql] .graphiql-sidebar > button[data-value="short-keys"],
+[data-switchboard-graphiql] .graphiql-sidebar > button[data-value="settings"] {
   display: none;
 }
 
-.switchboard-graphiql .graphiql-sidebar > button:hover,
-.switchboard-graphiql .graphiql-sidebar > button.active {
+[data-switchboard-graphiql] .graphiql-sidebar > button:hover,
+[data-switchboard-graphiql] .graphiql-sidebar > button.active {
   background: var(--accent);
   color: var(--accent-foreground);
 }
 
-.switchboard-graphiql .graphiql-sidebar > button:active {
+[data-switchboard-graphiql] .graphiql-sidebar > button:active {
   background: color-mix(in srgb, var(--accent) 82%, var(--foreground));
 }
 
-.switchboard-graphiql .graphiql-sidebar button > svg {
+[data-switchboard-graphiql] .graphiql-sidebar button > svg {
   width: 16px;
   height: 16px;
 }
 
-.switchboard-graphiql .graphiql-main {
+[data-switchboard-graphiql] .graphiql-main {
   min-width: 0;
   background: var(--code-background);
 }
 
-.switchboard-graphiql .graphiql-sessions {
+[data-switchboard-graphiql] .graphiql-sessions {
   min-width: 0;
   margin: 0;
   border: 0;
@@ -90,7 +90,7 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   box-shadow: none;
 }
 
-.switchboard-graphiql .graphiql-session-header {
+[data-switchboard-graphiql] .graphiql-session-header {
   flex: 0 0 var(--session-header-height);
   height: var(--session-header-height);
   padding: 0 6px 0 0;
@@ -99,11 +99,11 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   background: var(--background);
 }
 
-.switchboard-graphiql .graphiql-logo {
+[data-switchboard-graphiql] .graphiql-logo {
   display: none;
 }
 
-.switchboard-graphiql .graphiql-tabs {
+[data-switchboard-graphiql] .graphiql-tabs {
   --bg: var(--accent);
 
   align-self: stretch;
@@ -114,7 +114,7 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   scrollbar-width: none;
 }
 
-.switchboard-graphiql .graphiql-tab {
+[data-switchboard-graphiql] .graphiql-tab {
   height: 100%;
   max-width: min(13rem, 45%);
   border-right: 1px solid var(--border);
@@ -123,18 +123,18 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   color: var(--muted-foreground);
 }
 
-.switchboard-graphiql .graphiql-tab:hover,
-.switchboard-graphiql .graphiql-tab:focus-within {
+[data-switchboard-graphiql] .graphiql-tab:hover,
+[data-switchboard-graphiql] .graphiql-tab:focus-within {
   background: color-mix(in srgb, var(--accent) 64%, transparent);
   color: var(--foreground);
 }
 
-.switchboard-graphiql .graphiql-tab.graphiql-tab-active {
+[data-switchboard-graphiql] .graphiql-tab.graphiql-tab-active {
   background: var(--accent);
   color: var(--accent-foreground);
 }
 
-.switchboard-graphiql .graphiql-tab.graphiql-tab-active::after {
+[data-switchboard-graphiql] .graphiql-tab.graphiql-tab-active::after {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -144,7 +144,7 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   content: "";
 }
 
-.switchboard-graphiql .graphiql-tab .graphiql-tab-button {
+[data-switchboard-graphiql] .graphiql-tab .graphiql-tab-button {
   max-width: 100%;
   padding: 0 28px 0 10px;
   border-radius: 0;
@@ -156,7 +156,7 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   white-space: nowrap;
 }
 
-.switchboard-graphiql .graphiql-tab .graphiql-tab-close {
+[data-switchboard-graphiql] .graphiql-tab .graphiql-tab-close {
   right: 4px;
   box-sizing: border-box;
   width: 20px;
@@ -167,16 +167,16 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   color: var(--muted-foreground);
 }
 
-.switchboard-graphiql .graphiql-tab .graphiql-tab-close:hover {
+[data-switchboard-graphiql] .graphiql-tab .graphiql-tab-close:hover {
   background: color-mix(in srgb, var(--foreground) 10%, transparent);
   color: var(--foreground);
 }
 
-.switchboard-graphiql .graphiql-tab .graphiql-tab-close:hover::before {
+[data-switchboard-graphiql] .graphiql-tab .graphiql-tab-close:hover::before {
   content: none;
 }
 
-.switchboard-graphiql button.graphiql-tab-add {
+[data-switchboard-graphiql] button.graphiql-tab-add {
   display: grid;
   flex: 0 0 28px;
   width: 28px;
@@ -188,31 +188,31 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   touch-action: manipulation;
 }
 
-.switchboard-graphiql button.graphiql-tab-add:hover {
+[data-switchboard-graphiql] button.graphiql-tab-add:hover {
   background: var(--accent);
   color: var(--accent-foreground);
 }
 
-.switchboard-graphiql button.graphiql-tab-add:active,
-.switchboard-graphiql .graphiql-editor-tools .graphiql-toggle-editor-tools:active {
+[data-switchboard-graphiql] button.graphiql-tab-add:active,
+[data-switchboard-graphiql] .graphiql-editor-tools .graphiql-toggle-editor-tools:active {
   background: color-mix(in srgb, var(--accent) 82%, var(--foreground));
 }
 
-.switchboard-graphiql button.graphiql-tab-add > svg {
+[data-switchboard-graphiql] button.graphiql-tab-add > svg {
   width: 14px;
   height: 14px;
   color: currentColor;
 }
 
-.switchboard-graphiql #graphiql-session {
+[data-switchboard-graphiql] #graphiql-session {
   min-height: 0;
   padding: 0;
   overflow: hidden;
   background: var(--code-background);
 }
 
-.switchboard-graphiql .graphiql-editors,
-.switchboard-graphiql .graphiql-response {
+[data-switchboard-graphiql] .graphiql-editors,
+[data-switchboard-graphiql] .graphiql-response {
   min-width: 0;
   min-height: 0;
   border-radius: 0;
@@ -220,7 +220,7 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   box-shadow: none;
 }
 
-.switchboard-graphiql .graphiql-query-editor {
+[data-switchboard-graphiql] .graphiql-query-editor {
   min-height: 0;
   padding: 10px 8px 8px 12px;
   column-gap: 8px;
@@ -228,64 +228,64 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   background: var(--code-background);
 }
 
-.switchboard-graphiql .graphiql-query-editor > :first-child,
-.switchboard-graphiql .graphiql-editor-tool > :first-child,
-.switchboard-graphiql .graphiql-response .result-window {
+[data-switchboard-graphiql] .graphiql-query-editor > :first-child,
+[data-switchboard-graphiql] .graphiql-editor-tool > :first-child,
+[data-switchboard-graphiql] .graphiql-response .result-window {
   min-width: 0;
   min-height: 0;
 }
 
-.switchboard-graphiql .graphiql-toolbar {
+[data-switchboard-graphiql] .graphiql-toolbar {
   width: var(--toolbar-width);
   gap: 4px;
 }
 
-.switchboard-graphiql button.graphiql-execute-button,
-.switchboard-graphiql button.graphiql-toolbar-button {
+[data-switchboard-graphiql] button.graphiql-execute-button,
+[data-switchboard-graphiql] button.graphiql-toolbar-button {
   width: 28px;
   height: 28px;
   border-radius: calc(var(--radius) - 3px);
   touch-action: manipulation;
 }
 
-.switchboard-graphiql button.graphiql-execute-button {
+[data-switchboard-graphiql] button.graphiql-execute-button {
   background: var(--primary);
 }
 
-.switchboard-graphiql button.graphiql-execute-button:hover {
+[data-switchboard-graphiql] button.graphiql-execute-button:hover {
   background: color-mix(in srgb, var(--primary) 88%, var(--foreground));
 }
 
-.switchboard-graphiql button.graphiql-execute-button:active {
+[data-switchboard-graphiql] button.graphiql-execute-button:active {
   background: color-mix(in srgb, var(--primary) 78%, var(--foreground));
 }
 
-.switchboard-graphiql button.graphiql-execute-button > svg {
+[data-switchboard-graphiql] button.graphiql-execute-button > svg {
   width: 14px;
   height: 14px;
   color: var(--primary-foreground);
 }
 
-.switchboard-graphiql button.graphiql-toolbar-button {
+[data-switchboard-graphiql] button.graphiql-toolbar-button {
   color: var(--muted-foreground);
 }
 
-.switchboard-graphiql button.graphiql-toolbar-button:hover {
+[data-switchboard-graphiql] button.graphiql-toolbar-button:hover {
   background: var(--accent);
   color: var(--accent-foreground);
 }
 
-.switchboard-graphiql button.graphiql-toolbar-button:active {
+[data-switchboard-graphiql] button.graphiql-toolbar-button:active {
   background: color-mix(in srgb, var(--accent) 82%, var(--foreground));
 }
 
-.switchboard-graphiql .graphiql-toolbar-icon {
+[data-switchboard-graphiql] .graphiql-toolbar-icon {
   width: 14px;
   height: 14px;
   color: currentColor;
 }
 
-.switchboard-graphiql .graphiql-editor-tools {
+[data-switchboard-graphiql] .graphiql-editor-tools {
   min-height: 36px;
   padding: 0 6px;
   column-gap: 2px;
@@ -293,7 +293,7 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   background: var(--background);
 }
 
-.switchboard-graphiql .graphiql-editor-tools > button:not(.graphiql-toggle-editor-tools) {
+[data-switchboard-graphiql] .graphiql-editor-tools > button:not(.graphiql-toggle-editor-tools) {
   position: relative;
   padding: 0 10px;
   border-radius: 0;
@@ -304,17 +304,19 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   touch-action: manipulation;
 }
 
-.switchboard-graphiql .graphiql-editor-tools > button:not(.graphiql-toggle-editor-tools):hover {
+[data-switchboard-graphiql]
+  .graphiql-editor-tools
+  > button:not(.graphiql-toggle-editor-tools):hover {
   background: color-mix(in srgb, var(--accent) 64%, transparent);
   color: var(--foreground);
 }
 
-.switchboard-graphiql .graphiql-editor-tools > button.active {
+[data-switchboard-graphiql] .graphiql-editor-tools > button.active {
   background: var(--accent);
   color: var(--accent-foreground);
 }
 
-.switchboard-graphiql .graphiql-editor-tools > button.active::after {
+[data-switchboard-graphiql] .graphiql-editor-tools > button.active::after {
   position: absolute;
   right: 8px;
   bottom: 0;
@@ -324,7 +326,7 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   content: "";
 }
 
-.switchboard-graphiql .graphiql-editor-tools .graphiql-toggle-editor-tools {
+[data-switchboard-graphiql] .graphiql-editor-tools .graphiql-toggle-editor-tools {
   display: grid;
   width: 28px;
   height: 28px;
@@ -335,30 +337,30 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   touch-action: manipulation;
 }
 
-.switchboard-graphiql .graphiql-editor-tools .graphiql-toggle-editor-tools:hover {
+[data-switchboard-graphiql] .graphiql-editor-tools .graphiql-toggle-editor-tools:hover {
   background: var(--accent);
   color: var(--accent-foreground);
 }
 
-.switchboard-graphiql .graphiql-chevron-icon {
+[data-switchboard-graphiql] .graphiql-chevron-icon {
   width: 12px;
   height: 12px;
   margin: 0;
   color: currentColor;
 }
 
-.switchboard-graphiql .graphiql-editor-tool {
+[data-switchboard-graphiql] .graphiql-editor-tool {
   min-height: 0;
   padding: 8px 12px;
   background: var(--code-background);
 }
 
-.switchboard-graphiql .graphiql-response {
+[data-switchboard-graphiql] .graphiql-response {
   position: relative;
   padding-top: 0;
 }
 
-.switchboard-graphiql .graphiql-response > .graphiql-spinner {
+[data-switchboard-graphiql] .graphiql-response > .graphiql-spinner {
   position: absolute;
   z-index: 3;
   top: 50%;
@@ -369,7 +371,7 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   transform: translate(-50%, -50%);
 }
 
-.switchboard-graphiql .graphiql-response > .graphiql-spinner::after {
+[data-switchboard-graphiql] .graphiql-response > .graphiql-spinner::after {
   width: 20px;
   height: 20px;
   border-width: 2px;
@@ -377,12 +379,12 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   border-top-color: var(--primary);
 }
 
-.switchboard-graphiql .graphiql-footer {
+[data-switchboard-graphiql] .graphiql-footer {
   display: contents;
   border: 0;
 }
 
-.switchboard-response-placeholder {
+[data-switchboard-response-placeholder] {
   position: absolute;
   z-index: 1;
   inset: 0;
@@ -399,7 +401,7 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   pointer-events: none;
 }
 
-.switchboard-response-placeholder-icon {
+[data-switchboard-response-placeholder-icon] {
   display: grid;
   width: 32px;
   height: 32px;
@@ -410,13 +412,13 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   place-items: center;
 }
 
-.switchboard-response-placeholder-icon > svg {
+[data-switchboard-response-placeholder-icon] > svg {
   width: 15px;
   height: 15px;
 }
 
-.switchboard-graphiql #graphiql-session > .graphiql-horizontal-drag-bar,
-.switchboard-graphiql .graphiql-main > .graphiql-horizontal-drag-bar {
+[data-switchboard-graphiql] #graphiql-session > .graphiql-horizontal-drag-bar,
+[data-switchboard-graphiql] .graphiql-main > .graphiql-horizontal-drag-bar {
   position: relative;
   z-index: 2;
   flex: 0 0 8px;
@@ -426,8 +428,8 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   touch-action: none;
 }
 
-.switchboard-graphiql #graphiql-session > .graphiql-horizontal-drag-bar::after,
-.switchboard-graphiql .graphiql-main > .graphiql-horizontal-drag-bar::after {
+[data-switchboard-graphiql] #graphiql-session > .graphiql-horizontal-drag-bar::after,
+[data-switchboard-graphiql] .graphiql-main > .graphiql-horizontal-drag-bar::after {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -442,13 +444,13 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   transform: translateX(-50%);
 }
 
-.switchboard-graphiql #graphiql-session > .graphiql-horizontal-drag-bar:hover::after,
-.switchboard-graphiql .graphiql-main > .graphiql-horizontal-drag-bar:hover::after {
+[data-switchboard-graphiql] #graphiql-session > .graphiql-horizontal-drag-bar:hover::after,
+[data-switchboard-graphiql] .graphiql-main > .graphiql-horizontal-drag-bar:hover::after {
   width: 2px;
   background: var(--ring);
 }
 
-.switchboard-graphiql .graphiql-plugin {
+[data-switchboard-graphiql] .graphiql-plugin {
   min-width: 0;
   padding: 12px;
   border-left: 0;
@@ -459,33 +461,33 @@ body.switchboard-theme-bridge [data-radix-popper-content-wrapper] {
   scrollbar-width: thin;
 }
 
-.switchboard-graphiql .graphiql-explorer-root > div > div,
-.switchboard-graphiql .graphiql-explorer-actions {
+[data-switchboard-graphiql] .graphiql-explorer-root > div > div,
+[data-switchboard-graphiql] .graphiql-explorer-actions {
   border-color: var(--border) !important;
 }
 
-.switchboard-graphiql .graphiql-explorer-root select {
+[data-switchboard-graphiql] .graphiql-explorer-root select {
   border-color: var(--border);
   background: var(--background) !important;
   color: var(--foreground) !important;
 }
 
-.switchboard-graphiql .graphiql-un-styled,
-.switchboard-graphiql .graphiql-button,
-.switchboard-graphiql button {
+[data-switchboard-graphiql] .graphiql-un-styled,
+[data-switchboard-graphiql] .graphiql-button,
+[data-switchboard-graphiql] button {
   transition-property: background-color, border-color, color, box-shadow;
   transition-duration: 120ms;
   transition-timing-function: ease-out;
 }
 
-.switchboard-graphiql :is(button, a):focus:not(:focus-visible) {
+[data-switchboard-graphiql] :is(button, a):focus:not(:focus-visible) {
   outline: none;
 }
 
-.switchboard-graphiql :is(button, a):focus-visible,
-.switchboard-graphiql .graphiql-un-styled:focus-visible,
-.switchboard-graphiql button.graphiql-execute-button:focus-visible,
-.switchboard-graphiql :is(.graphiql-button, button.graphiql-button):focus-visible {
+[data-switchboard-graphiql] :is(button, a):focus-visible,
+[data-switchboard-graphiql] .graphiql-un-styled:focus-visible,
+[data-switchboard-graphiql] button.graphiql-execute-button:focus-visible,
+[data-switchboard-graphiql] :is(.graphiql-button, button.graphiql-button):focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: -2px;
 }
@@ -561,16 +563,16 @@ body.switchboard-theme-bridge .graphiql-dialog :is(button, a):focus-visible {
 }
 
 @container powerhouse (max-width: 32rem) {
-  .switchboard-graphiql .graphiql-main {
+  [data-switchboard-graphiql] .graphiql-main {
     position: relative;
   }
 
-  .switchboard-graphiql .graphiql-main > .graphiql-horizontal-drag-bar,
-  .switchboard-graphiql #graphiql-session > .graphiql-horizontal-drag-bar {
+  [data-switchboard-graphiql] .graphiql-main > .graphiql-horizontal-drag-bar,
+  [data-switchboard-graphiql] #graphiql-session > .graphiql-horizontal-drag-bar {
     display: none;
   }
 
-  .switchboard-graphiql .graphiql-plugin {
+  [data-switchboard-graphiql] .graphiql-plugin {
     position: absolute !important;
     z-index: 10;
     inset: 0 !important;
@@ -580,18 +582,18 @@ body.switchboard-theme-bridge .graphiql-dialog :is(button, a):focus-visible {
     background: var(--background);
   }
 
-  .switchboard-graphiql .graphiql-plugin[style*="opacity: 0"] {
+  [data-switchboard-graphiql] .graphiql-plugin[style*="opacity: 0"] {
     right: auto !important;
     left: -1000px !important;
     pointer-events: none;
   }
 
-  .switchboard-graphiql #graphiql-session {
+  [data-switchboard-graphiql] #graphiql-session {
     flex-direction: column;
   }
 
-  .switchboard-graphiql .graphiql-editors,
-  .switchboard-graphiql .graphiql-response {
+  [data-switchboard-graphiql] .graphiql-editors,
+  [data-switchboard-graphiql] .graphiql-response {
     position: relative !important;
     left: auto !important;
     flex: 1 1 50% !important;
@@ -600,26 +602,26 @@ body.switchboard-theme-bridge .graphiql-dialog :is(button, a):focus-visible {
     opacity: 1 !important;
   }
 
-  .switchboard-graphiql .graphiql-response {
+  [data-switchboard-graphiql] .graphiql-response {
     border-top: 1px solid var(--border);
   }
 
-  .switchboard-graphiql .graphiql-query-editor,
-  .switchboard-graphiql .graphiql-editor-tool {
+  [data-switchboard-graphiql] .graphiql-query-editor,
+  [data-switchboard-graphiql] .graphiql-editor-tool {
     padding: 8px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .switchboard-graphiql .graphiql-spin,
-  .switchboard-graphiql .graphiql-spinner,
-  .switchboard-graphiql .graphiql-spinner::after {
+  [data-switchboard-graphiql] .graphiql-spin,
+  [data-switchboard-graphiql] .graphiql-spinner,
+  [data-switchboard-graphiql] .graphiql-spinner::after {
     animation: none;
   }
 
-  .switchboard-graphiql .graphiql-un-styled,
-  .switchboard-graphiql .graphiql-button,
-  .switchboard-graphiql button {
+  [data-switchboard-graphiql] .graphiql-un-styled,
+  [data-switchboard-graphiql] .graphiql-button,
+  [data-switchboard-graphiql] button {
     transition-duration: 0s;
   }
 }

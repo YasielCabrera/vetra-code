@@ -1,34 +1,15 @@
-import * as Crypto from "effect/Crypto";
-import { Atom } from "effect/unstable/reactivity";
+import { WS_METHODS } from "@t3tools/contracts";
+import type { Atom } from "effect/unstable/reactivity";
 
-import { createAtomCommandScheduler, createEnvironmentCommand } from "./runtime.ts";
-import {
-  type ClaimAutomationRunInput,
-  type CreateAutomationInput,
-  type DeleteAutomationInput,
-  type DisableAutomationInput,
-  type EnableAutomationInput,
-  type UpdateAutomationInput,
-  claimAutomationRun,
-  createAutomation,
-  deleteAutomation,
-  disableAutomation,
-  enableAutomation,
-  updateAutomation,
-} from "../operations/commands.ts";
 import type { EnvironmentRegistry } from "../connection/registry.ts";
-
-export type {
-  ClaimAutomationRunInput,
-  CreateAutomationInput,
-  DeleteAutomationInput,
-  DisableAutomationInput,
-  EnableAutomationInput,
-  UpdateAutomationInput,
-} from "../operations/commands.ts";
+import {
+  createAtomCommandScheduler,
+  createEnvironmentRpcCommand,
+  createEnvironmentRpcSubscriptionAtomFamily,
+} from "./runtime.ts";
 
 export function createAutomationEnvironmentAtoms<R, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry | Crypto.Crypto | R, E>,
+  runtime: Atom.AtomRuntime<EnvironmentRegistry | R, E>,
 ) {
   const scheduler = createAtomCommandScheduler();
   // Serialized per automation: a pause landing between an edit and a Run now
@@ -39,41 +20,50 @@ export function createAutomationEnvironmentAtoms<R, E>(
       JSON.stringify([environmentId, input.automationId]),
   };
   return {
-    create: createEnvironmentCommand(runtime, {
+    /** Live automations and their runs: a snapshot on subscribe, then after every change. */
+    live: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
+      label: "environment-data:automations:live",
+      tag: WS_METHODS.automationsSubscribe,
+    }),
+    create: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:commands:automation:create",
-      execute: (input: CreateAutomationInput) => createAutomation(input),
+      tag: WS_METHODS.automationsCreate,
       scheduler,
       concurrency,
     }),
-    update: createEnvironmentCommand(runtime, {
+    update: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:commands:automation:update",
-      execute: (input: UpdateAutomationInput) => updateAutomation(input),
+      tag: WS_METHODS.automationsUpdate,
       scheduler,
       concurrency,
     }),
-    enable: createEnvironmentCommand(runtime, {
+    enable: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:commands:automation:enable",
-      execute: (input: EnableAutomationInput) => enableAutomation(input),
+      tag: WS_METHODS.automationsEnable,
       scheduler,
       concurrency,
     }),
-    disable: createEnvironmentCommand(runtime, {
+    disable: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:commands:automation:disable",
-      execute: (input: DisableAutomationInput) => disableAutomation(input),
+      tag: WS_METHODS.automationsDisable,
       scheduler,
       concurrency,
     }),
-    delete: createEnvironmentCommand(runtime, {
+    delete: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:commands:automation:delete",
-      execute: (input: DeleteAutomationInput) => deleteAutomation(input),
+      tag: WS_METHODS.automationsDelete,
       scheduler,
       concurrency,
     }),
-    claimRun: createEnvironmentCommand(runtime, {
-      label: "environment-data:commands:automation:claim-run",
-      execute: (input: ClaimAutomationRunInput) => claimAutomationRun(input),
+    runNow: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:commands:automation:run-now",
+      tag: WS_METHODS.automationsRunNow,
       scheduler,
       concurrency,
+    }),
+    setRunHidden: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:commands:automation:set-run-hidden",
+      tag: WS_METHODS.automationsSetRunHidden,
     }),
   };
 }

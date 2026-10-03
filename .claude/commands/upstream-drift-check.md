@@ -125,7 +125,7 @@ git diff --name-only "$MB"..upstream/main | grep -E 'pnpm-lock.yaml|package.json
 
 ## Step 4 — Scan for fork-policy risk
 
-The fork deletes trees, renames identifiers, and keeps T3-owned backends dark. An
+The fork deletes trees, renames identifiers, and keeps Vetra-owned backends dark. An
 incoming change that lands in one of those areas needs a human, regardless of size.
 
 ```bash

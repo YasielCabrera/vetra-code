@@ -32,7 +32,7 @@ export function DatabaseResultTable({
 
   return (
     <div className={cn("flex min-w-0 flex-col gap-2", className)}>
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 text-[.68rem] text-muted-foreground">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 text-2xs text-muted-foreground">
         <span className="font-mono tabular-nums">
           {result.rows.length.toLocaleString()} row{result.rows.length === 1 ? "" : "s"} ·{" "}
           {result.elapsedMs.toLocaleString()} ms
@@ -45,7 +45,7 @@ export function DatabaseResultTable({
         )}
       </div>
       <div className="min-h-0 max-w-full flex-1 overflow-auto rounded-lg border border-border/70">
-        <table className="w-max min-w-full border-collapse font-mono text-[.68rem]">
+        <table className="w-max min-w-full border-collapse font-mono text-2xs">
           <thead className="text-left text-muted-foreground">
             <tr>
               <th className="sticky top-0 z-10 w-10 border-r border-b border-border/60 bg-muted px-2 py-1.5 text-right font-normal">
@@ -59,7 +59,7 @@ export function DatabaseResultTable({
                   <span className="block max-w-64 truncate text-foreground">
                     {column.name || `(column ${index + 1})`}
                   </span>
-                  <span className="block max-w-64 truncate text-[.6rem] font-normal opacity-70">
+                  <span className="block max-w-64 truncate text-3xs font-normal opacity-70">
                     {column.dataType}
                   </span>
                 </th>
@@ -105,7 +105,7 @@ export function DatabaseResultTable({
         </table>
       </div>
       {result.truncated ? (
-        <p className="shrink-0 text-[.68rem] text-warning-foreground">
+        <p className="shrink-0 text-2xs text-warning-foreground">
           Showing the first {result.rowLimit} rows. Increase the row limit or narrow the query.
         </p>
       ) : null}

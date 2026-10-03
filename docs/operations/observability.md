@@ -69,7 +69,7 @@ server is stalled or stopped. It prints counts, rates, and latency percentiles p
 it to measure background work or to compare two builds.
 
 ```bash
-t3 trace summary --since 30m --limit 40
+vetra trace summary --since 30m --limit 40
 ```
 
 It reads `VETRA_TRACE_FILE` if set, else `<home>/userdata/logs/server.trace.ndjson` for
@@ -318,11 +318,11 @@ jq -r 'select(.traceId == "TRACE_ID_HERE") | [
 Filter orchestration commands:
 
 ```bash
-jq -c 'select(.attributes["orchestration.command_type"] != null) | {
+jq -c 'select(.attributes["orchestration_v2.command_type"] != null) | {
   name,
   durationMs,
-  commandType: .attributes["orchestration.command_type"],
-  aggregateKind: .attributes["orchestration.aggregate_kind"]
+  commandType: .attributes["orchestration_v2.command_type"],
+  threadId: .attributes["orchestration_v2.thread_id"]
 }' "$TRACE_FILE"
 ```
 
@@ -365,7 +365,7 @@ Good first searches:
   `deployment.environment.name`
 - span names like `sendTurn` or a Git operation such as `GitVcsDriver.statusDetails.status`
 - Git spans whose `git.operation` attribute identifies the operation
-- orchestration spans with attributes like `orchestration.command_type`
+- orchestration spans with attributes like `orchestration_v2.command_type`
 
 Once you know traces are arriving, narrower TraceQL queries for names such as `sendTurn` or Git
 operation names become useful.
@@ -377,15 +377,12 @@ Traces are best for one request. Metrics are best for trends.
 Good metric families to watch:
 
 - `vetra_rpc_request_duration`
-- `vetra_orchestration_command_duration`
-- `vetra_orchestration_command_ack_duration`
 - `vetra_provider_turn_duration`
 - `vetra_git_command_duration`
 
 Counters tell you volume and failure rate:
 
 - `vetra_rpc_requests_total`
-- `vetra_orchestration_commands_total`
 - `vetra_provider_turns_total`
 - `vetra_git_commands_total`
 
@@ -400,21 +397,6 @@ Use traces when the question is:
 - "what happened in this specific request?"
 - "which child span caused this one slow interaction?"
 - "what logs were emitted inside the failing flow?"
-
-### What The New Ack Metric Means
-
-`vetra_orchestration_command_ack_duration` measures:
-
-- start: command dispatch enters the orchestration engine
-- end: the first committed domain event for that command is published by the server
-
-That is a server-side acknowledgment metric. It does not measure:
-
-- websocket transit to the browser
-- client receipt
-- React render time
-
-If you need those later, add client-side instrumentation or a dedicated server fanout metric.
 
 ## Common Workflows
 
@@ -431,12 +413,6 @@ If you need those later, add client-side instrumentation or a dedicated server f
 1. Search for slow top-level spans in the trace file or Tempo.
 2. Check child spans for sqlite, git, provider, or terminal work.
 3. Look at the matching duration metrics to see whether the slowness is systemic.
-
-### "Did this command take too long to acknowledge?"
-
-1. Check `vetra_orchestration_command_ack_duration` by `commandType`.
-2. If it is high, inspect the corresponding orchestration trace.
-3. Look at child spans for projection, sqlite, provider, or git work.
 
 ### "Are git hooks causing latency?"
 
@@ -644,7 +620,6 @@ Current high-value span and metric boundaries include:
 - RPC request metrics in `apps/server/src/observability/RpcInstrumentation.ts`
 - startup phases
 - orchestration command processing
-- orchestration command acknowledgment latency
 - provider session and turn operations
 - git command execution and git hook events
 - terminal session lifecycle
@@ -660,7 +635,7 @@ Current high-value span and metric boundaries include:
 ## Heap Snapshots
 
 To see what a long-running server holds in memory, send it `SIGUSR2`. The server writes a V8 heap
-snapshot to its logs dir and logs the path. This works for desktop, `npx t3`, and service installs
+snapshot to its logs dir and logs the path. This works for desktop, command-line, and service installs
 on macOS and Linux. Windows has no `SIGUSR2`.
 
 Send the signal to the server pid in `server-runtime.json`, which sits in the server's state dir
@@ -670,7 +645,7 @@ handler exits on `SIGUSR2`. After a crash the file can keep a stale pid that now
 different process, so check the pid first.
 
 ```bash
-pid="$(jq .pid "${VETRA_HOME:-$HOME/.t3}/userdata/server-runtime.json")"
+pid="$(jq .pid "${VETRA_HOME:-$HOME/.vetra-code}/userdata/server-runtime.json")"
 ps -p "$pid" -o command=
 ```
 

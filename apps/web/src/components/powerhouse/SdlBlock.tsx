@@ -26,7 +26,7 @@ interface SdlBlockProps extends CodeProps {
 
 const MAX_HIGHLIGHTED_CODE_LENGTH = 100_000;
 const CODE_LENGTH_FORMATTER = new Intl.NumberFormat();
-const CODE_TEXT_CLASS = "font-mono text-[length:var(--font-size-code,0.8125rem)] leading-5";
+const CODE_TEXT_CLASS = "font-mono text-(length:--font-size-code,0.8125rem) leading-5";
 
 function displayableCode(code: string): { readonly value: string; readonly truncated: boolean } {
   if (code.length <= MAX_HIGHLIGHTED_CODE_LENGTH) return { value: code, truncated: false };
@@ -44,9 +44,9 @@ function LineNumberGutter({ code }: { code: string }) {
       aria-hidden
       data-slot="powerhouse-code-gutter"
       className={cn(
-        "sticky left-0 m-0 shrink-0 border-r border-border/60 bg-[var(--code-background)]",
+        "sticky left-0 m-0 shrink-0 border-r border-border/60 bg-code",
         "py-2.5 pr-2 pl-3 text-right whitespace-pre select-none",
-        "text-[color-mix(in_srgb,var(--code-foreground)_45%,transparent)]",
+        "text-code-foreground/45",
         CODE_TEXT_CLASS,
       )}
     >
@@ -142,7 +142,7 @@ function CollapsibleLineNumberGutter({
                   aria-label={`${action} ${range.label}, lines ${range.startLine} through ${range.endLine}`}
                   aria-expanded={!collapsed}
                   onClick={() => onToggle(range)}
-                  className="flex size-4 shrink-0 items-center justify-center rounded-sm text-[color-mix(in_srgb,var(--code-foreground)_55%,transparent)] outline-none hover:bg-accent/60 hover:text-[var(--code-foreground)] focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex size-4 shrink-0 items-center justify-center rounded-sm text-code-foreground/55 outline-none hover:bg-accent/60 hover:text-code-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 />
               }
             >
@@ -168,9 +168,9 @@ function CollapsibleLineNumberGutter({
     <div
       data-slot="powerhouse-code-gutter"
       className={cn(
-        "sticky left-0 z-10 m-0 shrink-0 border-r border-border/60 bg-[var(--code-background)]",
+        "sticky left-0 z-10 m-0 shrink-0 border-r border-border/60 bg-code",
         "py-2.5 pr-2 pl-2 whitespace-nowrap select-none",
-        "text-[color-mix(in_srgb,var(--code-foreground)_45%,transparent)]",
+        "text-code-foreground/45",
         CODE_TEXT_CLASS,
       )}
     >
@@ -257,7 +257,7 @@ export function SdlBlock({
   return (
     <div
       className={cn(
-        "min-w-0 overflow-hidden rounded-lg border border-border/60 bg-[var(--code-background)] text-[var(--code-foreground)]",
+        "min-w-0 overflow-hidden rounded-lg border border-border/60 bg-code text-code-foreground",
         className,
       )}
       data-slot="powerhouse-code-block"
@@ -280,7 +280,7 @@ export function SdlBlock({
         )}
       </Suspense>
       {display.truncated ? (
-        <p className="border-t border-border/60 px-3 py-2 text-[.65rem] text-muted-foreground">
+        <p className="border-t border-border/60 px-3 py-2 text-3xs text-muted-foreground">
           Preview limited to the first {CODE_LENGTH_FORMATTER.format(MAX_HIGHLIGHTED_CODE_LENGTH)}{" "}
           characters for performance.
         </p>

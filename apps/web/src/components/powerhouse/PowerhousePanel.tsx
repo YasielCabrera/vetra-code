@@ -110,7 +110,7 @@ function ConnectionChip({
                 : "bg-destructive",
           )}
         />
-        <span className="min-w-0 truncate font-mono text-[.65rem] text-muted-foreground tabular-nums group-hover:text-foreground">
+        <span className="min-w-0 truncate font-mono text-3xs text-muted-foreground tabular-nums group-hover:text-foreground">
           {label}
         </span>
         <Settings2 aria-hidden className="size-3 shrink-0 text-muted-foreground/70" />
@@ -236,7 +236,7 @@ export default function PowerhousePanel({
                 </select>
               </label>
             ) : (
-              <span className="min-w-0 truncate font-mono text-[.7rem] text-muted-foreground">
+              <span className="min-w-0 truncate font-mono text-2xs text-muted-foreground">
                 {projectPath.length === 0 ? project.name : projectPath}
               </span>
             )}

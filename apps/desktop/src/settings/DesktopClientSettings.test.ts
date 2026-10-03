@@ -57,6 +57,7 @@ const clientSettings: ClientSettings = {
   planModeEnabled: false,
   proactivePanelsEnabled: true,
   showSkillsInSlashMenu: false,
+  persistComposerContextStrip: true,
   providerModelPreferences: {},
   providerUsageAlertTransitions: {},
   providerUsageAlertsEnabled: true,

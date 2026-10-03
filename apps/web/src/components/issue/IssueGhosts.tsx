@@ -1,7 +1,7 @@
 /**
  * Loading states for the issue surface, drawn in the geometry of the content they stand for.
  *
- * The same technique the pull-request ghosts use: one `animate-ghost-pulse` on the container is
+ * The same technique the pull-request ghosts use: one `animate-skeleton` pulse on the container is
  * a single opacity animation however many bars sit under it, and the bars take their tone from
  * `muted-foreground` at low alpha, which reads on both themes.
  */
@@ -28,7 +28,7 @@ export function IssueListGhost({
     <div
       role="status"
       aria-label={caption ?? "Loading issues"}
-      className="animate-ghost-pulse space-y-0.5"
+      className="motion-safe:animate-skeleton space-y-0.5"
     >
       {caption ? (
         <p className="px-3 pb-1 text-xs font-medium text-muted-foreground/70">{caption}</p>
@@ -59,7 +59,7 @@ export function IssueDetailGhost() {
     <div
       role="status"
       aria-label="Loading issue"
-      className="animate-ghost-pulse flex h-full min-h-0 flex-col overflow-hidden bg-background"
+      className="motion-safe:animate-skeleton flex h-full min-h-0 flex-col overflow-hidden bg-background"
     >
       <div className="shrink-0 border-b border-border/60">
         <div className="flex h-7 items-center justify-between gap-3 px-4">
@@ -123,7 +123,7 @@ export function IssueTimelineGhost({ rows = 6 }: { rows?: number }) {
     <div
       role="status"
       aria-label="Loading issue timeline"
-      className="animate-ghost-pulse px-4 py-5"
+      className="motion-safe:animate-skeleton px-4 py-5"
     >
       <div className="relative ml-2 border-l border-border/70 pl-5">
         {Array.from({ length: rows }, (_, index) => (

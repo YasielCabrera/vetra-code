@@ -88,7 +88,7 @@ function CommentMarker({ comment }: { readonly comment: IssueTimelineComment }) 
       ) : (
         <SourceControlActorAvatar
           actor={actor}
-          className="size-7 border border-border text-[9px] font-semibold"
+          className="size-7 border border-border text-3xs font-semibold"
         />
       )}
     </TimelineMarker>
@@ -141,13 +141,13 @@ function EventItem({
             <>
               <SourceControlActorAvatar
                 actor={event.actor}
-                className="size-4 text-[7px] font-semibold"
+                className="size-4 text-5xs font-semibold"
               />
               <span className="font-semibold text-foreground">{event.actor.login}</span>
             </>
           ) : null}
           <span className="text-foreground">{issueTimelineEventLabel(event)}</span>
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-2xs text-muted-foreground">
             {formatRelativeTimeLabel(event.createdAt)}
           </span>
         </div>

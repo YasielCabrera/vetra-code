@@ -51,7 +51,7 @@ export interface ThreadActionMenuState {
   /** True for a thread an automation produced, whatever its visibility. */
   readonly isAutomationRun: boolean;
   readonly isRegeneratingTitle: boolean;
-  /** Archive rejects a thread with an active turn, so disable it here rather than let the action fail. */
+  /** Archive rejects a thread with an attached provider, so disable it here rather than let the action fail. */
   readonly isRunning: boolean;
   readonly supports: {
     readonly settlement: boolean;

@@ -78,6 +78,7 @@ import {
   WindowsDesktopBuildPrerequisitesMissingError,
   WindowsPackagedPayloadValidationError,
   WINDOWS_NATIVE_ASAR_UNPACK_GLOB,
+  stageCursorSdkPlatformPackages,
   WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT,
   WINDOWS_SERVER_ASAR_IGNORE_GLOBS,
   WINDOWS_SERVER_EXTRA_RESOURCES,
@@ -587,6 +588,9 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     }
 
     assert.deepStrictEqual(DESKTOP_FILE_EXCLUSIONS, [
+      "!**/node_modules/@cursor/sdk-*/**/*",
+      "!apps/desktop/prod-resources/cursor-sdk",
+      "!apps/desktop/prod-resources/cursor-sdk/**/*",
       "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**/*",
       "!**/*.map",
       "!**/*.d.cts",
@@ -669,25 +673,21 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         { from: "apps/desktop/prod-resources/browser-secret", to: "browser-secret" },
       ]);
       assert.deepStrictEqual(win.extraResources, [
-        {
-          from: "apps/desktop/prod-resources/resource-monitor",
-          to: "resource-monitor",
-        },
+        ...DESKTOP_EXTRA_RESOURCES,
         ...WINDOWS_SERVER_EXTRA_RESOURCES,
         ...WSL_RUNTIME_EXTRA_RESOURCES,
       ]);
       // No Linux CLI archive means staging never writes the runtime, so
       // listing it here would fail the build on a missing source file.
       assert.deepStrictEqual(winWithoutWslRuntime.extraResources, [
-        {
-          from: "apps/desktop/prod-resources/resource-monitor",
-          to: "resource-monitor",
-        },
+        ...DESKTOP_EXTRA_RESOURCES,
         ...WINDOWS_SERVER_EXTRA_RESOURCES,
       ]);
       assert.deepStrictEqual(win.nsis, { differentialPackage: true });
       // The Claude SDK platform packages and .bin shims never ship.
       assert.deepStrictEqual(WINDOWS_SERVER_ASAR_IGNORE_GLOBS, [
+        "**/node_modules/@cursor/sdk-*",
+        "**/node_modules/@cursor/sdk-*/**",
         "**/node_modules/@anthropic-ai/claude-agent-sdk-*",
         "**/node_modules/@anthropic-ai/claude-agent-sdk-*/**",
         "**/node_modules/.bin",
@@ -781,6 +781,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       resolveMergedStageDependencies({
         platform: "mac",
         serverDependencies: {
+          "@cursor/sdk": "1.0.22",
           "@anthropic-ai/claude-agent-sdk": "^0.3.170",
           "@ff-labs/fff-node": "0.9.4",
           "@opencode-ai/sdk": "^1.3.15",
@@ -795,6 +796,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         fffNodeVersion: "0.9.4",
       }),
       {
+        "@cursor/sdk": "1.0.22",
         "@ff-labs/fff-node": "0.9.4",
         "node-pty": "1.1.0",
         "@napi-rs/keyring": "1.3.0",
@@ -819,6 +821,87 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         "@ff-labs/fff-bin-linux-x64-musl": "0.9.4",
       },
     );
+  });
+
+  it.effect("ships Cursor platform assets outside asar for spawning and native loading", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const root = yield* fs.makeTempDirectoryScoped({ prefix: "t3-cursor-helpers-" });
+        const nodeModules = path.join(root, "node_modules");
+        const destination = path.join(root, "resources/node_modules/@cursor");
+        const cursorDirectory = symlinksSupported
+          ? path.join(root, "store/@cursor")
+          : path.join(nodeModules, "@cursor");
+        yield* fs.makeDirectory(path.join(cursorDirectory, "sdk"), { recursive: true });
+        if (symlinksSupported) {
+          yield* fs.makeDirectory(path.join(nodeModules, "@cursor"), { recursive: true });
+          yield* fs.symlink(
+            path.join(cursorDirectory, "sdk"),
+            path.join(nodeModules, "@cursor/sdk"),
+          );
+        }
+        const helpers = [
+          "sdk-darwin-arm64/bin/rg",
+          "sdk-darwin-arm64/bin/cursorsandbox",
+          "sdk-darwin-arm64/vendor/tree-sitter/index.js",
+          "sdk-darwin-arm64/vendor/tree-sitter/binding.node",
+          "sdk-darwin-arm64/vendor/tree-sitter-bash/binding.node",
+          "sdk-darwin-arm64/package.json",
+          "sdk-win32-x64/bin/rg.exe",
+        ];
+        for (const helper of helpers) {
+          const source = path.join(cursorDirectory, helper);
+          yield* fs.makeDirectory(path.dirname(source), { recursive: true });
+          yield* fs.writeFileString(source, "fixture helper", { mode: 0o755 });
+        }
+        yield* stageCursorSdkPlatformPackages(nodeModules, destination);
+        for (const helper of helpers) {
+          assert.equal(yield* fs.readFileString(path.join(destination, helper)), "fixture helper");
+          const packagedPath = `node_modules/@cursor/${helper}`;
+          assert.isTrue(
+            DESKTOP_FILE_EXCLUSIONS.some((glob) =>
+              NodePath.matchesGlob(packagedPath, glob.slice(1)),
+            ),
+          );
+          assert.isTrue(
+            WINDOWS_SERVER_ASAR_IGNORE_GLOBS.some((glob) =>
+              NodePath.matchesGlob(packagedPath, glob),
+            ),
+          );
+        }
+      }),
+    ),
+  );
+
+  it("excludes node-pty and onnxruntime binaries the Windows target cannot load", () => {
+    assert.deepStrictEqual(resolveWindowsServerAsarIgnoreGlobs("x64"), [
+      ...WINDOWS_SERVER_ASAR_IGNORE_GLOBS,
+      "**/node_modules/node-pty/prebuilds/win32-arm64",
+      "**/node_modules/node-pty/prebuilds/win32-arm64/**",
+      "**/node_modules/node-pty/third_party/conpty/*/win10-arm64",
+      "**/node_modules/node-pty/third_party/conpty/*/win10-arm64/**",
+      "**/node_modules/onnxruntime-node/bin/napi-v6/darwin",
+      "**/node_modules/onnxruntime-node/bin/napi-v6/darwin/**",
+      "**/node_modules/onnxruntime-node/bin/napi-v6/linux",
+      "**/node_modules/onnxruntime-node/bin/napi-v6/linux/**",
+      "**/node_modules/onnxruntime-node/bin/napi-v6/win32/arm64",
+      "**/node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**",
+    ]);
+    assert.deepStrictEqual(resolveWindowsServerAsarIgnoreGlobs("arm64"), [
+      ...WINDOWS_SERVER_ASAR_IGNORE_GLOBS,
+      "**/node_modules/node-pty/prebuilds/win32-x64",
+      "**/node_modules/node-pty/prebuilds/win32-x64/**",
+      "**/node_modules/node-pty/third_party/conpty/*/win10-x64",
+      "**/node_modules/node-pty/third_party/conpty/*/win10-x64/**",
+      "**/node_modules/onnxruntime-node/bin/napi-v6/darwin",
+      "**/node_modules/onnxruntime-node/bin/napi-v6/darwin/**",
+      "**/node_modules/onnxruntime-node/bin/napi-v6/linux",
+      "**/node_modules/onnxruntime-node/bin/napi-v6/linux/**",
+      "**/node_modules/onnxruntime-node/bin/napi-v6/win32/x64",
+      "**/node_modules/onnxruntime-node/bin/napi-v6/win32/x64/**",
+    ]);
   });
 
   it.effect("keeps target native files while excluding the other Windows architecture", () =>
@@ -2012,6 +2095,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
   it("stages the resource monitor as an external executable resource", () => {
     assert.deepStrictEqual(DESKTOP_EXTRA_RESOURCES, [
+      {
+        from: "apps/desktop/prod-resources/cursor-sdk",
+        to: "node_modules/@cursor",
+      },
       {
         from: "apps/desktop/prod-resources/resource-monitor",
         to: "resource-monitor",

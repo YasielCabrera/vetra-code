@@ -1,6 +1,6 @@
 /**
  * Header Agents chip: a robot icon plus settled/total, expanding to the roster
- * the Agents panel owns. The fraction counts exactly the rows below it, so a
+ * the thread details panel shows in full. The fraction counts exactly the rows below it, so a
  * workflow coordinator reads as a group header rather than an agent.
  */
 import type {
@@ -38,21 +38,21 @@ export function AgentPopoverRow({ agent }: { agent: RuntimeSubagent }) {
         <span className="flex h-5 shrink-0 items-center">
           <StatusDot status={agent.status} />
         </span>
-        <span className="min-w-0 flex-1 whitespace-normal text-[12px] font-medium leading-5 wrap-anywhere">
+        <span className="min-w-0 flex-1 whitespace-normal text-xs font-medium leading-5 wrap-anywhere">
           {agent.title}
         </span>
         {role ? (
-          <span className="mt-0.5 max-w-24 shrink-0 truncate rounded-sm border border-border/60 px-1 font-mono text-[.6rem] text-muted-foreground">
+          <span className="mt-0.5 max-w-24 shrink-0 truncate rounded-sm border border-border/60 px-1 font-mono text-3xs text-muted-foreground">
             {role}
           </span>
         ) : null}
-        <span className="flex h-5 shrink-0 items-center font-mono text-[.65rem] text-muted-foreground/80">
+        <span className="flex h-5 shrink-0 items-center font-mono text-3xs text-muted-foreground/80">
           <AgentElapsed agent={agent} />
         </span>
       </div>
       <div
         className={cn(
-          "truncate pl-3.5 text-[11px] leading-4",
+          "truncate pl-3.5 text-2xs leading-4",
           agent.status === "failed" ? "text-destructive-foreground" : "text-muted-foreground",
         )}
       >
@@ -66,7 +66,7 @@ export function AgentPopoverRow({ agent }: { agent: RuntimeSubagent }) {
 function AgentGroupSection({ group }: { group: AgentControlGroup }) {
   return (
     <li>
-      <div className="flex items-center gap-1.5 px-1.5 pt-1.5 text-[.65rem] font-medium uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center gap-1.5 px-1.5 pt-1.5 text-3xs font-medium uppercase tracking-wider text-muted-foreground">
         {group.workflow ? (
           <>
             <StatusDot status={group.workflow.status} />
@@ -146,7 +146,7 @@ export const ThreadAgentsControl = memo(function ThreadAgentsControl({
           <span aria-hidden className="text-xs font-medium text-muted-foreground">
             Agents
           </span>
-          <span className="ml-auto shrink-0 font-mono text-[.65rem] tabular-nums text-muted-foreground/80">
+          <span className="ml-auto shrink-0 font-mono text-3xs tabular-nums text-muted-foreground/80">
             {workingLabel ? (
               <span className="text-info-foreground">{state.liveCount} working</span>
             ) : null}
@@ -167,7 +167,7 @@ export const ThreadAgentsControl = memo(function ThreadAgentsControl({
             render={<Button variant="ghost" size="sm" className="w-full justify-start" />}
           >
             <Bot aria-hidden className="size-3.5" />
-            Open agents panel
+            Open thread details
           </PopoverClose>
         </div>
       </PopoverPopup>

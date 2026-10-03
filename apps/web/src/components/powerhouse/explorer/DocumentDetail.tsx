@@ -93,13 +93,11 @@ export function DocumentDetail({
             </span>
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-base font-semibold">{documentDisplayName(document)}</h2>
-              <p className="mt-0.5 font-mono text-[.65rem] break-all text-muted-foreground">
+              <p className="mt-0.5 font-mono text-3xs break-all text-muted-foreground">
                 {document.documentType}
               </p>
-              <p className="font-mono text-[.65rem] break-all text-muted-foreground">
-                {document.id}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-1.5 text-[.65rem] text-muted-foreground">
+              <p className="font-mono text-3xs break-all text-muted-foreground">{document.id}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5 text-3xs text-muted-foreground">
                 {document.revisions.map((revision) => (
                   <span
                     key={`${revision.scope}:${revision.revision}`}
@@ -179,7 +177,7 @@ export function DocumentDetail({
                     className={POWERHOUSE_ROW_BUTTON_CLASS}
                   >
                     <FileText aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate font-mono text-[.7rem] text-muted-foreground group-hover:text-foreground">
+                    <span className="min-w-0 flex-1 truncate font-mono text-2xs text-muted-foreground group-hover:text-foreground">
                       {childId}
                     </span>
                     <ChevronRight

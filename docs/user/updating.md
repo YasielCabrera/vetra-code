@@ -20,11 +20,29 @@ Versioned server updates and desktop auto-update can be enabled only after the r
 prerequisites in the [release runbook](../operations/release.md) are owned and configured by Vetra
 Code. See [Background service status](./background-service.md) for the currently supported path.
 
-**Settings** → **General** carries a **Continue threads after server updates** preference, off by
-default. It only takes effect once a versioned server update path exists: when enabled, a server
-update resumes supported provider threads after the replacement server is ready, using native
-promptless continuation where the provider has it and a short continue instruction otherwise.
-Terminal commands and other running work are still interrupted by the restart.
+Restarting a server interrupts active agents and terminal commands. Saved threads, settings, and
+project files remain.
+
+**Settings → General → Continue threads after restarts** is off by default. Enable it to resume
+supported active threads after the server restarts, including after a crash or machine restart.
+Vetra Code must start again on that machine; the setting does not enable automatic startup.
+Terminal commands may still be interrupted, and threads without saved provider resume state need a
+new message.
+
+Updates from the previous orchestration system preserve conversation transcripts but cannot carry
+every kind of runtime history forward. Read [Threads from older Vetra Code versions](./thread-migration.md)
+before continuing an important older thread.
+
+## When versions don't match
+
+A client and server must speak the same orchestration protocol. If they do not, the connection is
+refused rather than running half-upgraded:
+
+- An app newer than the server is blocked before connecting, with a notice telling you to update
+  Vetra Code on the machine named in the notice.
+- A server newer than your app refuses the connection with an update message.
+
+Update the side the notice names, then reconnect.
 
 ## Update providers
 

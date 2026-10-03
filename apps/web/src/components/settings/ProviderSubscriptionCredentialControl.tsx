@@ -106,7 +106,7 @@ export function ProviderSubscriptionCredentialControl({
           </p>
         </div>
         {status?.configured ? (
-          <span className="shrink-0 text-[10px] font-medium tracking-wide text-success uppercase">
+          <span className="shrink-0 text-3xs font-medium tracking-wide text-success uppercase">
             Saved
           </span>
         ) : null}
@@ -147,7 +147,7 @@ export function ProviderSubscriptionCredentialControl({
           {status?.configured ? "Replace" : "Save"}
         </Button>
       </div>
-      <p className="text-[11px] leading-relaxed text-muted-foreground/80">
+      <p className="text-2xs leading-relaxed text-muted-foreground/80">
         Stored only in this environment's secret store. The value is never returned to the app.
       </p>
     </div>

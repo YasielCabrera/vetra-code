@@ -141,8 +141,8 @@ function SwitchboardResponsePlaceholder() {
 
   if (!visible) return null;
   return (
-    <div className="switchboard-response-placeholder" role="status">
-      <span className="switchboard-response-placeholder-icon">
+    <div data-switchboard-response-placeholder role="status">
+      <span data-switchboard-response-placeholder-icon>
         <Braces aria-hidden />
       </span>
       <span>Run an operation to view its response</span>
@@ -296,6 +296,7 @@ function ConnectedSwitchboard({
   return (
     <div
       ref={rootRef}
+      data-switchboard-graphiql
       className="h-full min-h-0 bg-background"
       style={themeTokens.css as CSSProperties}
       onKeyDownCapture={suppressSwitchboardSettingsShortcut}
@@ -310,7 +311,6 @@ function ConnectedSwitchboard({
         showPersistHeadersSettings={false}
         forcedTheme={resolvedTheme}
         editorTheme={SWITCHBOARD_MONACO_THEMES}
-        className="switchboard-graphiql"
       >
         <GraphiQL.Logo>{null}</GraphiQL.Logo>
         <GraphiQL.Footer>

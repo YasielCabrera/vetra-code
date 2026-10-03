@@ -16,7 +16,7 @@ export function DiffFileCount(props: { count: number; truncated: boolean }) {
 
   const chip = (
     <span
-      className="inline-flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground tabular-nums"
+      className="inline-flex shrink-0 items-center gap-1.5 text-2xs text-muted-foreground tabular-nums"
       aria-label={accessibleLabel}
     >
       <FileDiffIcon aria-hidden="true" className="size-3.5" />

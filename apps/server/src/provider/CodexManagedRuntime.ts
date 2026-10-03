@@ -4,8 +4,8 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import { ServerConfig } from "../config.ts";
-import { CodexInstallation } from "./CodexInstallation.ts";
+import * as ServerConfig from "../config.ts";
+import * as CodexInstallation from "./CodexInstallation.ts";
 import { makeCodexChatGptAuth } from "./CodexChatGptAuth.ts";
 import { materializeCodexShadowHome } from "./Drivers/CodexHomeLayout.ts";
 
@@ -36,8 +36,8 @@ export const makeCodexManagedRuntime = Effect.fn("makeCodexManagedRuntime")(func
   readonly environment: NodeJS.ProcessEnv;
   readonly config: CodexSettings;
 }) {
-  const installation = yield* CodexInstallation;
-  const config = yield* ServerConfig;
+  const installation = yield* CodexInstallation.CodexInstallation;
+  const config = yield* ServerConfig.ServerConfig;
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const auth = yield* makeCodexChatGptAuth({
@@ -87,7 +87,7 @@ export const makeCodexManagedRuntime = Effect.fn("makeCodexManagedRuntime")(func
           }),
       ),
     );
-    // Ambient CLI overrides cannot redirect a T3-owned token to a different provider.
+    // Ambient CLI overrides cannot redirect a Vetra-owned token to a different provider.
     const environment: NodeJS.ProcessEnv = {
       ...options.environment,
       ACCESS_TOKEN: credentials.accessToken,

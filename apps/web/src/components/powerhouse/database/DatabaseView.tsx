@@ -61,7 +61,7 @@ function StatusChip({ target }: { target: PowerhouseDatabaseTarget }) {
   return (
     <span
       className={cn(
-        "inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-1 font-mono text-[.63rem] tabular-nums",
+        "inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-1 font-mono text-3xs tabular-nums",
         target.status === "ready"
           ? "border-success/25 bg-success/7 text-success"
           : target.status === "missing"
@@ -104,7 +104,7 @@ function RelationNavigation({
     <div className="space-y-1 px-2 pb-3">
       {filtered.map((schema) => (
         <details key={schema.name} open className="group/schema">
-          <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2 py-1.5 font-mono text-[.67rem] font-medium text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring">
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2 py-1.5 font-mono text-2xs font-medium text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring">
             <ListTree aria-hidden className="size-3 shrink-0" />
             <span className="min-w-0 flex-1 truncate">{schema.name}</span>
             <span className="tabular-nums opacity-65">{schema.relations.length}</span>
@@ -125,11 +125,11 @@ function RelationNavigation({
                   )}
                 >
                   <Table2 aria-hidden className="size-3 shrink-0 opacity-75" />
-                  <span className="min-w-0 flex-1 truncate font-mono text-[.68rem]">
+                  <span className="min-w-0 flex-1 truncate font-mono text-2xs">
                     {relation.name}
                   </span>
                   {relation.estimatedRows === null ? null : (
-                    <span className="shrink-0 font-mono text-[.58rem] tabular-nums opacity-55">
+                    <span className="shrink-0 font-mono text-3xs tabular-nums opacity-55">
                       ~{Math.round(relation.estimatedRows).toLocaleString()}
                     </span>
                   )}
@@ -427,7 +427,7 @@ export function DatabaseView({
                   className="h-8 w-full rounded-md border border-input bg-background pr-2 pl-8 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </label>
-              <label className="flex cursor-pointer items-center gap-2 px-1 text-[.66rem] text-muted-foreground">
+              <label className="flex cursor-pointer items-center gap-2 px-1 text-2xs text-muted-foreground">
                 <input
                   type="checkbox"
                   checked={session.includeSystemSchemas}
@@ -475,7 +475,7 @@ export function DatabaseView({
               >
                 <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-[.67rem] text-muted-foreground">
+                    <div className="flex items-center gap-2 text-2xs text-muted-foreground">
                       <DatabaseIcon aria-hidden className="size-3" />
                       <span className="truncate font-mono">{activeRelation.schema}</span>
                       <span aria-hidden>/</span>
@@ -563,7 +563,7 @@ export function DatabaseView({
                               <td className="px-3 py-2 text-muted-foreground">
                                 {column.nullable ? "yes" : "no"}
                               </td>
-                              <td className="max-w-sm px-3 py-2 font-mono text-[.68rem] break-words text-muted-foreground">
+                              <td className="max-w-sm px-3 py-2 font-mono text-2xs break-words text-muted-foreground">
                                 {column.defaultExpression ?? (column.generated ? "generated" : "—")}
                               </td>
                             </tr>
@@ -586,17 +586,17 @@ export function DatabaseView({
                             <FileKey2 aria-hidden className="size-3.5 text-muted-foreground" />
                             <h3 className="font-mono text-xs font-medium">{index.name}</h3>
                             {index.primary ? (
-                              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[.6rem] text-primary">
+                              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-3xs text-primary">
                                 primary
                               </span>
                             ) : null}
                             {index.unique ? (
-                              <span className="rounded bg-muted px-1.5 py-0.5 text-[.6rem] text-muted-foreground">
+                              <span className="rounded bg-muted px-1.5 py-0.5 text-3xs text-muted-foreground">
                                 unique
                               </span>
                             ) : null}
                           </div>
-                          <pre className="overflow-auto whitespace-pre-wrap font-mono text-[.68rem] leading-relaxed text-muted-foreground">
+                          <pre className="overflow-auto whitespace-pre-wrap font-mono text-2xs leading-relaxed text-muted-foreground">
                             {index.definition}
                           </pre>
                         </section>
@@ -616,11 +616,11 @@ export function DatabaseView({
                           <div className="mb-2 flex flex-wrap items-center gap-2">
                             <Columns3 aria-hidden className="size-3.5 text-muted-foreground" />
                             <h3 className="font-mono text-xs font-medium">{constraint.name}</h3>
-                            <span className="rounded bg-muted px-1.5 py-0.5 text-[.6rem] text-muted-foreground">
+                            <span className="rounded bg-muted px-1.5 py-0.5 text-3xs text-muted-foreground">
                               {constraint.type.replaceAll("_", " ")}
                             </span>
                           </div>
-                          <pre className="overflow-auto whitespace-pre-wrap font-mono text-[.68rem] leading-relaxed text-muted-foreground">
+                          <pre className="overflow-auto whitespace-pre-wrap font-mono text-2xs leading-relaxed text-muted-foreground">
                             {constraint.definition}
                           </pre>
                         </section>
@@ -630,14 +630,14 @@ export function DatabaseView({
                 ) : (
                   <section className="overflow-hidden rounded-lg border border-border/70 bg-card/45">
                     <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
-                      <span className="flex items-center gap-1.5 text-[.67rem] text-muted-foreground">
+                      <span className="flex items-center gap-1.5 text-2xs text-muted-foreground">
                         <Braces aria-hidden className="size-3" />
                         {relation.data.relation.definitionKind === "exact"
                           ? "Exact catalog definition"
                           : "Reconstructed structure"}
                       </span>
                     </div>
-                    <pre className="max-h-[32rem] overflow-auto p-3 font-mono text-[.7rem] leading-relaxed whitespace-pre-wrap">
+                    <pre className="max-h-[32rem] overflow-auto p-3 font-mono text-2xs leading-relaxed whitespace-pre-wrap">
                       {relation.data.relation.definition}
                     </pre>
                   </section>

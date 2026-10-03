@@ -63,6 +63,7 @@ export default defineConfig({
     environment: "node",
     exclude: [
       "**/.repos/**",
+      "**/.t3/**",
       "**/node_modules/**",
       "**/dist/**",
       "**/dist-electron/**",
@@ -297,7 +298,6 @@ export default defineConfig({
         "apps/server/src/orchestration/commandInvariants.test.ts": 5,
         "apps/server/src/orchestration/projector.test.ts": 20,
         "apps/server/src/provider/Layers/CodexAdapter.test.ts": 1,
-        "apps/server/src/provider/Layers/CodexSessionRuntime.test.ts": 5,
         "apps/server/src/provider/Layers/CursorAdapter.test.ts": 1,
         "apps/server/src/provider/Layers/CursorProvider.test.ts": 1,
         "apps/server/src/provider/Layers/ProviderService.test.ts": 2,

@@ -3,13 +3,21 @@ import * as DateTime from "effect/DateTime";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 
-import { IsoDateTime, ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
+import {
+  AutomationId,
+  IsoDateTime,
+  ProjectId,
+  ThreadId,
+  TrimmedNonEmptyString,
+} from "./baseSchemas.ts";
+import { ThreadEnvMode } from "./environment.ts";
+import { ModelSelection } from "./modelSelection.ts";
+import { RuntimeMode } from "./providerPolicy.ts";
 
 /**
- * When an automation runs. Lives here rather than in orchestration.ts so the
- * cron helpers below can be shared by the decider (which computes the next run
- * as part of deciding a claim) and by the client form (which previews it)
- * without either importing the orchestration command surface.
+ * When an automation runs. The cron helpers below are shared by the server
+ * (which computes the next run on every claim) and by the client form (which
+ * previews it).
  */
 const AutomationOnceSchedule = Schema.Struct({
   kind: Schema.Literal("once"),
@@ -133,3 +141,137 @@ export function resolveAutomationNextRunAt(
     return null;
   }
 }
+
+/**
+ * A prompt plus a schedule. Each firing produces its own thread in
+ * `projectId`, so a run is a thread and the automation holds only what the
+ * next one needs.
+ */
+export const Automation = Schema.Struct({
+  id: AutomationId,
+  title: AutomationTitle,
+  prompt: AutomationPrompt,
+  schedule: AutomationSchedule,
+  projectId: ProjectId,
+  /** True when `projectId` is the automation's own project under Vetra home. */
+  ownsProject: Schema.Boolean,
+  modelSelection: ModelSelection,
+  /**
+   * Unattended work parks forever on the first approval request, so
+   * automations default to full access and the form says so.
+   */
+  runtimeMode: RuntimeMode,
+  /** Where a run works: the project's checkout, or a worktree per run. */
+  envMode: ThreadEnvMode,
+  /** Null means "whatever the checkout is on when the run starts". */
+  baseBranch: Schema.NullOr(TrimmedNonEmptyString),
+  startFromOrigin: Schema.Boolean,
+  /** Paused automations keep their schedule and stop firing. */
+  enabled: Schema.Boolean,
+  /**
+   * The next instant this should fire, or null when nothing is scheduled: a
+   * one-time run that already happened, or a cron matching no real date.
+   * Recomputed on every schedule change and every claim; the scheduler treats
+   * it as its queue key.
+   */
+  nextRunAt: Schema.NullOr(IsoDateTime),
+  lastRun: Schema.NullOr(AutomationLastRun),
+  createdAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+});
+export type Automation = typeof Automation.Type;
+
+/**
+ * A claimed run: the thread one firing produced. Run threads are born hidden
+ * so a schedule firing overnight does not fill the sidebar; revealing one
+ * clears `hiddenAt` without disowning it, so the automation's history stays
+ * complete.
+ */
+export const AutomationRun = Schema.Struct({
+  threadId: ThreadId,
+  automationId: AutomationId,
+  scheduledFor: IsoDateTime,
+  reason: AutomationRunReason,
+  createdAt: IsoDateTime,
+  hiddenAt: Schema.NullOr(IsoDateTime),
+});
+export type AutomationRun = typeof AutomationRun.Type;
+
+/** Everything the automations surfaces render. Few and tiny, so the stream
+    re-sends the whole snapshot after every change. */
+export const AutomationSnapshot = Schema.Struct({
+  automations: Schema.Array(Automation),
+  runs: Schema.Array(AutomationRun),
+});
+export type AutomationSnapshot = typeof AutomationSnapshot.Type;
+
+/**
+ * An automation either runs in a project the user chose, or gets one of its
+ * own rooted under Vetra home. Only the server knows where that is, so the
+ * client asks for "owned" and names the id the project should get.
+ */
+export const AutomationProjectTarget = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("existing"), projectId: ProjectId }),
+  Schema.Struct({ kind: Schema.Literal("owned"), projectId: ProjectId }),
+]);
+export type AutomationProjectTarget = typeof AutomationProjectTarget.Type;
+
+export const AutomationCreateInput = Schema.Struct({
+  automationId: AutomationId,
+  title: AutomationTitle,
+  prompt: AutomationPrompt,
+  schedule: AutomationSchedule,
+  project: AutomationProjectTarget,
+  modelSelection: ModelSelection,
+  runtimeMode: RuntimeMode,
+  envMode: ThreadEnvMode,
+  baseBranch: Schema.NullOr(TrimmedNonEmptyString),
+  startFromOrigin: Schema.Boolean,
+  enabled: Schema.Boolean,
+});
+export type AutomationCreateInput = typeof AutomationCreateInput.Type;
+
+/** Absent fields are left unchanged. Which project an automation runs in is
+    deliberately not editable: an owned project would be orphaned by the move. */
+export const AutomationUpdateInput = Schema.Struct({
+  automationId: AutomationId,
+  title: Schema.optional(AutomationTitle),
+  prompt: Schema.optional(AutomationPrompt),
+  schedule: Schema.optional(AutomationSchedule),
+  modelSelection: Schema.optional(ModelSelection),
+  runtimeMode: Schema.optional(RuntimeMode),
+  envMode: Schema.optional(ThreadEnvMode),
+  baseBranch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  startFromOrigin: Schema.optional(Schema.Boolean),
+});
+export type AutomationUpdateInput = typeof AutomationUpdateInput.Type;
+
+/** Enable, disable, and Run now. Run now works on a paused automation: that is
+    how a schedule gets tested before it is turned loose. */
+export const AutomationTargetInput = Schema.Struct({ automationId: AutomationId });
+export type AutomationTargetInput = typeof AutomationTargetInput.Type;
+
+export const AutomationDeleteInput = Schema.Struct({
+  automationId: AutomationId,
+  /**
+   * Required only when deleting would take revealed run threads with it —
+   * which happens when the automation owns its project, since the project goes
+   * too. Hidden runs are reachable only through the automation, so they are
+   * always cleaned up.
+   */
+  force: Schema.optional(Schema.Boolean),
+});
+export type AutomationDeleteInput = typeof AutomationDeleteInput.Type;
+
+/** Promote a run to the sidebar, or put it back. */
+export const AutomationRunVisibilityInput = Schema.Struct({
+  threadId: ThreadId,
+  hidden: Schema.Boolean,
+});
+export type AutomationRunVisibilityInput = typeof AutomationRunVisibilityInput.Type;
+
+export class AutomationError extends Schema.TaggedError<AutomationError>()("AutomationError", {
+  message: Schema.String,
+  automationId: Schema.optional(AutomationId),
+  cause: Schema.optional(Schema.Defect()),
+}) {}

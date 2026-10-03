@@ -13,8 +13,6 @@ import * as Path from "effect/Path";
 import {
   PRODUCT_DESKTOP_APP_ID,
   PRODUCT_DESKTOP_DEV_APP_ID,
-  PRODUCT_DESKTOP_DEV_USER_DATA_DIRECTORY_NAME,
-  PRODUCT_DESKTOP_USER_DATA_DIRECTORY_NAME,
   PRODUCT_NAME,
   PRODUCT_SLUG,
 } from "@t3tools/shared/productIdentity";
@@ -95,8 +93,6 @@ export class DesktopEnvironment extends Context.Service<
     readonly linuxWmClass: string;
     readonly linuxApplicationsDir: string;
     readonly appImagePath: Option.Option<string>;
-    readonly userDataDirName: string;
-    readonly legacyUserDataDirName: string;
     readonly defaultDesktopSettings: DesktopAppSettings.DesktopSettings;
     readonly runtimeInfo: DesktopRuntimeInfo;
     readonly resolvePickFolderDefaultPath: (rawOptions: unknown) => Option.Option<string>;
@@ -197,12 +193,6 @@ const make = Effect.fn("desktop.environment.make")(function* (
     joinPath: path.join,
     t3Home: config.t3Home,
   });
-  const userDataDirName = isDevelopment
-    ? PRODUCT_DESKTOP_DEV_USER_DATA_DIRECTORY_NAME
-    : PRODUCT_DESKTOP_USER_DATA_DIRECTORY_NAME;
-  // No Vetra release predates this identity boundary. Keeping this equal to the
-  // current directory prevents the migration path from ever reading Vetra data.
-  const legacyUserDataDirName = userDataDirName;
   const linuxApplicationsDir = path.join(
     Option.getOrElse(config.xdgDataHome, () => path.join(homeDirectory, ".local", "share")),
     "applications",
@@ -260,8 +250,6 @@ const make = Effect.fn("desktop.environment.make")(function* (
     linuxWmClass: isDevelopment ? `${PRODUCT_SLUG}-dev` : PRODUCT_SLUG,
     linuxApplicationsDir,
     appImagePath: config.appImagePath,
-    userDataDirName,
-    legacyUserDataDirName,
     defaultDesktopSettings: DesktopAppSettings.resolveDefaultDesktopSettings(input.appVersion),
     runtimeInfo: resolveDesktopRuntimeInfo({
       platform: input.platform,

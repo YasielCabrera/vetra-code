@@ -54,7 +54,7 @@ export function DriveList({ environmentId, url, query, onSelectDrive }: DriveLis
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-medium text-foreground">Reactor drives</h2>
-            <p className="text-[.65rem] text-muted-foreground">
+            <p className="text-3xs text-muted-foreground">
               {searching
                 ? `${visibleDrives.length} of ${drives.length} drives match`
                 : `${drives.length} drive${drives.length === 1 ? "" : "s"} available`}
@@ -121,7 +121,7 @@ export function DriveList({ environmentId, url, query, onSelectDrive }: DriveLis
                     <span className="min-w-0 truncate text-sm font-medium">
                       {documentDisplayName(drive)}
                     </span>
-                    <span className="min-w-0 truncate font-mono text-[.65rem] text-muted-foreground">
+                    <span className="min-w-0 truncate font-mono text-3xs text-muted-foreground">
                       {drive.id}
                     </span>
                   </span>

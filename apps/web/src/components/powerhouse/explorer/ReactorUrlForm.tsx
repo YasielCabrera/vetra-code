@@ -79,9 +79,7 @@ export function ReactorUrlForm({
         </div>
         <p
           id={hintId}
-          className={
-            isValid ? "text-[.65rem] text-muted-foreground" : "text-[.65rem] text-destructive"
-          }
+          className={isValid ? "text-3xs text-muted-foreground" : "text-3xs text-destructive"}
           aria-live="polite"
         >
           {isValid
