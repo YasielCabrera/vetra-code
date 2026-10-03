@@ -1,10 +1,12 @@
 import type { EnvironmentTicket } from "@t3tools/client-runtime/state/tickets";
 import type { TicketStatusDefinition } from "@t3tools/contracts";
+import { gitHubLoginAvatarUrl } from "@t3tools/shared/githubActor";
 import { FolderIcon, TicketIcon } from "lucide-react";
 import { memo } from "react";
 
 import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { GitHubIcon } from "../Icons";
+import { SourceControlActorAvatar } from "../SourceControlActorAvatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -48,6 +50,38 @@ export function TicketSource(props: { readonly ticket: EnvironmentTicket }) {
         <span className="truncate">{source}</span>
       </TooltipTrigger>
       <TooltipPopup>{source}</TooltipPopup>
+    </Tooltip>
+  );
+}
+
+const VISIBLE_ASSIGNEES = 3;
+
+/** Overlapping faces of the people GitHub has the issue assigned to; local tickets have none. */
+export function TicketAssignees(props: { readonly ticket: EnvironmentTicket }) {
+  if (props.ticket.kind !== "github") return null;
+  const { host, assignees } = props.ticket.github;
+  if (assignees.length === 0) return null;
+  const extra = assignees.length - VISIBLE_ASSIGNEES;
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<span className="flex shrink-0 items-center" />}>
+        <span className="sr-only">Assigned to {assignees.join(", ")}</span>
+        <span className="flex items-center -space-x-1">
+          {assignees.slice(0, VISIBLE_ASSIGNEES).map((login) => (
+            <SourceControlActorAvatar
+              key={login}
+              actor={{ login, avatarUrl: gitHubLoginAvatarUrl(login, host) }}
+              className="ring-1 ring-card"
+            />
+          ))}
+        </span>
+        {extra > 0 ? (
+          <span aria-hidden className="ml-1 text-xs text-muted-foreground tabular-nums">
+            +{extra}
+          </span>
+        ) : null}
+      </TooltipTrigger>
+      <TooltipPopup>Assigned to {assignees.join(", ")}</TooltipPopup>
     </Tooltip>
   );
 }
@@ -158,6 +192,7 @@ export const TicketRow = memo(function TicketRow(props: {
         <TicketUpdatedAt ticket={ticket} />
         <span className="flex h-5 items-center gap-2">
           <TicketLinkCounts ticket={ticket} />
+          <TicketAssignees ticket={ticket} />
         </span>
       </span>
     </button>

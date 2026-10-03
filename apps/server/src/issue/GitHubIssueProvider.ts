@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect";
 import type { IssueActivity, IssueActor, IssueComment } from "@t3tools/contracts";
 
-import { gitHubLoginAvatarUrl } from "../sourceControl/GitHubActor.ts";
+import { gitHubLoginAvatarUrl } from "@t3tools/shared/githubActor";
 import * as GitHubIssueCli from "./GitHubIssueCli.ts";
 import type { GitHubIssue } from "./githubIssueJson.ts";
 import { IssueProviderError, type IssueProviderApi } from "./IssueProvider.ts";

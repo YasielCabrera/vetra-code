@@ -77,7 +77,6 @@ import { TicketKanban } from "./TicketKanban";
 import { TicketFilterMenu, TicketStatusIcon } from "./ticketPresentation";
 import { useRunning } from "../../hooks/useRunning";
 import { summarizeGitHubSync } from "./ticketGitHub.logic";
-import { TicketGitHubConnect } from "./TicketGitHubConnect";
 import { TicketRow, TICKET_LIST_ROW_HEIGHT } from "./TicketListRow";
 
 const ROW_HEIGHT = TICKET_LIST_ROW_HEIGHT;
@@ -608,15 +607,12 @@ export function TicketsPage() {
           ) : trackedCount === 0 && !boardSearch.hidden ? (
             <TicketsEmptyState
               title="No tickets yet"
-              description="Write down the work you have not started, and link it to projects, threads and pull requests. Or bring in a repository's open GitHub issues."
+              description="Write down the work you have not started, and link it to projects, threads and pull requests. To bring in a repository's open GitHub issues, connect it in Settings → Tickets."
               action={
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Button size="sm" disabled={!canCreate} onClick={newTicket}>
-                    <PlusIcon />
-                    New ticket
-                  </Button>
-                  <TicketGitHubConnect emptyState />
-                </div>
+                <Button size="sm" disabled={!canCreate} onClick={newTicket}>
+                  <PlusIcon />
+                  New ticket
+                </Button>
               }
             />
           ) : filteredTickets.length === 0 ? (
@@ -709,7 +705,6 @@ function TicketsSyncControl() {
     );
   return (
     <div className="flex shrink-0 items-center">
-      <TicketGitHubConnect />
       {summary?.lastError == null ? null : (
         <Tooltip>
           <TooltipTrigger
@@ -728,17 +723,34 @@ function TicketsSyncControl() {
         </Tooltip>
       )}
       {summary === null ? null : (
-        <Button size="sm" variant="ghost" disabled={syncing} onClick={syncAll}>
-          <RefreshIcon refreshing={syncing} />
-          {syncing
-            ? "Syncing"
-            : summary.lastSyncedAt === null
-              ? "Sync"
-              : `Synced ${formatRelativeTimeLabel(summary.lastSyncedAt)}`}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Sync GitHub issues"
+                disabled={syncing}
+                onClick={syncAll}
+              />
+            }
+          >
+            <RefreshIcon refreshing={syncing} />
+          </TooltipTrigger>
+          <TooltipPopup side="bottom">
+            <TicketsSyncLabel lastSyncedAt={summary.lastSyncedAt} />
+          </TooltipPopup>
+        </Tooltip>
       )}
     </div>
   );
+}
+
+// The popup unmounts when closed, so the relative time is computed fresh on each open.
+function TicketsSyncLabel(props: { readonly lastSyncedAt: string | null }) {
+  return props.lastSyncedAt === null
+    ? "Not synced yet"
+    : `Synced ${formatRelativeTimeLabel(props.lastSyncedAt)}`;
 }
 
 const TicketGroupHeader = memo(function TicketGroupHeader(props: {

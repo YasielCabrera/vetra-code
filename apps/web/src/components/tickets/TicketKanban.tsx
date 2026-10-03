@@ -35,7 +35,13 @@ import {
   statusForColumn,
 } from "./ticketKanban.logic";
 import { TicketLinkCounts, TicketStatusIcon } from "./ticketPresentation";
-import { TicketSource, TicketStatusMark, TicketTags, TicketUpdatedAt } from "./TicketListRow";
+import {
+  TicketAssignees,
+  TicketSource,
+  TicketStatusMark,
+  TicketTags,
+  TicketUpdatedAt,
+} from "./TicketListRow";
 import { formatTicketRef } from "./ticketRefs";
 
 const VIRTUALIZE_AFTER = 50;
@@ -424,6 +430,7 @@ const TicketCard = memo(function TicketCard(props: {
         <span className="font-mono tabular-nums">{formatTicketRef(ticket)}</span>
         <span className="ml-auto flex items-center gap-2">
           <TicketLinkCounts ticket={ticket} />
+          <TicketAssignees ticket={ticket} />
         </span>
       </span>
       <span className="min-h-0 w-full flex-1">

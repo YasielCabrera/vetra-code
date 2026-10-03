@@ -84,8 +84,9 @@ Bring a repository's open GitHub issues onto the board. In **Settings → Ticket
 sources, select **Add repository** and pick a project whose remote is on GitHub. The environment
 runs the GitHub CLI (`gh`) in that project, so `gh` must be installed and signed in there. The
 first sync starts at once; after that, enabled sources sync every 10 minutes. Select **Sync now**
-on a source, or **Sync** on the board, to sync right away. A source that cannot sync shows why,
-such as `gh` being signed out. A repository with more than 1,000 open issues shows a warning.
+on a source, or the sync button on the board, to sync right away. A source that cannot sync
+shows why, such as `gh` being signed out. A repository with more than 1,000 open issues shows a
+warning.
 
 Each issue becomes a ticket with its own `T-` reference, linked to the project, and marked with
 the GitHub logo. GitHub owns the issue's title, description, and labels; select **Edit on GitHub**

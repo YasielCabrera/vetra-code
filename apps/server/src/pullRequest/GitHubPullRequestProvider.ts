@@ -7,7 +7,7 @@ import type {
   PullRequestViewerPermissions,
 } from "@t3tools/contracts";
 
-import { gitHubLoginAvatarUrl } from "../sourceControl/GitHubActor.ts";
+import { gitHubLoginAvatarUrl } from "@t3tools/shared/githubActor";
 import * as GitHubPullRequestCli from "./GitHubPullRequestCli.ts";
 import {
   PullRequestProviderError,
