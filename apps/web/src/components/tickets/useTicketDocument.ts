@@ -3,15 +3,18 @@ import type {
   EnvironmentId,
   TicketDetail,
   TicketPlan,
+  TicketPlanStatus,
+  TicketPlanSummary,
   TicketPlanWriteResult,
   TicketStatusId,
   TicketSummary,
   TicketUpdateInput,
   TicketWriteResult,
 } from "@t3tools/contracts";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 
-import { TICKET_REVISION_CONFLICT, useTicketActions } from "../../hooks/useTicketActions";
+import { useTicketActions } from "../../hooks/useTicketActions";
+import { TICKET_REVISION_CONFLICT } from "./ticketDocument.logic";
 import {
   type DocumentUpload,
   type DocumentWriteOutcome,
@@ -23,90 +26,81 @@ type FieldUpdate = Pick<TicketUpdateInput, "title" | "labels" | "removeAttachmen
 const withUploads = (uploads: ReadonlyArray<DocumentUpload>) =>
   uploads.length > 0 ? { attachments: uploads } : {};
 
-const planWriteLanded = (
+function ticketOutcome(
+  result: TicketWriteResult | typeof TICKET_REVISION_CONFLICT | null,
+): DocumentWriteOutcome<TicketSummary> {
+  if (result === null || result === TICKET_REVISION_CONFLICT) return result;
+  return { summary: result.ticket, claimed: result.attachments };
+}
+
+function planOutcome(
   result: TicketPlanWriteResult | typeof TICKET_REVISION_CONFLICT | null,
-): DocumentWriteOutcome =>
-  result === null || result === TICKET_REVISION_CONFLICT
-    ? result
-    : { revision: result.plan.revision, claimed: result.attachments };
+): DocumentWriteOutcome<TicketPlanSummary> {
+  if (result === null || result === TICKET_REVISION_CONFLICT) return result;
+  return { summary: result.plan, claimed: result.attachments };
+}
 
 /** The detail page's writes to one ticket: its description, title, labels, attachments and status. */
 export function useTicketDocument(ref: ScopedTicketRef, detail: TicketDetail) {
   const { update, move } = useTicketActions();
-  // The newest summary from either the stream or a write's reply, which can arrive first.
-  const latestRef = useRef(detail.summary);
-  const noteSummary = useCallback((summary: TicketSummary) => {
-    if (summary.revision >= latestRef.current.revision) latestRef.current = summary;
-  }, []);
-  useEffect(() => noteSummary(detail.summary), [detail.summary, noteSummary]);
-
-  const landed = useCallback(
-    (result: TicketWriteResult | typeof TICKET_REVISION_CONFLICT | null): DocumentWriteOutcome => {
-      if (result === null || result === TICKET_REVISION_CONFLICT) return result;
-      noteSummary(result.ticket);
-      return { revision: result.ticket.revision, claimed: result.attachments };
-    },
-    [noteSummary],
-  );
-
   const doc = useAutosavedDocument({
-    revision: detail.summary.revision,
+    summary: detail.summary,
     body: detail.body,
     writeBody: useCallback(
       async (expectedRevision, body, uploads) =>
-        landed(await update(ref, { expectedRevision, body, ...withUploads(uploads) })),
-      [landed, ref, update],
+        ticketOutcome(await update(ref, { expectedRevision, body, ...withUploads(uploads) })),
+      [ref, update],
     ),
     fieldConflictTitle: "The ticket changed before your edit saved",
   });
-  const { writeFields } = doc;
+  const { writeFields, readLatest } = doc;
 
   /** Applies `next` to the newest labels, so back-to-back edits build on each other. */
   const saveLabels = useCallback(
     (next: (labels: ReadonlyArray<string>) => ReadonlyArray<string>) =>
       writeFields(() => {
-        const latest = latestRef.current;
+        const latest = readLatest();
         const labels = next(latest.labels);
         if (labels.join("\n") === latest.labels.join("\n")) return null;
-        return async (expectedRevision) => landed(await update(ref, { labels, expectedRevision }));
+        return async (expectedRevision) =>
+          ticketOutcome(await update(ref, { labels, expectedRevision }));
       }),
-    [landed, ref, update, writeFields],
+    [readLatest, ref, update, writeFields],
   );
 
   const saveFields = useCallback(
     (fields: Omit<FieldUpdate, "labels">) =>
       writeFields(
         () => async (expectedRevision) =>
-          landed(await update(ref, { ...fields, expectedRevision })),
+          ticketOutcome(await update(ref, { ...fields, expectedRevision })),
       ),
-    [landed, ref, update, writeFields],
+    [ref, update, writeFields],
   );
+
+  const saveTitle = useCallback((title: string) => saveFields({ title }), [saveFields]);
 
   const setStatus = useCallback(
     (statusId: TicketStatusId) =>
       writeFields(() => async (expectedRevision) => {
         const result = await move(ref, { expectedRevision, statusId });
         if (result === null || result === TICKET_REVISION_CONFLICT) return result;
-        noteSummary(result);
-        return { revision: result.revision, claimed: [] };
+        return { summary: result, claimed: [] };
       }),
-    [move, noteSummary, ref, writeFields],
+    [move, ref, writeFields],
   );
 
-  return { ...doc, saveFields, saveLabels, setStatus };
+  return { ...doc, saveFields, saveLabels, saveTitle, setStatus };
 }
 
-/** The plan page's writes to one plan: its body and title, against the plan's own revision. */
 export function useTicketPlanDocument(environmentId: EnvironmentId, plan: TicketPlan) {
   const { updatePlan } = useTicketActions();
   const { planId } = plan.summary;
-
   const doc = useAutosavedDocument({
-    revision: plan.summary.revision,
+    summary: plan.summary,
     body: plan.body,
     writeBody: useCallback(
       async (expectedRevision, body, uploads) =>
-        planWriteLanded(
+        planOutcome(
           await updatePlan(environmentId, {
             planId,
             expectedRevision,
@@ -124,10 +118,50 @@ export function useTicketPlanDocument(environmentId: EnvironmentId, plan: Ticket
     (title: string) =>
       writeFields(
         () => async (expectedRevision) =>
-          planWriteLanded(await updatePlan(environmentId, { planId, expectedRevision, title })),
+          planOutcome(await updatePlan(environmentId, { planId, expectedRevision, title })),
       ),
     [environmentId, planId, updatePlan, writeFields],
   );
 
-  return { ...doc, saveTitle };
+  const setStatus = useCallback(
+    (status: TicketPlanStatus) =>
+      writeFields(
+        () => async (expectedRevision) =>
+          planOutcome(await updatePlan(environmentId, { planId, expectedRevision, status })),
+      ),
+    [environmentId, planId, updatePlan, writeFields],
+  );
+
+  return { ...doc, saveTitle, setStatus };
+}
+
+/**
+ * Archives or restores a plan, one change at a time. Archiving first saves the title and body and
+ * stops if either fails; restoring then retries a draft that failed while the plan was archived.
+ */
+export function usePlanStatus(options: {
+  readonly doc: ReturnType<typeof useTicketPlanDocument>;
+  /** Saves the title draft; false when it did not save. */
+  readonly commitTitle: () => Promise<boolean>;
+  readonly uploading: boolean;
+  readonly onArchived: () => void;
+}) {
+  const { doc, commitTitle, uploading, onArchived } = options;
+  const [changing, setChanging] = useState(false);
+  const changingRef = useRef(false);
+  const setStatus = async (status: TicketPlanStatus) => {
+    if (changingRef.current || uploading) return;
+    changingRef.current = true;
+    setChanging(true);
+    try {
+      if (status === "archived" && (!(await commitTitle()) || !(await doc.flush()))) return;
+      if (!(await doc.setStatus(status))) return;
+      if (status === "archived") onArchived();
+      else await doc.flush();
+    } finally {
+      changingRef.current = false;
+      setChanging(false);
+    }
+  };
+  return { changing, setStatus };
 }

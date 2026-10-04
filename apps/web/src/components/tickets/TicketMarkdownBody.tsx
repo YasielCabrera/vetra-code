@@ -1,4 +1,5 @@
 import type { EnvironmentId, TicketAttachment } from "@t3tools/contracts";
+import type { PlanSourceSpan } from "@t3tools/shared/ticketPlanAnchors";
 import { memo, useCallback, useState } from "react";
 
 import ChatMarkdown, { type ChatMarkdownAttachmentReference } from "../ChatMarkdown";
@@ -13,7 +14,6 @@ type PlanHastNode = {
   position?: { start: { offset?: number }; end: { offset?: number } };
 };
 
-/** What a top-level block with its own comment button holds. */
 export type PlanBlockKind = "diagram" | "code" | "image";
 
 function planBlockKind(node: PlanHastNode): PlanBlockKind | undefined {
@@ -31,11 +31,6 @@ function planBlockKind(node: PlanHastNode): PlanBlockKind | undefined {
   return node.tagName === "p" && hasStandaloneImage(node) ? "image" : undefined;
 }
 
-/**
- * Marks each top-level block with `data-plan-source-start` and `data-plan-source-end`, its offsets
- * into the body, so a selection maps back to the Markdown it came from. Diagrams, code blocks and
- * images also get `data-plan-block` with their kind.
- */
 function rehypePlanSourcePositions() {
   return (tree: PlanHastNode) => {
     for (const node of tree.children ?? []) {
@@ -54,10 +49,15 @@ function rehypePlanSourcePositions() {
 
 const PLAN_REHYPE_PLUGINS = [rehypePlanSourcePositions];
 
-/**
- * Keeps the last array while it lists the same attachments, which never change once uploaded,
- * so a plan push that changes only comments does not render the Markdown again.
- */
+export const PLAN_SOURCE_SELECTOR = "[data-plan-source-start]";
+
+export function planSourceSpan(element: Element): PlanSourceSpan {
+  return {
+    start: Number(element.getAttribute("data-plan-source-start")),
+    end: Number(element.getAttribute("data-plan-source-end")),
+  };
+}
+
 function useSameAttachments(attachments: ReadonlyArray<TicketAttachment>) {
   const [kept, setKept] = useState(attachments);
   const same =
@@ -67,14 +67,13 @@ function useSameAttachments(attachments: ReadonlyArray<TicketAttachment>) {
   return same ? kept : attachments;
 }
 
-/** A plan body as the preview and the plan page draw it. */
-export const TicketPlanDocument = memo(function TicketPlanDocument(props: {
+export const TicketMarkdownBody = memo(function TicketMarkdownBody(props: {
   readonly environmentId: EnvironmentId;
   readonly body: string;
-  /** What `vetra-attachment://` references in the body resolve against. */
   readonly attachments: ReadonlyArray<TicketAttachment>;
   /** Takes the body with a task list item toggled; without it, task lists are read-only. */
   readonly onBodyChange?: ((body: string) => void) | undefined;
+  readonly sourcePositions?: boolean;
 }) {
   const { environmentId, body, onBodyChange } = props;
   const attachments = useSameAttachments(props.attachments);
@@ -101,7 +100,7 @@ export const TicketPlanDocument = memo(function TicketPlanDocument(props: {
       environmentId={environmentId}
       renderAttachmentReference={renderAttachment}
       onTaskListChange={onBodyChange === undefined ? undefined : onTaskListChange}
-      extraRehypePlugins={PLAN_REHYPE_PLUGINS}
+      {...(props.sourcePositions ? { extraRehypePlugins: PLAN_REHYPE_PLUGINS } : {})}
     />
   );
 });

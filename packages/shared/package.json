@@ -371,6 +371,10 @@
       "types": "./src/ticketPlanAnchors.ts",
       "import": "./src/ticketPlanAnchors.ts"
     },
+    "./quoteMatch": {
+      "types": "./src/quoteMatch.ts",
+      "import": "./src/quoteMatch.ts"
+    },
     "./Array": {
       "types": "./src/Array.ts",
       "import": "./src/Array.ts"

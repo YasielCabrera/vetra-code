@@ -87,17 +87,10 @@ export const makeTicketRpcLayer = (rpc: RpcObservers) =>
           observeEffect(WS_METHODS.ticketsCreatePlan, tickets.createPlan(input, USER)),
         [WS_METHODS.ticketsUpdatePlan]: (input) =>
           observeEffect(WS_METHODS.ticketsUpdatePlan, tickets.updatePlan(input, USER)),
-        [WS_METHODS.ticketsSetPlanStatus]: (input) =>
-          observeEffect(WS_METHODS.ticketsSetPlanStatus, tickets.setPlanStatus(input, USER)),
         [WS_METHODS.ticketsDeletePlan]: (input) =>
-          observeEffect(WS_METHODS.ticketsDeletePlan, tickets.deletePlan(input)),
+          observeEffect(WS_METHODS.ticketsDeletePlan, tickets.deletePlan(input, USER)),
         [WS_METHODS.ticketsAddPlanComment]: (input) =>
           observeEffect(WS_METHODS.ticketsAddPlanComment, tickets.addPlanComment(input, USER)),
-        [WS_METHODS.ticketsResolvePlanComments]: (input) =>
-          observeEffect(
-            WS_METHODS.ticketsResolvePlanComments,
-            tickets.resolvePlanComments(input, USER),
-          ),
         [WS_METHODS.ticketsReopenPlanComment]: (input) =>
           observeEffect(WS_METHODS.ticketsReopenPlanComment, tickets.reopenPlanComment(input)),
         [WS_METHODS.ticketsDeletePlanComment]: (input) =>

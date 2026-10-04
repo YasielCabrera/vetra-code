@@ -14,6 +14,7 @@ const HERE = EnvironmentId.make("env-here");
 const ELSEWHERE = EnvironmentId.make("env-elsewhere");
 
 function plan(input: {
+  readonly ticketId: string;
   readonly ticketNumber: number;
   readonly number: number;
   readonly title: string;
@@ -22,6 +23,7 @@ function plan(input: {
 }): TicketPlanSummary {
   return {
     planId: TicketPlanId.make(`plan-${input.ticketNumber}-${input.number}`),
+    ticketId: TicketId.make(input.ticketId),
     ref: `T-${input.ticketNumber}/P${input.number}`,
     number: input.number,
     title: input.title,
@@ -67,9 +69,16 @@ const TICKETS = [
     number: 42,
     title: "Login loop after SSO",
     plans: [
-      plan({ ticketNumber: 42, number: 1, title: "Auth migration" }),
-      plan({ ticketNumber: 42, number: 2, title: "Rollback auth path", status: "archived" }),
+      plan({ ticketId: "login", ticketNumber: 42, number: 1, title: "Auth migration" }),
       plan({
+        ticketId: "login",
+        ticketNumber: 42,
+        number: 2,
+        title: "Rollback auth path",
+        status: "archived",
+      }),
+      plan({
+        ticketId: "login",
         ticketNumber: 42,
         number: 10,
         title: "Session cleanup",
@@ -87,21 +96,25 @@ const TICKETS = [
     id: "catalog",
     number: 420,
     title: "Catalog blog posts",
-    plans: [plan({ ticketNumber: 420, number: 1, title: "Sessionless catalog" })],
+    plans: [
+      plan({ ticketId: "catalog", ticketNumber: 420, number: 1, title: "Sessionless catalog" }),
+    ],
   }),
   ticket({
     id: "remote",
     number: 43,
     title: "Login on remote",
     environmentId: ELSEWHERE,
-    plans: [plan({ ticketNumber: 43, number: 1, title: "Auth on remote" })],
+    plans: [plan({ ticketId: "remote", ticketNumber: 43, number: 1, title: "Auth on remote" })],
   }),
   {
     ...ticket({
       id: "untracked",
       number: 50,
       title: "Untracked issue",
-      plans: [plan({ ticketNumber: 50, number: 1, title: "Auth for untracked" })],
+      plans: [
+        plan({ ticketId: "untracked", ticketNumber: 50, number: 1, title: "Auth for untracked" }),
+      ],
     }),
     kind: "github",
     github: {

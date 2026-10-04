@@ -166,6 +166,7 @@ export type TicketPlanStatus = typeof TicketPlanStatus.Type;
  */
 export const TicketPlanSummary = Schema.Struct({
   planId: TicketPlanId,
+  ticketId: TicketId,
   /** `T-42/P1`: the ticket's number and the plan's per-ticket number. */
   ref: TrimmedNonEmptyString,
   /** Never reused within its ticket, like ticket numbers. */
@@ -258,7 +259,13 @@ export const TicketActivityEntry = Schema.Union([
   }),
   Schema.Struct({ type: Schema.Literal("synced"), changes: Schema.Array(TrimmedNonEmptyString) }),
   Schema.Struct({
-    type: Schema.Literals(["plan_created", "plan_edited", "plan_archived", "plan_restored"]),
+    type: Schema.Literals([
+      "plan_created",
+      "plan_edited",
+      "plan_archived",
+      "plan_restored",
+      "plan_deleted",
+    ]),
     planId: TicketPlanId,
     number: PositiveInt,
   }),

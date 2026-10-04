@@ -117,38 +117,23 @@ you stopped tracking stay hidden.
 ## Plans
 
 A plan is a Markdown document on a ticket that describes how to do the work, without changing
-code. A ticket can have several, numbered within it, so `T-42/P1` names the first plan on `T-42`.
-Plans show images, tables, code blocks, and diagrams written in a `mermaid` code block.
+code. Plans on a ticket are numbered, so `T-42/P1` is the first plan on `T-42`.
 
-Select **New plan** in the ticket's Plans section to start one. Select a plan to preview it beside
-the ticket, and **Open** to go to its own page. There, edit the title in place and select **Edit**
-to change the body. Changes save on their own, and the same **Reload** or **Keep mine** choice
-appears if an agent or another device changed the plan while you were editing it. The History tab
-lists who changed the plan and when; earlier versions are not kept.
+Write one with **New plan** in the ticket's Plans section, or select **Ask agent to plan** to have an
+agent draft it. Select text in a plan to comment on it. When the plan is ready, select **Open in new
+thread** to have an agent carry it out, or **Ask agent to revise** to have it address your comments.
+A new thread waits for you to send its first message.
 
-Archive a plan you no longer need from its **⋯** menu. An archived plan's title and body are
-read-only, and it collapses under **Show archived** on the ticket; select **Restore** to bring it
-back. **Delete** removes the plan and its comments. Images it used stay attached to the ticket.
-
-Comment on a plan to review it. Select text and choose **Comment**, or use the comment button
-beside a diagram, image, or code block; the box at the top of the comments panel comments on the
-whole plan. Comments are listed in the order their passages appear, and each passage stays
-highlighted; select a comment to jump to its passage, or a highlight to open its comment. Reply to
-a comment, **Resolve** it once it is addressed, and **Reopen** it from the Resolved tab. When an
-edit removes the passage a comment points at, the comment moves to the end of the list marked
-**Outdated**, with the passage as it was. Agents see open comments when they read a plan and
-resolve them as they revise it.
-
-To have an agent carry out a plan, select **Open in new thread** on the plan, its preview, or its
-row, and pick a project. The new thread starts with the plan attached, ready for your own
-instructions; nothing is sent until you send it. The agent reads the plan's current text and open
-comments before it starts, so edits made after you attach it still count. **Ask agent to plan** on
-the ticket and **Ask agent to revise** on a plan open a thread the same way, with the request
-already written. To attach a plan while writing any message, type `#` and its reference, such as
-`#T-42/P1`, or a word from its title. A ticket attached to a message lists its plans for the agent
-as context only; attach a plan, or name it, to have the agent implement it. When an agent proposes
-a plan in a thread linked to a ticket, choose **Save as plan** in the proposed plan's **⋯** menu to
-keep it on the ticket.
+- Edits save on their own. If an agent or another device changed the plan while you were editing,
+  choose **Reload** or **Keep mine**. Earlier versions are not kept.
+- Deleting a plan leaves its images on the ticket.
+- A comment whose passage an edit removed is marked **Outdated**, and keeps that passage as it was.
+- An agent reads a plan's current text, so edits made after you attach it still count.
+- Type `#` and a reference, such as `#T-42/P1`, to attach that plan to a message.
+- Plans listed on an attached ticket are context only. Attach a plan, or name it, to have the agent
+  carry it out.
+- When an agent proposes a plan in a thread linked to one ticket, choose **Save as plan on T-42**.
+  When the thread links several tickets, choose **Save as plan on…**.
 
 ## Start a thread from a ticket
 
@@ -186,9 +171,7 @@ read it, the agent's change is refused, so it cannot overwrite your work. Agents
 reopen a GitHub issue, or edit the issue's title, body, or labels. They ask you to do that instead.
 Agent notes stay in Vetra and never post to GitHub.
 
-Agents can also write plans. A plan is a Markdown document on a ticket, named like `T-42/P1`,
-that describes how to do the work without changing code. Ask an agent to plan a ticket and it
-saves the plan on the ticket rather than in the chat. Name a plan in a message and the agent
-implements it, reading it first and resolving its open comments as it addresses them. Agents can
-comment on a passage of a plan, and an agent's change to a plan you edited after it last read the
-plan is refused.
+Agents can also write plans. Ask an agent to plan a ticket and it saves the plan on the ticket
+rather than in the chat. Name a plan in a message and the agent implements it, reading it first
+and resolving its open comments as it addresses them. Agents can comment on a passage of a plan,
+and an agent's change to a plan you edited after it last read the plan is refused.

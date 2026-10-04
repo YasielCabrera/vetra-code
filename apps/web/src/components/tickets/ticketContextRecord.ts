@@ -1,4 +1,7 @@
-import { COMPOSER_CONTEXT_TICKET_BODY_MAX_CHARS } from "@t3tools/contracts";
+import {
+  COMPOSER_CONTEXT_TICKET_BODY_MAX_CHARS,
+  TICKET_CONTEXT_PLANS_MAX,
+} from "@t3tools/contracts";
 import type {
   EnvironmentId,
   TicketContextRecord,
@@ -10,9 +13,7 @@ import { sanitizeComposerContextLabel } from "@t3tools/shared/composerContextRef
 
 import type { AttachedContextRecord } from "../../composerDraftStore";
 import { toKindScopedComposerContextId } from "../../lib/composerContextReferences";
-
-/** The most plan references one ticket record carries, as its schema allows. */
-const TICKET_CONTEXT_PLANS_MAX = 50;
+import { formatTicketRef } from "./ticketRefs";
 
 /**
  * One record per ticket. Pass the body when it is at hand (the ticket page has it); a ticket
@@ -56,7 +57,6 @@ export function ticketContextRecord(input: {
 /** One plan, attached as the work to do; the agent reads its body with `t3_ticket_plan_get`. */
 export function ticketPlanContextRecord(input: {
   readonly environmentId: EnvironmentId;
-  readonly ticket: Pick<TicketSummary, "id">;
   readonly plan: TicketPlanSummary;
 }): TicketPlanContextRecord {
   const { plan } = input;
@@ -66,7 +66,7 @@ export function ticketPlanContextRecord(input: {
     contextId: toKindScopedComposerContextId("ticket-plan", plan.planId),
     label: sanitizeComposerContextLabel(`${plan.ref} ${plan.title}`, "ticket-plan"),
     environmentId: input.environmentId,
-    ticketId: input.ticket.id,
+    ticketId: plan.ticketId,
     planId: plan.planId,
     ref: plan.ref,
     title: plan.title,
@@ -89,7 +89,7 @@ export function openPlanPrefill(
 ): TicketThreadPrefill {
   return {
     records: [
-      ticketPlanContextRecord({ environmentId, ticket, plan }),
+      ticketPlanContextRecord({ environmentId, plan }),
       ticketContextRecord({ environmentId, ticket }),
     ],
   };
@@ -97,21 +97,24 @@ export function openPlanPrefill(
 
 export function revisePlanPrefill(
   environmentId: EnvironmentId,
-  ticket: TicketSummary,
   plan: TicketPlanSummary,
 ): TicketThreadPrefill {
+  const instruction =
+    plan.openCommentCount === 0
+      ? `Revise the plan text of ${plan.ref} with t3_ticket_plan_update. Do not change code.`
+      : `Revise the plan text of ${plan.ref} to address its open comments: edit it with t3_ticket_plan_update and resolve each comment it addresses. Do not change code.`;
   return {
-    records: [ticketPlanContextRecord({ environmentId, ticket, plan })],
-    instruction: `Address the open comments on ${plan.ref} and resolve them.`,
+    records: [ticketPlanContextRecord({ environmentId, plan })],
+    instruction,
   };
 }
 
 export function askForPlanPrefill(
   environmentId: EnvironmentId,
-  ticket: TicketSummary,
+  ticket: Pick<TicketSummary, "id" | "number" | "title" | "linkRefs" | "plans">,
 ): TicketThreadPrefill {
   return {
     records: [ticketContextRecord({ environmentId, ticket })],
-    instruction: `Write an implementation plan for T-${ticket.number} with t3_ticket_plan_create. Do not change code.`,
+    instruction: `Write an implementation plan for ${formatTicketRef(ticket)} with t3_ticket_plan_create. Do not change code.`,
   };
 }

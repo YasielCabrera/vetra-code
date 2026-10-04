@@ -2,6 +2,9 @@ import type { TicketClaimedAttachment } from "@t3tools/contracts";
 
 import { replaceClaimedAttachmentReferences } from "../../lib/attachmentReferences";
 
+/** What a write naming a stale revision resolves to, instead of a toast. */
+export const TICKET_REVISION_CONFLICT = "conflict";
+
 interface RevisionedBody {
   readonly revision: number;
   readonly body: string;

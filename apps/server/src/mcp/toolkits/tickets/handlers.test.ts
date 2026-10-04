@@ -112,6 +112,74 @@ const seedGitHubTicket = Effect.gen(function* () {
 });
 
 describe("TicketsToolkit", () => {
+  it.effect("exposes the source context distinguishing comments on repeated blocks", () =>
+    Effect.gen(function* () {
+      yield* call("t3_ticket_create", { title: "Diagram review" });
+      const source = "```mermaid\ngraph TD\nA-->B\n```";
+      const prefix = "Second option\n\n";
+      const body = `First option\n\n${source}\n\n${prefix}${source}`;
+      const plan = yield* call("t3_ticket_plan_create", {
+        ticket: "T-1",
+        title: "Compare options",
+        body,
+      });
+      const tickets = yield* TicketService.TicketService;
+      const comment = yield* tickets.addPlanComment(
+        {
+          planId: plan.planId,
+          body: "Use this option",
+          anchor: { source, sourceContext: { prefix, suffix: "" }, revision: 1 },
+        },
+        { type: "user" },
+      );
+      const read = yield* call("t3_ticket_plan_get", { plan: plan.ref });
+      assert.deepStrictEqual(
+        read.comments.map((thread) => [
+          thread.id,
+          thread.source,
+          thread.sourceContext,
+          thread.outdated,
+        ]),
+        [[comment.id, source, { prefix, suffix: "" }, false]],
+      );
+    }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
+  );
+  it.effect("restores an archived plan and edits its body in the same tool call", () =>
+    Effect.gen(function* () {
+      yield* call("t3_ticket_create", { title: "Ticket" });
+      yield* call("t3_ticket_plan_create", { ticket: "T-1", title: "Plan", body: "Before" });
+      yield* call("t3_ticket_plan_update", {
+        plan: "T-1/P1",
+        expectedRevision: 1,
+        status: "archived",
+      });
+      const failed = yield* failure("t3_ticket_plan_update", {
+        plan: "T-1/P1",
+        expectedRevision: 1,
+        status: "active",
+        edits: [{ find: "Missing", replace: "After" }],
+      });
+      const before = yield* call("t3_ticket_plan_get", { plan: "T-1/P1" });
+      const updated = yield* call("t3_ticket_plan_update", {
+        plan: "T-1/P1",
+        expectedRevision: 1,
+        status: "active",
+        body: "After",
+      });
+      const after = yield* call("t3_ticket_plan_get", { plan: "T-1/P1" });
+      assert.deepStrictEqual(
+        [
+          failed._tag,
+          before.plan.status,
+          before.body,
+          updated.status,
+          updated.revision,
+          after.body,
+        ],
+        ["TicketError", "archived", "Before", "active", 2, "After"],
+      );
+    }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
+  );
   it.effect("links a created ticket to the calling thread and its project unless told not to", () =>
     Effect.gen(function* () {
       const linked = yield* call("t3_ticket_create", { title: "Flaky login test" });
@@ -429,7 +497,7 @@ describe("TicketsToolkit", () => {
           comment.replies.map((reply) => [reply.body, reply.author]),
         ]);
       assert.deepStrictEqual(threads(yield* call("t3_ticket_plan_get", { plan: "T-1/P1" })), [
-        ["Which token?", "**token**", false, false, []],
+        ["Which token?", "token", false, false, []],
         ["Why log it?", "Log the failure.", false, false, [["To debug the retries.", AGENT]]],
         ["Looks right overall.", null, false, false, []],
       ]);
@@ -451,7 +519,7 @@ describe("TicketsToolkit", () => {
       assert.deepStrictEqual(
         threads(yield* call("t3_ticket_plan_get", { plan: "T-1/P1", includeResolved: true })),
         [
-          ["Which token?", "**token**", false, true, []],
+          ["Which token?", "token", false, true, []],
           ["Why log it?", "Log the failure.", true, false, [["To debug the retries.", AGENT]]],
           ["Looks right overall.", null, false, false, []],
         ],

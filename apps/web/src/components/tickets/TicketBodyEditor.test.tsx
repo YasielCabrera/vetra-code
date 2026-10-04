@@ -32,7 +32,11 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-function Harness({ initialBody }: { initialBody: string }) {
+type HarnessProps = { initialBody: string } & Partial<
+  Pick<Parameters<typeof TicketBodyEditor>[0], "disabled" | "onFiles" | "onUploadingChange">
+>;
+
+function Harness({ initialBody, disabled = false, onFiles, onUploadingChange }: HarnessProps) {
   const [body, set] = useState(initialBody);
   useLayoutEffect(() => {
     currentBody = body;
@@ -42,7 +46,9 @@ function Harness({ initialBody }: { initialBody: string }) {
     <TicketBodyEditor
       value={body}
       onChange={set}
-      onFiles={async () => ["![shot](vetra-attachment://pending-shot)"]}
+      onFiles={onFiles ?? (async () => ["![shot](vetra-attachment://pending-shot)"])}
+      disabled={disabled}
+      {...(onUploadingChange ? { onUploadingChange } : {})}
       placeholder="Description"
       ariaLabel="Description"
       minHeight="12rem"
@@ -50,8 +56,8 @@ function Harness({ initialBody }: { initialBody: string }) {
   );
 }
 
-async function renderEditor(body: string) {
-  await act(async () => root.render(<Harness initialBody={body} />));
+async function renderEditor(body: string, options: Omit<HarnessProps, "initialBody"> = {}) {
+  await act(async () => root.render(<Harness initialBody={body} {...options} />));
 }
 
 function richEditor() {
@@ -86,6 +92,34 @@ async function editSource(body: string) {
 }
 
 describe("TicketBodyEditor", () => {
+  it("keeps an upload pending through insertion and finishes it when editing is disabled", async () => {
+    let completeUpload = (_snippets: ReadonlyArray<string>) => {};
+    const upload = new Promise<ReadonlyArray<string>>((complete) => {
+      completeUpload = complete;
+    });
+    const uploadingStates: Array<{ uploading: boolean; body: string }> = [];
+    const onFiles = () => upload;
+    const onUploadingChange = (uploading: boolean) =>
+      uploadingStates.push({ uploading, body: currentBody });
+    await renderEditor("Base", { onFiles, onUploadingChange });
+    uploadingStates.length = 0;
+    await act(async () => {
+      const event = new Event("paste", { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "clipboardData", {
+        value: {
+          files: [new File(["image"], "shot.png", { type: "image/png" })],
+          getData: () => "",
+        },
+      });
+      richEditor().view.dom.dispatchEvent(event);
+    });
+    expect(uploadingStates).toEqual([{ uploading: true, body: "Base" }]);
+    await renderEditor("Base", { disabled: true, onFiles, onUploadingChange });
+    await act(async () => completeUpload(["![shot](vetra-attachment://pending-shot)"]));
+    expect(currentBody).toContain("vetra-attachment://pending-shot");
+    expect(uploadingStates.at(-1)).toEqual({ uploading: false, body: currentBody });
+  });
+
   it("keeps an external table in source mode until an explicit, synchronized switch to Write", async () => {
     await renderEditor("Initial paragraph");
     const staleEditor = richEditor();

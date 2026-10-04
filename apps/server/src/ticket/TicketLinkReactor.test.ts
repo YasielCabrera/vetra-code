@@ -11,6 +11,7 @@ import {
   ThreadId,
   TicketStatusId,
   type OrchestrationV2DomainEvent,
+  type OrchestrationV2ThreadShell,
   type ServerSettings,
   type ThreadPullRequestLink,
   type TicketPlanSummary,
@@ -52,15 +53,32 @@ const withReactor = <A, E>(
     readonly setAutoAdvance: (
       patch: Partial<ServerSettings["ticketAutoAdvance"]>,
     ) => Effect.Effect<void>;
+    readonly setPullRequests: (links: ReadonlyArray<ThreadPullRequestLink>) => Effect.Effect<void>;
+    readonly waitThreadLinks: Effect.Effect<void>;
   }) => Effect.Effect<A, E, TicketService.TicketService | SqlClient.SqlClient>,
 ) =>
   Effect.scoped(
     Effect.gen(function* () {
       const events = yield* Queue.unbounded<OrchestrationV2DomainEvent>();
       const pulls = yield* Queue.unbounded<void>();
+      const threadLinkPulls = yield* Queue.unbounded<void>();
       const settings = yield* Ref.make(DEFAULT_SERVER_SETTINGS);
+      const links = yield* Ref.make<ReadonlyArray<ThreadPullRequestLink>>([]);
+      const tickets = yield* TicketService.TicketService;
       const dependencies = Layer.mergeAll(
+        Layer.succeed(TicketService.TicketService, {
+          ...tickets,
+          subscribeThreadLinks: tickets.subscribeThreadLinks.pipe(
+            Effect.flatMap(Stream.toPull),
+            Effect.map((pull) =>
+              Stream.fromEffectRepeat(
+                Queue.offer(threadLinkPulls, undefined).pipe(Effect.andThen(pull)),
+              ).pipe(Stream.flattenIterable),
+            ),
+          ),
+        }),
         Layer.mock(Orchestrator.OrchestratorV2)({
+          getThreadShell: () => Ref.get(links).pipe(Effect.map(threadShell)),
           streamDomainEvents: Stream.fromEffectRepeat(
             Queue.offer(pulls, undefined).pipe(Effect.andThen(Queue.take(events))),
           ),
@@ -70,6 +88,7 @@ const withReactor = <A, E>(
       return yield* Effect.gen(function* () {
         const reactor = yield* TicketLinkReactor.make;
         yield* reactor.start();
+        yield* Queue.take(threadLinkPulls);
         return yield* body({
           tickets: yield* TicketService.TicketService,
           publish: (event) =>
@@ -85,6 +104,8 @@ const withReactor = <A, E>(
               ...current,
               ticketAutoAdvance: { ...current.ticketAutoAdvance, ...patch },
             })),
+          setPullRequests: (pullRequests) => Ref.set(links, pullRequests),
+          waitThreadLinks: Queue.take(threadLinkPulls).pipe(Effect.andThen(reactor.drain)),
         });
       }).pipe(Effect.provide(dependencies));
     }),
@@ -163,38 +184,53 @@ const pullRequest = (state: "open" | "merged"): ThreadPullRequestLink => ({
   stack: null,
 });
 
-const pullRequestsSynced = (
-  links: ReadonlyArray<ThreadPullRequestLink>,
-): OrchestrationV2DomainEvent => ({
-  type: "thread.pull-request-synced",
-  id: EventId.make(`event:pr:${links.map((link) => link.snapshot?.state).join(",")}`),
-  threadId: THREAD,
-  occurredAt: NOW,
-  payload: {
-    createdBy: "user",
-    creationSource: "web",
-    id: THREAD,
-    projectId: PROJECT,
-    title: "Fix login",
-    providerInstanceId: ProviderInstanceId.make("codex"),
-    modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.4" },
-    runtimeMode: "full-access",
-    interactionMode: "default",
-    branch: "fix/login",
-    worktreePath: null,
-    pullRequests: links,
-    activeProviderThreadId: null,
-    lineage: { rootThreadId: THREAD, parentThreadId: null, relationshipToParent: null },
-    forkedFrom: null,
-    createdAt: NOW,
-    updatedAt: NOW,
-    archivedAt: null,
-    settledOverride: null,
-    settledAt: null,
-    lastVisitedAt: null,
-    deletedAt: null,
-  },
-});
+const pullRequestsSynced = (links: ReadonlyArray<ThreadPullRequestLink>) =>
+  ({
+    type: "thread.pull-request-synced",
+    id: EventId.make(`event:pr:${links.map((link) => link.snapshot?.state).join(",")}`),
+    threadId: THREAD,
+    occurredAt: NOW,
+    payload: {
+      createdBy: "user",
+      creationSource: "web",
+      id: THREAD,
+      projectId: PROJECT,
+      title: "Fix login",
+      providerInstanceId: ProviderInstanceId.make("codex"),
+      modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.4" },
+      runtimeMode: "full-access",
+      interactionMode: "default",
+      branch: "fix/login",
+      worktreePath: null,
+      pullRequests: links,
+      activeProviderThreadId: null,
+      lineage: { rootThreadId: THREAD, parentThreadId: null, relationshipToParent: null },
+      forkedFrom: null,
+      createdAt: NOW,
+      updatedAt: NOW,
+      archivedAt: null,
+      settledOverride: null,
+      settledAt: null,
+      lastVisitedAt: null,
+      deletedAt: null,
+    },
+  }) satisfies OrchestrationV2DomainEvent;
+
+const threadShell = (pullRequests: ReadonlyArray<ThreadPullRequestLink>) =>
+  ({
+    ...pullRequestsSynced(pullRequests).payload,
+    latestRunId: null,
+    activeRunId: null,
+    status: "idle" as const,
+    pendingRuntimeRequest: null,
+    latestVisibleMessage: null,
+    latestUserMessageAt: null,
+    hasActionableProposedPlan: false,
+    pendingBackgroundTasks: [],
+    providerInstanceHistory: [],
+    itemCount: 0,
+    visibleItemCount: 0,
+  }) satisfies OrchestrationV2ThreadShell;
 
 const githubIssue = (number: number) => ({
   projectId: PROJECT,
@@ -220,6 +256,108 @@ const linksOf = (ticket: TicketSummary) =>
   ticket.linkRefs.map((ref) => `${ref.kind} ${ref.targetKey}`).toSorted();
 
 describe("TicketLinkReactor", () => {
+  it.effect("a pull request the user unlinked stays off its ticket when the reactor starts", () =>
+    Effect.gen(function* () {
+      const tickets = yield* TicketService.TicketService;
+      const ticket = (yield* tickets.create(
+        { title: "Unlinked PR", links: [{ kind: "thread", threadId: THREAD }] },
+        USER,
+      )).ticket;
+      yield* tickets.link(
+        {
+          ticketId: ticket.id,
+          target: {
+            kind: "pull_request",
+            ref: { host: "github.com", repository: "acme/app", number: 7 },
+            snapshot: {
+              title: "Fix the login loop",
+              state: "open",
+              url: "https://github.com/acme/app/pull/7",
+            },
+          },
+        },
+        USER,
+      );
+      yield* tickets.unlink(
+        { ticketId: ticket.id, kind: "pull_request", targetKey: "github.com/acme/app#7" },
+        USER,
+      );
+      const reads = yield* Queue.unbounded<ThreadId>();
+      const dependencies = Layer.mergeAll(
+        Layer.mock(Orchestrator.OrchestratorV2)({
+          streamDomainEvents: Stream.never,
+          getThreadShell: (threadId) =>
+            Queue.offer(reads, threadId).pipe(
+              Effect.as({ ...threadShell([pullRequest("open")]), id: threadId }),
+            ),
+        }),
+        Layer.mock(ServerSettingsService)({
+          getSettings: Effect.succeed(DEFAULT_SERVER_SETTINGS),
+        }),
+      );
+      yield* Effect.gen(function* () {
+        const reactor = yield* TicketLinkReactor.make;
+        yield* reactor.start();
+        const later = ThreadId.make("thread-2");
+        yield* tickets.create(
+          { title: "Linked later", links: [{ kind: "thread", threadId: later }] },
+          USER,
+        );
+        assert.strictEqual(yield* Queue.take(reads), later);
+        yield* reactor.drain;
+        const current = (yield* tickets.get(ticket.id)).summary;
+        assert.deepStrictEqual([current.statusId, linksOf(current)], ["todo", ["thread thread-1"]]);
+      }).pipe(Effect.provide(dependencies));
+    }).pipe(Effect.scoped, Effect.provide(ticketsLayer)),
+  );
+  it.effect("catches up existing pull requests when any service caller links a thread", () =>
+    withReactor(({ tickets, publish, setPullRequests, waitThreadLinks }) =>
+      Effect.gen(function* () {
+        const ticket = (yield* tickets.create({ title: "Linked after the PR" }, USER)).ticket;
+        const existing = [pullRequest("open")];
+        yield* setPullRequests(existing);
+        yield* publish(pullRequestsSynced(existing));
+        yield* tickets.link(
+          { ticketId: ticket.id, target: { kind: "thread", threadId: THREAD } },
+          USER,
+        );
+        yield* waitThreadLinks;
+        const caughtUp = yield* tickets.get(ticket.id);
+        assert.deepStrictEqual(
+          [caughtUp.summary.statusId, caughtUp.summary.linkRefs],
+          [
+            "in_review",
+            [
+              { kind: "pull_request", targetKey: "github.com/acme/app#7" },
+              { kind: "thread", targetKey: THREAD },
+            ],
+          ],
+        );
+
+        const created = (yield* tickets.create(
+          { title: "Created on a PR thread", links: [{ kind: "thread", threadId: THREAD }] },
+          USER,
+        )).ticket;
+        yield* waitThreadLinks;
+        assert.strictEqual((yield* tickets.get(created.id)).summary.statusId, "in_review");
+      }),
+    ),
+  );
+
+  it.effect("catches up a merged pull request when a plan is attached after its snapshot", () =>
+    withReactor(({ tickets, publish, setPullRequests, waitThreadLinks }) =>
+      Effect.gen(function* () {
+        const ticket = (yield* tickets.create({ title: "Already implemented" }, USER)).ticket;
+        const plan = (yield* tickets.createPlan({ ticketId: ticket.id, title: "Plan" }, USER)).plan;
+        const existing = [pullRequest("merged")];
+        yield* setPullRequests(existing);
+        yield* publish(pullRequestsSynced(existing));
+        yield* publish(sentMessage([], "late-plan", [planRecord(ticket, plan)]));
+        yield* waitThreadLinks;
+        assert.strictEqual((yield* tickets.get(ticket.id)).summary.statusId, "done");
+      }),
+    ),
+  );
   it.effect("sending a ticket chip links the thread and moves an open ticket to In progress", () =>
     withReactor(({ tickets, publish }) =>
       Effect.gen(function* () {

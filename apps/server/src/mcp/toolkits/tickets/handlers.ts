@@ -6,7 +6,7 @@ import {
   type TicketPlanComment,
 } from "@t3tools/contracts";
 import { parseChangeRequestUrl } from "@t3tools/shared/changeRequestUrl";
-import { anchorFromSourceQuote, orderPlanCommentThreads } from "@t3tools/shared/ticketPlanAnchors";
+import { orderPlanCommentThreads } from "@t3tools/shared/ticketPlanAnchors";
 import * as Effect from "effect/Effect";
 
 import * as TicketService from "../../../ticket/TicketService.ts";
@@ -75,6 +75,9 @@ const commentThreads = (
       ...reply(comment),
       quote: comment.anchor?.quote?.text,
       source: comment.anchor?.source,
+      ...(comment.anchor?.sourceContext === undefined
+        ? {}
+        : { sourceContext: comment.anchor.sourceContext }),
       outdated: location?.status === "outdated",
       resolved: comment.resolvedAt !== null,
       replies: replies.map(reply),
@@ -85,8 +88,6 @@ const make = Effect.gen(function* () {
   const tickets = yield* TicketService.TicketService;
   const ticketId = (reference: string) =>
     tickets.resolveRef(reference).pipe(Effect.map((summary) => summary.id));
-  const readPlan = (reference: string) =>
-    tickets.resolvePlanRef(reference).pipe(Effect.flatMap(({ planId }) => tickets.getPlan(planId)));
 
   return TicketsToolkit.of({
     t3_ticket_list: ({ limit, ...filter }) =>
@@ -145,16 +146,14 @@ const make = Effect.gen(function* () {
     t3_ticket_plan_list: ({ ticket }) =>
       Effect.gen(function* () {
         yield* reader();
-        const id = yield* ticketId(ticket);
-        const plans = yield* tickets.listPlans(id);
-        return { plans: plans.map((plan) => ({ ticketId: id, ...plan })) };
+        return { plans: yield* tickets.listPlans(yield* ticketId(ticket)) };
       }),
     t3_ticket_plan_get: ({ plan, includeResolved }) =>
       Effect.gen(function* () {
         yield* reader();
-        const current = yield* readPlan(plan);
+        const { planId } = yield* tickets.resolvePlanRef(plan);
+        const current = yield* tickets.getPlan(planId);
         return {
-          ticketId: current.ticketId,
           plan: current.summary,
           body: current.body,
           comments: commentThreads(current.body, current.comments, includeResolved === true),
@@ -163,38 +162,24 @@ const make = Effect.gen(function* () {
     t3_ticket_plan_create: ({ ticket, ...input }) =>
       Effect.gen(function* () {
         const { actor } = yield* writer();
-        const id = yield* ticketId(ticket);
-        const created = yield* tickets.createPlan({ ...input, ticketId: id }, actor);
-        return { ticketId: id, ...created.plan };
+        const created = yield* tickets.createPlan(
+          { ...input, ticketId: yield* ticketId(ticket) },
+          actor,
+        );
+        return created.plan;
       }),
-    t3_ticket_plan_update: ({ plan, status, ...input }) =>
+    t3_ticket_plan_update: ({ plan, ...input }) =>
       Effect.gen(function* () {
         const { actor } = yield* writer();
-        const current = yield* readPlan(plan);
-        const { planId } = current.summary;
+        const { planId } = yield* tickets.resolvePlanRef(plan);
         const updated = yield* tickets.updatePlan({ ...input, planId }, actor);
-        return {
-          ticketId: current.ticketId,
-          ...(status === undefined
-            ? updated.plan
-            : yield* tickets.setPlanStatus({ planId, status }, actor)),
-        };
+        return updated.plan;
       }),
     t3_ticket_plan_comment: ({ plan, quote, ...input }) =>
       Effect.gen(function* () {
         const { actor } = yield* writer();
-        const { summary, body } = yield* readPlan(plan);
-        const anchor =
-          quote === undefined ? undefined : anchorFromSourceQuote(body, quote, summary.revision);
-        if (anchor !== undefined && "matches" in anchor) {
-          return yield* new TicketError({
-            message:
-              anchor.matches === 0
-                ? `The quote is not in ${summary.ref}. Quote its Markdown source exactly, as t3_ticket_plan_get returns it.`
-                : `The quote matches ${anchor.matches} places in ${summary.ref}. Quote more of the passage so it matches once.`,
-          });
-        }
-        return yield* tickets.addPlanComment({ ...input, planId: summary.planId, anchor }, actor);
+        const { planId } = yield* tickets.resolvePlanRef(plan);
+        return yield* tickets.addPlanComment({ ...input, planId, sourceQuote: quote }, actor);
       }),
   });
 });

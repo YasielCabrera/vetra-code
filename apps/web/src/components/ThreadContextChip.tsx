@@ -3,8 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { MessagesSquareIcon } from "lucide-react";
 
 import { useThreadShell } from "~/state/entities";
-import { ContextChip, ContextChipLabel } from "./ContextChip";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
+import { LinkedContextChip } from "./ContextChip";
 
 /**
  * Inline chip for an attached thread, in the composer and in sent messages. Prefers the
@@ -18,22 +17,14 @@ export function ThreadContextChip(props: {
   const shell = useThreadShell({ environmentId, threadId });
   const title = shell?.title?.trim() || props.record.title;
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <ContextChip
-            kind="thread"
-            render={<Link to="/$environmentId/$threadId" params={{ environmentId, threadId }} />}
-            aria-label={`Thread, ${title}`}
-            data-markdown-copy={props.copyMarkdown}
-            className="no-underline"
-          >
-            <MessagesSquareIcon />
-            <ContextChipLabel>{title}</ContextChipLabel>
-          </ContextChip>
-        }
-      />
-      <TooltipPopup side="top">{shell ? "Open thread" : "Thread no longer available"}</TooltipPopup>
-    </Tooltip>
+    <LinkedContextChip
+      kind="thread"
+      link={<Link to="/$environmentId/$threadId" params={{ environmentId, threadId }} />}
+      icon={<MessagesSquareIcon />}
+      label={title}
+      ariaLabel={`Thread, ${title}`}
+      tooltip={shell ? "Open thread" : "Thread no longer available"}
+      copyMarkdown={props.copyMarkdown}
+    />
   );
 }

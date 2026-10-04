@@ -8,42 +8,31 @@ import { Link } from "@tanstack/react-router";
 import { ClipboardListIcon, SquareKanbanIcon } from "lucide-react";
 
 import { useTicket } from "~/state/tickets";
-import { ContextChip, ContextChipLabel } from "../ContextChip";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { LinkedContextChip } from "../ContextChip";
 import { ticketPlanRouteParams } from "./ticketPlans.logic";
 
 export function TicketContextChip(props: {
   record: Pick<TicketContextRecord, "environmentId" | "ticketId" | "ref" | "title">;
   copyMarkdown?: string;
 }) {
-  const { environmentId, ticketId } = props.record;
+  const { environmentId, ticketId, ref } = props.record;
   const ticket = useTicket({ environmentId, ticketId });
   const title = ticket?.title ?? props.record.title;
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <ContextChip
-            kind="ticket"
-            render={
-              <Link
-                to="/tickets/$ticketKey"
-                params={{ ticketKey: ticketKey({ environmentId, ticketId }) }}
-              />
-            }
-            aria-label={`Ticket ${props.record.ref}, ${title}`}
-            data-markdown-copy={props.copyMarkdown}
-            className="no-underline"
-          >
-            <SquareKanbanIcon />
-            <ContextChipLabel>
-              {props.record.ref} {title}
-            </ContextChipLabel>
-          </ContextChip>
-        }
-      />
-      <TooltipPopup side="top">{ticket ? "Open ticket" : "Ticket not available here"}</TooltipPopup>
-    </Tooltip>
+    <LinkedContextChip
+      kind="ticket"
+      link={
+        <Link
+          to="/tickets/$ticketKey"
+          params={{ ticketKey: ticketKey({ environmentId, ticketId }) }}
+        />
+      }
+      icon={<SquareKanbanIcon />}
+      label={`${ref} ${title}`}
+      ariaLabel={`Ticket ${ref}, ${title}`}
+      tooltip={ticket ? "Open ticket" : "Ticket not available here"}
+      copyMarkdown={props.copyMarkdown}
+    />
   );
 }
 
@@ -60,33 +49,23 @@ export function TicketPlanContextChip(props: {
   const planNumber = plan?.number ?? (reference?.type === "number" ? reference.number : null);
   const scope = { environmentId, ticketId };
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <ContextChip
-            kind="ticket-plan"
-            render={
-              planNumber === null ? (
-                <Link to="/tickets/$ticketKey" params={{ ticketKey: ticketKey(scope) }} />
-              ) : (
-                <Link
-                  to="/tickets/$ticketKey/plans/$planNumber"
-                  params={ticketPlanRouteParams(scope, planNumber)}
-                />
-              )
-            }
-            aria-label={`Plan ${ref}, ${title}`}
-            data-markdown-copy={props.copyMarkdown}
-            className="no-underline"
-          >
-            <ClipboardListIcon />
-            <ContextChipLabel>
-              {ref} {title}
-            </ContextChipLabel>
-          </ContextChip>
-        }
-      />
-      <TooltipPopup side="top">{plan ? "Open plan" : "Plan not available here"}</TooltipPopup>
-    </Tooltip>
+    <LinkedContextChip
+      kind="ticket-plan"
+      link={
+        planNumber === null ? (
+          <Link to="/tickets/$ticketKey" params={{ ticketKey: ticketKey(scope) }} />
+        ) : (
+          <Link
+            to="/tickets/$ticketKey/plans/$planNumber"
+            params={ticketPlanRouteParams(scope, planNumber)}
+          />
+        )
+      }
+      icon={<ClipboardListIcon />}
+      label={`${ref} ${title}`}
+      ariaLabel={`Plan ${ref}, ${title}`}
+      tooltip={plan ? "Open plan" : "Plan not available here"}
+      copyMarkdown={props.copyMarkdown}
+    />
   );
 }

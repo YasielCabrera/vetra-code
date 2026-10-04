@@ -2,38 +2,24 @@ import type { TicketPlanAnchor, TicketPlanCommentId } from "@t3tools/contracts";
 import {
   anchorFromRenderedSelection,
   type PlanCommentThread,
-  type PlanSourceSpan,
 } from "@t3tools/shared/ticketPlanAnchors";
 import { MessageSquarePlusIcon } from "lucide-react";
 import {
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
   type Ref,
-  type RefObject,
 } from "react";
-import { createPortal } from "react-dom";
 
-import {
-  captureAssistantTextSelection,
-  resolveAssistantCitationRanges,
-} from "../../lib/assistantTextSelection";
-import {
-  observeSelectionActions,
-  resolveSelectionActionPosition,
-  type SelectionActionPoint,
-} from "../../lib/selectionActions";
+import { resolveAssistantCitationRanges } from "../../lib/assistantTextSelection";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
-import type { PlanBlockKind } from "./TicketPlanDocument";
+import { type PlanBlockKind, PLAN_SOURCE_SELECTOR, planSourceSpan } from "./TicketMarkdownBody";
+import { TicketPlanSelectionComment } from "./TicketPlanSelectionComment";
 
-const DOCUMENT_SELECTOR = "[data-plan-document]";
-const SOURCE_SELECTOR = "[data-plan-source-start]";
-const QUOTE_MAX_CHARS = 8_000;
 const OPEN_HIGHLIGHT = "vetra-plan-comment";
 const FOCUSED_HIGHLIGHT = "vetra-plan-comment-focused";
 
@@ -75,42 +61,9 @@ function measureBlocks(surface: HTMLElement, root: HTMLElement): Array<PlanBlock
   );
 }
 
-function sourceSpanOf(element: Element): PlanSourceSpan {
-  return {
-    start: Number(element.getAttribute("data-plan-source-start")),
-    end: Number(element.getAttribute("data-plan-source-end")),
-  };
-}
-
-/** The top-level block holding `node`, or for the line break between blocks, the one after it. */
-function blockOf(node: Node, after: boolean): Element | null {
-  const block = (node instanceof Element ? node : node.parentElement)?.closest(SOURCE_SELECTOR);
-  if (block) return block;
-  // A triple-click ends on the line break react-markdown leaves after the paragraph.
-  const next = (sibling: Node) => (after ? sibling.nextSibling : sibling.previousSibling);
-  for (let sibling = next(node); sibling !== null; sibling = next(sibling)) {
-    if (!(sibling instanceof Element)) continue;
-    return sibling.matches(SOURCE_SELECTOR) ? sibling : sibling.querySelector(SOURCE_SELECTOR);
-  }
-  return null;
-}
-
-/** The source of every top-level block a selection touches, or null outside the blocks. */
-function selectionSpan(range: Range): PlanSourceSpan | null {
-  const first = blockOf(range.startContainer, true);
-  const last = blockOf(range.endContainer, false);
-  if (!first || !last) return null;
-  const from = sourceSpanOf(first);
-  const to = sourceSpanOf(last);
-  return {
-    start: Math.min(from.start, to.start),
-    end: Math.max(from.end, to.end),
-  };
-}
-
 function blockAt(root: HTMLElement, offset: number): HTMLElement | null {
-  for (const element of root.querySelectorAll<HTMLElement>(SOURCE_SELECTOR)) {
-    const span = sourceSpanOf(element);
+  for (const element of root.querySelectorAll<HTMLElement>(PLAN_SOURCE_SELECTOR)) {
+    const span = planSourceSpan(element);
     if (span.start <= offset && offset < span.end) return element;
   }
   return null;
@@ -127,6 +80,26 @@ function containsPoint(range: Range, x: number, y: number): boolean {
     if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) return true;
   }
   return false;
+}
+
+function sameRanges(
+  previous: ReadonlyMap<TicketPlanCommentId, Range>,
+  next: ReadonlyMap<TicketPlanCommentId, Range>,
+): boolean {
+  if (previous.size !== next.size) return false;
+  for (const [id, range] of next) {
+    const kept = previous.get(id);
+    if (
+      kept === undefined ||
+      kept.startContainer !== range.startContainer ||
+      kept.startOffset !== range.startOffset ||
+      kept.endContainer !== range.endContainer ||
+      kept.endOffset !== range.endOffset
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /** One named highlight holding `ranges`, removed again on cleanup. */
@@ -167,7 +140,8 @@ export function TicketPlanCommentSurface({
   readonly focusedId: TicketPlanCommentId | null;
   readonly draft: PlanCommentDraft | null;
   readonly onDraft: (draft: PlanCommentDraft) => void;
-  readonly onFocusThread: (id: TicketPlanCommentId) => void;
+  /** A click on a passage focuses its thread; a click elsewhere in the plan passes null. */
+  readonly onFocusThread: (id: TicketPlanCommentId | null) => void;
   readonly children: ReactNode;
 }) {
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -177,9 +151,9 @@ export function TicketPlanCommentSurface({
   const [hovered, setHovered] = useState<Element | null>(null);
   const quoted = useMemo(
     () =>
-      threads.flatMap(({ comment }) => {
+      threads.flatMap(({ comment, location }) => {
         const quote = comment.anchor?.quote;
-        return quote === undefined ? [] : [{ comment, quote }];
+        return quote === undefined || location?.status === "outdated" ? [] : [{ comment, quote }];
       }),
     [threads],
   );
@@ -215,7 +189,7 @@ export function TicketPlanCommentSurface({
         const range = resolved[index];
         if (range) next.set(comment.id, range);
       });
-      setRanges(next);
+      setRanges((previous) => (sameRanges(previous, next) ? previous : next));
       measure();
     };
     sync();
@@ -242,9 +216,8 @@ export function TicketPlanCommentSurface({
     if (root === null || thread === undefined) return;
     const range = ranges.get(thread.comment.id);
     if (range !== undefined) return showHighlight(FOCUSED_HIGHLIGHT, [range], 1);
-    const { comment, location } = thread;
-    if (comment.anchor?.quote !== undefined || location === null) return;
-    if (location.status === "outdated") return;
+    const { location } = thread;
+    if (location === null || location.status === "outdated") return;
     const block = blockAt(root, location.start);
     return block === null ? undefined : showHighlight(FOCUSED_HIGHLIGHT, [contentsRange(block)], 1);
   }, [draft, focusedId, ranges, threads]);
@@ -280,7 +253,10 @@ export function TicketPlanCommentSurface({
           const range = ranges.get(comment.id);
           return range !== undefined && containsPoint(range, event.clientX, event.clientY);
         });
-        if (hits.length === 0) return;
+        if (hits.length === 0) {
+          onFocusThread(null);
+          return;
+        }
         // Overlapping passages take turns, starting after the thread already in focus.
         const current = hits.findIndex(({ comment }) => comment.id === focusedId);
         event.stopPropagation();
@@ -294,7 +270,7 @@ export function TicketPlanCommentSurface({
         <div
           key={element.getAttribute("data-plan-source-start")}
           className={cn(
-            "absolute -left-6 hover:opacity-100 focus-within:opacity-100 lg:-left-7",
+            "absolute -left-6 hover:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100 lg:-left-7",
             hovered !== null && element.contains(hovered) ? "opacity-100" : "opacity-0",
           )}
           style={{ top }}
@@ -310,7 +286,7 @@ export function TicketPlanCommentSurface({
               onDraft({
                 anchor: anchorFromRenderedSelection(
                   body,
-                  sourceSpanOf(element),
+                  planSourceSpan(element),
                   undefined,
                   revision,
                 ),
@@ -323,7 +299,7 @@ export function TicketPlanCommentSurface({
           </Button>
         </div>
       ))}
-      <PlanSelectionCommentButton
+      <TicketPlanSelectionComment
         documentRef={documentRef}
         onComment={({ selector: { text, prefix, suffix }, range, span }) =>
           onDraft({
@@ -340,145 +316,5 @@ export function TicketPlanCommentSurface({
         }
       />
     </div>
-  );
-}
-
-type CapturedSelection = NonNullable<ReturnType<typeof captureAssistantTextSelection>> & {
-  readonly span: PlanSourceSpan;
-};
-
-/** The floating Comment button over a text selection in the plan. */
-function PlanSelectionCommentButton(props: {
-  readonly documentRef: RefObject<HTMLDivElement | null>;
-  readonly onComment: (captured: CapturedSelection) => void;
-}) {
-  const { documentRef, onComment } = props;
-  const [selection, setSelection] = useState<{
-    captured: CapturedSelection;
-    position: SelectionActionPoint;
-  } | null>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
-  const actionsRef = useRef<ReturnType<typeof observeSelectionActions> | null>(null);
-
-  useLayoutEffect(() => {
-    const toolbar = toolbarRef.current;
-    if (!toolbar || !selection) return;
-    const rect = toolbar.getBoundingClientRect();
-    toolbar.style.left = `${Math.max(8, Math.min(selection.position.x, window.innerWidth - rect.width - 8))}px`;
-    toolbar.style.top = `${Math.max(8, Math.min(selection.position.y, window.innerHeight - rect.height - 8))}px`;
-  }, [selection]);
-
-  useEffect(() => {
-    const root = documentRef.current;
-    if (root === null) return;
-    // The scroll container, so scrolling the page dismisses the button.
-    const viewport =
-      root.closest<HTMLElement>("[data-slot=scroll-area-viewport]") ?? root.parentElement ?? root;
-    const clear = () => setSelection(null);
-    const update = (pointer: SelectionActionPoint | null) => {
-      const captured = captureAssistantTextSelection(
-        root,
-        window.getSelection(),
-        DOCUMENT_SELECTOR,
-      );
-      const span = captured === null ? null : selectionSpan(captured.range);
-      const rect = captured?.range.getBoundingClientRect();
-      const bounds = viewport.getBoundingClientRect();
-      if (
-        !captured ||
-        !span ||
-        !rect ||
-        rect.width === 0 ||
-        rect.bottom < bounds.top ||
-        rect.top > bounds.bottom
-      ) {
-        clear();
-        return;
-      }
-      const rects = captured.range.getClientRects();
-      setSelection({
-        captured: { ...captured, span },
-        position: resolveSelectionActionPosition({
-          bounds,
-          selectionRect: rects.item(rects.length - 1) ?? rect,
-          pointer,
-          viewport: { width: window.innerWidth, height: window.innerHeight },
-        }),
-      });
-    };
-    const actions = observeSelectionActions({
-      element: viewport,
-      getActionElement: () => toolbarRef.current,
-      onSelection: update,
-      onDismiss: clear,
-    });
-    actionsRef.current = actions;
-    const focusButton = (event: KeyboardEvent) => {
-      const button = toolbarRef.current?.querySelector<HTMLButtonElement>("button:enabled");
-      if (
-        event.key !== "Tab" ||
-        event.shiftKey ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.isComposing ||
-        event.defaultPrevented ||
-        !button ||
-        toolbarRef.current?.contains(event.target as Node)
-      ) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      button.focus({ preventScroll: true });
-    };
-    document.addEventListener("keydown", focusButton, true);
-    document.addEventListener("selectionchange", actions.selectionChanged);
-    return () => {
-      document.removeEventListener("keydown", focusButton, true);
-      document.removeEventListener("selectionchange", actions.selectionChanged);
-      actions.dispose();
-      actionsRef.current = null;
-    };
-  }, [documentRef]);
-
-  if (!selection) return null;
-  const tooLong = selection.captured.selector.text.length > QUOTE_MAX_CHARS;
-  const dismiss = () => {
-    actionsRef.current?.cancel();
-    setSelection(null);
-  };
-  return createPortal(
-    <div
-      ref={toolbarRef}
-      className="fixed z-50 flex max-w-[calc(100vw-1rem)] gap-1"
-      style={{ left: selection.position.x, top: selection.position.y }}
-      onPointerDown={(event) => event.preventDefault()}
-      onKeyDown={(event) => {
-        event.stopPropagation();
-        if (event.key === "Escape" && !event.nativeEvent.isComposing) {
-          event.preventDefault();
-          dismiss();
-        }
-      }}
-    >
-      <Button
-        type="button"
-        size="xs"
-        variant="glass"
-        disabled={tooLong}
-        aria-label={tooLong ? "Selection is too long to comment on" : "Comment on the selection"}
-        onClick={() => {
-          if (tooLong) return;
-          onComment(selection.captured);
-          window.getSelection()?.removeAllRanges();
-          dismiss();
-        }}
-      >
-        <MessageSquarePlusIcon aria-hidden className="size-3.5" />
-        {tooLong ? "Shorten selection" : "Comment"}
-      </Button>
-    </div>,
-    document.body,
   );
 }

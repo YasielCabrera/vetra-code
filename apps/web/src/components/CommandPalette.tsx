@@ -236,11 +236,13 @@ import { readPullRequestListPreferences } from "~/components/pullRequest/pullReq
 import { openCreateTicketDialog } from "./tickets/CreateTicketDialog";
 import { threadTicketCapture } from "./tickets/ticketCapture";
 import {
+  askForPlanPrefill,
   openPlanPrefill,
   revisePlanPrefill,
   type TicketThreadPrefill,
 } from "./tickets/ticketContextRecord";
 import { findTicketPlanByNumber } from "./tickets/ticketPlans.logic";
+import { formatTicketRef } from "./tickets/ticketRefs";
 import { useTicketThreadStarter } from "./tickets/TicketStartThreadMenu";
 import type { DraftThreadEnvMode } from "../composerDraftStore";
 
@@ -726,20 +728,18 @@ function CommandPaletteDialog(props: {
   );
 }
 
-/** The plan a `/tickets/$ticketKey/plans/$planNumber` route shows, once its ticket is loaded. */
-function useRouteTicketPlan() {
+function useRouteTicket() {
   const ticketKey = useParams({ strict: false, select: (params) => params.ticketKey ?? null });
   const planNumber = useParams({ strict: false, select: (params) => params.planNumber ?? null });
   const ticketRef = useMemo(
-    () => (ticketKey === null || planNumber === null ? null : parseTicketKey(ticketKey)),
-    [planNumber, ticketKey],
+    () => (ticketKey === null ? null : parseTicketKey(ticketKey)),
+    [ticketKey],
   );
   const ticket = useTicket(ticketRef);
-  const plan =
-    ticket === null || planNumber === null
-      ? null
-      : findTicketPlanByNumber(ticket.plans, planNumber);
-  return ticket === null || plan === null ? null : { ticket, plan };
+  if (ticket === null) return null;
+  if (planNumber === null) return { ticket, plan: null };
+  const plan = findTicketPlanByNumber(ticket.plans, planNumber);
+  return plan === null ? null : { ticket, plan };
 }
 
 function OpenCommandPaletteDialog(props: {
@@ -791,10 +791,10 @@ function OpenCommandPaletteDialog(props: {
   const { activeDraftThread, activeThread, defaultProjectRef, handleNewThread } =
     useHandleNewThread();
   const projects = useProjects();
-  const routePlan = useRouteTicketPlan();
-  const planThreadStarter = useTicketThreadStarter(
-    routePlan?.ticket.environmentId ?? null,
-    routePlan?.ticket ?? null,
+  const routeTicket = useRouteTicket();
+  const ticketThreadStarter = useTicketThreadStarter(
+    routeTicket?.ticket.environmentId ?? null,
+    routeTicket?.ticket ?? null,
   );
   const referenceThreadRef =
     pathname === "/pull-requests"
@@ -2450,10 +2450,11 @@ function OpenCommandPaletteDialog(props: {
     },
   });
 
-  if (routePlan !== null) {
-    const { ticket, plan } = routePlan;
-    const { choices, start } = planThreadStarter;
-    const planThreadItem = (input: {
+  if (routeTicket !== null) {
+    const { ticket, plan } = routeTicket;
+    const { choices, start } = ticketThreadStarter;
+    const subject = plan ?? { ref: formatTicketRef(ticket), title: ticket.title };
+    const ticketThreadItem = (input: {
       readonly value: string;
       readonly title: string;
       readonly searchTerms: ReadonlyArray<string>;
@@ -2509,49 +2510,60 @@ function OpenCommandPaletteDialog(props: {
       return {
         kind: "submenu",
         value: input.value,
-        searchTerms: [...input.searchTerms, plan.ref, plan.title],
+        searchTerms: [...input.searchTerms, subject.ref, subject.title],
         title: input.title,
-        description: plan.ref,
+        description: subject.ref,
         icon: <input.Icon className={ITEM_ICON_CLASS} />,
         addonIcon: <input.Icon className={ADDON_ICON_CLASS} />,
         groups,
       };
     };
-    const openItem = planThreadItem({
-      value: "action:ticket-plan:open-thread",
-      title: "Open plan in new thread",
-      searchTerms: ["open plan in new thread", "implement plan", "start thread"],
-      Icon: MessageSquarePlusIcon,
-      prefill: () => openPlanPrefill(ticket.environmentId, ticket, plan),
-    });
-    if (openItem !== null) actionItems.push(openItem);
-    const reviseItem =
-      plan.status === "active"
-        ? planThreadItem({
-            value: "action:ticket-plan:revise",
-            title: "Ask agent to revise plan",
-            searchTerms: ["ask agent to revise plan", "address comments", "resolve comments"],
-            Icon: SparklesIcon,
-            prefill: () => revisePlanPrefill(ticket.environmentId, ticket, plan),
-          })
-        : null;
-    if (reviseItem !== null) actionItems.push(reviseItem);
-    actionItems.push({
-      kind: "action",
-      value: "action:ticket-plan:copy-ref",
-      searchTerms: ["copy plan ref", "reference", plan.ref],
-      title: "Copy plan ref",
-      description: plan.ref,
-      icon: <CopyIcon className={ITEM_ICON_CLASS} />,
-      run: async () => {
-        const copied = await writeTextToClipboard(plan.ref).catch(() => false);
-        toastManager.add(
-          copied
-            ? { type: "success", title: `Copied ${plan.ref}`, timeout: 1500 }
-            : { type: "error", title: "Could not copy to the clipboard" },
-        );
-      },
-    });
+    if (plan === null) {
+      const askItem = ticketThreadItem({
+        value: "action:ticket:ask-for-plan",
+        title: "Ask agent to plan",
+        searchTerms: ["ask agent to plan", "write plan", "implementation plan"],
+        Icon: SparklesIcon,
+        prefill: () => askForPlanPrefill(ticket.environmentId, ticket),
+      });
+      if (askItem !== null) actionItems.push(askItem);
+    } else {
+      const openItem = ticketThreadItem({
+        value: "action:ticket-plan:open-thread",
+        title: "Open plan in new thread",
+        searchTerms: ["open plan in new thread", "implement plan", "start thread"],
+        Icon: MessageSquarePlusIcon,
+        prefill: () => openPlanPrefill(ticket.environmentId, ticket, plan),
+      });
+      if (openItem !== null) actionItems.push(openItem);
+      const reviseItem =
+        plan.status === "active"
+          ? ticketThreadItem({
+              value: "action:ticket-plan:revise",
+              title: "Ask agent to revise plan",
+              searchTerms: ["ask agent to revise plan", "address comments", "resolve comments"],
+              Icon: SparklesIcon,
+              prefill: () => revisePlanPrefill(ticket.environmentId, plan),
+            })
+          : null;
+      if (reviseItem !== null) actionItems.push(reviseItem);
+      actionItems.push({
+        kind: "action",
+        value: "action:ticket-plan:copy-ref",
+        searchTerms: ["copy plan ref", "reference", plan.ref],
+        title: "Copy plan ref",
+        description: plan.ref,
+        icon: <CopyIcon className={ITEM_ICON_CLASS} />,
+        run: async () => {
+          const copied = await writeTextToClipboard(plan.ref).catch(() => false);
+          toastManager.add(
+            copied
+              ? { type: "success", title: `Copied ${plan.ref}`, timeout: 1500 }
+              : { type: "error", title: "Could not copy to the clipboard" },
+          );
+        },
+      });
+    }
   }
 
   if (activeThread && activeThreadServerConfig?.environment.capabilities.tickets === true) {

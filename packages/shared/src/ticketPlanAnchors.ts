@@ -1,6 +1,13 @@
-import type { TicketPlanAnchor, TicketPlanComment, TicketPlanCommentId } from "@t3tools/contracts";
+import {
+  TICKET_PLAN_ANCHOR_SOURCE_CONTEXT_MAX_CHARS as SOURCE_CONTEXT_MAX_CHARS,
+  TICKET_PLAN_ANCHOR_SOURCE_MAX_CHARS as SOURCE_MAX_CHARS,
+  type TicketPlanAnchor,
+  type TicketPlanComment,
+  type TicketPlanCommentId,
+} from "@t3tools/contracts";
 
-const SOURCE_MAX_CHARS = 4_000;
+import { contextFits, matchQuote, type SearchText, searchText } from "./quoteMatch.ts";
+
 const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})/;
 const FENCE_CLOSE = /^ {0,3}(`{3,}|~{3,})\s*$/;
 const RENDERED_MARKERS = new Set(["*", "`", "~"]);
@@ -8,7 +15,6 @@ const LINK = /\[([^\]\n]*)\]\([^)\n]*\)/g;
 const BLOCK_MARKERS = /^[ \t]*(?:(?:>|(?:[-*+]|\d{1,9}[.)]|#{1,6})(?=[ \t]|$))[ \t]*)+/gm;
 const UNDERSCORES = /_+/g;
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
-const WHITESPACE = /\s/;
 
 /** A [start, end) range of a plan body. */
 export interface PlanSourceSpan {
@@ -59,9 +65,10 @@ export function planSourceBlocks(body: string): Array<PlanSourceSpan> {
 }
 
 /**
- * Anchors a comment to `quote`, text an agent copied from the plan's Markdown source. The quote
- * carries no prefix or suffix: those describe rendered text, which the source cannot give, and the
- * web resolves a unique quote without them. When the quote is not in the body exactly once, returns
+ * Anchors a comment to `quote`, text an agent copied from the plan's Markdown source. The stored
+ * quote is that range as it renders, without Markdown markers, so the web can find it in the
+ * rendered plan; a quote of markup alone stores none. It carries no prefix or suffix, and the web
+ * resolves a unique quote without them. When the quote is not in the body exactly once, returns
  * how many places it matches instead, so the agent can quote more of the passage.
  */
 export function anchorFromSourceQuote(
@@ -81,9 +88,10 @@ export function anchorFromSourceQuote(
     start: Math.min(at, covering[0]?.start ?? at),
     end: Math.max(end, covering.at(-1)?.end ?? end),
   };
+  const text = searchText(body.slice(at, end), markupMask(body).subarray(at, end)).text.trim();
   return {
-    quote: { text: quote, prefix: "", suffix: "" },
-    source: sourceWindow(body, span, { start: at, end }),
+    ...(text === "" ? {} : { quote: { text, prefix: "", suffix: "" } }),
+    ...sourceWindow(body, span, { start: at, end }),
     revision,
   };
 }
@@ -99,87 +107,89 @@ export function anchorFromRenderedSelection(
   quote: TicketPlanAnchor["quote"],
   revision: number,
 ): TicketPlanAnchor {
-  const found =
-    quote === undefined ? null : quoteFinder(body.slice(span.start, span.end))(quote.text);
-  const focus =
-    found === null
-      ? { start: span.start, end: span.start }
-      : { start: span.start + found.start, end: span.start + found.end };
+  let focus = { start: span.start, end: span.start };
+  if (quote !== undefined) {
+    const found = quoteFinder(body)(quote);
+    if (found !== null && found.start >= span.start && found.end <= span.end) {
+      focus = found;
+    } else {
+      const local = quoteFinder(body.slice(span.start, span.end))(quote);
+      if (local !== null) focus = { start: span.start + local.start, end: span.start + local.end };
+    }
+  }
   return {
     ...(quote === undefined ? {} : { quote }),
-    source: sourceWindow(body, span, focus),
+    ...sourceWindow(body, span, focus),
     revision,
   };
 }
 
 /** `span` of `body`, cut to the source limit around `focus` when it is longer. */
-function sourceWindow(body: string, span: PlanSourceSpan, focus: PlanSourceSpan): string {
-  if (span.end - span.start <= SOURCE_MAX_CHARS) return body.slice(span.start, span.end);
-  // Centered on the focus; a focus longer than the window keeps its start.
+function sourceWindow(body: string, span: PlanSourceSpan, focus: PlanSourceSpan) {
   const margin = Math.max(0, Math.floor((SOURCE_MAX_CHARS - (focus.end - focus.start)) / 2));
-  const start = Math.min(Math.max(focus.start - margin, span.start), span.end - SOURCE_MAX_CHARS);
-  return body.slice(start, start + SOURCE_MAX_CHARS);
+  const start =
+    span.end - span.start <= SOURCE_MAX_CHARS
+      ? span.start
+      : Math.min(Math.max(focus.start - margin, span.start), span.end - SOURCE_MAX_CHARS);
+  const end = Math.min(span.end, start + SOURCE_MAX_CHARS);
+  const source = body.slice(start, end);
+  const repeated = source.length > 0 && body.indexOf(source) !== body.lastIndexOf(source);
+  return {
+    source,
+    ...(repeated
+      ? {
+          sourceContext: {
+            prefix: body.slice(Math.max(0, start - SOURCE_CONTEXT_MAX_CHARS), start),
+            suffix: body.slice(end, end + SOURCE_CONTEXT_MAX_CHARS),
+          },
+        }
+      : {}),
+  };
 }
 
 /**
  * Finds a comment's passage in the current body. The web and the agent tools both call this, so
  * they agree on which comments are outdated; `start` orders comments by their place in the
- * document. The unchanged source block is "current". Failing that, the quote found with
- * whitespace runs treated as equal, in the raw body or in its text without Markdown markup, is
- * "moved" and spans the raw text. Anything else, including a quote-less anchor whose block
- * changed, is "outdated". Callers locating many anchors in one body share one `findQuote`.
+ * document. A uniquely identified unchanged source block is "current". A unique quote, matched
+ * across whitespace and Markdown formatting, is "moved" and spans the raw text. Changed blocks
+ * without a quote and ambiguous matches are "outdated". Callers locating many anchors share
+ * one `findQuote`.
  */
 export function locatePlanAnchor(
   body: string,
   anchor: TicketPlanAnchor,
   findQuote = quoteFinder(body),
 ): PlanAnchorLocation {
-  const at = anchor.source === "" ? -1 : body.indexOf(anchor.source);
-  if (at !== -1) return { status: "current", start: at, end: at + anchor.source.length };
-  const found = anchor.quote === undefined ? null : findQuote(anchor.quote.text);
+  const source = locateSource(body, anchor);
+  if (source !== null) return { status: "current", ...source };
+  const found = anchor.quote === undefined ? null : findQuote(anchor.quote);
   return found === null ? { status: "outdated" } : { status: "moved", ...found };
 }
 
-/**
- * Finds quotes in `body`, first in the raw text, then in its text without Markdown markup. Each
- * searched text is built on the first search that needs it and reused by the later ones.
- */
-function quoteFinder(body: string): (quote: string) => PlanSourceSpan | null {
-  let raw: SearchText | undefined;
-  let rendered: SearchText | undefined;
-  return (quote) => {
-    const words = quote.replace(/\s+/g, " ").trim();
-    if (words === "") return null;
-    raw ??= searchText(body);
-    return spanOf(raw, words) ?? spanOf((rendered ??= searchText(body, markupMask(body))), words);
-  };
-}
-
-/** Text a quote is searched in: `text[i]` comes from `body[offsets[i]]`. */
-interface SearchText {
-  readonly text: string;
-  readonly offsets: ReadonlyArray<number>;
-}
-
-/** `body` without the characters `hidden` marks, each whitespace run as one space. */
-function searchText(body: string, hidden?: Uint8Array): SearchText {
-  const characters: Array<string> = [];
-  const offsets: Array<number> = [];
-  for (let index = 0; index < body.length; index += 1) {
-    if (hidden?.[index] === 1) continue;
-    const space = WHITESPACE.test(body[index]!);
-    if (space && characters.at(-1) === " ") continue;
-    characters.push(space ? " " : body[index]!);
-    offsets.push(index);
+function locateSource(body: string, anchor: TicketPlanAnchor): PlanSourceSpan | null {
+  const { source, sourceContext } = anchor;
+  if (source === "") return null;
+  let found: PlanSourceSpan | null = null;
+  for (let start = body.indexOf(source); start !== -1; start = body.indexOf(source, start + 1)) {
+    const end = start + source.length;
+    if (sourceContext !== undefined && !contextFits(body, start, end, sourceContext)) continue;
+    if (found !== null) return null;
+    found = { start, end };
   }
-  return { text: characters.join(""), offsets };
+  return found;
 }
 
-/** The raw span of `words`, a whitespace-normalized quote, in `searched`. */
-function spanOf(searched: SearchText, words: string): PlanSourceSpan | null {
-  const at = searched.text.indexOf(words);
-  if (at === -1) return null;
-  return { start: searched.offsets[at]!, end: searched.offsets[at + words.length - 1]! + 1 };
+function quoteFinder(
+  body: string,
+): (quote: NonNullable<TicketPlanAnchor["quote"]>) => PlanSourceSpan | null {
+  let searched: ReadonlyArray<SearchText> | undefined;
+  return (quote) => {
+    searched ??= [searchText(body), searchText(body, markupMask(body))];
+    return matchQuote(searched, quote, ({ offsets }, start, end) => ({
+      start: offsets[start]!,
+      end: offsets[end - 1]! + 1,
+    }));
+  };
 }
 
 /**

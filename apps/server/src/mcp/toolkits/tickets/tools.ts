@@ -11,13 +11,14 @@ import {
   TicketDetail,
   TicketError,
   TicketGitHubRef,
-  TicketId,
   TicketLinkKind,
   TicketNotFoundError,
   TicketPlanComment,
   TicketPlanCommentInput,
+  TicketPlanAnchor,
   TicketPlanCreateInput,
   TicketPlanNotFoundError,
+  TicketPlanQuoteText,
   TicketPlanRevisionConflictError,
   TicketPlanStatus,
   TicketPlanSummary,
@@ -71,9 +72,6 @@ const planAttachments = Schema.optional(
         "Pending uploads from t3_attachment_prepare_upload that the body references as vetra-attachment://<pending id>.",
     }),
 );
-
-/** A plan summary with its ticket, which a link to the plan needs. */
-const PlanResult = Schema.Struct({ ticketId: TicketId, ...TicketPlanSummary.fields });
 
 const PlanCommentReply = TicketPlanComment.mapFields(
   Struct.pick(["id", "author", "body", "createdAt"]),
@@ -246,7 +244,7 @@ const TicketPlanListTool = Tool.make("t3_ticket_plan_list", {
   description:
     "List a ticket's plans by number, without their bodies. Each ref, such as T-42/P1, names the plan for the other t3_ticket_plan_* tools.",
   parameters: Schema.Struct({ ticket }),
-  success: Schema.Struct({ plans: Schema.Array(PlanResult) }),
+  success: Schema.Struct({ plans: Schema.Array(TicketPlanSummary) }),
 })
   .annotate(Tool.Title, "List ticket plans")
   .annotate(Tool.Readonly, true)
@@ -265,7 +263,6 @@ const TicketPlanGetTool = Tool.make("t3_ticket_plan_get", {
     ),
   }),
   success: Schema.Struct({
-    ticketId: TicketId,
     plan: TicketPlanSummary,
     body: Schema.String,
     comments: Schema.Array(
@@ -273,6 +270,7 @@ const TicketPlanGetTool = Tool.make("t3_ticket_plan_get", {
         ...PlanCommentReply.fields,
         quote: Schema.optional(Schema.String),
         source: Schema.optional(Schema.String),
+        sourceContext: TicketPlanAnchor.fields.sourceContext,
         outdated: Schema.Boolean,
         resolved: Schema.Boolean,
         replies: Schema.Array(PlanCommentReply),
@@ -296,7 +294,7 @@ const TicketPlanCreateTool = Tool.make("t3_ticket_plan_create", {
     body: TicketPlanCreateInput.fields.body.annotate({ description: "Markdown." }),
     attachments: planAttachments,
   }),
-  success: PlanResult,
+  success: TicketPlanSummary,
 })
   .annotate(Tool.Title, "Create a ticket plan")
   .annotate(Tool.Readonly, false)
@@ -329,7 +327,7 @@ const TicketPlanUpdateTool = Tool.make("t3_ticket_plan_update", {
     }),
     attachments: planAttachments,
   }),
-  success: PlanResult,
+  success: TicketPlanSummary,
 })
   .annotate(Tool.Title, "Update a ticket plan")
   .annotate(Tool.Readonly, false)
@@ -346,7 +344,7 @@ const TicketPlanCommentTool = Tool.make("t3_ticket_plan_comment", {
     body: TicketPlanCommentInput.fields.body.annotate({ description: "Markdown." }),
     parentCommentId: TicketPlanCommentInput.fields.parentCommentId,
     quote: Schema.optional(
-      Schema.String.check(Schema.isMaxLength(8_000), Schema.isPattern(/\S/)).annotate({
+      TicketPlanQuoteText.annotate({
         description: "Exact Markdown source text from the plan body that occurs only once.",
       }),
     ),

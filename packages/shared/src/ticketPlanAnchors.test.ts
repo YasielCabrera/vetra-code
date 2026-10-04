@@ -102,13 +102,65 @@ describe("locatePlanAnchor", () => {
       status: "outdated",
     });
   });
+
+  it("marks ambiguous legacy blocks and quotes outdated", () => {
+    expect(
+      locatePlanAnchor("```sh\nnpm test\n```\n\n```sh\nnpm test\n```", {
+        source: "```sh\nnpm test\n```",
+        revision: 1,
+      }),
+    ).toEqual({ status: "outdated" });
+    expect(
+      locatePlanAnchor("Run npm test.\n\nAlso run npm test.", {
+        source: "Original instructions: npm test",
+        quote: { text: "npm test", prefix: "", suffix: "" },
+        revision: 1,
+      }),
+    ).toEqual({ status: "outdated" });
+  });
+
+  it("uses rendered quote context to find the right repeated passage after an edit", () => {
+    const body = "Alpha: run **npm test**.\n\nBeta: run **npm test** after setup.";
+    const start = body.lastIndexOf("npm test");
+    expect(
+      locatePlanAnchor(body, {
+        source: "Beta: run npm test before setup.",
+        quote: { text: "npm test", prefix: "Beta: run ", suffix: " after setup." },
+        revision: 1,
+      }),
+    ).toEqual({ status: "moved", start, end: start + "npm test".length });
+  });
+
+  it("keeps selected whitespace when matching context around repeated quotes", () => {
+    const body = "First: same words end.\n\nSecond: same words stop.";
+    const start = body.lastIndexOf(" same words ");
+    expect(
+      locatePlanAnchor(body, {
+        source: "gone",
+        quote: { text: " same\nwords ", prefix: "Second:", suffix: "stop." },
+        revision: 1,
+      }),
+    ).toEqual({ status: "moved", start, end: start + " same words ".length });
+  });
+
+  it("does not prefer a literal occurrence over a different rendered contextual match", () => {
+    const body = "First: foo.\n\nSecond: **f**oo.";
+    const start = body.lastIndexOf("f**oo");
+    expect(
+      locatePlanAnchor(body, {
+        source: "gone",
+        quote: { text: "foo", prefix: "Second: ", suffix: "." },
+        revision: 1,
+      }),
+    ).toEqual({ status: "moved", start, end: start + "f**oo".length });
+  });
 });
 
 describe("anchorFromSourceQuote", () => {
   it("takes the source from every block the quote overlaps, and locates as current", () => {
     const body = "# Plan\n\nAlpha one.\n\nBeta two.\n\nGamma.\n";
     const anchor = {
-      quote: { text: "one.\n\nBeta", prefix: "", suffix: "" },
+      quote: { text: "one. Beta", prefix: "", suffix: "" },
       source: "Alpha one.\n\nBeta two.",
       revision: 3,
     };
@@ -133,6 +185,17 @@ describe("anchorFromSourceQuote", () => {
       1,
     );
     expect(anchor).toMatchObject({ source: "x".repeat(1_997) + "NEEDLE" + "y".repeat(1_997) });
+  });
+
+  it("stores the quoted range as it renders, and no quote for markup alone", () => {
+    const body = "## Steps\n\n1. Retry the **token** call.\n\n```\nlog()\n```\n";
+    expect(
+      ["## Steps", "1. Retry the", "**token**", "```\nlog"].map((quote) => {
+        const anchor = anchorFromSourceQuote(body, quote, 1);
+        return "quote" in anchor ? anchor.quote?.text : anchor;
+      }),
+    ).toEqual(["Steps", "Retry the", "token", "log"]);
+    expect(anchorFromSourceQuote(body, "## ", 1)).toEqual({ source: "## Steps", revision: 1 });
   });
 
   it("counts the matches of a quote that is not in the source exactly once", () => {
@@ -190,6 +253,120 @@ describe("anchorFromRenderedSelection", () => {
     );
     expect(anchor.source).toBe(`${"x".repeat(1_992)} **NEEDLE** ${"y".repeat(1_996)}`);
   });
+
+  it.each([
+    { prefix: "", suffix: "" },
+    { prefix: "Other block has ", suffix: "." },
+  ])("keeps a span-local quote when the document match is ambiguous or elsewhere", (context) => {
+    const outside = "Other block has NEEDLE.\n\n";
+    const selectedBlock = `${"x".repeat(6_000)} **NEEDLE** ${"y".repeat(1_000)}`;
+    const body = `${outside}${selectedBlock}`;
+    const anchor = anchorFromRenderedSelection(
+      body,
+      { start: outside.length, end: body.length },
+      { text: "NEEDLE", ...context },
+      1,
+    );
+    expect(anchor.source.length).toBe(4_000);
+    expect(anchor.source).toContain("**NEEDLE**");
+    expect(locatePlanAnchor(body, anchor).status).toBe("current");
+  });
+
+  it.each([
+    ["code", "```sh\nnpm test\n```"],
+    ["diagram", "```mermaid\ngraph TD; A-->B\n```"],
+    ["image", "![Preview](vetra-attachment://image-1)"],
+  ])("locates a comment on the second identical %s block", (_kind, block) => {
+    const duplicateBody = `First context\n\n${block}\n\nSecond context\n\n${block}\n`;
+    const start = duplicateBody.lastIndexOf(block);
+    const anchor = anchorFromRenderedSelection(
+      duplicateBody,
+      { start, end: start + block.length },
+      undefined,
+      1,
+    );
+    expect(locatePlanAnchor(duplicateBody, anchor)).toEqual({
+      status: "current",
+      start,
+      end: start + block.length,
+    });
+    const movedBody = `Introduction.\n\n${duplicateBody}`;
+    expect(locatePlanAnchor(movedBody, anchor)).toEqual({
+      status: "current",
+      start: start + "Introduction.\n\n".length,
+      end: start + "Introduction.\n\n".length + block.length,
+    });
+  });
+
+  it("distinguishes duplicate blocks at document edges", () => {
+    const block = "```sh\nnpm test\n```";
+    const duplicateBody = `${block}\n\n${block}`;
+    const start = duplicateBody.lastIndexOf(block);
+    const anchor = anchorFromRenderedSelection(
+      duplicateBody,
+      { start, end: duplicateBody.length },
+      undefined,
+      1,
+    );
+    expect(locatePlanAnchor(duplicateBody, anchor)).toEqual({
+      status: "current",
+      start,
+      end: duplicateBody.length,
+    });
+  });
+
+  it("keeps an anchored first duplicate after a heading is prepended", () => {
+    const block = "```sh\nnpm test\n```";
+    const body = `${block}\n\nSecond section\n\n${block}`;
+    const anchor = anchorFromRenderedSelection(body, { start: 0, end: block.length }, undefined, 1);
+    const introduction = "# Introduction\n\n";
+    expect(anchor.sourceContext?.prefix).toBe("");
+    expect(locatePlanAnchor(`${introduction}${body}`, anchor)).toEqual({
+      status: "current",
+      start: introduction.length,
+      end: introduction.length + block.length,
+    });
+  });
+
+  it("keeps an anchored last duplicate after more text is appended", () => {
+    const block = "```sh\nnpm test\n```";
+    const body = `${block}\n\nSecond section\n\n${block}`;
+    const start = body.lastIndexOf(block);
+    const anchor = anchorFromRenderedSelection(body, { start, end: body.length }, undefined, 1);
+    expect(anchor.sourceContext?.suffix).toBe("");
+    expect(locatePlanAnchor(`${body}\n\n# Next steps`, anchor)).toEqual({
+      status: "current",
+      start,
+      end: body.length,
+    });
+  });
+
+  it("does not move a deleted duplicate block's comment onto the surviving copy", () => {
+    const block = "```sh\nnpm test\n```";
+    const duplicateBody = `First context\n\n${block}\n\nSecond context\n\n${block}\n`;
+    const start = duplicateBody.lastIndexOf(block);
+    const anchor = anchorFromRenderedSelection(
+      duplicateBody,
+      { start, end: start + block.length },
+      undefined,
+      1,
+    );
+    expect(locatePlanAnchor(`First context\n\n${block}\n`, anchor)).toEqual({ status: "outdated" });
+  });
+
+  it("marks duplicate blocks with indistinguishable surrounding context outdated", () => {
+    const block = "```sh\nnpm test\n```";
+    const repeated = `${"x".repeat(40)}\n\n${block}\n\n${"y".repeat(40)}`;
+    const duplicateBody = `${repeated}\n\n${repeated}`;
+    const start = duplicateBody.lastIndexOf(block);
+    const anchor = anchorFromRenderedSelection(
+      duplicateBody,
+      { start, end: start + block.length },
+      undefined,
+      1,
+    );
+    expect(locatePlanAnchor(duplicateBody, anchor)).toEqual({ status: "outdated" });
+  });
 });
 
 describe("orderPlanCommentThreads", () => {
@@ -244,6 +421,23 @@ describe("orderPlanCommentThreads", () => {
       ["moved", { status: "moved", start: 12, end: 16 }, []],
       ["whole", null, []],
       ["gone", { status: "outdated" }, []],
+    ]);
+  });
+
+  it("orders comments on repeated blocks by the selected copy", () => {
+    const block = "```sh\nnpm test\n```";
+    const repeatedBody = `First\n\n${block}\n\nMiddle.\n\nSecond\n\n${block}`;
+    const anchorAt = (start: number) =>
+      anchorFromRenderedSelection(repeatedBody, { start, end: start + block.length }, undefined, 1);
+    const threads = orderPlanCommentThreads(repeatedBody, [
+      comment("second-block", { anchor: anchorAt(repeatedBody.lastIndexOf(block)) }),
+      comment("middle", { anchor: { source: "Middle.", revision: 1 } }),
+      comment("first-block", { anchor: anchorAt(repeatedBody.indexOf(block)) }),
+    ]);
+    expect(threads.map(({ comment }) => comment.id)).toEqual([
+      "first-block",
+      "middle",
+      "second-block",
     ]);
   });
 });

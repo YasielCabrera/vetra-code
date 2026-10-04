@@ -4,6 +4,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   formatTicketPlanRef,
   parseTicketPlanReference,
+  TicketPlanAnchor,
   TicketPlanCommentInput,
 } from "./ticketPlan.ts";
 
@@ -32,6 +33,24 @@ describe("parseTicketPlanReference", () => {
         parseTicketPlanReference,
       ),
     ).toEqual([null, null, null, null, null, null, null, null]);
+  });
+});
+
+describe("TicketPlanAnchor", () => {
+  const isAnchor = Schema.is(TicketPlanAnchor);
+
+  it("accepts legacy anchors and bounded source context for repeated passages", () => {
+    const anchor = { source: "```sh\nnpm test\n```", revision: 1 };
+    expect(isAnchor(anchor)).toBe(true);
+    expect(
+      isAnchor({ ...anchor, sourceContext: { prefix: "Before\n\n", suffix: "\n\nAfter" } }),
+    ).toBe(true);
+    expect(isAnchor({ ...anchor, sourceContext: { prefix: "x".repeat(33), suffix: "" } })).toBe(
+      false,
+    );
+    expect(isAnchor({ ...anchor, sourceContext: { prefix: "", suffix: "x".repeat(33) } })).toBe(
+      false,
+    );
   });
 });
 

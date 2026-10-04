@@ -167,6 +167,9 @@ export default function TicketBodyEditor(props: {
   readonly placeholder: string;
   readonly ariaLabel: string;
   readonly autoFocus?: boolean;
+  readonly disabled?: boolean;
+  /** Covers upload and insertion, so a document cannot be archived between them. */
+  readonly onUploadingChange?: (uploading: boolean) => void;
   readonly minHeight: string;
   /** Whose body this is, for the warnings; a ticket's description by default. */
   readonly document?: keyof typeof DOCUMENT_COPY;
@@ -204,6 +207,7 @@ export default function TicketBodyEditor(props: {
     content: unsupported ? "" : props.value,
     contentType: "markdown",
     autofocus: props.autoFocus && mode === "write" ? "end" : false,
+    editable: !props.disabled,
     shouldRerenderOnTransaction: false,
     editorProps: {
       attributes: {
@@ -286,8 +290,18 @@ export default function TicketBodyEditor(props: {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      latestRef.current.onUploadingChange?.(false);
     };
   }, []);
+
+  const { onUploadingChange } = props;
+  useEffect(() => {
+    onUploadingChange?.(uploading > 0);
+  }, [onUploadingChange, uploading]);
+
+  useLayoutEffect(() => {
+    editor?.setEditable(!props.disabled);
+  }, [editor, props.disabled]);
 
   useLayoutEffect(() => {
     if (!editor || props.value === lastValueRef.current) return;
@@ -311,7 +325,7 @@ export default function TicketBodyEditor(props: {
   }, [editor, props.value]);
 
   async function attachFiles(files: ReadonlyArray<File>, targetMode: "write" | "source") {
-    if (files.length === 0) return;
+    if (files.length === 0 || latestRef.current.disabled) return;
     setUploading((count) => count + 1);
     try {
       const snippets = await latestRef.current.onFiles(files);
@@ -348,7 +362,10 @@ export default function TicketBodyEditor(props: {
   const sourceMode = mode === "source";
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
+      <fieldset
+        disabled={props.disabled}
+        className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2"
+      >
         <div className="flex flex-wrap items-center gap-0.5" role="group" aria-label="Formatting">
           {sourceMode ? (
             <span className="px-1 text-xs text-muted-foreground">Raw Markdown</span>
@@ -417,7 +434,7 @@ export default function TicketBodyEditor(props: {
               >
                 <FileCodeIcon />
               </FormatButton>
-              <Popover open={linkOpen} onOpenChange={setLinkOpen}>
+              <Popover open={linkOpen && !props.disabled} onOpenChange={setLinkOpen}>
                 <PopoverTrigger
                   render={
                     <Button
@@ -513,7 +530,7 @@ export default function TicketBodyEditor(props: {
             Markdown
           </Button>
         </div>
-      </div>
+      </fieldset>
       {props.value.length > TICKET_BODY_MAX_CHARS ? (
         <p className="text-xs text-destructive" role="alert">
           {copy.tooLong}
@@ -527,6 +544,7 @@ export default function TicketBodyEditor(props: {
           aria-label={props.ariaLabel}
           placeholder={props.placeholder}
           autoFocus={props.autoFocus}
+          disabled={props.disabled}
           style={{ minHeight: props.minHeight }}
           className="w-full resize-y bg-transparent px-1 py-2 font-mono text-sm leading-7 outline-none placeholder:text-muted-foreground/60"
           onChange={(event) => {

@@ -20,6 +20,7 @@ const P2 = TicketPlanId.make("plan-2");
 function plan(planId: TicketPlanId, number: number, status: "active" | "archived") {
   return {
     planId,
+    ticketId: TICKET,
     ref: `T-7/P${number}`,
     number,
     title: `Plan ${number}`,

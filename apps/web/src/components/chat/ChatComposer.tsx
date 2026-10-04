@@ -79,6 +79,7 @@ import {
   detectComposerTrigger,
   expandCollapsedComposerCursor,
   formatAssistantCitationForComposer,
+  isTicketPlanReferenceQuery,
   replaceTextRange,
 } from "../../composer-logic";
 import { DISCONNECTED_COMPOSER_PLACEHOLDER } from "../../composerPlaceholder";
@@ -2497,7 +2498,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const pullRequestTextQuery =
     composerTriggerKind === "pull-request" &&
     pullRequestTriggerQuery.length > 0 &&
-    !/^\d+$/u.test(pullRequestTriggerQuery)
+    !/^\d+$/u.test(pullRequestTriggerQuery) &&
+    !isTicketPlanReferenceQuery(pullRequestTriggerQuery)
       ? pullRequestTriggerQuery
       : null;
   const debouncedPullRequestTextQuery = useDebouncedValue(pullRequestTextQuery, 180);
@@ -3074,6 +3076,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         ...composerReviewComments
           .filter((c) => wanted.has(reviewCommentContextId(c.id)))
           .map(reviewCommentContextRecord),
+        ...composerThreadContexts.filter((record) => wanted.has(record.contextId)),
         ...composerPreviewAnnotations
           .filter((a) => wanted.has(previewAnnotationContextId(a.id)))
           .map((annotation) =>
@@ -3109,6 +3112,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       composerPreviewAnnotations,
       composerReviewComments,
       composerTerminalContexts,
+      composerThreadContexts,
       environmentId,
       uploadsByImageId,
     ],
@@ -4039,7 +4043,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         } else if (item.type === "ticket-plan" && trigger.kind === "pull-request") {
           record = ticketPlanContextRecord({
             environmentId: item.ticket.environmentId,
-            ticket: item.ticket,
             plan: item.plan,
           });
         }

@@ -241,6 +241,18 @@ export const COMPOSER_CONTEXT_TICKET_BODY_MAX_CHARS = 4_000;
 
 const TicketContextRef = TrimmedNonEmptyString.check(Schema.isMaxLength(32));
 
+export const TICKET_CONTEXT_PLANS_MAX = 50;
+
+const ticketPlanRef = {
+  planId: TicketPlanId,
+  /** `T-42/P1`. */
+  ref: TicketContextRef,
+  title: ShortString,
+  /** The plan's revision when the chip was made. */
+  revision: PositiveInt,
+  openCommentCount: NonNegativeInt,
+} as const;
+
 /**
  * A ticket in the thread's environment. Identity leads: sending it links the thread to the
  * ticket. Title, body, links and plans are a snapshot for the agent; a chip picked from a list
@@ -261,17 +273,9 @@ export const TicketContextRecord = Schema.Struct({
    * stored before plans existed carry none.
    */
   plans: Schema.optional(
-    Schema.Array(
-      Schema.Struct({
-        planId: TicketPlanId,
-        /** `T-42/P1`. */
-        ref: TicketContextRef,
-        title: ShortString,
-        status: TicketPlanStatus,
-        revision: PositiveInt,
-        openCommentCount: NonNegativeInt,
-      }),
-    ).check(Schema.isMaxLength(50)),
+    Schema.Array(Schema.Struct({ ...ticketPlanRef, status: TicketPlanStatus })).check(
+      Schema.isMaxLength(TICKET_CONTEXT_PLANS_MAX),
+    ),
   ),
 });
 export type TicketContextRecord = typeof TicketContextRecord.Type;
@@ -287,13 +291,7 @@ export const TicketPlanContextRecord = Schema.Struct({
   kind: Schema.Literal("ticket-plan"),
   environmentId: EnvironmentId,
   ticketId: TicketId,
-  planId: TicketPlanId,
-  /** `T-42/P1`. */
-  ref: TicketContextRef,
-  title: ShortString,
-  /** The plan's revision when it was attached. */
-  revision: PositiveInt,
-  openCommentCount: NonNegativeInt,
+  ...ticketPlanRef,
 });
 export type TicketPlanContextRecord = typeof TicketPlanContextRecord.Type;
 

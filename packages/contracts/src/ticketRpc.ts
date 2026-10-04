@@ -46,12 +46,10 @@ import {
   TicketPlanComment,
   TicketPlanCommentInput,
   TicketPlanCommentRefInput,
-  TicketPlanCommentsResolveInput,
   TicketPlanCreateInput,
   TicketPlanDeleteInput,
   TicketPlanNotFoundError,
   TicketPlanRevisionConflictError,
-  TicketPlanStatusInput,
   TicketPlanSubscribeInput,
   TicketPlanUpdateInput,
   TicketPlanWriteResult,
@@ -102,10 +100,8 @@ export const TICKET_WS_METHODS = {
   ticketsSubscribePlan: "tickets.subscribePlan",
   ticketsCreatePlan: "tickets.createPlan",
   ticketsUpdatePlan: "tickets.updatePlan",
-  ticketsSetPlanStatus: "tickets.setPlanStatus",
   ticketsDeletePlan: "tickets.deletePlan",
   ticketsAddPlanComment: "tickets.addPlanComment",
-  ticketsResolvePlanComments: "tickets.resolvePlanComments",
   ticketsReopenPlanComment: "tickets.reopenPlanComment",
   ticketsDeletePlanComment: "tickets.deletePlanComment",
 } as const;
@@ -289,12 +285,6 @@ const WsTicketsUpdatePlanRpc = Rpc.make(TICKET_WS_METHODS.ticketsUpdatePlan, {
   error: TicketRpcError,
 });
 
-const WsTicketsSetPlanStatusRpc = Rpc.make(TICKET_WS_METHODS.ticketsSetPlanStatus, {
-  payload: TicketPlanStatusInput,
-  success: TicketPlanSummary,
-  error: TicketRpcError,
-});
-
 const WsTicketsDeletePlanRpc = Rpc.make(TICKET_WS_METHODS.ticketsDeletePlan, {
   payload: TicketPlanDeleteInput,
   error: TicketRpcError,
@@ -303,12 +293,6 @@ const WsTicketsDeletePlanRpc = Rpc.make(TICKET_WS_METHODS.ticketsDeletePlan, {
 const WsTicketsAddPlanCommentRpc = Rpc.make(TICKET_WS_METHODS.ticketsAddPlanComment, {
   payload: TicketPlanCommentInput,
   success: TicketPlanComment,
-  error: TicketRpcError,
-});
-
-const WsTicketsResolvePlanCommentsRpc = Rpc.make(TICKET_WS_METHODS.ticketsResolvePlanComments, {
-  payload: TicketPlanCommentsResolveInput,
-  success: TicketPlanSummary,
   error: TicketRpcError,
 });
 
@@ -353,10 +337,8 @@ export const TicketsRpcGroup = RpcGroup.make(
   WsTicketsSubscribePlanRpc,
   WsTicketsCreatePlanRpc,
   WsTicketsUpdatePlanRpc,
-  WsTicketsSetPlanStatusRpc,
   WsTicketsDeletePlanRpc,
   WsTicketsAddPlanCommentRpc,
-  WsTicketsResolvePlanCommentsRpc,
   WsTicketsReopenPlanCommentRpc,
   WsTicketsDeletePlanCommentRpc,
 );

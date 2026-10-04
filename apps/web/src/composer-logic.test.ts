@@ -22,6 +22,7 @@ import {
   expandCollapsedComposerCursor,
   formatAssistantCitationForComposer,
   isCollapsedCursorAdjacentToInlineToken,
+  isTicketPlanReferenceQuery,
   parseStandaloneComposerSlashCommand,
   replaceTextRange,
 } from "./composer-logic";
@@ -362,6 +363,14 @@ describe("detectComposerTrigger", () => {
       rangeStart: "Find ".length,
       rangeEnd: text.length,
     });
+  });
+
+  it("recognizes a plan reference query, which is not a pull request search", () => {
+    expect(
+      ["T-42/", "T-42/P", "T-42/P1", "t-42/p1", "T-42", "composer", "42", "feature/x"].map(
+        isTicketPlanReferenceQuery,
+      ),
+    ).toEqual([true, true, true, true, false, false, false, false]);
   });
 
   it("keeps a ticket plan reference in one search, and ends other searches at a slash", () => {

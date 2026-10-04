@@ -14,7 +14,6 @@ import {
   type AssistantTextSelector,
   captureAssistantTextSelection,
   createAssistantTextSelector,
-  findAssistantCitationText,
   resolveAssistantCitationRanges,
 } from "./assistantTextSelection";
 
@@ -402,15 +401,10 @@ describe("createAssistantTextSelector", () => {
 
     const parsed = roundTripSelector(captured!);
     expect(parsed).toMatchObject(captured!);
-    expect(findAssistantCitationText(text, parsed!)).toEqual({ start, end });
-    expect(findAssistantCitationText(`Inserted paragraph.\n${text}`, parsed!)).toEqual({
-      start: "Inserted paragraph. ".length + start,
-      end: "Inserted paragraph. ".length + end,
-    });
   });
 
   it.each(["prefix", "suffix"])(
-    "does not relocate to a replacement-character decoy after clipping the %s",
+    "round-trips context clipped beside a surrogate pair on the %s",
     (side) => {
       const prefix = "x".repeat(ASSISTANT_CITATION_CONTEXT_LENGTH - (side === "prefix" ? 1 : 0));
       const suffix = "y".repeat(ASSISTANT_CITATION_CONTEXT_LENGTH - (side === "suffix" ? 1 : 0));
@@ -421,8 +415,6 @@ describe("createAssistantTextSelector", () => {
       const captured = createAssistantTextSelector(text, start, start + 5);
       const parsed = roundTripSelector(captured!);
       expect(parsed).toMatchObject(captured!);
-      expect(findAssistantCitationText(text, captured!)).toBeNull();
-      expect(findAssistantCitationText(text, parsed!)).toBeNull();
     },
   );
 
@@ -431,164 +423,9 @@ describe("createAssistantTextSelector", () => {
   });
 });
 
-describe("findAssistantCitationText", () => {
-  it("resolves an exact selection with its saved position and context", () => {
-    expect(
-      findAssistantCitationText(
-        "Before the selected text after.",
-        selector("selected text", { start: 11, end: 24, prefix: "Before the ", suffix: " after." }),
-      ),
-    ).toEqual({ start: 11, end: 24 });
-  });
-
-  it("finds a unique quote when insertion before it shifts its offsets", () => {
-    expect(
-      findAssistantCitationText(
-        "An inserted paragraph. Before the selected text after.",
-        selector("selected text", { start: 11, end: 24, prefix: "Before the ", suffix: " after." }),
-      ),
-    ).toEqual({ start: 34, end: 47 });
-  });
-
-  it("still finds a unique quote after its surrounding text changes", () => {
-    expect(
-      findAssistantCitationText(
-        "New selected text nearby.",
-        selector("selected text", { start: 11, end: 24, prefix: "Before the ", suffix: " after." }),
-      ),
-    ).toEqual({ start: 4, end: 17 });
-  });
-
-  it("uses both context sides when each side alone matches several repeated quotes", () => {
-    const text = "left quote one; other quote two; left quote two";
-    expect(
-      findAssistantCitationText(
-        text,
-        selector("quote", { start: 5, end: 10, prefix: "left ", suffix: " two" }),
-      ),
-    ).toEqual({ start: 38, end: 43 });
-  });
-
-  it("does not trust stale offsets that now point at another occurrence", () => {
-    expect(
-      findAssistantCitationText(
-        "wrong quote here; right quote there",
-        selector("quote", { start: 6, end: 11, prefix: "right ", suffix: " there" }),
-      ),
-    ).toEqual({ start: 24, end: 29 });
-  });
-
-  it.each([
-    { prefix: "first ", suffix: "", expected: { start: 6, end: 11 } },
-    { prefix: "", suffix: " last", expected: { start: 14, end: 19 } },
-  ])(
-    "allows a single context side to disambiguate: $prefix / $suffix",
-    ({ expected, ...context }) => {
-      expect(
-        findAssistantCitationText("first quote / quote last", selector("quote", context)),
-      ).toEqual(expected);
-    },
-  );
-
-  it("does not guess between quotes without context, even at the saved position", () => {
-    expect(findAssistantCitationText("quote / quote", selector("quote"))).toBeNull();
-  });
-
-  it("does not use distance or saved offsets to break a context tie", () => {
-    expect(
-      findAssistantCitationText(
-        "same quote end / same quote end",
-        selector("quote", { start: 5, end: 10, prefix: "same ", suffix: " end" }),
-      ),
-    ).toBeNull();
-  });
-
-  it("rejects repeated quotes when neither occurrence matches all supplied context", () => {
-    expect(
-      findAssistantCitationText(
-        "left quote wrong / wrong quote right",
-        selector("quote", { prefix: "left ", suffix: " right" }),
-      ),
-    ).toBeNull();
-  });
-
-  it("counts overlapping occurrences when checking ambiguity", () => {
-    expect(findAssistantCitationText("banana", selector("ana", { start: 1, end: 4 }))).toBeNull();
-  });
-
-  it("matches multiline code after indentation, tabs, and line endings change", () => {
-    const quote = "if (ready) {\r\n    run();\r\n}";
-    expect(
-      findAssistantCitationText(
-        "Example:\nif (ready) {\n\trun();\n}\nDone.",
-        selector(quote, { prefix: "Example:\n", suffix: "\nDone." }),
-      ),
-    ).toEqual({ start: 9, end: 30 });
-  });
-
-  it("normalizes nonbreaking spaces and keeps selected boundary whitespace", () => {
-    expect(
-      findAssistantCitationText(
-        "before\u00a0\n quoted\t text \nafter",
-        selector("\nquoted  text\t"),
-      ),
-    ).toEqual({ start: 6, end: 19 });
-  });
-
-  it("does not trim the document's leading whitespace out of its offsets", () => {
-    expect(findAssistantCitationText("\n\t  quote", selector("quote"))).toEqual({
-      start: 1,
-      end: 6,
-    });
-  });
-
-  it("uses UTF-16 offsets for emoji and combining characters", () => {
-    expect(findAssistantCitationText("😀 cafe\u0301 🚀 done", selector("cafe\u0301 🚀"))).toEqual({
-      start: 3,
-      end: 11,
-    });
-  });
-
-  it("uses up to 32 UTF-16 context units without requiring the entire surrounding text", () => {
-    const prefix = "x".repeat(ASSISTANT_CITATION_CONTEXT_LENGTH - 1) + " ";
-    const suffix = " " + "y".repeat(ASSISTANT_CITATION_CONTEXT_LENGTH - 1);
-    const text = `unrelated quote / ${prefix}quote${suffix} changed further away`;
-    const start = text.lastIndexOf("quote");
-    expect(findAssistantCitationText(text, selector("quote", { prefix, suffix }))).toEqual({
-      start,
-      end: start + 5,
-    });
-  });
-
-  it.each(["", " \n\t\r\n", "absent", "QUOTE", "qu.te"])(
-    "rejects empty or missing literal text: %j",
-    (quote) => {
-      expect(findAssistantCitationText("quote", selector(quote))).toBeNull();
-    },
-  );
-
-  it.each([
-    { start: -1, end: 4 },
-    { start: 2.5, end: 7.5 },
-    { start: Number.NaN, end: Number.NaN },
-    { start: Number.POSITIVE_INFINITY, end: Number.POSITIVE_INFINITY },
-    { start: 8, end: 3 },
-  ])("treats invalid stored offsets as unusable hints: $start / $end", (offsets) => {
-    expect(findAssistantCitationText("a quote", selector("quote", offsets))).toEqual({
-      start: 2,
-      end: 7,
-    });
-  });
-});
-
 describe("resolveAssistantCitationRanges", () => {
-  it("resolves each selector in the root's text, or null when it is missing or ambiguous", () => {
-    const first = textNode("Alpha beta.");
-    const second = textNode("Gamma beta.");
-    const root = new SelectionNode("DIV").append(
-      new SelectionNode("P").append(first),
-      new SelectionNode("P").append(second),
-    );
+  function rangeRoot(...children: SelectionNode[]) {
+    const root = new SelectionNode("DIV").append(...children);
     const createRange = () => ({
       startContainer: root,
       startOffset: 0,
@@ -606,9 +443,18 @@ describe("resolveAssistantCitationRanges", () => {
         this.endOffset = offset;
       },
     });
-    Object.assign(root, { ownerDocument: { createRange } });
+    return Object.assign(root, { ownerDocument: { createRange } }) as unknown as HTMLElement;
+  }
 
-    const ranges = resolveAssistantCitationRanges(root as unknown as HTMLElement, [
+  it("resolves each selector in the root's text, or null when it is missing or ambiguous", () => {
+    const first = textNode("Alpha beta.");
+    const second = textNode("Gamma beta.");
+    const root = rangeRoot(
+      new SelectionNode("P").append(first),
+      new SelectionNode("P").append(second),
+    );
+
+    const ranges = resolveAssistantCitationRanges(root, [
       selector("beta", { start: -1, end: -1, prefix: "Alpha " }),
       selector("Gamma beta", { start: -1, end: -1 }),
       selector("beta", { start: -1, end: -1 }),
@@ -625,5 +471,39 @@ describe("resolveAssistantCitationRanges", () => {
             ],
       ),
     ).toEqual([["Alpha beta.", 6, 10], ["Gamma beta.", 0, 10], null, null]);
+  });
+
+  it("uses context to tell repeated quotes apart, spanning raw whitespace and blocks", () => {
+    const root = rangeRoot(
+      new SelectionNode("P").append(textNode("Run the  tests.")),
+      new SelectionNode("P").append(textNode("Then run the tests again.")),
+      new SelectionNode("PRE").append(textNode("run the\n  tests")),
+    );
+
+    const ranges = resolveAssistantCitationRanges(root, [
+      selector("run the tests", { prefix: "Then " }),
+      selector("run the tests", { prefix: "again. " }),
+      selector("run the tests"),
+      selector("the  tests", { suffix: "." }),
+      selector("tests.\nThen run"),
+    ]);
+    expect(
+      ranges.map((range) =>
+        range === null
+          ? null
+          : [
+              (range.startContainer as unknown as SelectionNode).data,
+              range.startOffset,
+              (range.endContainer as unknown as SelectionNode).data,
+              range.endOffset,
+            ],
+      ),
+    ).toEqual([
+      ["Then run the tests again.", 5, "Then run the tests again.", 18],
+      ["run the\n  tests", 0, "run the\n  tests", 15],
+      null,
+      ["Run the  tests.", 4, "Run the  tests.", 14],
+      ["Run the  tests.", 9, "Then run the tests again.", 8],
+    ]);
   });
 });

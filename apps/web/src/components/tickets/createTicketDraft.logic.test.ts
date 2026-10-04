@@ -183,9 +183,9 @@ describe("prepareTicketDraftPaste", () => {
   it("turns a pasted plan into its label, since an analyzer files tickets and never implements plans", () => {
     const plan = ticketPlanContextRecord({
       environmentId,
-      ticket: { id: TicketId.make("ticket-1") },
       plan: {
         planId: TicketPlanId.make("plan-1"),
+        ticketId: TicketId.make("ticket-1"),
         ref: "T-42/P1",
         number: 1,
         title: "Auth migration",

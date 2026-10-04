@@ -15,6 +15,7 @@ import {
   CircleDotIcon,
   FilePenIcon,
   FilePlusIcon,
+  FileXIcon,
   LinkIcon,
   PaperclipIcon,
   PencilIcon,
@@ -49,6 +50,7 @@ export const PLAN_ENTRY_VERBS = {
   plan_edited: "edited",
   plan_archived: "archived",
   plan_restored: "restored",
+  plan_deleted: "deleted",
 } as const;
 
 const SYNC_CHANGE_LABELS: Readonly<Record<string, string>> = {
@@ -100,6 +102,7 @@ function describeEntry(
     case "plan_edited":
     case "plan_archived":
     case "plan_restored":
+    case "plan_deleted":
       return `${PLAN_ENTRY_VERBS[entry.type]} plan`;
   }
 }
@@ -123,6 +126,7 @@ const EVENT_ICONS = {
   plan_edited: FilePenIcon,
   plan_archived: ArchiveIcon,
   plan_restored: ArchiveRestoreIcon,
+  plan_deleted: FileXIcon,
 };
 
 function ActivityMarker(props: { readonly activity: TicketActivity }) {

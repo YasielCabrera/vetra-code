@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type * as React from "react";
 
 import { cn } from "~/lib/utils";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 /**
  * The inline pill for one piece of chat context. It lives with the chat components rather than
@@ -134,4 +135,40 @@ function ContextChipAction({ className, render, ...props }: useRender.ComponentP
   });
 }
 
-export { ContextChip, ContextChipAction, ContextChipLabel, type ContextChipKind };
+function LinkedContextChip(props: {
+  kind: ContextChipKind;
+  link: NonNullable<ContextChipProps["render"]>;
+  icon: React.ReactNode;
+  label: string;
+  ariaLabel: string;
+  tooltip: string;
+  copyMarkdown?: string | undefined;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <ContextChip
+            kind={props.kind}
+            render={props.link}
+            aria-label={props.ariaLabel}
+            data-markdown-copy={props.copyMarkdown}
+            className="no-underline"
+          >
+            {props.icon}
+            <ContextChipLabel>{props.label}</ContextChipLabel>
+          </ContextChip>
+        }
+      />
+      <TooltipPopup side="top">{props.tooltip}</TooltipPopup>
+    </Tooltip>
+  );
+}
+
+export {
+  ContextChip,
+  ContextChipAction,
+  ContextChipLabel,
+  LinkedContextChip,
+  type ContextChipKind,
+};

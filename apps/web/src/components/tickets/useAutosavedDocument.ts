@@ -1,7 +1,6 @@
 import type { TicketClaimedAttachment } from "@t3tools/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { TICKET_REVISION_CONFLICT } from "../../hooks/useTicketActions";
 import { attachmentReferenceIds } from "../../lib/attachmentReferences";
 import { releaseAttachmentUpload } from "../../lib/attachmentUploadQueue";
 import { stackedThreadToast, toastManager } from "../ui/toast";
@@ -11,20 +10,22 @@ import {
   initialTicketDocument,
   reduceTicketDocument,
   shouldAutosave,
+  TICKET_REVISION_CONFLICT,
   type TicketDocumentEvent,
   type TicketDocumentState,
 } from "./ticketDocument.logic";
 
 const AUTOSAVE_DELAY_MS = 800;
 
-/** What a write reports back: the revision it produced and the uploads the server claimed. */
-export type DocumentWriteOutcome =
-  | { readonly revision: number; readonly claimed: ReadonlyArray<TicketClaimedAttachment> }
+export type DocumentWriteOutcome<Summary> =
+  | { readonly summary: Summary; readonly claimed: ReadonlyArray<TicketClaimedAttachment> }
   | typeof TICKET_REVISION_CONFLICT
   | null;
 
 /** One server write naming the revision it was made against. */
-export type DocumentWrite = (expectedRevision: number) => Promise<DocumentWriteOutcome>;
+export type DocumentWrite<Summary> = (
+  expectedRevision: number,
+) => Promise<DocumentWriteOutcome<Summary>>;
 
 export type DocumentUpload = PendingTicketUpload["attachment"];
 
@@ -35,32 +36,35 @@ export type DocumentUpload = PendingTicketUpload["attachment"];
  * Writes that carry no body (a title, labels, a status) go through `writeFields`, so they queue
  * behind the body and name the newest revision the page has seen.
  */
-export function useAutosavedDocument(options: {
-  readonly revision: number;
+export function useAutosavedDocument<Summary extends { readonly revision: number }>(options: {
+  readonly summary: Summary;
   readonly body: string;
   readonly writeBody: (
     expectedRevision: number,
     body: string,
     uploads: ReadonlyArray<DocumentUpload>,
-  ) => Promise<DocumentWriteOutcome>;
+  ) => Promise<DocumentWriteOutcome<Summary>>;
   /** The toast title when a write without a body loses to someone else's change. */
   readonly fieldConflictTitle: string;
 }) {
-  const { revision, body, writeBody, fieldConflictTitle } = options;
+  const { summary, body, writeBody, fieldConflictTitle } = options;
+  const { revision } = summary;
   const [state, setState] = useState(() => initialTicketDocument({ revision, body }));
   const stateRef = useRef(state);
   const dispatch = useCallback((event: TicketDocumentEvent) => {
     stateRef.current = reduceTicketDocument(stateRef.current, event);
     setState(stateRef.current);
   }, []);
-  // The newest revision from either the server or a write's reply, which can arrive first.
-  const latestRevisionRef = useRef(revision);
+  const latestRef = useRef(summary);
+  const keepNewestSummary = useCallback((next: Summary) => {
+    if (next.revision >= latestRef.current.revision) latestRef.current = next;
+  }, []);
   const pendingUploadsRef = useRef(new Map<string, PendingTicketUpload>());
   const mountedRef = useRef(true);
   const queueRef = useRef<Promise<unknown>>(Promise.resolve());
 
+  useEffect(() => keepNewestSummary(summary), [keepNewestSummary, summary]);
   useEffect(() => {
-    latestRevisionRef.current = Math.max(latestRevisionRef.current, revision);
     dispatch({ type: "serverChanged", revision, body });
   }, [body, dispatch, revision]);
 
@@ -74,9 +78,9 @@ export function useAutosavedDocument(options: {
   );
 
   const write = useCallback(
-    async (sentBody: string | null, run: DocumentWrite): Promise<boolean> => {
+    async (sentBody: string | null, run: DocumentWrite<Summary>): Promise<boolean> => {
       const expectedRevision =
-        sentBody === null ? latestRevisionRef.current : stateRef.current.base.revision;
+        sentBody === null ? latestRef.current.revision : stateRef.current.base.revision;
       dispatch({ type: "writeStarted", sentBody, expectedRevision });
       const result = await run(expectedRevision);
       if (result === TICKET_REVISION_CONFLICT) {
@@ -96,43 +100,44 @@ export function useAutosavedDocument(options: {
         dispatch({ type: "writeFailed" });
         return false;
       }
-      latestRevisionRef.current = Math.max(latestRevisionRef.current, result.revision);
-      dispatch({ type: "writeLanded", revision: result.revision, claimed: result.claimed });
+      keepNewestSummary(result.summary);
+      dispatch({ type: "writeLanded", revision: result.summary.revision, claimed: result.claimed });
       return true;
     },
-    [dispatch, fieldConflictTitle],
+    [dispatch, fieldConflictTitle, keepNewestSummary],
   );
 
-  const saveBody = useCallback(() => {
-    if (!hasUnsavedBody(stateRef.current) || stateRef.current.conflict) return;
-    void enqueue(async (current) => {
-      if (current.conflict) return false;
-      if (!hasUnsavedBody(current)) return true;
-      const sentBody = current.text;
-      const uploads = attachmentReferenceIds(sentBody).flatMap((id) => {
-        const upload = pendingUploadsRef.current.get(id);
-        return upload === undefined ? [] : [upload];
-      });
-      const landed = await write(sentBody, (expectedRevision) =>
-        writeBody(
-          expectedRevision,
-          sentBody,
-          uploads.map((upload) => upload.attachment),
-        ),
-      );
-      if (landed) {
-        for (const upload of uploads) {
-          pendingUploadsRef.current.delete(upload.attachment.id);
-          releaseAttachmentUpload(upload.localId);
+  const saveBody = useCallback(
+    () =>
+      enqueue(async (current) => {
+        if (current.conflict) return false;
+        if (!hasUnsavedBody(current)) return true;
+        const sentBody = current.text;
+        const uploads = attachmentReferenceIds(sentBody).flatMap((id) => {
+          const upload = pendingUploadsRef.current.get(id);
+          return upload === undefined ? [] : [upload];
+        });
+        const landed = await write(sentBody, (expectedRevision) =>
+          writeBody(
+            expectedRevision,
+            sentBody,
+            uploads.map((upload) => upload.attachment),
+          ),
+        );
+        if (landed) {
+          for (const upload of uploads) {
+            pendingUploadsRef.current.delete(upload.attachment.id);
+            releaseAttachmentUpload(upload.localId);
+          }
         }
-      }
-      return landed;
-    });
-  }, [enqueue, write, writeBody]);
+        return landed;
+      }),
+    [enqueue, write, writeBody],
+  );
 
   /** Queues a write without a body; `prepare` runs in turn and returns null to skip it. */
   const writeFields = useCallback(
-    (prepare: () => DocumentWrite | null) =>
+    (prepare: () => DocumentWrite<Summary> | null) =>
       enqueue(async () => {
         const run = prepare();
         return run === null ? true : write(null, run);
@@ -146,6 +151,17 @@ export function useAutosavedDocument(options: {
     return () => window.clearTimeout(timer);
   }, [saveBody, state]);
 
+  useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      const current = stateRef.current;
+      if (!hasUnsavedBody(current) && current.writing === null) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, []);
+
   const saveBodyRef = useRef(saveBody);
   useEffect(() => {
     saveBodyRef.current = saveBody;
@@ -154,7 +170,7 @@ export function useAutosavedDocument(options: {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      saveBodyRef.current();
+      void saveBodyRef.current();
       const pendingUploads = pendingUploadsRef.current;
       void queueRef.current.then(() => {
         for (const upload of pendingUploads.values()) releaseAttachmentUpload(upload.localId);
@@ -167,12 +183,16 @@ export function useAutosavedDocument(options: {
     state,
     /** The editor's text right now, without subscribing to it. */
     readText: useCallback(() => stateRef.current.text, []),
+    /** The newest summary, without subscribing to it. */
+    readLatest: useCallback(() => latestRef.current, []),
     edit: useCallback((text: string) => dispatch({ type: "edited", text }), [dispatch]),
     reload: useCallback(() => dispatch({ type: "reload" }), [dispatch]),
     keepMine: useCallback(() => {
       dispatch({ type: "keepMine" });
-      saveBody();
+      void saveBody();
     }, [dispatch, saveBody]),
+    /** Waits for queued writes and saves the current body; false if the body cannot save. */
+    flush: saveBody,
     /** Holds an upload for the save that references it; false once the page has closed. */
     addPendingUpload: useCallback((upload: PendingTicketUpload) => {
       if (mountedRef.current) pendingUploadsRef.current.set(upload.attachment.id, upload);

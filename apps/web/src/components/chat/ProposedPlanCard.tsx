@@ -224,7 +224,7 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
               </MenuItem>
             ) : linkedTickets.length > 1 ? (
               <MenuSub>
-                <MenuSubTrigger disabled={isSavingAsTicketPlan}>Save as ticket plan</MenuSubTrigger>
+                <MenuSubTrigger disabled={isSavingAsTicketPlan}>Save as plan on…</MenuSubTrigger>
                 <MenuSubPopup>
                   {linkedTickets.map((ticket) => (
                     <MenuItem key={ticket.id} onClick={() => void handleSaveAsTicketPlan(ticket)}>

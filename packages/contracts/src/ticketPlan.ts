@@ -1,12 +1,15 @@
 import * as Schema from "effect/Schema";
 
 import {
+  ASSISTANT_CITATION_CONTEXT_LENGTH,
+  ASSISTANT_CITATION_MAX_TEXT_LENGTH,
+} from "./assistantCitations.ts";
+import {
   IsoDateTime,
   PositiveInt,
   TicketId,
   TicketPlanCommentId,
   TicketPlanId,
-  TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
 import {
   parseTicketReference,
@@ -15,6 +18,7 @@ import {
   TicketAttachment,
   TicketAttachmentUploads,
   TicketClaimedAttachment,
+  TicketCommentInput,
   TicketPlanStatus,
   TicketPlanSummary,
   TicketTitle,
@@ -26,6 +30,15 @@ import {
  * and `TicketPlanSummary` live in `ticket.ts`, since every ticket summary lists its plans.
  */
 
+export const TICKET_PLAN_ANCHOR_SOURCE_MAX_CHARS = 4_000;
+export const TICKET_PLAN_ANCHOR_SOURCE_CONTEXT_MAX_CHARS = 32;
+
+/** Quoted plan text: rendered in an anchor, Markdown source when an agent comments. */
+export const TicketPlanQuoteText = Schema.String.check(
+  Schema.isMaxLength(ASSISTANT_CITATION_MAX_TEXT_LENGTH),
+  Schema.isPattern(/\S/),
+);
+
 /**
  * Two views of the passage a comment points at. `quote` selects rendered text the way an
  * `AssistantCitation` does, so the client can find and highlight it again; it is absent when the
@@ -36,12 +49,19 @@ import {
 export const TicketPlanAnchor = Schema.Struct({
   quote: Schema.optional(
     Schema.Struct({
-      text: Schema.String.check(Schema.isMaxLength(8_000), Schema.isPattern(/\S/)),
-      prefix: Schema.String.check(Schema.isMaxLength(32)),
-      suffix: Schema.String.check(Schema.isMaxLength(32)),
+      text: TicketPlanQuoteText,
+      prefix: Schema.String.check(Schema.isMaxLength(ASSISTANT_CITATION_CONTEXT_LENGTH)),
+      suffix: Schema.String.check(Schema.isMaxLength(ASSISTANT_CITATION_CONTEXT_LENGTH)),
     }),
   ),
-  source: Schema.String.check(Schema.isMaxLength(4_000)),
+  source: Schema.String.check(Schema.isMaxLength(TICKET_PLAN_ANCHOR_SOURCE_MAX_CHARS)),
+  /** Disambiguates repeated source blocks; an empty side leaves that side unconstrained. */
+  sourceContext: Schema.optional(
+    Schema.Struct({
+      prefix: Schema.String.check(Schema.isMaxLength(TICKET_PLAN_ANCHOR_SOURCE_CONTEXT_MAX_CHARS)),
+      suffix: Schema.String.check(Schema.isMaxLength(TICKET_PLAN_ANCHOR_SOURCE_CONTEXT_MAX_CHARS)),
+    }),
+  ),
   revision: PositiveInt,
 });
 export type TicketPlanAnchor = typeof TicketPlanAnchor.Type;
@@ -62,7 +82,6 @@ export const TicketPlanComment = Schema.Struct({
 export type TicketPlanComment = typeof TicketPlanComment.Type;
 
 export const TicketPlan = Schema.Struct({
-  ticketId: TicketId,
   summary: TicketPlanSummary,
   body: Schema.String,
   /** Replies and top-level comments in one list, oldest first. */
@@ -98,6 +117,8 @@ export const TicketPlanUpdateInput = Schema.Struct({
   planId: TicketPlanId,
   /** Checked only when the title or body changes. */
   expectedRevision: PositiveInt,
+  /** Restores or archives the plan in the same transaction as its content and comments. */
+  status: Schema.optional(TicketPlanStatus),
   title: Schema.optional(TicketTitle),
   /** Replaces the whole body; refused together with `edits`. */
   body: Schema.optional(TicketPlanBody),
@@ -111,33 +132,18 @@ export const TicketPlanUpdateInput = Schema.Struct({
 });
 export type TicketPlanUpdateInput = typeof TicketPlanUpdateInput.Type;
 
-export const TicketPlanStatusInput = Schema.Struct({
-  planId: TicketPlanId,
-  status: TicketPlanStatus,
-});
-export type TicketPlanStatusInput = typeof TicketPlanStatusInput.Type;
-
 export const TicketPlanDeleteInput = Schema.Struct({ planId: TicketPlanId });
 export type TicketPlanDeleteInput = typeof TicketPlanDeleteInput.Type;
 
 export const TicketPlanCommentInput = Schema.Struct({
   planId: TicketPlanId,
-  body: TrimmedNonEmptyString.check(Schema.isMaxLength(20_000)),
+  body: TicketCommentInput.fields.body,
   /** Makes this a reply, which carries no anchor. A reply to a reply joins its thread. */
   parentCommentId: Schema.optional(TicketPlanCommentId),
   /** Omit to comment on the whole plan. */
   anchor: Schema.optional(TicketPlanAnchor),
 });
 export type TicketPlanCommentInput = typeof TicketPlanCommentInput.Type;
-
-export const TicketPlanCommentsResolveInput = Schema.Struct({
-  planId: TicketPlanId,
-  commentIds: Schema.Array(TicketPlanCommentId).check(
-    Schema.isMinLength(1),
-    Schema.isMaxLength(100),
-  ),
-});
-export type TicketPlanCommentsResolveInput = typeof TicketPlanCommentsResolveInput.Type;
 
 /** Names one comment, for reopening or deleting it. */
 export const TicketPlanCommentRefInput = Schema.Struct({

@@ -20,14 +20,11 @@ import type { EnvironmentId, TicketStatusDefinition, TicketStatusSet } from "@t3
 import { ChevronRightIcon } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 
-import {
-  confirmGitHubStateChange,
-  TICKET_REVISION_CONFLICT,
-  useTicketActions,
-} from "../../hooks/useTicketActions";
+import { confirmGitHubStateChange, useTicketActions } from "../../hooks/useTicketActions";
 import { cn } from "../../lib/utils";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { groupTicketsByStatus, type TicketStatusGroup } from "./ticketBoard.logic";
+import { TICKET_REVISION_CONFLICT } from "./ticketDocument.logic";
 import {
   applyPendingMoves,
   dropSortKey,

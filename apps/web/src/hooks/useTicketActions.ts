@@ -16,7 +16,6 @@ import type {
   TicketPlanCommentInput,
   TicketPlanCreateInput,
   TicketPlanId,
-  TicketPlanStatusInput,
   TicketPlanSummary,
   TicketPlanUpdateInput,
   TicketPlanWriteResult,
@@ -32,12 +31,11 @@ import { keyBetween } from "@t3tools/shared/fractionalIndex";
 import { useCallback, useMemo } from "react";
 
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
+import { TICKET_REVISION_CONFLICT } from "../components/tickets/ticketDocument.logic";
 import { formatTicketRef } from "../components/tickets/ticketRefs";
 import { readLocalApi } from "../localApi";
 import { readTicketBoard, ticketEnvironment } from "../state/tickets";
 import { useAtomCommand } from "../state/use-atom-command";
-
-export const TICKET_REVISION_CONFLICT = "conflict";
 
 function isRevisionConflict(error: unknown): boolean {
   return (
@@ -88,10 +86,8 @@ export function useTicketActions() {
   const syncSource = useAtomCommand(ticketEnvironment.syncGitHubSource, options);
   const createTicketPlan = useAtomCommand(ticketEnvironment.createPlan, options);
   const updateTicketPlan = useAtomCommand(ticketEnvironment.updatePlan, options);
-  const setTicketPlanStatus = useAtomCommand(ticketEnvironment.setPlanStatus, options);
   const deleteTicketPlan = useAtomCommand(ticketEnvironment.deletePlan, options);
   const addTicketPlanComment = useAtomCommand(ticketEnvironment.addPlanComment, options);
-  const resolveTicketPlanComments = useAtomCommand(ticketEnvironment.resolvePlanComments, options);
   const reopenTicketPlanComment = useAtomCommand(ticketEnvironment.reopenPlanComment, options);
   const deleteTicketPlanComment = useAtomCommand(ticketEnvironment.deletePlanComment, options);
 
@@ -344,31 +340,35 @@ export function useTicketActions() {
       if (result._tag === "Failure" && isRevisionConflict(squashAtomCommandFailure(result))) {
         return TICKET_REVISION_CONFLICT;
       }
-      return settle("Could not save the plan", result);
+      return settle(
+        input.status === "archived"
+          ? "Could not archive the plan"
+          : input.status === "active"
+            ? "Could not restore the plan"
+            : input.resolveCommentIds !== undefined
+              ? "Could not resolve the comment"
+              : "Could not save the plan",
+        result,
+      );
     },
     [settle, updateTicketPlan],
   );
 
-  const setPlanStatus = useCallback(
-    async (environmentId: EnvironmentId, input: TicketPlanStatusInput) =>
-      settle(
-        input.status === "archived" ? "Could not archive the plan" : "Could not restore the plan",
-        await setTicketPlanStatus({ environmentId, input }),
-      ),
-    [setTicketPlanStatus, settle],
+  const confirmDeletePlan = useCallback(
+    async (plan: TicketPlanSummary) =>
+      (await readLocalApi()?.dialogs.confirm(
+        `Delete ${plan.ref} "${plan.title}"?\nIts comments go with it.`,
+        { variant: "destructive" },
+      )) ?? true,
+    [],
   );
 
-  const confirmAndDeletePlan = useCallback(
-    async (environmentId: EnvironmentId, plan: TicketPlanSummary) => {
-      const confirmed =
-        (await readLocalApi()?.dialogs.confirm(
-          `Delete ${plan.ref} "${plan.title}"?\nIts comments go with it.`,
-          { variant: "destructive" },
-        )) ?? true;
-      if (!confirmed) return false;
-      const result = await deleteTicketPlan({ environmentId, input: { planId: plan.planId } });
-      return settle("Could not delete the plan", result) !== null;
-    },
+  const deletePlan = useCallback(
+    async (environmentId: EnvironmentId, planId: TicketPlanId) =>
+      settle(
+        "Could not delete the plan",
+        await deleteTicketPlan({ environmentId, input: { planId } }),
+      ) !== null,
     [deleteTicketPlan, settle],
   );
 
@@ -379,18 +379,6 @@ export function useTicketActions() {
         await addTicketPlanComment({ environmentId, input }),
       ),
     [addTicketPlanComment, settle],
-  );
-
-  const resolvePlanComment = useCallback(
-    async (environmentId: EnvironmentId, planId: TicketPlanId, comment: TicketPlanComment) =>
-      settle(
-        "Could not resolve the comment",
-        await resolveTicketPlanComments({
-          environmentId,
-          input: { planId, commentIds: [comment.id] },
-        }),
-      ),
-    [resolveTicketPlanComments, settle],
   );
 
   const reopenPlanComment = useCallback(
@@ -441,10 +429,9 @@ export function useTicketActions() {
       removeGitHubSource,
       createPlan,
       updatePlan,
-      setPlanStatus,
-      confirmAndDeletePlan,
+      confirmDeletePlan,
+      deletePlan,
       addPlanComment,
-      resolvePlanComment,
       reopenPlanComment,
       confirmAndDeletePlanComment,
     }),
@@ -453,20 +440,19 @@ export function useTicketActions() {
       addPlanComment,
       comment,
       confirmAndDelete,
-      confirmAndDeletePlan,
       confirmAndDeletePlanComment,
+      confirmDeletePlan,
       create,
       createPlan,
+      deletePlan,
       deleteStatus,
       link,
       move,
       removeGitHubSource,
       reopenPlanComment,
       reorderStatuses,
-      resolvePlanComment,
       setGitHubSourceEnabled,
       setHidden,
-      setPlanStatus,
       syncGitHubSource,
       refreshGitHubIssue,
       unlink,

@@ -242,6 +242,20 @@ export function isCollapsedCursorAdjacentToInlineToken(
   return false;
 }
 
+const TICKET_PLAN_REFERENCE_PREFIX = String.raw`t-\d+\/`;
+
+const TICKET_PLAN_REFERENCE_QUERY = new RegExp(`^${TICKET_PLAN_REFERENCE_PREFIX}`, "i");
+
+// A slash only continues a plan reference such as `#T-42/P1`; elsewhere it ends the search.
+const PULL_REQUEST_TRIGGER = new RegExp(
+  `^#(${TICKET_PLAN_REFERENCE_PREFIX}(?:p\\d*)?|[\\p{L}\\p{N}][\\p{L}\\p{N}_-]*)?$`,
+  "iu",
+);
+
+export function isTicketPlanReferenceQuery(query: string): boolean {
+  return TICKET_PLAN_REFERENCE_QUERY.test(query);
+}
+
 export function detectComposerTrigger(text: string, cursorInput: number): ComposerTrigger | null {
   const cursor = clampCursor(text, cursorInput);
   const lineStart = text.lastIndexOf("\n", Math.max(0, cursor - 1)) + 1;
@@ -262,8 +276,7 @@ export function detectComposerTrigger(text: string, cursorInput: number): Compos
 
   const tokenStart = tokenStartForCursor(text, cursor);
   const token = text.slice(tokenStart, cursor);
-  // A slash only continues a plan reference such as `#T-42/P1`; elsewhere it ends the search.
-  const pullRequestMatch = /^#(t-\d+\/(?:p\d*)?|[\p{L}\p{N}][\p{L}\p{N}_-]*)?$/iu.exec(token);
+  const pullRequestMatch = PULL_REQUEST_TRIGGER.exec(token);
   if (pullRequestMatch) {
     return {
       kind: "pull-request",

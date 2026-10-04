@@ -5,6 +5,7 @@ import {
   type ComposerContextRecord,
   type ElementContextDetails,
   type KnownComposerContextRecord,
+  parseTicketPlanReference,
 } from "@t3tools/contracts";
 
 import { expandAssistantCitationsForProvider } from "./assistantCitations.ts";
@@ -282,12 +283,14 @@ function formatComposerContextProviderPayload(record: KnownComposerContextRecord
     }
     case "ticket-plan": {
       const ref = singleLine(record.ref);
-      const ticketRef = /^(.+)\/P\d+$/i.exec(ref)?.[1] ?? ref;
+      const parsed = parseTicketPlanReference(ref);
+      const ticketRef = parsed?.type === "number" ? parsed.ticket : ref;
       const tool = `t3_ticket_plan_get(plan=${quoteLine(ref)})`;
       return [
         `plan: ${ref}`,
         `planId: ${singleLine(record.planId)}`,
         `ticket: ${ticketRef}`,
+        `ticketId: ${singleLine(record.ticketId)}`,
         `title: ${singleLine(record.title)}`,
         `attachedRevision: ${record.revision}`,
         `openComments: ${record.openCommentCount}`,

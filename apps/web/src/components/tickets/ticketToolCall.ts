@@ -1,16 +1,14 @@
 import { readT3ToolResult } from "@t3tools/client-runtime/t3ToolSummary";
-import { PositiveInt, TicketId } from "@t3tools/contracts";
+import { PositiveInt, TicketId, TicketPlanSummary } from "@t3tools/contracts";
 import { resolveT3McpToolSummaryAction } from "@t3tools/shared/t3McpToolPresentation";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
+import * as Struct from "effect/Struct";
 
 const CreatedTicket = Schema.Struct({ id: TicketId, number: PositiveInt, title: Schema.String });
-const WrittenPlan = Schema.Struct({
-  ticketId: TicketId,
-  number: PositiveInt,
-  ref: Schema.String,
-  title: Schema.String,
-});
+const WrittenPlan = TicketPlanSummary.mapFields(
+  Struct.pick(["ticketId", "number", "ref", "title"]),
+);
 
 const decodeCreatedTicket = Schema.decodeUnknownOption(CreatedTicket);
 const decodeWrittenPlan = Schema.decodeUnknownOption(WrittenPlan);

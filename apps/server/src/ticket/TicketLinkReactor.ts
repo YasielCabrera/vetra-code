@@ -23,6 +23,9 @@ import { ServerSettingsService } from "../serverSettings.ts";
 import * as TicketService from "./TicketService.ts";
 
 type AutoAdvanceEvent = "threadStarted" | "pullRequestLinked" | "pullRequestMerged";
+type LinkWork =
+  | { readonly type: "event"; readonly event: OrchestrationV2DomainEvent }
+  | { readonly type: "thread-linked"; readonly threadId: ThreadId };
 
 const AUTO_ADVANCE_RULES: Record<
   AutoAdvanceEvent,
@@ -211,13 +214,20 @@ export const make = Effect.gen(function* () {
     }
   };
 
-  const worker = yield* makeDrainableWorker((event: OrchestrationV2DomainEvent) =>
-    process(event).pipe(
+  const processWork = Effect.fnUntraced(function* (work: LinkWork) {
+    if (work.type === "event") return yield* process(work.event);
+    const thread = yield* orchestrator.getThreadShell(work.threadId);
+    if (thread === null || thread.deletedAt !== null) return;
+    yield* onPullRequestsSynced(work.threadId, thread.pullRequests);
+  });
+
+  const worker = yield* makeDrainableWorker((work: LinkWork) =>
+    processWork(work).pipe(
       Effect.catchCauseIf(
         (cause) => !Cause.hasInterruptsOnly(cause),
         (cause) =>
           Effect.logWarning("ticket link update skipped", {
-            threadId: event.threadId,
+            threadId: work.type === "event" ? work.event.threadId : work.threadId,
             cause: Cause.pretty(cause),
           }),
       ),
@@ -225,14 +235,28 @@ export const make = Effect.gen(function* () {
   );
 
   const start = Effect.fn("TicketLinkReactor.start")(function* () {
+    const threadLinks = yield* tickets.subscribeThreadLinks;
     yield* forkParked(
       Stream.runForEach(orchestrator.streamDomainEvents, (event) =>
         event.type === "message.updated" || event.type === "thread.pull-request-synced"
-          ? worker.enqueue(event)
+          ? worker.enqueue({ type: "event", event })
           : Effect.void,
       ).pipe(
         Effect.catchCause((cause) =>
           Effect.logWarning("ticket link event stream failed", { cause: Cause.pretty(cause) }),
+        ),
+      ),
+    );
+    yield* forkParked(
+      Stream.runForEach(threadLinks, (threadIds) =>
+        Effect.forEach(
+          threadIds,
+          (threadId) => worker.enqueue({ type: "thread-linked", threadId }),
+          { discard: true },
+        ),
+      ).pipe(
+        Effect.catchCause((cause) =>
+          Effect.logWarning("ticket thread link stream failed", { cause: Cause.pretty(cause) }),
         ),
       ),
     );

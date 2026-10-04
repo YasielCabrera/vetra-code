@@ -1247,6 +1247,7 @@ describe("composerDraftStore thread contexts", () => {
   it("keeps a plan chip and a ticket's plan references across persistence", () => {
     const planSummary = {
       planId: TicketPlanId.make("plan-1"),
+      ticketId: TicketId.make("ticket-1"),
       ref: "T-42/P1",
       number: 1,
       title: "Auth migration",
@@ -1265,7 +1266,7 @@ describe("composerDraftStore thread contexts", () => {
       plans: [planSummary],
     };
     const records = [
-      ticketPlanContextRecord({ environmentId: TEST_ENVIRONMENT_ID, ticket, plan: planSummary }),
+      ticketPlanContextRecord({ environmentId: TEST_ENVIRONMENT_ID, plan: planSummary }),
       ticketContextRecord({ environmentId: TEST_ENVIRONMENT_ID, ticket }),
     ];
     useComposerDraftStore.getState().setThreadContexts(threadRef, records);

@@ -31,7 +31,7 @@ import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { TicketActorName } from "./TicketActivityTimeline";
 import { askForPlanPrefill, openPlanPrefill } from "./ticketContextRecord";
-import { TicketPlanDocument } from "./TicketPlanDocument";
+import { TicketMarkdownBody } from "./TicketMarkdownBody";
 import { partitionTicketPlans, ticketPlanRouteParams } from "./ticketPlans.logic";
 import { TicketStartThreadMenu } from "./TicketStartThreadMenu";
 
@@ -261,7 +261,7 @@ export function TicketPlanPreview(props: {
         <p className="text-sm text-muted-foreground">This plan is empty.</p>
       ) : (
         <div className="min-w-0 text-sm">
-          <TicketPlanDocument
+          <TicketMarkdownBody
             environmentId={ticketRef.environmentId}
             body={plan.body}
             attachments={plan.attachments}

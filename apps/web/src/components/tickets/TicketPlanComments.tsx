@@ -58,12 +58,13 @@ function PlanCommentComposer({
         aria-label={label}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        readOnly={posting}
         onChange={(event) => setText(event.currentTarget.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
             event.preventDefault();
             void submit();
-          } else if (event.key === "Escape") {
+          } else if (event.key === "Escape" && !posting) {
             event.preventDefault();
             setText("");
             onCancel?.();
@@ -74,7 +75,7 @@ function PlanCommentComposer({
       {text.trim() || onCancel ? (
         <div className="flex items-center justify-end gap-1.5">
           {onCancel ? (
-            <Button size="xs" variant="ghost" onClick={onCancel}>
+            <Button size="xs" variant="ghost" disabled={posting} onClick={onCancel}>
               Cancel
             </Button>
           ) : null}
@@ -175,12 +176,13 @@ function PlanCommentBody(props: { readonly environmentId: EnvironmentId; readonl
 const TicketPlanCommentThread = memo(function TicketPlanCommentThread(props: {
   readonly environmentId: EnvironmentId;
   readonly planId: TicketPlanId;
+  readonly revision: number;
   readonly thread: PlanCommentThread;
   readonly focus: PlanCommentFocus | null;
   readonly onSelect: (thread: PlanCommentThread) => void;
   readonly actions: ReturnType<typeof useTicketActions>;
 }) {
-  const { environmentId, planId, thread, focus, onSelect, actions } = props;
+  const { environmentId, planId, revision, thread, focus, onSelect, actions } = props;
   const { comment, location, replies } = thread;
   const [replying, setReplying] = useState(false);
   const itemRef = useRef<HTMLLIElement>(null);
@@ -298,7 +300,13 @@ const TicketPlanCommentThread = memo(function TicketPlanCommentThread(props: {
             <Button
               size="xs"
               variant="ghost"
-              onClick={() => void actions.resolvePlanComment(environmentId, planId, comment)}
+              onClick={() =>
+                void actions.updatePlan(environmentId, {
+                  planId,
+                  expectedRevision: revision,
+                  resolveCommentIds: [comment.id],
+                })
+              }
             >
               Resolve
             </Button>
@@ -317,6 +325,7 @@ const TicketPlanCommentThread = memo(function TicketPlanCommentThread(props: {
 export function TicketPlanCommentList(props: {
   readonly environmentId: EnvironmentId;
   readonly planId: TicketPlanId;
+  readonly revision: number;
   readonly threads: ReadonlyArray<PlanCommentThread>;
   readonly focus: PlanCommentFocus | null;
   readonly onSelect: (thread: PlanCommentThread) => void;
@@ -333,6 +342,7 @@ export function TicketPlanCommentList(props: {
           key={thread.comment.id}
           environmentId={props.environmentId}
           planId={props.planId}
+          revision={props.revision}
           thread={thread}
           focus={props.focus?.id === thread.comment.id ? props.focus : null}
           onSelect={props.onSelect}

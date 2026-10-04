@@ -155,10 +155,6 @@ export function createTicketEnvironmentAtoms<R, E>(
       label: "environment-data:commands:tickets:plans:update",
       tag: WS_METHODS.ticketsUpdatePlan,
     }),
-    setPlanStatus: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:commands:tickets:plans:set-status",
-      tag: WS_METHODS.ticketsSetPlanStatus,
-    }),
     deletePlan: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:commands:tickets:plans:delete",
       tag: WS_METHODS.ticketsDeletePlan,
@@ -166,10 +162,6 @@ export function createTicketEnvironmentAtoms<R, E>(
     addPlanComment: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:commands:tickets:plans:comment",
       tag: WS_METHODS.ticketsAddPlanComment,
-    }),
-    resolvePlanComments: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:commands:tickets:plans:resolve-comments",
-      tag: WS_METHODS.ticketsResolvePlanComments,
     }),
     reopenPlanComment: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:commands:tickets:plans:reopen-comment",
