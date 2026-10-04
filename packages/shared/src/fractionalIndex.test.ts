@@ -41,6 +41,16 @@ describe("keyBetween", () => {
     expect(() => keyBetween("a0", "a0")).toThrow("out of order");
     expect(() => keyBetween("a00", null)).toThrow("Invalid");
   });
+
+  it("prepends valid keys at the smallest integer boundary", () => {
+    const upper = `A${"0".repeat(25)}1`;
+    const first = keyBetween(null, upper);
+    expect(first).toBe(`A${"0".repeat(26)}V`);
+    expect(isFractionalIndexKey(first)).toBe(true);
+    const second = keyBetween(null, first);
+    expect(second).toBe(`A${"0".repeat(26)}G`);
+    expect(second < first && first < upper).toBe(true);
+  });
 });
 
 describe("isFractionalIndexKey", () => {

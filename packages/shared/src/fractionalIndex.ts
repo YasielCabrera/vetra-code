@@ -107,7 +107,7 @@ export function keyBetween(before: string | null, after: string | null): string 
     if (integer < after) return integer;
     const previous = decrementInteger(integer);
     if (previous === null) throw new Error("Fractional index keys exhausted");
-    return previous;
+    return previous === SMALLEST_INTEGER ? previous + midpoint("", null) : previous;
   }
   const { integer, fraction } = splitKey(before)!;
   if (after === null) {
