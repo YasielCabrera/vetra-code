@@ -1,3 +1,5 @@
+import { TICKET_BODY_MAX_CHARS, type EnvironmentId } from "@t3tools/contracts";
+
 /**
  * `/tickets/new` prefill. Links name ids inside `env`, the environment the ticket is created in;
  * without `env` the form starts on the primary environment and ignores them.
@@ -19,7 +21,7 @@ function searchText(value: unknown, maxLength: number): string | undefined {
 export function validateNewTicketSearch(raw: Record<string, unknown>): NewTicketSearch {
   const env = searchText(raw.env, 200);
   const title = searchText(raw.title, 500);
-  const body = searchText(raw.body, 20_000);
+  const body = searchText(raw.body, TICKET_BODY_MAX_CHARS);
   const project = searchText(raw.project, 200);
   const thread = searchText(raw.thread, 200);
   return {
@@ -29,6 +31,16 @@ export function validateNewTicketSearch(raw: Record<string, unknown>): NewTicket
     ...(project === undefined ? {} : { project }),
     ...(thread === undefined ? {} : { thread }),
   };
+}
+
+export function ticketDraftEnvironment(
+  chosen: EnvironmentId | null,
+  primary: EnvironmentId | null,
+  available: ReadonlyArray<EnvironmentId>,
+): EnvironmentId | null {
+  return (
+    chosen ?? (primary !== null && available.includes(primary) ? primary : (available[0] ?? null))
+  );
 }
 
 export function addTicketLabel(

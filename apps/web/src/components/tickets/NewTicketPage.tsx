@@ -30,7 +30,7 @@ import {
 } from "../WorkspaceBreadcrumb";
 import { WorkspacePageHeader } from "../WorkspacePageHeader";
 import { type PendingTicketUpload, uploadTicketFiles } from "./ticketAttachments";
-import type { NewTicketSearch } from "./ticketDraft.logic";
+import { ticketDraftEnvironment, type NewTicketSearch } from "./ticketDraft.logic";
 import { TicketLabelsEditor } from "./TicketPropertiesPanel";
 import { TicketStatusIcon } from "./ticketPresentation";
 
@@ -49,26 +49,24 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
   const [chosenEnvironmentId, setChosenEnvironmentId] = useState<EnvironmentId | null>(
     props.prefill.env === undefined ? null : EnvironmentId.make(props.prefill.env),
   );
-  const environmentId: EnvironmentId | null =
-    chosenEnvironmentId !== null && board.environmentIds.includes(chosenEnvironmentId)
-      ? chosenEnvironmentId
-      : primaryEnvironmentId !== null && board.environmentIds.includes(primaryEnvironmentId)
-        ? primaryEnvironmentId
-        : (board.environmentIds[0] ?? null);
-  const linksApply = chosenEnvironmentId === null || environmentId === chosenEnvironmentId;
+  const environmentId = ticketDraftEnvironment(
+    chosenEnvironmentId,
+    primaryEnvironmentId,
+    board.environmentIds,
+  );
+  const environmentAvailable =
+    environmentId !== null && board.environmentIds.includes(environmentId);
 
   const [title, setTitle] = useState(props.prefill.title ?? "");
   const [body, setBody] = useState(props.prefill.body ?? "");
   const [labels, setLabels] = useState<ReadonlyArray<string>>([]);
   const [chosenStatusId, setChosenStatusId] = useState<TicketStatusId | null>(null);
-  const [chosenProjectId, setProjectId] = useState<string>(
+  const [projectId, setProjectId] = useState<string>(
     props.prefill.env === undefined ? NO_PROJECT : (props.prefill.project ?? NO_PROJECT),
   );
-  const [chosenThreadId, setThreadId] = useState<string | null>(
+  const [threadId, setThreadId] = useState<string | null>(
     props.prefill.env === undefined ? null : (props.prefill.thread ?? null),
   );
-  const projectId = linksApply ? chosenProjectId : NO_PROJECT;
-  const threadId = linksApply ? chosenThreadId : null;
   const [creating, setCreating] = useState(false);
   const [attaching, setAttaching] = useState(0);
   // Uploads belong to the environment they went to, so the form stays there once one starts.
@@ -101,7 +99,8 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
 
   const onFiles = useCallback(
     async (files: ReadonlyArray<File>) => {
-      if (environmentId === null) return [];
+      if (environmentId === null || !environmentAvailable) return [];
+      setChosenEnvironmentId(environmentId);
       setUploadStarted(true);
       setAttaching((count) => count + 1);
       try {
@@ -113,12 +112,19 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
         if (mountedRef.current) setAttaching((count) => count - 1);
       }
     },
-    [environmentId],
+    [environmentAvailable, environmentId],
   );
 
   const create = async () => {
     const trimmedTitle = title.trim();
-    if (environmentId === null || trimmedTitle.length === 0 || creating || attaching > 0) return;
+    if (
+      environmentId === null ||
+      !environmentAvailable ||
+      trimmedTitle.length === 0 ||
+      creating ||
+      attaching > 0
+    )
+      return;
     const uploads = attachmentReferenceIds(body).flatMap((id) => {
       const upload = pendingUploadsRef.current.get(id);
       return upload === undefined ? [] : [upload];
@@ -196,6 +202,12 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
                 onChange={(event) => setTitle(event.target.value)}
                 className="w-full bg-transparent text-3xl leading-tight font-semibold text-foreground outline-none placeholder:text-muted-foreground/60"
               />
+              {chosenEnvironmentId !== null && board.loaded && !environmentAvailable ? (
+                <p role="status" className="text-sm text-muted-foreground">
+                  The selected environment is unavailable. Reconnect it or choose another
+                  environment to create this ticket.
+                </p>
+              ) : null}
               <div
                 className="flex min-w-0 flex-wrap items-center gap-2"
                 aria-label="Ticket properties"
@@ -284,7 +296,7 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
                     ))}
                   </SelectPopup>
                 </Select>
-                {environmentOptions.length > 1 ? (
+                {environmentOptions.length > 1 || !environmentAvailable ? (
                   <Select
                     items={environmentOptions.map((environment) => ({
                       value: environment.environmentId,
@@ -369,7 +381,9 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={title.trim().length === 0 || creating || attaching > 0}
+                  disabled={
+                    !environmentAvailable || title.trim().length === 0 || creating || attaching > 0
+                  }
                 >
                   Create ticket
                 </Button>

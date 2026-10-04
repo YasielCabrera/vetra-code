@@ -1,7 +1,7 @@
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { useAtomValue } from "@effect/atom-react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { type EnvironmentTicket, ticketKey } from "@t3tools/client-runtime/state/tickets";
 import { type EnvironmentId, resolveEnvironmentMachineKind } from "@t3tools/contracts";
 import * as Option from "effect/Option";
@@ -335,6 +335,7 @@ function useSearchQueryInUrl(query: string, setQuery: (query: string) => void, u
 export function TicketsPage() {
   const search = useSearch({ from: "/tickets/" });
   const navigate = useNavigate();
+  const router = useRouter();
   const board = useTickets();
   const projects = useProjects();
   const { environments, isReady: environmentsReady } = useEnvironments();
@@ -390,17 +391,30 @@ export function TicketsPage() {
     () => reconcileTicketBoardSearch(search, catalogs),
     [catalogs, search],
   );
-  const setSearch = useCallback(
-    (patch: { readonly [Key in keyof TicketBoardSearch]?: TicketBoardSearch[Key] | undefined }) => {
-      const next = validateTicketBoardSearch({ ...boardSearch, ...patch });
+  // A navigation updates the router's latest location before the route renders, so edits made in between stack.
+  const changeSearch = useCallback(
+    (build: (current: TicketBoardSearch) => TicketBoardSearch, settled: boolean) => {
+      const next = build(validateTicketBoardSearch(router.latestLocation.search));
       rememberTicketBoardSearch(next);
       void navigate({
         to: "/tickets",
         search: next,
+        ...(settled
+          ? { state: (current) => ({ ...current, [TICKET_BOARD_SEARCH_SETTLED]: true }) }
+          : {}),
         replace: true,
       });
     },
-    [boardSearch, navigate],
+    [navigate, router],
+  );
+  const setSearch = useCallback(
+    (patch: { readonly [Key in keyof TicketBoardSearch]?: TicketBoardSearch[Key] | undefined }) =>
+      changeSearch(
+        (current) =>
+          reconcileTicketBoardSearch(validateTicketBoardSearch({ ...current, ...patch }), catalogs),
+        false,
+      ),
+    [catalogs, changeSearch],
   );
 
   const bodyMatches = useTicketBodyMatches(query, board.environmentIds);
@@ -512,10 +526,8 @@ export function TicketsPage() {
 
   const hasFilters = !isDefaultTicketBoardFilters({ ...boardSearch, q: query });
   const clearFilters = () => {
-    const next = resetTicketBoardFilters(boardSearch);
-    rememberTicketBoardSearch(next);
     setQuery("");
-    void navigate({ to: "/tickets", search: next, replace: true });
+    changeSearch(resetTicketBoardFilters, true);
   };
 
   const openTicket = useCallback(
