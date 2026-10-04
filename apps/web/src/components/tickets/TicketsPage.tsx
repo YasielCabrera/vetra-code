@@ -44,6 +44,7 @@ import {
 
 import { environmentCatalog } from "../../connection/catalog";
 import { isElectron } from "../../env";
+import { isHostedStaticApp } from "../../hostedPairing";
 import { useTicketActions } from "../../hooks/useTicketActions";
 import { cn } from "../../lib/utils";
 import { useProjects } from "../../state/entities";
@@ -347,10 +348,13 @@ export function TicketsPage() {
   const listRef = useRef<LegendListRef | null>(null);
   const listContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // The persisted catalog can emit before platform discovery registers the primary
+  // environment; pruning in that gap would drop its saved project and env filters.
+  const catalogReady = environmentsReady && (primaryEnvironmentId !== null || isHostedStaticApp());
   const catalogs = useMemo(
     () =>
       resolveTicketBoardCatalogs({
-        environmentsReady,
+        environmentsReady: catalogReady,
         ticketsLoaded: board.loaded,
         ticketEnvironmentIds: board.environmentIds,
         environments: environments.map((environment) => {
@@ -377,8 +381,8 @@ export function TicketsPage() {
       board.environmentIds,
       board.loaded,
       board.statusSets,
+      catalogReady,
       environments,
-      environmentsReady,
       liveProjectIds,
     ],
   );

@@ -513,7 +513,7 @@ function TicketDocument(props: {
                       event.currentTarget.blur();
                     }
                   }}
-                  className="field-sizing-content w-full resize-none rounded-md bg-transparent text-3xl leading-tight font-semibold tracking-tight text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="field-sizing-content w-full resize-none overflow-hidden rounded-md bg-transparent text-3xl leading-tight font-semibold tracking-tight text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 />
               )}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
