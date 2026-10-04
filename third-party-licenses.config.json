@@ -617,6 +617,24 @@
       "generatedNotice": {
         "licenseId": "MIT"
       }
+    },
+    {
+      "name": "fastdom",
+      "generatedNotice": {
+        "licenseId": "MIT",
+        "copyrights": ["Copyright (c) 2016 Wilson Page <wilsonpage@me.com>"]
+      }
+    },
+    {
+      "name": "strictdom",
+      "generatedNotice": {
+        "licenseId": "MIT",
+        "copyrights": ["Copyright (c) 2013 Wilson Page <wilsonpage@me.com>"]
+      }
+    },
+    {
+      "license": "MIT",
+      "name": "khroma"
     }
   ]
 }

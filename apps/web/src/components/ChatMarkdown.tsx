@@ -142,6 +142,7 @@ import { fnv1a32 } from "../lib/diffRendering";
 import { LRUCache } from "../lib/lruCache";
 import { getSyntaxHighlighterPromise } from "../lib/syntaxHighlighting";
 import { GitHubIcon } from "./Icons";
+import { MermaidBlock } from "./MermaidBlock";
 import { createIncrementalHighlightedDocument } from "../lib/incrementalHighlighting";
 import { HighlightedCodeLines } from "./chat/HighlightedCodeLines";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
@@ -1028,6 +1029,7 @@ function MarkdownCodeBlock({
   theme,
   onRunShellCommand,
   isStreaming,
+  canWrap = true,
   children,
 }: {
   code: string;
@@ -1036,6 +1038,7 @@ function MarkdownCodeBlock({
   theme: "light" | "dark";
   onRunShellCommand?: ((command: string) => void) | undefined;
   isStreaming: boolean;
+  canWrap?: boolean;
   children: ReactNode;
 }) {
   const [copied, setCopied] = useState(false);
@@ -1108,23 +1111,25 @@ function MarkdownCodeBlock({
           />
         </span>
         <span className="flex items-center gap-0.5" role="toolbar" aria-label="Code block actions">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  variant={wrapped ? "secondary" : "ghost-muted"}
-                  size="icon-xs"
-                  aria-pressed={wrapped}
-                  onClick={() => setWrapped((value) => !value)}
-                  aria-label={wrapLabel}
-                />
-              }
-            >
-              <WrapTextIcon className="size-3" />
-            </TooltipTrigger>
-            <TooltipPopup side="top">{wrapLabel}</TooltipPopup>
-          </Tooltip>
+          {canWrap ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant={wrapped ? "secondary" : "ghost-muted"}
+                    size="icon-xs"
+                    aria-pressed={wrapped}
+                    onClick={() => setWrapped((value) => !value)}
+                    aria-label={wrapLabel}
+                  />
+                }
+              >
+                <WrapTextIcon className="size-3" />
+              </TooltipTrigger>
+              <TooltipPopup side="top">{wrapLabel}</TooltipPopup>
+            </Tooltip>
+          ) : null}
           {canRun ? (
             <Tooltip>
               <TooltipTrigger
@@ -3444,6 +3449,30 @@ const CHAT_MARKDOWN_COMPONENTS = {
 
     const language = extractFenceLanguage(codeBlock.className);
     const fenceTitle = extractFenceTitle(extractPreCodeMeta(node));
+    const isMermaid = language === "mermaid";
+    const highlightedSource = (
+      <RenderErrorBoundary
+        resetKeys={[codeBlock.code, language, diffThemeName, isStreaming]}
+        fallback={<pre {...props}>{children}</pre>}
+      >
+        {/* Reserve the block's height but stay hidden until Shiki has colored
+            it, so plain text never flashes before the highlighted version. */}
+        <Suspense
+          fallback={
+            <pre {...props} className="invisible" aria-hidden>
+              {children}
+            </pre>
+          }
+        >
+          <SuspenseShikiCodeBlock
+            className={codeBlock.className}
+            code={codeBlock.code}
+            themeName={diffThemeName}
+            isStreaming={isStreaming}
+          />
+        </Suspense>
+      </RenderErrorBoundary>
+    );
     return (
       <MarkdownCodeBlock
         code={codeBlock.code}
@@ -3456,28 +3485,20 @@ const CHAT_MARKDOWN_COMPONENTS = {
             : undefined
         }
         isStreaming={isStreaming}
+        canWrap={!isMermaid}
       >
-        <RenderErrorBoundary
-          resetKeys={[codeBlock.code, language, diffThemeName, isStreaming]}
-          fallback={<pre {...props}>{children}</pre>}
-        >
-          {/* Reserve the block's height but stay hidden until Shiki has colored
-              it, so plain text never flashes before the highlighted version. */}
-          <Suspense
-            fallback={
-              <pre {...props} className="invisible" aria-hidden>
-                {children}
-              </pre>
-            }
+        {isMermaid ? (
+          // A streaming diagram renders once its fence closes, not on every token.
+          <MermaidBlock
+            source={codeBlock.code}
+            theme={resolvedTheme}
+            enabled={!isStreaming || isClosedCodeFence(node, text)}
           >
-            <SuspenseShikiCodeBlock
-              className={codeBlock.className}
-              code={codeBlock.code}
-              themeName={diffThemeName}
-              isStreaming={isStreaming}
-            />
-          </Suspense>
-        </RenderErrorBoundary>
+            {highlightedSource}
+          </MermaidBlock>
+        ) : (
+          highlightedSource
+        )}
       </MarkdownCodeBlock>
     );
   },
