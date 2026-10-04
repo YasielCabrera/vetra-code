@@ -44,6 +44,7 @@ import { Route as ChatPullRequestsRouteImport } from './routes/_chat.pull-reques
 import { Route as ChatIssuesRouteImport } from './routes/_chat.issues'
 import { Route as ChatDraftDraftIdRouteImport } from './routes/_chat.draft.$draftId'
 import { Route as ChatEnvironmentIdThreadIdRouteImport } from './routes/_chat.$environmentId.$threadId'
+import { Route as TicketsTicketKeyPlansPlanNumberRouteImport } from './routes/tickets.$ticketKey_.plans.$planNumber'
 
 const WelcomeRoute = WelcomeRouteImport.update({
   id: '/welcome',
@@ -222,6 +223,12 @@ const ChatEnvironmentIdThreadIdRoute =
     path: '/$environmentId/$threadId',
     getParentRoute: () => ChatRoute,
   } as any)
+const TicketsTicketKeyPlansPlanNumberRoute =
+  TicketsTicketKeyPlansPlanNumberRouteImport.update({
+    id: '/tickets/$ticketKey_/plans/$planNumber',
+    path: '/tickets/$ticketKey/plans/$planNumber',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof ChatIndexRoute
@@ -258,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/tickets/': typeof TicketsIndexRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
+  '/tickets/$ticketKey/plans/$planNumber': typeof TicketsTicketKeyPlansPlanNumberRoute
 }
 export interface FileRoutesByTo {
   '/connect': typeof ConnectRoute
@@ -294,6 +302,7 @@ export interface FileRoutesByTo {
   '/tickets': typeof TicketsIndexRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
+  '/tickets/$ticketKey/plans/$planNumber': typeof TicketsTicketKeyPlansPlanNumberRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -332,6 +341,7 @@ export interface FileRoutesById {
   '/tickets/': typeof TicketsIndexRoute
   '/_chat/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/_chat/draft/$draftId': typeof ChatDraftDraftIdRoute
+  '/tickets/$ticketKey_/plans/$planNumber': typeof TicketsTicketKeyPlansPlanNumberRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -370,6 +380,7 @@ export interface FileRouteTypes {
     | '/tickets/'
     | '/$environmentId/$threadId'
     | '/draft/$draftId'
+    | '/tickets/$ticketKey/plans/$planNumber'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/connect'
@@ -406,6 +417,7 @@ export interface FileRouteTypes {
     | '/tickets'
     | '/$environmentId/$threadId'
     | '/draft/$draftId'
+    | '/tickets/$ticketKey/plans/$planNumber'
   id:
     | '__root__'
     | '/_chat'
@@ -443,6 +455,7 @@ export interface FileRouteTypes {
     | '/tickets/'
     | '/_chat/$environmentId/$threadId'
     | '/_chat/draft/$draftId'
+    | '/tickets/$ticketKey_/plans/$planNumber'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -459,6 +472,7 @@ export interface RootRouteChildren {
   TicketsNewRoute: typeof TicketsNewRoute
   AutomationsIndexRoute: typeof AutomationsIndexRoute
   TicketsIndexRoute: typeof TicketsIndexRoute
+  TicketsTicketKeyPlansPlanNumberRoute: typeof TicketsTicketKeyPlansPlanNumberRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -708,6 +722,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatEnvironmentIdThreadIdRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/tickets/$ticketKey_/plans/$planNumber': {
+      id: '/tickets/$ticketKey_/plans/$planNumber'
+      path: '/tickets/$ticketKey/plans/$planNumber'
+      fullPath: '/tickets/$ticketKey/plans/$planNumber'
+      preLoaderRoute: typeof TicketsTicketKeyPlansPlanNumberRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -787,6 +808,7 @@ const rootRouteChildren: RootRouteChildren = {
   TicketsNewRoute: TicketsNewRoute,
   AutomationsIndexRoute: AutomationsIndexRoute,
   TicketsIndexRoute: TicketsIndexRoute,
+  TicketsTicketKeyPlansPlanNumberRoute: TicketsTicketKeyPlansPlanNumberRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -114,6 +114,22 @@ tickets, or deletes them if you choose **Remove and also delete cached tickets**
 issues stay on GitHub. Adding the repository again brings back the tickets its removal hid; ones
 you stopped tracking stay hidden.
 
+## Plans
+
+A plan is a Markdown document on a ticket that describes how to do the work, without changing
+code. A ticket can have several, numbered within it, so `T-42/P1` names the first plan on `T-42`.
+Plans show images, tables, code blocks, and diagrams written in a `mermaid` code block.
+
+Select **New plan** in the ticket's Plans section to start one. Select a plan to preview it beside
+the ticket, and **Open** to go to its own page. There, edit the title in place and select **Edit**
+to change the body. Changes save on their own, and the same **Reload** or **Keep mine** choice
+appears if an agent or another device changed the plan while you were editing it. The History tab
+lists who changed the plan and when; earlier versions are not kept.
+
+Archive a plan you no longer need from its **⋯** menu. An archived plan is read-only and collapses
+under **Show archived** on the ticket; select **Restore** to bring it back. **Delete** removes the
+plan and its comments. Images it used stay attached to the ticket.
+
 ## Start a thread from a ticket
 
 Select **Start thread** on a ticket to open a new thread with the ticket attached. A ticket linked

@@ -15,6 +15,8 @@ import type {
   ScopedThreadRef,
   TicketDetail,
   TicketGitHubSource,
+  TicketPlan,
+  TicketPlanId,
   TicketStatusSet,
   TicketSummary,
 } from "@t3tools/contracts";
@@ -105,6 +107,10 @@ const EMPTY_DETAIL_ATOM = Atom.make<AsyncResult.AsyncResult<TicketDetail, unknow
   AsyncResult.initial(false),
 ).pipe(Atom.withLabel("web-ticket-detail:empty"));
 
+const EMPTY_PLAN_ATOM = Atom.make<AsyncResult.AsyncResult<TicketPlan, unknown>>(
+  AsyncResult.initial(false),
+).pipe(Atom.withLabel("web-ticket-plan:empty"));
+
 export function useTickets(): TicketBoardState {
   return useAtomValue(environmentTickets.boardAtom);
 }
@@ -132,6 +138,21 @@ export function useTicketDetail(
       : ticketEnvironment.detailLive({
           environmentId: ref.environmentId,
           input: { ticketId: ref.ticketId },
+        }),
+  );
+}
+
+/** One plan's body and comments, subscribed only while a caller is mounted. */
+export function useTicketPlan(
+  ref: { readonly environmentId: EnvironmentId; readonly planId: TicketPlanId } | null,
+): AsyncResult.AsyncResult<TicketPlan, unknown> {
+  const supported = useEnvironmentSupportsTickets(ref?.environmentId ?? null);
+  return useAtomValue(
+    ref === null || !supported
+      ? EMPTY_PLAN_ATOM
+      : ticketEnvironment.planLive({
+          environmentId: ref.environmentId,
+          input: { planId: ref.planId },
         }),
   );
 }

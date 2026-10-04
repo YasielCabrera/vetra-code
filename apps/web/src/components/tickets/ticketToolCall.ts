@@ -5,11 +5,22 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
 const CreatedTicket = Schema.Struct({ id: TicketId, number: PositiveInt, title: Schema.String });
-type CreatedTicket = typeof CreatedTicket.Type;
+const WrittenPlan = Schema.Struct({
+  ticketId: TicketId,
+  number: PositiveInt,
+  ref: Schema.String,
+  title: Schema.String,
+});
 
 const decodeCreatedTicket = Schema.decodeUnknownOption(CreatedTicket);
+const decodeWrittenPlan = Schema.decodeUnknownOption(WrittenPlan);
 
-export function createdTicketFromToolItem(
+/** What a finished ticket tool call produced that the timeline links to. */
+export type TicketToolCallTarget =
+  | { readonly kind: "ticket"; readonly ticket: typeof CreatedTicket.Type }
+  | { readonly kind: "plan"; readonly plan: typeof WrittenPlan.Type };
+
+export function ticketToolCallTarget(
   item:
     | {
         readonly type: string;
@@ -18,8 +29,25 @@ export function createdTicketFromToolItem(
         readonly output?: unknown;
       }
     | undefined,
-): CreatedTicket | null {
+): TicketToolCallTarget | null {
   if (item?.type !== "dynamic_tool" || item.status !== "completed") return null;
-  if (resolveT3McpToolSummaryAction(item.toolName) !== "ticket-create") return null;
-  return Option.getOrNull(decodeCreatedTicket(readT3ToolResult(item.output)));
+  switch (resolveT3McpToolSummaryAction(item.toolName)) {
+    case "ticket-create":
+      return Option.getOrNull(
+        Option.map(decodeCreatedTicket(readT3ToolResult(item.output)), (ticket) => ({
+          kind: "ticket" as const,
+          ticket,
+        })),
+      );
+    case "ticket-plan-create":
+    case "ticket-plan-update":
+      return Option.getOrNull(
+        Option.map(decodeWrittenPlan(readT3ToolResult(item.output)), (plan) => ({
+          kind: "plan" as const,
+          plan,
+        })),
+      );
+    default:
+      return null;
+  }
 }

@@ -176,7 +176,7 @@ import { PierreEntryIcon } from "./PierreEntryIcon";
 import { inferEntryKindFromPath } from "../../pierre-icons";
 import { AssistantSelectionToolbar } from "./AssistantSelectionToolbar";
 import { TicketToolCallCard } from "../tickets/TicketToolCallCard";
-import { createdTicketFromToolItem } from "../tickets/ticketToolCall";
+import { ticketToolCallTarget } from "../tickets/ticketToolCall";
 import { useTicketCapture } from "../tickets/useTicketCapture";
 import type { AssistantCitationSourceAnchor } from "~/lib/assistantTextSelection";
 import {
@@ -4977,7 +4977,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
     workEntry.projectedItem?.item.type === "thread_created"
       ? workEntry.projectedItem.item
       : undefined;
-  const createdTicket = createdTicketFromToolItem(
+  const ticketTarget = ticketToolCallTarget(
     workEntry.projectedItem?.item ?? workEntry.structuredPayload,
   );
   const notifiedSubagentThreadId =
@@ -5254,9 +5254,9 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
         </>
       }
     >
-      {createdTicket && threadRef ? (
+      {ticketTarget && threadRef ? (
         <WorkLogDetails kind="panel">
-          <TicketToolCallCard environmentId={threadRef.environmentId} ticket={createdTicket} />
+          <TicketToolCallCard environmentId={threadRef.environmentId} target={ticketTarget} />
         </WorkLogDetails>
       ) : null}
       {expanded && viewedImage && threadRef ? (

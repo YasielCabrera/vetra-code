@@ -47,6 +47,11 @@ export function createTicketEnvironmentAtoms<R, E>(
       tag: WS_METHODS.ticketsSubscribeDetail,
       idleTtlMs: 5_000,
     }),
+    planLive: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
+      label: "environment-data:tickets:plan",
+      tag: WS_METHODS.ticketsSubscribePlan,
+      idleTtlMs: 5_000,
+    }),
     statusesLive: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
       label: "environment-data:tickets:statuses",
       tag: WS_METHODS.ticketsStatusesSubscribe,
@@ -141,6 +146,22 @@ export function createTicketEnvironmentAtoms<R, E>(
     launchDraft: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:commands:tickets:launch-draft",
       tag: WS_METHODS.ticketsLaunchDraft,
+    }),
+    createPlan: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:commands:tickets:plans:create",
+      tag: WS_METHODS.ticketsCreatePlan,
+    }),
+    updatePlan: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:commands:tickets:plans:update",
+      tag: WS_METHODS.ticketsUpdatePlan,
+    }),
+    setPlanStatus: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:commands:tickets:plans:set-status",
+      tag: WS_METHODS.ticketsSetPlanStatus,
+    }),
+    deletePlan: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:commands:tickets:plans:delete",
+      tag: WS_METHODS.ticketsDeletePlan,
     }),
   };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { createdTicketFromToolItem } from "./ticketToolCall";
+import { ticketToolCallTarget } from "./ticketToolCall";
 
 const summary = {
   id: "ticket-1",
@@ -10,24 +10,63 @@ const summary = {
   statusId: "todo",
 };
 
-describe("createdTicketFromToolItem", () => {
+const plan = {
+  ticketId: "ticket-1",
+  planId: "plan-1",
+  ref: "T-42/P2",
+  number: 2,
+  title: "Fix the cart total",
+  status: "active",
+  revision: 3,
+};
+
+describe("ticketToolCallTarget", () => {
   it("reads the filed ticket from Claude's text envelope and Codex's structured content", () => {
     expect(
-      createdTicketFromToolItem({
+      ticketToolCallTarget({
         type: "dynamic_tool",
         status: "completed",
         toolName: "mcp__vetra-code__t3_ticket_create",
         output: [{ type: "text", text: JSON.stringify(summary) }],
       }),
-    ).toEqual({ id: "ticket-1", number: 42, title: "Cart total is NaN" });
+    ).toEqual({
+      kind: "ticket",
+      ticket: { id: "ticket-1", number: 42, title: "Cart total is NaN" },
+    });
     expect(
-      createdTicketFromToolItem({
+      ticketToolCallTarget({
         type: "dynamic_tool",
         status: "completed",
         toolName: "vetra-code.t3_ticket_create",
         output: { structuredContent: summary },
       }),
-    ).toEqual({ id: "ticket-1", number: 42, title: "Cart total is NaN" });
+    ).toEqual({
+      kind: "ticket",
+      ticket: { id: "ticket-1", number: 42, title: "Cart total is NaN" },
+    });
+  });
+
+  it("reads the plan a plan create or update wrote", () => {
+    const written = {
+      kind: "plan",
+      plan: { ticketId: "ticket-1", number: 2, ref: "T-42/P2", title: "Fix the cart total" },
+    };
+    expect(
+      ticketToolCallTarget({
+        type: "dynamic_tool",
+        status: "completed",
+        toolName: "mcp__vetra-code__t3_ticket_plan_create",
+        output: [{ type: "text", text: JSON.stringify(plan) }],
+      }),
+    ).toEqual(written);
+    expect(
+      ticketToolCallTarget({
+        type: "dynamic_tool",
+        status: "completed",
+        toolName: "vetra-code.t3_ticket_plan_update",
+        output: { structuredContent: plan },
+      }),
+    ).toEqual(written);
   });
 
   it("ignores other tools, unfinished calls and failed results", () => {
@@ -37,11 +76,12 @@ describe("createdTicketFromToolItem", () => {
       toolName: "t3_ticket_create",
       output: { structuredContent: summary },
     };
-    expect(createdTicketFromToolItem(call)).not.toBeNull();
-    expect(createdTicketFromToolItem({ ...call, toolName: "t3_ticket_update" })).toBeNull();
-    expect(createdTicketFromToolItem({ ...call, status: "running" })).toBeNull();
+    expect(ticketToolCallTarget(call)).not.toBeNull();
+    expect(ticketToolCallTarget({ ...call, toolName: "t3_ticket_update" })).toBeNull();
+    expect(ticketToolCallTarget({ ...call, toolName: "t3_ticket_plan_get" })).toBeNull();
+    expect(ticketToolCallTarget({ ...call, status: "running" })).toBeNull();
     expect(
-      createdTicketFromToolItem({ ...call, output: { isError: true, structuredContent: summary } }),
+      ticketToolCallTarget({ ...call, output: { isError: true, structuredContent: summary } }),
     ).toBeNull();
   });
 });

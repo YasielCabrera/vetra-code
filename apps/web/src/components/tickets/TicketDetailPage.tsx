@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   parseTicketKey,
   type ScopedTicketRef,
@@ -9,6 +9,7 @@ import {
   type TicketId,
   type TicketLinkKind,
   type TicketLinkTarget,
+  type TicketPlanId,
   type TicketStatusId,
   ticketLinkTargetKey,
 } from "@t3tools/contracts";
@@ -98,6 +99,7 @@ import {
   ticketRepositoryProjectId,
 } from "./ticketGitHub.logic";
 import { TicketLinkPreview, type TicketLinkPreviewTarget } from "./TicketLinkPreview";
+import { TicketPlanPreview, TicketPlansSection } from "./TicketPlans";
 import {
   TicketLabelsEditor,
   TicketPropertiesPanel,
@@ -118,7 +120,7 @@ const PREVIEW_DEFAULT_WIDTH = 560;
 const PANEL_VIEWPORT_RESERVE = 640;
 const SIDE_PANEL_MIN_VIEWPORT = 1024;
 
-function copyText(text: string, title: string) {
+export function copyText(text: string, title: string) {
   void navigator.clipboard.writeText(text).then(
     () => toastManager.add({ type: "success", title, timeout: 1500 }),
     () => toastManager.add({ type: "error", title: "Could not copy to the clipboard" }),
@@ -154,12 +156,17 @@ export function TicketDetailPage(props: { readonly ticketKey: string }) {
   );
 }
 
-function TicketBreadcrumbHeader(props: {
+export function TicketBreadcrumbHeader(props: {
   readonly current: string | null;
+  /** What clicking the current crumb copies; the crumb itself by default. */
+  readonly copy?: string;
+  /** The ticket a plan sits under, linked between Tickets and the current crumb. */
+  readonly ticket?: { readonly label: string; readonly ticketKey: string } | null;
   readonly trailing?: ReactNode;
   readonly reachesWindowEdge?: boolean;
 }) {
   const navigate = useNavigate();
+  const copy = props.copy ?? props.current;
   return (
     <WorkspacePageHeader
       electron={isElectron}
@@ -175,6 +182,20 @@ function TicketBreadcrumbHeader(props: {
             Tickets
           </button>
         </WorkspaceBreadcrumbItem>
+        {props.ticket == null ? null : (
+          <>
+            <WorkspaceBreadcrumbSeparator />
+            <WorkspaceBreadcrumbItem>
+              <Link
+                to="/tickets/$ticketKey"
+                params={{ ticketKey: props.ticket.ticketKey }}
+                className="font-mono hover:text-foreground"
+              >
+                {props.ticket.label}
+              </Link>
+            </WorkspaceBreadcrumbItem>
+          </>
+        )}
         {props.current === null ? null : (
           <>
             <WorkspaceBreadcrumbSeparator />
@@ -182,11 +203,9 @@ function TicketBreadcrumbHeader(props: {
               <h1 className="truncate font-mono">
                 <button
                   type="button"
-                  aria-label={`Copy ${props.current}`}
+                  aria-label={`Copy ${copy}`}
                   className="hover:text-foreground"
-                  onClick={() =>
-                    props.current !== null && copyText(props.current, `Copied ${props.current}`)
-                  }
+                  onClick={() => copy !== null && copyText(copy, `Copied ${copy}`)}
                 >
                   {props.current}
                 </button>
@@ -199,6 +218,10 @@ function TicketBreadcrumbHeader(props: {
     </WorkspacePageHeader>
   );
 }
+
+type TicketPanelPreview =
+  | { readonly ticketId: TicketId; readonly kind: TicketLinkKind; readonly targetKey: string }
+  | { readonly ticketId: TicketId; readonly kind: "plan"; readonly planId: TicketPlanId };
 
 function TicketDocument(props: {
   readonly ticketRef: ScopedTicketRef;
@@ -255,13 +278,14 @@ function TicketDocument(props: {
     }),
     [githubSources, projects, summary.linkRefs],
   );
-  const [preview, setPreview] = useState<{
-    readonly ticketId: TicketId;
-    readonly kind: TicketLinkKind;
-    readonly targetKey: string;
-  } | null>(null);
+  const [preview, setPreview] = useState<TicketPanelPreview | null>(null);
+  // A preview closes by itself once its link or plan is gone.
+  const previewPlan =
+    preview?.kind === "plan" && preview.ticketId === summary.id
+      ? (summary.plans.find((plan) => plan.planId === preview.planId) ?? null)
+      : null;
   const previewTarget = useMemo(() => {
-    if (preview === null || preview.ticketId !== summary.id) return null;
+    if (preview === null || preview.kind === "plan" || preview.ticketId !== summary.id) return null;
     const link = detail.links.find(
       (candidate) =>
         candidate.target.kind === preview.kind &&
@@ -273,7 +297,7 @@ function TicketDocument(props: {
     previewTarget === null || previewTarget.kind === "thread"
       ? null
       : ticketRepositoryProjectId(ticketRef.environmentId, previewTarget.ref, repositoryContext);
-  const widePanel = previewProjectId !== null;
+  const widePanel = previewProjectId !== null || previewPlan !== null;
   const viewportWidth = useViewportWidth();
   const sidePanel = viewportWidth >= SIDE_PANEL_MIN_VIEWPORT;
   const { width, handlers } = useResizableWidth({
@@ -362,6 +386,10 @@ function TicketDocument(props: {
       }),
     [summary.id],
   );
+  const onPreviewPlan = useCallback(
+    (planId: TicketPlanId) => setPreview({ ticketId: summary.id, kind: "plan", planId }),
+    [summary.id],
+  );
   const lastSyncedAt = githubSource?.lastSyncedAt ?? null;
   const hasSource = githubSource !== null;
   const githubProperties = useMemo(
@@ -394,8 +422,16 @@ function TicketDocument(props: {
     />
   );
 
-  const linkPreview =
-    previewTarget === null ? null : (
+  const panelPreview =
+    previewPlan !== null ? (
+      <TicketPlanPreview
+        key={`plan:${previewPlan.planId}`}
+        ticketRef={ticketRef}
+        plan={previewPlan}
+        stacked={!sidePanel}
+        onBack={() => setPreview(null)}
+      />
+    ) : previewTarget !== null ? (
       <TicketLinkPreview
         key={`${previewTarget.kind}:${ticketLinkTargetKey(previewTarget)}`}
         environmentId={ticketRef.environmentId}
@@ -404,7 +440,7 @@ function TicketDocument(props: {
         stacked={!sidePanel}
         onBack={() => setPreview(null)}
       />
-    );
+    ) : null;
 
   const menu = (
     <Menu>
@@ -794,14 +830,21 @@ function TicketDocument(props: {
               ) : null}
             </section>
 
+            <TicketPlansSection
+              ticketRef={ticketRef}
+              plans={summary.plans}
+              previewPlanId={previewPlan?.planId ?? null}
+              onPreview={onPreviewPlan}
+            />
+
             {!sidePanel ? (
               <div
                 className={cn(
                   "rounded-lg border border-border/70",
-                  linkPreview === null ? "p-3" : "overflow-hidden pt-2",
+                  panelPreview === null ? "p-3" : "overflow-hidden pt-2",
                 )}
               >
-                {linkPreview ?? panel}
+                {panelPreview ?? panel}
               </div>
             ) : null}
 
@@ -814,6 +857,7 @@ function TicketDocument(props: {
                 environmentId={ticketRef.environmentId}
                 activity={detail.activity}
                 statusSet={statusSet}
+                plans={summary.plans}
               />
               {githubTicket === null ? null : (
                 <TicketGitHubActivity
@@ -844,10 +888,10 @@ function TicketDocument(props: {
             )}
           />
           {widePanel ? (
-            linkPreview
+            panelPreview
           ) : (
             <ScrollArea className="min-h-0 flex-1">
-              {linkPreview ?? <div className="px-5 pt-7 pb-8">{panel}</div>}
+              {panelPreview ?? <div className="px-5 pt-7 pb-8">{panel}</div>}
             </ScrollArea>
           )}
         </aside>

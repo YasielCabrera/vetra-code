@@ -12,6 +12,11 @@ import type {
   TicketLinkKind,
   TicketLinkTarget,
   TicketMoveInput,
+  TicketPlanCreateInput,
+  TicketPlanStatusInput,
+  TicketPlanSummary,
+  TicketPlanUpdateInput,
+  TicketPlanWriteResult,
   TicketStatusDefinition,
   TicketStatusId,
   TicketStatusSet,
@@ -36,7 +41,8 @@ function isRevisionConflict(error: unknown): boolean {
     typeof error === "object" &&
     error !== null &&
     "_tag" in error &&
-    error._tag === "TicketRevisionConflictError"
+    (error._tag === "TicketRevisionConflictError" ||
+      error._tag === "TicketPlanRevisionConflictError")
   );
 }
 
@@ -77,6 +83,10 @@ export function useTicketActions() {
   const removeSource = useAtomCommand(ticketEnvironment.removeGitHubSource, options);
   const refreshIssue = useAtomCommand(ticketEnvironment.refreshGitHubIssue, options);
   const syncSource = useAtomCommand(ticketEnvironment.syncGitHubSource, options);
+  const createTicketPlan = useAtomCommand(ticketEnvironment.createPlan, options);
+  const updateTicketPlan = useAtomCommand(ticketEnvironment.updatePlan, options);
+  const setTicketPlanStatus = useAtomCommand(ticketEnvironment.setPlanStatus, options);
+  const deleteTicketPlan = useAtomCommand(ticketEnvironment.deletePlan, options);
 
   const settle = useCallback(
     <A>(title: string, result: AtomCommandResult<A, unknown>): A | null => {
@@ -311,6 +321,50 @@ export function useTicketActions() {
     [removeSource, settle],
   );
 
+  const createPlan = useCallback(
+    async (environmentId: EnvironmentId, input: TicketPlanCreateInput) =>
+      settle("Could not create the plan", await createTicketPlan({ environmentId, input })),
+    [createTicketPlan, settle],
+  );
+
+  /** A stale `expectedRevision` resolves to `TICKET_REVISION_CONFLICT` without a toast. */
+  const updatePlan = useCallback(
+    async (
+      environmentId: EnvironmentId,
+      input: TicketPlanUpdateInput,
+    ): Promise<TicketPlanWriteResult | typeof TICKET_REVISION_CONFLICT | null> => {
+      const result = await updateTicketPlan({ environmentId, input });
+      if (result._tag === "Failure" && isRevisionConflict(squashAtomCommandFailure(result))) {
+        return TICKET_REVISION_CONFLICT;
+      }
+      return settle("Could not save the plan", result);
+    },
+    [settle, updateTicketPlan],
+  );
+
+  const setPlanStatus = useCallback(
+    async (environmentId: EnvironmentId, input: TicketPlanStatusInput) =>
+      settle(
+        input.status === "archived" ? "Could not archive the plan" : "Could not restore the plan",
+        await setTicketPlanStatus({ environmentId, input }),
+      ),
+    [setTicketPlanStatus, settle],
+  );
+
+  const confirmAndDeletePlan = useCallback(
+    async (environmentId: EnvironmentId, plan: TicketPlanSummary) => {
+      const confirmed =
+        (await readLocalApi()?.dialogs.confirm(
+          `Delete ${plan.ref} "${plan.title}"?\nIts comments go with it.`,
+          { variant: "destructive" },
+        )) ?? true;
+      if (!confirmed) return false;
+      const result = await deleteTicketPlan({ environmentId, input: { planId: plan.planId } });
+      return settle("Could not delete the plan", result) !== null;
+    },
+    [deleteTicketPlan, settle],
+  );
+
   return useMemo(
     () => ({
       create,
@@ -329,12 +383,18 @@ export function useTicketActions() {
       addGitHubSource,
       setGitHubSourceEnabled,
       removeGitHubSource,
+      createPlan,
+      updatePlan,
+      setPlanStatus,
+      confirmAndDeletePlan,
     }),
     [
       addGitHubSource,
       comment,
       confirmAndDelete,
+      confirmAndDeletePlan,
       create,
+      createPlan,
       deleteStatus,
       link,
       move,
@@ -342,10 +402,12 @@ export function useTicketActions() {
       reorderStatuses,
       setGitHubSourceEnabled,
       setHidden,
+      setPlanStatus,
       syncGitHubSource,
       refreshGitHubIssue,
       unlink,
       update,
+      updatePlan,
       upsertStatus,
     ],
   );

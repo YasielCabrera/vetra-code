@@ -1,9 +1,13 @@
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import type {
   EnvironmentId,
   TicketActivity,
   TicketActivityEntry,
+  TicketActor,
+  TicketPlanSummary,
   TicketStatusSet,
 } from "@t3tools/contracts";
+import { Link } from "@tanstack/react-router";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
@@ -21,10 +25,11 @@ import {
 import { memo, useMemo } from "react";
 
 import { cn } from "../../lib/utils";
-import { useThreadShells } from "../../state/entities";
+import { useThreadShell, useThreadShells } from "../../state/entities";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
 import ChatMarkdown from "../ChatMarkdown";
 import { GitHubIcon } from "../Icons";
+import { ticketPlanRouteParams } from "./ticketPlans.logic";
 
 const FIELD_LABELS = { title: "the title", body: "the description", labels: "the labels" } as const;
 const LINK_KIND_LABELS = {
@@ -38,6 +43,13 @@ function joinWords(words: ReadonlyArray<string>): string {
   if (words.length <= 1) return words.join("");
   return `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
 }
+
+export const PLAN_ENTRY_VERBS = {
+  plan_created: "created",
+  plan_edited: "edited",
+  plan_archived: "archived",
+  plan_restored: "restored",
+} as const;
 
 const SYNC_CHANGE_LABELS: Readonly<Record<string, string>> = {
   ...FIELD_LABELS,
@@ -85,13 +97,10 @@ function describeEntry(
     case "synced":
       return describeSynced(entry.changes, next?.entry.type === "status_changed");
     case "plan_created":
-      return `created plan P${entry.number}`;
     case "plan_edited":
-      return `edited plan P${entry.number}`;
     case "plan_archived":
-      return `archived plan P${entry.number}`;
     case "plan_restored":
-      return `restored plan P${entry.number}`;
+      return `${PLAN_ENTRY_VERBS[entry.type]} plan`;
   }
 }
 
@@ -132,10 +141,38 @@ function ActivityMarker(props: { readonly activity: TicketActivity }) {
   );
 }
 
+/** Who did something to a ticket: "You", "GitHub sync", or an agent by its thread's title. */
+function ticketActorName(actor: TicketActor, threadTitle: string | undefined): string {
+  switch (actor.type) {
+    case "user":
+      return "You";
+    case "sync":
+      return "GitHub sync";
+    case "automation":
+      return "Auto-advance";
+    case "agent":
+      return threadTitle === undefined ? "An agent" : `An agent in “${threadTitle}”`;
+  }
+}
+
+/** `ticketActorName` for one actor, watching only the agent's own thread. */
+export function TicketActorName(props: {
+  readonly environmentId: EnvironmentId;
+  readonly actor: TicketActor;
+}) {
+  const { actor } = props;
+  const thread = useThreadShell(
+    actor.type === "agent" ? scopeThreadRef(props.environmentId, actor.threadId) : null,
+  );
+  return ticketActorName(actor, thread?.title);
+}
+
 export const TicketActivityTimeline = memo(function TicketActivityTimeline(props: {
   readonly environmentId: EnvironmentId;
   readonly activity: ReadonlyArray<TicketActivity>;
   readonly statusSet: TicketStatusSet | null;
+  /** The ticket's plans; an entry about a plan links to it while it exists. */
+  readonly plans: ReadonlyArray<TicketPlanSummary>;
 }) {
   const threads = useThreadShells();
   const threadTitleById = useMemo(
@@ -147,22 +184,14 @@ export const TicketActivityTimeline = memo(function TicketActivityTimeline(props
       ),
     [props.environmentId, threads],
   );
+  const actorName = ({ actor }: TicketActivity) =>
+    ticketActorName(
+      actor,
+      actor.type === "agent" ? threadTitleById.get(actor.threadId) : undefined,
+    );
+  const planIds = useMemo(() => new Set(props.plans.map((plan) => plan.planId)), [props.plans]);
   const statusName = (statusId: string) =>
     props.statusSet?.statuses.find((status) => status.id === statusId)?.name ?? "a removed status";
-  const actorName = (activity: TicketActivity) => {
-    switch (activity.actor.type) {
-      case "user":
-        return "You";
-      case "sync":
-        return "GitHub sync";
-      case "automation":
-        return "Auto-advance";
-      case "agent": {
-        const title = threadTitleById.get(activity.actor.threadId);
-        return title === undefined ? "An agent" : `An agent in “${title}”`;
-      }
-    }
-  };
 
   return (
     <ol
@@ -195,6 +224,25 @@ export const TicketActivityTimeline = memo(function TicketActivityTimeline(props
             >
               <span className="font-medium text-foreground">{actorName(activity)}</span>{" "}
               {describeEntry(activity.entry, statusName, props.activity[index + 1])}
+              {"planId" in activity.entry ? (
+                <>
+                  {" "}
+                  {planIds.has(activity.entry.planId) ? (
+                    <Link
+                      to="/tickets/$ticketKey/plans/$planNumber"
+                      params={ticketPlanRouteParams(
+                        { environmentId: props.environmentId, ticketId: activity.ticketId },
+                        activity.entry.number,
+                      )}
+                      className="font-medium text-foreground hover:underline"
+                    >
+                      P{activity.entry.number}
+                    </Link>
+                  ) : (
+                    `P${activity.entry.number}`
+                  )}
+                </>
+              ) : null}
               <time
                 dateTime={activity.createdAt}
                 aria-label={new Date(activity.createdAt).toLocaleString()}

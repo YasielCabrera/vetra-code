@@ -147,6 +147,18 @@ function FormatButton(props: {
   );
 }
 
+const DOCUMENT_COPY = {
+  ticket: {
+    tooLong: "This description exceeds the 100,000 character limit. Shorten it to save the ticket.",
+    unsupported:
+      "This description uses Markdown that needs source editing to preserve its formatting.",
+  },
+  plan: {
+    tooLong: "This plan exceeds the 100,000 character limit. Shorten it to save the plan.",
+    unsupported: "This plan uses Markdown that needs source editing to preserve its formatting.",
+  },
+} as const;
+
 /** Keeps the supplied Markdown byte-exact until a document edit; unsupported syntax stays in source mode. */
 export default function TicketBodyEditor(props: {
   readonly value: string;
@@ -156,7 +168,10 @@ export default function TicketBodyEditor(props: {
   readonly ariaLabel: string;
   readonly autoFocus?: boolean;
   readonly minHeight: string;
+  /** Whose body this is, for the warnings; a ticket's description by default. */
+  readonly document?: keyof typeof DOCUMENT_COPY;
 }) {
+  const copy = DOCUMENT_COPY[props.document ?? "ticket"];
   const [documentMode, setDocumentMode] = useState<{
     mode: "write" | "source";
     unsupported: boolean;
@@ -501,14 +516,10 @@ export default function TicketBodyEditor(props: {
       </div>
       {props.value.length > TICKET_BODY_MAX_CHARS ? (
         <p className="text-xs text-destructive" role="alert">
-          This description exceeds the 100,000 character limit. Shorten it to save the ticket.
+          {copy.tooLong}
         </p>
       ) : null}
-      {unsupported ? (
-        <p className="text-xs text-muted-foreground">
-          This description uses Markdown that needs source editing to preserve its formatting.
-        </p>
-      ) : null}
+      {unsupported ? <p className="text-xs text-muted-foreground">{copy.unsupported}</p> : null}
       {sourceMode ? (
         <textarea
           ref={sourceRef}
