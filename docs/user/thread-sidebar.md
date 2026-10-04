@@ -18,9 +18,10 @@ if that project exists there. Otherwise it selects an environment that has it.
 A thread does not need a project. To start one without a project, click **or
 start without a project** under a new thread's heading, pick **No project** from
 the project menu in that heading or from **New thread in...** in the command
-palette, or press `mod+alt+n`. It starts on your current machine; before sending,
-pick another machine from the machine menu to move it there. To move a draft into a
-project, pick the project in the heading.
+palette, or press `mod+alt+n`.
+It starts on your current machine; before sending, pick another machine
+from the machine menu to move it there. To move a draft into a project, pick the
+project in the heading.
 
 Each thread without a project works in its own folder under `~/.vetra-code/scratch` (the
 `scratch` folder of your Vetra Code data directory), named after its date, the first words
@@ -113,8 +114,8 @@ open.
 
 ### Fold working threads (beta)
 
-On web and desktop, turn on **Settings → General → Working section (beta)** to move threads that
-are working or monitoring into a collapsed **Working** section below the active list. A thread returns to the top
+Turn on **Settings → General → Working section (beta)** on web and desktop to move threads that are working or
+monitoring into a collapsed **Working** section below the active list. A thread returns to the top
 of the active list when it finishes, fails, or needs an approval or answer. The Working section
 lists the thread you last sent work to first. Pinned threads stay in the pinned section. Each
 device keeps its own choice.
@@ -179,15 +180,6 @@ Use **Settings → Keybindings** to find or customize shortcuts for searching fi
 and copying a thread reference. A copied reference uses the thread's pull request
 link when available, otherwise its thread ID. See [keybindings](./keybindings.md)
 for custom configuration.
-
-Dev and Nightly environments can identify themselves with artwork at the top of the sidebar and in
-the send button. Choose **Artwork**, **Version pill**, or **None** in Settings under environment
-identification. Artwork is recolored to match each built-in theme. Custom themes use the **Version
-pill** fallback because their colors are not controlled by Vetra Code.
-
-To generate a fresh title from the conversation, open a thread's context menu and choose
-**Regenerate title**. While Vetra Code is generating it, the action reads **Regenerating…** and
-cannot be selected again. The option is hidden when the connected environment needs a server update.
 
 ## Inspect agent work
 

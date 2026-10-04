@@ -1,7 +1,5 @@
 # Glossary
 
-> For maintainers. Using Vetra Code? See [docs/user](../user/).
-
 Terms whose meaning matters across Vetra Code. Architecture and lifecycle constraints belong in the
 [overview](./overview.md), not in these definitions.
 
@@ -19,18 +17,6 @@ Terms whose meaning matters across Vetra Code. Architecture and lifecycle constr
 | Activity       | A non-message timeline item, such as a tool action, approval, or failure.                         |
 | Vetra home     | The base data directory. Runtime state normally lives under its `userdata` directory.             |
 
-## File annotations
-
-| Term             | Meaning                                                                                                                                                                                     |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Content revision | A token derived from the exact file bytes a client last confirmed on disk. The server rejects annotation requests for a stale revision before invoking Git.                                 |
-| Line changes     | The `HEAD`-relative added, modified, and removed-line ranges shown in the full-file reader. They describe the working tree, including staged changes, not the branch-range diff.            |
-| Blame run        | A contiguous sequence of lines with the same blame commit, stored as a line count plus a commit-table index. Runs cover the whole file without gaps; that coverage is a contract invariant. |
-
-Extraction lives in [GitVcsDriverCore.ts](../../apps/server/src/vcs/GitVcsDriverCore.ts); byte
-verification and non-Git behavior live in
-[FileAnnotationService.ts](../../apps/server/src/vcs/FileAnnotationService.ts).
-
 ## Orchestration
 
 | Term                    | Meaning                                                                                                   |
@@ -45,20 +31,18 @@ verification and non-Git behavior live in
 
 ## Providers and checkpoints
 
-| Term                | Meaning                                                                                                                                    |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Provider            | The agent runtime Vetra Code controls, such as Codex or Claude Code.                                                                       |
-| Driver              | The integration for a provider kind.                                                                                                       |
-| Provider instance   | One configured provider, with its own settings and lifecycle. Multiple instances can use the same driver.                                  |
-| Adapter             | The boundary translating a provider's native protocol into Vetra Code operations and events.                                               |
-| Session             | The provider runtime attached to a thread. A session can be stopped and resumed without deleting the thread.                               |
-| Runtime mode        | The thread's permission policy. See [permission modes](../user/permission-modes.md).                                                       |
-| Interaction mode    | How the agent approaches the task, such as planning. Separate from permission policy.                                                      |
-| Usage limits        | The rolling subscription quota windows a provider reports for its signed-in account, such as Claude's five-hour and weekly windows.        |
-| Usage limit source  | A read-only quota feed outside this environment's provider CLIs, configured under `settings.usageLimitSources`, such as a CLIProxyAPI hub. |
-| Checkpoint          | A saved workspace state used for diffs and restore, stored as a hidden Git ref.                                                            |
-| Checkpoint baseline | The workspace state captured before the work being compared.                                                                               |
-| Turn diff           | The workspace changes attributed to one turn.                                                                                              |
+| Term                | Meaning                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Provider            | The agent runtime Vetra Code controls, such as Codex or Claude Code.                                         |
+| Driver              | The integration for a provider kind.                                                                         |
+| Provider instance   | One configured provider, with its own settings and lifecycle. Multiple instances can use the same driver.    |
+| Adapter             | The boundary translating a provider's native protocol into Vetra Code operations and events.                 |
+| Session             | The provider runtime attached to a thread. A session can be stopped and resumed without deleting the thread. |
+| Runtime mode        | The thread's permission policy. See [permission modes](../user/permission-modes.md).                         |
+| Interaction mode    | How the agent approaches the task, such as planning. Separate from permission policy.                        |
+| Checkpoint          | A saved workspace state used for diffs and restore, stored as a hidden Git ref.                              |
+| Checkpoint baseline | The workspace state captured before the work being compared.                                                 |
+| Turn diff           | The workspace changes attributed to one turn.                                                                |
 
 ## Pull requests
 
@@ -79,6 +63,18 @@ verification and non-Git behavior live in
 
 See [composer context references](./composer-context-references.md) for the contract and lifecycle.
 
+## File annotations
+
+| Term             | Meaning                                                                                                                                                                                     |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Content revision | A token derived from the exact file bytes a client last confirmed on disk. The server rejects annotation requests for a stale revision before invoking Git.                                 |
+| Line changes     | The `HEAD`-relative added, modified, and removed-line ranges shown in the full-file reader. They describe the working tree, including staged changes, not the branch-range diff.            |
+| Blame run        | A contiguous sequence of lines with the same blame commit, stored as a line count plus a commit-table index. Runs cover the whole file without gaps; that coverage is a contract invariant. |
+
+Extraction lives in [GitVcsDriverCore.ts](../../apps/server/src/vcs/GitVcsDriverCore.ts); byte
+verification and non-Git behavior live in
+[FileAnnotationService.ts](../../apps/server/src/vcs/FileAnnotationService.ts).
+
 ## Automations
 
 | Term           | Meaning                                                                                                                                                                 |
@@ -86,13 +82,6 @@ See [composer context references](./composer-context-references.md) for the cont
 | Automation     | A scheduled task, edited from the Automations page. The fork adds no scheduler of its own.                                                                              |
 | Automation run | A thread an automation's scheduled task launched, recorded by [AutomationRuns.ts](../../apps/server/src/automation/AutomationRuns.ts) so it lists under its automation. |
 | Hidden run     | A run kept out of the sidebar (`hiddenAt`). Runs start hidden; revealing one clears the flag without removing it from the automation's history.                         |
-
-## Appearance
-
-| Term              | Meaning                                                                                                                                                                                              |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Environment theme | A theme an environment's machine publishes for clients to follow, one file per theme under `themes/` in its state directory. See [environment-theme.md](../user/environment-theme.md).               |
-| Default theme     | The environment's theme, `defaultTheme` in its `settings.json`, set with `vetra theme set <id>`. Clients apply each set once; a theme a user picks in Settings afterwards sticks until the next set. |
 
 ## Powerhouse
 
@@ -106,10 +95,3 @@ see [powerhouse-panel.md](./powerhouse-panel.md).
 | Powerhouse drive     | A container document in a reactor, identified by its document type. The reactor has no query that lists drives; they are found by searching for documents of the drive container types.             |
 | Powerhouse reference | The text a dragged panel row leaves in the composer: a file mention for a model row, or `` `powerhouse:<drive\|folder\|doc>/<id>` `` plus the details an agent needs to fetch it for a reactor row. |
 | Vetra (Powerhouse)   | Powerhouse's own brand for its authoring toolchain, the `@powerhousedao/vetra` package and the `ph vetra` command. Unrelated to Vetra Code. Nothing in our Powerhouse surface uses the name.        |
-
-## Fork and upstream
-
-| Term          | Meaning                                                                                                                                                                                                                                                                      |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Upstream      | [pingdotgg/t3code](https://github.com/pingdotgg/t3code), the project Vetra Code forks, configured as Git remote `upstream`. It merges into `main` through [sync-upstream.sh](../../scripts/sync-upstream.sh), never a raw merge. See [upstream-sync.md](./upstream-sync.md). |
-| Fork identity | The Vetra-owned names that must survive every upstream merge, centralized in [productIdentity.ts](../../packages/shared/src/productIdentity.ts). Everything a user never sees keeps upstream's `t3*` name so merges stay mechanical.                                         |

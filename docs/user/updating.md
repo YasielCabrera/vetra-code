@@ -1,33 +1,25 @@
-# Updates during bootstrap
+# Updating Vetra Code
 
-Vetra Code does not currently publish versioned CLI or desktop releases. Automatic desktop
-updates are disabled by default, and the inherited production release workflow was removed so a
-development build cannot target Vetra Code's update feed.
+The app you use and the server running your agents can be on different machines.
+When a server is behind your web or desktop app, an update notice appears in the
+conversation and **Settings → Connections**. Update the machine named in that
+notice.
 
-Update a source checkout through its Vetra-owned Git remote, then reinstall and rebuild:
+## Before you update
 
-```bash
-git pull --ff-only
-pnpm install
-pnpm exec vp run --filter t3 build
-pnpm exec vp run --filter @t3tools/desktop build
-```
+Server updates restart the connection and can interrupt active agents and
+terminal commands. Saved threads, settings, and project files remain.
 
-Finish active agent work and terminal processes before restarting development servers. A
-registry-based update command is unavailable until the Vetra server package is published.
-
-Versioned server updates and desktop auto-update can be enabled only after the release
-prerequisites in the [release runbook](../operations/release.md) are owned and configured by Vetra
-Code. See [Background service status](./background-service.md) for the currently supported path.
-
-Restarting a server interrupts active agents and terminal commands. Saved threads, settings, and
-project files remain.
-
-**Settings → General → Continue threads after restarts** is off by default. Enable it to resume
-supported active threads after the server restarts, including after a crash or machine restart.
-Vetra Code must start again on that machine; the setting does not enable automatic startup.
-Terminal commands may still be interrupted, and threads without saved provider resume state need a
-new message.
+**Settings → General → Continue threads after restarts** is off by default.
+Enable it to resume supported active threads after an update, crash, or machine
+restart. Changes are saved to connected environments that support this setting;
+update older servers first. If a supported environment was offline or has a
+different value, use **Apply to all** in Settings after it connects.
+Vetra Code must start again on that machine;
+the setting does not enable automatic startup. Terminal commands may still be
+interrupted, and threads without saved provider resume state need a new message.
+If you previously enabled continuation for updates, enable this setting once
+to allow recovery without a connected client.
 
 Updates from the previous orchestration system preserve conversation transcripts but cannot carry
 every kind of runtime history forward. Read [Threads from older Vetra Code versions](./thread-migration.md)
@@ -43,6 +35,21 @@ refused rather than running half-upgraded:
 - A server newer than your app refuses the connection with an update message.
 
 Update the side the notice names, then reconnect.
+
+## Update a connected server
+
+Vetra Code does not publish server releases yet, so the offered update actions
+cannot install a new version. Rebuild the server from its checkout instead.
+
+On the host, run:
+
+```sh
+git pull && pnpm install && pnpm build:desktop
+```
+
+Then restart the desktop app if it hosts the server. For a server you started by hand,
+stop it and start it again afterwards with your usual options such as `--host`
+or `--tailscale-serve`.
 
 ## Update providers
 

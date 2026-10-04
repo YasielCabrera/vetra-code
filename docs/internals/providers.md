@@ -1,7 +1,5 @@
 # Provider constraints
 
-> For maintainers. Using Vetra Code? See [docs/user](../user/).
-
 Orchestration records intent and state without knowing which provider runs a thread. Provider
 protocols, account ownership, permissions, and capabilities belong at the
 [adapter boundary](../../apps/server/src/orchestration-v2/ProviderAdapter.ts). Normalize there
@@ -15,16 +13,11 @@ Live provider-owned allowance windows are a separate, optional capability on eac
 instance. See [Provider subscription usage](./provider-subscription-usage.md) for its adapter,
 caching, identity, and credential boundaries.
 
-Every adapter identifies Vetra Code and its harness through the shared
-[runtime instructions](../../apps/server/src/provider/RuntimeInstructions.ts). ACP prompts have no
-system-message field, so ACP adapters send that context as a separate text block. It never changes
-the stored user message.
-
 ## Process and account isolation
 
 The `opencode` driver probes the installed version and runs the 1.x or 2.x runtime. OpenCode's MCP
-registrations are directory-scoped, while Vetra Code's `vetra-code` MCP connection is thread-scoped, so threads in one
-directory must not share one MCP entry.
+registrations are directory-scoped, while Vetra Code's MCP connection is thread-scoped, so threads in one
+directory must not share one Vetra Code MCP entry.
 
 - **1.x** uses one Vetra-managed chat server per thread, so threads cannot replace each other's
   connection. Catalog and text-generation work can share the
@@ -132,10 +125,6 @@ checkpoints but cannot roll back its conversation. The [checkpoint boundary](./o
 therefore rejects revert before touching files. Native permission and question option IDs must
 also survive normalization; a display label is not necessarily a valid reply.
 
-Grok's built-in `grok-build` slug is the CLI's product name, not an ACP model ID.
-[`applyGrokAcpModelSelection`](../../apps/server/src/provider/acp/GrokAcpSupport.ts) treats it as
-"keep the session's current model" and never sends it in `session/set_model`.
-
 ## Attachments and stored history
 
 Attachments live outside the project workspace. The
@@ -164,6 +153,5 @@ Codex resumes with metadata-only reads when it needs a thread's identity and upd
 initialization capabilities opt out of `turn/diff/updated`: Vetra Code derives diffs from checkpoints.
 The logger filters those notifications before traversal when an older provider still sends them.
 
-Model classification has its own [manifest constraints](./model-manifest.md). This fork keeps the
-remote manifest refresh off until `VETRA_MODEL_MANIFEST_URL` names a host we own. Assistant-reference
+Model classification has its own [manifest constraints](./model-manifest.md). Assistant-reference
 handling is documented under [citations](./assistant-citations.md).

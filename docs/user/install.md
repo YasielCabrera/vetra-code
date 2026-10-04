@@ -1,45 +1,49 @@
-# Install and first run
+# Install Vetra Code
 
-Vetra Code is currently available as a source checkout. Packaged desktop releases and a published
-CLI package are intentionally disabled until Vetra owns its release repository, signing, hosted
-domains, and update infrastructure.
+Vetra Code runs coding agents on your computer and lets you control them from its
+desktop or web app. Set up the machine where the agents will work first.
 
 ## Requirements
 
-- Node.js `24.13.1` or a compatible version from the root `package.json`
-- pnpm `11.10.0`
-- Git
-- at least one provider runtime installed and authenticated; Antigravity can be installed from
-  Vetra Code settings instead. See [Providers](#providers) below.
+You need an installed, authenticated provider before starting a thread. You can
+launch Vetra Code and configure providers afterwards.
 
-Run provider login on the machine where the Vetra server runs. A CLI can instead be configured with
-an explicit binary path in **Settings** when it is not on that process's `PATH`.
+## Command line
 
-## Web development
-
-From the repository root:
+Vetra Code does not publish an installer or a `vetra` package yet. Build the
+server from a checkout of the Vetra Code repository with Node.js 24 and pnpm:
 
 ```bash
-pnpm install
-pnpm dev --dry-run
-pnpm dev --home-dir .vetra-code
+pnpm install && pnpm build:desktop
+node apps/server/dist/bin.mjs
 ```
 
-The dry run should report Vetra ports and a Vetra state directory. The live server prints a
-one-time `pairingUrl`; open the complete URL, including its token.
+This starts the server and opens the web app. Where these guides show
+`vetra <command>`, run `node apps/server/dist/bin.mjs <command>` from the checkout.
 
-The explicit repository-local home is recommended for the first run. It prevents this checkout's
-projects, threads, settings, and secrets from mixing with any other Vetra checkout. Never use
-another application's data directory as a Vetra home.
+Run `vetra --help` for the full reference.
 
-If the web or desktop app shows "Vetra Code could not load", check your connection and select
-**Reload** to try again.
+`vetra update` and the background service do not apply to a server run this way;
+update it with `git pull` and a rebuild.
 
-When the Vetra Code desktop app is running on the same machine, open the current directory in it
-from the checkout:
+## Desktop app
+
+Vetra Code does not publish desktop releases yet. After `pnpm build:desktop`,
+start it from the same checkout with `pnpm start:desktop`.
+
+### Windows Subsystem for Linux
+
+Choose a WSL distro in **Settings → Connections** to run agents and projects
+there. Install the provider CLIs inside that distro. Vetra Code installs its own
+server runtime there automatically; the first launch after an app update can
+take longer.
+
+### Open a project from a terminal
+
+With the desktop app already running on the same machine:
 
 ```bash
-node apps/server/src/bin.ts app
+vetra app
 ```
 
 This opens a new thread for the current directory, adding the project if needed.
@@ -47,44 +51,12 @@ Pass a path, such as `vetra app ../my-project`, to open another directory. It re
 the desktop app, so a standalone server or an SSH session is not enough. If the
 command cannot reach the app, start or update the desktop app and try again.
 
-```bash
-node apps/server/src/bin.ts app ../my-project
-```
-
-The command adds the directory as a project when needed, focuses the desktop app, and opens a new
-thread. It does not launch the desktop app, open a browser, or start a Vetra Code server. A
-background server does not count as the desktop app. The command also rejects SSH sessions, because
-a remote shell cannot focus a local desktop window. Until Vetra publishes a CLI package, run it
-from the same checkout that runs the desktop app.
-
-## Desktop development
-
-```bash
-pnpm dev:desktop
-```
-
-The desktop app uses Vetra application IDs, protocols, and Electron storage. It can therefore run
-beside another installed coding-agent client without sharing its profile.
-
-## Current distribution boundary
-
-Vetra package publishing, automatic updates, background-service installation, and package-based remote
-launch remain unavailable during bootstrap. Run the project from this source checkout for now.
-
-### Windows Subsystem for Linux
-
-When the desktop app runs a WSL backend, it installs the matching server runtime into
-`~/.vetra-code/wsl-runtime` inside the selected distro. The first launch after installing or updating Vetra
-Code may take a little longer while that release's runtime is extracted. Later launches reuse the
-Linux-local copy so startup does not depend on reading application files through `/mnt/c`. After a
-successful launch, Vetra Code keeps the current runtime and one previous runtime for rollback and
-removes older caches automatically. If a cached runtime stops working, Vetra Code launches from the
-application files under `/mnt/c` instead and reinstalls the runtime on the next launch.
-
 ## Providers
 
-Vetra Code uses provider runtimes but does not bundle them. Install and authenticate each
-provider's CLI, or use Vetra Code's managed setup for Antigravity.
+Open **Settings → Providers** in the web or desktop app, select the environment,
+and enable the provider you want. Installation, login, and configuration belong
+to that environment's machine, even when you connect from a phone or another
+computer.
 
 | Provider    | Install and authenticate                                                                                                                                  |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -116,39 +88,19 @@ mise through mise. Cursor and Antigravity update with Vetra Code. Homebrew insta
 compare against the version Homebrew offers, which can trail the npm release by
 a few hours.
 
-Cursor is the one to watch: install Cursor CLI, which provides the `cursor-agent` binary that
-Vetra Code looks for, but authenticate with `agent login`, not `cursor-agent login`.
+Add another provider instance for a separate account or configuration. Each
+instance can have its own environment variables, such as API keys or a custom
+base URL. Mark secret values as sensitive; after saving, Vetra Code does not display
+their original values.
 
 For provider-specific setup and accounts, see [Codex](./providers-codex.md),
 [Claude](./providers-claude.md), [OpenCode](./providers-opencode.md),
 [Antigravity](./providers-antigravity.md), and [Pi](./providers-pi.md).
 
-Run CLI login commands on the machine running the Vetra Code server, not on the device you browse
-from. Antigravity uses its sign-in controls in Vetra Code instead of a CLI login command.
+## Next steps
 
-### Binary Discovery
-
-Each provider CLI must be on the server's `PATH`, or have an explicit binary path set in
-**Settings** → the provider instance → **Binary path**. Use the explicit path when a version
-manager or a non-standard install location keeps the CLI off the `PATH` of the shell that
-started Vetra Code.
-
-Antigravity can use its managed runtime without a `PATH` entry. Its optional **Binary path**
-overrides the managed runtime and must point to the official ACP executable.
-
-### When Auth Is Needed
-
-Provider auth is required before you start a session with that provider, not before you start
-Vetra Code. You can install Vetra Code, open it, and add providers afterwards. A provider that is not
-authenticated shows its status and setup instructions in **Settings**.
-
-For multi-account setups, see [Codex](./providers-codex.md), [Claude](./providers-claude.md), and
-[Antigravity](./providers-antigravity.md#accounts-and-removal).
-
-## Next Steps
-
-- [Permission modes](./permission-modes.md): how much Vetra Code asks before acting
-- [Keyboard shortcuts](./keybindings.md)
-- [Remote access status](./remote-access.md): connect from a phone, tablet, or another desktop
-- [Update status](./updating.md): client and server version skew
-- [Running in the background](./background-service.md): Linux background service
+- [Working with threads](./thread-sidebar.md): start tasks and organize parallel work.
+- [Permission modes](./permission-modes.md): choose when agents ask before acting.
+- [Remote access](./remote-access.md): connect from another device.
+- [Running in the background](./background-service.md): keep a Linux or macOS host available.
+- [Updating Vetra Code](./updating.md): update the app and connected servers.
