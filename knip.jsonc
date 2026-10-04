@@ -4,6 +4,8 @@
   "rules": { "types": "off", "nsTypes": "off" },
   // These executables are supplied by the OS or installed separately from npm.
   "ignoreBinaries": ["eas", "file", "mkfifo", "pkill", "pkg-config", "plutil", "sips"],
+  // Kept for a future Vetra release workflow. Upstream's release.yml, which ran it, is deleted in this fork.
+  "ignoreFiles": ["scripts/smoke-cli-archive.ts"],
   "workspaces": {
     ".": {
       // Keep vendored reference repositories outside the root project.
