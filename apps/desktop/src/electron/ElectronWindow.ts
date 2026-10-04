@@ -69,6 +69,7 @@ const ElectronWindowOperation = Schema.Literals([
   "inspect-window",
   "reveal-window",
   "send-window-message",
+  "close-window",
   "destroy-window",
 ]);
 
@@ -126,6 +127,67 @@ export class ElectronWindow extends Context.Service<
     ) => Effect.Effect<void, E, R>;
   }
 >()("@t3tools/desktop/electron/ElectronWindow") {}
+
+/** Close through the renderer's beforeunload decision before irreversible app cleanup. */
+export const requestClose = Effect.fn("electron.window.requestClose")(
+  (input: { readonly window: Electron.BrowserWindow; readonly platform: NodeJS.Platform }) =>
+    Effect.suspend(() => {
+      const { window } = input;
+      const operationError = (cause: unknown) =>
+        new ElectronWindowOperationError({
+          operation: "close-window",
+          platform: input.platform,
+          windowId: window.id,
+          channel: null,
+          cause,
+        });
+      return Effect.callback<boolean, ElectronWindowOperationError>((resume) => {
+        const closed = () => complete(Effect.succeed(true));
+        const close = (event: Electron.Event) => {
+          if (event.defaultPrevented) complete(Effect.succeed(false));
+        };
+        const preventedUnload = (event: Electron.Event) => {
+          // DesktopWindow's existing listener has already handled Stay/Leave.
+          // Electron ignores the renderer veto only when that listener prevents this event.
+          if (!event.defaultPrevented) complete(Effect.succeed(false));
+        };
+        const cleanup = Effect.sync(() => {
+          window.removeListener("closed", closed);
+          window.removeListener("close", close);
+          window.webContents.removeListener("will-prevent-unload", preventedUnload);
+        });
+        const complete = (result: Effect.Effect<boolean, ElectronWindowOperationError>) =>
+          resume(result.pipe(Effect.ensuring(cleanup)));
+        try {
+          if (window.isDestroyed()) {
+            complete(Effect.succeed(true));
+            return;
+          }
+          window.on("closed", closed);
+          window.on("close", close);
+          window.webContents.on("will-prevent-unload", preventedUnload);
+          window.setOpacity(1);
+          window.close();
+        } catch (cause) {
+          complete(Effect.fail(operationError(cause)));
+        }
+        return cleanup;
+      }).pipe(
+        Effect.tap((accepted) =>
+          accepted
+            ? Effect.void
+            : Effect.try({
+                try: () => {
+                  window.show();
+                  window.focus();
+                },
+                catch: operationError,
+              }),
+        ),
+        Effect.orDie,
+      );
+    }),
+);
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {

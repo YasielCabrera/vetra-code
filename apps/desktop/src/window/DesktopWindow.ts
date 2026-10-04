@@ -603,6 +603,19 @@ export const make = Effect.gen(function* () {
       void runPromise(previewManager.prepareWebview(contents));
     });
 
+    window.webContents.on("will-prevent-unload", (event) => {
+      const response = Electron.dialog.showMessageBoxSync(window, {
+        type: "warning",
+        buttons: ["Stay", "Leave"],
+        defaultId: 0,
+        cancelId: 0,
+        message: "Leave without saving?",
+        detail: "This document has unsaved changes.",
+      });
+      // Electron's preventDefault overrides the renderer veto and allows this unload.
+      if (response === 1) event.preventDefault();
+    });
+
     window.webContents.setWindowOpenHandler(({ url }) => {
       if (Option.isSome(ElectronShell.parseSafeExternalUrl(url))) {
         void runPromise(electronShell.openExternal(url));

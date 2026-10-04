@@ -1,3 +1,7 @@
+// @effect-diagnostics nodeBuiltinImport:off -- Native Electron events are simulated without launching a desktop app.
+
+import * as NodeEvents from "node:events";
+
 import { assert, describe, it } from "@effect/vitest";
 import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Cause from "effect/Cause";
@@ -87,6 +91,30 @@ function makeWindowsRevealWindow() {
   };
 }
 
+function makeClosableWindow(onClose: () => void) {
+  const events = new NodeEvents.EventEmitter();
+  const webContents = new NodeEvents.EventEmitter();
+  const window = Object.assign(events, {
+    id: 45,
+    isDestroyed: () => false,
+    webContents,
+    close: onClose,
+    setOpacity: vi.fn(),
+    show: vi.fn(),
+    focus: vi.fn(),
+  }) as unknown as Electron.BrowserWindow;
+  return { window, events, webContents };
+}
+
+function makeUnloadEvent() {
+  return {
+    defaultPrevented: false,
+    preventDefault() {
+      this.defaultPrevented = true;
+    },
+  };
+}
+
 describe("ElectronWindow", () => {
   beforeEach(() => {
     activateWindowsForegroundMock.mockReset().mockResolvedValue(undefined);
@@ -108,6 +136,95 @@ describe("ElectronWindow", () => {
     windowsForegroundPrepareMock.mockReset().mockResolvedValue(false);
     windowsForegroundCloseMock.mockReset();
   });
+
+  it.effect.each(["stay", "leave", "clean"])(
+    "waits for the native close decision when the renderer chooses %s",
+    (decision) =>
+      Effect.gen(function* () {
+        const closeRequested = Promise.withResolvers<void>();
+        const { window, events, webContents } = makeClosableWindow(() => {
+          closeRequested.resolve();
+        });
+        // The existing DesktopWindow dialog runs before the temporary observer.
+        const dialog = (event: ReturnType<typeof makeUnloadEvent>) => {
+          if (decision === "leave") event.preventDefault();
+        };
+        webContents.on("will-prevent-unload", dialog);
+        const close = yield* ElectronWindow.requestClose({ window, platform: "linux" }).pipe(
+          Effect.forkChild({ startImmediately: true }),
+        );
+        yield* Effect.promise(() => closeRequested.promise);
+        assert.deepEqual(vi.mocked(window.setOpacity).mock.calls, [[1]]);
+        if (decision !== "clean") {
+          webContents.emit("will-prevent-unload", makeUnloadEvent());
+        }
+        if (decision !== "stay") {
+          // Choosing Leave must still wait for Electron to finish closing.
+          assert.isUndefined(close.pollUnsafe());
+          events.emit("closed");
+        }
+
+        assert.equal(yield* Fiber.join(close), decision !== "stay");
+        assert.equal(vi.mocked(window.show).mock.calls.length, decision === "stay" ? 1 : 0);
+        assert.equal(vi.mocked(window.focus).mock.calls.length, decision === "stay" ? 1 : 0);
+        assert.equal(events.listenerCount("close"), 0);
+        assert.equal(events.listenerCount("closed"), 0);
+        assert.deepEqual(webContents.listeners("will-prevent-unload"), [dialog]);
+      }),
+  );
+
+  it.effect("honors a native close veto before renderer unload", () =>
+    Effect.gen(function* () {
+      const { window, events } = makeClosableWindow(() => {
+        events.emit("close", makeUnloadEvent());
+      });
+      events.on("close", (event: ReturnType<typeof makeUnloadEvent>) => event.preventDefault());
+
+      assert.isFalse(yield* ElectronWindow.requestClose({ window, platform: "darwin" }));
+      assert.equal(events.listenerCount("closed"), 0);
+      assert.equal(events.listenerCount("close"), 1);
+    }),
+  );
+
+  it.effect("removes close observers when the request is interrupted", () =>
+    Effect.gen(function* () {
+      const closeRequested = Promise.withResolvers<void>();
+      const { window, events, webContents } = makeClosableWindow(() => {
+        closeRequested.resolve();
+      });
+      const close = yield* ElectronWindow.requestClose({ window, platform: "win32" }).pipe(
+        Effect.forkChild({ startImmediately: true }),
+      );
+      yield* Effect.promise(() => closeRequested.promise);
+      yield* Fiber.interrupt(close);
+
+      assert.equal(events.listenerCount("close"), 0);
+      assert.equal(events.listenerCount("closed"), 0);
+      assert.equal(webContents.listenerCount("will-prevent-unload"), 0);
+    }),
+  );
+
+  it.effect("preserves close failures without leaving event observers", () =>
+    Effect.gen(function* () {
+      const cause = new Error("native close failed");
+      const { window, events, webContents } = makeClosableWindow(() => {
+        throw cause;
+      });
+      const exit = yield* Effect.exit(ElectronWindow.requestClose({ window, platform: "linux" }));
+
+      assert.equal(exit._tag, "Failure");
+      if (exit._tag === "Failure") {
+        const error = Cause.squash(exit.cause);
+        assert.instanceOf(error, ElectronWindow.ElectronWindowOperationError);
+        assert.equal(error.operation, "close-window");
+        assert.equal(error.windowId, 45);
+        assert.strictEqual(error.cause, cause);
+      }
+      assert.equal(events.listenerCount("close"), 0);
+      assert.equal(events.listenerCount("closed"), 0);
+      assert.equal(webContents.listenerCount("will-prevent-unload"), 0);
+    }),
+  );
 
   it.effect("preserves schema-safe creation context and the Electron cause", () =>
     Effect.gen(function* () {

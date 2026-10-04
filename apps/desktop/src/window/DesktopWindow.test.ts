@@ -17,8 +17,15 @@ import * as Electron from "electron";
 import * as NodeEvents from "node:events";
 import { vi } from "vite-plus/test";
 
+const dialog = vi.hoisted(() => ({
+  showMessageBoxSync: vi.fn(
+    (_window: Electron.BrowserWindow, _options: Electron.MessageBoxSyncOptions) => 0,
+  ),
+}));
+
 vi.mock("electron", async (importOriginal) => ({
   ...(await importOriginal<typeof import("electron")>()),
+  dialog,
   session: {
     fromPartition: vi.fn(() => ({
       getUserAgent: vi.fn(() => "Mozilla/5.0 Electron/41.5.0 vetra/1.2.3"),
@@ -431,6 +438,42 @@ const captureOne = DesktopSnapShotId.make("11111111-1111-4111-8111-111111111111"
 const captureTwo = DesktopSnapShotId.make("22222222-2222-4222-8222-222222222222");
 
 describe("DesktopWindow", () => {
+  it.effect("keeps prevented unloads on Stay and allows them only after Leave", () =>
+    Effect.gen(function* () {
+      const fakeWindow = makeFakeBrowserWindow();
+      const layer = makeTestLayer({
+        window: fakeWindow.window,
+        createCount: yield* Ref.make(0),
+        mainWindow: yield* Ref.make<Option.Option<Electron.BrowserWindow>>(Option.none()),
+      });
+      const showMessageBox = dialog.showMessageBoxSync;
+      showMessageBox.mockClear();
+      showMessageBox.mockReturnValueOnce(0).mockReturnValueOnce(1);
+
+      yield* Effect.gen(function* () {
+        const desktopWindow = yield* DesktopWindow.DesktopWindow;
+        yield* desktopWindow.handleBackendReady(new URL("http://127.0.0.1:3773"));
+        const willPreventUnload = fakeWindow.webContentsListeners.get("will-prevent-unload");
+        assert.isDefined(willPreventUnload);
+
+        const stay = vi.fn();
+        willPreventUnload({ preventDefault: stay });
+        assert.equal(stay.mock.calls.length, 0);
+
+        const leave = vi.fn();
+        willPreventUnload({ preventDefault: leave });
+        assert.equal(leave.mock.calls.length, 1);
+        assert.equal(showMessageBox.mock.calls.length, 2);
+        for (const [parent, options] of showMessageBox.mock.calls) {
+          assert.strictEqual(parent, fakeWindow.window);
+          assert.deepEqual(options.buttons, ["Stay", "Leave"]);
+          assert.equal(options.defaultId, 0);
+          assert.equal(options.cancelId, 0);
+        }
+      }).pipe(Effect.provide(layer));
+    }),
+  );
+
   it.effect("shows native context menus for browser guests and sign-in popups", () =>
     Effect.gen(function* () {
       const host = makeFakeBrowserWindow();
