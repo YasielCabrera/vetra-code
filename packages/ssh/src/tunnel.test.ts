@@ -119,7 +119,7 @@ describe("ssh tunnel scripts", () => {
     assert.include(script, 'exec "$VETRA_RUNTIME_DIR/vetra" "$@"');
     assert.notInclude(script, "npx");
     assert.notInclude(script, "npm exec");
-    assert.notInclude(script, "vetra@latest");
+    assert.notInclude(script, "@latest");
     assert.notInclude(script, 'exec vetra "$@"');
     // Concurrent launches serialize on a per-version mkdir lock and recheck
     // the completion marker after acquiring it.

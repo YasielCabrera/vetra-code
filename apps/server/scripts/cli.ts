@@ -11,6 +11,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 import { DEVELOPMENT_ICON_OVERRIDES } from "../../../scripts/lib/brand-assets.ts";
 import { findEsmImportsOfExternalPackages } from "../../../scripts/lib/cli-executable-imports.ts";
+import { PRODUCT_SERVER_PACKAGE } from "@t3tools/shared/productIdentity";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import {
   ServerCliBuildAssetMissingError,
@@ -168,7 +169,7 @@ const buildExeCmd = Command.make(
 
 /**
  * Publishes the tarballs scripts/build-npm-platform-packages.ts produced:
- * every `@vetra-code/vetra-<platform>.tgz` first, `vetra.tgz` (the launcher) last, so
+ * every `@vetra-code/vetra-<platform>.tgz` first, `@vetra-code/server.tgz` (the launcher) last, so
  * the launcher is never installable before the executables it depends on.
  * Tarballs rather than directories because `npm publish <dir>` strips the
  * `node_modules/` the executable loads its native addons from.
@@ -193,7 +194,7 @@ const publishCmd = Command.make(
       // resolved once here rather than joined twice.
       const packagesDir = path.resolve(config.packagesDir);
       const scopeDir = path.join(packagesDir, "@vetra-code");
-      const launcherTarball = path.join(packagesDir, "vetra.tgz");
+      const launcherTarball = path.join(packagesDir, `${PRODUCT_SERVER_PACKAGE}.tgz`);
       const platformTarballs = (yield* fs
         .readDirectory(scopeDir)
         .pipe(Effect.orElseSucceed((): ReadonlyArray<string> => [])))
@@ -231,7 +232,7 @@ const publishCmd = Command.make(
     }),
 ).pipe(
   Command.withDescription(
-    "Publish the @vetra-code/vetra-<platform> tarballs and then the vetra launcher to npm.",
+    "Publish the @vetra-code/vetra-<platform> tarballs and then the @vetra-code/server launcher to npm.",
   ),
 );
 

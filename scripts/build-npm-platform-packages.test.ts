@@ -117,7 +117,7 @@ it.layer(NodeServices.layer)("build-npm-platform-packages", (it) => {
       // Platform packages in CLI_ARCHIVE_PLATFORM_KEYS order, launcher last.
       assert.deepStrictEqual(
         outputs.map((output) => output.name),
-        ["@vetra-code/vetra-darwin-arm64", "@vetra-code/vetra-linux-x64", "vetra"],
+        ["@vetra-code/vetra-darwin-arm64", "@vetra-code/vetra-linux-x64", "@vetra-code/server"],
       );
       for (const output of outputs) {
         assert.isTrue(yield* fs.exists(output.tarball), output.tarball);
@@ -165,11 +165,11 @@ it.layer(NodeServices.layer)("build-npm-platform-packages", (it) => {
       assert.deepStrictEqual(darwinManifest.os, ["darwin"]);
       assert.deepStrictEqual(darwinManifest.cpu, ["arm64"]);
 
-      const launcherDir = path.join(fixture.outputDir, "vetra");
+      const launcherDir = path.join(fixture.outputDir, "@vetra-code/server");
       const launcherManifest = yield* decodeManifest(
         yield* fs.readFileString(path.join(launcherDir, "package.json")),
       );
-      assert.equal(launcherManifest.name, "vetra");
+      assert.equal(launcherManifest.name, "@vetra-code/server");
       assert.equal(launcherManifest.version, VERSION);
       assert.deepStrictEqual(launcherManifest.bin, { vetra: "./bin/vetra.js" });
       assert.deepStrictEqual(launcherManifest.files, ["bin", "dist"]);
@@ -180,9 +180,20 @@ it.layer(NodeServices.layer)("build-npm-platform-packages", (it) => {
       assert.isUndefined(launcherManifest.engines);
       assert.isTrue(yield* fs.exists(path.join(launcherDir, "bin/vetra.js")));
 
-      // The scratch dirs must not be left behind next to the packages.
-      const outputEntries = yield* fs.readDirectory(fixture.outputDir);
-      assert.deepStrictEqual(outputEntries.sort(), ["@vetra-code", "vetra", "vetra.tgz"]);
+      // The scratch dirs must not be left behind next to the packages, and the
+      // scoped launcher shares the platform packages' scope directory.
+      assert.deepStrictEqual(yield* fs.readDirectory(fixture.outputDir), ["@vetra-code"]);
+      assert.deepStrictEqual(
+        (yield* fs.readDirectory(path.join(fixture.outputDir, "@vetra-code"))).sort(),
+        [
+          "server",
+          "server.tgz",
+          "vetra-darwin-arm64",
+          "vetra-darwin-arm64.tgz",
+          "vetra-linux-x64",
+          "vetra-linux-x64.tgz",
+        ],
+      );
 
       // The tarball is what gets published: it must carry node_modules (which
       // `npm publish <dir>` would strip) under npm's `package/` root, with the
@@ -227,7 +238,7 @@ it.layer(NodeServices.layer)("build-npm-platform-packages", (it) => {
         yield* fs.makeDirectory(installedLauncher);
         const unpack = yield* run(
           "tar",
-          ["-xf", path.join(fixture.outputDir, "vetra.tgz"), "-C", installedLauncher],
+          ["-xf", path.join(fixture.outputDir, "@vetra-code/server.tgz"), "-C", installedLauncher],
           {
             cwd: fixture.root,
           },
@@ -259,6 +270,7 @@ it.layer(NodeServices.layer)("build-npm-platform-packages", (it) => {
       assert.equal(unsupported.exitCode, 1);
       assert.include(unsupported.stderr, "linux-x64");
       assert.include(unsupported.stderr, "win32-arm64");
+      assert.include(unsupported.stderr, "reinstall @vetra-code/server");
       assert.include(unsupported.stderr, "https://github.com/pingdotgg/t3code/releases");
     }),
   );

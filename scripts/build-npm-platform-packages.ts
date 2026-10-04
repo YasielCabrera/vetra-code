@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * Turns the per-platform CLI archives of one release into the npm packages
- * behind `npx vetra` / `npm i -g vetra`: one `@vetra-code/vetra-<platformKey>` package per
- * archive holding the archive's contents verbatim, plus the `vetra` launcher
+ * behind `npx @vetra-code/server` / `npm i -g @vetra-code/server`: one
+ * `@vetra-code/vetra-<platformKey>` package per archive holding the archive's
+ * contents verbatim, plus the `@vetra-code/server` launcher
  * that lists them as optionalDependencies and execs the one npm installed.
  * The bytes a user gets from npm are therefore the release archive's, and
  * running them needs neither a Node runtime, npm, nor a native build.
@@ -11,8 +12,8 @@
  *
  *   @vetra-code/vetra-<platformKey>/      archive contents flattened + package.json
  *   @vetra-code/vetra-<platformKey>.tgz   the same tree as an npm tarball
- *   vetra/                             launcher: package.json, bin/vetra.js, README.md
- *   vetra.tgz                          the launcher as an npm tarball
+ *   @vetra-code/server/                   launcher: package.json, bin/vetra.js, README.md
+ *   @vetra-code/server.tgz                the launcher as an npm tarball
  *
  * The tarballs are what gets published. `npm publish <dir>` always drops
  * `node_modules/` (npm-packlist ignores it whatever `files` says, and
@@ -37,6 +38,7 @@ import {
   type CliArchivePlatformKey,
 } from "@t3tools/shared/cliRelease";
 import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { PRODUCT_SERVER_PACKAGE } from "@t3tools/shared/productIdentity";
 import { fromJsonStringPretty } from "@t3tools/shared/schemaJson";
 import { isCommandAvailable } from "@t3tools/shared/shell";
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
@@ -44,7 +46,7 @@ import serverPackageJson from "../apps/server/package.json" with { type: "json" 
 import { windowsSystemTar } from "./build-cli-archive.ts";
 
 export const NPM_PLATFORM_PACKAGE_SCOPE = "@vetra-code";
-export const NPM_LAUNCHER_PACKAGE_NAME = "vetra";
+export const NPM_LAUNCHER_PACKAGE_NAME = PRODUCT_SERVER_PACKAGE;
 
 const encodePackageJson = Schema.encodeEffect(fromJsonStringPretty(Schema.Unknown));
 
@@ -167,7 +169,7 @@ export function npmPlatformPackageReadme(platformKey: CliArchivePlatformKey): st
   ].join("\n");
 }
 
-/** package.json for the `vetra` launcher. No engines: bin/vetra.js is trivial CJS. */
+/** package.json for the `@vetra-code/server` launcher. No engines: bin/vetra.js is trivial CJS. */
 export function npmLauncherPackageManifest(
   version: string,
   platformKeys: ReadonlyArray<CliArchivePlatformKey>,
@@ -186,7 +188,7 @@ export function npmLauncherPackageManifest(
 }
 
 /**
- * The launcher every `npx vetra` runs. Plain CommonJS with no dependencies so it
+ * The launcher every `npx @vetra-code/server` runs. Plain CommonJS with no dependencies so it
  * loads on any Node that npm itself runs on; the real work happens in the
  * single-executable it execs.
  */
@@ -207,7 +209,7 @@ try {
     [
       "vetra: no Vetra Code CLI build is available for this platform (" + key + ").",
       "Supported platforms: " + SUPPORTED.join(", ") + ".",
-      "If yours is listed, reinstall vetra so npm fetches its optional dependency.",
+      "If yours is listed, reinstall ${NPM_LAUNCHER_PACKAGE_NAME} so npm fetches its optional dependency.",
       "The desktop app and release archives are at https://github.com/pingdotgg/t3code/releases",
       "",
     ].join("\\n"),
@@ -286,7 +288,8 @@ const hostTar = Effect.map(HostProcessPlatform, (platform) =>
 
 /**
  * Writes `stageDir/package` as a gzipped npm tarball and then moves the tree
- * to `packageDir` so the contents stay inspectable beside the tarball.
+ * to `packageDir` so the contents stay inspectable beside the tarball. A
+ * scoped name places both under the scope's directory.
  */
 const packAndPlace = Effect.fn("packAndPlace")(function* (input: {
   readonly stageDir: string;
@@ -294,6 +297,8 @@ const packAndPlace = Effect.fn("packAndPlace")(function* (input: {
   readonly tarball: string;
 }) {
   const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  yield* fs.makeDirectory(path.dirname(input.packageDir), { recursive: true });
   yield* fs.remove(input.tarball, { force: true });
   yield* runCommand(
     ChildProcess.make(yield* hostTar, ["-czf", input.tarball, "-C", input.stageDir, "package"]),
@@ -424,9 +429,7 @@ export const buildNpmPlatformPackages = Effect.fn("buildNpmPlatformPackages")(fu
     return yield* new NpmPackagesArchivesMissingError({ archivesDir: input.archivesDir, missing });
   }
 
-  yield* fs.makeDirectory(path.join(input.outputDir, NPM_PLATFORM_PACKAGE_SCOPE), {
-    recursive: true,
-  });
+  yield* fs.makeDirectory(input.outputDir, { recursive: true });
   // Each archive stages in its own scratch dir, so all of them unpack and
   // compress at once. Sequentially this took about 45s for five archives.
   const platformOutputs = yield* Effect.forEach(
@@ -475,7 +478,7 @@ const command = Command.make(
   buildNpmPlatformPackages,
 ).pipe(
   Command.withDescription(
-    "Build the vetra launcher and @vetra-code/vetra-<platform> npm packages from CLI release archives.",
+    "Build the @vetra-code/server launcher and @vetra-code/vetra-<platform> npm packages from CLI release archives.",
   ),
 );
 
