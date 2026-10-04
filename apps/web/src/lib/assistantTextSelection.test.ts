@@ -15,6 +15,7 @@ import {
   captureAssistantTextSelection,
   createAssistantTextSelector,
   findAssistantCitationText,
+  resolveAssistantCitationRanges,
 } from "./assistantTextSelection";
 
 function selector(
@@ -326,6 +327,24 @@ describe("captureAssistantTextSelection", () => {
     ).toEqual(selector("Before 😀 cafe\u0301\nfirst line\r\n  second line\t🚀"));
   });
 
+  it("captures inside a caller's source element instead of an assistant message", () => {
+    const quote = textNode("Plan text.");
+    const plan = new SelectionNode("DIV", "", { "data-plan-document": "" }).append(
+      new SelectionNode("P").append(quote),
+    );
+    const viewport = new SelectionNode("MAIN").append(plan);
+    const captured = captureAssistantTextSelection(
+      viewport as unknown as HTMLElement,
+      nativeSelection([quote, 5], [quote, quote.length]),
+      "[data-plan-document]",
+    );
+    expect([captured?.source, captured?.selector]).toEqual([
+      plan,
+      selector("text.", { start: 5, end: 10, prefix: "Plan " }),
+    ]);
+    expect(capture(viewport, nativeSelection([quote, 5], [quote, quote.length]))).toBeNull();
+  });
+
   it("rejects a source outside the supplied viewport", () => {
     const quote = textNode("Outside.");
     assistantSource(quote);
@@ -559,5 +578,52 @@ describe("findAssistantCitationText", () => {
       start: 2,
       end: 7,
     });
+  });
+});
+
+describe("resolveAssistantCitationRanges", () => {
+  it("resolves each selector in the root's text, or null when it is missing or ambiguous", () => {
+    const first = textNode("Alpha beta.");
+    const second = textNode("Gamma beta.");
+    const root = new SelectionNode("DIV").append(
+      new SelectionNode("P").append(first),
+      new SelectionNode("P").append(second),
+    );
+    const createRange = () => ({
+      startContainer: root,
+      startOffset: 0,
+      endContainer: root,
+      endOffset: 0,
+      get collapsed() {
+        return this.startContainer === this.endContainer && this.startOffset === this.endOffset;
+      },
+      setStart(node: SelectionNode, offset: number) {
+        this.startContainer = node;
+        this.startOffset = offset;
+      },
+      setEnd(node: SelectionNode, offset: number) {
+        this.endContainer = node;
+        this.endOffset = offset;
+      },
+    });
+    Object.assign(root, { ownerDocument: { createRange } });
+
+    const ranges = resolveAssistantCitationRanges(root as unknown as HTMLElement, [
+      selector("beta", { start: -1, end: -1, prefix: "Alpha " }),
+      selector("Gamma beta", { start: -1, end: -1 }),
+      selector("beta", { start: -1, end: -1 }),
+      selector("Delta", { start: -1, end: -1 }),
+    ]);
+    expect(
+      ranges.map((range) =>
+        range === null
+          ? null
+          : [
+              (range.startContainer as unknown as SelectionNode).data,
+              range.startOffset,
+              range.endOffset,
+            ],
+      ),
+    ).toEqual([["Alpha beta.", 6, 10], ["Gamma beta.", 0, 10], null, null]);
   });
 });

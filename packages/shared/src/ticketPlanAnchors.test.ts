@@ -1,6 +1,13 @@
+import { type TicketPlanComment, TicketPlanCommentId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { anchorFromSourceQuote, locatePlanAnchor, planSourceBlocks } from "./ticketPlanAnchors.ts";
+import {
+  anchorFromRenderedSelection,
+  anchorFromSourceQuote,
+  locatePlanAnchor,
+  orderPlanCommentThreads,
+  planSourceBlocks,
+} from "./ticketPlanAnchors.ts";
 
 const BODY = "# Plan\n\nFirst step uses **foo** bar.\n\nSecond step.\n";
 const ANCHOR = {
@@ -148,6 +155,95 @@ describe("planSourceBlocks", () => {
       { start: 0, end: 4 },
       { start: 5, end: 23 },
       { start: 24, end: 29 },
+    ]);
+  });
+});
+
+describe("anchorFromRenderedSelection", () => {
+  const body = "# Plan\n\nFirst step uses **foo** bar.\n\n```ts\nconst a = 1;\n```\n";
+
+  it("takes the source of the blocks the selection spans and keeps the rendered quote", () => {
+    const quote = { text: "Plan First step", prefix: "", suffix: " uses foo bar." };
+    const anchor = anchorFromRenderedSelection(body, { start: 0, end: 36 }, quote, 4);
+    expect(anchor).toEqual({
+      quote,
+      source: "# Plan\n\nFirst step uses **foo** bar.",
+      revision: 4,
+    });
+    expect(locatePlanAnchor(body, anchor)).toEqual({ status: "current", start: 0, end: 36 });
+  });
+
+  it("anchors a whole block without a quote", () => {
+    expect(anchorFromRenderedSelection(body, { start: 38, end: 60 }, undefined, 1)).toEqual({
+      source: "```ts\nconst a = 1;\n```",
+      revision: 1,
+    });
+  });
+
+  it("cuts a long span to a window around the rendered quote", () => {
+    const long = `${"x".repeat(5_000)} **NEEDLE** ${"y".repeat(5_000)}`;
+    const anchor = anchorFromRenderedSelection(
+      long,
+      { start: 0, end: long.length },
+      { text: "NEEDLE y", prefix: "", suffix: "" },
+      1,
+    );
+    expect(anchor.source).toBe(`${"x".repeat(1_992)} **NEEDLE** ${"y".repeat(1_996)}`);
+  });
+});
+
+describe("orderPlanCommentThreads", () => {
+  const body = "Alpha one.\n\nBeta two.\n";
+  let created = 0;
+  const comment = (
+    id: string,
+    patch: Partial<Pick<TicketPlanComment, "parentId" | "anchor" | "resolvedAt">> = {},
+  ): TicketPlanComment => ({
+    id: TicketPlanCommentId.make(id),
+    parentId: null,
+    anchor: null,
+    body: id,
+    author: { type: "user" },
+    createdAt: `2026-10-03T10:00:0${created++}.000Z`,
+    resolvedAt: null,
+    resolvedBy: null,
+    ...patch,
+  });
+  const quoted = (text: string, source: string) => ({
+    quote: { text, prefix: "", suffix: "" },
+    source,
+    revision: 1,
+  });
+
+  it("orders anchored threads by position, then outdated and whole-plan ones oldest first", () => {
+    const threads = orderPlanCommentThreads(body, [
+      comment("whole"),
+      comment("beta", { anchor: quoted("two", "Beta two.") }),
+      comment("gone", { anchor: quoted("three", "Gamma three.") }),
+      comment("reply-to-beta", { parentId: TicketPlanCommentId.make("beta") }),
+      comment("alpha", {
+        anchor: quoted("one", "Alpha one."),
+        resolvedAt: "2026-10-03T11:00:00.000Z",
+      }),
+      comment("moved", { anchor: quoted("Beta", "Beta 2.") }),
+      comment("second-reply-to-beta", { parentId: TicketPlanCommentId.make("beta") }),
+    ]);
+    expect(
+      threads.map((thread) => [
+        thread.comment.id,
+        thread.location,
+        thread.replies.map((reply) => reply.id),
+      ]),
+    ).toEqual([
+      ["alpha", { status: "current", start: 0, end: 10 }, []],
+      [
+        "beta",
+        { status: "current", start: 12, end: 21 },
+        ["reply-to-beta", "second-reply-to-beta"],
+      ],
+      ["moved", { status: "moved", start: 12, end: 16 }, []],
+      ["whole", null, []],
+      ["gone", { status: "outdated" }, []],
     ]);
   });
 });

@@ -126,9 +126,18 @@ to change the body. Changes save on their own, and the same **Reload** or **Keep
 appears if an agent or another device changed the plan while you were editing it. The History tab
 lists who changed the plan and when; earlier versions are not kept.
 
-Archive a plan you no longer need from its **⋯** menu. An archived plan is read-only and collapses
-under **Show archived** on the ticket; select **Restore** to bring it back. **Delete** removes the
-plan and its comments. Images it used stay attached to the ticket.
+Archive a plan you no longer need from its **⋯** menu. An archived plan's title and body are
+read-only, and it collapses under **Show archived** on the ticket; select **Restore** to bring it
+back. **Delete** removes the plan and its comments. Images it used stay attached to the ticket.
+
+Comment on a plan to review it. Select text and choose **Comment**, or use the comment button
+beside a diagram, image, or code block; the box at the top of the comments panel comments on the
+whole plan. Comments are listed in the order their passages appear, and each passage stays
+highlighted; select a comment to jump to its passage, or a highlight to open its comment. Reply to
+a comment, **Resolve** it once it is addressed, and **Reopen** it from the Resolved tab. When an
+edit removes the passage a comment points at, the comment moves to the end of the list marked
+**Outdated**, with the passage as it was. Agents see open comments when they read a plan and
+resolve them as they revise it.
 
 ## Start a thread from a ticket
 

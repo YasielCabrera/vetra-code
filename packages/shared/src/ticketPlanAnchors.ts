@@ -1,4 +1,4 @@
-import type { TicketPlanAnchor } from "@t3tools/contracts";
+import type { TicketPlanAnchor, TicketPlanComment, TicketPlanCommentId } from "@t3tools/contracts";
 
 const SOURCE_MAX_CHARS = 4_000;
 const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})/;
@@ -84,6 +84,30 @@ export function anchorFromSourceQuote(
   return {
     quote: { text: quote, prefix: "", suffix: "" },
     source: sourceWindow(body, span, { start: at, end }),
+    revision,
+  };
+}
+
+/**
+ * Anchors a comment to a passage selected in the rendered plan. `span` runs from the first to the
+ * last top-level block the selection touches, as offsets into `body`. `quote` is the selected
+ * text, and is absent for a comment on a whole diagram, image or code block.
+ */
+export function anchorFromRenderedSelection(
+  body: string,
+  span: PlanSourceSpan,
+  quote: TicketPlanAnchor["quote"],
+  revision: number,
+): TicketPlanAnchor {
+  const found =
+    quote === undefined ? null : quoteFinder(body.slice(span.start, span.end))(quote.text);
+  const focus =
+    found === null
+      ? { start: span.start, end: span.start }
+      : { start: span.start + found.start, end: span.start + found.end };
+  return {
+    ...(quote === undefined ? {} : { quote }),
+    source: sourceWindow(body, span, focus),
     revision,
   };
 }
@@ -182,4 +206,47 @@ function markupMask(body: string): Uint8Array {
     if (!inWord) hidden.fill(1, run.index, end);
   }
   return hidden;
+}
+
+export interface PlanCommentThread {
+  /** A top-level comment. */
+  readonly comment: TicketPlanComment;
+  /** Where its passage is in the body now; null for a comment on the whole plan. */
+  readonly location: PlanAnchorLocation | null;
+  /** Oldest first. */
+  readonly replies: ReadonlyArray<TicketPlanComment>;
+}
+
+/**
+ * A plan's flat comment list (oldest first) as threads in document order: anchored comments by
+ * where their passage is now, then outdated and whole-plan comments oldest first. Agents read and
+ * the web lists comments in this one order.
+ */
+export function orderPlanCommentThreads(
+  body: string,
+  comments: ReadonlyArray<TicketPlanComment>,
+): Array<PlanCommentThread> {
+  const replies = new Map<TicketPlanCommentId, Array<TicketPlanComment>>();
+  for (const comment of comments) {
+    if (comment.parentId === null) continue;
+    const thread = replies.get(comment.parentId);
+    if (thread === undefined) replies.set(comment.parentId, [comment]);
+    else thread.push(comment);
+  }
+  const findQuote = quoteFinder(body);
+  const place = ({ location }: PlanCommentThread) =>
+    location === null || location.status === "outdated" ? Infinity : location.start;
+  // The sort is stable, so the comments without a place stay last in creation order.
+  return comments
+    .filter((comment) => comment.parentId === null)
+    .map((comment) => ({
+      comment,
+      location: comment.anchor === null ? null : locatePlanAnchor(body, comment.anchor, findQuote),
+      replies: replies.get(comment.id) ?? [],
+    }))
+    .sort((left, right) => {
+      const from = place(left);
+      const to = place(right);
+      return from === to ? 0 : from - to;
+    });
 }

@@ -632,6 +632,12 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(vetra-mo
   ::highlight(vetra-assistant-citation-comment) {
     background-color: color-mix(in oklab, var(--primary) 45%, transparent);
   }
+  ::highlight(vetra-plan-comment) {
+    background-color: color-mix(in oklab, var(--primary) 16%, transparent);
+  }
+  ::highlight(vetra-plan-comment-focused) {
+    background-color: color-mix(in oklab, var(--primary) 40%, transparent);
+  }
   ::highlight(vetra-find-match) {
     background-color: color-mix(in oklab, var(--warning) 30%, transparent);
   }

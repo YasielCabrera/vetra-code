@@ -231,6 +231,9 @@ interface ChatMarkdownProps {
   imageBaseDir?: string | undefined;
   onImageExpand?: ((preview: ExpandedImagePreview) => void) | undefined;
   extraRemarkPlugins?: NonNullable<ReactMarkdownOptions["remarkPlugins"]>;
+  /** Run after sanitizing, so the properties they set reach the DOM. A renderer that draws a
+      different element than the one it replaces keeps that element's `data-*` attributes. */
+  extraRehypePlugins?: NonNullable<ReactMarkdownOptions["rehypePlugins"]>;
   /** Renders a `vetra-context://` link as a chip; without it the link shows its label as text. */
   renderContextReference?: ((reference: ChatMarkdownContextReference) => ReactNode) | undefined;
   /** Renders a `vetra-attachment://` image or link; without it the reference shows its label. */
@@ -308,6 +311,12 @@ export function shouldUseMarkdownFileBrowserPrimaryAction(input: {
 
 const EMPTY_MARKDOWN_SKILLS: ReadonlyArray<Pick<ServerProviderSkill, "name" | "displayName">> = [];
 const EMPTY_REMARK_PLUGINS: NonNullable<ReactMarkdownOptions["remarkPlugins"]> = [];
+const EMPTY_REHYPE_PLUGINS: NonNullable<ReactMarkdownOptions["rehypePlugins"]> = [];
+
+/** The `data-*` props an extra rehype plugin set, for a renderer that draws another element. */
+function pluginDataAttributes(props: object): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(props).filter(([name]) => name.startsWith("data-")));
+}
 
 const ARTIFACT_TEMPLATE_ICON_BY_KIND = {
   document: FileTextIcon,
@@ -937,7 +946,10 @@ function MarkdownTable({ children, ...props }: React.ComponentProps<"table">) {
 function MarkdownDetails({
   children,
   open = false,
-}: Pick<React.ComponentProps<"details">, "children" | "open">) {
+  attributes,
+}: Pick<React.ComponentProps<"details">, "children" | "open"> & {
+  attributes?: Record<string, unknown>;
+}) {
   const [isOpen, setIsOpen] = useState(open);
   const childNodes = Children.toArray(children);
   const summaryIndex = childNodes.findIndex(
@@ -951,7 +963,7 @@ function MarkdownDetails({
   const content = childNodes.filter((_, index) => index !== summaryIndex);
 
   return (
-    <div className="my-2 border-y border-border/60">
+    <div {...attributes} className="my-2 border-y border-border/60">
       <Collapsible
         defaultOpen={open}
         onOpenChange={setIsOpen}
@@ -1030,6 +1042,7 @@ function MarkdownCodeBlock({
   onRunShellCommand,
   isStreaming,
   canWrap = true,
+  attributes,
   children,
 }: {
   code: string;
@@ -1039,6 +1052,7 @@ function MarkdownCodeBlock({
   onRunShellCommand?: ((command: string) => void) | undefined;
   isStreaming: boolean;
   canWrap?: boolean;
+  attributes?: Record<string, unknown>;
   children: ReactNode;
 }) {
   const [copied, setCopied] = useState(false);
@@ -1098,6 +1112,7 @@ function MarkdownCodeBlock({
 
   return (
     <div
+      {...attributes}
       className="chat-markdown-codeblock my-[0.65rem] overflow-hidden rounded-lg border border-border/70 bg-secondary leading-snug dark:border-transparent dark:bg-input/32"
       data-language={language}
       data-wrap={wrapped ? "true" : "false"}
@@ -2941,15 +2956,21 @@ const CHAT_MARKDOWN_COMPONENTS = {
     return <p {...props}>{renderSkillInlineMarkdownChildren(children, skills)}</p>;
   },
   blockquote: function MarkdownBlockquote({ node: _node, children, ...props }) {
-    const alert =
-      GITHUB_ALERT_PRESENTATIONS[String((props as Record<string, unknown>)["data-alert"] ?? "")];
+    const { "data-alert": alertKind, ...attributes } = props as typeof props & {
+      "data-alert"?: unknown;
+    };
+    const alert = GITHUB_ALERT_PRESENTATIONS[String(alertKind ?? "")];
     if (!alert) {
       return <blockquote {...props}>{children}</blockquote>;
     }
     // Not a <blockquote>: the stylesheet mutes those, and an alert's body is ordinary
     // text under a colored title — which is how the host renders it.
     return (
-      <div role="note" className={cn("my-1 border-l-2 pl-3", alert.borderClassName)}>
+      <div
+        {...pluginDataAttributes(attributes)}
+        role="note"
+        className={cn("my-1 border-l-2 pl-3", alert.borderClassName)}
+      >
         <p className={cn("flex items-center gap-1.5 font-medium", alert.titleClassName)}>
           <alert.Icon aria-hidden className="size-3.5 shrink-0" />
           {alert.label}
@@ -3435,8 +3456,17 @@ const CHAT_MARKDOWN_COMPONENTS = {
   table: function MarkdownTableRenderer({ node: _node, ...props }) {
     return <MarkdownTable {...props} />;
   },
-  details: function MarkdownDetailsRenderer({ node: _node, children, open: detailsOpen }) {
-    return <MarkdownDetails open={detailsOpen}>{children}</MarkdownDetails>;
+  details: function MarkdownDetailsRenderer({
+    node: _node,
+    children,
+    open: detailsOpen,
+    ...props
+  }) {
+    return (
+      <MarkdownDetails open={detailsOpen} attributes={pluginDataAttributes(props)}>
+        {children}
+      </MarkdownDetails>
+    );
   },
   pre: function MarkdownPre({ node, children, ...props }) {
     const { resolvedTheme, diffThemeName, isStreaming, onRunShellCommand, text } = use(
@@ -3486,6 +3516,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
         }
         isStreaming={isStreaming}
         canWrap={!isMermaid}
+        attributes={pluginDataAttributes(props)}
       >
         {isMermaid ? (
           // A streaming diagram renders once its fence closes, not on every token.
@@ -3510,6 +3541,7 @@ function ChatMarkdown({
   lineBreaks = false,
   parseRawHtml = true,
   extraRemarkPlugins = EMPTY_REMARK_PLUGINS,
+  extraRehypePlugins = EMPTY_REHYPE_PLUGINS,
   ...props
 }: ChatMarkdownProps) {
   const {
@@ -3532,6 +3564,18 @@ function ChatMarkdown({
     ],
     [extraRemarkPlugins, incrementalParsing, lineBreaks],
   );
+  const sanitizingRehypePlugins = parseRawHtml
+    ? props.allowLocalFileLinks === false
+      ? CHAT_MARKDOWN_REHYPE_PLUGINS_WITHOUT_LOCAL_FILES
+      : CHAT_MARKDOWN_REHYPE_PLUGINS
+    : undefined;
+  const rehypePlugins = useMemo(
+    () =>
+      extraRehypePlugins.length === 0
+        ? sanitizingRehypePlugins
+        : [...(sanitizingRehypePlugins ?? []), ...extraRehypePlugins],
+    [extraRehypePlugins, sanitizingRehypePlugins],
+  );
 
   // react-markdown converts unparsed HTML nodes to text when skipHtml is false.
   // Keep that behavior explicit because literal mode depends on escaping the
@@ -3550,13 +3594,7 @@ function ChatMarkdown({
       <ChatMarkdownRendererContext value={componentState}>
         <ReactMarkdown
           remarkPlugins={remarkPlugins}
-          rehypePlugins={
-            parseRawHtml
-              ? props.allowLocalFileLinks === false
-                ? CHAT_MARKDOWN_REHYPE_PLUGINS_WITHOUT_LOCAL_FILES
-                : CHAT_MARKDOWN_REHYPE_PLUGINS
-              : undefined
-          }
+          rehypePlugins={rehypePlugins}
           skipHtml={false}
           components={CHAT_MARKDOWN_COMPONENTS}
           urlTransform={markdownUrlTransform}

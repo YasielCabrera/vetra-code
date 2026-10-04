@@ -163,5 +163,21 @@ export function createTicketEnvironmentAtoms<R, E>(
       label: "environment-data:commands:tickets:plans:delete",
       tag: WS_METHODS.ticketsDeletePlan,
     }),
+    addPlanComment: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:commands:tickets:plans:comment",
+      tag: WS_METHODS.ticketsAddPlanComment,
+    }),
+    resolvePlanComments: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:commands:tickets:plans:resolve-comments",
+      tag: WS_METHODS.ticketsResolvePlanComments,
+    }),
+    reopenPlanComment: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:commands:tickets:plans:reopen-comment",
+      tag: WS_METHODS.ticketsReopenPlanComment,
+    }),
+    deletePlanComment: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:commands:tickets:plans:delete-comment",
+      tag: WS_METHODS.ticketsDeletePlanComment,
+    }),
   };
 }

@@ -208,17 +208,21 @@ function selectedTextBoundary(range: Range, node: Node, last: boolean): Text | n
   return null;
 }
 
-/** Captures the ordered native range, including selections dragged backwards. */
+/**
+ * Captures the ordered native range, including selections dragged backwards. The selection must
+ * sit inside one element matching `sourceSelector`, whose text the selector describes.
+ */
 export function captureAssistantTextSelection(
   viewport: HTMLElement,
   selection: Selection | null,
+  sourceSelector = "[data-assistant-citation-source]",
 ): { source: HTMLElement; selector: AssistantTextSelector; range: Range } | null {
   if (selection === null || selection.isCollapsed || selection.rangeCount !== 1) return null;
   const range = selection.getRangeAt(0).cloneRange();
   const first = selectedTextBoundary(range, range.commonAncestorContainer, false);
   const last = selectedTextBoundary(range, range.commonAncestorContainer, true);
   if (first === null || last === null) return null;
-  const source = first.parentElement?.closest<HTMLElement>("[data-assistant-citation-source]");
+  const source = first.parentElement?.closest<HTMLElement>(sourceSelector);
   if (!source || !viewport.contains(source)) return null;
 
   // Paragraph selection can end at the next block's offset 0 or a parent
@@ -264,19 +268,29 @@ export function resolveAssistantCitationRange(
   root: HTMLElement,
   selector: AssistantTextSelector,
 ): Range | null {
-  if (excludedAncestor(root) !== null) return null;
+  return resolveAssistantCitationRanges(root, [selector])[0] ?? null;
+}
+
+/** `resolveAssistantCitationRange` for many selectors, reading `root`'s text once. */
+export function resolveAssistantCitationRanges(
+  root: HTMLElement,
+  selectors: ReadonlyArray<AssistantTextSelector>,
+): Array<Range | null> {
+  if (excludedAncestor(root) !== null) return selectors.map(() => null);
   const stream = readAssistantText(root);
-  const match = findAssistantCitationText(stream.text, selector);
-  if (match === null) return null;
+  return selectors.map((selector) => {
+    const match = findAssistantCitationText(stream.text, selector);
+    if (match === null) return null;
 
-  const start = rawTextOffset(stream.text, match.start);
-  const end = rawTextOffset(stream.text, match.end);
-  const first = stream.chunks.find((chunk) => chunk.end > start);
-  const last = stream.chunks.findLast((chunk) => chunk.start < end);
-  if (first === undefined || last === undefined) return null;
+    const start = rawTextOffset(stream.text, match.start);
+    const end = rawTextOffset(stream.text, match.end);
+    const first = stream.chunks.find((chunk) => chunk.end > start);
+    const last = stream.chunks.findLast((chunk) => chunk.start < end);
+    if (first === undefined || last === undefined) return null;
 
-  const range = root.ownerDocument.createRange();
-  range.setStart(first.node, Math.max(0, start - first.start));
-  range.setEnd(last.node, Math.min(last.node.length, end - last.start));
-  return isUsableRange(root, range) ? range : null;
+    const range = root.ownerDocument.createRange();
+    range.setStart(first.node, Math.max(0, start - first.start));
+    range.setEnd(last.node, Math.min(last.node.length, end - last.start));
+    return isUsableRange(root, range) ? range : null;
+  });
 }

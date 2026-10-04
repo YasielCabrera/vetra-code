@@ -5,6 +5,55 @@ import ChatMarkdown, { type ChatMarkdownAttachmentReference } from "../ChatMarkd
 import { setMarkdownTaskChecked } from "../files/filePreviewMode";
 import { TicketAttachmentReference } from "./ticketAttachments";
 
+type PlanHastNode = {
+  type: string;
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  children?: PlanHastNode[];
+  position?: { start: { offset?: number }; end: { offset?: number } };
+};
+
+/** What a top-level block with its own comment button holds. */
+export type PlanBlockKind = "diagram" | "code" | "image";
+
+function planBlockKind(node: PlanHastNode): PlanBlockKind | undefined {
+  if (node.tagName === "pre") {
+    const code = node.children?.find((child) => child.tagName === "code");
+    const className = code?.properties?.className;
+    return Array.isArray(className) && className.includes("language-mermaid") ? "diagram" : "code";
+  }
+  const hasStandaloneImage = (parent: PlanHastNode): boolean =>
+    parent.children?.some((child) =>
+      child.tagName === "img"
+        ? child.properties?.dataStandalone === true
+        : hasStandaloneImage(child),
+    ) ?? false;
+  return node.tagName === "p" && hasStandaloneImage(node) ? "image" : undefined;
+}
+
+/**
+ * Marks each top-level block with `data-plan-source-start` and `data-plan-source-end`, its offsets
+ * into the body, so a selection maps back to the Markdown it came from. Diagrams, code blocks and
+ * images also get `data-plan-block` with their kind.
+ */
+function rehypePlanSourcePositions() {
+  return (tree: PlanHastNode) => {
+    for (const node of tree.children ?? []) {
+      const start = node.position?.start.offset;
+      const end = node.position?.end.offset;
+      if (node.type !== "element" || start === undefined || end === undefined) continue;
+      node.properties = {
+        ...node.properties,
+        dataPlanSourceStart: start,
+        dataPlanSourceEnd: end,
+        dataPlanBlock: planBlockKind(node),
+      };
+    }
+  };
+}
+
+const PLAN_REHYPE_PLUGINS = [rehypePlanSourcePositions];
+
 /**
  * Keeps the last array while it lists the same attachments, which never change once uploaded,
  * so a plan push that changes only comments does not render the Markdown again.
@@ -52,6 +101,7 @@ export const TicketPlanDocument = memo(function TicketPlanDocument(props: {
       environmentId={environmentId}
       renderAttachmentReference={renderAttachment}
       onTaskListChange={onBodyChange === undefined ? undefined : onTaskListChange}
+      extraRehypePlugins={PLAN_REHYPE_PLUGINS}
     />
   );
 });

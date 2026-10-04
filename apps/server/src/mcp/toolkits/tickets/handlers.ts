@@ -6,7 +6,7 @@ import {
   type TicketPlanComment,
 } from "@t3tools/contracts";
 import { parseChangeRequestUrl } from "@t3tools/shared/changeRequestUrl";
-import { anchorFromSourceQuote, locatePlanAnchor } from "@t3tools/shared/ticketPlanAnchors";
+import { anchorFromSourceQuote, orderPlanCommentThreads } from "@t3tools/shared/ticketPlanAnchors";
 import * as Effect from "effect/Effect";
 
 import * as TicketService from "../../../ticket/TicketService.ts";
@@ -57,10 +57,7 @@ const toLinkTarget = (
   );
 };
 
-/**
- * Top-level comments with their replies nested, in document order: anchored comments by where
- * their passage is now, then outdated and whole-plan comments oldest first.
- */
+/** A plan's threads in document order, with what agents need to find and answer each. */
 const commentThreads = (
   body: string,
   comments: ReadonlyArray<TicketPlanComment>,
@@ -72,28 +69,16 @@ const commentThreads = (
     body,
     createdAt,
   });
-  const threads = comments
-    .filter(
-      (comment) => comment.parentId === null && (includeResolved || comment.resolvedAt === null),
-    )
-    .map((comment) => {
-      const location = comment.anchor === null ? null : locatePlanAnchor(body, comment.anchor);
-      return {
-        start: location === null || location.status === "outdated" ? Infinity : location.start,
-        thread: {
-          ...reply(comment),
-          quote: comment.anchor?.quote?.text,
-          source: comment.anchor?.source,
-          outdated: location?.status === "outdated",
-          resolved: comment.resolvedAt !== null,
-          replies: comments.filter((candidate) => candidate.parentId === comment.id).map(reply),
-        },
-      };
-    });
-  // The sort is stable, so the comments without a place stay last in creation order.
-  return threads
-    .sort((left, right) => (left.start === right.start ? 0 : left.start - right.start))
-    .map(({ thread }) => thread);
+  return orderPlanCommentThreads(body, comments)
+    .filter(({ comment }) => includeResolved || comment.resolvedAt === null)
+    .map(({ comment, location, replies }) => ({
+      ...reply(comment),
+      quote: comment.anchor?.quote?.text,
+      source: comment.anchor?.source,
+      outdated: location?.status === "outdated",
+      resolved: comment.resolvedAt !== null,
+      replies: replies.map(reply),
+    }));
 };
 
 const make = Effect.gen(function* () {

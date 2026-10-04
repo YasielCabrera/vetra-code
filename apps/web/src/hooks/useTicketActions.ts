@@ -12,7 +12,10 @@ import type {
   TicketLinkKind,
   TicketLinkTarget,
   TicketMoveInput,
+  TicketPlanComment,
+  TicketPlanCommentInput,
   TicketPlanCreateInput,
+  TicketPlanId,
   TicketPlanStatusInput,
   TicketPlanSummary,
   TicketPlanUpdateInput,
@@ -87,6 +90,10 @@ export function useTicketActions() {
   const updateTicketPlan = useAtomCommand(ticketEnvironment.updatePlan, options);
   const setTicketPlanStatus = useAtomCommand(ticketEnvironment.setPlanStatus, options);
   const deleteTicketPlan = useAtomCommand(ticketEnvironment.deletePlan, options);
+  const addTicketPlanComment = useAtomCommand(ticketEnvironment.addPlanComment, options);
+  const resolveTicketPlanComments = useAtomCommand(ticketEnvironment.resolvePlanComments, options);
+  const reopenTicketPlanComment = useAtomCommand(ticketEnvironment.reopenPlanComment, options);
+  const deleteTicketPlanComment = useAtomCommand(ticketEnvironment.deletePlanComment, options);
 
   const settle = useCallback(
     <A>(title: string, result: AtomCommandResult<A, unknown>): A | null => {
@@ -365,6 +372,55 @@ export function useTicketActions() {
     [deleteTicketPlan, settle],
   );
 
+  const addPlanComment = useCallback(
+    async (environmentId: EnvironmentId, input: TicketPlanCommentInput) =>
+      settle(
+        input.parentCommentId === undefined ? "Could not add the comment" : "Could not reply",
+        await addTicketPlanComment({ environmentId, input }),
+      ),
+    [addTicketPlanComment, settle],
+  );
+
+  const resolvePlanComment = useCallback(
+    async (environmentId: EnvironmentId, planId: TicketPlanId, comment: TicketPlanComment) =>
+      settle(
+        "Could not resolve the comment",
+        await resolveTicketPlanComments({
+          environmentId,
+          input: { planId, commentIds: [comment.id] },
+        }),
+      ),
+    [resolveTicketPlanComments, settle],
+  );
+
+  const reopenPlanComment = useCallback(
+    async (environmentId: EnvironmentId, planId: TicketPlanId, comment: TicketPlanComment) =>
+      settle(
+        "Could not reopen the comment",
+        await reopenTicketPlanComment({ environmentId, input: { planId, commentId: comment.id } }),
+      ),
+    [reopenTicketPlanComment, settle],
+  );
+
+  const confirmAndDeletePlanComment = useCallback(
+    async (environmentId: EnvironmentId, planId: TicketPlanId, comment: TicketPlanComment) => {
+      const confirmed =
+        (await readLocalApi()?.dialogs.confirm(
+          comment.parentId === null
+            ? "Delete this comment?\nIts replies go with it."
+            : "Delete this reply?",
+          { variant: "destructive" },
+        )) ?? true;
+      if (!confirmed) return false;
+      const result = await deleteTicketPlanComment({
+        environmentId,
+        input: { planId, commentId: comment.id },
+      });
+      return settle("Could not delete the comment", result) !== null;
+    },
+    [deleteTicketPlanComment, settle],
+  );
+
   return useMemo(
     () => ({
       create,
@@ -387,19 +443,27 @@ export function useTicketActions() {
       updatePlan,
       setPlanStatus,
       confirmAndDeletePlan,
+      addPlanComment,
+      resolvePlanComment,
+      reopenPlanComment,
+      confirmAndDeletePlanComment,
     }),
     [
       addGitHubSource,
+      addPlanComment,
       comment,
       confirmAndDelete,
       confirmAndDeletePlan,
+      confirmAndDeletePlanComment,
       create,
       createPlan,
       deleteStatus,
       link,
       move,
       removeGitHubSource,
+      reopenPlanComment,
       reorderStatuses,
+      resolvePlanComment,
       setGitHubSourceEnabled,
       setHidden,
       setPlanStatus,

@@ -1,6 +1,13 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { parseTicketKey, type ScopedTicketRef } from "@t3tools/client-runtime/state/tickets";
-import type { EnvironmentId, TicketDetail, TicketPlan, TicketPlanStatus } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  TicketDetail,
+  TicketPlan,
+  TicketPlanCommentId,
+  TicketPlanStatus,
+} from "@t3tools/contracts";
+import { orderPlanCommentThreads, type PlanCommentThread } from "@t3tools/shared/ticketPlanAnchors";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/unstable/reactivity";
 import {
@@ -17,6 +24,7 @@ import {
   lazy,
   Suspense,
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -43,6 +51,16 @@ import { PLAN_ENTRY_VERBS, TicketActorName } from "./TicketActivityTimeline";
 import { uploadTicketFiles } from "./ticketAttachments";
 import { copyText, TicketBreadcrumbHeader } from "./TicketDetailPage";
 import { hasUnsavedBody } from "./ticketDocument.logic";
+import {
+  type PlanCommentDraft,
+  type PlanCommentSurfaceHandle,
+  TicketPlanCommentSurface,
+} from "./TicketPlanCommentSurface";
+import {
+  type PlanCommentFocus,
+  TicketPlanCommentList,
+  TicketPlanNewComment,
+} from "./TicketPlanComments";
 import { TicketPlanDocument } from "./TicketPlanDocument";
 import {
   findTicketPlanByNumber,
@@ -60,8 +78,11 @@ const PANEL_DEFAULT_WIDTH = 320;
 const PANEL_VIEWPORT_RESERVE = 640;
 const SIDE_PANEL_MIN_VIEWPORT = 1024;
 
-/** The plan page's side panel; comment tabs join History here. */
-const PLAN_PANEL_TABS = [{ value: "history", label: "History" }] as const;
+const PLAN_PANEL_TABS = [
+  { value: "open", label: "Open" },
+  { value: "resolved", label: "Resolved" },
+  { value: "history", label: "History" },
+] as const;
 type PlanPanelTab = (typeof PLAN_PANEL_TABS)[number]["value"];
 
 /**
@@ -163,15 +184,65 @@ function TicketPlanView(props: {
     props.startEditing ? "title" : null,
   );
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
-  const [tab, setTab] = useState<PlanPanelTab>("history");
+  const [tab, setTab] = useState<PlanPanelTab>("open");
+  const [focus, setFocus] = useState<PlanCommentFocus | null>(null);
+  const [draft, setDraft] = useState<PlanCommentDraft | null>(null);
+  const surfaceRef = useRef<PlanCommentSurfaceHandle>(null);
+  const newCommentRef = useRef<HTMLTextAreaElement>(null);
   const archived = summary.status === "archived";
   const ticketLabel = formatTicketRef(detail.summary);
   const history = useMemo(
     () => ticketPlanHistory(detail.activity, summary.planId),
     [detail.activity, summary.planId],
   );
+  // Locating outdated passages scans the whole body, so typing does not wait for it.
+  const commentedBody = useDeferredValue(doc.state.text);
+  const threads = useMemo(
+    () => orderPlanCommentThreads(commentedBody, plan.comments),
+    [commentedBody, plan.comments],
+  );
+  const openThreads = useMemo(
+    () => threads.filter(({ comment }) => comment.resolvedAt === null),
+    [threads],
+  );
+  const resolvedThreads = useMemo(
+    () => threads.filter(({ comment }) => comment.resolvedAt !== null),
+    [threads],
+  );
+  const tabCounts: Partial<Record<PlanPanelTab, number>> = {
+    open: openThreads.length,
+    resolved: resolvedThreads.length,
+  };
+  const startDraft = useCallback((next: PlanCommentDraft) => {
+    setDraft(next);
+    setTab("open");
+  }, []);
+  const focusThread = useCallback((id: TicketPlanCommentId) => {
+    setFocus({ id, reveal: true });
+    setTab("open");
+  }, []);
+  const selectThread = useCallback((thread: PlanCommentThread) => {
+    setFocus({ id: thread.comment.id, reveal: false });
+    surfaceRef.current?.scrollToThread(thread);
+  }, []);
+  const addComment = async (body: string) => {
+    const comment = await actions.addPlanComment(ticketRef.environmentId, {
+      planId: summary.planId,
+      body,
+      ...(draft === null ? {} : { anchor: draft.anchor }),
+    });
+    if (comment === null) return false;
+    setDraft(null);
+    setFocus({ id: comment.id, reveal: true });
+    return true;
+  };
+
   const viewportWidth = useViewportWidth();
   const sidePanel = viewportWidth >= SIDE_PANEL_MIN_VIEWPORT;
+  useEffect(() => {
+    // Below the plan on narrow screens, revealing the composer would scroll away from the passage.
+    if (draft !== null) newCommentRef.current?.focus({ preventScroll: !sidePanel });
+  }, [draft, sidePanel]);
   const { width, handlers } = useResizableWidth({
     storageKey: PANEL_WIDTH_STORAGE_KEY,
     defaultWidth: PANEL_DEFAULT_WIDTH,
@@ -282,14 +353,45 @@ function TicketPlanView(props: {
           {PLAN_PANEL_TABS.map((item) => (
             <Toggle key={item.value} value={item.value}>
               {item.label}
+              {tabCounts[item.value] ? (
+                <span className="text-muted-foreground tabular-nums">{tabCounts[item.value]}</span>
+              ) : null}
             </Toggle>
           ))}
         </ToggleGroup>
       </nav>
-      <div className="px-4 pt-4 pb-8">
-        {tab === "history" ? (
+      <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
+        {tab === "open" ? (
+          <>
+            <TicketPlanNewComment
+              ref={newCommentRef}
+              draft={draft}
+              onCancelDraft={() => setDraft(null)}
+              onSubmit={addComment}
+            />
+            <TicketPlanCommentList
+              environmentId={ticketRef.environmentId}
+              planId={summary.planId}
+              threads={openThreads}
+              focus={focus}
+              onSelect={selectThread}
+              actions={actions}
+              empty="No open comments. Select text in the plan to comment on it."
+            />
+          </>
+        ) : tab === "resolved" ? (
+          <TicketPlanCommentList
+            environmentId={ticketRef.environmentId}
+            planId={summary.planId}
+            threads={resolvedThreads}
+            focus={focus}
+            onSelect={selectThread}
+            actions={actions}
+            empty="No resolved comments."
+          />
+        ) : (
           <TicketPlanHistory environmentId={ticketRef.environmentId} history={history} />
-        ) : null}
+        )}
       </div>
     </div>
   );
@@ -449,38 +551,28 @@ function TicketPlanView(props: {
                   </Suspense>
                 </div>
               ) : (
+                // Not a button: the selection and highlight code ignores text inside controls.
+                // The header's Edit button is the keyboard way in.
                 <div
-                  role={archived ? undefined : "button"}
-                  tabIndex={archived ? undefined : 0}
-                  aria-label={archived ? undefined : "Edit plan"}
-                  className={cn(
-                    "min-w-0 rounded-md outline-none",
-                    !archived && "cursor-text focus-visible:ring-1 focus-visible:ring-ring",
-                  )}
+                  className={cn("min-w-0", !archived && "cursor-text")}
+                  onPointerDown={
+                    archived ? undefined : () => window.clearTimeout(clickToEditRef.current)
+                  }
                   onClick={
                     archived
                       ? undefined
                       : (event) => {
                           if (
+                            event.detail > 1 ||
                             !(event.target instanceof Element) ||
                             event.target.closest("a, button, input, video, audio, summary") ||
                             window.getSelection()?.toString()
                           )
                             return;
-                          setEditing("body");
-                        }
-                  }
-                  onKeyDown={
-                    archived
-                      ? undefined
-                      : (event) => {
-                          if (
-                            event.target === event.currentTarget &&
-                            (event.key === "Enter" || event.key === " ")
-                          ) {
-                            event.preventDefault();
-                            setEditing("body");
-                          }
+                          // Waits out a double or triple click, which selects text to comment on.
+                          clickToEditRef.current = window.setTimeout(() => {
+                            if (!window.getSelection()?.toString()) setEditing("body");
+                          }, SELECTION_MULTI_CLICK_INTERVAL_MS);
                         }
                   }
                 >
@@ -489,12 +581,23 @@ function TicketPlanView(props: {
                       {archived ? "This plan is empty." : "Write the plan…"}
                     </p>
                   ) : (
-                    <TicketPlanDocument
-                      environmentId={ticketRef.environmentId}
+                    <TicketPlanCommentSurface
+                      ref={surfaceRef}
                       body={doc.state.text}
-                      attachments={plan.attachments}
-                      onBodyChange={archived ? undefined : edit}
-                    />
+                      revision={summary.revision}
+                      threads={openThreads}
+                      focusedId={focus?.id ?? null}
+                      draft={draft}
+                      onDraft={startDraft}
+                      onFocusThread={focusThread}
+                    >
+                      <TicketPlanDocument
+                        environmentId={ticketRef.environmentId}
+                        body={doc.state.text}
+                        attachments={plan.attachments}
+                        onBodyChange={archived ? undefined : edit}
+                      />
+                    </TicketPlanCommentSurface>
                   )}
                 </div>
               )}
