@@ -110,7 +110,7 @@ import remarkGfm from "remark-gfm";
 import type { Root, RootContent } from "mdast";
 import { T3Wordmark } from "../T3Wordmark";
 import { ThreadContextChip } from "../ThreadContextChip";
-import { TicketContextChip } from "../tickets/TicketContextChip";
+import { TicketContextChip, TicketPlanContextChip } from "../tickets/TicketContextChip";
 import {
   BotIcon,
   BrainIcon,
@@ -4112,6 +4112,16 @@ const userMessageContextPresentationRegistry = createContextPresentationRegistry
       render: (record, context) =>
         record.kind === "ticket" ? (
           <TicketContextChip record={record} copyMarkdown={context.copyMarkdown} />
+        ) : (
+          <UnavailableUserMessageContextChip {...context} />
+        ),
+    },
+    {
+      kind: "ticket-plan",
+      canRender: (record) => record.kind === "ticket-plan",
+      render: (record, context) =>
+        record.kind === "ticket-plan" ? (
+          <TicketPlanContextChip record={record} copyMarkdown={context.copyMarkdown} />
         ) : (
           <UnavailableUserMessageContextChip {...context} />
         ),

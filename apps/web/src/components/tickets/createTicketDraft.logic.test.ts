@@ -5,6 +5,7 @@ import {
   ProviderInstanceId,
   ThreadId,
   TicketId,
+  TicketPlanId,
   type ProviderOptionDescriptor,
   type ServerProviderModel,
 } from "@t3tools/contracts";
@@ -20,7 +21,7 @@ import {
   ticketManualPrefill,
 } from "./createTicketDraft.logic";
 import { ticketCaptureSelection, type TicketCaptureItem } from "./ticketCapture";
-import { ticketContextRecord } from "./ticketContextRecord";
+import { ticketContextRecord, ticketPlanContextRecord } from "./ticketContextRecord";
 
 const environmentId = EnvironmentId.make("env-1");
 const otherEnvironmentId = EnvironmentId.make("env-2");
@@ -38,7 +39,13 @@ const foreignThread = threadContextRecord(
 );
 const ticket = ticketContextRecord({
   environmentId,
-  ticket: { id: TicketId.make("ticket-1"), number: 42, title: "Cart total", linkRefs: [] },
+  ticket: {
+    id: TicketId.make("ticket-1"),
+    number: 42,
+    title: "Cart total",
+    linkRefs: [],
+    plans: [],
+  },
 });
 const capture: ReadonlyArray<TicketCaptureItem> = [
   { type: "context", record: thread },
@@ -171,6 +178,32 @@ describe("prepareTicketDraftPaste", () => {
     expect(prepared.text).toBe(`shot.png ${formatComposerContextReference(thread)}`);
     expect(prepared.records).toEqual([thread]);
     expect(prepared.rewrittenIds.get(foreignThread.contextId)).toBeUndefined();
+  });
+
+  it("turns a pasted plan into its label, since an analyzer files tickets and never implements plans", () => {
+    const plan = ticketPlanContextRecord({
+      environmentId,
+      ticket: { id: TicketId.make("ticket-1") },
+      plan: {
+        planId: TicketPlanId.make("plan-1"),
+        ref: "T-42/P1",
+        number: 1,
+        title: "Auth migration",
+        status: "active",
+        revision: 3,
+        openCommentCount: 0,
+        createdBy: { type: "user" },
+        updatedBy: { type: "user" },
+        updatedAt: "2026-10-01T00:00:00.000Z",
+      },
+    });
+    const text = `${formatComposerContextReference(plan)} ${formatComposerContextReference(ticket)}`;
+    const prepared = prepareTicketDraftPaste({ text, records: [plan, ticket], environmentId });
+    expect([prepared.text, prepared.records, prepared.droppedOther]).toEqual([
+      `T-42/P1 Auth migration ${formatComposerContextReference(ticket)}`,
+      [ticket],
+      true,
+    ]);
   });
 });
 

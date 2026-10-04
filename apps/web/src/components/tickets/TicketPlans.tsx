@@ -1,7 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import type { ScopedTicketRef } from "@t3tools/client-runtime/state/tickets";
-import type { TicketActor, TicketPlanId, TicketPlanSummary } from "@t3tools/contracts";
+import type {
+  TicketActor,
+  TicketPlanId,
+  TicketPlanSummary,
+  TicketSummary,
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/unstable/reactivity";
 import {
@@ -11,7 +16,9 @@ import {
   ChevronRightIcon,
   ClipboardListIcon,
   MessageSquareIcon,
+  MessageSquarePlusIcon,
   PlusIcon,
+  SparklesIcon,
 } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 
@@ -23,8 +30,10 @@ import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { TicketActorName } from "./TicketActivityTimeline";
+import { askForPlanPrefill, openPlanPrefill } from "./ticketContextRecord";
 import { TicketPlanDocument } from "./TicketPlanDocument";
 import { partitionTicketPlans, ticketPlanRouteParams } from "./ticketPlans.logic";
+import { TicketStartThreadMenu } from "./TicketStartThreadMenu";
 
 const NEW_PLAN_TITLE = "Untitled plan";
 
@@ -39,11 +48,12 @@ function openCommentsLabel(count: number): string {
 /** The ticket page's list of plans, without their bodies; a row opens its preview. */
 export const TicketPlansSection = memo(function TicketPlansSection(props: {
   readonly ticketRef: ScopedTicketRef;
-  readonly plans: ReadonlyArray<TicketPlanSummary>;
+  readonly ticket: TicketSummary;
   readonly previewPlanId: TicketPlanId | null;
   readonly onPreview: (planId: TicketPlanId) => void;
 }) {
-  const { ticketRef, plans } = props;
+  const { ticketRef, ticket } = props;
+  const { plans } = ticket;
   const navigate = useNavigate();
   const { createPlan } = useTicketActions();
   const { active, archived } = useMemo(() => partitionTicketPlans(plans), [plans]);
@@ -79,6 +89,7 @@ export const TicketPlansSection = memo(function TicketPlansSection(props: {
     <TicketPlanRow
       key={plan.planId}
       ticketRef={ticketRef}
+      ticket={ticket}
       plan={plan}
       selected={plan.planId === props.previewPlanId}
       onPreview={props.onPreview}
@@ -90,7 +101,15 @@ export const TicketPlansSection = memo(function TicketPlansSection(props: {
       <div className="flex items-center gap-2">
         <ClipboardListIcon aria-hidden className="size-4 text-muted-foreground" />
         <h2 className="text-sm font-semibold">Plans</h2>
-        <div className="ms-auto">
+        <div className="ms-auto flex items-center gap-1">
+          <TicketStartThreadMenu
+            environmentId={ticketRef.environmentId}
+            ticket={ticket}
+            prefill={() => askForPlanPrefill(ticketRef.environmentId, ticket)}
+            label="Ask agent to plan"
+            icon={<SparklesIcon aria-hidden />}
+            variant="ghost"
+          />
           <Button
             size="xs"
             variant="ghost"
@@ -136,15 +155,16 @@ export const TicketPlansSection = memo(function TicketPlansSection(props: {
 
 function TicketPlanRow(props: {
   readonly ticketRef: ScopedTicketRef;
+  readonly ticket: TicketSummary;
   readonly plan: TicketPlanSummary;
   readonly selected: boolean;
   readonly onPreview: (planId: TicketPlanId) => void;
 }) {
-  const { plan } = props;
+  const { ticketRef, plan } = props;
   return (
     <li
       className={cn(
-        "flex min-w-0 items-center gap-3 rounded-md pe-2 hover:bg-accent/40",
+        "group flex min-w-0 items-center gap-3 rounded-md pe-2 hover:bg-accent/40",
         props.selected && "bg-accent/60 hover:bg-accent/60",
       )}
     >
@@ -170,7 +190,18 @@ function TicketPlanRow(props: {
           </span>
         ) : null}
       </button>
-      <TicketPlanAuthor ticketRef={props.ticketRef} actor={plan.createdBy} />
+      <TicketPlanAuthor ticketRef={ticketRef} actor={plan.createdBy} />
+      <span className="flex shrink-0 opacity-0 transition-opacity pointer-coarse:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 motion-reduce:transition-none">
+        <TicketStartThreadMenu
+          environmentId={ticketRef.environmentId}
+          ticket={props.ticket}
+          prefill={() => openPlanPrefill(ticketRef.environmentId, props.ticket, plan)}
+          label={`Open ${plan.ref} in new thread`}
+          icon={<MessageSquarePlusIcon aria-hidden />}
+          variant="ghost"
+          iconOnly
+        />
+      </span>
     </li>
   );
 }
@@ -200,6 +231,7 @@ function TicketPlanAuthor(props: {
 /** One plan, read-only, in the ticket page's side panel. */
 export function TicketPlanPreview(props: {
   readonly ticketRef: ScopedTicketRef;
+  readonly ticket: TicketSummary;
   readonly plan: TicketPlanSummary;
   readonly stacked: boolean;
   readonly onBack: () => void;
@@ -246,7 +278,15 @@ export function TicketPlanPreview(props: {
           Properties
         </Button>
         <span className="min-w-0 truncate text-xs text-muted-foreground">Plan preview</span>
-        <div className="ms-auto">
+        <div className="ms-auto flex items-center gap-1.5">
+          <TicketStartThreadMenu
+            environmentId={ticketRef.environmentId}
+            ticket={props.ticket}
+            prefill={() => openPlanPrefill(ticketRef.environmentId, props.ticket, summary)}
+            label="Open in new thread"
+            icon={<MessageSquarePlusIcon aria-hidden />}
+            variant="outline"
+          />
           <Button
             size="xs"
             variant="outline"

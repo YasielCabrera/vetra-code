@@ -8,6 +8,7 @@ import {
   proposedPlanTitle,
   resolvePlanFollowUpSubmission,
   stripDisplayedPlanMarkdown,
+  stripProposedPlanTitleHeading,
 } from "./proposedPlan";
 
 describe("proposedPlanTitle", () => {
@@ -60,6 +61,22 @@ describe("stripDisplayedPlanMarkdown", () => {
     expect(stripDisplayedPlanMarkdown("# Integrate RPC\n\n## Scope\n\n- step 1\n")).toBe(
       "## Scope\n\n- step 1",
     );
+  });
+});
+
+describe("stripProposedPlanTitleHeading", () => {
+  it("drops only a leading title heading and keeps the rest as written", () => {
+    expect([
+      stripProposedPlanTitleHeading(
+        "\n# Auth migration\n\n## Summary\n\nMove sessions to JWT.\n\n## Steps\n1. Add issuer\n",
+      ),
+      stripProposedPlanTitleHeading("Intro first.\n\n# Auth migration\n\n    indented code\n"),
+      stripProposedPlanTitleHeading("# Auth migration\n    indented code"),
+    ]).toEqual([
+      "## Summary\n\nMove sessions to JWT.\n\n## Steps\n1. Add issuer\n",
+      "Intro first.\n\n# Auth migration\n\n    indented code\n",
+      "    indented code",
+    ]);
   });
 });
 

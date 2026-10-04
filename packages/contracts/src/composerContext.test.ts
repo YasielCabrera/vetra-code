@@ -129,6 +129,18 @@ const knownRecords: Record<(typeof COMPOSER_CONTEXT_KINDS)[number], Record<strin
     body: "Users bounce back to /login after SSO.",
     links: [{ kind: "project", targetKey: "project-1" }],
   },
+  "ticket-plan": {
+    ...base,
+    kind: "ticket-plan",
+    label: "T-42/P1 Auth migration",
+    environmentId: "environment-1",
+    ticketId: "ticket-1",
+    planId: "plan-1",
+    ref: "T-42/P1",
+    title: "Auth migration",
+    revision: 4,
+    openCommentCount: 2,
+  },
 };
 
 describe("ComposerContextRecord", () => {
@@ -136,6 +148,31 @@ describe("ComposerContextRecord", () => {
     const decoded = decodeRecord(knownRecords[kind]);
     expect(Option.isSome(decoded)).toBe(true);
     expect(Option.getOrThrow(decoded)).toEqual(knownRecords[kind]);
+  });
+
+  it("round-trips a ticket record's plan references", () => {
+    const record = {
+      ...knownRecords.ticket,
+      plans: [
+        {
+          planId: "plan-1",
+          ref: "T-42/P1",
+          title: "Auth migration",
+          status: "active",
+          revision: 4,
+          openCommentCount: 2,
+        },
+        {
+          planId: "plan-2",
+          ref: "T-42/P2",
+          title: "Rollback path",
+          status: "archived",
+          revision: 1,
+          openCommentCount: 0,
+        },
+      ],
+    };
+    expect(Option.getOrThrow(decodeRecord(record))).toEqual(record);
   });
 
   it("keeps unknown kinds with their payload", () => {

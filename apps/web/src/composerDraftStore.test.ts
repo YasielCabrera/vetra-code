@@ -14,6 +14,8 @@ import {
   ProviderInstanceId,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   ThreadId,
+  TicketId,
+  TicketPlanId,
   type ModelSelection,
   type PreviewAnnotationPayload,
   type ProviderOptionSelection,
@@ -83,6 +85,10 @@ import {
 import { removeLocalStorageItem, setLocalStorageItem } from "./hooks/useLocalStorage";
 import { insertInlineContextReference } from "./lib/composerContextReferences";
 import { terminalContextReference, threadContextRecord } from "./lib/composerContextRecords";
+import {
+  ticketContextRecord,
+  ticketPlanContextRecord,
+} from "./components/tickets/ticketContextRecord";
 import {
   INLINE_TERMINAL_CONTEXT_PLACEHOLDER,
   formatTerminalContextReference,
@@ -1236,6 +1242,77 @@ describe("composerDraftStore thread contexts", () => {
     store.addThreadContexts(threadRef, [attached]);
     store.setThreadContexts(threadRef, []);
     expect(draftFor(threadId, TEST_ENVIRONMENT_ID)).toBeUndefined();
+  });
+
+  it("keeps a plan chip and a ticket's plan references across persistence", () => {
+    const planSummary = {
+      planId: TicketPlanId.make("plan-1"),
+      ref: "T-42/P1",
+      number: 1,
+      title: "Auth migration",
+      status: "active" as const,
+      revision: 4,
+      openCommentCount: 2,
+      createdBy: { type: "user" as const },
+      updatedBy: { type: "user" as const },
+      updatedAt: "2026-10-01T00:00:00.000Z",
+    };
+    const ticket = {
+      id: TicketId.make("ticket-1"),
+      number: 42,
+      title: "Login loop",
+      linkRefs: [],
+      plans: [planSummary],
+    };
+    const records = [
+      ticketPlanContextRecord({ environmentId: TEST_ENVIRONMENT_ID, ticket, plan: planSummary }),
+      ticketContextRecord({ environmentId: TEST_ENVIRONMENT_ID, ticket }),
+    ];
+    useComposerDraftStore.getState().setThreadContexts(threadRef, records);
+
+    const merge = useComposerDraftStore.persist.getOptions().merge!;
+    const hydrated = merge(
+      JSON.parse(
+        JSON.stringify(partializeComposerDraftStoreState(useComposerDraftStore.getState())),
+      ),
+      useComposerDraftStore.getInitialState(),
+    );
+    expect(hydrated.draftsByThreadKey[scopedThreadKey(threadRef)]?.threadContexts).toEqual([
+      {
+        version: 1,
+        kind: "ticket-plan",
+        contextId: "ticket-plan_plan-1",
+        label: "T-42/P1 Auth migration",
+        environmentId: TEST_ENVIRONMENT_ID,
+        ticketId: "ticket-1",
+        planId: "plan-1",
+        ref: "T-42/P1",
+        title: "Auth migration",
+        revision: 4,
+        openCommentCount: 2,
+      },
+      {
+        version: 1,
+        kind: "ticket",
+        contextId: "ticket_ticket-1",
+        label: "T-42 Login loop",
+        environmentId: TEST_ENVIRONMENT_ID,
+        ticketId: "ticket-1",
+        ref: "T-42",
+        title: "Login loop",
+        links: [],
+        plans: [
+          {
+            planId: "plan-1",
+            ref: "T-42/P1",
+            title: "Auth migration",
+            status: "active",
+            revision: 4,
+            openCommentCount: 2,
+          },
+        ],
+      },
+    ]);
   });
 });
 

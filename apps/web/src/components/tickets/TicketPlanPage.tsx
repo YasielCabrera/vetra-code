@@ -15,8 +15,10 @@ import {
   ArchiveRestoreIcon,
   CheckIcon,
   CopyIcon,
+  MessageSquarePlusIcon,
   MoreHorizontalIcon,
   PencilIcon,
+  SparklesIcon,
   Trash2Icon,
   TriangleAlertIcon,
 } from "lucide-react";
@@ -49,6 +51,7 @@ import { SidebarInset } from "../ui/sidebar";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { PLAN_ENTRY_VERBS, TicketActorName } from "./TicketActivityTimeline";
 import { uploadTicketFiles } from "./ticketAttachments";
+import { openPlanPrefill, revisePlanPrefill } from "./ticketContextRecord";
 import { copyText, TicketBreadcrumbHeader } from "./TicketDetailPage";
 import { hasUnsavedBody } from "./ticketDocument.logic";
 import {
@@ -68,6 +71,7 @@ import {
   ticketPlanHistory,
 } from "./ticketPlans.logic";
 import { formatTicketRef } from "./ticketRefs";
+import { TicketStartThreadMenu } from "./TicketStartThreadMenu";
 import { useTicketPlanDocument } from "./useTicketDocument";
 
 const TicketBodyEditor = lazy(() => import("./TicketBodyEditor"));
@@ -403,7 +407,31 @@ function TicketPlanView(props: {
           ticket={{ label: ticketLabel, ticketKey }}
           current={`P${summary.number}`}
           copy={summary.ref}
-          trailing={<div className="flex items-center gap-1.5">{menu}</div>}
+          trailing={
+            <div className="flex items-center gap-1.5">
+              <TicketStartThreadMenu
+                environmentId={ticketRef.environmentId}
+                ticket={detail.summary}
+                prefill={() => openPlanPrefill(ticketRef.environmentId, detail.summary, summary)}
+                label="Open in new thread"
+                icon={<MessageSquarePlusIcon aria-hidden />}
+                variant="outline"
+              />
+              {archived ? null : (
+                <TicketStartThreadMenu
+                  environmentId={ticketRef.environmentId}
+                  ticket={detail.summary}
+                  prefill={() =>
+                    revisePlanPrefill(ticketRef.environmentId, detail.summary, summary)
+                  }
+                  label="Ask agent to revise"
+                  icon={<SparklesIcon aria-hidden />}
+                  variant="outline"
+                />
+              )}
+              {menu}
+            </div>
+          }
           reachesWindowEdge={!sidePanel}
         />
         <ScrollArea className="min-h-0 flex-1">

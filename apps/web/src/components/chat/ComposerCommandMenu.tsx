@@ -13,6 +13,7 @@ import {
 } from "@t3tools/contracts";
 import {
   BlocksIcon,
+  ClipboardListIcon,
   FolderIcon,
   MessagesSquareIcon,
   PackageIcon,
@@ -27,7 +28,11 @@ import { type ComposerSlashCommand, type ComposerTriggerKind } from "../../compo
 import { cn } from "~/lib/utils";
 import { Badge } from "../ui/badge";
 import { Command, CommandGroup, CommandGroupLabel, CommandItem, CommandList } from "../ui/command";
-import { groupComposerItems, type ComposerTicketItem } from "../tickets/composerTicketItems";
+import {
+  groupComposerItems,
+  type ComposerTicketItem,
+  type ComposerTicketPlanItem,
+} from "../tickets/composerTicketItems";
 import { PierreEntryIcon } from "./PierreEntryIcon";
 import { ComposerBanner } from "./ComposerBanner";
 import { resolvePullRequestState } from "../pullRequest/pullRequestPresentation";
@@ -78,7 +83,8 @@ export type ComposerCommandItem =
       label: string;
       description: string;
     }
-  | ComposerTicketItem;
+  | ComposerTicketItem
+  | ComposerTicketPlanItem;
 
 export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
   listId: string;
@@ -120,7 +126,7 @@ export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
           <CommandList
             id={props.listId}
             aria-label={
-              props.items.some((item) => item.type === "ticket")
+              props.items.some((item) => item.type === "ticket" || item.type === "ticket-plan")
                 ? "Tickets and pull requests"
                 : props.triggerKind
                   ? LISTBOX_LABEL_BY_TRIGGER[props.triggerKind]
@@ -214,6 +220,9 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
       ) : null}
       {props.item.type === "ticket" ? (
         <SquareKanbanIcon aria-hidden="true" className="size-4 shrink-0 text-secondary-label" />
+      ) : null}
+      {props.item.type === "ticket-plan" ? (
+        <ClipboardListIcon aria-hidden="true" className="size-4 shrink-0 text-secondary-label" />
       ) : null}
       {pullRequestPresentation ? (
         <pullRequestPresentation.Icon

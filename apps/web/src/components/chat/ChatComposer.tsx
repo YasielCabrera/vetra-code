@@ -236,7 +236,7 @@ import {
   threadContextReference,
 } from "~/lib/composerContextRecords";
 import { matchComposerTicketItems } from "../tickets/composerTicketItems";
-import { ticketContextRecord } from "../tickets/ticketContextRecord";
+import { ticketContextRecord, ticketPlanContextRecord } from "../tickets/ticketContextRecord";
 import { useEnvironmentSupportsTickets, useEnvironmentTickets } from "~/state/tickets";
 import { matchComposerThreadItems } from "@t3tools/client-runtime/composerThreadItems";
 import { THREAD_CONTEXT_DROP_EVENT, threadContextDropTargetProps } from "./threadContextDrag";
@@ -3250,7 +3250,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               ? reviewCommentContextRecord(existing.record)
               : existing?.kind === "preview-annotation"
                 ? previewAnnotationContextRecord(existing.record)
-                : existing?.kind === "thread" || existing?.kind === "ticket"
+                : existing?.kind === "thread" ||
+                    existing?.kind === "ticket" ||
+                    existing?.kind === "ticket-plan"
                   ? existing.record
                   : existing
                     ? (uploadedContextRecordFromDraft(existing) ?? undefined)
@@ -3300,7 +3302,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             break;
           }
           case "thread":
-          case "ticket": {
+          case "ticket":
+          case "ticket-plan": {
             // The agent can only read threads on its own server; a pasted foreign one is dropped.
             if (record.environmentId !== environmentId) break;
             addComposerDraftThreadContexts(composerDraftTarget, [record], {
@@ -4023,15 +4026,23 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         }
         return;
       }
-      if (item.type === "thread" || item.type === "ticket") {
-        const shell =
-          item.type === "thread" && trigger.kind === "path" ? readThreadShell(item.thread) : null;
-        const record =
-          item.type === "ticket" && trigger.kind === "pull-request"
-            ? ticketContextRecord({ environmentId: item.ticket.environmentId, ticket: item.ticket })
-            : item.type === "thread" && shell
-              ? threadContextRecord(item.thread, shell.title)
-              : null;
+      if (item.type === "thread" || item.type === "ticket" || item.type === "ticket-plan") {
+        let record: AttachedContextRecord | null = null;
+        if (item.type === "thread" && trigger.kind === "path") {
+          const shell = readThreadShell(item.thread);
+          record = shell ? threadContextRecord(item.thread, shell.title) : null;
+        } else if (item.type === "ticket" && trigger.kind === "pull-request") {
+          record = ticketContextRecord({
+            environmentId: item.ticket.environmentId,
+            ticket: item.ticket,
+          });
+        } else if (item.type === "ticket-plan" && trigger.kind === "pull-request") {
+          record = ticketPlanContextRecord({
+            environmentId: item.ticket.environmentId,
+            ticket: item.ticket,
+            plan: item.plan,
+          });
+        }
         if (record === null) return;
         const replacement = `${formatInlineContextReference(threadContextReference(record))} `;
         const replacementRangeEnd = extendReplacementRangeForTrailingSpace(

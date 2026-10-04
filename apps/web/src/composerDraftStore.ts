@@ -20,6 +20,7 @@ import {
   RuntimeMode,
   ThreadContextRecord,
   TicketContextRecord,
+  TicketPlanContextRecord,
   type ServerProvider,
   type ScopedProjectRef,
   type ScopedThreadRef,
@@ -83,7 +84,11 @@ import { ReviewCommentContextSchema, type ReviewCommentContext } from "./reviewC
 const isRuntimeMode = Schema.is(RuntimeMode);
 const isProviderDriverKind = Schema.is(ProviderDriverKind);
 const isReviewCommentContext = Schema.is(ReviewCommentContextSchema);
-const AttachedContextRecord = Schema.Union([ThreadContextRecord, TicketContextRecord]);
+const AttachedContextRecord = Schema.Union([
+  ThreadContextRecord,
+  TicketContextRecord,
+  TicketPlanContextRecord,
+]);
 export type AttachedContextRecord = typeof AttachedContextRecord.Type;
 const isAttachedContextRecord = Schema.is(AttachedContextRecord);
 const isSnapShotSource = Schema.is(SnapShotSource);
@@ -2272,9 +2277,15 @@ export function partializeComposerDraftStoreState(
         : {}),
       ...(draft.threadContexts.length > 0
         ? {
-            threadContexts: draft.threadContexts.map((record) =>
-              record.kind === "ticket" ? { ...record, links: [...record.links] } : { ...record },
-            ),
+            threadContexts: draft.threadContexts.map((record) => {
+              if (record.kind !== "ticket") return { ...record };
+              const { plans, ...ticket } = record;
+              return {
+                ...ticket,
+                links: [...record.links],
+                ...(plans ? { plans: plans.map((plan) => ({ ...plan })) } : {}),
+              };
+            }),
           }
         : {}),
       ...(hasModelData

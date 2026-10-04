@@ -4,6 +4,7 @@ import type {
   PreviewAnnotationPayload,
   ThreadContextRecord,
   TicketContextRecord,
+  TicketPlanContextRecord,
 } from "@t3tools/contracts";
 import { formatAttachmentSize } from "@t3tools/client-runtime/state/attachments";
 import { videoMimeType } from "@t3tools/shared/video";
@@ -40,7 +41,7 @@ import type { TerminalContextDraft } from "~/lib/terminalContext";
 import type { ReviewCommentContext } from "~/reviewCommentContext";
 import { ComposerPendingTerminalContextChip } from "./chat/ComposerPendingTerminalContexts";
 import { ThreadContextChip } from "./ThreadContextChip";
-import { TicketContextChip } from "./tickets/TicketContextChip";
+import { TicketContextChip, TicketPlanContextChip } from "./tickets/TicketContextChip";
 import {
   createContextPresentationRegistry,
   type ContextPresentationCapability,
@@ -76,7 +77,8 @@ export type ComposerDraftContextRecord =
   | { kind: "image"; record: ComposerImageAttachment; upload?: AttachmentUploadState | undefined }
   | { kind: "file"; record: ComposerFileAttachment; upload?: AttachmentUploadState | undefined }
   | { kind: "thread"; record: ThreadContextRecord }
-  | { kind: "ticket"; record: TicketContextRecord };
+  | { kind: "ticket"; record: TicketContextRecord }
+  | { kind: "ticket-plan"; record: TicketPlanContextRecord };
 
 /** What a chip can do beyond showing itself; the composer supplies the handlers. */
 export interface ComposerContextActions {
@@ -150,10 +152,17 @@ export function composerContextRecordsFromDraft(input: {
     });
   }
   for (const record of input.threadContexts ?? []) {
-    records.set(
-      record.contextId,
-      record.kind === "ticket" ? { kind: "ticket", record } : { kind: "thread", record },
-    );
+    switch (record.kind) {
+      case "thread":
+        records.set(record.contextId, { kind: "thread", record });
+        break;
+      case "ticket":
+        records.set(record.contextId, { kind: "ticket", record });
+        break;
+      case "ticket-plan":
+        records.set(record.contextId, { kind: "ticket-plan", record });
+        break;
+    }
   }
   return records;
 }
@@ -371,6 +380,7 @@ const composerContextPresentationRegistry = createContextPresentationRegistry<
     "preview-annotation",
     "thread",
     "ticket",
+    "ticket-plan",
   ],
   handlers: [
     {
@@ -473,6 +483,16 @@ const composerContextPresentationRegistry = createContextPresentationRegistry<
       render: (entry, context) =>
         entry.kind === "ticket" ? (
           <TicketContextChip record={entry.record} />
+        ) : (
+          <UnresolvedContextChip label={context.label} />
+        ),
+    },
+    {
+      kind: "ticket-plan",
+      canRender: (entry) => entry.kind === "ticket-plan",
+      render: (entry, context) =>
+        entry.kind === "ticket-plan" ? (
+          <TicketPlanContextChip record={entry.record} />
         ) : (
           <UnresolvedContextChip label={context.label} />
         ),

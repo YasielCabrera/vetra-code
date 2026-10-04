@@ -196,7 +196,9 @@ export const make = Effect.gen(function* () {
         const ticketIds = [
           ...new Set(
             (message.context?.records ?? []).flatMap((record) =>
-              record.kind === "ticket" && "ticketId" in record ? [record.ticketId] : [],
+              (record.kind === "ticket" || record.kind === "ticket-plan") && "ticketId" in record
+                ? [record.ticketId]
+                : [],
             ),
           ),
         ];

@@ -139,6 +139,17 @@ edit removes the passage a comment points at, the comment moves to the end of th
 **Outdated**, with the passage as it was. Agents see open comments when they read a plan and
 resolve them as they revise it.
 
+To have an agent carry out a plan, select **Open in new thread** on the plan, its preview, or its
+row, and pick a project. The new thread starts with the plan attached, ready for your own
+instructions; nothing is sent until you send it. The agent reads the plan's current text and open
+comments before it starts, so edits made after you attach it still count. **Ask agent to plan** on
+the ticket and **Ask agent to revise** on a plan open a thread the same way, with the request
+already written. To attach a plan while writing any message, type `#` and its reference, such as
+`#T-42/P1`, or a word from its title. A ticket attached to a message lists its plans for the agent
+as context only; attach a plan, or name it, to have the agent implement it. When an agent proposes
+a plan in a thread linked to a ticket, choose **Save as plan** in the proposed plan's **⋯** menu to
+keep it on the ticket.
+
 ## Start a thread from a ticket
 
 Select **Start thread** on a ticket to open a new thread with the ticket attached. A ticket linked

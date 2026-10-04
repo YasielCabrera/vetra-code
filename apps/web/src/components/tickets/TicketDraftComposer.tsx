@@ -151,12 +151,14 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
         })),
       ];
     }
+    // No plans here: a plan chip tells the agent to implement the plan, and the analyzer only
+    // drafts a ticket.
     return trigger?.kind === "pull-request"
       ? matchComposerTicketItems({
           tickets,
           environmentId: props.environmentId,
           query: trigger.query,
-        })
+        }).filter((item) => item.type === "ticket")
       : [];
   }, [trigger, shells, props.environmentId, props.sourceThreadId, paths.entries, tickets]);
   const activeItem = items.find((item) => item.id === highlightedId) ?? items[0] ?? null;

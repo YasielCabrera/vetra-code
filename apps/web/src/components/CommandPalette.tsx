@@ -17,6 +17,8 @@ import {
 } from "@t3tools/client-runtime/operations/projects";
 import { connectionStatusText } from "@t3tools/client-runtime/connection";
 import { threadSearchMatchKey } from "@t3tools/client-runtime/state/thread-search";
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
+import { parseTicketKey } from "@t3tools/client-runtime/state/tickets";
 import { resolveThreadReferenceCopyTarget } from "@t3tools/shared/threadReference";
 import {
   canPreloadBrowsePath,
@@ -50,6 +52,7 @@ import {
   ChartNoAxesColumnIcon,
   CheckIcon,
   ChevronRightIcon,
+  CopyIcon,
   CornerLeftUpIcon,
   DatabaseIcon,
   FileSearchIcon,
@@ -60,6 +63,7 @@ import {
   MessageSquareDashedIcon,
   LinkIcon,
   MessageSquareIcon,
+  MessageSquarePlusIcon,
   MonitorIcon,
   MoonIcon,
   PaletteIcon,
@@ -70,6 +74,7 @@ import {
   SquareIcon,
   SquareKanbanIcon,
   SquarePenIcon,
+  SparklesIcon,
   SunIcon,
   TextSearchIcon,
   WaypointsIcon,
@@ -120,6 +125,7 @@ import { useNewProject } from "../hooks/useNewProject";
 import { isScratchProject } from "@t3tools/client-runtime/state/projects";
 import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
 import { useProjects, useServerConfigs, useThreadShells, waitForProject } from "../state/entities";
+import { useTicket } from "../state/tickets";
 import { useThreadSearch } from "../state/queries";
 import { usePowerhouseProjects } from "./powerhouse/usePowerhouseProject";
 import { resolveThreadActionProjectRef, startNewThreadFromContext } from "../lib/chatThreadActions";
@@ -171,6 +177,7 @@ import {
   enumerateCommandPaletteItems,
   type CommandPaletteActionItem,
   type CommandPaletteAddProjectCompletion,
+  type CommandPaletteGroup,
   type CommandPaletteOpenIntent,
   type CommandPaletteSubmenuItem,
   type CommandPaletteView,
@@ -228,6 +235,14 @@ import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { readPullRequestListPreferences } from "~/components/pullRequest/pullRequestListPreferences";
 import { openCreateTicketDialog } from "./tickets/CreateTicketDialog";
 import { threadTicketCapture } from "./tickets/ticketCapture";
+import {
+  openPlanPrefill,
+  revisePlanPrefill,
+  type TicketThreadPrefill,
+} from "./tickets/ticketContextRecord";
+import { findTicketPlanByNumber } from "./tickets/ticketPlans.logic";
+import { useTicketThreadStarter } from "./tickets/TicketStartThreadMenu";
+import type { DraftThreadEnvMode } from "../composerDraftStore";
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
 
@@ -711,6 +726,22 @@ function CommandPaletteDialog(props: {
   );
 }
 
+/** The plan a `/tickets/$ticketKey/plans/$planNumber` route shows, once its ticket is loaded. */
+function useRouteTicketPlan() {
+  const ticketKey = useParams({ strict: false, select: (params) => params.ticketKey ?? null });
+  const planNumber = useParams({ strict: false, select: (params) => params.planNumber ?? null });
+  const ticketRef = useMemo(
+    () => (ticketKey === null || planNumber === null ? null : parseTicketKey(ticketKey)),
+    [planNumber, ticketKey],
+  );
+  const ticket = useTicket(ticketRef);
+  const plan =
+    ticket === null || planNumber === null
+      ? null
+      : findTicketPlanByNumber(ticket.plans, planNumber);
+  return ticket === null || plan === null ? null : { ticket, plan };
+}
+
 function OpenCommandPaletteDialog(props: {
   readonly openIntent: CommandPaletteOpenIntent | null;
   readonly addProjectCompletion: CommandPaletteAddProjectCompletion;
@@ -760,6 +791,11 @@ function OpenCommandPaletteDialog(props: {
   const { activeDraftThread, activeThread, defaultProjectRef, handleNewThread } =
     useHandleNewThread();
   const projects = useProjects();
+  const routePlan = useRouteTicketPlan();
+  const planThreadStarter = useTicketThreadStarter(
+    routePlan?.ticket.environmentId ?? null,
+    routePlan?.ticket ?? null,
+  );
   const referenceThreadRef =
     pathname === "/pull-requests"
       ? environments.some(
@@ -2413,6 +2449,110 @@ function OpenCommandPaletteDialog(props: {
       await navigate({ to: "/tickets/new", search: {} });
     },
   });
+
+  if (routePlan !== null) {
+    const { ticket, plan } = routePlan;
+    const { choices, start } = planThreadStarter;
+    const planThreadItem = (input: {
+      readonly value: string;
+      readonly title: string;
+      readonly searchTerms: ReadonlyArray<string>;
+      readonly Icon: typeof MessageSquarePlusIcon;
+      readonly prefill: () => TicketThreadPrefill;
+    }): CommandPaletteSubmenuItem | null => {
+      const startItem = (
+        title: string,
+        project: EnvironmentProject,
+        envMode: DraftThreadEnvMode,
+      ): CommandPaletteActionItem => ({
+        kind: "action",
+        value: `${input.value}:${envMode}:${project.environmentId}:${project.id}`,
+        searchTerms: [title, project.title, ...(envMode === "worktree" ? ["worktree"] : [])],
+        title,
+        icon:
+          envMode === "worktree" ? (
+            <FolderGit2Icon className={ITEM_ICON_CLASS} />
+          ) : (
+            <FolderIcon className={ITEM_ICON_CLASS} />
+          ),
+        run: () => start(project, envMode, input.prefill),
+      });
+      if (choices.kind === "none") return null;
+      const groups: CommandPaletteGroup[] =
+        choices.kind === "single"
+          ? [
+              {
+                value: `${input.value}:start`,
+                label: input.title,
+                items: [
+                  startItem(`Start in ${choices.project.title}`, choices.project, "local"),
+                  startItem("Start in new worktree", choices.project, "worktree"),
+                ],
+              },
+            ]
+          : [
+              {
+                value: `${input.value}:local`,
+                label: choices.label,
+                items: choices.projects.map((project) =>
+                  startItem(project.title, project, "local"),
+                ),
+              },
+              {
+                value: `${input.value}:worktree`,
+                label: "Start in new worktree",
+                items: choices.projects.map((project) =>
+                  startItem(project.title, project, "worktree"),
+                ),
+              },
+            ];
+      return {
+        kind: "submenu",
+        value: input.value,
+        searchTerms: [...input.searchTerms, plan.ref, plan.title],
+        title: input.title,
+        description: plan.ref,
+        icon: <input.Icon className={ITEM_ICON_CLASS} />,
+        addonIcon: <input.Icon className={ADDON_ICON_CLASS} />,
+        groups,
+      };
+    };
+    const openItem = planThreadItem({
+      value: "action:ticket-plan:open-thread",
+      title: "Open plan in new thread",
+      searchTerms: ["open plan in new thread", "implement plan", "start thread"],
+      Icon: MessageSquarePlusIcon,
+      prefill: () => openPlanPrefill(ticket.environmentId, ticket, plan),
+    });
+    if (openItem !== null) actionItems.push(openItem);
+    const reviseItem =
+      plan.status === "active"
+        ? planThreadItem({
+            value: "action:ticket-plan:revise",
+            title: "Ask agent to revise plan",
+            searchTerms: ["ask agent to revise plan", "address comments", "resolve comments"],
+            Icon: SparklesIcon,
+            prefill: () => revisePlanPrefill(ticket.environmentId, ticket, plan),
+          })
+        : null;
+    if (reviseItem !== null) actionItems.push(reviseItem);
+    actionItems.push({
+      kind: "action",
+      value: "action:ticket-plan:copy-ref",
+      searchTerms: ["copy plan ref", "reference", plan.ref],
+      title: "Copy plan ref",
+      description: plan.ref,
+      icon: <CopyIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        const copied = await writeTextToClipboard(plan.ref).catch(() => false);
+        toastManager.add(
+          copied
+            ? { type: "success", title: `Copied ${plan.ref}`, timeout: 1500 }
+            : { type: "error", title: "Could not copy to the clipboard" },
+        );
+      },
+    });
+  }
 
   if (activeThread && activeThreadServerConfig?.environment.capabilities.tickets === true) {
     actionItems.push({

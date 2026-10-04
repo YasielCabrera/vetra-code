@@ -1,8 +1,10 @@
 import { memo, useState, useId } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
+import type { EnvironmentTicket } from "@t3tools/client-runtime/state/tickets";
 import type { EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
 import {
   buildCollapsedProposedPlanPreviewMarkdown,
@@ -11,12 +13,21 @@ import {
   normalizePlanMarkdownForExport,
   proposedPlanTitle,
   stripDisplayedPlanMarkdown,
+  stripProposedPlanTitleHeading,
 } from "../../proposedPlan";
 import ChatMarkdown from "../ChatMarkdown";
 import { EllipsisIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
+import {
+  Menu,
+  MenuItem,
+  MenuPopup,
+  MenuSub,
+  MenuSubPopup,
+  MenuSubTrigger,
+  MenuTrigger,
+} from "../ui/menu";
 import { cn } from "~/lib/utils";
 import { Badge } from "../ui/badge";
 import {
@@ -32,6 +43,10 @@ import { stackedThreadToast, toastManager } from "../ui/toast";
 import { projectEnvironment } from "~/state/projects";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useAtomCommand } from "~/state/use-atom-command";
+import { useTicketActions } from "~/hooks/useTicketActions";
+import { useTicketsForThread } from "~/state/tickets";
+import { ticketPlanRouteParams } from "../tickets/ticketPlans.logic";
+import { formatTicketRef } from "../tickets/ticketRefs";
 
 export const ProposedPlanCard = memo(function ProposedPlanCard({
   planMarkdown,
@@ -53,6 +68,10 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
   const writeProjectFile = useAtomCommand(projectEnvironment.writeFile, {
     reportFailure: false,
   });
+  const navigate = useNavigate();
+  const { createPlan } = useTicketActions();
+  const linkedTickets = useTicketsForThread(threadRef ?? null);
+  const [isSavingAsTicketPlan, setIsSavingAsTicketPlan] = useState(false);
   const { copyToClipboard, isCopied } = useCopyToClipboard({
     target: "plan",
     onError: (error) => {
@@ -97,6 +116,34 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
     }
     setSavePath((existing) => (existing.length > 0 ? existing : downloadFilename));
     setIsSaveDialogOpen(true);
+  };
+
+  const handleSaveAsTicketPlan = async (ticket: EnvironmentTicket) => {
+    setIsSavingAsTicketPlan(true);
+    const result = await createPlan(ticket.environmentId, {
+      ticketId: ticket.id,
+      title: title.slice(0, 500),
+      body: stripProposedPlanTitleHeading(planMarkdown),
+    });
+    setIsSavingAsTicketPlan(false);
+    if (result === null) return;
+    const { plan } = result;
+    toastManager.add({
+      type: "success",
+      title: `Saved as ${plan.ref}`,
+      description: plan.title,
+      actionProps: {
+        children: "Open plan",
+        onClick: () =>
+          void navigate({
+            to: "/tickets/$ticketKey/plans/$planNumber",
+            params: ticketPlanRouteParams(
+              { environmentId: ticket.environmentId, ticketId: ticket.id },
+              plan.number,
+            ),
+          }),
+      },
+    });
   };
 
   const handleSaveToWorkspace = () => {
@@ -168,6 +215,25 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
             <MenuItem onClick={openSaveDialog} disabled={!workspaceRoot || isSavingToWorkspace}>
               Save to workspace
             </MenuItem>
+            {linkedTickets.length === 1 ? (
+              <MenuItem
+                onClick={() => void handleSaveAsTicketPlan(linkedTickets[0]!)}
+                disabled={isSavingAsTicketPlan}
+              >
+                Save as plan on {formatTicketRef(linkedTickets[0]!)}
+              </MenuItem>
+            ) : linkedTickets.length > 1 ? (
+              <MenuSub>
+                <MenuSubTrigger disabled={isSavingAsTicketPlan}>Save as ticket plan</MenuSubTrigger>
+                <MenuSubPopup>
+                  {linkedTickets.map((ticket) => (
+                    <MenuItem key={ticket.id} onClick={() => void handleSaveAsTicketPlan(ticket)}>
+                      {formatTicketRef(ticket)} {ticket.title}
+                    </MenuItem>
+                  ))}
+                </MenuSubPopup>
+              </MenuSub>
+            ) : null}
           </MenuPopup>
         </Menu>
       </div>

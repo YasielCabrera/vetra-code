@@ -13,6 +13,7 @@ import {
   type OrchestrationV2DomainEvent,
   type ServerSettings,
   type ThreadPullRequestLink,
+  type TicketPlanSummary,
   type TicketSummary,
 } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
@@ -101,9 +102,26 @@ const ticketRecord = (ticket: TicketSummary) => ({
   links: [],
 });
 
+const planRecord = (ticket: TicketSummary, plan: TicketPlanSummary) => ({
+  version: 1 as const,
+  kind: "ticket-plan" as const,
+  contextId: ComposerContextId.make(`ticket-plan_${plan.planId}`),
+  label: `${plan.ref} ${plan.title}`,
+  environmentId: EnvironmentId.make("environment-1"),
+  ticketId: ticket.id,
+  planId: plan.planId,
+  ref: plan.ref,
+  title: plan.title,
+  revision: plan.revision,
+  openCommentCount: plan.openCommentCount,
+});
+
 const sentMessage = (
   tickets: ReadonlyArray<TicketSummary>,
   id = "message-1",
+  records: ReadonlyArray<
+    ReturnType<typeof ticketRecord> | ReturnType<typeof planRecord>
+  > = tickets.map(ticketRecord),
 ): OrchestrationV2DomainEvent => ({
   type: "message.updated",
   id: EventId.make(`event:${id}`),
@@ -118,7 +136,7 @@ const sentMessage = (
     nodeId: null,
     role: "user",
     text: tickets.map((ticket) => `[T-${ticket.number}](vetra-context://v1/ticket/x)`).join(" "),
-    context: { version: 1, records: tickets.map(ticketRecord) },
+    context: { version: 1, records },
     attachments: [],
     streaming: false,
     createdAt: NOW,
@@ -222,6 +240,46 @@ describe("TicketLinkReactor", () => {
           ],
         );
         assert.deepStrictEqual(detail.links[0]?.source, "auto");
+      }),
+    ),
+  );
+
+  it.effect("a plan chip links its ticket, once beside that ticket's own chip", () =>
+    withReactor(({ tickets, publish }) =>
+      Effect.gen(function* () {
+        const first = (yield* tickets.create({ title: "Login loop" }, USER)).ticket;
+        const second = (yield* tickets.create({ title: "Logout" }, USER)).ticket;
+        const firstPlan = (yield* tickets.createPlan({ ticketId: first.id, title: "SSO" }, USER))
+          .plan;
+        const secondPlan = (yield* tickets.createPlan({ ticketId: second.id, title: "Undo" }, USER))
+          .plan;
+        yield* publish(
+          sentMessage([], "message-1", [
+            ticketRecord(first),
+            planRecord(first, firstPlan),
+            planRecord(second, secondPlan),
+          ]),
+        );
+
+        const linkedEntries = (detail: {
+          readonly activity: ReadonlyArray<{ entry: { type: string } }>;
+        }) => detail.activity.filter((activity) => activity.entry.type === "linked").length;
+        const firstAfter = yield* tickets.get(first.id);
+        const secondAfter = yield* tickets.get(second.id);
+        assert.deepStrictEqual(
+          [
+            [firstAfter.summary.statusId, linksOf(firstAfter.summary), linkedEntries(firstAfter)],
+            [
+              secondAfter.summary.statusId,
+              linksOf(secondAfter.summary),
+              linkedEntries(secondAfter),
+            ],
+          ],
+          [
+            ["in_progress", ["thread thread-1"], 1],
+            ["in_progress", ["thread thread-1"], 1],
+          ],
+        );
       }),
     ),
   );

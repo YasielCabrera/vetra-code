@@ -187,6 +187,7 @@ export function prepareTicketDraftPaste(input: {
   };
 }
 
+/** Plans stay out: their record tells the agent to implement the plan, not to file a ticket. */
 function isPromptRecord(record: ComposerContextRecord): record is TicketPromptRecord {
   return (
     (record.kind === "thread" || record.kind === "ticket" || record.kind === "review-comment") &&

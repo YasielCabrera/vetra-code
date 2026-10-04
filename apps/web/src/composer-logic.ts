@@ -262,7 +262,8 @@ export function detectComposerTrigger(text: string, cursorInput: number): Compos
 
   const tokenStart = tokenStartForCursor(text, cursor);
   const token = text.slice(tokenStart, cursor);
-  const pullRequestMatch = /^#([\p{L}\p{N}][\p{L}\p{N}_-]*)?$/u.exec(token);
+  // A slash only continues a plan reference such as `#T-42/P1`; elsewhere it ends the search.
+  const pullRequestMatch = /^#(t-\d+\/(?:p\d*)?|[\p{L}\p{N}][\p{L}\p{N}_-]*)?$/iu.exec(token);
   if (pullRequestMatch) {
     return {
       kind: "pull-request",

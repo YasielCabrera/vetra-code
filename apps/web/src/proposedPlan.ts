@@ -3,6 +3,17 @@ export function proposedPlanTitle(planMarkdown: string): string | null {
   return heading && heading.length > 0 ? heading : null;
 }
 
+/**
+ * The plan as written, minus a leading title heading, for saving where the title is stored on
+ * its own. Unlike `stripDisplayedPlanMarkdown`, every other heading stays.
+ */
+export function stripProposedPlanTitleHeading(planMarkdown: string): string {
+  return planMarkdown.replace(
+    /^(?:[ \t]*\r?\n)*[ \t]{0,3}#{1,6}[ \t]+[^\r\n]*(?:\r?\n|$)(?:[ \t]*\r?\n)*/,
+    "",
+  );
+}
+
 export function stripDisplayedPlanMarkdown(planMarkdown: string): string {
   const lines = planMarkdown.trimEnd().split(/\r?\n/);
   const sourceLines = lines[0] && /^\s{0,3}#{1,6}\s+/.test(lines[0]) ? lines.slice(1) : [...lines];

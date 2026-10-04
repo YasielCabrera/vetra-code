@@ -24,6 +24,7 @@ import {
   ExternalLinkIcon,
   FolderIcon,
   MessageSquareIcon,
+  MessageSquarePlusIcon,
   PaperclipIcon,
   TagIcon,
   UserRoundIcon,
@@ -106,6 +107,7 @@ import {
   TicketStatusSelect,
 } from "./TicketPropertiesPanel";
 import { TicketProjectsEditor } from "./TicketProjectsEditor";
+import { ticketContextRecord } from "./ticketContextRecord";
 import { TicketStartThreadMenu } from "./TicketStartThreadMenu";
 import { formatTicketRef } from "./ticketRefs";
 import { useTicketDocument } from "./useTicketDocument";
@@ -427,6 +429,7 @@ function TicketDocument(props: {
       <TicketPlanPreview
         key={`plan:${previewPlan.planId}`}
         ticketRef={ticketRef}
+        ticket={summary}
         plan={previewPlan}
         stacked={!sidePanel}
         onBack={() => setPreview(null)}
@@ -516,8 +519,19 @@ function TicketDocument(props: {
             <div className="flex items-center gap-1.5">
               <TicketStartThreadMenu
                 environmentId={ticketRef.environmentId}
-                detail={detail}
-                readBody={doc.readText}
+                ticket={summary}
+                prefill={() => ({
+                  records: [
+                    ticketContextRecord({
+                      environmentId: ticketRef.environmentId,
+                      ticket: summary,
+                      body: doc.readText(),
+                    }),
+                  ],
+                })}
+                label="Start thread"
+                icon={<MessageSquarePlusIcon aria-hidden />}
+                variant="outline"
               />
               {menu}
             </div>
@@ -832,7 +846,7 @@ function TicketDocument(props: {
 
             <TicketPlansSection
               ticketRef={ticketRef}
-              plans={summary.plans}
+              ticket={summary}
               previewPlanId={previewPlan?.planId ?? null}
               onPreview={onPreviewPlan}
             />

@@ -364,6 +364,19 @@ describe("detectComposerTrigger", () => {
     });
   });
 
+  it("keeps a ticket plan reference in one search, and ends other searches at a slash", () => {
+    expect(
+      ["See #T-42/", "See #T-42/P1", "See #t-42/p", "See #feature/x"].map((text) =>
+        detectComposerTrigger(text, text.length),
+      ),
+    ).toEqual([
+      { kind: "pull-request", query: "T-42/", rangeStart: 4, rangeEnd: 10 },
+      { kind: "pull-request", query: "T-42/P1", rangeStart: 4, rangeEnd: 12 },
+      { kind: "pull-request", query: "t-42/p", rangeStart: 4, rangeEnd: 11 },
+      null,
+    ]);
+  });
+
   it("does not keep pull request completion active for headings or embedded hashes", () => {
     expect(detectComposerTrigger("# Heading", "# Heading".length)).toBeNull();
     expect(detectComposerTrigger("issue#123", "issue#123".length)).toBeNull();

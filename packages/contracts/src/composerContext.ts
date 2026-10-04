@@ -7,9 +7,10 @@ import {
   PositiveInt,
   ThreadId,
   TicketId,
+  TicketPlanId,
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
-import { TicketLinkRef } from "./ticket.ts";
+import { TicketLinkRef, TicketPlanStatus } from "./ticket.ts";
 
 /**
  * Inline context records: the typed payload behind every composer chip.
@@ -31,6 +32,7 @@ export const COMPOSER_CONTEXT_KINDS = [
   "skill",
   "thread",
   "ticket",
+  "ticket-plan",
 ] as const;
 export type KnownComposerContextKind = (typeof COMPOSER_CONTEXT_KINDS)[number];
 
@@ -237,10 +239,12 @@ export type ThreadContextRecord = typeof ThreadContextRecord.Type;
 /** Longest ticket body a chip snapshots; the agent reads the rest with `t3_ticket_get`. */
 export const COMPOSER_CONTEXT_TICKET_BODY_MAX_CHARS = 4_000;
 
+const TicketContextRef = TrimmedNonEmptyString.check(Schema.isMaxLength(32));
+
 /**
  * A ticket in the thread's environment. Identity leads: sending it links the thread to the
- * ticket. Title, body and links are a snapshot for the agent; a chip picked from a list has no
- * body.
+ * ticket. Title, body, links and plans are a snapshot for the agent; a chip picked from a list
+ * has no body.
  */
 export const TicketContextRecord = Schema.Struct({
   ...recordBase,
@@ -248,12 +252,50 @@ export const TicketContextRecord = Schema.Struct({
   environmentId: EnvironmentId,
   ticketId: TicketId,
   /** `T-42`. */
-  ref: TrimmedNonEmptyString.check(Schema.isMaxLength(32)),
+  ref: TicketContextRef,
   title: ShortString,
   body: Schema.optional(BoundedString(COMPOSER_CONTEXT_TICKET_BODY_MAX_CHARS)),
   links: Schema.Array(TicketLinkRef).check(Schema.isMaxLength(50)),
+  /**
+   * References only: the agent reads a body with `t3_ticket_plan_get`. Optional because records
+   * stored before plans existed carry none.
+   */
+  plans: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        planId: TicketPlanId,
+        /** `T-42/P1`. */
+        ref: TicketContextRef,
+        title: ShortString,
+        status: TicketPlanStatus,
+        revision: PositiveInt,
+        openCommentCount: NonNegativeInt,
+      }),
+    ).check(Schema.isMaxLength(50)),
+  ),
 });
 export type TicketContextRecord = typeof TicketContextRecord.Type;
+
+/**
+ * One ticket plan, attached as the work to do. Only a reference travels, never the body, so a
+ * long plan neither slips past the prompt length limit nor repeats in every message that carries
+ * it; the agent reads the current body with `t3_ticket_plan_get`. Sending it links the thread to
+ * the plan's ticket.
+ */
+export const TicketPlanContextRecord = Schema.Struct({
+  ...recordBase,
+  kind: Schema.Literal("ticket-plan"),
+  environmentId: EnvironmentId,
+  ticketId: TicketId,
+  planId: TicketPlanId,
+  /** `T-42/P1`. */
+  ref: TicketContextRef,
+  title: ShortString,
+  /** The plan's revision when it was attached. */
+  revision: PositiveInt,
+  openCommentCount: NonNegativeInt,
+});
+export type TicketPlanContextRecord = typeof TicketPlanContextRecord.Type;
 
 /**
  * Catch-all for kinds this build does not know. Known discriminators are excluded so a
@@ -287,6 +329,7 @@ export const KnownComposerContextRecord = Schema.Union([
   SkillContextRecord,
   ThreadContextRecord,
   TicketContextRecord,
+  TicketPlanContextRecord,
 ]);
 export type KnownComposerContextRecord = typeof KnownComposerContextRecord.Type;
 
