@@ -10,12 +10,22 @@ The web renderer mounts this runtime once at the application root. Desktop hosts
 the same renderer and supplies its connection catalog through Electron IPC.
 There is no legacy connection owner or supported mixed mode.
 
-Foregrounding needs different treatment depending on the connection's state.
-It wakes a retry immediately, leaves an ordinary in-flight attempt alone, and
-probes an established session before replacing it. A long mobile background
-suspension forces replacement because the OS can kill a socket without reporting
-closure. Treating every foreground event as a reconnect delays healthy attempts;
-treating every resume as harmless leaves suspended sockets stuck.
+The [supervisor](../../packages/client-runtime/src/connection/supervisor.ts) owns
+transport retry policy; resolving an endpoint and opening an RPC session are single
+attempts. Transient failures retry with jittered exponential backoff, capped at
+five minutes, that resets only after a connection stays up. Without jitter, every
+client of a restarted server reconnects in the same second; with a short cap, a
+client that can never connect retries all day. Offline states and authentication
+failures wait for a wakeup instead of spending attempts on unchanged conditions.
+
+Foregrounding, an explicit retry, and an offline report probe the established
+session, and only a failed probe reconnects. Offline reports are often wrong, for
+example for a loopback server. A long mobile background suspension is the one
+exception: it replaces the session at once, because the OS can kill a socket
+without reporting closure, and a probe would hold a dead socket in "Resuming"
+until it times out. That fresh attempt runs even while the network reports
+offline. Foregrounding also wakes a pending retry immediately and
+leaves an ordinary in-flight attempt alone.
 
 The [registry](../../packages/client-runtime/src/connection/registry.ts) scopes
 connections by environment. An involuntary disconnect retains the registration
@@ -85,11 +95,12 @@ canceled loading state.
 - While waiting out backoff, application activation resets the retry ladder so a
   foregrounded app reconnects immediately instead of serving the remaining
   delay.
-- Once connected, `monitorConnectedLease` handles plain activation by probing
-  the existing session (`lease.session.probe`, with a shorter timeout for
-  mobile's `application-active-probe`) rather than reconnecting; a healthy
-  session survives foregrounding. `application-active-reconnect` skips the probe
-  and replaces the lease outright.
+- Once connected, `monitorConnectedLease` handles plain activation, an explicit
+  retry, and an offline report by probing the existing session
+  (`lease.session.probe`, with a shorter timeout for a retry, an offline report,
+  and mobile's `application-active-probe`) rather than reconnecting; a healthy
+  session survives them. `application-active-reconnect` skips the probe and
+  replaces the lease outright.
 
 The UI derives `available`, `offline`, `connecting`, `reconnecting`,
 `connected`, and `error` from supervisor state plus explicit data-sync state.
@@ -185,7 +196,7 @@ Core state-machine tests use `@effect/vitest` and deterministic service layers.
 Required coverage includes:
 
 - offline startup and online wakeup;
-- forever retry with the 16-second cap;
+- forever retry with the five-minute cap;
 - explicit retry interrupting backoff;
 - authentication wakeups;
 - involuntary close and reconnect;

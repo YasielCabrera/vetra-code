@@ -5,9 +5,8 @@ import {
   encodeComposerContextClipboardHtml,
 } from "@t3tools/shared/composerContextClipboard";
 import {
-  CheckIcon,
   ChevronRightIcon,
-  CopyIcon,
+  CodeIcon,
   FileSpreadsheetIcon,
   FileTextIcon,
   GlobeIcon,
@@ -15,18 +14,18 @@ import {
   InfoIcon,
   LightbulbIcon,
   MailIcon,
-  Maximize2Icon,
   MessageSquareIcon,
   MessageSquareWarningIcon,
-  Minimize2Icon,
   OctagonAlertIcon,
   PlayIcon,
   PresentationIcon,
   SparklesIcon,
   TriangleAlertIcon,
+  WorkflowIcon,
   WrapTextIcon,
   type LucideIcon,
 } from "lucide-react";
+import { Check, Copy, Maximize2, Minimize2 } from "lucide";
 import type {
   AssetResource,
   EnvironmentId,
@@ -125,6 +124,7 @@ import {
 import { hasSpecificPierreIconForFileName, syntheticFileNameForLanguageId } from "../pierre-icons";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { Button } from "./ui/button";
+import { MorphIcon } from "~/components/MorphIcon";
 import { ContextChip } from "./ContextChip";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "./ui/collapsible";
 import { ScrollArea } from "./ui/scroll-area";
@@ -142,10 +142,10 @@ import { fnv1a32 } from "../lib/diffRendering";
 import { LRUCache } from "../lib/lruCache";
 import { getSyntaxHighlighterPromise } from "../lib/syntaxHighlighting";
 import { GitHubIcon } from "./Icons";
-import { MermaidBlock } from "./MermaidBlock";
 import { createIncrementalHighlightedDocument } from "../lib/incrementalHighlighting";
 import { HighlightedCodeLines } from "./chat/HighlightedCodeLines";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
+import { MermaidDiagram } from "./chat/MermaidDiagram";
 import { useTheme } from "../hooks/useTheme";
 import { getClientSettings, useClientSettings } from "../hooks/useSettings";
 import {
@@ -165,6 +165,7 @@ import {
   shouldOpenMarkdownFileLinkInEditor,
   type MarkdownFileLinkMeta,
 } from "../markdown-links";
+import { isMarkdownFileLinkLabel } from "@t3tools/client-runtime/markdown-links";
 import { readLocalApi } from "../localApi";
 import { useAssetUrlRefresh, useAssetUrlState } from "../assets/assetUrls";
 import { cn } from "../lib/utils";
@@ -909,7 +910,7 @@ function MarkdownTable({ children, ...props }: React.ComponentProps<"table">) {
               />
             }
           >
-            {expanded ? <Minimize2Icon className="size-3" /> : <Maximize2Icon className="size-3" />}
+            <MorphIcon className="size-3" icon={expanded ? Minimize2 : Maximize2} />
           </TooltipTrigger>
           <TooltipPopup side="top">{expandLabel}</TooltipPopup>
         </Tooltip>
@@ -929,7 +930,7 @@ function MarkdownTable({ children, ...props }: React.ComponentProps<"table">) {
                 />
               }
             >
-              {copied ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
+              <MorphIcon className="size-3" icon={copied ? Check : Copy} />
             </TooltipTrigger>
             <TooltipPopup side="top">{copyLabel}</TooltipPopup>
           </Tooltip>
@@ -1041,7 +1042,9 @@ function MarkdownCodeBlock({
   theme,
   onRunShellCommand,
   isStreaming,
+  leadingActions,
   canWrap = true,
+  diagram = false,
   attributes,
   children,
 }: {
@@ -1051,7 +1054,10 @@ function MarkdownCodeBlock({
   theme: "light" | "dark";
   onRunShellCommand?: ((command: string) => void) | undefined;
   isStreaming: boolean;
+  leadingActions?: ReactNode;
   canWrap?: boolean;
+  /** Renders content instead of code, with actions below it like tables. */
+  diagram?: boolean;
   attributes?: Record<string, unknown>;
   children: ReactNode;
 }) {
@@ -1110,6 +1116,37 @@ function MarkdownCodeBlock({
     [],
   );
 
+  const copyButton = (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost-muted"
+            size="icon-xs"
+            onClick={handleCopy}
+            aria-label={copyLabel}
+          />
+        }
+      >
+        <MorphIcon className="size-3" icon={copied ? Check : Copy} />
+      </TooltipTrigger>
+      <TooltipPopup side="top">{copyLabel}</TooltipPopup>
+    </Tooltip>
+  );
+
+  if (diagram) {
+    return (
+      <div {...attributes} className="my-[0.65rem]" data-language={language}>
+        {children}
+        <div className="mt-0.5 flex items-center justify-between select-none">
+          {leadingActions}
+          {copyButton}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       {...attributes}
@@ -1126,6 +1163,7 @@ function MarkdownCodeBlock({
           />
         </span>
         <span className="flex items-center gap-0.5" role="toolbar" aria-label="Code block actions">
+          {leadingActions}
           {canWrap ? (
             <Tooltip>
               <TooltipTrigger
@@ -1163,6 +1201,50 @@ function MarkdownCodeBlock({
               <TooltipPopup side="top">Run in terminal</TooltipPopup>
             </Tooltip>
           ) : null}
+          {copyButton}
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Mermaid fences render as a diagram once the response settles; streaming and
+ * the code toggle keep the highlighted source.
+ */
+function MarkdownMermaidCodeBlock({
+  code,
+  fenceTitle,
+  theme,
+  isStreaming,
+  onExpand,
+  attributes,
+  children,
+}: {
+  code: string;
+  fenceTitle: string | null;
+  theme: "light" | "dark";
+  isStreaming: boolean;
+  onExpand: (imageUrl: string) => void;
+  attributes: Record<string, unknown>;
+  children: ReactNode;
+}) {
+  const [showCode, setShowCode] = useState(false);
+  const showDiagram = !showCode && !isStreaming && code.trim().length > 0;
+  const toggleLabel = showCode ? "Show diagram" : "Show code";
+  return (
+    <MarkdownCodeBlock
+      code={code}
+      language="mermaid"
+      fenceTitle={fenceTitle}
+      theme={theme}
+      isStreaming={isStreaming}
+      canWrap={!showDiagram}
+      diagram={showDiagram}
+      attributes={attributes}
+      leadingActions={
+        isStreaming ? null : (
           <Tooltip>
             <TooltipTrigger
               render={
@@ -1170,19 +1252,34 @@ function MarkdownCodeBlock({
                   type="button"
                   variant="ghost-muted"
                   size="icon-xs"
-                  onClick={handleCopy}
-                  aria-label={copyLabel}
+                  onClick={() => setShowCode((value) => !value)}
+                  aria-label={toggleLabel}
                 />
               }
             >
-              {copied ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
+              {showCode ? <WorkflowIcon className="size-3" /> : <CodeIcon className="size-3" />}
             </TooltipTrigger>
-            <TooltipPopup side="top">{copyLabel}</TooltipPopup>
+            <TooltipPopup side="top">{toggleLabel}</TooltipPopup>
           </Tooltip>
-        </span>
-      </div>
-      {children}
-    </div>
+        )
+      }
+    >
+      {showDiagram ? (
+        <RenderErrorBoundary resetKeys={[code, theme]} fallback={children}>
+          <Suspense
+            fallback={
+              <div className="flex min-h-36 items-center justify-center text-xs text-muted-foreground">
+                Rendering diagram
+              </div>
+            }
+          >
+            <MermaidDiagram source={code} theme={theme} onExpand={onExpand} />
+          </Suspense>
+        </RenderErrorBoundary>
+      ) : (
+        children
+      )}
+    </MarkdownCodeBlock>
   );
 }
 
@@ -3048,6 +3145,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
       fileLinkChip,
       renderContextReference,
       renderAttachmentReference,
+      text,
     } = use(ChatMarkdownRendererContext);
     const citation = href ? parseAssistantCitationHref(href) : null;
     if (citation) return <AssistantCitationChip citation={citation} />;
@@ -3270,10 +3368,21 @@ const CHAT_MARKDOWN_COMPONENTS = {
       );
     }
 
-    return fileLinkChip(
-      fileLinkMeta,
-      `[${fileLinkMeta.basename}](${normalizedHref})`,
-      normalizedHref,
+    const label = nodeToPlainText(children);
+    const start = node?.position?.start.offset;
+    const end = node?.position?.end.offset;
+    const source = start !== undefined && end !== undefined ? text.slice(start, end) : "";
+    const copyMarkdown =
+      source.startsWith("[") && source.includes("](")
+        ? source
+        : `[${(label || fileLinkMeta.basename).replace(/[\\[\]]/g, "\\$&")}](${normalizedHref})`;
+    const chip = fileLinkChip(fileLinkMeta, copyMarkdown, normalizedHref);
+    return isMarkdownFileLinkLabel(label, normalizedHref) ? (
+      chip
+    ) : (
+      <span data-markdown-copy={copyMarkdown}>
+        {children} {chip}
+      </span>
     );
   },
   code: function MarkdownCode({ node, children, className, ...props }) {
@@ -3469,7 +3578,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
     );
   },
   pre: function MarkdownPre({ node, children, ...props }) {
-    const { resolvedTheme, diffThemeName, isStreaming, onRunShellCommand, text } = use(
+    const { resolvedTheme, diffThemeName, expandMedia, isStreaming, onRunShellCommand, text } = use(
       ChatMarkdownRendererContext,
     );
     const codeBlock = extractCodeBlock(children);
@@ -3479,14 +3588,13 @@ const CHAT_MARKDOWN_COMPONENTS = {
 
     const language = extractFenceLanguage(codeBlock.className);
     const fenceTitle = extractFenceTitle(extractPreCodeMeta(node));
-    const isMermaid = language === "mermaid";
-    const highlightedSource = (
+    const highlightedCode = (
       <RenderErrorBoundary
         resetKeys={[codeBlock.code, language, diffThemeName, isStreaming]}
         fallback={<pre {...props}>{children}</pre>}
       >
         {/* Reserve the block's height but stay hidden until Shiki has colored
-            it, so plain text never flashes before the highlighted version. */}
+           it, so plain text never flashes before the highlighted version. */}
         <Suspense
           fallback={
             <pre {...props} className="invisible" aria-hidden>
@@ -3503,6 +3611,20 @@ const CHAT_MARKDOWN_COMPONENTS = {
         </Suspense>
       </RenderErrorBoundary>
     );
+    if (language === "mermaid") {
+      return (
+        <MarkdownMermaidCodeBlock
+          code={codeBlock.code}
+          fenceTitle={fenceTitle}
+          theme={resolvedTheme}
+          isStreaming={isStreaming}
+          onExpand={(src) => expandMedia({ images: [{ src, name: "Mermaid diagram" }], index: 0 })}
+          attributes={pluginDataAttributes(props)}
+        >
+          {highlightedCode}
+        </MarkdownMermaidCodeBlock>
+      );
+    }
     return (
       <MarkdownCodeBlock
         code={codeBlock.code}
@@ -3515,21 +3637,9 @@ const CHAT_MARKDOWN_COMPONENTS = {
             : undefined
         }
         isStreaming={isStreaming}
-        canWrap={!isMermaid}
         attributes={pluginDataAttributes(props)}
       >
-        {isMermaid ? (
-          // A streaming diagram renders once its fence closes, not on every token.
-          <MermaidBlock
-            source={codeBlock.code}
-            theme={resolvedTheme}
-            enabled={!isStreaming || isClosedCodeFence(node, text)}
-          >
-            {highlightedSource}
-          </MermaidBlock>
-        ) : (
-          highlightedSource
-        )}
+        {highlightedCode}
       </MarkdownCodeBlock>
     );
   },

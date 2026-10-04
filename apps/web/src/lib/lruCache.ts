@@ -38,16 +38,6 @@ export class LRUCache<T> {
     this.totalSize += approximateSize;
   }
 
-  delete(key: string): void {
-    const entry = this.cache.get(key);
-    if (!entry) {
-      return;
-    }
-
-    this.totalSize -= entry.approximateSize;
-    this.cache.delete(key);
-  }
-
   clear(): void {
     this.cache.clear();
     this.totalSize = 0;

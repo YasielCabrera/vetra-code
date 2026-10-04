@@ -61,6 +61,13 @@ normalization or building reports.
 | `serverAppVersion` | Vetra server version.                                          |
 | `serverMode`       | Server runtime mode: `desktop` or `web`.                       |
 
+## Delivery
+
+A send can fail after PostHog has stored the batch, so every retry is a copy.
+[Delivery](../../apps/server/src/telemetry/AnalyticsService.ts) gives each event a
+uuid when it is recorded, backs off after a failed send, and drops a batch after a
+few tries. Without these limits, one stuck batch was sent every second for days.
+
 ## Legacy properties
 
 Existing property meanings do not change:

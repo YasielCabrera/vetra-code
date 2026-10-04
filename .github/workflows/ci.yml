@@ -369,7 +369,8 @@ jobs:
   check:
     name: Check
     if: ${{ always() }}
-    needs: [lint, typecheck, build, test, test_web, test_server, rust, release_smoke]
+    needs:
+      [lint, typecheck, build, test, test_web, test_server, transfer-report, rust, release_smoke]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:

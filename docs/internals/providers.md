@@ -5,7 +5,7 @@
 Orchestration records intent and state without knowing which provider runs a thread. Provider
 protocols, account ownership, permissions, and capabilities belong at the
 [adapter boundary](../../apps/server/src/orchestration-v2/ProviderAdapter.ts). Normalize there
-instead of spreading provider checks through reactors and clients.
+instead of spreading provider checks through orchestration and clients.
 
 A driver kind identifies an integration; an instance identifies one configuration and account
 lifecycle. Route work by instance, so two accounts using the same driver do not share mutable
@@ -22,16 +22,23 @@ the stored user message.
 
 ## Process and account isolation
 
-Vetra-managed OpenCode chat uses one server per thread. Its MCP registrations are directory-scoped,
-while Vetra Code's `vetra-code` MCP connection is thread-scoped. Sharing a chat server between threads in one directory would
-let them replace each other's connection. Catalog and text-generation work can share the
-[instance-owned helper](../../apps/server/src/provider/OpenCodeServerOwner.ts), which closes
-after an idle period. External OpenCode servers remain externally owned and can require an
-external restart to pick up configuration changes.
+The `opencode` driver probes the installed version and runs the 1.x or 2.x runtime. OpenCode's MCP
+registrations are directory-scoped, while Vetra Code's `vetra-code` MCP connection is thread-scoped, so threads in one
+directory must not share one MCP entry.
 
-OpenCode also stores persistent approval grants per directory. Automatic full-access replies use
-`once` so they cannot widen a supervised thread's permissions on a shared external server.
-See the [adapter](../../apps/server/src/orchestration-v2/Adapters/OpenCodeAdapterV2.ts).
+- **1.x** uses one Vetra-managed chat server per thread, so threads cannot replace each other's
+  connection. Catalog and text-generation work can share the
+  [instance-owned helper](../../apps/server/src/provider/OpenCodeServerOwner.ts), which closes
+  after an idle period. See the [1.x adapter](../../apps/server/src/orchestration-v2/Adapters/OpenCodeAdapterV2.ts).
+- **2.x** serves every directory from one
+  [server per instance](../../apps/server/src/provider/opencode2/OpenCode2Server.ts). Each thread
+  registers its own `vetra-code-<thread>` MCP entry, and session permission rules deny every other
+  thread's entry. See the [2.x adapter](../../apps/server/src/orchestration-v2/Adapters/OpenCode2AdapterV2.ts).
+
+External OpenCode servers remain externally owned and can require an external restart to pick up
+configuration changes. OpenCode stores "always" approval grants for the whole project. Automatic
+full-access replies use `once` so they cannot widen a supervised thread's permissions on a shared
+server. On 2.x, a session-wide approval also replies `once` and becomes Vetra Code's own rule on that session.
 
 Pi runs the user's own `pi` install in RPC mode and owns native extension, package, and project
 trust discovery. Vetra Code injects only its namespaced MCP bridge, so a Pi session behaves as it does in
@@ -84,16 +91,17 @@ See [helper constraints](../../apps/server/src/textGeneration/AntigravityTextGen
 
 ## Provider updates run only through the owning installer
 
-A one-click update is offered only when the resolved executable's path proves which installer owns
-it. Homebrew and npm are proven by the real path (symlinks followed): a versioned keg or cask under
+A package manager runs only when the resolved executable's path proves it owns the install. Homebrew
+and npm are proven by the real path (symlinks followed): a versioned keg or cask under
 `brew --prefix`, or `<prefix>/lib/node_modules/<pkg>/` (Windows: the shim beside `node_modules`).
-Native installer layouts and the global bin directories of pnpm, Bun, and Vite+ may match on either
-the resolved path or its real target, since those installers place real files or their own symlinks
-there. Cursor and Grok are the exception: their only updater is the CLI itself, which detects its
-own installer, so any resolved executable runs `<binary> update`. Anything unproven stays
-manual-only but still reports the version gap. npm updates pin
-`--prefix` because the `npm` on `PATH` can belong to a different Node than the one that owns the
-provider. Homebrew
+Native installer layouts and the global directories of pnpm, Bun, Yarn, and Vite+ may match on
+either the resolved path or its real target, since those installers place real files or their own
+symlinks there. Volta is proven by its `volta-shim` link plus the package's image directory. When
+nothing is proven, the provider's own updater (`claude update`, `codex update`, `opencode upgrade`,
+`pi update --self`, `grok update`) runs instead, because each one detects its installer itself;
+the runner's version check catches an updater that exits 0 without updating. Mise installs stay
+manual-only because their version is pinned in mise's config. npm updates pin `--prefix` because the
+`npm` on `PATH` can belong to a different Node than the one that owns the provider. Homebrew
 compares against `brew info` since casks trail npm by hours; native installs share npm's version
 train, so the registry stays authoritative for them.
 See the [resolver](../../apps/server/src/provider/providerMaintenance.ts).

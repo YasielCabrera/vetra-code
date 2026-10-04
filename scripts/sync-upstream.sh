@@ -102,6 +102,9 @@ PRUNE_PATHS=(
   # Deleted during fork isolation: the fork's dev setup lives in AGENTS.md, and
   # upstream's file documents the T3 CLI and t3.json worktree scripts.
   docs/operations/development.md
+  # Nightly toast and settings row promoting T3's beta mobile app through T3's
+  # TestFlight and Google Play links. The fork ships no mobile app.
+  apps/web/src/components/NightlyMobileBeta.tsx
 )
 PRUNE_GLOBS=(
   'apps/server/src/cli/triage*'

@@ -80,6 +80,7 @@ export interface GitStatusDetails {
   upstreamRef: string | null;
   hasWorkingTreeChanges: boolean;
   workingTree: VcsStatusResult["workingTree"];
+  branchChanges?: VcsStatusResult["branchChanges"];
   hasUpstream: boolean;
   aheadCount: number;
   behindCount: number;
@@ -89,6 +90,8 @@ export interface GitStatusDetails {
 export interface GitLocalStatusOptions {
   /** Skip revision walks and return zero divergence counts for local-only consumers. */
   readonly includeDivergence?: boolean;
+  /** Also read the diff panel's Changes totals. Failures leave them out. */
+  readonly includeBranchChanges?: boolean;
 }
 
 export interface GitRemoteStatusDetails {
@@ -175,6 +178,8 @@ export interface GitCommitProgress {
 export interface GitCommitOptions {
   readonly timeoutMs?: number;
   readonly progress?: GitCommitProgress;
+  /** Stage the current working tree immediately before committing. */
+  readonly stage?: { readonly filePaths?: readonly string[] };
 }
 
 export interface GitDeleteLocalBranchInput {

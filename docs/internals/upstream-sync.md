@@ -87,6 +87,7 @@ Surfaces this fork deleted and will not ship:
 | `docs/user/mobile-*`, `docs/operations/android-notifications.md`             | Mobile-only guidance.             |
 | `docs/operations/connect-setup.md`                                           | Written for T3's Clerk and relay. |
 | `patches/*react-navigation*`, `patches/*react-native*`, and `patches/*expo*` | Mobile dependency patches.        |
+| `apps/web/src/components/NightlyMobileBeta.tsx`                              | Promotes T3's beta mobile app.    |
 
 The script's `PRUNE_PATHS` / `PRUNE_GLOBS` lists are the source of truth for the mechanical drop.
 If upstream adds a new file inside those trees, the prune pass deletes it again. If upstream adds a

@@ -35,9 +35,6 @@ another application's data directory as a Vetra home.
 If the web or desktop app shows "Vetra Code could not load", check your connection and select
 **Reload** to try again.
 
-Download a release from [GitHub Releases](https://github.com/pingdotgg/t3code/releases),
-or use a package manager:
-
 When the Vetra Code desktop app is running on the same machine, open the current directory in it
 from the checkout:
 
@@ -84,12 +81,6 @@ successful launch, Vetra Code keeps the current runtime and one previous runtime
 removes older caches automatically. If a cached runtime stops working, Vetra Code launches from the
 application files under `/mnt/c` instead and reinstalls the runtime on the next launch.
 
-If the app crashes during launch, open Settings → Diagnostics on the next launch
-that succeeds. It lists startup crashes from the last 7 days with the error and
-component stack that store crash reports leave out. Copy the report and paste it
-into a GitHub issue. Error messages can quote values from the app, so read it over
-before sharing.
-
 ## Providers
 
 Vetra Code uses provider runtimes but does not bundle them. Install and authenticate each
@@ -118,11 +109,12 @@ you can install the recommendation there. Otherwise use the provider's installer
 on the environment's machine. An unlisted version is unverified.
 
 When a provider CLI is behind its latest release, its provider card shows the
-available version. **Update now** appears only when Vetra Code can tell which
-installer owns the CLI (its own update command, Homebrew, or a global npm, pnpm,
-bun, or Vite+ install) and runs that installer. Otherwise update the CLI the same
-way you installed it. Homebrew installs compare against the version Homebrew
-offers, which can trail the npm release by a few hours.
+available version. **Update now** runs the installer that owns the CLI
+(Homebrew, or a global npm, pnpm, Yarn, Bun, Volta, or Vite+ install), or the
+CLI's own update command when Vetra Code cannot tell. Update a CLI installed with
+mise through mise. Cursor and Antigravity update with Vetra Code. Homebrew installs
+compare against the version Homebrew offers, which can trail the npm release by
+a few hours.
 
 Cursor is the one to watch: install Cursor CLI, which provides the `cursor-agent` binary that
 Vetra Code looks for, but authenticate with `agent login`, not `cursor-agent login`.

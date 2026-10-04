@@ -10,20 +10,17 @@ and mode selections, unless the destination project has its own model default.
 Its branch and workspace mode come from your configured defaults. To continue in
 an existing worktree, use **New thread in this worktree** from the branch toolbar.
 
-Each server stores its own copy of the automatic settlement settings and checks them even when no
-web, desktop, or mobile client is connected. By default, it settles threads after three days without
-activity and when their pull request merges. An eligible idle thread also settles when its pull
-request closes. An open pull request blocks inactivity settlement. Active work, pending input, and
-live background work keep the thread active. Vetra Code settles from a closed or merged pull request
-only when its timestamp is not older than the user's latest activity. If that timestamp is not
-available, the inactivity rule still applies. A manual un-settle also keeps the thread active.
+When you change a new thread's project, Vetra Code stays in the current environment
+if that project exists there. Otherwise it selects an environment that has it.
 
 ### Start without a project
 
 A thread does not need a project. To start one without a project, click **or
 start without a project** under a new thread's heading, pick **No project** from
 the project menu in that heading or from **New thread in...** in the command
-palette, or press `mod+alt+n`. To move a draft into a project, pick the project in the heading.
+palette, or press `mod+alt+n`. It starts on your current machine; before sending,
+pick another machine from the machine menu to move it there. To move a draft into a
+project, pick the project in the heading.
 
 Each thread without a project works in its own folder under `~/.vetra-code/scratch` (the
 `scratch` folder of your Vetra Code data directory), named after its date, the first words
@@ -52,7 +49,8 @@ Pin a thread from its menu to keep it above your active work.
 On web and desktop, unpinning, settling, snoozing, and archiving a thread each show
 a notification with **Undo** for five seconds. Undo restores the thread's previous
 state, including its pinned position, and reopens an archived thread you were
-viewing. `mod+z` triggers the most recent Undo when no text field is focused; see
+viewing. Discarding an unsent draft from the sidebar works the same way: Undo brings
+back its text and attachments. `mod+z` triggers the most recent Undo when no text field is focused; see
 [Keybindings](./keybindings.md#commands-with-special-behavior).
 
 On web and desktop, you can also drag files from your computer onto any thread row:
@@ -116,12 +114,13 @@ open.
 ### Fold working threads (beta)
 
 On web and desktop, turn on **Settings → General → Working section (beta)** to move threads that
-are working or monitoring into a collapsed **Working** section at the bottom of the sidebar. A
-thread returns to the top of the active list when it finishes, fails, or needs an approval or
-answer. Pinned threads stay in the pinned section.
+are working or monitoring into a collapsed **Working** section below the active list. A thread returns to the top
+of the active list when it finishes, fails, or needs an approval or answer. The Working section
+lists the thread you last sent work to first. Pinned threads stay in the pinned section. Each
+device keeps its own choice.
 
 While this is on, the active list is ordered by when each thread last came back to you, so you
-cannot drag to reorder it. Your saved order returns when you turn it off.
+cannot drag or move threads within it. Your saved order returns when you turn it off.
 
 ## Settle finished work
 
@@ -133,9 +132,18 @@ sending an answer or restarting the agent. Settling also closes the thread's
 terminals that wait at an idle prompt, and keeps their output. A terminal that
 runs a command, such as a dev server, stays open.
 
-If reordering is unavailable for one environment, update the Vetra Code server running in that
-environment. Older servers can still pin and unpin threads, but do not understand synced ordering;
-their pinned threads keep the default newest-first order below the ones you have arranged.
+On web and desktop, press a thread's **Settle** button and drag up or down to
+settle every thread in that section between it and the one you release on.
+The **Un-settle** and **Wake** buttons work the same way in their sections.
+Press `Escape` while dragging to cancel.
+
+By default, environments settle inactive threads after three days and settle
+threads whose pull request merged. A closed pull request can also settle an idle
+thread. Work in progress, pending questions or approvals, and live background work
+prevent automatic settlement. An open pull request does not prevent inactivity
+settlement, but an old closed or merged pull request does not settle work you
+resumed after it closed. Only your own messages count as resuming. A turn that
+finished background work or a pull request watch starts on its own does not.
 
 To keep one thread out of the settled shelf no matter how long it sits idle, open its menu,
 choose **Auto-settle behavior**, and pick **Disabled**. The current option is checked. Pick
@@ -180,6 +188,8 @@ pill** fallback because their colors are not controlled by Vetra Code.
 To generate a fresh title from the conversation, open a thread's context menu and choose
 **Regenerate title**. While Vetra Code is generating it, the action reads **Regenerating…** and
 cannot be selected again. The option is hidden when the connected environment needs a server update.
+
+## Inspect agent work
 
 **Limited** means the provider stopped on a usage or rate limit. The conversation
 keeps the provider's explanation. Retry after the limit resets, or switch to

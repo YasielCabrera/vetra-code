@@ -388,6 +388,7 @@ export const trackingThreadLaunchLayer = Layer.effect(
           Effect.andThen(inner.launch({ ...input, threadId })),
         );
       },
+      retryPreparation: inner.retryPreparation,
     });
   }),
 );

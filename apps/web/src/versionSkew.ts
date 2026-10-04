@@ -1,5 +1,11 @@
-import type { EnvironmentId, ServerConfig, ServerSelfUpdateCapability } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  ServerConfig,
+  ServerInstallation,
+  ServerSelfUpdateCapability,
+} from "@t3tools/contracts";
 import type { ServerUpdateState } from "@t3tools/client-runtime/state/server";
+import { PRODUCT_SERVER_PACKAGE } from "@t3tools/shared/productIdentity";
 import { compareSemverVersions, parseSemver } from "@t3tools/shared/semver";
 import * as Schema from "effect/Schema";
 
@@ -115,8 +121,17 @@ export function supportsServerUpdateThreadContinuation(
 }
 
 /** The command to hand users whose server cannot update itself. */
-export function manualServerUpdateCommand(targetVersion: string): string {
-  return `npx --yes t3@${targetVersion}`;
+export function manualServerUpdateCommand(
+  targetVersion: string,
+  installation?: ServerInstallation,
+): string {
+  if (installation?.kind === "npm-global") {
+    const prefix = `'${installation.prefix.replaceAll("'", "'\\''")}'`;
+    return `npm install --global --prefix ${prefix} ${PRODUCT_SERVER_PACKAGE}@${targetVersion}`;
+  }
+  const runner =
+    installation?.kind === "pnpm-dlx" ? "pnpm dlx" : installation?.kind === "bunx" ? "bunx" : "npx";
+  return `${runner} ${PRODUCT_SERVER_PACKAGE}@${targetVersion}`;
 }
 
 export function serverUpdateGuidance(capability: ServerSelfUpdateCapability): string {

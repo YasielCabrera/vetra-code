@@ -116,6 +116,7 @@ export function gitHubProviderFailure(
   if (error._tag === "SourceControlRateLimitPausedError") {
     return { reason: "rate-limited", retryAt: error.retryAt };
   }
+  if (error._tag === "GitHubPullRequestNotFoundError") return { reason: "not-found" };
   return { reason: "failed" };
 }
 
@@ -412,6 +413,7 @@ export const make = Effect.gen(function* () {
               reviewThreads: [],
               commentCount: 0,
               truncated: true,
+              reviewThreadsTruncated: true,
               reviewers: [],
               avatarsByLogin: new Map<string, string>(),
               botLogins: new Set<string>(),
@@ -480,6 +482,7 @@ export const make = Effect.gen(function* () {
           // are always whole and only the thread walk can stop short of the host.
           commentCount: pullRequest.comments.length + reviewThreads.commentCount,
           commentsTruncated: reviewThreads.truncated,
+          reviewThreadsTruncated: reviewThreads.reviewThreadsTruncated,
           reviewThreads: reviewThreads.reviewThreads.map((thread) => ({
             ...thread,
             comments: thread.comments.map((comment) => ({

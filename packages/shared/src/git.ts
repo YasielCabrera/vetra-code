@@ -376,6 +376,7 @@ function toLocalStatusPart(status: VcsStatusResult): VcsStatusLocalResult {
     ...(status.headOid === undefined ? {} : { headOid: status.headOid }),
     hasWorkingTreeChanges: status.hasWorkingTreeChanges,
     workingTree: status.workingTree,
+    ...(status.branchChanges ? { branchChanges: status.branchChanges } : {}),
   };
 }
 

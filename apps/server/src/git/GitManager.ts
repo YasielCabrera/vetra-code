@@ -1001,7 +1001,7 @@ export const make = Effect.gen(function* () {
   const canonicalizeExistingPath = (value: string) =>
     fileSystem.realPath(value).pipe(Effect.orElseSucceed(() => value));
   const normalizeStatusCacheKey = canonicalizeExistingPath;
-  const nonRepositoryStatusDetails = {
+  const nonRepositoryStatusDetails: GitVcsDriver.GitStatusDetails = {
     isRepo: false,
     headOid: null,
     hasOriginRemote: false,
@@ -1014,10 +1014,10 @@ export const make = Effect.gen(function* () {
     aheadCount: 0,
     behindCount: 0,
     aheadOfDefaultCount: 0,
-  } satisfies GitVcsDriver.GitStatusDetails;
+  };
   const readLocalStatus = Effect.fn("readLocalStatus")(function* (cwd: string) {
     const details = yield* gitCore
-      .statusDetailsLocal(cwd, { includeDivergence: false })
+      .statusDetailsLocal(cwd, { includeDivergence: false, includeBranchChanges: true })
       .pipe(
         Effect.catchIf(isNotGitRepositoryError, () => Effect.succeed(nonRepositoryStatusDetails)),
       );
@@ -1034,6 +1034,7 @@ export const make = Effect.gen(function* () {
       headOid: details.headOid,
       hasWorkingTreeChanges: details.hasWorkingTreeChanges,
       workingTree: details.workingTree,
+      ...(details.branchChanges ? { branchChanges: details.branchChanges } : {}),
     } satisfies VcsStatusLocalResult;
   });
   const localStatusResultCache = yield* Cache.makeWith(readLocalStatus, {
@@ -1987,6 +1988,7 @@ export const make = Effect.gen(function* () {
         : null;
     const { commitSha } = yield* gitCore.commit(cwd, suggestion.subject, suggestion.body, {
       timeoutMs: COMMIT_TIMEOUT_MS,
+      stage: filePaths ? { filePaths } : {},
       ...(commitProgress ? { progress: commitProgress } : {}),
     });
     if (currentHookName !== null) {

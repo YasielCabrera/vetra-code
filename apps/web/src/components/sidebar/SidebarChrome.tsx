@@ -52,7 +52,7 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
     // The titlebar row, not a padded SidebarHeader: it aligns to the window controls.
     <div
       className={cn(
-        "@container/sidebar-header relative flex h-[var(--workspace-topbar-height)] shrink-0 flex-row items-center gap-2 px-3 md:px-0",
+        "relative flex h-[var(--workspace-topbar-height)] shrink-0 flex-row items-center gap-2 px-3 md:pl-0",
         isElectron && "drag-region",
       )}
     >
@@ -62,20 +62,52 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
         variant={backdropVariant ? "media-navigation" : "ghost"}
         className="relative top-auto z-10 translate-y-0 md:hidden"
       />
-      <SidebarBrand onBackdrop={backdropVariant !== null} />
-      {pillLabel ? (
-        <Badge
-          className="relative z-10 ml-1 hidden @[15rem]/sidebar-header:inline-flex"
-          data-environment-identification="pill"
-          size="sm"
-          variant="secondary"
-        >
-          {pillLabel}
-        </Badge>
-      ) : null}
+      {/* One visible line: the pill wraps onto the clipped second line once it no longer fits.
+          The padding keeps the brand's focus ring inside the clip. */}
+      <div className="relative z-10 flex h-8 min-w-0 flex-1 flex-wrap content-start items-center gap-x-2 overflow-hidden py-0.5">
+        <SidebarBrand onBackdrop={backdropVariant !== null} />
+        {pillLabel ? (
+          <div className="ml-1 flex h-7 items-center">
+            <Badge data-environment-identification="pill" size="sm" variant="secondary">
+              {pillLabel}
+            </Badge>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 });
+
+// Measures the brand at its titlebar inset, plus the header's right padding and the
+// sidebar border, so the sidebar minimum follows font size, zoom and macOS window controls.
+export function SidebarBrandWidthProbe({
+  onWidthChange,
+}: {
+  onWidthChange: (width: number) => void;
+}) {
+  const observeWidth = useCallback(
+    (probe: HTMLDivElement) => {
+      const observer = new ResizeObserver(([entry]) => {
+        if (entry) onWidthChange(entry.borderBoxSize[0]?.inlineSize ?? probe.offsetWidth);
+      });
+      observer.observe(probe);
+      return () => observer.disconnect();
+    },
+    [onWidthChange],
+  );
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none invisible fixed top-0 left-0 flex w-max border-r border-transparent pr-3"
+      ref={observeWidth}
+    >
+      <div className="ml-[var(--workspace-titlebar-content-left)] flex">
+        <SidebarBrandMark onBackdrop={false} />
+      </div>
+    </div>
+  );
+}
 
 function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
   return (
@@ -87,11 +119,19 @@ function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
       )}
       to="/"
     >
+      <SidebarBrandMark onBackdrop={onBackdrop} />
+    </Link>
+  );
+}
+
+function SidebarBrandMark({ onBackdrop }: { onBackdrop: boolean }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
       <T3Wordmark className="size-4 shrink-0" {...(onBackdrop ? { fill: "currentColor" } : {})} />
       <span className="-translate-y-px truncate text-sm font-semibold tracking-tight">
         {APP_BASE_NAME}
       </span>
-    </Link>
+    </span>
   );
 }
 
