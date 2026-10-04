@@ -159,7 +159,7 @@ it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
       );
       expect(yield* resolve).toBeNull();
       yield* fs.symlink(entry, globalBin);
-      expect(yield* resolve).toEqual({ kind: "npm-global", prefix });
+      expect(yield* resolve).toEqual({ kind: "npm-global", prefix: yield* fs.realPath(prefix) });
       yield* fs.remove(globalBin);
       yield* fs.writeFileString(globalBin, "an unrelated vetra command");
       expect(yield* resolve).toBeNull();
@@ -186,6 +186,7 @@ it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
         '{"name":"@vetra-code/server","version":"0.0.45","bin":{"vetra":"./bin/vetra.js"},"optionalDependencies":{"@vetra-code/vetra-linux-x64":"0.0.45"}}',
       );
       yield* fs.symlink(launcher, path.join(prefix, "bin/vetra"));
+      const canonicalPrefix = yield* fs.realPath(prefix);
       const resolve = resolveServerInstallation.pipe(
         Effect.provideService(HostProcessExecutablePath, entry),
         Effect.provideService(HostProcessIsExecutable, true),
@@ -193,7 +194,7 @@ it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
       );
       for (const [version, expected] of [
         ["0.0.44", null],
-        ["0.0.45", { kind: "npm-global", prefix }],
+        ["0.0.45", { kind: "npm-global", prefix: canonicalPrefix }],
       ]) {
         yield* fs.writeFileString(
           path.join(path.dirname(entry), "package.json"),
