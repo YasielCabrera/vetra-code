@@ -231,4 +231,23 @@ it.layer(NodeServices.layer)("migrate-dev-db", (it) => {
       assert.equal(error._tag, "MigrateDevDbSharedHomeError");
     }),
   );
+
+  it.effect("refuses to rebuild the legacy home", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const sourceDir = yield* fs.makeTempDirectoryScoped({ prefix: "migrate-dev-db-legacy-" });
+      const source = yield* createFixtureSource(sourceDir);
+      const legacyHome = yield* fs.realPath(sourceDir);
+
+      const error = yield* runMigrateDevDb(
+        { baseDir: sourceDir, source, projects: 5, threadsPerProject: 10 },
+        { legacyHome: sourceDir },
+      ).pipe(Effect.flip);
+      assert.equal(error._tag, "MigrateDevDbLiveInstallError");
+      assert.equal(
+        error.message,
+        `Refusing to rebuild '${legacyHome}'. It is a live install. Use an isolated --base-dir.`,
+      );
+    }),
+  );
 });
