@@ -34,6 +34,7 @@ const summary = (id: string, title: string, threadId?: ThreadId): TicketSummary 
   createdBy: { type: "user" },
   linkRefs: threadId === undefined ? [] : [{ kind: "thread", targetKey: threadId }],
   attachmentCount: 0,
+  plans: [],
 });
 
 const loadedList = (...tickets: TicketSummary[]): ListResult =>

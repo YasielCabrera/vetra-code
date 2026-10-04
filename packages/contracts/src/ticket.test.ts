@@ -6,11 +6,13 @@ import {
   parseTicketReference,
   TicketCreateInput,
   ticketLinkTargetKey,
+  TicketSummary,
   TicketUpdateInput,
 } from "./ticket.ts";
 
 const isTicketCreate = Schema.is(TicketCreateInput);
 const isTicketUpdate = Schema.is(TicketUpdateInput);
+const decodeTicketSummary = Schema.decodeSync(TicketSummary);
 
 describe("ticket write limits", () => {
   const attachment = {
@@ -98,5 +100,26 @@ describe("ticketLinkTargetKey", () => {
       }),
     ).toBe("github.com/acme/app#5");
     expect(ticketLinkTargetKey({ kind: "project", projectId: ProjectId.make("p-1") })).toBe("p-1");
+  });
+});
+
+describe("TicketSummary", () => {
+  it("reads a summary from a server that predates plans as having none", () => {
+    const summary = decodeTicketSummary({
+      kind: "local",
+      id: "ticket-1",
+      number: 1,
+      title: "Ship it",
+      labels: [],
+      statusId: "todo",
+      sortKey: "a0",
+      revision: 1,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      createdBy: { type: "user" },
+      linkRefs: [],
+      attachmentCount: 0,
+    });
+    expect(summary.plans).toEqual([]);
   });
 });

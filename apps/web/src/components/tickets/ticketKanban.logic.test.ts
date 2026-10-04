@@ -87,6 +87,7 @@ describe("applyPendingMoves", () => {
     createdBy: { type: "user" },
     linkRefs: [],
     attachmentCount: 0,
+    plans: [],
   };
   const pending = new Map([
     [

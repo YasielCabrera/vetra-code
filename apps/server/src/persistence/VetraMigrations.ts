@@ -14,6 +14,7 @@ import type { SqlError } from "effect/unstable/sql/SqlError";
 import Migration001 from "./VetraMigrations/001_Tickets.ts";
 import Migration002 from "./VetraMigrations/002_TicketGitHubSources.ts";
 import Migration003 from "./VetraMigrations/003_TicketDrafts.ts";
+import Migration004 from "./VetraMigrations/004_TicketPlans.ts";
 
 type VetraMigration = readonly [
   id: string,
@@ -24,6 +25,7 @@ const vetraMigrations: ReadonlyArray<VetraMigration> = [
   ["001_Tickets", Migration001],
   ["002_TicketGitHubSources", Migration002],
   ["003_TicketDrafts", Migration003],
+  ["004_TicketPlans", Migration004],
 ];
 
 export const runVetraMigrations = Effect.fn("runVetraMigrations")(function* (

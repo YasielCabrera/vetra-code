@@ -8,6 +8,7 @@ import {
   ProjectId,
   ThreadId,
   TicketId,
+  TicketPlanId,
   TicketStatusId,
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
@@ -156,6 +157,31 @@ export const GitHubIssueSnapshot = Schema.Struct({
 });
 export type GitHubIssueSnapshot = typeof GitHubIssueSnapshot.Type;
 
+export const TicketPlanStatus = Schema.Literals(["active", "archived"]);
+export type TicketPlanStatus = typeof TicketPlanStatus.Type;
+
+/**
+ * A plan without its body, as every ticket summary lists it. Lives here rather than in
+ * `ticketPlan.ts` because `TicketSummary` embeds it and `ticketPlan.ts` imports this module.
+ */
+export const TicketPlanSummary = Schema.Struct({
+  planId: TicketPlanId,
+  /** `T-42/P1`: the ticket's number and the plan's per-ticket number. */
+  ref: TrimmedNonEmptyString,
+  /** Never reused within its ticket, like ticket numbers. */
+  number: PositiveInt,
+  title: Schema.String,
+  status: TicketPlanStatus,
+  /** Bumps only when the title or body changes; archiving and comments leave it alone. */
+  revision: PositiveInt,
+  /** Unresolved top-level comments; replies never count. */
+  openCommentCount: NonNegativeInt,
+  createdBy: TicketActor,
+  updatedBy: TicketActor,
+  updatedAt: IsoDateTime,
+});
+export type TicketPlanSummary = typeof TicketPlanSummary.Type;
+
 const TicketSummaryBase = {
   id: TicketId,
   /** The environment-wide sequence number behind the `T-42` reference. */
@@ -176,6 +202,8 @@ const TicketSummaryBase = {
   createdBy: TicketActor,
   linkRefs: Schema.Array(TicketLinkRef),
   attachmentCount: NonNegativeInt,
+  /** Ordered by number, archived ones included. Servers older than plans omit it. */
+  plans: Schema.Array(TicketPlanSummary).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
 };
 
 export const TicketSummary = Schema.Union([
@@ -229,6 +257,11 @@ export const TicketActivityEntry = Schema.Union([
     name: Schema.String,
   }),
   Schema.Struct({ type: Schema.Literal("synced"), changes: Schema.Array(TrimmedNonEmptyString) }),
+  Schema.Struct({
+    type: Schema.Literals(["plan_created", "plan_edited", "plan_archived", "plan_restored"]),
+    planId: TicketPlanId,
+    number: PositiveInt,
+  }),
 ]);
 export type TicketActivityEntry = typeof TicketActivityEntry.Type;
 
@@ -281,7 +314,7 @@ export const TicketWriteResult = Schema.Struct({
 });
 export type TicketWriteResult = typeof TicketWriteResult.Type;
 
-const TicketTitle = TrimmedNonEmptyString.check(Schema.isMaxLength(500));
+export const TicketTitle = TrimmedNonEmptyString.check(Schema.isMaxLength(500));
 export const TICKET_BODY_MAX_CHARS = 100_000;
 export const TICKET_LABELS_MAX_COUNT = 50;
 export const TICKET_LINKS_MAX_COUNT = 100;
@@ -295,7 +328,7 @@ const TicketBody = Schema.String.check(
 const TicketLabels = Schema.Array(TrimmedNonEmptyString.check(Schema.isMaxLength(100))).check(
   Schema.isMaxLength(TICKET_LABELS_MAX_COUNT, { message: "Tickets can have up to 50 labels." }),
 );
-const TicketAttachmentUploads = Schema.Array(
+export const TicketAttachmentUploads = Schema.Array(
   Schema.Union([ChatImageAttachment, ChatFileAttachment]),
 ).check(
   Schema.isMaxLength(PROVIDER_SEND_TURN_MAX_ATTACHMENTS, {

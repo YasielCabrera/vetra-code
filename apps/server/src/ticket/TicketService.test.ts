@@ -14,6 +14,7 @@ import {
   type TicketActor,
   type TicketDetail,
   type TicketListEvent,
+  type TicketPlan,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -848,6 +849,534 @@ describe("TicketService", () => {
         );
         assert.strictEqual(moved.statusId, "in_progress");
       }),
+    ),
+  );
+});
+
+describe("TicketService plans", () => {
+  const agent = { type: "agent", threadId: ThreadId.make("thread-7") } as const;
+
+  const stageUpload = (name: string, text: string) =>
+    Effect.gen(function* () {
+      const config = yield* ServerConfig.ServerConfig;
+      NodeFS.mkdirSync(config.attachmentsDir, { recursive: true });
+      const id = ChatAttachmentId.make(createPendingAttachmentId(".txt"));
+      NodeFS.writeFileSync(NodePath.join(config.attachmentsDir, `${id}.txt`), text);
+      return {
+        type: "file",
+        id,
+        name,
+        mimeType: "text/plain",
+        sizeBytes: text.length,
+      } as const;
+    });
+
+  it.effect("numbers plans per ticket, never reuses a number, and lists them on the summary", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const first = (yield* tickets.create({ title: "First" }, USER)).ticket;
+        const second = (yield* tickets.create({ title: "Second" }, USER)).ticket;
+        const plan = (ticketId: TicketId, title: string) =>
+          tickets.createPlan({ ticketId, title }, USER).pipe(Effect.map((result) => result.plan));
+
+        yield* plan(first.id, "Schema");
+        const dropped = yield* plan(first.id, "Dropped");
+        yield* tickets.deletePlan({ planId: dropped.planId });
+        yield* plan(first.id, "Rollout");
+        yield* plan(second.id, "Elsewhere");
+
+        const describePlans = (summary: { plans: ReadonlyArray<TicketPlan["summary"]> }) =>
+          summary.plans.map((entry) => [entry.ref, entry.title, entry.status, entry.revision]);
+        assert.deepStrictEqual(describePlans(yield* tickets.resolveRef("T-1")), [
+          ["T-1/P1", "Schema", "active", 1],
+          ["T-1/P3", "Rollout", "active", 1],
+        ]);
+        assert.deepStrictEqual(describePlans({ plans: yield* tickets.listPlans(second.id) }), [
+          ["T-2/P1", "Elsewhere", "active", 1],
+        ]);
+        const missing = yield* tickets
+          .createPlan({ ticketId: TicketId.make("nope"), title: "Orphan" }, USER)
+          .pipe(Effect.flip);
+        assert.strictEqual(missing._tag, "TicketNotFoundError");
+      }),
+    ),
+  );
+
+  it.effect("checks the plan's own revision and leaves the ticket's revision alone", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const ticket = (yield* tickets.create({ title: "Ship plans" }, USER)).ticket;
+        const { planId } = (yield* tickets.createPlan(
+          { ticketId: ticket.id, title: "Approach" },
+          agent,
+        )).plan;
+        yield* TestClock.adjust("1 minute");
+        const renamed = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, title: "Approach B" },
+          agent,
+        )).plan;
+        const stale = yield* tickets
+          .updatePlan({ planId, expectedRevision: 1, body: "Lost" }, agent)
+          .pipe(Effect.flip);
+        const sameTitle = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, title: "Approach B" },
+          agent,
+        )).plan;
+        const archived = yield* tickets.setPlanStatus({ planId, status: "archived" }, agent);
+        const afterPlanWrites = yield* tickets.resolveRef("T-1");
+        const userEdit = (yield* tickets.update(
+          { ticketId: ticket.id, expectedRevision: 1, body: "My notes" },
+          USER,
+        )).ticket;
+
+        assert.deepStrictEqual(
+          [
+            renamed.revision,
+            stale._tag === "TicketPlanRevisionConflictError"
+              ? [stale.expectedRevision, stale.actualRevision]
+              : stale._tag,
+            sameTitle.revision,
+            [archived.status, archived.revision],
+            [afterPlanWrites.revision, afterPlanWrites.updatedAt],
+            userEdit.revision,
+          ],
+          [2, [1, 2], 2, ["archived", 2], [1, "1970-01-01T00:01:00.000Z"], 2],
+        );
+      }),
+    ),
+  );
+
+  it.effect("keeps an archived plan's title and body read-only until it is restored", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const ticketId = (yield* tickets.create({ title: "Retired" }, USER)).ticket.id;
+        const { planId } = (yield* tickets.createPlan(
+          { ticketId, title: "Old", body: "Old steps" },
+          agent,
+        )).plan;
+        const comment = yield* tickets.addPlanComment({ planId, body: "Still wrong" }, USER);
+        yield* tickets.setPlanStatus({ planId, status: "archived" }, USER);
+        const upload = yield* stageUpload("notes.txt", "notes");
+
+        const refusals = yield* Effect.forEach(
+          [
+            { title: "New" },
+            { body: "New steps" },
+            { edits: [{ find: "Old", replace: "New" }] },
+            { attachments: [upload] },
+          ],
+          (fields) =>
+            tickets.updatePlan({ planId, expectedRevision: 1, ...fields }, agent).pipe(
+              Effect.flip,
+              Effect.map((error) => (error._tag === "TicketError" ? error.message : error._tag)),
+            ),
+        );
+        const resolved = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, resolveCommentIds: [comment.id] },
+          agent,
+        )).plan;
+        yield* tickets.setPlanStatus({ planId, status: "active" }, USER);
+        const restored = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, title: "New" },
+          agent,
+        )).plan;
+
+        assert.deepStrictEqual(
+          [refusals, resolved.openCommentCount, [restored.title, restored.revision]],
+          [Array(4).fill("T-1/P1 is archived. Restore it before editing it."), 0, ["New", 2]],
+        );
+      }),
+    ),
+  );
+
+  it.effect("applies find-and-replace edits and leaves the plan untouched when one fails", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const ticketId = (yield* tickets.create({ title: "Edits" }, USER)).ticket.id;
+        const { planId } = (yield* tickets.createPlan(
+          { ticketId, title: "Steps", body: "Step one\nStep two" },
+          agent,
+        )).plan;
+        const failed = yield* tickets
+          .updatePlan(
+            {
+              planId,
+              expectedRevision: 1,
+              edits: [
+                { find: "one", replace: "1" },
+                { find: "Step", replace: "Stage" },
+              ],
+            },
+            agent,
+          )
+          .pipe(Effect.flip);
+        const both = yield* tickets
+          .updatePlan(
+            { planId, expectedRevision: 1, body: "New", edits: [{ find: "one", replace: "1" }] },
+            agent,
+          )
+          .pipe(Effect.flip);
+        yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, edits: [{ find: "two", replace: "2" }] },
+          agent,
+        );
+        const stale = yield* tickets
+          .updatePlan(
+            { planId, expectedRevision: 1, edits: [{ find: "one", replace: "1" }] },
+            agent,
+          )
+          .pipe(Effect.flip);
+
+        const plan = yield* tickets.getPlan(planId);
+        assert.deepStrictEqual(
+          [failed.message, both.message, stale._tag, plan.body, plan.summary.revision],
+          [
+            "Edit 2 matched more than once: add surrounding text to its find text so it matches once.",
+            "Send a new body or edits, not both.",
+            "TicketPlanRevisionConflictError",
+            "Step one\nStep 2",
+            2,
+          ],
+        );
+      }),
+    ),
+  );
+
+  it.effect("claims plan uploads onto the ticket and lists only those the body references", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const config = yield* ServerConfig.ServerConfig;
+        const ticketUpload = yield* stageUpload("ticket.txt", "ticket");
+        const ticketId = (yield* tickets.create(
+          { title: "With files", attachments: [ticketUpload] },
+          USER,
+        )).ticket.id;
+        yield* TestClock.adjust("1 minute");
+        const sketch = yield* stageUpload("sketch.txt", "sketch");
+        const created = yield* tickets.createPlan(
+          {
+            ticketId,
+            title: "Design",
+            body: `See vetra-attachment://${sketch.id}`,
+            attachments: [sketch],
+          },
+          USER,
+        );
+        const sketchId = created.attachments[0]!.attachmentId;
+        const { planId } = created.plan;
+
+        yield* TestClock.adjust("1 minute");
+        const late = yield* stageUpload("late.txt", "late");
+        const updated = yield* tickets.updatePlan(
+          {
+            planId,
+            expectedRevision: 1,
+            edits: [{ find: "See", replace: `Also vetra-attachment://${late.id}. See` }],
+            attachments: [late],
+          },
+          USER,
+        );
+        const lateId = updated.attachments[0]!.attachmentId;
+        const plan = yield* tickets.getPlan(planId);
+        assert.deepStrictEqual(
+          [
+            sketchId.startsWith(`ticket-${ticketId}-`),
+            plan.body,
+            plan.attachments.map((attachment) => attachment.name),
+          ],
+          [
+            true,
+            `Also vetra-attachment://${lateId}. See vetra-attachment://${sketchId}`,
+            ["sketch.txt", "late.txt"],
+          ],
+        );
+
+        const rejected = yield* stageUpload("rejected.txt", "rejected");
+        const stale = yield* tickets
+          .updatePlan({ planId, expectedRevision: 1, title: "Lost", attachments: [rejected] }, USER)
+          .pipe(Effect.flip);
+        const claimedFiles = () =>
+          NodeFS.readdirSync(config.attachmentsDir).filter((name) =>
+            name.startsWith(`ticket-${ticketId}-`),
+          ).length;
+        assert.deepStrictEqual(
+          [stale._tag, claimedFiles()],
+          ["TicketPlanRevisionConflictError", 3],
+        );
+
+        yield* tickets.deletePlan({ planId });
+        const detail = yield* tickets.get(ticketId);
+        assert.deepStrictEqual(
+          [
+            detail.summary.plans,
+            detail.attachments.map((attachment) => attachment.name),
+            claimedFiles(),
+            detail.activity.map((activity) => activity.entry.type),
+          ],
+          [
+            [],
+            ["ticket.txt", "sketch.txt", "late.txt"],
+            3,
+            [
+              "created",
+              "attachment_added",
+              "plan_created",
+              "attachment_added",
+              "plan_edited",
+              "attachment_added",
+            ],
+          ],
+        );
+      }),
+    ),
+  );
+
+  it.effect("resolves and reopens top-level comments and keeps replies on their thread", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const ticketId = (yield* tickets.create({ title: "Review" }, USER)).ticket.id;
+        const { planId } = (yield* tickets.createPlan(
+          { ticketId, title: "Plan", body: "1. Migrate\n2. Ship" },
+          agent,
+        )).plan;
+        const openCount = () =>
+          tickets.getPlan(planId).pipe(Effect.map((plan) => plan.summary.openCommentCount));
+
+        const root = yield* tickets.addPlanComment(
+          {
+            planId,
+            body: "Why migrate first?",
+            anchor: {
+              quote: { text: "Migrate", prefix: "1. ", suffix: "\n2. Ship" },
+              source: "1. Migrate\n2. Ship",
+              revision: 1,
+            },
+          },
+          USER,
+        );
+        const reply = yield* tickets.addPlanComment(
+          { planId, body: "It unblocks the rest.", parentCommentId: root.id },
+          agent,
+        );
+        const nested = yield* tickets.addPlanComment(
+          { planId, body: "Makes sense.", parentCommentId: reply.id },
+          USER,
+        );
+        const anchoredReply = yield* tickets
+          .addPlanComment(
+            {
+              planId,
+              body: "Here",
+              parentCommentId: root.id,
+              anchor: { source: "2. Ship", revision: 1 },
+            },
+            USER,
+          )
+          .pipe(Effect.flip);
+        const resolveReply = yield* tickets
+          .resolvePlanComments({ planId, commentIds: [reply.id] }, USER)
+          .pipe(Effect.flip);
+        assert.deepStrictEqual(
+          [
+            [reply.parentId, nested.parentId],
+            yield* openCount(),
+            anchoredReply.message,
+            resolveReply.message,
+          ],
+          [
+            [root.id, root.id],
+            1,
+            "A reply cannot carry an anchor: it belongs to the comment it replies to.",
+            `Comment ${reply.id} is a reply; resolve the comment it replies to.`,
+          ],
+        );
+
+        const resolved = yield* tickets.resolvePlanComments(
+          { planId, commentIds: [root.id] },
+          agent,
+        );
+        const reopened = yield* tickets.reopenPlanComment({ planId, commentId: root.id });
+        const resolvedByEdit = (yield* tickets.updatePlan(
+          {
+            planId,
+            expectedRevision: 1,
+            body: "1. Ship\n2. Migrate",
+            resolveCommentIds: [root.id],
+          },
+          agent,
+        )).plan;
+        const plan = yield* tickets.getPlan(planId);
+        assert.deepStrictEqual(
+          [
+            resolved.openCommentCount,
+            reopened.openCommentCount,
+            [resolvedByEdit.openCommentCount, resolvedByEdit.revision],
+            plan.comments.map((comment) => [
+              comment.body,
+              comment.anchor?.quote?.text ?? null,
+              comment.resolvedBy?.type ?? null,
+            ]),
+            (yield* tickets.resolveRef("T-1")).revision,
+          ],
+          [
+            0,
+            1,
+            [0, 2],
+            [
+              ["Why migrate first?", "Migrate", "agent"],
+              ["It unblocks the rest.", null, null],
+              ["Makes sense.", null, null],
+            ],
+            1,
+          ],
+        );
+
+        yield* tickets.deletePlanComment({ planId, commentId: root.id });
+        assert.deepStrictEqual((yield* tickets.getPlan(planId)).comments, []);
+      }),
+    ),
+  );
+
+  it.effect(
+    "records plan history and folds one actor's edits to one plan within five minutes",
+    () =>
+      withTickets((tickets) =>
+        Effect.gen(function* () {
+          const ticketId = (yield* tickets.create({ title: "History" }, USER)).ticket.id;
+          const first = (yield* tickets.createPlan({ ticketId, title: "First" }, USER)).plan;
+          const second = (yield* tickets.createPlan({ ticketId, title: "Second" }, USER)).plan;
+          let revision = 1;
+          const editFirst = (body: string, actor: TicketActor = USER) =>
+            tickets.updatePlan({ planId: first.planId, expectedRevision: revision++, body }, actor);
+
+          yield* editFirst("One");
+          yield* TestClock.adjust("4 minutes");
+          yield* editFirst("Two");
+          yield* TestClock.adjust("4 minutes");
+          yield* editFirst("Three");
+          yield* TestClock.adjust("6 minutes");
+          yield* editFirst("Four");
+          yield* tickets.updatePlan(
+            { planId: second.planId, expectedRevision: 1, body: "Other" },
+            USER,
+          );
+          yield* editFirst("Five", agent);
+          yield* tickets.setPlanStatus({ planId: first.planId, status: "archived" }, USER);
+          const restored = yield* tickets.setPlanStatus(
+            { planId: first.planId, status: "active" },
+            USER,
+          );
+
+          const p1 = { planId: first.planId, number: 1 };
+          const p2 = { planId: second.planId, number: 2 };
+          assert.deepStrictEqual(
+            (yield* tickets.get(ticketId)).activity.map((activity) => [
+              activity.actor.type,
+              activity.entry,
+              activity.createdAt,
+            ]),
+            [
+              ["user", { type: "created" }, "1970-01-01T00:00:00.000Z"],
+              ["user", { type: "plan_created", ...p1 }, "1970-01-01T00:00:00.000Z"],
+              ["user", { type: "plan_created", ...p2 }, "1970-01-01T00:00:00.000Z"],
+              ["user", { type: "plan_edited", ...p1 }, "1970-01-01T00:08:00.000Z"],
+              ["user", { type: "plan_edited", ...p1 }, "1970-01-01T00:14:00.000Z"],
+              ["user", { type: "plan_edited", ...p2 }, "1970-01-01T00:14:00.000Z"],
+              ["agent", { type: "plan_edited", ...p1 }, "1970-01-01T00:14:00.000Z"],
+              ["user", { type: "plan_archived", ...p1 }, "1970-01-01T00:14:00.000Z"],
+              ["user", { type: "plan_restored", ...p1 }, "1970-01-01T00:14:00.000Z"],
+            ],
+          );
+          assert.deepStrictEqual([restored.status, restored.revision], ["active", 6]);
+        }),
+      ),
+  );
+
+  it.effect("resolves plan references by ticket number, GitHub issue and plan id", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        const local = (yield* tickets.create({ title: "Local" }, USER)).ticket;
+        const githubId = TicketId.make("github-ticket");
+        const snapshot = encodeSnapshot({
+          host: "github.com",
+          repository: "acme/app",
+          number: 123,
+          state: "open",
+          stateReason: null,
+          author: "octocat",
+          assignees: [],
+          updatedAt: "2026-10-01T00:00:00.000Z",
+          syncedAt: "2026-10-01T00:00:00.000Z",
+          url: "https://github.com/acme/app/issues/123",
+        });
+        yield* sql`
+          INSERT INTO tickets (
+            ticket_id, number, kind, title, body, labels_json, status_id, sort_key, revision,
+            created_by_json, created_at, updated_at, github_host, github_repository,
+            github_number, github_snapshot_json
+          ) VALUES (
+            ${githubId}, 2, 'github', 'Issue title', 'Issue body', '[]', 'todo', 'a1', 1,
+            '{"type":"sync"}', '2026-10-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z',
+            'github.com', 'acme/app', 123, ${snapshot}
+          )
+        `;
+        const localPlan = (yield* tickets.createPlan({ ticketId: local.id, title: "A" }, USER))
+          .plan;
+        yield* tickets.createPlan({ ticketId: githubId, title: "B" }, USER);
+
+        const refs = yield* Effect.forEach(
+          ["T-1/P1", "Acme/App#123/p1", localPlan.planId],
+          (reference) => tickets.resolvePlanRef(reference).pipe(Effect.map((plan) => plan.ref)),
+        );
+        const missing = yield* tickets.resolvePlanRef("T-1/P9").pipe(Effect.flip);
+        const malformed = yield* tickets.resolvePlanRef("T-1").pipe(Effect.flip);
+        assert.deepStrictEqual(
+          [refs, missing.message, malformed.message],
+          [
+            ["T-1/P1", "T-2/P1", "T-1/P1"],
+            "Plan T-1/P9 was not found.",
+            '"T-1" is not a plan reference.',
+          ],
+        );
+      }),
+    ),
+  );
+
+  it.effect("streams one plan, never for another plan's writes, until its ticket is deleted", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const ticketId = (yield* tickets.create({ title: "Watched" }, USER)).ticket.id;
+        const watched = (yield* tickets.createPlan({ ticketId, title: "Watched" }, USER)).plan;
+        const other = (yield* tickets.createPlan({ ticketId, title: "Other" }, USER)).plan;
+        yield* tickets.addPlanComment({ planId: watched.planId, body: "Before" }, USER);
+        const seen = yield* Queue.unbounded<[string, number]>();
+        const done = yield* tickets.subscribePlan(watched.planId).pipe(
+          Stream.runForEach((plan) =>
+            Queue.offer(seen, [plan.summary.title, plan.comments.length]),
+          ),
+          Effect.flip,
+          Effect.forkScoped,
+        );
+
+        assert.deepStrictEqual(yield* Queue.take(seen), ["Watched", 1]);
+        yield* tickets.updatePlan(
+          { planId: other.planId, expectedRevision: 1, title: "Renamed" },
+          USER,
+        );
+        // A subscriber woken by the other plan would emit here, before its wake could merge with
+        // the next one.
+        yield* Effect.yieldNow;
+        yield* tickets.addPlanComment({ planId: watched.planId, body: "After" }, USER);
+        assert.deepStrictEqual(yield* Queue.take(seen), ["Watched", 2]);
+
+        yield* tickets.delete({ ticketId });
+        assert.strictEqual((yield* Fiber.join(done))._tag, "TicketPlanNotFoundError");
+        assert.deepStrictEqual(
+          [yield* countRows("ticket_plans"), yield* countRows("ticket_plan_comments")],
+          [0, 0],
+        );
+      }).pipe(Effect.scoped),
     ),
   );
 });

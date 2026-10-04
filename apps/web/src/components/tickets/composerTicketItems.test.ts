@@ -29,6 +29,7 @@ function ticket(input: {
     createdBy: { type: "user" },
     linkRefs: [],
     attachmentCount: 0,
+    plans: [],
   };
 }
 

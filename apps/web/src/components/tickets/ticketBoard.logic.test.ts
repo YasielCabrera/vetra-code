@@ -101,6 +101,7 @@ function ticket(
     createdBy: { type: "user" },
     linkRefs: [],
     attachmentCount: 0,
+    plans: [],
     ...overrides,
     id: TicketId.make(overrides.id),
     statusId: TicketStatusId.make(overrides.statusId),

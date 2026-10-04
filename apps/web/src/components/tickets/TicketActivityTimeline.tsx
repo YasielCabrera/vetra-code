@@ -5,8 +5,12 @@ import type {
   TicketStatusSet,
 } from "@t3tools/contracts";
 import {
+  ArchiveIcon,
+  ArchiveRestoreIcon,
   BotIcon,
   CircleDotIcon,
+  FilePenIcon,
+  FilePlusIcon,
   LinkIcon,
   PaperclipIcon,
   PencilIcon,
@@ -80,6 +84,14 @@ function describeEntry(
       return `removed ${entry.name}`;
     case "synced":
       return describeSynced(entry.changes, next?.entry.type === "status_changed");
+    case "plan_created":
+      return `created plan P${entry.number}`;
+    case "plan_edited":
+      return `edited plan P${entry.number}`;
+    case "plan_archived":
+      return `archived plan P${entry.number}`;
+    case "plan_restored":
+      return `restored plan P${entry.number}`;
   }
 }
 
@@ -98,6 +110,10 @@ const EVENT_ICONS = {
   attachment_added: PaperclipIcon,
   attachment_removed: PaperclipIcon,
   synced: RefreshCwIcon,
+  plan_created: FilePlusIcon,
+  plan_edited: FilePenIcon,
+  plan_archived: ArchiveIcon,
+  plan_restored: ArchiveRestoreIcon,
 };
 
 function ActivityMarker(props: { readonly activity: TicketActivity }) {

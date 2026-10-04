@@ -25,6 +25,7 @@ import {
   TicketListEvent,
   TicketMoveInput,
   TicketNotFoundError,
+  TicketPlanSummary,
   TicketRevisionConflictError,
   TicketSearchInput,
   TicketSearchResult,
@@ -40,6 +41,21 @@ import {
   TicketWriteResult,
 } from "./ticket.ts";
 import { TicketLaunchDraftInput, TicketLaunchDraftResult } from "./ticketDraft.ts";
+import {
+  TicketPlan,
+  TicketPlanComment,
+  TicketPlanCommentInput,
+  TicketPlanCommentRefInput,
+  TicketPlanCommentsResolveInput,
+  TicketPlanCreateInput,
+  TicketPlanDeleteInput,
+  TicketPlanNotFoundError,
+  TicketPlanRevisionConflictError,
+  TicketPlanStatusInput,
+  TicketPlanSubscribeInput,
+  TicketPlanUpdateInput,
+  TicketPlanWriteResult,
+} from "./ticketPlan.ts";
 
 export const TicketGitHubIssueRef = TicketSubscribeDetailInput;
 export type TicketGitHubIssueRef = typeof TicketGitHubIssueRef.Type;
@@ -83,11 +99,22 @@ export const TICKET_WS_METHODS = {
   ticketsGitHubIssueSetAssignees: "tickets.githubIssue.setAssignees",
   ticketsGitHubIssueRefresh: "tickets.githubIssue.refresh",
   ticketsLaunchDraft: "tickets.launchDraft",
+  ticketsSubscribePlan: "tickets.subscribePlan",
+  ticketsCreatePlan: "tickets.createPlan",
+  ticketsUpdatePlan: "tickets.updatePlan",
+  ticketsSetPlanStatus: "tickets.setPlanStatus",
+  ticketsDeletePlan: "tickets.deletePlan",
+  ticketsAddPlanComment: "tickets.addPlanComment",
+  ticketsResolvePlanComments: "tickets.resolvePlanComments",
+  ticketsReopenPlanComment: "tickets.reopenPlanComment",
+  ticketsDeletePlanComment: "tickets.deletePlanComment",
 } as const;
 
 const TicketRpcError = Schema.Union([
   TicketNotFoundError,
   TicketRevisionConflictError,
+  TicketPlanNotFoundError,
+  TicketPlanRevisionConflictError,
   TicketError,
   EnvironmentAuthorizationError,
 ]);
@@ -243,6 +270,60 @@ const WsTicketsLaunchDraftRpc = Rpc.make(TICKET_WS_METHODS.ticketsLaunchDraft, {
   error: TicketRpcError,
 });
 
+const WsTicketsSubscribePlanRpc = Rpc.make(TICKET_WS_METHODS.ticketsSubscribePlan, {
+  payload: TicketPlanSubscribeInput,
+  success: TicketPlan,
+  error: TicketRpcError,
+  stream: true,
+});
+
+const WsTicketsCreatePlanRpc = Rpc.make(TICKET_WS_METHODS.ticketsCreatePlan, {
+  payload: TicketPlanCreateInput,
+  success: TicketPlanWriteResult,
+  error: TicketRpcError,
+});
+
+const WsTicketsUpdatePlanRpc = Rpc.make(TICKET_WS_METHODS.ticketsUpdatePlan, {
+  payload: TicketPlanUpdateInput,
+  success: TicketPlanWriteResult,
+  error: TicketRpcError,
+});
+
+const WsTicketsSetPlanStatusRpc = Rpc.make(TICKET_WS_METHODS.ticketsSetPlanStatus, {
+  payload: TicketPlanStatusInput,
+  success: TicketPlanSummary,
+  error: TicketRpcError,
+});
+
+const WsTicketsDeletePlanRpc = Rpc.make(TICKET_WS_METHODS.ticketsDeletePlan, {
+  payload: TicketPlanDeleteInput,
+  error: TicketRpcError,
+});
+
+const WsTicketsAddPlanCommentRpc = Rpc.make(TICKET_WS_METHODS.ticketsAddPlanComment, {
+  payload: TicketPlanCommentInput,
+  success: TicketPlanComment,
+  error: TicketRpcError,
+});
+
+const WsTicketsResolvePlanCommentsRpc = Rpc.make(TICKET_WS_METHODS.ticketsResolvePlanComments, {
+  payload: TicketPlanCommentsResolveInput,
+  success: TicketPlanSummary,
+  error: TicketRpcError,
+});
+
+const WsTicketsReopenPlanCommentRpc = Rpc.make(TICKET_WS_METHODS.ticketsReopenPlanComment, {
+  payload: TicketPlanCommentRefInput,
+  success: TicketPlanSummary,
+  error: TicketRpcError,
+});
+
+const WsTicketsDeletePlanCommentRpc = Rpc.make(TICKET_WS_METHODS.ticketsDeletePlanComment, {
+  payload: TicketPlanCommentRefInput,
+  success: TicketPlanSummary,
+  error: TicketRpcError,
+});
+
 export const TicketsRpcGroup = RpcGroup.make(
   WsTicketsSubscribeRpc,
   WsTicketsSubscribeDetailRpc,
@@ -269,4 +350,13 @@ export const TicketsRpcGroup = RpcGroup.make(
   WsTicketGitHubIssueAssigneeCandidatesRpc,
   WsTicketGitHubIssueSetAssigneesRpc,
   WsTicketGitHubIssueRefreshRpc,
+  WsTicketsSubscribePlanRpc,
+  WsTicketsCreatePlanRpc,
+  WsTicketsUpdatePlanRpc,
+  WsTicketsSetPlanStatusRpc,
+  WsTicketsDeletePlanRpc,
+  WsTicketsAddPlanCommentRpc,
+  WsTicketsResolvePlanCommentsRpc,
+  WsTicketsReopenPlanCommentRpc,
+  WsTicketsDeletePlanCommentRpc,
 );

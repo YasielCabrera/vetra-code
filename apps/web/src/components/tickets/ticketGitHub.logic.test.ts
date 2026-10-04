@@ -37,6 +37,7 @@ const TICKET: GitHubTicket = {
   createdBy: { type: "sync" },
   linkRefs: [{ kind: "project", targetKey: "linked-project" }],
   attachmentCount: 0,
+  plans: [],
   github: {
     host: "github.com",
     repository: "acme/web",

@@ -37,6 +37,7 @@ export * from "./issue.ts";
 export * from "./automation.ts";
 export * from "./ticket.ts";
 export * from "./ticketDraft.ts";
+export * from "./ticketPlan.ts";
 export * from "./ticketRpc.ts";
 export * from "./orchestrationDispatch.ts";
 export * from "./orchestrationProject.ts";

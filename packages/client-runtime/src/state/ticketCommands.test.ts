@@ -17,6 +17,7 @@ const ticket = (id: string, title: string): TicketSummary => ({
   createdBy: { type: "user" },
   linkRefs: [],
   attachmentCount: 0,
+  plans: [],
 });
 
 describe("applyTicketListEvent", () => {
