@@ -367,6 +367,10 @@
       "types": "./src/t3McpToolPresentation.ts",
       "import": "./src/t3McpToolPresentation.ts"
     },
+    "./ticketPlanAnchors": {
+      "types": "./src/ticketPlanAnchors.ts",
+      "import": "./src/ticketPlanAnchors.ts"
+    },
     "./Array": {
       "types": "./src/Array.ts",
       "import": "./src/Array.ts"

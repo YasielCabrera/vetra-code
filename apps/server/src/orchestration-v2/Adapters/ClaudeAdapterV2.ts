@@ -914,6 +914,8 @@ export const CLAUDE_READ_ONLY_VETRA_MCP_ALLOWED_TOOLS: ReadonlyArray<string> = [
   "mcp__vetra-code__t3_queue_read",
   "mcp__vetra-code__t3_ticket_list",
   "mcp__vetra-code__t3_ticket_get",
+  "mcp__vetra-code__t3_ticket_plan_list",
+  "mcp__vetra-code__t3_ticket_plan_get",
 ];
 
 // Claude Code aborts an HTTP MCP call after 60 s ("The operation timed out.")

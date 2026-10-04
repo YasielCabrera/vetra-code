@@ -3,8 +3,10 @@ import {
   TicketError,
   type TicketGitHubRef,
   type TicketLinkTarget,
+  type TicketPlanComment,
 } from "@t3tools/contracts";
 import { parseChangeRequestUrl } from "@t3tools/shared/changeRequestUrl";
+import { anchorFromSourceQuote, locatePlanAnchor } from "@t3tools/shared/ticketPlanAnchors";
 import * as Effect from "effect/Effect";
 
 import * as TicketService from "../../../ticket/TicketService.ts";
@@ -55,10 +57,51 @@ const toLinkTarget = (
   );
 };
 
+/**
+ * Top-level comments with their replies nested, in document order: anchored comments by where
+ * their passage is now, then outdated and whole-plan comments oldest first.
+ */
+const commentThreads = (
+  body: string,
+  comments: ReadonlyArray<TicketPlanComment>,
+  includeResolved: boolean,
+) => {
+  const reply = ({ id, author, body, createdAt }: TicketPlanComment) => ({
+    id,
+    author,
+    body,
+    createdAt,
+  });
+  const threads = comments
+    .filter(
+      (comment) => comment.parentId === null && (includeResolved || comment.resolvedAt === null),
+    )
+    .map((comment) => {
+      const location = comment.anchor === null ? null : locatePlanAnchor(body, comment.anchor);
+      return {
+        start: location === null || location.status === "outdated" ? Infinity : location.start,
+        thread: {
+          ...reply(comment),
+          quote: comment.anchor?.quote?.text,
+          source: comment.anchor?.source,
+          outdated: location?.status === "outdated",
+          resolved: comment.resolvedAt !== null,
+          replies: comments.filter((candidate) => candidate.parentId === comment.id).map(reply),
+        },
+      };
+    });
+  // The sort is stable, so the comments without a place stay last in creation order.
+  return threads
+    .sort((left, right) => (left.start === right.start ? 0 : left.start - right.start))
+    .map(({ thread }) => thread);
+};
+
 const make = Effect.gen(function* () {
   const tickets = yield* TicketService.TicketService;
   const ticketId = (reference: string) =>
     tickets.resolveRef(reference).pipe(Effect.map((summary) => summary.id));
+  const readPlan = (reference: string) =>
+    tickets.resolvePlanRef(reference).pipe(Effect.flatMap(({ planId }) => tickets.getPlan(planId)));
 
   return TicketsToolkit.of({
     t3_ticket_list: ({ limit, ...filter }) =>
@@ -113,6 +156,60 @@ const make = Effect.gen(function* () {
       Effect.gen(function* () {
         const { actor } = yield* writer();
         return yield* tickets.addComment({ ticketId: yield* ticketId(ticket), body }, actor);
+      }),
+    t3_ticket_plan_list: ({ ticket }) =>
+      Effect.gen(function* () {
+        yield* reader();
+        const id = yield* ticketId(ticket);
+        const plans = yield* tickets.listPlans(id);
+        return { plans: plans.map((plan) => ({ ticketId: id, ...plan })) };
+      }),
+    t3_ticket_plan_get: ({ plan, includeResolved }) =>
+      Effect.gen(function* () {
+        yield* reader();
+        const current = yield* readPlan(plan);
+        return {
+          ticketId: current.ticketId,
+          plan: current.summary,
+          body: current.body,
+          comments: commentThreads(current.body, current.comments, includeResolved === true),
+        };
+      }),
+    t3_ticket_plan_create: ({ ticket, ...input }) =>
+      Effect.gen(function* () {
+        const { actor } = yield* writer();
+        const id = yield* ticketId(ticket);
+        const created = yield* tickets.createPlan({ ...input, ticketId: id }, actor);
+        return { ticketId: id, ...created.plan };
+      }),
+    t3_ticket_plan_update: ({ plan, status, ...input }) =>
+      Effect.gen(function* () {
+        const { actor } = yield* writer();
+        const current = yield* readPlan(plan);
+        const { planId } = current.summary;
+        const updated = yield* tickets.updatePlan({ ...input, planId }, actor);
+        return {
+          ticketId: current.ticketId,
+          ...(status === undefined
+            ? updated.plan
+            : yield* tickets.setPlanStatus({ planId, status }, actor)),
+        };
+      }),
+    t3_ticket_plan_comment: ({ plan, quote, ...input }) =>
+      Effect.gen(function* () {
+        const { actor } = yield* writer();
+        const { summary, body } = yield* readPlan(plan);
+        const anchor =
+          quote === undefined ? undefined : anchorFromSourceQuote(body, quote, summary.revision);
+        if (anchor !== undefined && "matches" in anchor) {
+          return yield* new TicketError({
+            message:
+              anchor.matches === 0
+                ? `The quote is not in ${summary.ref}. Quote its Markdown source exactly, as t3_ticket_plan_get returns it.`
+                : `The quote matches ${anchor.matches} places in ${summary.ref}. Quote more of the passage so it matches once.`,
+          });
+        }
+        return yield* tickets.addPlanComment({ ...input, planId: summary.planId, anchor }, actor);
       }),
   });
 });

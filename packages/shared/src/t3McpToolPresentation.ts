@@ -62,6 +62,11 @@ export type T3McpToolSummaryAction =
   | "ticket-link"
   | "ticket-unlink"
   | "ticket-note"
+  | "ticket-plan-list"
+  | "ticket-plan-read"
+  | "ticket-plan-create"
+  | "ticket-plan-update"
+  | "ticket-plan-comment"
   | "browser"
   | "device";
 
@@ -289,6 +294,20 @@ const VETRA_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   t3_ticket_link: tool(["Link", "Linking", "Linked", "a ticket"], "ticket-link"),
   t3_ticket_unlink: tool(["Unlink", "Unlinking", "Unlinked", "a ticket"], "ticket-unlink"),
   t3_ticket_note: tool(["Add", "Adding", "Added", "a ticket note"], "ticket-note"),
+  t3_ticket_plan_list: tool(["List", "Listing", "Listed", "ticket plans"], "ticket-plan-list"),
+  t3_ticket_plan_get: tool(["Read", "Reading", "Read", "a ticket plan"], "ticket-plan-read"),
+  t3_ticket_plan_create: tool(
+    ["Create", "Creating", "Created", "a ticket plan"],
+    "ticket-plan-create",
+  ),
+  t3_ticket_plan_update: tool(
+    ["Update", "Updating", "Updated", "a ticket plan"],
+    "ticket-plan-update",
+  ),
+  t3_ticket_plan_comment: tool(
+    ["Comment on", "Commenting on", "Commented on", "a ticket plan"],
+    "ticket-plan-comment",
+  ),
 };
 
 /**

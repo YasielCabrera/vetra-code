@@ -120,6 +120,10 @@ export function summarizeT3ToolCalls(
     (call) =>
       id(call.output?.id) ?? id(asRecord(call.output?.summary)?.id) ?? id(call.input?.ticket),
   );
+  const planIds = selected.map(
+    (call) =>
+      id(call.output?.planId) ?? id(asRecord(call.output?.plan)?.planId) ?? id(call.input?.plan),
+  );
   let label: string;
   switch (action) {
     case "thread-send": {
@@ -409,6 +413,21 @@ export function summarizeT3ToolCalls(
       break;
     case "ticket-note":
       label = phrase("Added", "add", quantity(selected.length, "ticket note"));
+      break;
+    case "ticket-plan-list":
+      label = phrase("Listed", "list", `ticket plans ${times}`);
+      break;
+    case "ticket-plan-read":
+      label = phrase("Read", "read", quantity(countEntities(planIds), "ticket plan"));
+      break;
+    case "ticket-plan-create":
+      label = phrase("Created", "create", quantity(countEntities(planIds), "ticket plan"));
+      break;
+    case "ticket-plan-update":
+      label = phrase("Updated", "update", quantity(countEntities(planIds), "ticket plan"));
+      break;
+    case "ticket-plan-comment":
+      label = phrase("Added", "add", quantity(selected.length, "plan comment"));
       break;
     case "browser":
       label = phrase("Used", "use", `browser ${times}`);

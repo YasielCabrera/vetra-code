@@ -60,6 +60,22 @@ describe("summarizeT3ToolCalls", () => {
     ).toBe("Updated 1 ticket");
   });
 
+  it("counts distinct plans whether the result nests the plan or is its summary", () => {
+    expect(
+      summarizeT3ToolCalls("ticket-plan-read", [
+        completed({ plan: "T-1/P1" }, { plan: { planId: "plan-1" } }),
+        completed({ plan: "T-1/P1" }, { plan: { planId: "plan-1" } }),
+        completed({ plan: "T-1/P2" }, { plan: { planId: "plan-2" } }),
+      ]).label,
+    ).toBe("Read 2 ticket plans");
+    expect(
+      summarizeT3ToolCalls("ticket-plan-update", [
+        completed({ plan: "T-1/P1" }, { planId: "plan-1" }),
+        completed({ plan: "plan-1" }, { planId: "plan-1" }),
+      ]).label,
+    ).toBe("Updated 1 ticket plan");
+  });
+
   it("counts answered requests rather than pretending every request contains one question", () => {
     expect(
       summarizeT3ToolCalls("question-respond", [

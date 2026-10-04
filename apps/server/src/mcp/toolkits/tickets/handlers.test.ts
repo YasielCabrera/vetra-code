@@ -81,6 +81,8 @@ const failure = <Name extends keyof Tools & string>(
 
 const AGENT = { type: "agent", threadId: callerId } as const;
 
+type PlanThread = Tool.Success<Tools["t3_ticket_plan_get"]>["comments"][number];
+
 const githubSnapshot = Schema.encodeSync(Schema.fromJsonString(GitHubIssueSnapshot))({
   host: "github.com",
   repository: "acme/app",
@@ -304,6 +306,155 @@ describe("TicketsToolkit", () => {
       assert.strictEqual(
         notPullRequest.message,
         "https://evil.test/acme/app/pull/12 is not a pull request URL.",
+      );
+    }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
+  );
+
+  it.effect(
+    "writes a plan as the calling agent and applies edits only when each matches once",
+    () =>
+      Effect.gen(function* () {
+        const ticket = yield* call("t3_ticket_create", { title: "Login", linkCaller: false });
+        const created = yield* call("t3_ticket_plan_create", {
+          ticket: "T-1",
+          title: "Fix login",
+          body: "## Steps\n\nRetry the token.\n\nRetry the request.\n",
+        });
+        assert.deepStrictEqual(
+          [created.ticketId, created.ref, created.revision, created.createdBy, created.updatedBy],
+          [ticket.id, "T-1/P1", 1, AGENT, AGENT],
+        );
+
+        const unmatched = yield* failure("t3_ticket_plan_update", {
+          plan: "T-1/P1",
+          expectedRevision: 1,
+          edits: [{ find: "Retry the cache.", replace: "Clear the cache." }],
+        });
+        const ambiguous = yield* failure("t3_ticket_plan_update", {
+          plan: "T-1/P1",
+          expectedRevision: 1,
+          edits: [
+            { find: "## Steps", replace: "## Plan" },
+            { find: "Retry the", replace: "Refresh the" },
+          ],
+        });
+        assert.deepStrictEqual(
+          [unmatched.message, ambiguous.message],
+          [
+            "Edit 1 matched nothing: its find text is not in the plan.",
+            "Edit 2 matched more than once: add surrounding text to its find text so it matches once.",
+          ],
+        );
+
+        const edited = yield* call("t3_ticket_plan_update", {
+          plan: "T-1/P1",
+          expectedRevision: 1,
+          edits: [{ find: "Retry the token.", replace: "Refresh the token." }],
+        });
+        const read = yield* call("t3_ticket_plan_get", { plan: "T-1/P1" });
+        assert.deepStrictEqual(
+          [edited.revision, read.body],
+          [2, "## Steps\n\nRefresh the token.\n\nRetry the request.\n"],
+        );
+
+        const archived = yield* call("t3_ticket_plan_update", {
+          plan: "T-1/P1",
+          expectedRevision: 1,
+          status: "archived",
+        });
+        const listed = yield* call("t3_ticket_plan_list", { ticket: "T-1" });
+        assert.deepStrictEqual([archived.status, archived.revision], ["archived", 2]);
+        assert.deepStrictEqual(
+          listed.plans.map((plan) => [plan.ticketId, plan.ref, plan.status]),
+          [[ticket.id, "T-1/P1", "archived"]],
+        );
+      }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
+  );
+
+  it.effect("anchors quoted comments, orders them by passage, and resolves them in an update", () =>
+    Effect.gen(function* () {
+      yield* call("t3_ticket_create", { title: "Login", linkCaller: false });
+      yield* call("t3_ticket_plan_create", {
+        ticket: "T-1",
+        title: "Fix login",
+        body: "## Steps\n\nRetry the **token** call.\n\nLog the failure.\n",
+      });
+      const logging = yield* call("t3_ticket_plan_comment", {
+        plan: "T-1/P1",
+        body: "Why log it?",
+        quote: "Log the failure.",
+      });
+      const token = yield* call("t3_ticket_plan_comment", {
+        plan: "T-1/P1",
+        body: "Which token?",
+        quote: "**token**",
+      });
+      yield* call("t3_ticket_plan_comment", { plan: "T-1/P1", body: "Looks right overall." });
+      yield* call("t3_ticket_plan_comment", {
+        plan: "T-1/P1",
+        body: "To debug the retries.",
+        parentCommentId: logging.id,
+      });
+      const rendered = yield* failure("t3_ticket_plan_comment", {
+        plan: "T-1/P1",
+        body: "Rendered text",
+        quote: "Retry the token call.",
+      });
+      const ambiguous = yield* failure("t3_ticket_plan_comment", {
+        plan: "T-1/P1",
+        body: "Which one?",
+        quote: "the",
+      });
+      assert.deepStrictEqual(
+        [logging.author, logging.anchor, token.anchor?.source, rendered.message, ambiguous.message],
+        [
+          AGENT,
+          {
+            quote: { text: "Log the failure.", prefix: "", suffix: "" },
+            source: "Log the failure.",
+            revision: 1,
+          },
+          "Retry the **token** call.",
+          "The quote is not in T-1/P1. Quote its Markdown source exactly, as t3_ticket_plan_get returns it.",
+          "The quote matches 2 places in T-1/P1. Quote more of the passage so it matches once.",
+        ],
+      );
+
+      const threads = (read: { readonly comments: ReadonlyArray<PlanThread> }) =>
+        read.comments.map((comment) => [
+          comment.body,
+          comment.quote ?? null,
+          comment.outdated,
+          comment.resolved,
+          comment.replies.map((reply) => [reply.body, reply.author]),
+        ]);
+      assert.deepStrictEqual(threads(yield* call("t3_ticket_plan_get", { plan: "T-1/P1" })), [
+        ["Which token?", "**token**", false, false, []],
+        ["Why log it?", "Log the failure.", false, false, [["To debug the retries.", AGENT]]],
+        ["Looks right overall.", null, false, false, []],
+      ]);
+
+      const updated = yield* call("t3_ticket_plan_update", {
+        plan: "T-1/P1",
+        expectedRevision: 1,
+        edits: [{ find: "Log the failure.", replace: "Report the error." }],
+        resolveCommentIds: [token.id],
+      });
+      assert.deepStrictEqual(
+        [updated.revision, updated.openCommentCount, updated.updatedBy],
+        [2, 2, AGENT],
+      );
+      assert.deepStrictEqual(threads(yield* call("t3_ticket_plan_get", { plan: "T-1/P1" })), [
+        ["Why log it?", "Log the failure.", true, false, [["To debug the retries.", AGENT]]],
+        ["Looks right overall.", null, false, false, []],
+      ]);
+      assert.deepStrictEqual(
+        threads(yield* call("t3_ticket_plan_get", { plan: "T-1/P1", includeResolved: true })),
+        [
+          ["Which token?", "**token**", false, true, []],
+          ["Why log it?", "Log the failure.", true, false, [["To debug the retries.", AGENT]]],
+          ["Looks right overall.", null, false, false, []],
+        ],
       );
     }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
   );

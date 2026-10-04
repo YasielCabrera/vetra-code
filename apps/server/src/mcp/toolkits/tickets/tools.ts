@@ -2,6 +2,7 @@ import {
   McpCapabilityUnavailableError,
   OrchestratorMcpFailure,
   PositiveInt,
+  PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   ProjectId,
   ThreadId,
   TICKET_LINKS_MAX_COUNT,
@@ -10,8 +11,17 @@ import {
   TicketDetail,
   TicketError,
   TicketGitHubRef,
+  TicketId,
   TicketLinkKind,
   TicketNotFoundError,
+  TicketPlanComment,
+  TicketPlanCommentInput,
+  TicketPlanCreateInput,
+  TicketPlanNotFoundError,
+  TicketPlanRevisionConflictError,
+  TicketPlanStatus,
+  TicketPlanSummary,
+  TicketPlanUpdateInput,
   TicketRevisionConflictError,
   TicketStatusCategory,
   TicketStatusDefinition,
@@ -21,11 +31,13 @@ import {
   TrimmedNonEmptyString,
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
+import * as Struct from "effect/Struct";
 import * as Tool from "effect/unstable/ai/Tool";
 import * as Toolkit from "effect/unstable/ai/Toolkit";
 
 import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
+import { McpAttachmentInput } from "../attachment/input.ts";
 
 const shared = {
   failure: Schema.Union([
@@ -33,6 +45,8 @@ const shared = {
     OrchestratorMcpFailure,
     TicketNotFoundError,
     TicketRevisionConflictError,
+    TicketPlanNotFoundError,
+    TicketPlanRevisionConflictError,
     TicketError,
   ]),
   dependencies: [
@@ -44,6 +58,26 @@ const shared = {
 const ticket = TrimmedNonEmptyString.annotate({
   description: "The ticket as T-42, its ticket id, or owner/repo#123 for a GitHub ticket.",
 });
+
+const plan = TrimmedNonEmptyString.annotate({
+  description: "The plan as T-42/P1, owner/repo#123/P1 for a GitHub ticket's plan, or its plan id.",
+});
+
+const planAttachments = Schema.optional(
+  Schema.Array(McpAttachmentInput)
+    .check(Schema.isMaxLength(PROVIDER_SEND_TURN_MAX_ATTACHMENTS))
+    .annotate({
+      description:
+        "Pending uploads from t3_attachment_prepare_upload that the body references as vetra-attachment://<pending id>.",
+    }),
+);
+
+/** A plan summary with its ticket, which a link to the plan needs. */
+const PlanResult = Schema.Struct({ ticketId: TicketId, ...TicketPlanSummary.fields });
+
+const PlanCommentReply = TicketPlanComment.mapFields(
+  Struct.pick(["id", "author", "body", "createdAt"]),
+);
 
 const status = TicketStatusId.annotate({
   description: "A status id from t3_ticket_list's statuses.",
@@ -207,6 +241,124 @@ const TicketNoteTool = Tool.make("t3_ticket_note", {
   .annotate(Tool.Idempotent, false)
   .annotate(Tool.OpenWorld, false);
 
+const TicketPlanListTool = Tool.make("t3_ticket_plan_list", {
+  ...shared,
+  description:
+    "List a ticket's plans by number, without their bodies. Each ref, such as T-42/P1, names the plan for the other t3_ticket_plan_* tools.",
+  parameters: Schema.Struct({ ticket }),
+  success: Schema.Struct({ plans: Schema.Array(PlanResult) }),
+})
+  .annotate(Tool.Title, "List ticket plans")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, false);
+
+const TicketPlanGetTool = Tool.make("t3_ticket_plan_get", {
+  ...shared,
+  description:
+    "Read a plan's Markdown body and its open comments in document order, each with its replies. A comment's quote and source are the passage it points at, and outdated means that passage is no longer in the body; comments without them are about the whole plan. plan.revision is the expectedRevision t3_ticket_plan_update needs.",
+  parameters: Schema.Struct({
+    plan,
+    includeResolved: Schema.optional(
+      Schema.Boolean.annotate({ description: "Also return resolved comments." }),
+    ),
+  }),
+  success: Schema.Struct({
+    ticketId: TicketId,
+    plan: TicketPlanSummary,
+    body: Schema.String,
+    comments: Schema.Array(
+      Schema.Struct({
+        ...PlanCommentReply.fields,
+        quote: Schema.optional(Schema.String),
+        source: Schema.optional(Schema.String),
+        outdated: Schema.Boolean,
+        resolved: Schema.Boolean,
+        replies: Schema.Array(PlanCommentReply),
+      }),
+    ),
+  }),
+})
+  .annotate(Tool.Title, "Read a ticket plan")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, false);
+
+const TicketPlanCreateTool = Tool.make("t3_ticket_plan_create", {
+  ...shared,
+  description:
+    "Write a new plan for a ticket: how to implement it, in Markdown. Returns its ref, such as T-42/P1. To include an image, upload it with t3_attachment_prepare_upload, POST the bytes, write ![alt](vetra-attachment://<pending id>) in the body, and list the upload in attachments.",
+  parameters: Schema.Struct({
+    ticket,
+    title: TicketPlanCreateInput.fields.title,
+    body: TicketPlanCreateInput.fields.body.annotate({ description: "Markdown." }),
+    attachments: planAttachments,
+  }),
+  success: PlanResult,
+})
+  .annotate(Tool.Title, "Create a ticket plan")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, false)
+  .annotate(Tool.OpenWorld, false);
+
+const TicketPlanUpdateTool = Tool.make("t3_ticket_plan_update", {
+  ...shared,
+  description:
+    "Change a plan's title, body or status, and resolve the comments the change addresses, in one call. Omitted fields stay as they are. Prefer edits to a whole body: they cost fewer tokens and do not clobber concurrent edits. body and edits are mutually exclusive. A title, body or edits change fails without changing anything if the plan changed since expectedRevision: read it again and reapply. Images work as in t3_ticket_plan_create.",
+  parameters: Schema.Struct({
+    plan,
+    expectedRevision: PositiveInt.annotate({
+      description: "plan.revision from your latest t3_ticket_plan_get.",
+    }),
+    title: TicketPlanUpdateInput.fields.title,
+    body: TicketPlanUpdateInput.fields.body.annotate({
+      description: "Markdown; replaces the whole body.",
+    }),
+    edits: TicketPlanUpdateInput.fields.edits.annotate({
+      description:
+        "Find-and-replace edits applied in order. Each find must match exactly once in the body the earlier edits left; otherwise the call fails and names the edit.",
+    }),
+    status: Schema.optional(
+      TicketPlanStatus.annotate({ description: "archived retires the plan; active restores it." }),
+    ),
+    resolveCommentIds: TicketPlanUpdateInput.fields.resolveCommentIds.annotate({
+      description: "Top-level comments from t3_ticket_plan_get that this change addresses.",
+    }),
+    attachments: planAttachments,
+  }),
+  success: PlanResult,
+})
+  .annotate(Tool.Title, "Update a ticket plan")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, true)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, false);
+
+const TicketPlanCommentTool = Tool.make("t3_ticket_plan_comment", {
+  ...shared,
+  description:
+    "Comment on a plan, or reply to one of its comments with parentCommentId. To point at a passage, pass quote: text copied exactly from the Markdown body t3_ticket_plan_get returns, long enough to occur only once. Without a quote the comment is about the whole plan. Replies take no quote.",
+  parameters: Schema.Struct({
+    plan,
+    body: TicketPlanCommentInput.fields.body.annotate({ description: "Markdown." }),
+    parentCommentId: TicketPlanCommentInput.fields.parentCommentId,
+    quote: Schema.optional(
+      Schema.String.check(Schema.isMaxLength(8_000), Schema.isPattern(/\S/)).annotate({
+        description: "Exact Markdown source text from the plan body that occurs only once.",
+      }),
+    ),
+  }),
+  success: TicketPlanComment,
+})
+  .annotate(Tool.Title, "Comment on a ticket plan")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, false)
+  .annotate(Tool.OpenWorld, false);
+
 export const TicketsToolkit = Toolkit.make(
   TicketListTool,
   TicketGetTool,
@@ -215,4 +367,9 @@ export const TicketsToolkit = Toolkit.make(
   TicketLinkTool,
   TicketUnlinkTool,
   TicketNoteTool,
+  TicketPlanListTool,
+  TicketPlanGetTool,
+  TicketPlanCreateTool,
+  TicketPlanUpdateTool,
+  TicketPlanCommentTool,
 );

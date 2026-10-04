@@ -149,3 +149,10 @@ and other threads, and add notes to its activity. If you edited the ticket after
 read it, the agent's change is refused, so it cannot overwrite your work. Agents cannot close or
 reopen a GitHub issue, or edit the issue's title, body, or labels. They ask you to do that instead.
 Agent notes stay in Vetra and never post to GitHub.
+
+Agents can also write plans. A plan is a Markdown document on a ticket, named like `T-42/P1`,
+that describes how to do the work without changing code. Ask an agent to plan a ticket and it
+saves the plan on the ticket rather than in the chat. Name a plan in a message and the agent
+implements it, reading it first and resolving its open comments as it addresses them. Agents can
+comment on a passage of a plan, and an agent's change to a plan you edited after it last read the
+plan is refused.
