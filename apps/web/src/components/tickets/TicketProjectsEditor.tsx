@@ -7,7 +7,6 @@ import { useMemo, useRef, useState } from "react";
 import { useTicketActions } from "../../hooks/useTicketActions";
 import { useProjects } from "../../state/entities";
 import { useTicketGitHubSources } from "../../state/tickets";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
   Combobox,
@@ -20,6 +19,7 @@ import {
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { availableTicketProjects, projectChangeWouldLoseIssueAccess } from "./ticketProjects.logic";
+import { TicketProjectChip } from "./TicketProjectChip";
 
 const MAX_VISIBLE_PROJECTS = 50;
 
@@ -153,12 +153,12 @@ export function TicketProjectsEditor(props: {
       ),
     [props.detail.links],
   );
-  const projectTitleById = useMemo(
+  const projectById = useMemo(
     () =>
       new Map(
         projects
           .filter((project) => project.environmentId === props.environmentId)
-          .map((project) => [project.id, project.title]),
+          .map((project) => [project.id, project]),
       ),
     [projects, props.environmentId],
   );
@@ -214,27 +214,19 @@ export function TicketProjectsEditor(props: {
     <div className="flex min-w-0 flex-col items-start gap-1 pt-1" aria-busy={pending}>
       <div className="flex w-full min-w-0 flex-wrap items-center gap-1">
         {linkedProjectIds.map((projectId) => {
-          const title = projectTitleById.get(projectId);
+          const project = projectById.get(projectId);
+          const title = project?.title;
           return (
             <div key={projectId} className="flex min-w-0 max-w-full items-center gap-0.5">
-              <Badge variant="secondary" className="min-w-0 shrink">
-                {title === undefined ? (
-                  <span className="truncate text-muted-foreground italic">Missing project</span>
-                ) : (
-                  <button
-                    type="button"
-                    aria-label={`Tickets in ${title}`}
-                    className="min-w-0 truncate hover:underline"
-                    onClick={() =>
-                      void navigate({
-                        to: "/tickets",
-                        search: { project: `${props.environmentId}:${projectId}` },
-                      })
-                    }
-                  >
-                    {title}
-                  </button>
-                )}
+              <TicketProjectChip
+                project={project}
+                onOpen={() =>
+                  void navigate({
+                    to: "/tickets",
+                    search: { project: `${props.environmentId}:${projectId}` },
+                  })
+                }
+              >
                 <button
                   type="button"
                   aria-label={`Unlink ${title ?? "missing project"}`}
@@ -244,7 +236,7 @@ export function TicketProjectsEditor(props: {
                 >
                   <XIcon aria-hidden className="size-3" />
                 </button>
-              </Badge>
+              </TicketProjectChip>
               <ProjectPicker
                 {...pickerProps}
                 replaceTitle={title ?? "missing project"}

@@ -6,13 +6,13 @@ import { TicketIcon } from "lucide-react";
 import { memo } from "react";
 
 import { formatRelativeTimeLabel } from "../../timestampFormat";
-import { ProjectFavicon } from "../ProjectFavicon";
 import { GitHubIcon } from "../Icons";
 import { SourceControlActorAvatar } from "../SourceControlActorAvatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { isHiddenTicket } from "./ticketBoard.logic";
+import { TicketProjectChip } from "./TicketProjectChip";
 import { TicketLinkCounts, TicketStatusIcon, ticketProjects } from "./ticketPresentation";
 import { formatTicketRef } from "./ticketRefs";
 
@@ -102,13 +102,7 @@ export function TicketTags(props: {
         render={<span className="flex min-w-0 items-center gap-1.5 overflow-hidden" />}
       >
         {projects.slice(0, 2).map((project) => (
-          <span
-            key={project.id}
-            className="inline-flex h-5 min-w-0 shrink items-center gap-1 rounded border border-primary/20 bg-primary/8 px-1.5 text-xs text-foreground"
-          >
-            <ProjectFavicon project={project} className="size-3" />
-            <span className="max-w-40 truncate">{project.title}</span>
-          </span>
+          <TicketProjectChip key={project.id} project={project} />
         ))}
         {extraProjects > 0 ? (
           <span className="shrink-0 text-xs text-muted-foreground">
