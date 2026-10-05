@@ -24,8 +24,8 @@ export interface TicketBoardFilters {
   /** A status group key, from `ticketStatusGroupKey`. */
   readonly status?: string | undefined;
   readonly kind?: TicketKindFilter | undefined;
-  /** `environmentId:projectId`. */
-  readonly project?: string | undefined;
+  /** `environmentId:projectId` keys; a ticket can match any selected project. */
+  readonly project?: ReadonlyArray<string> | undefined;
   readonly label?: string | undefined;
   readonly thread?: TicketLinkFilter | undefined;
   readonly pullRequest?: TicketLinkFilter | undefined;
@@ -123,6 +123,7 @@ export function filterTickets(
   statusSets: ReadonlyMap<EnvironmentId, TicketStatusSet>,
   bodyMatchKeys: ReadonlySet<string> = new Set(),
 ): ReadonlyArray<EnvironmentTicket> {
+  const projects = new Set(filters.project);
   return tickets.filter((ticket) => {
     if (isHiddenTicket(ticket) !== (filters.hidden === true)) return false;
     if (filters.environment !== undefined && ticket.environmentId !== filters.environment) {
@@ -136,10 +137,9 @@ export function filterTickets(
         ?.statuses.find((candidate) => candidate.id === ticket.statusId);
       if (status === undefined || ticketStatusGroupKey(status) !== filters.status) return false;
     }
-    if (filters.project !== undefined) {
+    if (projects.size > 0) {
       const linked = ticket.linkRefs.some(
-        (ref) =>
-          ref.kind === "project" && `${ticket.environmentId}:${ref.targetKey}` === filters.project,
+        (ref) => ref.kind === "project" && projects.has(`${ticket.environmentId}:${ref.targetKey}`),
       );
       if (!linked) return false;
     }
@@ -258,7 +258,7 @@ export interface TicketBoardSearch {
   readonly view?: "list" | "board";
   readonly status?: string;
   readonly kind?: TicketKindFilter;
-  readonly project?: string;
+  readonly project?: ReadonlyArray<string>;
   readonly label?: string;
   readonly thread?: TicketLinkFilter;
   readonly pr?: TicketLinkFilter;
@@ -289,11 +289,31 @@ const SEARCH_KEYS = [
 ] as const;
 const SearchInput = Schema.Record(Schema.String, Schema.Unknown);
 const isSearchInput = Schema.is(SearchInput);
+const isSearchArray = Schema.is(Schema.Array(Schema.Unknown));
+const isProjectSearch = Schema.is(Schema.Array(Schema.String));
 
 function searchText(value: unknown, maxLength = 200): string | undefined {
   return typeof value === "string" && value.trim().length > 0
     ? value.slice(0, maxLength)
     : undefined;
+}
+
+function searchProjects(value: unknown): ReadonlyArray<string> | undefined {
+  const values = isSearchArray(value) ? value : [value];
+  const projects = [
+    ...new Set(
+      values.flatMap((candidate) => {
+        const project = searchText(candidate);
+        return project === undefined ? [] : [project];
+      }),
+    ),
+  ];
+  if (projects.length === 0) return undefined;
+  return isProjectSearch(value) &&
+    value.length === projects.length &&
+    value.every((project, index) => project === projects[index])
+    ? value
+    : projects;
 }
 
 function isLinkFilter(value: unknown): value is TicketLinkFilter {
@@ -308,7 +328,7 @@ function isCreatorFilter(value: unknown): value is TicketCreatorFilter {
 export function validateTicketBoardSearch(raw: unknown): TicketBoardSearch {
   if (!isSearchInput(raw)) return {};
   const status = searchText(raw.status);
-  const project = searchText(raw.project);
+  const project = searchProjects(raw.project);
   const label = searchText(raw.label);
   const author = searchText(raw.author);
   const assignee = searchText(raw.assignee);
@@ -556,10 +576,18 @@ export function reconcileTicketBoardSearch(
 }
 
 function reconciledProject(
-  project: string | undefined,
+  project: ReadonlyArray<string> | undefined,
   catalog: TicketBoardCatalog["projects"],
-): string | undefined {
+): ReadonlyArray<string> | undefined {
   if (project === undefined || catalog === undefined) return project;
-  if (catalog.pendingEnvironmentIds.includes(projectEnvironmentId(project))) return project;
-  return catalog.keys.includes(project) ? project : undefined;
+  const remaining = project.filter(
+    (key) =>
+      catalog.pendingEnvironmentIds.includes(projectEnvironmentId(key)) ||
+      catalog.keys.includes(key),
+  );
+  return remaining.length === project.length
+    ? project
+    : remaining.length === 0
+      ? undefined
+      : remaining;
 }

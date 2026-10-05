@@ -93,6 +93,7 @@ import {
 } from "./ticketBoardPreferences";
 import { TicketKanban } from "./TicketKanban";
 import {
+  isTicketFilterActive,
   TicketFilterButton,
   TicketFilterChip,
   type TicketFilterOption,
@@ -464,6 +465,11 @@ export function TicketsPage() {
       })),
     [board.statusSets],
   );
+  const environmentLabels = useMemo(
+    () =>
+      new Map(environments.map((environment) => [environment.environmentId, environment.label])),
+    [environments],
+  );
   const projectOptions = useMemo(
     () =>
       projects
@@ -471,9 +477,12 @@ export function TicketsPage() {
         .map((project) => ({
           value: `${project.environmentId}:${project.id}`,
           label: project.title,
+          ...(environments.length > 1
+            ? { description: environmentLabels.get(project.environmentId) ?? project.environmentId }
+            : {}),
           icon: <ProjectFavicon project={project} className="size-3.5" />,
         })),
-    [board.environmentIds, projects],
+    [board.environmentIds, environmentLabels, environments.length, projects],
   );
   const labelOptions = useMemo(
     () =>
@@ -485,11 +494,6 @@ export function TicketsPage() {
           icon: <TagIcon aria-hidden className="size-3.5" />,
         })),
     [board.tickets],
-  );
-  const environmentLabels = useMemo(
-    () =>
-      new Map(environments.map((environment) => [environment.environmentId, environment.label])),
-    [environments],
   );
   const environmentOptions = useMemo(
     () =>
@@ -596,12 +600,27 @@ export function TicketsPage() {
               setSearch({ kind: kind === "local" || kind === "github" ? kind : undefined }),
           },
           {
+            selection: "multiple",
             key: "project",
             label: "Project",
             icon: <FolderIcon aria-hidden className="size-3.5" />,
-            value: boardSearch.project,
+            value: boardSearch.project ?? [],
             options: projectOptions,
-            onChange: (project) => setSearch({ project }),
+            searchable: projectOptions.length > 6,
+            onToggle: (value, selected) =>
+              changeSearch((current) => {
+                const projects = current.project ?? [];
+                const project = selected
+                  ? projects.includes(value)
+                    ? projects
+                    : [...projects, value]
+                  : projects.filter((key) => key !== value);
+                return reconcileTicketBoardSearch(
+                  validateTicketBoardSearch({ ...current, project }),
+                  catalogs,
+                );
+              }, false),
+            onClear: () => setSearch({ project: undefined }),
           },
           {
             key: "label",
@@ -704,6 +723,8 @@ export function TicketsPage() {
     ],
     [
       boardSearch,
+      catalogs,
+      changeSearch,
       creatorOptions,
       environmentFilter,
       environmentOptions,
@@ -716,10 +737,7 @@ export function TicketsPage() {
     ],
   );
   const activeFilterFields = useMemo(
-    () =>
-      filterSections
-        .flatMap((section) => section.fields)
-        .filter((field) => field.value !== undefined),
+    () => filterSections.flatMap((section) => section.fields).filter(isTicketFilterActive),
     [filterSections],
   );
 

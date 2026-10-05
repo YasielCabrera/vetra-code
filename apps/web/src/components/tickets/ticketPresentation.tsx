@@ -3,7 +3,7 @@ import type { EnvironmentTicket } from "@t3tools/client-runtime/state/tickets";
 import { type TicketStatusCategory, TicketStatusColor } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import { CheckIcon, LayersIcon, ListFilterIcon, MessageSquareIcon, XIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useRef, useState } from "react";
 
 import { cn } from "../../lib/utils";
 import { PROJECT_ICON_COLORS, projectIconColorClassName } from "../../projectIconColors";
@@ -11,8 +11,10 @@ import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Group } from "../ui/group";
+import { Input } from "../ui/input";
 import {
   Menu,
+  MenuCheckboxItem,
   MenuGroup,
   MenuGroupLabel,
   MenuPopup,
@@ -75,23 +77,38 @@ export function TicketPropertyRow(props: { readonly label: string; readonly chil
 export interface TicketFilterOption {
   readonly value: string;
   readonly label: string;
+  readonly description?: string;
   readonly icon?: ReactNode;
 }
 
 /** One way to narrow the board: a submenu in the filter menu, and a chip while it is set. */
-export interface TicketFilterField {
+interface TicketFilterFieldBase {
   readonly key: string;
   readonly label: string;
   readonly icon: ReactNode;
   /** The choice that clears the filter. Defaults to "Any <label>". */
   readonly anyLabel?: string;
-  readonly value: string | undefined;
   /** Every known choice, so a set filter can name its value even when the menu leaves it out. */
   readonly options: ReadonlyArray<TicketFilterOption>;
   /** Whether the menu offers this field while it is unset. Defaults to having options. */
   readonly offered?: boolean;
-  readonly onChange: (value: string | undefined) => void;
 }
+
+export type TicketFilterField = TicketFilterFieldBase &
+  (
+    | {
+        readonly selection?: "single";
+        readonly value: string | undefined;
+        readonly onChange: (value: string | undefined) => void;
+      }
+    | {
+        readonly selection: "multiple";
+        readonly value: ReadonlyArray<string>;
+        readonly searchable: boolean;
+        readonly onToggle: (value: string, selected: boolean) => void;
+        readonly onClear: () => void;
+      }
+  );
 
 export interface TicketFilterSection {
   readonly label?: string;
@@ -112,6 +129,91 @@ function TicketFilterOptionRow(props: { readonly icon: ReactNode; readonly label
 
 function TicketFilterOptions(props: { readonly field: TicketFilterField }) {
   const { field } = props;
+  const [query, setQuery] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+  if (field.selection === "multiple") {
+    const needle = field.searchable ? query.trim().toLowerCase() : "";
+    const options = field.options.filter((option) => option.label.toLowerCase().includes(needle));
+    return (
+      <div className="w-64 max-w-[calc(100vw-2.5rem)]">
+        {field.searchable ? (
+          <div className="flex items-center gap-1 p-1">
+            <Input
+              autoFocus
+              size="compact"
+              type="search"
+              aria-label={`Search ${field.label.toLowerCase()}s`}
+              placeholder={`Search ${field.label.toLowerCase()}s…`}
+              value={query}
+              onChange={(event) => setQuery(event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const items = listRef.current?.querySelectorAll<HTMLElement>(
+                    '[role="menuitemcheckbox"]',
+                  );
+                  items?.[event.key === "ArrowDown" ? 0 : items.length - 1]?.focus();
+                } else if (event.key !== "Escape" && event.key !== "Tab") {
+                  event.stopPropagation();
+                }
+              }}
+            />
+            {query.length > 0 ? (
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                aria-label={`Clear ${field.label.toLowerCase()} search`}
+                onClick={() => setQuery("")}
+              >
+                <XIcon aria-hidden />
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+        <div ref={listRef} className="max-h-80 overflow-y-auto">
+          <MenuCheckboxItem
+            checked={field.value.length === 0}
+            closeOnClick={false}
+            onClick={field.onClear}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <LayersIcon aria-hidden className="size-3.5 shrink-0" />
+              <span className="truncate">
+                {field.anyLabel ?? `Any ${field.label.toLowerCase()}`}
+              </span>
+            </span>
+          </MenuCheckboxItem>
+          {field.options.length > 0 ? <MenuSeparator /> : null}
+          {options.map((option) => (
+            <MenuCheckboxItem
+              key={option.value}
+              checked={field.value.includes(option.value)}
+              closeOnClick={false}
+              onCheckedChange={(selected) => field.onToggle(option.value, selected)}
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="inline-flex size-4 shrink-0 items-center justify-center">
+                  {option.icon}
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate">{option.label}</span>
+                  {option.description === undefined ? null : (
+                    <span className="truncate text-xs text-muted-foreground">
+                      {option.description}
+                    </span>
+                  )}
+                </span>
+              </span>
+            </MenuCheckboxItem>
+          ))}
+          {options.length === 0 ? (
+            <p className="p-2 text-xs text-muted-foreground">No projects match your search.</p>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="max-h-80 w-64 max-w-[calc(100vw-2.5rem)] overflow-y-auto">
       <MenuRadioGroup
@@ -135,15 +237,31 @@ function TicketFilterOptions(props: { readonly field: TicketFilterField }) {
   );
 }
 
+export function isTicketFilterActive(field: TicketFilterField): boolean {
+  return field.selection === "multiple" ? field.value.length > 0 : field.value !== undefined;
+}
+
 /** A selected value the options no longer list (a label nobody uses now) still shows as itself. */
-function selectedFilterOption(field: TicketFilterField): TicketFilterOption | undefined {
-  if (field.value === undefined) return undefined;
-  return (
-    field.options.find((option) => option.value === field.value) ?? {
-      value: field.value,
-      label: field.value,
-    }
-  );
+function selectedFilterSummary(field: TicketFilterField) {
+  const values =
+    field.selection === "multiple" ? field.value : field.value === undefined ? [] : [field.value];
+  const selected = values.map((value) => {
+    const option = field.options.find((candidate) => candidate.value === value);
+    return {
+      label:
+        option?.description === undefined
+          ? (option?.label ?? value)
+          : `${option.label} (${option.description})`,
+      icon: option?.icon,
+    };
+  });
+  const first = selected[0];
+  if (first === undefined) return undefined;
+  return {
+    label: selected.length === 1 ? first.label : `${selected.length} projects`,
+    accessibleLabel: selected.map((option) => option.label).join(", "),
+    icon: selected.length === 1 ? first.icon : field.icon,
+  };
 }
 
 /** The toolbar's filter menu: one submenu per field, grouped into sections. */
@@ -152,12 +270,12 @@ export function TicketFilterButton(props: {
 }) {
   const activeCount = props.sections
     .flatMap((section) => section.fields)
-    .filter((field) => field.value !== undefined).length;
+    .filter(isTicketFilterActive).length;
   const sections = props.sections
     .map((section) => ({
       ...section,
       fields: section.fields.filter(
-        (field) => field.value !== undefined || (field.offered ?? field.options.length > 0),
+        (field) => isTicketFilterActive(field) || (field.offered ?? field.options.length > 0),
       ),
     }))
     .filter((section) => section.fields.length > 0);
@@ -194,10 +312,16 @@ export function TicketFilterButton(props: {
             {index > 0 ? <MenuSeparator /> : null}
             {section.label === undefined ? null : <MenuGroupLabel>{section.label}</MenuGroupLabel>}
             {section.fields.map((field) => {
-              const selected = selectedFilterOption(field);
+              const selected = selectedFilterSummary(field);
               return (
                 <MenuSub key={field.key}>
-                  <MenuSubTrigger>
+                  <MenuSubTrigger
+                    aria-label={
+                      selected === undefined
+                        ? undefined
+                        : `${field.label}: ${selected.accessibleLabel}`
+                    }
+                  >
                     <span className="inline-flex size-4 shrink-0 items-center justify-center">
                       {field.icon}
                     </span>
@@ -224,7 +348,7 @@ export function TicketFilterButton(props: {
 /** A set filter under the toolbar: opens the same choices, and the cross clears it. */
 export function TicketFilterChip(props: { readonly field: TicketFilterField }) {
   const { field } = props;
-  const selected = selectedFilterOption(field);
+  const selected = selectedFilterSummary(field);
   if (selected === undefined) return null;
   return (
     <Group>
@@ -232,7 +356,7 @@ export function TicketFilterChip(props: { readonly field: TicketFilterField }) {
         <MenuTrigger
           render={<SelectButton size="xs" />}
           className="w-auto min-w-0"
-          aria-label={`${field.label}: ${selected.label}. Change filter`}
+          aria-label={`${field.label}: ${selected.accessibleLabel}. Change filter`}
         >
           <span className="flex min-w-0 max-w-64 items-center gap-1.5">
             <span className="inline-flex size-4 shrink-0 items-center justify-center">
@@ -251,7 +375,9 @@ export function TicketFilterChip(props: { readonly field: TicketFilterField }) {
         size="icon-xs"
         variant="outline"
         aria-label={`Remove ${field.label.toLowerCase()} filter`}
-        onClick={() => field.onChange(undefined)}
+        onClick={() =>
+          field.selection === "multiple" ? field.onClear() : field.onChange(undefined)
+        }
       >
         <XIcon aria-hidden />
       </Button>

@@ -143,11 +143,70 @@ const ALL = [LOGIN, CACHE, SHIPPED, REMOTE_TODO, ORPHAN];
 const ids = (tickets: ReadonlyArray<EnvironmentTicket>) => tickets.map((entry) => entry.id);
 
 describe("filterTickets", () => {
+  it("matches any selected project while keeping environment identity and other filters", () => {
+    const remote = ticket({
+      id: "remote",
+      environmentId: REMOTE,
+      statusId: "remote-todo",
+      linkRefs: [{ kind: "project", targetKey: "project-web" }],
+    });
+    const api = ticket({
+      id: "api",
+      statusId: "local-todo",
+      linkRefs: [{ kind: "project", targetKey: "project-api" }],
+    });
+    const tickets = [LOGIN, remote, api, CACHE];
+    expect(ids(filterTickets(tickets, { project: [`${LOCAL}:project-web`] }, STATUS_SETS))).toEqual(
+      ["login"],
+    );
+    expect(
+      ids(
+        filterTickets(
+          tickets,
+          {
+            project: [`${LOCAL}:project-web`, `${REMOTE}:project-web`, `${LOCAL}:project-api`],
+          },
+          STATUS_SETS,
+        ),
+      ),
+    ).toEqual(["login", "remote", "api"]);
+    expect(
+      ids(
+        filterTickets(
+          tickets,
+          {
+            project: [`${LOCAL}:project-web`, `${REMOTE}:project-web`],
+            environment: REMOTE,
+          },
+          STATUS_SETS,
+        ),
+      ),
+    ).toEqual(["remote"]);
+    expect(
+      ids(
+        filterTickets(
+          tickets,
+          {
+            project: [`${LOCAL}:project-web`, `${REMOTE}:project-web`],
+            label: "bug",
+          },
+          STATUS_SETS,
+        ),
+      ),
+    ).toEqual(["login"]);
+    expect(ids(filterTickets(tickets, { project: [] }, STATUS_SETS))).toEqual([
+      "login",
+      "remote",
+      "api",
+      "cache",
+    ]);
+  });
+
   it("combines filters with AND", () => {
     expect(ids(filterTickets(ALL, { label: "bug" }, STATUS_SETS))).toEqual(["login"]);
     expect(ids(filterTickets(ALL, { environment: REMOTE }, STATUS_SETS))).toEqual(["remote"]);
     expect(
-      ids(filterTickets(ALL, { project: `${LOCAL}:project-web`, thread: "linked" }, STATUS_SETS)),
+      ids(filterTickets(ALL, { project: [`${LOCAL}:project-web`], thread: "linked" }, STATUS_SETS)),
     ).toEqual(["login"]);
     expect(ids(filterTickets(ALL, { thread: "unlinked", label: "bug" }, STATUS_SETS))).toEqual([]);
   });
@@ -296,6 +355,34 @@ describe("flattenTicketGroups", () => {
 });
 
 describe("validateTicketBoardSearch", () => {
+  it("normalizes legacy project links and malformed lists without changing canonical lists", () => {
+    expect(validateTicketBoardSearch({ project: "env-local:project-web" })).toEqual({
+      project: ["env-local:project-web"],
+    });
+    expect(
+      validateTicketBoardSearch({
+        project: [
+          "env-local:project-web",
+          "",
+          null,
+          42,
+          {},
+          "   ",
+          "env-local:project-web",
+          "env-remote:project-web",
+        ],
+        kind: "github",
+      }),
+    ).toEqual({
+      project: ["env-local:project-web", "env-remote:project-web"],
+      kind: "github",
+    });
+    expect(validateTicketBoardSearch({ project: [] })).toEqual({});
+    expect(validateTicketBoardSearch({ project: { key: "env-local:project-web" } })).toEqual({});
+    const projects = ["env-local:project-web", "env-remote:project-web"];
+    expect(validateTicketBoardSearch({ project: projects }).project).toBe(projects);
+  });
+
   it("keeps known values and drops malformed ones", () => {
     expect(
       validateTicketBoardSearch({
@@ -329,6 +416,35 @@ describe("validateTicketBoardSearch", () => {
 });
 
 describe("Ticket board preferences", () => {
+  it("remembers multiple projects without transient text and prunes only settled missing members", () => {
+    const preferences = ticketBoardPreferencesFromSearch({
+      view: "board",
+      project: ["env-local:project-web", "env-local:project-deleted", "env-remote:project-web"],
+      q: "temporary",
+    });
+    const pruned = reconcileTicketBoardSearch(preferences, {
+      projects: { keys: ["env-local:project-web"], pendingEnvironmentIds: ["env-remote"] },
+    });
+    expect(pruned).toEqual({
+      view: "board",
+      project: ["env-local:project-web", "env-remote:project-web"],
+    });
+    expect(
+      reconcileTicketBoardSearch(pruned, {
+        projects: { keys: ["env-local:project-web"], pendingEnvironmentIds: ["env-remote"] },
+      }),
+    ).toBe(pruned);
+    const settled = reconcileTicketBoardSearch(pruned, {
+      projects: { keys: ["env-local:project-web"], pendingEnvironmentIds: [] },
+    });
+    expect(settled).toEqual({ view: "board", project: ["env-local:project-web"] });
+    expect(
+      reconcileTicketBoardSearch(settled, {
+        projects: { keys: ["env-local:project-web"], pendingEnvironmentIds: [] },
+      }),
+    ).toBe(settled);
+  });
+
   it("restores all selections on plain entry, without restoring search text", () => {
     expect(
       resolveTicketBoardEntrySearch({
@@ -337,7 +453,7 @@ describe("Ticket board preferences", () => {
           view: "board",
           status: "open:todo",
           kind: "github",
-          project: "env-local:project-web",
+          project: ["env-local:project-web"],
           label: "bug",
           thread: "linked",
           env: "env-local",
@@ -349,7 +465,7 @@ describe("Ticket board preferences", () => {
       view: "board",
       status: "open:todo",
       kind: "github",
-      project: "env-local:project-web",
+      project: ["env-local:project-web"],
       label: "bug",
       thread: "linked",
       env: "env-local",
@@ -411,7 +527,7 @@ describe("Ticket board preferences", () => {
         view: "board",
         status: "open:todo",
         kind: "github",
-        project: "env-local:project-web",
+        project: ["env-local:project-web"],
         label: "bug",
         thread: "linked",
         pr: "unlinked",
@@ -436,7 +552,7 @@ describe("Ticket board preferences", () => {
   it.each([
     { status: "open:todo" },
     { kind: "local" },
-    { project: "env-local:project-web" },
+    { project: ["env-local:project-web"] },
     { label: "bug" },
     { thread: "unlinked" },
     { pr: "linked" },
@@ -457,7 +573,7 @@ describe("Ticket board preferences", () => {
         {
           view: "board",
           status: "open:deleted",
-          project: "env-deleted:project-deleted",
+          project: ["env-deleted:project-deleted"],
           env: "env-deleted",
           kind: "github",
           label: "bug",
@@ -482,7 +598,7 @@ describe("Ticket board preferences", () => {
   });
 
   it("keeps selections while their catalogs load and when the selections are still valid", () => {
-    const search = { status: "open:todo", project: "env-local:project-web", env: "env-local" };
+    const search = { status: "open:todo", project: ["env-local:project-web"], env: "env-local" };
     expect(reconcileTicketBoardSearch(search, {})).toBe(search);
     expect(
       reconcileTicketBoardSearch(search, {
@@ -538,7 +654,7 @@ describe("ticket board catalogs", () => {
   const remembered = {
     view: "board" as const,
     status: "open:todo",
-    project: "env-local:project-web",
+    project: ["env-local:project-web"],
     env: "env-remote",
     label: "bug",
     kind: "github" as const,
@@ -585,7 +701,7 @@ describe("ticket board catalogs", () => {
     expect(reconcileTicketBoardSearch(remembered, starting)).toEqual({
       view: "board",
       status: "open:todo",
-      project: "env-local:project-web",
+      project: ["env-local:project-web"],
       label: "bug",
       kind: "github",
     });
@@ -613,14 +729,14 @@ describe("ticket board catalogs", () => {
         {
           ...remembered,
           status: "open:deleted",
-          project: "env-remote:project-old",
+          project: ["env-remote:project-old"],
         },
         catalogs,
       ),
     ).toEqual({ view: "board", label: "bug", kind: "github" });
     expect(
       reconcileTicketBoardSearch(
-        { ...remembered, project: "env-local:project-deleted", env: "env-local" },
+        { ...remembered, project: ["env-local:project-deleted"], env: "env-local" },
         catalogs,
       ),
     ).toEqual({

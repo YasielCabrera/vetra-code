@@ -223,7 +223,7 @@ export function TicketProjectsEditor(props: {
                 onOpen={() =>
                   void navigate({
                     to: "/tickets",
-                    search: { project: `${props.environmentId}:${projectId}` },
+                    search: { project: [`${props.environmentId}:${projectId}`] },
                   })
                 }
               >

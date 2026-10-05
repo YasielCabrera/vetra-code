@@ -30,6 +30,39 @@ afterEach(() => {
 });
 
 describe("ticket board preferences", () => {
+  it("reads legacy project selections and persists multiple projects across visits", async () => {
+    const storage = createStorage();
+    const preferences = await loadWithStorage(storage);
+    storage.setItem(
+      "vetra:ticket-board-preferences:v1",
+      JSON.stringify({
+        project: "env-local:project-web",
+        view: "board",
+        q: "old search",
+      }),
+    );
+    expect(preferences.readTicketBoardPreferences()).toEqual({
+      project: ["env-local:project-web"],
+      view: "board",
+    });
+    preferences.rememberTicketBoardSearch({
+      project: ["env-local:project-web", "env-remote:project-web"],
+      view: "board",
+      q: "current search",
+    });
+    expect(preferences.readTicketBoardPreferences()).toEqual({
+      project: ["env-local:project-web", "env-remote:project-web"],
+      view: "board",
+    });
+    preferences.persistReconciledTicketBoardPreferences({
+      projects: { keys: ["env-local:project-web"], pendingEnvironmentIds: [] },
+    });
+    expect(preferences.readTicketBoardPreferences()).toEqual({
+      project: ["env-local:project-web"],
+      view: "board",
+    });
+  });
+
   it("ignores corrupted and old-format records", async () => {
     const storage = createStorage();
     const preferences = await loadWithStorage(storage);
@@ -61,7 +94,7 @@ describe("ticket board preferences", () => {
     preferences.rememberTicketBoardSearch({
       view: "board",
       status: "open:deleted",
-      project: "env-remote:project-old",
+      project: ["env-remote:project-old"],
       env: "env-remote",
       label: "bug",
       kind: "github",
@@ -74,7 +107,7 @@ describe("ticket board preferences", () => {
     expect(preferences.readTicketBoardPreferences()).toEqual({
       view: "board",
       status: "open:deleted",
-      project: "env-remote:project-old",
+      project: ["env-remote:project-old"],
       env: "env-remote",
       label: "bug",
       kind: "github",
