@@ -151,8 +151,9 @@ links, and the agent can read the rest.
 You can also attach a ticket while writing any message: type `#` and then the ticket's reference,
 such as `#T-42`, or a word from its title, and pick it from the list above the pull requests.
 
-When you send a message with a ticket attached, the thread is linked to the ticket. The thread's
-header shows its tickets; select one to open it.
+When you send a message with a ticket attached, the thread is linked to the ticket. Expand
+**Tickets** in the thread details panel to see them; select one to open it, or unlink it from the
+thread there.
 
 ## Auto-advance
 

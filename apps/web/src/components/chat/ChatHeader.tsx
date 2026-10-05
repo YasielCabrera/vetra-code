@@ -26,7 +26,6 @@ import { readLocalApi } from "~/localApi";
 import { threadEnvironment } from "../../state/threads";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { ProjectFavicon } from "../ProjectFavicon";
-import { ThreadTicketChips } from "../tickets/ThreadTicketChips";
 import {
   WorkspaceBreadcrumb,
   WorkspaceBreadcrumbItem,
@@ -343,7 +342,6 @@ export const ChatHeader = memo(function ChatHeader({
           )}
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
-      {isServerThread ? <ThreadTicketChips threadRef={activeThreadRef} /> : null}
       {agentControlState ? (
         <div data-chat-header-actions className="flex shrink-0 items-center">
           <ThreadAgentsControl state={agentControlState} onOpenAgents={onOpenAgents} />

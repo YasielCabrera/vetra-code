@@ -1,14 +1,20 @@
+import { ChevronRightIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "../../lib/utils";
 
-/** Sections share header and content insets in both the sidebar and popover. */
+/**
+ * Sections share header and content insets in both the sidebar and popover.
+ * Passing `expanded` makes the heading a toggle that hides the content.
+ */
 export function ThreadDetailsSection({
   headingId,
   title,
   actions,
   separated = true,
   showHeading = true,
+  expanded,
+  onExpandedChange,
   children,
   ...props
 }: Omit<ComponentProps<"section">, "className" | "style" | "title" | "aria-labelledby"> & {
@@ -17,7 +23,10 @@ export function ThreadDetailsSection({
   actions?: ReactNode;
   separated?: boolean;
   showHeading?: boolean;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
 }) {
+  const collapsed = expanded === false;
   return (
     <section
       {...props}
@@ -27,19 +36,38 @@ export function ThreadDetailsSection({
     >
       <div
         className={cn(
-          "mb-1 flex min-h-8 min-w-0 items-center justify-between gap-2 px-1.5",
+          "flex min-h-8 min-w-0 items-center justify-between gap-2 px-1.5",
+          !collapsed && "mb-1",
           !showHeading && "hidden",
         )}
       >
         <h3
           id={headingId}
-          className="min-w-0 truncate text-2xs font-medium text-muted-foreground select-none"
+          className={cn(
+            "min-w-0 truncate text-2xs font-medium text-muted-foreground select-none",
+            expanded !== undefined && "flex-1",
+          )}
         >
-          {title}
+          {expanded === undefined ? (
+            title
+          ) : (
+            <button
+              type="button"
+              aria-expanded={expanded}
+              onClick={() => onExpandedChange?.(!expanded)}
+              className="flex min-h-8 w-full cursor-pointer items-center gap-1 rounded-md text-left hover:text-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            >
+              {title}
+              <ChevronRightIcon
+                aria-hidden
+                className={cn("size-3 shrink-0 transition-transform", expanded && "rotate-90")}
+              />
+            </button>
+          )}
         </h3>
         {actions ? <div className="flex shrink-0 items-center gap-1">{actions}</div> : null}
       </div>
-      {children}
+      {collapsed ? null : children}
     </section>
   );
 }
