@@ -123,6 +123,12 @@ export const AttachmentCreateUploadUrlResult = Schema.Struct({
 });
 export type AttachmentCreateUploadUrlResult = typeof AttachmentCreateUploadUrlResult.Type;
 
+export const McpAttachmentCreateUploadUrlResult = Schema.Struct({
+  ...AttachmentCreateUploadUrlResult.fields,
+  uploadUrl: TrimmedNonEmptyString.check(Schema.isMaxLength(8192)),
+});
+export type McpAttachmentCreateUploadUrlResult = typeof McpAttachmentCreateUploadUrlResult.Type;
+
 export const AttachmentDeleteInput = Schema.Struct({
   attachmentId: TrimmedNonEmptyString.check(Schema.isMaxLength(256)),
 });

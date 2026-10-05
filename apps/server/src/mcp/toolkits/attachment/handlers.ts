@@ -1,5 +1,7 @@
 import { type ChatAttachment, MessageId, OrchestratorMcpFailure } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
+import * as Result from "effect/Result";
+import * as HttpServer from "effect/unstable/http/HttpServer";
 import * as Upload from "../../../assets/AttachmentUpload.ts";
 import * as Claims from "../../../orchestration-v2/AttachmentClaims.ts";
 import * as ThreadMessageIntake from "../../../orchestration-v2/ThreadMessageIntake.ts";
@@ -10,6 +12,7 @@ import {
   unavailable,
 } from "../../threadAccess.ts";
 import { AttachmentToolkit } from "./tools.ts";
+import { providerHttpOrigin } from "../../httpOrigin.ts";
 
 export function resolveAttachmentReferences(
   requested: ReadonlyArray<ChatAttachment>,
@@ -35,9 +38,18 @@ export const AttachmentHandlersLive = AttachmentToolkit.toLayer({
   t3_attachment_prepare_upload: (input) =>
     Effect.gen(function* () {
       yield* readMutationCaller();
-      return yield* Upload.issueAttachmentUploadUrl(input.upload).pipe(
+      const httpServer = yield* HttpServer.HttpServer;
+      const origin = providerHttpOrigin(httpServer.address);
+      if (Result.isFailure(origin)) {
+        return yield* new OrchestratorMcpFailure({
+          code: "orchestration_error",
+          message: origin.failure.message,
+        });
+      }
+      const issued = yield* Upload.issueAttachmentUploadUrl(input.upload).pipe(
         Effect.mapError(unavailable),
       );
+      return { ...issued, uploadUrl: new URL(issued.relativeUrl, origin.success).href };
     }),
   t3_attachment_discard: (input) =>
     Effect.gen(function* () {

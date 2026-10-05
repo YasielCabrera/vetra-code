@@ -113,7 +113,7 @@ const make = Effect.gen(function* () {
           { ...input, statusId: status, links: [...callerLinks, ...extraLinks] },
           actor,
         );
-        return created.ticket;
+        return { ...created.ticket, attachments: created.storedAttachments };
       }),
     t3_ticket_update: ({ ticket, status, ...input }) =>
       Effect.gen(function* () {
@@ -122,7 +122,7 @@ const make = Effect.gen(function* () {
           { ...input, ticketId: yield* ticketId(ticket), statusId: status },
           actor,
         );
-        return updated.ticket;
+        return { ...updated.ticket, attachments: updated.storedAttachments };
       }),
     t3_ticket_link: ({ ticket, target }) =>
       Effect.gen(function* () {
@@ -166,14 +166,14 @@ const make = Effect.gen(function* () {
           { ...input, ticketId: yield* ticketId(ticket) },
           actor,
         );
-        return created.plan;
+        return { ...created.plan, attachments: created.storedAttachments };
       }),
     t3_ticket_plan_update: ({ plan, ...input }) =>
       Effect.gen(function* () {
         const { actor } = yield* writer();
         const { planId } = yield* tickets.resolvePlanRef(plan);
         const updated = yield* tickets.updatePlan({ ...input, planId }, actor);
-        return updated.plan;
+        return { ...updated.plan, attachments: updated.storedAttachments };
       }),
     t3_ticket_plan_comment: ({ plan, quote, ...input }) =>
       Effect.gen(function* () {

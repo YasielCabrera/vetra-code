@@ -124,12 +124,9 @@ export const claimPendingAttachments = Effect.fn("AttachmentClaims.claimPendingA
               message: `Attachment '${attachment.name}' cannot be sent: attachment type does not match the upload.`,
             });
           }
-          // A copy, not a hard link: an agent editing the delivered file in
-          // place must not mutate the retry source. fs.copyFile cannot be
-          // cancelled, so the copy and its rollback registration stay in one
-          // uninterruptible region: an interrupt landing mid-copy still waits
-          // for the write to settle and records the path before cleanup runs.
-          yield* fileSystem.copyFile(claim.currentPath, claim.finalPath).pipe(
+          // copyFile cannot be cancelled and may leave a partial destination on failure.
+          yield* Effect.sync(() => claimedPaths.push(claim.finalPath)).pipe(
+            Effect.andThen(fileSystem.copyFile(claim.currentPath, claim.finalPath)),
             Effect.mapError(
               (cause) =>
                 new AttachmentClaimError({
@@ -137,7 +134,6 @@ export const claimPendingAttachments = Effect.fn("AttachmentClaims.claimPendingA
                   cause,
                 }),
             ),
-            Effect.andThen(Effect.sync(() => claimedPaths.push(claim.finalPath))),
             Effect.uninterruptible,
           );
           return normalized;

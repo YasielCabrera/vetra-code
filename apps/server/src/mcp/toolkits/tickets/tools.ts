@@ -2,6 +2,8 @@ import {
   McpCapabilityUnavailableError,
   OrchestratorMcpFailure,
   PositiveInt,
+  AgentTicketLocalAttachment,
+  TicketAttachment,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   ProjectId,
   ThreadId,
@@ -32,6 +34,7 @@ import {
   TrimmedNonEmptyString,
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
+import * as Tuple from "effect/Tuple";
 import * as Struct from "effect/Struct";
 import * as Tool from "effect/unstable/ai/Tool";
 import * as Toolkit from "effect/unstable/ai/Toolkit";
@@ -64,12 +67,12 @@ const plan = TrimmedNonEmptyString.annotate({
   description: "The plan as T-42/P1, owner/repo#123/P1 for a GitHub ticket's plan, or its plan id.",
 });
 
-const planAttachments = Schema.optional(
-  Schema.Array(McpAttachmentInput)
+const bodyAttachments = Schema.optional(
+  Schema.Array(Schema.Union([McpAttachmentInput, AgentTicketLocalAttachment]))
     .check(Schema.isMaxLength(PROVIDER_SEND_TURN_MAX_ATTACHMENTS))
     .annotate({
       description:
-        "Pending uploads from t3_attachment_prepare_upload that the body references as vetra-attachment://<pending id>.",
+        "Pass {path} for an absolute file on this environment. Names, MIME types and sizes are inferred; sources remain untouched. Optional unique ref aliases place files with vetra-attachment://<ref> in the body. Images/videos embed with ![label](...) and other files link with [label](...). Results return canonical metadata in input order. Pending-upload metadata remains supported. Up to 100 files; images 10 MiB each and 80 MiB total, files/videos 50 MiB each.",
     }),
 );
 
@@ -149,11 +152,12 @@ const TicketGetTool = Tool.make("t3_ticket_get", {
 const TicketCreateTool = Tool.make("t3_ticket_create", {
   ...shared,
   description:
-    "Create a local ticket. It links this thread and its project unless linkCaller is false. An analyzer draft always links its recorded project and source thread instead of the analyzer thread. New tickets land in the default open status unless status is given.",
+    "Create a local ticket. It links this thread and its project unless linkCaller is false. An analyzer draft always links its recorded project and source thread instead of the analyzer thread. New tickets land in the default open status unless status is given. Add attachments in this call with attachments: [{path}]. Paths are absolute files on this server environment, including remote connections. Existing pending-upload metadata also works. Body references are optional and become canonical stored IDs. If the write outcome is uncertain, read the ticket before retrying to avoid duplicate attachments.",
   parameters: Schema.Struct({
     title: TicketCreateInput.fields.title,
     body: TicketCreateInput.fields.body.annotate({ description: "Markdown." }),
     labels: TicketCreateInput.fields.labels,
+    attachments: bodyAttachments,
     status: Schema.optional(status),
     links: Schema.optional(
       Schema.Array(AgentTicketLinkTarget)
@@ -164,7 +168,9 @@ const TicketCreateTool = Tool.make("t3_ticket_create", {
     ),
     linkCaller: Schema.optional(Schema.Boolean.annotate({ description: "Defaults to true." })),
   }),
-  success: TicketSummary,
+  success: TicketSummary.mapMembers(
+    Tuple.map(Schema.fieldsAssign({ attachments: Schema.Array(TicketAttachment) })),
+  ),
 })
   .annotate(Tool.Title, "Create a ticket")
   .annotate(Tool.Readonly, false)
@@ -175,7 +181,7 @@ const TicketCreateTool = Tool.make("t3_ticket_create", {
 const TicketUpdateTool = Tool.make("t3_ticket_update", {
   ...shared,
   description:
-    "Change a ticket's title, body, labels or status. Omitted fields stay as they are. Fails if the ticket changed since you read the revision you pass: read it again and reapply. A GitHub ticket's title, body and labels belong to the issue, and only the user can move it into or out of a closed status.",
+    "Change a ticket's title, body, labels, status or attachments. Omitted fields stay as they are; attachments append and removeAttachmentIds uses canonical stored IDs from t3_ticket_get. Removing attachments does not edit Markdown references. Add local files in this call with attachments: [{path}], or pass existing pending-upload metadata. Title, body, label and status edits require the current expectedRevision; attachment-only additions/removals accept a stale revision and do not advance it. If the write outcome is uncertain, read the ticket before retrying to avoid duplicate attachments. A GitHub ticket permits local attachment additions/removals, but its title, body and labels belong to the issue, and only the user can move it into or out of a closed status.",
   parameters: Schema.Struct({
     ticket,
     expectedRevision: PositiveInt.annotate({
@@ -184,14 +190,20 @@ const TicketUpdateTool = Tool.make("t3_ticket_update", {
     title: TicketUpdateInput.fields.title,
     body: TicketUpdateInput.fields.body.annotate({ description: "Markdown; replaces the body." }),
     labels: TicketUpdateInput.fields.labels,
+    attachments: bodyAttachments,
+    removeAttachmentIds: TicketUpdateInput.fields.removeAttachmentIds.annotate({
+      description: "Up to 100 canonical stored attachment IDs from t3_ticket_get to remove.",
+    }),
     status: Schema.optional(status),
   }),
-  success: TicketSummary,
+  success: TicketSummary.mapMembers(
+    Tuple.map(Schema.fieldsAssign({ attachments: Schema.Array(TicketAttachment) })),
+  ),
 })
   .annotate(Tool.Title, "Update a ticket")
   .annotate(Tool.Readonly, false)
   .annotate(Tool.Destructive, true)
-  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.Idempotent, false)
   .annotate(Tool.OpenWorld, false);
 
 const TicketLinkTool = Tool.make("t3_ticket_link", {
@@ -287,14 +299,16 @@ const TicketPlanGetTool = Tool.make("t3_ticket_plan_get", {
 const TicketPlanCreateTool = Tool.make("t3_ticket_plan_create", {
   ...shared,
   description:
-    "Write a new Draft plan for a ticket: how to implement it, in Markdown. Returns its ref, such as T-42/P1. To include an image, upload it with t3_attachment_prepare_upload, POST the bytes, write ![alt](vetra-attachment://<pending id>) in the body, and list the upload in attachments.",
+    "Write a new Draft plan for a ticket: how to implement it, in Markdown. Returns its ref, such as T-42/P1. Add local files in this call with attachments: [{path}]. Optional ref aliases place files in the supplied body; unreferenced local images/videos are appended as embeds and other files as links. Returns canonical metadata in input order. Pending-upload metadata remains supported without automatic body additions. If the write outcome is uncertain, read the ticket's plans before retrying to avoid duplicates.",
   parameters: Schema.Struct({
     ticket,
     title: TicketPlanCreateInput.fields.title,
     body: TicketPlanCreateInput.fields.body.annotate({ description: "Markdown." }),
-    attachments: planAttachments,
+    attachments: bodyAttachments,
   }),
-  success: TicketPlanSummary,
+  success: TicketPlanSummary.pipe(
+    Schema.fieldsAssign({ attachments: Schema.Array(TicketAttachment) }),
+  ),
 })
   .annotate(Tool.Title, "Create a ticket plan")
   .annotate(Tool.Readonly, false)
@@ -305,7 +319,7 @@ const TicketPlanCreateTool = Tool.make("t3_ticket_plan_create", {
 const TicketPlanUpdateTool = Tool.make("t3_ticket_plan_update", {
   ...shared,
   description:
-    "Change a plan's title, body, lifecycle or review status, and resolve the comments the change addresses, in one call. Omitted fields stay as they are. Plans start Draft; Ready is a manual review marker and stays Ready after title or body edits until explicitly returned to Draft. Marking Draft Ready requires the exact current expectedRevision and fails without changing anything if content changed: read it again and review before retrying. Returning to Draft may use a stale revision unless content also changes. Ready does not select a plan or start implementation. Prefer edits to a whole body: they cost fewer tokens and do not clobber concurrent edits. body and edits are mutually exclusive. A title, body or edits change fails without changing anything if the plan changed since expectedRevision: read it again and reapply. Images work as in t3_ticket_plan_create.",
+    "Change a plan's title, body, lifecycle or review status, and resolve the comments the change addresses, in one call. Omitted fields stay as they are. Plans start Draft; Ready is a manual review marker and stays Ready after title or body edits until explicitly returned to Draft. Marking Draft Ready requires the exact current expectedRevision and fails without changing anything if content changed: read it again and review before retrying. Returning to Draft may use a stale revision unless content also changes. Ready does not select a plan or start implementation. Prefer edits to a whole body: they cost fewer tokens and do not clobber concurrent edits. body and edits are mutually exclusive. A title, body or edits change fails without changing anything if the plan changed since expectedRevision: read it again and reapply. Attachments work as in t3_ticket_plan_create. Appending references for local files edits the body, advances its revision and requires the current expectedRevision. If the write outcome is uncertain, read the plan before retrying to avoid duplicate attachments.",
   parameters: Schema.Struct({
     plan,
     expectedRevision: PositiveInt.annotate({
@@ -327,14 +341,16 @@ const TicketPlanUpdateTool = Tool.make("t3_ticket_plan_update", {
     resolveCommentIds: TicketPlanUpdateInput.fields.resolveCommentIds.annotate({
       description: "Top-level comments from t3_ticket_plan_get that this change addresses.",
     }),
-    attachments: planAttachments,
+    attachments: bodyAttachments,
   }),
-  success: TicketPlanSummary,
+  success: TicketPlanSummary.pipe(
+    Schema.fieldsAssign({ attachments: Schema.Array(TicketAttachment) }),
+  ),
 })
   .annotate(Tool.Title, "Update a ticket plan")
   .annotate(Tool.Readonly, false)
   .annotate(Tool.Destructive, true)
-  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.Idempotent, false)
   .annotate(Tool.OpenWorld, false);
 
 const TicketPlanCommentTool = Tool.make("t3_ticket_plan_comment", {

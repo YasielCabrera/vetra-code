@@ -173,9 +173,15 @@ way.
 Agents can read and update tickets. A ticket an agent creates is linked to the agent's thread and
 project. An agent can change a ticket's title, body, labels, and status, link it to pull requests
 and other threads, and add notes to its activity. If you edited the ticket after the agent last
-read it, the agent's change is refused, so it cannot overwrite your work. Agents cannot close or
+read it, changes to the title, description, labels, or status are refused, so it cannot overwrite
+your work. Attachment-only additions and removals preserve the description. Agents cannot close or
 reopen a GitHub issue, or edit the issue's title, body, or labels. They ask you to do that instead.
 Agent notes stay in Vetra and never post to GitHub.
+
+Ask an agent to attach images, videos, or files when it creates or updates a ticket or plan, or to
+remove a ticket attachment. Files already on the connected environment can be attached in the
+same request, without a separate upload. Plans show those files in their body; tickets keep them
+in their attachment list unless the agent adds an inline reference.
 
 Agents can also write plans. Ask an agent to plan a ticket and it saves the plan on the ticket
 rather than in the chat. Name a plan in a message and the agent implements it, reading it first

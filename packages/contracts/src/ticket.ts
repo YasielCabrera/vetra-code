@@ -354,6 +354,18 @@ export const TicketAttachmentUploads = Schema.Array(
   }),
 );
 
+export const AgentTicketLocalAttachment = Schema.Struct({
+  path: Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(4096)).annotate({
+    description: "Absolute file path on this server environment. The source remains untouched.",
+  }),
+  ref: Schema.optional(
+    TrimmedNonEmptyString.check(Schema.isPattern(/^[A-Za-z][A-Za-z0-9_-]{0,63}$/)).annotate({
+      description: "Optional unique alias for vetra-attachment://<ref> in the supplied body.",
+    }),
+  ),
+});
+export type AgentTicketLocalAttachment = typeof AgentTicketLocalAttachment.Type;
+
 export const TicketCreateInput = Schema.Struct({
   title: TicketTitle,
   body: Schema.optional(TicketBody),

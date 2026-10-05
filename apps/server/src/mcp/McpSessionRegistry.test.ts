@@ -2,6 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
 import { EnvironmentId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import { HttpServer } from "effect/unstable/http";
 import * as NetAddress from "effect/unstable/net/NetAddress";
 
@@ -139,6 +140,17 @@ it.effect("expires credentials once their session stops showing signs of life", 
     const token = issued.config.authorizationHeader.replace(/^Bearer\s+/, "");
     timestamp += 101;
     expect(yield* registry.resolve(token)).toBeUndefined();
+  }),
+);
+
+it.effect("rejects a Unix listener instead of fabricating a port-80 endpoint", () =>
+  Effect.gen(function* () {
+    const exit = yield* makeRegistry(() => 1_000, {
+      ...fakeHttpServer,
+      address: NetAddress.unixPathAddress("/tmp/vetra-mcp-test.sock"),
+    }).pipe(Effect.exit);
+    expect(Exit.isFailure(exit)).toBe(true);
+    expect(String(exit)).toContain("Unix sockets are unsupported");
   }),
 );
 

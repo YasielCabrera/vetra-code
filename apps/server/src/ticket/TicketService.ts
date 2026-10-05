@@ -20,7 +20,6 @@ import {
   TicketActivityEntry,
   type TicketActor,
   type TicketAttachment,
-  type TicketClaimedAttachment,
   type TicketCommentInput,
   type TicketCreateInput,
   type TicketDeleteInput,
@@ -90,6 +89,7 @@ import * as Exit from "effect/Exit";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Path from "effect/Path";
 import * as PubSub from "effect/PubSub";
 import * as Queue from "effect/Queue";
 import * as Schema from "effect/Schema";
@@ -108,16 +108,16 @@ import {
   IssueProviderError,
 } from "../issue/IssueProvider.ts";
 import {
-  attachmentIsPendingUpload,
-  claimPendingAttachments,
-  releaseClaimedAttachments,
-} from "../orchestration-v2/AttachmentClaims.ts";
+  attachmentBody,
+  attachmentReferenceIds,
+  claimTicketAttachments,
+  type WithAttachmentSources,
+} from "./TicketAttachments.ts";
 import * as TicketGitHub from "./TicketGitHub.ts";
 import { applyPlanEdits } from "./ticketPlanEdits.ts";
 
 type TicketWriteError = TicketNotFoundError | TicketRevisionConflictError | TicketError;
 type TicketPlanWriteError = TicketPlanNotFoundError | TicketPlanRevisionConflictError | TicketError;
-type TicketUpload = NonNullable<TicketCreateInput["attachments"]>[number];
 type GitHubIssueTarget = Parameters<TicketGitHub.TicketGitHub["Service"]["run"]>[0] &
   NonNullable<TicketGitHubIssueRef["linkedIssue"]>;
 type ResolvedGitHubIssueTarget = GitHubIssueTarget & { readonly projectId: ProjectId };
@@ -156,7 +156,7 @@ interface GitHubRepository {
 }
 
 /** `update` can also move the ticket to the end of another status column. */
-type TicketEditInput = TicketUpdateInput & {
+type TicketEditInput = WithAttachmentSources<TicketUpdateInput> & {
   readonly statusId?: TicketStatusId | undefined;
 };
 
@@ -215,9 +215,12 @@ export class TicketService extends Context.Service<
       ref: TicketLinkRef,
     ) => Effect.Effect<ReadonlyArray<TicketSummary>, TicketError>;
     readonly create: (
-      input: TicketCreateInput,
+      input: WithAttachmentSources<TicketCreateInput>,
       actor: TicketActor,
-    ) => Effect.Effect<TicketWriteResult, TicketError>;
+    ) => Effect.Effect<
+      TicketWriteResult & { readonly storedAttachments: ReadonlyArray<TicketAttachment> },
+      TicketError
+    >;
     /**
      * Never reaches GitHub: a `statusId` that would move a GitHub ticket into or out of a closed
      * status is refused, since only the user's `move` closes or reopens the issue.
@@ -225,7 +228,10 @@ export class TicketService extends Context.Service<
     readonly update: (
       input: TicketEditInput,
       actor: TicketActor,
-    ) => Effect.Effect<TicketWriteResult, TicketWriteError>;
+    ) => Effect.Effect<
+      TicketWriteResult & { readonly storedAttachments: ReadonlyArray<TicketAttachment> },
+      TicketWriteError
+    >;
     /**
      * A user moving a tracked GitHub ticket into or out of a closed status closes or reopens its
      * issue before anything is written, so a failed `gh` call leaves the ticket where it was. If
@@ -315,18 +321,24 @@ export class TicketService extends Context.Service<
       planId: TicketPlanId,
     ) => Stream.Stream<TicketPlan, TicketPlanNotFoundError | TicketError>;
     readonly createPlan: (
-      input: TicketPlanCreateInput,
+      input: WithAttachmentSources<TicketPlanCreateInput>,
       actor: TicketActor,
-    ) => Effect.Effect<TicketPlanWriteResult, TicketNotFoundError | TicketError>;
+    ) => Effect.Effect<
+      TicketPlanWriteResult & { readonly storedAttachments: ReadonlyArray<TicketAttachment> },
+      TicketNotFoundError | TicketError
+    >;
     /**
      * Conflicts on a stale `expectedRevision` when content changes or Draft becomes Ready.
      * Edits apply to the stored body after that check.
      */
     readonly updatePlan: (
-      input: TicketPlanUpdateInput,
+      input: WithAttachmentSources<TicketPlanUpdateInput>,
       actor: TicketActor,
     ) => Effect.Effect<
-      TicketPlanWriteResult & { readonly contentCommit: TicketPlanContentCommit },
+      TicketPlanWriteResult & {
+        readonly contentCommit: TicketPlanContentCommit;
+        readonly storedAttachments: ReadonlyArray<TicketAttachment>;
+      },
       TicketPlanWriteError
     >;
     /** Deletes the plan and its comments; the ticket keeps the attachments it referenced. */
@@ -465,13 +477,6 @@ const toAttachment = (row: AttachmentRow): TicketAttachment => ({
   createdAt: row.created_at,
 });
 
-const rewriteAttachmentIds = (text: string, mapping: ReadonlyArray<TicketClaimedAttachment>) =>
-  mapping.reduce(
-    (result, { pendingId, attachmentId }) =>
-      result.replaceAll(`vetra-attachment://${pendingId}`, `vetra-attachment://${attachmentId}`),
-    text,
-  );
-
 /** The encoded summary; a ticket summary decodes its plans along with it. */
 const planFields = (row: PlanRow) =>
   Effect.gen(function* () {
@@ -587,6 +592,7 @@ const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const config = yield* ServerConfig.ServerConfig;
   const fileSystem = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
   const github = yield* TicketGitHub.TicketGitHub;
 
   const ticketSubscribers = new Set<ChangeSubscriber<TicketId>>();
@@ -1075,42 +1081,36 @@ const make = Effect.gen(function* () {
       SELECT sort_key FROM tickets WHERE status_id = ${statusId} ORDER BY sort_key DESC LIMIT 1
     `.pipe(Effect.map(([last]) => keyBetween(last?.sort_key ?? null, null)));
 
-  /**
-   * The write's transaction: mutate, append activity, bump the revision when it applies. True
-   * when anything changed. Callers publish after it commits.
-   */
-  const commitWrite = <E>(
+  const ticketWrite = <E>(
     ticketId: TicketId,
     expectedRevision: number | undefined,
     actor: TicketActor,
     apply: (current: TicketSummary, at: string) => Effect.Effect<TicketWrite, E>,
   ) =>
-    sql.withTransaction(
-      Effect.gen(function* () {
-        const current = yield* requireSummary(ticketId);
-        const at = yield* now;
-        const write = yield* apply(current, at);
-        if (write.entries.length === 0 && !write.revises) return write.touches === true;
-        if (
-          write.revises &&
-          expectedRevision !== undefined &&
-          current.revision !== expectedRevision
-        ) {
-          return yield* new TicketRevisionConflictError({
-            ticketId,
-            expectedRevision,
-            actualRevision: current.revision,
-          });
-        }
-        yield* appendActivity(ticketId, actor, write.entries, at);
-        yield* sql`
+    Effect.gen(function* () {
+      const current = yield* requireSummary(ticketId);
+      const at = yield* now;
+      const write = yield* apply(current, at);
+      if (write.entries.length === 0 && !write.revises) return write.touches === true;
+      if (
+        write.revises &&
+        expectedRevision !== undefined &&
+        current.revision !== expectedRevision
+      ) {
+        return yield* new TicketRevisionConflictError({
+          ticketId,
+          expectedRevision,
+          actualRevision: current.revision,
+        });
+      }
+      yield* appendActivity(ticketId, actor, write.entries, at);
+      yield* sql`
           UPDATE tickets SET revision = revision + ${write.revises ? 1 : 0}, updated_at = ${at}
           WHERE ticket_id = ${ticketId}
         `;
-        if (write.revises) yield* refreshSearch(ticketId);
-        return true;
-      }),
-    );
+      if (write.revises) yield* refreshSearch(ticketId);
+      return true;
+    });
 
   const writeTicket = <E>(
     ticketId: TicketId,
@@ -1119,7 +1119,7 @@ const make = Effect.gen(function* () {
     apply: (current: TicketSummary, at: string) => Effect.Effect<TicketWrite, E>,
   ) =>
     Effect.gen(function* () {
-      if (yield* commitWrite(ticketId, expectedRevision, actor, apply)) {
+      if (yield* sql.withTransaction(ticketWrite(ticketId, expectedRevision, actor, apply))) {
         yield* publishTickets([ticketId]);
       }
       return yield* requireSummary(ticketId);
@@ -1128,41 +1128,32 @@ const make = Effect.gen(function* () {
   const sqlFailure = (message: string) => (cause: SqlError) =>
     Effect.fail(new TicketError({ message, cause }));
 
-  const claimUploads = (
+  const claimAttachments = (
     ticketId: TicketId,
-    uploads: ReadonlyArray<TicketUpload>,
-    body: string | undefined,
+    sources: Parameters<typeof claimTicketAttachments>[1],
   ) =>
-    Effect.gen(function* () {
-      if (uploads.length === 0) {
-        return { attachments: [], mapping: [], claimedPaths: [], body };
-      }
-      if (!uploads.every(attachmentIsPendingUpload)) {
-        return yield* new TicketError({ message: "Ticket attachments must be new uploads." });
-      }
-      const claimed = yield* claimPendingAttachments({
-        threadId: `ticket-${ticketId}`,
-        attachments: uploads,
-      }).pipe(
-        Effect.provideService(ServerConfig.ServerConfig, config),
-        Effect.provideService(FileSystem.FileSystem, fileSystem),
-        Effect.mapError((error) => new TicketError({ message: error.message, cause: error })),
-      );
-      const mapping = uploads.map((upload, index) => ({
-        pendingId: upload.id,
-        attachmentId: claimed.attachments[index]!.id,
-      }));
-      return {
-        attachments: claimed.attachments,
-        mapping,
-        claimedPaths: claimed.claimedPaths,
-        body: body === undefined ? undefined : rewriteAttachmentIds(body, mapping),
-      };
-    });
-
-  const releaseClaims = (claimedPaths: ReadonlyArray<string>) =>
-    releaseClaimedAttachments(claimedPaths).pipe(
+    claimTicketAttachments(ticketId, sources).pipe(
+      Effect.provideService(ServerConfig.ServerConfig, config),
       Effect.provideService(FileSystem.FileSystem, fileSystem),
+      Effect.provideService(Path.Path, path),
+    );
+
+  const commitAttachmentWrite = <A, E>({
+    claim,
+    body,
+    complete,
+  }: {
+    readonly claim: Pick<Effect.Success<ReturnType<typeof claimAttachments>>, "markCommitted">;
+    readonly body: Effect.Effect<A, E>;
+    readonly complete: (result: A) => Effect.Effect<void>;
+  }) =>
+    Effect.uninterruptibleMask((restore) =>
+      Effect.gen(function* () {
+        const result = yield* sql.withTransaction(restore(body));
+        yield* claim.markCommitted;
+        yield* complete(result);
+        return result;
+      }),
     );
 
   const removeAttachmentFiles = (rows: ReadonlyArray<AttachmentRow>) =>
@@ -1253,59 +1244,71 @@ const make = Effect.gen(function* () {
   const create: TicketService["Service"]["create"] = (input, actor) =>
     Effect.gen(function* () {
       const ticketId = TicketId.make(NodeCrypto.randomUUID());
-      const claim = yield* claimUploads(ticketId, input.attachments ?? [], input.body ?? "");
+      const claim = yield* claimAttachments(ticketId, input.attachments ?? []);
+      const body = yield* attachmentBody(input.body ?? "", claim, false);
+      const storedAttachments: TicketAttachment[] = [];
       const linkedThreads: Array<ThreadId> = [];
-      yield* sql
-        .withTransaction(
-          Effect.gen(function* () {
-            const statusId =
-              input.statusId ??
-              (yield* readStatuses).statuses.find(
-                (status) => status.category === "open" && status.isDefault,
-              )?.id;
-            if (statusId === undefined) {
-              return yield* new TicketError({ message: "No default open status exists." });
-            }
-            yield* requireStatus(statusId);
-            const at = yield* now;
-            const number = yield* takeNumber;
-            yield* sql`
+      yield* commitAttachmentWrite({
+        claim,
+        body: Effect.gen(function* () {
+          const statusId =
+            input.statusId ??
+            (yield* readStatuses).statuses.find(
+              (status) => status.category === "open" && status.isDefault,
+            )?.id;
+          if (statusId === undefined) {
+            return yield* new TicketError({ message: "No default open status exists." });
+          }
+          yield* requireStatus(statusId);
+          const at = yield* now;
+          const number = yield* takeNumber;
+          yield* sql`
               INSERT INTO tickets (
                 ticket_id, number, kind, title, body, labels_json, status_id, sort_key,
                 revision, created_by_json, created_at, updated_at
               ) VALUES (
-                ${ticketId}, ${number}, 'local', ${input.title}, ${claim.body ?? ""},
+                ${ticketId}, ${number}, 'local', ${input.title}, ${body ?? ""},
                 ${encodeJson(uniqueLabels(input.labels ?? []))}, ${statusId},
                 ${yield* appendKey(statusId)}, 1, ${encodeJson(actor)}, ${at}, ${at}
               )
             `;
-            const automaticLinks = yield* draftLinks(actor);
-            for (const target of input.links ?? []) {
-              if (
-                automaticLinks !== null &&
-                actor.type === "agent" &&
-                target.kind === "thread" &&
-                target.threadId === actor.threadId
-              ) {
-                continue;
-              }
-              yield* insertLink(ticketId, target, linkSourceFor(actor), at);
-              if (target.kind === "thread") linkedThreads.push(target.threadId);
+          const automaticLinks = yield* draftLinks(actor);
+          for (const target of input.links ?? []) {
+            if (
+              automaticLinks !== null &&
+              actor.type === "agent" &&
+              target.kind === "thread" &&
+              target.threadId === actor.threadId
+            ) {
+              continue;
             }
-            for (const target of automaticLinks ?? []) {
-              yield* insertLink(ticketId, target, "auto", at);
-              if (target.kind === "thread") linkedThreads.push(target.threadId);
-            }
-            const attachmentEntries = yield* insertAttachments(ticketId, claim.attachments, at);
-            yield* appendActivity(ticketId, actor, [{ type: "created" }, ...attachmentEntries], at);
-            yield* refreshSearch(ticketId);
+            yield* insertLink(ticketId, target, linkSourceFor(actor), at);
+            if (target.kind === "thread") linkedThreads.push(target.threadId);
+          }
+          for (const target of automaticLinks ?? []) {
+            yield* insertLink(ticketId, target, "auto", at);
+            if (target.kind === "thread") linkedThreads.push(target.threadId);
+          }
+          storedAttachments.push(
+            ...claim.attachments.map((attachment) => ({ ...attachment, createdAt: at })),
+          );
+          const attachmentEntries = yield* insertAttachments(ticketId, claim.attachments, at);
+          yield* appendActivity(ticketId, actor, [{ type: "created" }, ...attachmentEntries], at);
+          yield* refreshSearch(ticketId);
+        }),
+        complete: () =>
+          Effect.gen(function* () {
+            yield* publishTickets([ticketId]);
+            yield* publishThreadLinks([...new Set(linkedThreads)]);
           }),
-        )
-        .pipe(Effect.onError(() => releaseClaims(claim.claimedPaths)));
-      yield* publishTickets([ticketId]);
-      yield* publishThreadLinks([...new Set(linkedThreads)]);
-      return { ticket: yield* requireSummary(ticketId), attachments: claim.mapping };
+      });
+      return {
+        ticket: yield* requireSummary(ticketId),
+        attachments: claim.mapping,
+        storedAttachments,
+      };
     }).pipe(
+      Effect.scoped,
       Effect.catchTags({
         SqlError: sqlFailure("Could not create the ticket."),
         TicketNotFoundError: (cause) =>
@@ -1383,14 +1386,15 @@ const make = Effect.gen(function* () {
 
   const update: TicketService["Service"]["update"] = (input, actor) =>
     Effect.gen(function* () {
-      const claim = yield* claimUploads(input.ticketId, input.attachments ?? [], input.body);
+      const claim = yield* claimAttachments(input.ticketId, input.attachments ?? []);
+      const body =
+        input.body === undefined ? undefined : yield* attachmentBody(input.body, claim, false);
+      const storedAttachments: TicketAttachment[] = [];
       const removedFiles: Array<AttachmentRow> = [];
       const changedPlans: Array<TicketPlanId> = [];
-      const changed = yield* commitWrite(
-        input.ticketId,
-        input.expectedRevision,
-        actor,
-        (current, at) =>
+      yield* commitAttachmentWrite({
+        claim,
+        body: ticketWrite(input.ticketId, input.expectedRevision, actor, (current, at) =>
           Effect.gen(function* () {
             const [row] = yield* sql<{ readonly body: string }>`
               SELECT body FROM tickets WHERE ticket_id = ${input.ticketId}
@@ -1400,7 +1404,7 @@ const make = Effect.gen(function* () {
               ...(input.title !== undefined && input.title !== current.title
                 ? (["title"] as const)
                 : []),
-              ...(claim.body !== undefined && claim.body !== row?.body ? (["body"] as const) : []),
+              ...(body !== undefined && body !== row?.body ? (["body"] as const) : []),
               ...(labels !== undefined && labels.join("\n") !== current.labels.join("\n")
                 ? (["labels"] as const)
                 : []),
@@ -1414,7 +1418,7 @@ const make = Effect.gen(function* () {
               yield* sql`
                 UPDATE tickets SET
                   title = ${input.title ?? current.title},
-                  body = ${claim.body ?? row?.body ?? ""},
+                  body = ${body ?? row?.body ?? ""},
                   labels_json = ${encodeJson(labels ?? current.labels)}
                 WHERE ticket_id = ${input.ticketId}
               `;
@@ -1435,6 +1439,9 @@ const make = Effect.gen(function* () {
               );
             }
             const statusChanged = yield* changeStatus(current, input.statusId);
+            storedAttachments.push(
+              ...claim.attachments.map((attachment) => ({ ...attachment, createdAt: at })),
+            );
             const added = yield* insertAttachments(input.ticketId, claim.attachments, at);
             const removed = yield* removeAttachmentRows(
               input.ticketId,
@@ -1460,12 +1467,20 @@ const make = Effect.gen(function* () {
               revises: fields.length > 0 || statusChanged.length > 0,
             };
           }),
-      ).pipe(Effect.onError(() => releaseClaims(claim.claimedPaths)));
-      if (changed) yield* publishTickets([input.ticketId]);
-      yield* publishPlans(changedPlans);
-      yield* removeAttachmentFiles(removedFiles);
-      return { ticket: yield* requireSummary(input.ticketId), attachments: claim.mapping };
-    }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not update the ticket.")));
+        ),
+        complete: (changed) =>
+          Effect.gen(function* () {
+            if (changed) yield* publishTickets([input.ticketId]);
+            yield* publishPlans(changedPlans);
+            yield* removeAttachmentFiles(removedFiles);
+          }),
+      });
+      return {
+        ticket: yield* requireSummary(input.ticketId),
+        attachments: claim.mapping,
+        storedAttachments,
+      };
+    }).pipe(Effect.scoped, Effect.catchTag("SqlError", sqlFailure("Could not update the ticket.")));
 
   /** The issue was closed or reopened but the move was not saved; the next sync catches up. */
   const notePushedState = (ticketId: TicketId) =>
@@ -2520,6 +2535,7 @@ const make = Effect.gen(function* () {
         FROM ticket_plan_comments WHERE plan_id = ${planId}
         ORDER BY created_at, rowid
       `.pipe(Effect.flatMap((rows) => Effect.forEach(rows, toPlanComment)));
+      const referencedIds = attachmentReferenceIds(plan.body);
       const attachments = yield* sql<AttachmentRow>`
         SELECT attachment_id, type, name, mime_type, size_bytes, created_at
         FROM ticket_attachments WHERE ticket_id = ${plan.ticketId}
@@ -2530,7 +2546,7 @@ const make = Effect.gen(function* () {
         body: plan.body,
         comments,
         attachments: attachments
-          .filter((row) => plan.body.includes(`vetra-attachment://${row.attachment_id}`))
+          .filter((row) => referencedIds.has(row.attachment_id))
           .map(toAttachment),
       } satisfies TicketPlan;
     }).pipe(
@@ -2559,45 +2575,50 @@ const make = Effect.gen(function* () {
   const createPlan: TicketService["Service"]["createPlan"] = (input, actor) =>
     Effect.gen(function* () {
       const planId = TicketPlanId.make(NodeCrypto.randomUUID());
-      const claim = yield* claimUploads(input.ticketId, input.attachments ?? [], input.body ?? "");
-      yield* sql
-        .withTransaction(
-          Effect.gen(function* () {
-            const at = yield* now;
-            const [counter] = yield* sql<{ readonly number: number }>`
+      const claim = yield* claimAttachments(input.ticketId, input.attachments ?? []);
+      const body = yield* attachmentBody(input.body ?? "", claim, true);
+      const storedAttachments: TicketAttachment[] = [];
+      yield* commitAttachmentWrite({
+        claim,
+        body: Effect.gen(function* () {
+          const at = yield* now;
+          const [counter] = yield* sql<{ readonly number: number }>`
               UPDATE tickets SET next_plan_number = next_plan_number + 1, updated_at = ${at}
               WHERE ticket_id = ${input.ticketId}
               RETURNING next_plan_number - 1 AS number
             `;
-            if (counter === undefined) {
-              return yield* new TicketNotFoundError({ ticketId: input.ticketId });
-            }
-            yield* sql`
+          if (counter === undefined) {
+            return yield* new TicketNotFoundError({ ticketId: input.ticketId });
+          }
+          yield* sql`
               INSERT INTO ticket_plans (
                 plan_id, ticket_id, number, title, body, status, review_status, revision, created_by_json,
                 updated_by_json, created_at, updated_at
               ) VALUES (
-                ${planId}, ${input.ticketId}, ${counter.number}, ${input.title}, ${claim.body ?? ""},
+                ${planId}, ${input.ticketId}, ${counter.number}, ${input.title}, ${body ?? ""},
                 'active', 'draft', 1, ${encodeJson(actor)}, ${encodeJson(actor)}, ${at}, ${at}
               )
             `;
-            const attachmentEntries = yield* insertAttachments(
-              input.ticketId,
-              claim.attachments,
-              at,
-            );
-            yield* appendActivity(
-              input.ticketId,
-              actor,
-              [{ type: "plan_created", planId, number: counter.number }, ...attachmentEntries],
-              at,
-            );
-          }),
-        )
-        .pipe(Effect.onError(() => releaseClaims(claim.claimedPaths)));
-      yield* publishTickets([input.ticketId]);
-      return { plan: yield* requirePlanSummary(planId), attachments: claim.mapping };
+          storedAttachments.push(
+            ...claim.attachments.map((attachment) => ({ ...attachment, createdAt: at })),
+          );
+          const attachmentEntries = yield* insertAttachments(input.ticketId, claim.attachments, at);
+          yield* appendActivity(
+            input.ticketId,
+            actor,
+            [{ type: "plan_created", planId, number: counter.number }, ...attachmentEntries],
+            at,
+          );
+        }),
+        complete: () => publishTickets([input.ticketId]),
+      });
+      return {
+        plan: yield* requirePlanSummary(planId),
+        attachments: claim.mapping,
+        storedAttachments,
+      };
     }).pipe(
+      Effect.scoped,
       Effect.catchTags({
         SqlError: sqlFailure("Could not create the plan."),
         TicketPlanNotFoundError: (cause) =>
@@ -2611,117 +2632,120 @@ const make = Effect.gen(function* () {
         return yield* new TicketError({ message: "Send a new body or edits, not both." });
       }
       const { ticketId } = yield* requirePlan(input.planId);
-      const claim = yield* claimUploads(ticketId, input.attachments ?? [], undefined);
-      const result = yield* sql
-        .withTransaction(
-          Effect.gen(function* () {
-            const current = yield* requirePlan(input.planId);
-            const writesContent =
-              input.title !== undefined ||
-              input.body !== undefined ||
-              (input.edits?.length ?? 0) > 0 ||
-              (input.attachments?.length ?? 0) > 0;
-            if (current.status === "archived" && input.status !== "active" && writesContent) {
-              const { ref } = yield* requirePlanSummary(input.planId);
-              return yield* new TicketError({
-                message: `${ref} is archived. Restore it before editing it.`,
-              });
-            }
-            const conflict = new TicketPlanRevisionConflictError({
-              planId: input.planId,
-              expectedRevision: input.expectedRevision,
-              actualRevision: current.revision,
+      const claim = yield* claimAttachments(ticketId, input.attachments ?? []);
+      const storedAttachments: TicketAttachment[] = [];
+      const result = yield* commitAttachmentWrite({
+        claim,
+        body: Effect.gen(function* () {
+          const current = yield* requirePlan(input.planId);
+          const writesContent =
+            input.title !== undefined ||
+            input.body !== undefined ||
+            (input.edits?.length ?? 0) > 0 ||
+            (input.attachments?.length ?? 0) > 0;
+          if (current.status === "archived" && input.status !== "active" && writesContent) {
+            const { ref } = yield* requirePlanSummary(input.planId);
+            return yield* new TicketError({
+              message: `${ref} is archived. Restore it before editing it.`,
             });
-            const stale = current.revision !== input.expectedRevision;
-            const reviewStatus = input.reviewStatus ?? current.review_status;
-            const reviewChanged = reviewStatus !== current.review_status;
-            if (stale && reviewChanged && reviewStatus === "ready") {
-              return yield* conflict;
-            }
-            if (stale && input.edits !== undefined && input.edits.length > 0) {
-              return yield* conflict;
-            }
-            const nextBody =
-              input.edits === undefined
-                ? input.body
-                : yield* applyPlanEdits(current.body, input.edits);
-            const body =
-              nextBody === undefined ? current.body : rewriteAttachmentIds(nextBody, claim.mapping);
-            const title = input.title ?? current.title;
-            const edited = title !== current.title || body !== current.body;
-            if (edited && stale) return yield* conflict;
-            const at = yield* now;
-            if (edited) {
-              yield* sql`
+          }
+          const conflict = new TicketPlanRevisionConflictError({
+            planId: input.planId,
+            expectedRevision: input.expectedRevision,
+            actualRevision: current.revision,
+          });
+          const stale = current.revision !== input.expectedRevision;
+          const reviewStatus = input.reviewStatus ?? current.review_status;
+          const reviewChanged = reviewStatus !== current.review_status;
+          if (stale && reviewChanged && reviewStatus === "ready") {
+            return yield* conflict;
+          }
+          if (stale && input.edits !== undefined && input.edits.length > 0) {
+            return yield* conflict;
+          }
+          const nextBody =
+            input.edits === undefined
+              ? input.body
+              : yield* applyPlanEdits(current.body, input.edits);
+          const body = yield* attachmentBody(nextBody ?? current.body, claim, true);
+          const title = input.title ?? current.title;
+          const edited = title !== current.title || body !== current.body;
+          if (edited && stale) return yield* conflict;
+          const at = yield* now;
+          if (edited) {
+            yield* sql`
                 UPDATE ticket_plans SET
                   title = ${title}, body = ${body}, revision = revision + 1,
                   updated_at = ${at}, updated_by_json = ${encodeJson(actor)}
                 WHERE plan_id = ${input.planId}
               `;
-              const entry = {
-                type: "plan_edited",
-                planId: input.planId,
-                number: current.number,
-              } as const;
-              yield* recordEdit(ticketId, actor, entry, at, (previous) =>
-                previous.type === "plan_edited" && previous.planId === input.planId
-                  ? entry
-                  : undefined,
-              );
-            }
-            const added = yield* insertAttachments(ticketId, claim.attachments, at);
-            yield* appendActivity(ticketId, actor, added, at);
-            if (edited || added.length > 0) yield* touchTicket(ticketId, at);
-            const resolved = yield* resolveComments(
-              input.planId,
-              input.resolveCommentIds ?? [],
-              actor,
-              at,
+            const entry = {
+              type: "plan_edited",
+              planId: input.planId,
+              number: current.number,
+            } as const;
+            yield* recordEdit(ticketId, actor, entry, at, (previous) =>
+              previous.type === "plan_edited" && previous.planId === input.planId
+                ? entry
+                : undefined,
             );
-            const statusChanged =
-              input.status === undefined
-                ? false
-                : yield* changePlanStatus(current, input.planId, input.status, actor, at);
-            if (reviewChanged) {
-              yield* sql`
+          }
+          storedAttachments.push(
+            ...claim.attachments.map((attachment) => ({ ...attachment, createdAt: at })),
+          );
+          const added = yield* insertAttachments(ticketId, claim.attachments, at);
+          yield* appendActivity(ticketId, actor, added, at);
+          if (edited || added.length > 0) yield* touchTicket(ticketId, at);
+          const resolved = yield* resolveComments(
+            input.planId,
+            input.resolveCommentIds ?? [],
+            actor,
+            at,
+          );
+          const statusChanged =
+            input.status === undefined
+              ? false
+              : yield* changePlanStatus(current, input.planId, input.status, actor, at);
+          if (reviewChanged) {
+            yield* sql`
                 UPDATE ticket_plans
                 SET review_status = ${reviewStatus}, updated_at = ${at},
                   updated_by_json = ${encodeJson(actor)}
                 WHERE plan_id = ${input.planId}
               `;
-              yield* appendActivity(
-                ticketId,
-                actor,
-                [
-                  {
-                    type: "plan_review_status_changed",
-                    planId: input.planId,
-                    number: current.number,
-                    from: current.review_status,
-                    to: reviewStatus,
-                  },
-                ],
-                at,
-              );
-              yield* touchTicket(ticketId, at);
-            }
-            return {
-              changed: edited || added.length > 0 || resolved || statusChanged || reviewChanged,
-              contentCommit: {
-                observedRevision: current.revision,
-                revision: current.revision + (edited ? 1 : 0),
-              },
-            };
-          }),
-        )
-        .pipe(Effect.onError(() => releaseClaims(claim.claimedPaths)));
-      if (result.changed) yield* publishPlan(ticketId, input.planId);
+            yield* appendActivity(
+              ticketId,
+              actor,
+              [
+                {
+                  type: "plan_review_status_changed",
+                  planId: input.planId,
+                  number: current.number,
+                  from: current.review_status,
+                  to: reviewStatus,
+                },
+              ],
+              at,
+            );
+            yield* touchTicket(ticketId, at);
+          }
+          return {
+            changed: edited || added.length > 0 || resolved || statusChanged || reviewChanged,
+            contentCommit: {
+              observedRevision: current.revision,
+              revision: current.revision + (edited ? 1 : 0),
+            },
+          };
+        }),
+        complete: (result) => (result.changed ? publishPlan(ticketId, input.planId) : Effect.void),
+      });
       return {
         plan: yield* requirePlanSummary(input.planId),
         attachments: claim.mapping,
+        storedAttachments,
         contentCommit: result.contentCommit,
       };
-    }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not update the plan.")));
+    }).pipe(Effect.scoped, Effect.catchTag("SqlError", sqlFailure("Could not update the plan.")));
 
   const deletePlan: TicketService["Service"]["deletePlan"] = (input, actor) =>
     Effect.gen(function* () {

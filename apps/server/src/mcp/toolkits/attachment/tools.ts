@@ -1,7 +1,7 @@
 import { McpAttachmentInput } from "./input.ts";
 import {
   AttachmentCreateUploadUrlInput,
-  AttachmentCreateUploadUrlResult,
+  McpAttachmentCreateUploadUrlResult,
   AttachmentDeleteInput,
   MessageId,
   RunId,
@@ -13,6 +13,7 @@ import * as Crypto from "effect/Crypto";
 import * as FileSystem from "effect/FileSystem";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/unstable/ai";
+import * as HttpServer from "effect/unstable/http/HttpServer";
 import * as ServerSecretStore from "../../../auth/ServerSecretStore.ts";
 import * as ServerConfig from "../../../config.ts";
 import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
@@ -32,15 +33,16 @@ const shared = {
 };
 const AttachmentUploadTool = Tool.make("t3_attachment_prepare_upload", {
   ...shared,
+  dependencies: [...shared.dependencies, HttpServer.HttpServer],
   description:
-    "Create the app's signed upload URL. POST the exact bytes to relativeUrl on this MCP server's HTTP origin, then pass the attachment metadata and returned ID to t3_thread_send_attachments. Upload is separate from sending; provider attachment support is decided by its adapter.",
+    "Prepare a pending attachment and a signed uploadUrl targeting the environment where this agent runs; browser uploads use relativeUrl. POST exactly sizeBytes raw file bytes to uploadUrl before expiresAt; do not send multipart, JSON or base64. A successful upload returns HTTP 204. Then pass the returned attachmentId as id, with type, name, mimeType and sizeBytes, to a ticket or plan create/update tool or t3_thread_send_attachments. Images use type image with image/gif, image/jpeg, image/png or image/webp and at most 10 MiB; generic files and videos use type file and at most 50 MiB. Each write allows at most 80 MiB of images, 100 attachments for tickets/plans or 8 for thread sends. Upload is separate from claiming; provider thread attachment support is decided by its adapter.",
   parameters: Schema.Struct({ upload: AttachmentCreateUploadUrlInput }),
-  success: AttachmentCreateUploadUrlResult,
+  success: McpAttachmentCreateUploadUrlResult,
 }).annotate(Tool.Destructive, true);
 const AttachmentDiscardTool = Tool.make("t3_attachment_discard", {
   ...shared,
   description:
-    "Discard a pending upload. Already-delivered thread attachments are never deleted by this operation.",
+    "Discard a pending upload. Claimed thread, ticket and plan copies are never deleted by this operation.",
   parameters: AttachmentDeleteInput,
   success: Schema.Struct({}),
 }).annotate(Tool.Destructive, true);

@@ -1,5 +1,3 @@
-import * as NodeCrypto from "node:crypto";
-
 import {
   ATTACHMENT_UPLOAD_URL_TTL_MS,
   type AttachmentCreateUploadUrlInput,
@@ -9,7 +7,6 @@ import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
-import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import type * as HttpServerRequest from "effect/unstable/http/HttpServerRequest";
@@ -32,6 +29,7 @@ import {
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as ServerConfig from "../config.ts";
 import { inferImageExtension } from "../imageMime.ts";
+import { writeAttachmentFile } from "./writeAttachmentFile.ts";
 
 export const ATTACHMENT_UPLOAD_ROUTE_PREFIX = "/api/attachments/upload";
 
@@ -170,39 +168,23 @@ export const storeAttachmentUpload = Effect.fn("AttachmentUpload.store")(functio
     attachmentsDir: config.attachmentsDir,
     relativePath,
   });
-  const partPath = resolveAttachmentRelativePath({
-    attachmentsDir: config.attachmentsDir,
-    relativePath: `${relativePath}.${NodeCrypto.randomUUID()}.part`,
-  });
-  if (!finalPath || !partPath) {
+  if (!finalPath) {
     return { ok: false, status: 500, detail: "Failed to resolve attachment path." };
   }
 
-  const fileSystem = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  let receivedBytes = 0;
-  const bodyStream = body instanceof Uint8Array ? Stream.make(body) : body;
-  return yield* Effect.gen(function* () {
-    yield* fileSystem.makeDirectory(path.dirname(finalPath), { recursive: true });
-    yield* Stream.run(
-      bodyStream.pipe(
-        Stream.takeWhile((chunk) => {
-          receivedBytes += chunk.byteLength;
-          return receivedBytes <= claims.sizeBytes;
-        }),
-      ),
-      fileSystem.sink(partPath),
-    );
-    if (receivedBytes !== claims.sizeBytes) {
-      return {
+  return yield* writeAttachmentFile({
+    destinationPath: finalPath,
+    expectedBytes: claims.sizeBytes,
+    stream: body instanceof Uint8Array ? Stream.make(body) : body,
+  }).pipe(
+    Effect.as({ ok: true } satisfies StoreAttachmentUploadResult),
+    Effect.catchTag("AttachmentFileSizeError", (error) =>
+      Effect.succeed({
         ok: false,
         status: 400,
-        detail: `Body was ${receivedBytes} bytes, expected ${claims.sizeBytes}.`,
-      } satisfies StoreAttachmentUploadResult;
-    }
-    yield* fileSystem.rename(partPath, finalPath);
-    return { ok: true } satisfies StoreAttachmentUploadResult;
-  }).pipe(
+        detail: error.message,
+      } satisfies StoreAttachmentUploadResult),
+    ),
     Effect.catch((cause) =>
       Effect.logError("Failed to persist attachment upload.", {
         attachmentId: claims.attachmentId,
@@ -214,9 +196,6 @@ export const storeAttachmentUpload = Effect.fn("AttachmentUpload.store")(functio
           detail: "Failed to persist upload.",
         } satisfies StoreAttachmentUploadResult),
       ),
-    ),
-    Effect.ensuring(
-      fileSystem.remove(partPath, { force: true }).pipe(Effect.orElseSucceed(() => undefined)),
     ),
   );
 });

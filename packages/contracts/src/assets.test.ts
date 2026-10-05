@@ -1,13 +1,18 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
-import { AttachmentCreateUploadUrlInput } from "./assets.ts";
+import {
+  AttachmentCreateUploadUrlInput,
+  AttachmentCreateUploadUrlResult,
+  McpAttachmentCreateUploadUrlResult,
+} from "./assets.ts";
 import {
   PROVIDER_SEND_TURN_MAX_FILE_BYTES,
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
 } from "./chatAttachment.ts";
 
 const isUploadInput = Schema.is(AttachmentCreateUploadUrlInput);
+const isBrowserUploadResult = Schema.is(AttachmentCreateUploadUrlResult);
 
 const uploadInput = {
   name: "screenshot.png",
@@ -56,5 +61,21 @@ describe("AttachmentCreateUploadUrlInput", () => {
         sizeBytes: PROVIDER_SEND_TURN_MAX_FILE_BYTES + 1,
       }),
     ).toBe(false);
+  });
+});
+
+describe("agent upload results", () => {
+  it("requires the full URL for MCP while preserving the relative browser result", () => {
+    const browser = {
+      attachmentId: "pending-upload",
+      relativeUrl: "/api/attachments/upload/token",
+      expiresAt: 123,
+    };
+    expect(isBrowserUploadResult(browser)).toBe(true);
+    const decode = Schema.decodeUnknownSync(McpAttachmentCreateUploadUrlResult);
+    const agent = { ...browser, uploadUrl: "http://127.0.0.1:43123/api/attachments/upload/token" };
+    expect(decode(agent)).toEqual(agent);
+    expect(() => decode(browser)).toThrow();
+    expect(() => decode({ ...browser, uploadUrl: "x".repeat(8193) })).toThrow();
   });
 });

@@ -34,7 +34,7 @@ class MediaFileStatError extends Schema.TaggedError<MediaFileStatError>()("Media
   }
 }
 
-/** Holds the file identity and descriptor for one HTTP request, never a copy of its bytes. */
+/** Holds the file identity and descriptor for one scoped operation, never a copy of its bytes. */
 export interface OpenMediaFile {
   readonly handle: NodeFSP.FileHandle;
   readonly info: NodeFS.BigIntStats;
@@ -45,7 +45,7 @@ const realpathLikeFileSystem = (filePath: string) =>
     NodeFS.realpath(filePath, (error, resolved) => (error ? reject(error) : resolve(resolved)));
   });
 
-/** Opens a canonical media path once. Replacements cannot change the response's source. */
+/** Opens a canonical path once. Replacements cannot change the held source. */
 export const openMediaFile = Effect.fn("openMediaFile")(function* (
   filePath: string,
   identity?: { readonly device: string; readonly inode: string },
@@ -119,13 +119,19 @@ export const statMediaFile = Effect.fn("statMediaFile")(function* (
   });
 });
 
-export const streamMediaFile = (file: OpenMediaFile, offset: bigint, bytesToRead: bigint) => {
+export const streamMediaFile = (
+  file: OpenMediaFile,
+  offset: bigint,
+  bytesToRead: bigint,
+  options?: { readonly closeOnDone?: boolean },
+) => {
   const start = Number(offset);
   const end = Number(offset + bytesToRead - 1n);
   if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start) {
     return null;
   }
   return NodeStream.fromReadable<Uint8Array>({
+    closeOnDone: options?.closeOnDone,
     evaluate: () =>
       file.handle.createReadStream({
         autoClose: false,
