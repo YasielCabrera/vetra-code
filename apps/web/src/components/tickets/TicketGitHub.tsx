@@ -119,7 +119,6 @@ export function TicketGitHubProperties(props: {
       <TicketPropertyRow label="State">
         <TicketGitHubStateBadge github={ticket.github} />
       </TicketPropertyRow>
-      <TicketPropertyRow label="Author">{ticket.github.author ?? "Unknown"}</TicketPropertyRow>
       <TicketPropertyRow label="Assignees">
         <div className="flex flex-wrap items-center gap-1.5">
           {assignees.length === 0 ? (

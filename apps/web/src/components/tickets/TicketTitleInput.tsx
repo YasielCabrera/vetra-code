@@ -1,6 +1,7 @@
 import type { Ref } from "react";
 import { flushSync } from "react-dom";
 
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import type { useTitleDraft } from "./useTitleDraft";
 
 export function TicketTitleInput({
@@ -16,34 +17,42 @@ export function TicketTitleInput({
   readonly readOnly: boolean;
   readonly disabled?: boolean;
 }) {
-  if (readOnly) {
-    return (
-      <h2 className="text-3xl leading-tight font-semibold break-words tracking-tight text-foreground">
-        {title.saved}
-      </h2>
-    );
-  }
   return (
-    <textarea
-      ref={ref}
-      value={title.value}
-      aria-label={label}
-      rows={1}
-      maxLength={500}
-      disabled={disabled}
-      onChange={(event) => title.change(event.target.value)}
-      onBlur={() => void title.commit()}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          event.currentTarget.blur();
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          readOnly ? (
+            <h1 className="min-w-0 truncate text-sm font-medium text-foreground">{title.saved}</h1>
+          ) : (
+            <textarea
+              ref={ref}
+              value={title.value}
+              aria-label={label}
+              rows={1}
+              wrap="off"
+              maxLength={500}
+              disabled={disabled}
+              onChange={(event) => title.change(event.target.value)}
+              onBlur={(event) => {
+                event.currentTarget.scrollLeft = 0;
+                void title.commit();
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }
+                if (event.key === "Escape") {
+                  flushSync(title.cancel);
+                  event.currentTarget.blur();
+                }
+              }}
+              className="h-7 min-w-0 w-full resize-none truncate rounded-sm bg-transparent text-sm leading-7 font-medium text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          )
         }
-        if (event.key === "Escape") {
-          flushSync(title.cancel);
-          event.currentTarget.blur();
-        }
-      }}
-      className="field-sizing-content w-full resize-none overflow-hidden rounded-md bg-transparent text-3xl leading-tight font-semibold tracking-tight text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring"
-    />
+      />
+      <TooltipPopup>{readOnly ? title.saved : title.value}</TooltipPopup>
+    </Tooltip>
   );
 }

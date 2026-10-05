@@ -40,7 +40,7 @@ import { type PlanPanelTab, TicketPlanPanel } from "./TicketPlanPanel";
 import { findTicketPlanByNumber } from "./ticketPlans.logic";
 import { formatTicketRef } from "./ticketRefs";
 import { TicketSidePanelLayout, useSidePanelFits } from "./TicketSidePanelLayout";
-import { TicketStartThreadMenu } from "./TicketStartThreadMenu";
+import { TicketStartThreadSubmenu } from "./TicketStartThreadMenu";
 import { TicketTitleInput } from "./TicketTitleInput";
 import { usePlanStatus, useTicketPlanDocument } from "./useTicketDocument";
 import { useTitleDraft } from "./useTitleDraft";
@@ -237,7 +237,24 @@ function TicketPlanView(props: {
       >
         <MoreHorizontalIcon aria-hidden className="size-4" />
       </MenuTrigger>
-      <MenuPopup align="end" className="w-44">
+      <MenuPopup align="end" className="w-44" keepMounted>
+        <TicketStartThreadSubmenu
+          environmentId={environmentId}
+          ticket={ticket}
+          prefill={() => openPlanPrefill(environmentId, ticket, summary)}
+          label="Open in new thread"
+          icon={<MessageSquarePlusIcon aria-hidden />}
+        />
+        {archived ? null : (
+          <TicketStartThreadSubmenu
+            environmentId={environmentId}
+            ticket={ticket}
+            prefill={() => revisePlanPrefill(environmentId, summary)}
+            label="Ask agent to revise"
+            icon={<SparklesIcon aria-hidden />}
+          />
+        )}
+        <MenuSeparator />
         <MenuItem onClick={() => copyText(summary.ref, `Copied ${summary.ref}`)}>
           <CopyIcon aria-hidden />
           Copy ref
@@ -296,36 +313,9 @@ function TicketPlanView(props: {
     >
       <TicketBreadcrumbHeader
         ticket={{ label: ticketLabel, ticketKey }}
-        current={`P${summary.number}`}
-        copy={summary.ref}
-        trailing={
-          <div className="flex items-center gap-1.5">
-            <TicketStartThreadMenu
-              environmentId={environmentId}
-              ticket={ticket}
-              prefill={() => openPlanPrefill(environmentId, ticket, summary)}
-              label="Open in new thread"
-              icon={<MessageSquarePlusIcon aria-hidden />}
-              variant="outline"
-            />
-            {archived ? null : (
-              <TicketStartThreadMenu
-                environmentId={environmentId}
-                ticket={ticket}
-                prefill={() => revisePlanPrefill(environmentId, summary)}
-                label="Ask agent to revise"
-                icon={<SparklesIcon aria-hidden />}
-                variant="outline"
-              />
-            )}
-            {menu}
-          </div>
-        }
-        reachesWindowEdge={!sidePanel}
-      />
-      <ScrollArea className="min-h-0 flex-1">
-        <article className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 pt-8 pb-16 lg:px-8">
-          <div className="flex flex-col gap-4">
+        current={
+          <>
+            <span className="me-2 shrink-0 font-mono text-muted-foreground">P{summary.number}</span>
             <TicketTitleInput
               ref={titleRef}
               title={title}
@@ -333,7 +323,15 @@ function TicketPlanView(props: {
               readOnly={archived}
               disabled={status.changing}
             />
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+          </>
+        }
+        trailing={menu}
+        reachesWindowEdge={!sidePanel}
+      />
+      <ScrollArea className="min-h-0 flex-1">
+        <article className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 pt-4 pb-16 lg:px-8">
+          <div className="flex items-start gap-3">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
               <span>
                 Plan for{" "}
                 <Link
@@ -353,43 +351,47 @@ function TicketPlanView(props: {
               >
                 Updated {formatRelativeTimeLabel(summary.updatedAt)}
               </time>
-              <Badge
-                aria-label="Plan review status"
-                size="control"
-                variant={summary.reviewStatus === "ready" ? "success" : "warning"}
-              >
-                {summary.reviewStatus === "ready" ? "Ready" : "Draft"}
-              </Badge>
-              <Button
-                size="xs"
-                variant="outline"
-                disabled={status.changing || uploading}
-                onClick={() =>
-                  void status.setReviewStatus(summary.reviewStatus === "ready" ? "draft" : "ready")
-                }
-              >
-                {summary.reviewStatus === "ready" ? (
-                  <PencilIcon aria-hidden />
-                ) : (
-                  <CheckIcon aria-hidden />
-                )}
-                {summary.reviewStatus === "ready" ? "Return to Draft" : "Mark Ready"}
-              </Button>
-              {archived || showEditor ? null : (
-                <div className="ms-auto">
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    aria-label="Edit plan"
-                    disabled={status.changing}
-                    onClick={() => setEditing("body")}
-                  >
+              <div className="flex shrink-0 items-center gap-2">
+                <Badge
+                  aria-label="Plan review status"
+                  size="control"
+                  variant={summary.reviewStatus === "ready" ? "success" : "warning"}
+                >
+                  {summary.reviewStatus === "ready" ? "Ready" : "Draft"}
+                </Badge>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={status.changing || uploading}
+                  onClick={() =>
+                    void status.setReviewStatus(
+                      summary.reviewStatus === "ready" ? "draft" : "ready",
+                    )
+                  }
+                >
+                  {summary.reviewStatus === "ready" ? (
                     <PencilIcon aria-hidden />
-                    Edit
-                  </Button>
-                </div>
-              )}
+                  ) : (
+                    <CheckIcon aria-hidden />
+                  )}
+                  {summary.reviewStatus === "ready" ? "Return to Draft" : "Mark Ready"}
+                </Button>
+              </div>
             </div>
+            {archived || showEditor ? null : (
+              <div className="shrink-0">
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  aria-label="Edit plan"
+                  disabled={status.changing}
+                  onClick={() => setEditing("body")}
+                >
+                  <PencilIcon aria-hidden />
+                  Edit
+                </Button>
+              </div>
+            )}
           </div>
 
           {archived ? (

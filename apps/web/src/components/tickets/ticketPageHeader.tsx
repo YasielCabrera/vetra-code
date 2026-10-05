@@ -18,7 +18,7 @@ export function copyText(text: string, title: string) {
 }
 
 export function TicketBreadcrumbHeader(props: {
-  readonly current: string | null;
+  readonly current: ReactNode;
   /** What clicking the current crumb copies; the crumb itself by default. */
   readonly copy?: string;
   readonly ticket?: { readonly label: string; readonly ticketKey: string } | null;
@@ -26,7 +26,7 @@ export function TicketBreadcrumbHeader(props: {
   readonly reachesWindowEdge?: boolean;
 }) {
   const navigate = useNavigate();
-  const copy = props.copy ?? props.current;
+  const copy = props.copy ?? (typeof props.current === "string" ? props.current : null);
   return (
     <WorkspacePageHeader
       electron={isElectron}
@@ -56,20 +56,24 @@ export function TicketBreadcrumbHeader(props: {
             </WorkspaceBreadcrumbItem>
           </>
         )}
-        {props.current === null ? null : (
+        {props.current == null ? null : (
           <>
             <WorkspaceBreadcrumbSeparator />
-            <WorkspaceBreadcrumbItem current>
-              <h1 className="truncate font-mono">
-                <button
-                  type="button"
-                  aria-label={`Copy ${copy}`}
-                  className="hover:text-foreground"
-                  onClick={() => copy !== null && copyText(copy, `Copied ${copy}`)}
-                >
-                  {props.current}
-                </button>
-              </h1>
+            <WorkspaceBreadcrumbItem current className="flex-1">
+              {typeof props.current === "string" ? (
+                <h1 className="min-w-0 truncate font-mono">
+                  <button
+                    type="button"
+                    aria-label={`Copy ${copy}`}
+                    className="block max-w-full truncate hover:text-foreground"
+                    onClick={() => copy !== null && copyText(copy, `Copied ${copy}`)}
+                  >
+                    {props.current}
+                  </button>
+                </h1>
+              ) : (
+                props.current
+              )}
             </WorkspaceBreadcrumbItem>
           </>
         )}

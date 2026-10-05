@@ -17,6 +17,7 @@ export function useSidePanelFits(): boolean {
 export function TicketSidePanelLayout(props: {
   readonly sidePanel: boolean;
   readonly panel: ReactNode;
+  readonly panelHeader?: ReactNode;
   readonly storageKey: string;
   readonly defaultWidth: number;
   readonly resizeLabel: string;
@@ -30,6 +31,7 @@ export function TicketSidePanelLayout(props: {
           storageKey={props.storageKey}
           defaultWidth={props.defaultWidth}
           resizeLabel={props.resizeLabel}
+          header={props.panelHeader}
         >
           {props.panel}
         </TicketSidePanel>
@@ -42,6 +44,7 @@ function TicketSidePanel(props: {
   readonly storageKey: string;
   readonly defaultWidth: number;
   readonly resizeLabel: string;
+  readonly header?: ReactNode;
   readonly children: ReactNode;
 }) {
   const viewportWidth = useViewportWidth();
@@ -54,13 +57,23 @@ function TicketSidePanel(props: {
   });
   return (
     <aside
-      className="relative flex min-h-0 w-(--ticket-panel-width) shrink-0 flex-col border-s border-border/70 bg-muted/10"
+      className={cn(
+        "relative flex min-h-0 w-(--ticket-panel-width) shrink-0 flex-col border-s border-border/70 bg-muted/10",
+        props.header == null && isElectron && "wco:pt-(--workspace-topbar-height)",
+      )}
       style={{ "--ticket-panel-width": `${width}px` } as CSSProperties}
     >
       <RightPanelResizeHandle handlers={handlers} label={props.resizeLabel} />
-      <div
-        className={cn("h-[var(--workspace-topbar-height)] shrink-0", isElectron && "drag-region")}
-      />
+      {props.header == null ? null : (
+        <div
+          className={cn(
+            "flex h-[var(--workspace-topbar-height)] shrink-0 items-center",
+            isElectron && "drag-region wco:pr-(--workspace-native-controls-inset)",
+          )}
+        >
+          {props.header}
+        </div>
+      )}
       {props.children}
     </aside>
   );

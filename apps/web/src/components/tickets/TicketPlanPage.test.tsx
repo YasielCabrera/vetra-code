@@ -53,7 +53,7 @@ vi.mock("./TicketActivityTimeline", () => ({
   TicketActorName: () => "You",
   PLAN_ENTRY_VERBS: { plan_review_status_changed: "marked" },
 }));
-vi.mock("./TicketStartThreadMenu", () => ({ TicketStartThreadMenu: () => null }));
+vi.mock("./TicketStartThreadMenu", () => ({ TicketStartThreadSubmenu: () => null }));
 vi.mock("./TicketPlanCommentSurface", () => ({
   PLAN_BLOCK_LABELS: {},
   TicketPlanCommentSurface: ({

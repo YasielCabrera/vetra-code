@@ -97,8 +97,7 @@ export function useTicketThreadStarter(
   return { choices, pending, start };
 }
 
-/** A button whose menu picks the project and checkout for `useTicketThreadStarter`. */
-export function TicketStartThreadMenu(props: {
+type TicketStartThreadMenuProps = {
   readonly environmentId: EnvironmentId;
   readonly ticket: Pick<TicketSummary, "linkRefs">;
   readonly prefill: () => TicketThreadPrefill;
@@ -107,8 +106,13 @@ export function TicketStartThreadMenu(props: {
   readonly variant: "outline" | "ghost";
   /** Shows only the icon, as row actions do; the label still names the button. */
   readonly iconOnly?: boolean;
+};
+
+function TicketThreadStartItems(props: {
+  readonly starter: ReturnType<typeof useTicketThreadStarter>;
+  readonly prefill: () => TicketThreadPrefill;
 }) {
-  const { choices, pending, start } = useTicketThreadStarter(props.environmentId, props.ticket);
+  const { choices, start } = props.starter;
   const projectItems = (projects: ReadonlyArray<EnvironmentProject>, envMode: DraftThreadEnvMode) =>
     projects.map((project) => (
       <MenuItem key={project.id} onClick={() => void start(project, envMode, props.prefill)}>
@@ -116,6 +120,32 @@ export function TicketStartThreadMenu(props: {
       </MenuItem>
     ));
 
+  return choices.kind === "single" ? (
+    <>
+      <MenuItem onClick={() => void start(choices.project, "local", props.prefill)}>
+        Start in {choices.project.title}
+      </MenuItem>
+      <MenuItem onClick={() => void start(choices.project, "worktree", props.prefill)}>
+        Start in new worktree
+      </MenuItem>
+    </>
+  ) : choices.kind === "list" ? (
+    <>
+      <MenuGroup>
+        <MenuGroupLabel>{choices.label}</MenuGroupLabel>
+        {projectItems(choices.projects, "local")}
+      </MenuGroup>
+      <MenuSeparator />
+      <MenuSub>
+        <MenuSubTrigger>Start in new worktree</MenuSubTrigger>
+        <MenuSubPopup>{projectItems(choices.projects, "worktree")}</MenuSubPopup>
+      </MenuSub>
+    </>
+  ) : null;
+}
+
+export function TicketStartThreadMenu(props: TicketStartThreadMenuProps) {
+  const starter = useTicketThreadStarter(props.environmentId, props.ticket);
   return (
     <Menu>
       <MenuTrigger
@@ -124,37 +154,33 @@ export function TicketStartThreadMenu(props: {
             size={props.iconOnly ? "icon-xs" : "xs"}
             variant={props.variant}
             aria-label={props.iconOnly ? props.label : undefined}
-            disabled={pending || choices.kind === "none"}
+            disabled={starter.pending || starter.choices.kind === "none"}
           />
         }
       >
         {props.icon}
-        {props.iconOnly ? null : pending ? "Opening…" : props.label}
+        {props.iconOnly ? null : starter.pending ? "Opening…" : props.label}
       </MenuTrigger>
       <MenuPopup align="end" className="w-56">
-        {choices.kind === "single" ? (
-          <>
-            <MenuItem onClick={() => void start(choices.project, "local", props.prefill)}>
-              Start in {choices.project.title}
-            </MenuItem>
-            <MenuItem onClick={() => void start(choices.project, "worktree", props.prefill)}>
-              Start in new worktree
-            </MenuItem>
-          </>
-        ) : choices.kind === "list" ? (
-          <>
-            <MenuGroup>
-              <MenuGroupLabel>{choices.label}</MenuGroupLabel>
-              {projectItems(choices.projects, "local")}
-            </MenuGroup>
-            <MenuSeparator />
-            <MenuSub>
-              <MenuSubTrigger>Start in new worktree</MenuSubTrigger>
-              <MenuSubPopup>{projectItems(choices.projects, "worktree")}</MenuSubPopup>
-            </MenuSub>
-          </>
-        ) : null}
+        <TicketThreadStartItems starter={starter} prefill={props.prefill} />
       </MenuPopup>
     </Menu>
+  );
+}
+
+export function TicketStartThreadSubmenu(
+  props: Omit<TicketStartThreadMenuProps, "variant" | "iconOnly">,
+) {
+  const starter = useTicketThreadStarter(props.environmentId, props.ticket);
+  return (
+    <MenuSub>
+      <MenuSubTrigger disabled={starter.pending || starter.choices.kind === "none"}>
+        {props.icon}
+        {starter.pending ? "Opening…" : props.label}
+      </MenuSubTrigger>
+      <MenuSubPopup>
+        <TicketThreadStartItems starter={starter} prefill={props.prefill} />
+      </MenuSubPopup>
+    </MenuSub>
   );
 }

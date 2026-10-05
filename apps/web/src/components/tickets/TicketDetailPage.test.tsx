@@ -45,7 +45,7 @@ vi.mock("../WorkspacePageHeader", () => ({
 }));
 vi.mock("./TicketGitHub", () => ({ useTicketIssueReads: () => ({ refresh: async () => {} }) }));
 vi.mock("./TicketActivityTimeline", () => ({ TicketActivityTimeline: () => null }));
-vi.mock("./TicketStartThreadMenu", () => ({ TicketStartThreadMenu: () => null }));
+vi.mock("./TicketStartThreadMenu", () => ({ TicketStartThreadSubmenu: () => null }));
 vi.mock("./TicketPropertiesPanel", () => ({
   TicketPropertiesPanel: ({ children }: { children: ReactNode }) => <aside>{children}</aside>,
   TicketStatusSelect: () => null,
@@ -134,10 +134,14 @@ describe("TicketDetailPage", () => {
       attachments: [],
     });
     await renderPage();
-    const editButton = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Edit description"]',
+    const optionsButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Options for T-1"]',
     );
-    await act(async () => editButton!.click());
+    await act(async () => optionsButton!.click());
+    const editItem = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (item) => item.textContent === "Edit description",
+    );
+    await act(async () => editItem!.click());
     await edit("Description", "New description");
     expect(container.textContent).toContain("Unsaved changes");
     await act(async () => vi.advanceTimersByTimeAsync(800));

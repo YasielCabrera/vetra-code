@@ -1,22 +1,18 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { useNavigate } from "@tanstack/react-router";
 import type { ScopedTicketRef } from "@t3tools/client-runtime/state/tickets";
-import type {
-  TicketActor,
-  TicketPlanId,
-  TicketPlanSummary,
-  TicketSummary,
-} from "@t3tools/contracts";
+import type { TicketPlanId, TicketPlanSummary, TicketSummary } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/unstable/reactivity";
 import {
   ArrowLeftIcon,
-  BotIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   ClipboardListIcon,
+  CopyIcon,
+  ExternalLinkIcon,
   MessageSquareIcon,
   MessageSquarePlusIcon,
+  MoreHorizontalIcon,
   PlusIcon,
   SparklesIcon,
 } from "lucide-react";
@@ -25,16 +21,17 @@ import { memo, useEffect, useMemo, useState } from "react";
 import { useTicketActions } from "../../hooks/useTicketActions";
 import { cn } from "../../lib/utils";
 import { useTicketPlan } from "../../state/tickets";
-import { buildThreadRouteParams } from "../../threadRoutes";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { ScrollArea } from "../ui/scroll-area";
-import { TicketActorName } from "./TicketActivityTimeline";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { askForPlanPrefill, openPlanPrefill } from "./ticketContextRecord";
 import { TicketMarkdownBody } from "./TicketMarkdownBody";
 import { partitionTicketPlans, ticketPlanRouteParams } from "./ticketPlans.logic";
-import { TicketStartThreadMenu } from "./TicketStartThreadMenu";
+import { copyText } from "./ticketPageHeader";
+import { TicketStartThreadMenu, TicketStartThreadSubmenu } from "./TicketStartThreadMenu";
 
 const NEW_PLAN_TITLE = "Untitled plan";
 
@@ -180,7 +177,7 @@ function TicketPlanRow(props: {
         )}
       >
         <span className="shrink-0 font-mono text-xs text-muted-foreground">P{plan.number}</span>
-        <span className="min-w-0 flex-1 truncate">{plan.title}</span>
+        <span className="min-w-0 flex-1 wrap-anywhere">{plan.title}</span>
         <Badge variant={plan.reviewStatus === "ready" ? "success" : "warning"}>
           {plan.reviewStatus === "ready" ? "Ready" : "Draft"}
         </Badge>
@@ -194,7 +191,6 @@ function TicketPlanRow(props: {
           </span>
         ) : null}
       </button>
-      <TicketPlanAuthor ticketRef={ticketRef} actor={plan.createdBy} />
       <span className="flex shrink-0 opacity-0 transition-opacity pointer-coarse:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 motion-reduce:transition-none">
         <TicketStartThreadMenu
           environmentId={ticketRef.environmentId}
@@ -210,56 +206,93 @@ function TicketPlanRow(props: {
   );
 }
 
-/** Who wrote the plan; an agent links to its thread. */
-function TicketPlanAuthor(props: {
-  readonly ticketRef: ScopedTicketRef;
-  readonly actor: TicketActor;
-}) {
-  const { actor } = props;
-  const name = <TicketActorName environmentId={props.ticketRef.environmentId} actor={actor} />;
-  if (actor.type !== "agent") {
-    return <span className="max-w-48 shrink-0 truncate text-xs text-muted-foreground">{name}</span>;
-  }
-  return (
-    <Link
-      to="/$environmentId/$threadId"
-      params={buildThreadRouteParams(scopeThreadRef(props.ticketRef.environmentId, actor.threadId))}
-      className="inline-flex max-w-48 min-w-0 shrink-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
-    >
-      <BotIcon aria-hidden className="size-3 shrink-0" />
-      <span className="truncate">{name}</span>
-    </Link>
-  );
-}
-
-/** One plan, read-only, in the ticket page's side panel. */
-export function TicketPlanPreview(props: {
+type TicketPlanPreviewProps = {
   readonly ticketRef: ScopedTicketRef;
   readonly ticket: TicketSummary;
   readonly plan: TicketPlanSummary;
   readonly stacked: boolean;
   readonly onBack: () => void;
-}) {
+};
+
+export function TicketPlanPreviewHeader(props: Omit<TicketPlanPreviewProps, "stacked">) {
   const { ticketRef, plan: summary } = props;
   const navigate = useNavigate();
+  return (
+    <div className="flex h-full min-w-0 w-full items-center gap-2 border-b border-border/60 px-3">
+      <Button
+        size="icon-xs"
+        variant="ghost-muted"
+        aria-label="Back to properties"
+        onClick={props.onBack}
+      >
+        <ArrowLeftIcon aria-hidden />
+      </Button>
+      <Tooltip>
+        <TooltipTrigger
+          render={<h2 className="min-w-0 flex-1 truncate text-sm font-medium text-foreground" />}
+        >
+          <span className="me-2 font-mono text-muted-foreground">P{summary.number}</span>
+          {summary.title}
+        </TooltipTrigger>
+        <TooltipPopup>{summary.title}</TooltipPopup>
+      </Tooltip>
+      <Menu>
+        <MenuTrigger
+          render={
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label={`Options for ${summary.ref} preview`}
+            />
+          }
+        >
+          <MoreHorizontalIcon aria-hidden className="size-4" />
+        </MenuTrigger>
+        <MenuPopup align="end" keepMounted>
+          <MenuItem
+            onClick={() =>
+              void navigate({
+                to: "/tickets/$ticketKey/plans/$planNumber",
+                params: ticketPlanRouteParams(ticketRef, summary.number),
+              })
+            }
+          >
+            <ExternalLinkIcon aria-hidden />
+            Open plan
+          </MenuItem>
+          <TicketStartThreadSubmenu
+            environmentId={ticketRef.environmentId}
+            ticket={props.ticket}
+            prefill={() => openPlanPrefill(ticketRef.environmentId, props.ticket, summary)}
+            label="Open in new thread"
+            icon={<MessageSquarePlusIcon aria-hidden />}
+          />
+          <MenuSeparator />
+          <MenuItem onClick={() => copyText(summary.ref, `Copied ${summary.ref}`)}>
+            <CopyIcon aria-hidden />
+            Copy ref
+          </MenuItem>
+        </MenuPopup>
+      </Menu>
+    </div>
+  );
+}
+
+/** One plan, read-only, in the ticket page's side panel. */
+export function TicketPlanPreview(props: TicketPlanPreviewProps) {
+  const { ticketRef, plan: summary } = props;
   const result = useTicketPlan({ environmentId: ticketRef.environmentId, planId: summary.planId });
   const plan = Option.getOrNull(AsyncResult.value(result));
   const content = (
-    <div className="flex flex-col gap-4 px-5 pt-5 pb-8">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-base font-semibold break-words text-foreground">
-          <span className="me-2 font-mono text-muted-foreground">P{summary.number}</span>
-          {summary.title}
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          <Badge variant={summary.reviewStatus === "ready" ? "success" : "warning"}>
-            {summary.reviewStatus === "ready" ? "Ready" : "Draft"}
-          </Badge>{" "}
-          · {summary.status === "archived" ? "Archived · " : null}
-          {openCommentsLabel(summary.openCommentCount)} · Updated{" "}
-          {formatRelativeTimeLabel(summary.updatedAt)}
-        </p>
-      </div>
+    <div className="flex flex-col gap-4 px-5 pt-4 pb-8">
+      <p className="text-xs text-muted-foreground">
+        <Badge variant={summary.reviewStatus === "ready" ? "success" : "warning"}>
+          {summary.reviewStatus === "ready" ? "Ready" : "Draft"}
+        </Badge>{" "}
+        · {summary.status === "archived" ? "Archived · " : null}
+        {openCommentsLabel(summary.openCommentCount)} · Updated{" "}
+        {formatRelativeTimeLabel(summary.updatedAt)}
+      </p>
       {plan === null ? (
         <p className="text-sm text-muted-foreground">
           {AsyncResult.isFailure(result) ? "This plan could not be loaded." : "Loading plan…"}
@@ -279,35 +312,16 @@ export function TicketPlanPreview(props: {
   );
   return (
     <div className={cn("flex min-h-0 flex-col", !props.stacked && "flex-1")}>
-      <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-3 py-2">
-        <Button size="xs" variant="ghost-muted" onClick={props.onBack}>
-          <ArrowLeftIcon aria-hidden />
-          Properties
-        </Button>
-        <span className="min-w-0 truncate text-xs text-muted-foreground">Plan preview</span>
-        <div className="ms-auto flex items-center gap-1.5">
-          <TicketStartThreadMenu
-            environmentId={ticketRef.environmentId}
+      {props.stacked ? (
+        <div className="h-[var(--workspace-topbar-height)] shrink-0">
+          <TicketPlanPreviewHeader
+            ticketRef={ticketRef}
             ticket={props.ticket}
-            prefill={() => openPlanPrefill(ticketRef.environmentId, props.ticket, summary)}
-            label="Open in new thread"
-            icon={<MessageSquarePlusIcon aria-hidden />}
-            variant="outline"
+            plan={summary}
+            onBack={props.onBack}
           />
-          <Button
-            size="xs"
-            variant="outline"
-            onClick={() =>
-              void navigate({
-                to: "/tickets/$ticketKey/plans/$planNumber",
-                params: ticketPlanRouteParams(ticketRef, summary.number),
-              })
-            }
-          >
-            Open
-          </Button>
         </div>
-      </div>
+      ) : null}
       {props.stacked ? content : <ScrollArea className="min-h-0 flex-1">{content}</ScrollArea>}
     </div>
   );

@@ -22,6 +22,7 @@ import { memo, useMemo, useState, type ReactNode } from "react";
 import { useThreadShells } from "../../state/entities";
 import { useTicketIssueLinksSupported } from "../../state/tickets";
 import { buildThreadRouteParams } from "../../threadRoutes";
+import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -257,6 +258,16 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
   const threads = useThreadShells();
   const issueLinksSupported = useTicketIssueLinksSupported(props.environmentId);
   const { summary, links } = props.detail;
+  const author =
+    summary.kind === "github"
+      ? (summary.github.author ?? "Unknown author")
+      : summary.createdBy.type === "user"
+        ? "You"
+        : summary.createdBy.type === "agent"
+          ? "An agent"
+          : summary.createdBy.type === "automation"
+            ? "Auto-advance"
+            : "GitHub sync";
   const threadById = useMemo(
     () =>
       new Map(
@@ -331,6 +342,26 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
         </TicketPropertyRow>
         <TicketPropertyRow label="Projects">
           <TicketProjectsEditor environmentId={props.environmentId} detail={props.detail} />
+        </TicketPropertyRow>
+        <TicketPropertyRow label="Source">
+          {summary.kind === "github" ? "GitHub" : "Local ticket"}
+        </TicketPropertyRow>
+        <TicketPropertyRow label="Author">{author}</TicketPropertyRow>
+        <TicketPropertyRow label="Created">
+          <time
+            dateTime={summary.createdAt}
+            aria-label={`Created ${new Date(summary.createdAt).toLocaleString()}`}
+          >
+            {formatRelativeTimeLabel(summary.createdAt)}
+          </time>
+        </TicketPropertyRow>
+        <TicketPropertyRow label="Updated">
+          <time
+            dateTime={summary.updatedAt}
+            aria-label={`Updated ${new Date(summary.updatedAt).toLocaleString()}`}
+          >
+            {formatRelativeTimeLabel(summary.updatedAt)}
+          </time>
         </TicketPropertyRow>
       </PanelSection>
 

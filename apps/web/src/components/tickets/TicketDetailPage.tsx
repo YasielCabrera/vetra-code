@@ -18,15 +18,13 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import {
   CircleCheckIcon,
   CircleDotIcon,
+  CopyIcon,
   EyeIcon,
   EyeOffIcon,
   ExternalLinkIcon,
-  FolderIcon,
   MessageSquareIcon,
   MessageSquarePlusIcon,
   PaperclipIcon,
-  TagIcon,
-  UserRoundIcon,
   LinkIcon,
   MoreHorizontalIcon,
   PencilIcon,
@@ -38,18 +36,15 @@ import { useRunning } from "../../hooks/useRunning";
 import { confirmGitHubStateChange, useTicketActions } from "../../hooks/useTicketActions";
 import { cn } from "../../lib/utils";
 import { useProjects } from "../../state/entities";
-import { formatRelativeTimeLabel } from "../../timestampFormat";
 import {
   useTicket,
   useTicketDetail,
   useTicketGitHubSources,
   useTicketStatuses,
 } from "../../state/tickets";
-import { GitHubIcon } from "../Icons";
 import { Button } from "../ui/button";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { ScrollArea } from "../ui/scroll-area";
-import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { SidebarInset } from "../ui/sidebar";
 import { Textarea } from "../ui/textarea";
 import { TicketActivityTimeline } from "./TicketActivityTimeline";
@@ -59,7 +54,6 @@ import {
   openOnGitHub,
   TicketGitHubActivity,
   TicketGitHubProperties,
-  TicketGitHubStateBadge,
   useTicketIssueReads,
 } from "./TicketGitHub";
 import {
@@ -71,16 +65,11 @@ import {
 import { TicketLinkPreview, type TicketLinkPreviewTarget } from "./TicketLinkPreview";
 import { TicketMarkdownBody } from "./TicketMarkdownBody";
 import { copyText, TicketBreadcrumbHeader, TicketPagePlaceholder } from "./ticketPageHeader";
-import { TicketPlanPreview, TicketPlansSection } from "./TicketPlans";
-import {
-  TicketLabelsEditor,
-  TicketPropertiesPanel,
-  TicketStatusSelect,
-} from "./TicketPropertiesPanel";
-import { TicketProjectsEditor } from "./TicketProjectsEditor";
+import { TicketPlanPreview, TicketPlanPreviewHeader, TicketPlansSection } from "./TicketPlans";
+import { TicketPropertiesPanel } from "./TicketPropertiesPanel";
 import { ticketContextRecord } from "./ticketContextRecord";
 import { TicketSidePanelLayout, useSidePanelFits } from "./TicketSidePanelLayout";
-import { TicketStartThreadMenu } from "./TicketStartThreadMenu";
+import { TicketStartThreadSubmenu } from "./TicketStartThreadMenu";
 import { formatTicketRef } from "./ticketRefs";
 import { TicketTitleInput } from "./TicketTitleInput";
 import { useTicketDocument } from "./useTicketDocument";
@@ -135,16 +124,6 @@ function TicketDocument(props: {
   const title = useTitleDraft(summary.title, doc);
   const readOnly = summary.kind === "github";
   const reference = formatTicketRef(summary);
-  const author =
-    summary.kind === "github"
-      ? (summary.github.author ?? "Unknown author")
-      : summary.createdBy.type === "user"
-        ? "You"
-        : summary.createdBy.type === "agent"
-          ? "An agent"
-          : summary.createdBy.type === "automation"
-            ? "Auto-advance"
-            : "GitHub sync";
   const ticket = useMemo(
     () => ({ ...summary, environmentId: ticketRef.environmentId }),
     [summary, ticketRef.environmentId],
@@ -153,19 +132,6 @@ function TicketDocument(props: {
   const githubTicket = ticket.kind === "github" ? ticket : null;
   const githubSources = useTicketGitHubSources();
   const projects = useProjects();
-  const linkedProjects = useMemo(
-    () =>
-      summary.linkRefs.flatMap((ref) => {
-        if (ref.kind !== "project") return [];
-        return [
-          projects.find(
-            (project) =>
-              project.environmentId === ticketRef.environmentId && project.id === ref.targetKey,
-          )?.title ?? "Missing project",
-        ];
-      }),
-    [projects, summary.linkRefs, ticketRef.environmentId],
-  );
   const repositoryContext = useMemo(
     () => ({
       sources: githubSources,
@@ -311,7 +277,33 @@ function TicketDocument(props: {
       >
         <MoreHorizontalIcon aria-hidden className="size-4" />
       </MenuTrigger>
-      <MenuPopup align="end" className="w-44">
+      <MenuPopup align="end" className="w-44" keepMounted>
+        <TicketStartThreadSubmenu
+          environmentId={ticketRef.environmentId}
+          ticket={summary}
+          prefill={() => ({
+            records: [
+              ticketContextRecord({
+                environmentId: ticketRef.environmentId,
+                ticket: summary,
+                body: doc.readText(),
+              }),
+            ],
+          })}
+          label="Start thread"
+          icon={<MessageSquarePlusIcon aria-hidden />}
+        />
+        <MenuSeparator />
+        {readOnly || editing ? null : (
+          <MenuItem onClick={() => setEditing(true)}>
+            <PencilIcon aria-hidden />
+            Edit description
+          </MenuItem>
+        )}
+        <MenuItem onClick={() => copyText(reference, `Copied ${reference}`)}>
+          <CopyIcon aria-hidden />
+          Copy ref
+        </MenuItem>
         <MenuItem
           onClick={() =>
             copyText(
@@ -372,6 +364,16 @@ function TicketDocument(props: {
   return (
     <TicketSidePanelLayout
       sidePanel={sidePanel}
+      panelHeader={
+        previewPlan === null ? undefined : (
+          <TicketPlanPreviewHeader
+            ticketRef={ticketRef}
+            ticket={summary}
+            plan={previewPlan}
+            onBack={() => setPreview(null)}
+          />
+        )
+      }
       panel={
         widePanel ? (
           panelPreview
@@ -386,134 +388,17 @@ function TicketDocument(props: {
       resizeLabel="Resize ticket panel"
     >
       <TicketBreadcrumbHeader
-        current={reference}
-        trailing={
-          <div className="flex items-center gap-1.5">
-            <TicketStartThreadMenu
-              environmentId={ticketRef.environmentId}
-              ticket={summary}
-              prefill={() => ({
-                records: [
-                  ticketContextRecord({
-                    environmentId: ticketRef.environmentId,
-                    ticket: summary,
-                    body: doc.readText(),
-                  }),
-                ],
-              })}
-              label="Start thread"
-              icon={<MessageSquarePlusIcon aria-hidden />}
-              variant="outline"
-            />
-            {menu}
-          </div>
+        current={
+          <>
+            <span className="me-2 shrink-0 font-mono text-muted-foreground">{reference}</span>
+            <TicketTitleInput title={title} label="Title" readOnly={readOnly} />
+          </>
         }
+        trailing={menu}
         reachesWindowEdge={!sidePanel}
       />
       <ScrollArea className="min-h-0 flex-1">
-        <article className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 pt-8 pb-16 lg:px-8">
-          <div className="flex flex-col gap-4">
-            <TicketTitleInput title={title} label="Title" readOnly={readOnly} />
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
-              {summary.kind === "github" ? (
-                <>
-                  <TicketGitHubStateBadge github={summary.github} />
-                  <button
-                    type="button"
-                    className="inline-flex min-w-0 items-center gap-1.5 hover:text-foreground"
-                    onClick={() => openOnGitHub(summary.github.url)}
-                  >
-                    <GitHubIcon aria-hidden className="size-3.5 shrink-0" />
-                    <span className="truncate">
-                      {summary.github.repository}#{summary.github.number}
-                    </span>
-                  </button>
-                </>
-              ) : (
-                <span>Local ticket</span>
-              )}
-              <span className="inline-flex items-center gap-1.5">
-                <UserRoundIcon aria-hidden className="size-3" />
-                {author}
-              </span>
-              <time
-                dateTime={summary.createdAt}
-                aria-label={`Created ${new Date(summary.createdAt).toLocaleString()}`}
-              >
-                Created {formatRelativeTimeLabel(summary.createdAt)}
-              </time>
-              <time
-                dateTime={summary.updatedAt}
-                aria-label={`Updated ${new Date(summary.updatedAt).toLocaleString()}`}
-              >
-                Updated {formatRelativeTimeLabel(summary.updatedAt)}
-              </time>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <div
-                className="flex min-w-0 flex-wrap items-center gap-2 lg:hidden"
-                aria-label="Ticket properties"
-              >
-                <div className="min-w-0 max-w-full">
-                  <TicketStatusSelect
-                    statusSet={statusSet}
-                    value={summary.statusId}
-                    onChange={changeStatus}
-                  />
-                </div>
-                <Popover>
-                  <PopoverTrigger render={<Button size="xs" variant="ghost" aria-label="Labels" />}>
-                    <TagIcon aria-hidden />
-                    <span className="max-w-40 truncate">
-                      {summary.labels.length === 0
-                        ? "Labels"
-                        : summary.labels.length === 1
-                          ? summary.labels[0]
-                          : `${summary.labels.length} labels`}
-                    </span>
-                  </PopoverTrigger>
-                  <PopoverPopup width="sm" padding="compact" align="start">
-                    <TicketLabelsEditor
-                      labels={summary.labels}
-                      readOnly={readOnly}
-                      onChange={saveLabels}
-                    />
-                  </PopoverPopup>
-                </Popover>
-                <Popover>
-                  <PopoverTrigger
-                    render={<Button size="xs" variant="ghost" aria-label="Projects" />}
-                  >
-                    <FolderIcon aria-hidden />
-                    <span className="max-w-40 truncate">
-                      {linkedProjects.length === 0
-                        ? "Project"
-                        : linkedProjects.length === 1
-                          ? linkedProjects[0]
-                          : `${linkedProjects.length} projects`}
-                    </span>
-                  </PopoverTrigger>
-                  <PopoverPopup width="sm" padding="compact" align="start">
-                    <TicketProjectsEditor environmentId={ticketRef.environmentId} detail={detail} />
-                  </PopoverPopup>
-                </Popover>
-              </div>
-              {readOnly || editing ? null : (
-                <div className="ms-auto">
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    aria-label="Edit description"
-                    onClick={() => setEditing(true)}
-                  >
-                    <PencilIcon aria-hidden />
-                    Edit
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
+        <article className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 pt-4 pb-16 lg:px-8">
           {hidden ? (
             <div
               role="status"
