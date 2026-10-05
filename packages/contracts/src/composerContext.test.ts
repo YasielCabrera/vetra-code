@@ -144,6 +144,31 @@ const knownRecords: Record<(typeof COMPOSER_CONTEXT_KINDS)[number], Record<strin
 };
 
 describe("ComposerContextRecord", () => {
+  it("preserves review snapshots without inventing a status for historical records", () => {
+    const historical = knownRecords["ticket-plan"];
+    expect(Option.getOrThrow(decodeRecord(historical))).toEqual(historical);
+    for (const reviewStatus of ["draft", "ready"]) {
+      const record = { ...historical, reviewStatus };
+      expect(Option.getOrThrow(decodeRecord(record))).toEqual(record);
+      const ticket = {
+        ...knownRecords.ticket,
+        plans: [
+          {
+            planId: "p1",
+            ref: "T-42/P1",
+            title: "Plan",
+            status: "archived",
+            revision: 4,
+            openCommentCount: 0,
+            reviewStatus,
+          },
+        ],
+      };
+      expect(Option.getOrThrow(decodeRecord(ticket))).toEqual(ticket);
+    }
+    expect(Option.isNone(decodeRecord({ ...historical, reviewStatus: "approved" }))).toBe(true);
+  });
+
   it.each(COMPOSER_CONTEXT_KINDS)("round-trips a %s record", (kind) => {
     const decoded = decodeRecord(knownRecords[kind]);
     expect(Option.isSome(decoded)).toBe(true);

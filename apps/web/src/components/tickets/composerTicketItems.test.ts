@@ -19,6 +19,7 @@ function plan(input: {
   readonly number: number;
   readonly title: string;
   readonly status?: TicketPlanSummary["status"];
+  readonly reviewStatus?: TicketPlanSummary["reviewStatus"];
   readonly updatedAt?: string;
 }): TicketPlanSummary {
   return {
@@ -28,6 +29,7 @@ function plan(input: {
     number: input.number,
     title: input.title,
     status: input.status ?? "active",
+    reviewStatus: input.reviewStatus ?? "draft",
     revision: 1,
     openCommentCount: 0,
     createdBy: { type: "user" },
@@ -82,6 +84,7 @@ const TICKETS = [
         ticketNumber: 42,
         number: 10,
         title: "Session cleanup",
+        reviewStatus: "ready",
         updatedAt: "2026-10-03T00:00:00.000Z",
       }),
     ],
@@ -160,31 +163,37 @@ describe("matchComposerTicketItems", () => {
 
   it("lists one ticket's plans in number order, archived ones included", () => {
     expect(labels("T-42/")).toEqual([
-      "ticket-plan T-42/P1 Auth migration",
-      "ticket-plan T-42/P2 Rollback auth path (archived)",
-      "ticket-plan T-42/P10 Session cleanup",
+      "ticket-plan T-42/P1 Auth migration (Draft)",
+      "ticket-plan T-42/P2 Rollback auth path (Draft, archived)",
+      "ticket-plan T-42/P10 Session cleanup (Ready)",
     ]);
   });
 
   it("narrows a plan reference by number, the exact number first", () => {
     expect([labels("T-42/P1"), labels("t-42/p")]).toEqual([
-      ["ticket-plan T-42/P1 Auth migration", "ticket-plan T-42/P10 Session cleanup"],
       [
-        "ticket-plan T-42/P1 Auth migration",
-        "ticket-plan T-42/P2 Rollback auth path (archived)",
-        "ticket-plan T-42/P10 Session cleanup",
+        "ticket-plan T-42/P1 Auth migration (Draft)",
+        "ticket-plan T-42/P10 Session cleanup (Ready)",
+      ],
+      [
+        "ticket-plan T-42/P1 Auth migration (Draft)",
+        "ticket-plan T-42/P2 Rollback auth path (Draft, archived)",
+        "ticket-plan T-42/P10 Session cleanup (Ready)",
       ],
     ]);
   });
 
   it("matches active plan titles by word after the tickets, leaving hidden issues out", () => {
     expect([labels("auth"), labels("sess")]).toEqual([
-      ["ticket-plan T-42/P1 Auth migration"],
-      ["ticket-plan T-42/P10 Session cleanup", "ticket-plan T-420/P1 Sessionless catalog"],
+      ["ticket-plan T-42/P1 Auth migration (Draft)"],
+      [
+        "ticket-plan T-42/P10 Session cleanup (Ready)",
+        "ticket-plan T-420/P1 Sessionless catalog (Draft)",
+      ],
     ]);
     expect(labels("catalog")).toEqual([
       "ticket T-420 Catalog blog posts",
-      "ticket-plan T-420/P1 Sessionless catalog",
+      "ticket-plan T-420/P1 Sessionless catalog (Draft)",
     ]);
   });
 });

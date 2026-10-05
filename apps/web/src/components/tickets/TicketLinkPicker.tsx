@@ -1,10 +1,16 @@
-import type { EnvironmentId, ProjectId, TicketLink, TicketLinkTarget } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  ProjectId,
+  TicketId,
+  TicketLink,
+  TicketLinkTarget,
+} from "@t3tools/contracts";
 import { ticketLinkTargetKey } from "@t3tools/contracts";
 import { LinkIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { useProjects, useThreadShells } from "../../state/entities";
-import { issueEnvironment } from "../../state/issues";
+import { ticketEnvironment, useTicketIssueLinksSupported } from "../../state/tickets";
 import { pullRequestEnvironment } from "../../state/pullRequests";
 import { useEnvironmentQuery } from "../../state/query";
 import { Button } from "../ui/button";
@@ -41,12 +47,18 @@ function matches(item: Pick<PickerItem, "title" | "detail">, query: string): boo
 
 export function TicketLinkPicker(props: {
   readonly environmentId: EnvironmentId;
+  readonly ticketId: TicketId;
   readonly links: ReadonlyArray<TicketLink>;
   readonly onLink: (target: TicketLinkTarget) => Promise<unknown>;
 }) {
   const [open, setOpen] = useState(false);
-  const [kind, setKind] = useState<PickerKind>("thread");
+  const [requestedKind, setKind] = useState<PickerKind>("thread");
   const [query, setQuery] = useState("");
+  const issueLinksSupported = useTicketIssueLinksSupported(props.environmentId);
+  const kind = requestedKind === "issue" && !issueLinksSupported ? "thread" : requestedKind;
+  const pickerKinds = PICKER_KINDS.filter(
+    (option) => option.value !== "issue" || issueLinksSupported,
+  );
   const threads = useThreadShells();
   const projects = useProjects();
   const linkedKeys = useMemo(
@@ -71,8 +83,11 @@ export function TicketLinkPicker(props: {
       : null,
   );
   const issues = useEnvironmentQuery(
-    open && kind === "issue" && hostedListInput !== null
-      ? issueEnvironment.list({ environmentId: props.environmentId, input: hostedListInput })
+    open && kind === "issue" && hostedListInput !== null && issueLinksSupported
+      ? ticketEnvironment.issueLinkCandidates({
+          environmentId: props.environmentId,
+          input: { ticketId: props.ticketId },
+        })
       : null,
   );
   const projectTitleById = useMemo(
@@ -167,9 +182,11 @@ export function TicketLinkPicker(props: {
         ? "Loading…"
         : hosted && hostedQuery.error !== null
           ? `Could not read the repository. ${hostedQuery.error}`
-          : query.trim().length > 0
-            ? "Nothing matches that."
-            : "Nothing left to link here.";
+          : kind === "issue" && (issues.data?.errors.length ?? 0) > 0
+            ? issues.data?.errors.map((error) => error.message).join(" ")
+            : query.trim().length > 0
+              ? "Nothing matches that."
+              : "Nothing left to link here.";
 
   return (
     <Menu
@@ -190,11 +207,11 @@ export function TicketLinkPicker(props: {
             variant="segmented"
             value={[kind]}
             onValueChange={(next) => {
-              const selected = PICKER_KINDS.find((option) => option.value === next[0]);
+              const selected = pickerKinds.find((option) => option.value === next[0]);
               if (selected) setKind(selected.value);
             }}
           >
-            {PICKER_KINDS.map((option) => (
+            {pickerKinds.map((option) => (
               <Toggle key={option.value} value={option.value}>
                 {option.label}
               </Toggle>
@@ -210,6 +227,13 @@ export function TicketLinkPicker(props: {
           />
         </div>
         <div className="max-h-72 overflow-y-auto p-1">
+          {kind === "issue" && items.length > 0
+            ? issues.data?.errors.map((error) => (
+                <p key={error.projectId} className="p-2 text-xs text-muted-foreground">
+                  {error.projectTitle}: {error.message}
+                </p>
+              ))
+            : null}
           {items.length === 0 ? (
             <p className="p-2 text-xs text-muted-foreground">{emptyMessage}</p>
           ) : (

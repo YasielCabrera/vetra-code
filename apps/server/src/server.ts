@@ -42,8 +42,6 @@ import * as NodePtyAdapter from "./terminal/NodePtyAdapter.ts";
 import { pullRequestHttpApiLayer } from "./pullRequest/http.ts";
 import * as PullRequestProviderRegistry from "./pullRequest/PullRequestProviderRegistry.ts";
 import * as PullRequestService from "./pullRequest/PullRequestService.ts";
-import * as IssueProviderRegistry from "./issue/IssueProviderRegistry.ts";
-import * as IssueService from "./issue/IssueService.ts";
 import * as SqlitePersistence from "./persistence/Layers/Sqlite.ts";
 import * as PullRequestFilesViewed from "./persistence/PullRequestFilesViewed.ts";
 import * as ServerLifecycleEvents from "./serverLifecycleEvents.ts";
@@ -676,13 +674,6 @@ const commandReadinessLayer = HttpRouter.middleware(
   { global: true },
 );
 
-const IssueServiceLive = IssueService.layer.pipe(
-  Layer.provide(IssueProviderRegistry.layer),
-  Layer.provide(SourceControlProviderRegistryLayerLive),
-  Layer.provide(SourceControlRateLimit.layer),
-  Layer.provide(VcsProcess.layer),
-);
-
 const SourceControlAttachmentResolverLive = SourceControlAttachmentResolver.layer.pipe(
   Layer.provide(GitHubCli.layer),
   Layer.provide(VcsProcess.layer),
@@ -721,7 +712,6 @@ const makeRoutesLayer = Layer.mergeAll(
   // Both transports consume the same service instance, so caches single-flight across clients
   // and mutations observed on WebSocket invalidate patches subsequently read over HTTP.
   Layer.provide(PullRequestServiceLive),
-  Layer.provide(IssueServiceLive),
   Layer.provide(PreviewAutomationBroker.layer),
   Layer.provide(ServerSelfUpdate.layer.pipe(Layer.provide(DesktopAppUpdateLayerLive))),
   Layer.provide(commandReadinessLayer),

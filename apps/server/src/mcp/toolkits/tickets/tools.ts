@@ -287,7 +287,7 @@ const TicketPlanGetTool = Tool.make("t3_ticket_plan_get", {
 const TicketPlanCreateTool = Tool.make("t3_ticket_plan_create", {
   ...shared,
   description:
-    "Write a new plan for a ticket: how to implement it, in Markdown. Returns its ref, such as T-42/P1. To include an image, upload it with t3_attachment_prepare_upload, POST the bytes, write ![alt](vetra-attachment://<pending id>) in the body, and list the upload in attachments.",
+    "Write a new Draft plan for a ticket: how to implement it, in Markdown. Returns its ref, such as T-42/P1. To include an image, upload it with t3_attachment_prepare_upload, POST the bytes, write ![alt](vetra-attachment://<pending id>) in the body, and list the upload in attachments.",
   parameters: Schema.Struct({
     ticket,
     title: TicketPlanCreateInput.fields.title,
@@ -305,11 +305,12 @@ const TicketPlanCreateTool = Tool.make("t3_ticket_plan_create", {
 const TicketPlanUpdateTool = Tool.make("t3_ticket_plan_update", {
   ...shared,
   description:
-    "Change a plan's title, body or status, and resolve the comments the change addresses, in one call. Omitted fields stay as they are. Prefer edits to a whole body: they cost fewer tokens and do not clobber concurrent edits. body and edits are mutually exclusive. A title, body or edits change fails without changing anything if the plan changed since expectedRevision: read it again and reapply. Images work as in t3_ticket_plan_create.",
+    "Change a plan's title, body, lifecycle or review status, and resolve the comments the change addresses, in one call. Omitted fields stay as they are. Plans start Draft; Ready is a manual review marker and stays Ready after title or body edits until explicitly returned to Draft. Marking Draft Ready requires the exact current expectedRevision and fails without changing anything if content changed: read it again and review before retrying. Returning to Draft may use a stale revision unless content also changes. Ready does not select a plan or start implementation. Prefer edits to a whole body: they cost fewer tokens and do not clobber concurrent edits. body and edits are mutually exclusive. A title, body or edits change fails without changing anything if the plan changed since expectedRevision: read it again and reapply. Images work as in t3_ticket_plan_create.",
   parameters: Schema.Struct({
     plan,
     expectedRevision: PositiveInt.annotate({
-      description: "plan.revision from your latest t3_ticket_plan_get.",
+      description:
+        "plan.revision from your latest t3_ticket_plan_get. Must match current content for a content change or a Draft to Ready transition.",
     }),
     title: TicketPlanUpdateInput.fields.title,
     body: TicketPlanUpdateInput.fields.body.annotate({
@@ -322,6 +323,7 @@ const TicketPlanUpdateTool = Tool.make("t3_ticket_plan_update", {
     status: Schema.optional(
       TicketPlanStatus.annotate({ description: "archived retires the plan; active restores it." }),
     ),
+    reviewStatus: TicketPlanUpdateInput.fields.reviewStatus,
     resolveCommentIds: TicketPlanUpdateInput.fields.resolveCommentIds.annotate({
       description: "Top-level comments from t3_ticket_plan_get that this change addresses.",
     }),

@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, ChartNoAxesColumnIcon, CircleDotIcon, SettingsIcon } from "lucide-react";
+import { ArrowLeftIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
@@ -7,8 +7,7 @@ import { APP_BASE_NAME } from "../../branding";
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { T3Wordmark } from "../T3Wordmark";
 import { cn } from "../../lib/utils";
-import { useEnvironments, usePullRequestsSupported } from "../../state/environments";
-import { rememberedIssueFilters } from "../sourceControl/listFilterMemory";
+import { usePullRequestsSupported } from "../../state/environments";
 import {
   resolveEnvironmentIdentificationPillLabel,
   resolveSidebarStageBackdropVariant,
@@ -167,29 +166,18 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   const isOnUtilityPage = useLocation({
     select: (location) => isSidebarUtilityPage(location.pathname),
   });
-  const { environments } = useEnvironments();
   const pullRequestsSupported = usePullRequestsSupported();
-  const issuesSupported = environments.some(
-    (environment) => environment.serverConfig?.environment.capabilities.issues === true,
-  );
   const closeMobileSidebar = useCallback(() => {
     if (isMobile) {
       setOpenMobile(false);
     }
   }, [isMobile, setOpenMobile]);
-  // Both open on the narrowings the page was last left with, so a workspace filtered to one
-  // project's open issues is still that when the reader comes back rather than the whole index
-  // again. Read at the press rather than held here: the page writes them as they are picked.
   const handlePullRequestsClick = useCallback(() => {
     closeMobileSidebar();
     void navigate({
       to: "/pull-requests",
       search: readPullRequestListPreferences(),
     });
-  }, [closeMobileSidebar, navigate]);
-  const handleIssuesClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({ to: "/issues", search: rememberedIssueFilters() });
   }, [closeMobileSidebar, navigate]);
   const handleSettingsClick = useCallback(() => {
     closeMobileSidebar();
@@ -224,13 +212,6 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             label="Settings"
             onClick={handleSettingsClick}
           />
-          {issuesSupported ? (
-            <SidebarUtilityItem
-              icon={<CircleDotIcon />}
-              label="Issues"
-              onClick={handleIssuesClick}
-            />
-          ) : null}
           {pullRequestsSupported ? (
             <SidebarUtilityItem
               icon={<PullRequestGlyph.pullRequest />}

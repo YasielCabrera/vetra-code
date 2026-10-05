@@ -56,17 +56,26 @@ describe("ExecutionEnvironmentDescriptor", () => {
     ).toBe(true);
   });
 
-  it("treats a missing issues capability as unsupported under version skew", () => {
-    expect(decodeDescriptor(descriptor).capabilities.issues).toBeUndefined();
+  it("treats a missing ticket issue-link capability as unsupported under version skew", () => {
+    expect(decodeDescriptor(descriptor).capabilities.ticketIssueLinks).toBeUndefined();
   });
 
-  it("preserves an advertised issues capability", () => {
+  it("preserves an advertised ticket issue-link capability", () => {
+    expect(
+      decodeDescriptor({
+        ...descriptor,
+        capabilities: { ...descriptor.capabilities, ticketIssueLinks: true },
+      }).capabilities.ticketIssueLinks,
+    ).toBe(true);
+  });
+
+  it("decodes old descriptors carrying the removed issues capability", () => {
     expect(
       decodeDescriptor({
         ...descriptor,
         capabilities: { ...descriptor.capabilities, issues: true },
-      }).capabilities.issues,
-    ).toBe(true);
+      }).capabilities,
+    ).toEqual({ repositoryIdentity: true });
   });
 
   it("treats a missing attachment upload capability as unsupported", () => {

@@ -20,6 +20,7 @@ import {
 import { memo, useMemo, useState, type ReactNode } from "react";
 
 import { useThreadShells } from "../../state/entities";
+import { useTicketIssueLinksSupported } from "../../state/tickets";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
 import { Badge } from "../ui/badge";
@@ -254,6 +255,7 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
 }) {
   const navigate = useNavigate();
   const threads = useThreadShells();
+  const issueLinksSupported = useTicketIssueLinksSupported(props.environmentId);
   const { summary, links } = props.detail;
   const threadById = useMemo(
     () =>
@@ -300,7 +302,8 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
           title: target.snapshot.title,
           detail: `${target.ref.repository}#${target.ref.number} · ${target.snapshot.state}`,
           missing: false,
-          onPreview: () => props.onPreview(target),
+          onPreview:
+            target.kind === "issue" && !issueLinksSupported ? null : () => props.onPreview(target),
           onOpen: () => openOnGitHub(target.snapshot.url),
         };
       }
@@ -340,6 +343,7 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
         action={
           <TicketLinkPicker
             environmentId={props.environmentId}
+            ticketId={summary.id}
             links={links}
             onLink={props.onLink}
           />

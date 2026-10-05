@@ -1,4 +1,4 @@
-import { TicketId, TicketStatusId, type TicketSummary } from "@t3tools/contracts";
+import { TicketId, TicketPlanId, TicketStatusId, type TicketSummary } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { applyTicketListEvent } from "./ticketCommands.ts";
@@ -21,6 +21,56 @@ const ticket = (id: string, title: string): TicketSummary => ({
 });
 
 describe("applyTicketListEvent", () => {
+  it("applies plan review deltas at unchanged content revisions and retains untouched tickets", () => {
+    const draft: TicketSummary = {
+      ...ticket("a", "Alpha"),
+      plans: [
+        {
+          planId: TicketPlanId.make("p1"),
+          ticketId: TicketId.make("a"),
+          ref: "T-1/P1",
+          number: 1,
+          title: "Plan",
+          status: "active",
+          reviewStatus: "draft",
+          revision: 1,
+          openCommentCount: 0,
+          createdBy: { type: "user" },
+          updatedBy: { type: "user" },
+          updatedAt: "2026-10-01T00:00:00.000Z",
+        },
+      ],
+    };
+    const other = ticket("b", "Beta");
+    const initial = applyTicketListEvent(new Map(), { type: "snapshot", tickets: [draft, other] });
+    const ready: TicketSummary = {
+      ...draft,
+      plans: draft.plans.map((plan) => ({ ...plan, reviewStatus: "ready" })),
+    };
+    const updated = applyTicketListEvent(initial, {
+      type: "delta",
+      upserted: [ready],
+      removed: [],
+    });
+    const returned = applyTicketListEvent(updated, {
+      type: "delta",
+      upserted: [draft],
+      removed: [],
+    });
+    expect(
+      [initial, updated, returned].map((list) => {
+        const summary = list.get("a");
+        return [summary?.revision, summary?.plans[0]?.revision, summary?.plans[0]?.reviewStatus];
+      }),
+    ).toEqual([
+      [1, 1, "draft"],
+      [1, 1, "ready"],
+      [1, 1, "draft"],
+    ]);
+    expect(updated.get("b")).toBe(other);
+    expect(returned.get("b")).toBe(other);
+  });
+
   it("applies a whole delta at once and keeps untouched entries by reference", () => {
     const first = applyTicketListEvent(new Map(), {
       type: "snapshot",

@@ -1,0 +1,172 @@
+[data-kanban-column] {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  width: 18rem;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--muted) 40%, transparent);
+  transition: width 200ms var(--ease-drawer);
+}
+
+[data-kanban-column][data-collapsed] {
+  width: 2.5rem;
+}
+
+[data-kanban-column][data-drop-target] {
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+[data-kanban-toggle] {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2.5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+[data-kanban-column][data-collapsed] [data-kanban-toggle] {
+  height: 100%;
+}
+
+[data-kanban-toggle]:hover {
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+
+[data-kanban-toggle]:focus {
+  outline: none;
+}
+
+[data-kanban-toggle]:focus-visible {
+  outline: 1px solid var(--ring);
+  outline-offset: -1px;
+}
+
+[data-kanban-face] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  box-sizing: border-box;
+  opacity: 1;
+  filter: none;
+  visibility: visible;
+  transition:
+    opacity 200ms var(--ease-drawer),
+    filter 200ms var(--ease-drawer),
+    visibility 0s linear 0s;
+}
+
+[data-kanban-face="open"] {
+  align-items: center;
+  gap: 0.5rem;
+  width: 18rem;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+}
+
+[data-kanban-face="open"] [data-kanban-name] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-kanban-face="open"] [data-kanban-chevron] {
+  margin-left: auto;
+}
+
+[data-kanban-face="rail"] {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 2.5rem;
+  height: 100%;
+  padding: 0.75rem 0;
+  overflow: hidden;
+}
+
+[data-kanban-face="rail"] [data-kanban-name] {
+  min-height: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  writing-mode: vertical-rl;
+}
+
+[data-kanban-face="rail"] [data-kanban-chevron] {
+  flex: none;
+}
+
+[data-kanban-column-cards] {
+  position: absolute;
+  top: 2.5rem;
+  right: auto;
+  bottom: 0;
+  left: 0;
+  width: 18rem;
+  opacity: 1;
+  filter: none;
+  visibility: visible;
+  transition:
+    opacity 200ms var(--ease-drawer),
+    filter 200ms var(--ease-drawer),
+    visibility 0s linear 0s;
+}
+
+[data-kanban-list] {
+  height: 100%;
+  overflow-y: auto;
+}
+
+[data-kanban-column]:not([data-collapsed]) [data-kanban-face="rail"],
+[data-kanban-column][data-collapsed] [data-kanban-face="open"],
+[data-kanban-column][data-collapsed] [data-kanban-column-cards] {
+  opacity: 0;
+  filter: blur(2px);
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity 200ms var(--ease-drawer),
+    filter 200ms var(--ease-drawer),
+    visibility 0s linear 200ms;
+}
+
+@media (prefers-reduced-motion: reduce), (forced-colors: active) {
+  [data-kanban-column] {
+    transition: none;
+  }
+
+  [data-kanban-face],
+  [data-kanban-column-cards] {
+    filter: none;
+    transition:
+      opacity 200ms var(--ease-drawer),
+      visibility 0s linear 0s;
+  }
+
+  [data-kanban-column]:not([data-collapsed]) [data-kanban-face="rail"],
+  [data-kanban-column][data-collapsed] [data-kanban-face="open"],
+  [data-kanban-column][data-collapsed] [data-kanban-column-cards] {
+    filter: none;
+    transition:
+      opacity 200ms var(--ease-drawer),
+      visibility 0s linear 200ms;
+  }
+}
+
+[data-kanban-column][data-instant],
+[data-kanban-column][data-instant] [data-kanban-face],
+[data-kanban-column][data-instant] [data-kanban-column-cards] {
+  filter: none;
+  transition: none;
+}

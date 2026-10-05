@@ -235,18 +235,6 @@ import {
 } from "./automation.ts";
 import { TICKET_WS_METHODS, TicketsRpcGroup } from "./ticketRpc.ts";
 import {
-  IssueActivity,
-  IssueAssigneeCandidateList,
-  IssueAssigneeChangeInput,
-  IssueDetail,
-  IssueInvalidateInput,
-  IssueListInput,
-  IssueListResult,
-  IssueOperationError,
-  IssueRef,
-  IssueUnavailableError,
-} from "./issue.ts";
-import {
   RelayClientInstallFailedError,
   RelayClientInstallProgressEventSchema,
   RelayClientStatusSchema,
@@ -619,14 +607,6 @@ export const WS_METHODS = {
   pullRequestsRequestReviewers: "pullRequests.requestReviewers",
   pullRequestsLabelCandidates: "pullRequests.labelCandidates",
   pullRequestsSetLabels: "pullRequests.setLabels",
-
-  // Issue methods
-  issuesList: "issues.list",
-  issuesDetail: "issues.detail",
-  issuesActivity: "issues.activity",
-  issuesAssigneeCandidates: "issues.assigneeCandidates",
-  issuesSetAssignees: "issues.setAssignees",
-  issuesInvalidate: "issues.invalidate",
 
   // Source control methods
   sourceControlLookupRepository: "sourceControl.lookupRepository",
@@ -1244,49 +1224,6 @@ const WsPullRequestsRequestReviewersRpc = Rpc.make(WS_METHODS.pullRequestsReques
   payload: PullRequestReviewerRequestInput,
   success: Schema.Void,
   error: PullRequestRpcError,
-});
-
-const IssueRpcError = Schema.Union([
-  IssueUnavailableError,
-  IssueOperationError,
-  EnvironmentAuthorizationError,
-]);
-
-export const WsIssuesListRpc = Rpc.make(WS_METHODS.issuesList, {
-  payload: IssueListInput,
-  success: IssueListResult,
-  error: IssueRpcError,
-});
-
-export const WsIssuesDetailRpc = Rpc.make(WS_METHODS.issuesDetail, {
-  payload: IssueRef,
-  success: IssueDetail,
-  error: IssueRpcError,
-});
-
-export const WsIssuesActivityRpc = Rpc.make(WS_METHODS.issuesActivity, {
-  payload: IssueRef,
-  success: IssueActivity,
-  error: IssueRpcError,
-});
-
-/** Loaded only when the assignee picker opens; repository member lists can be large. */
-export const WsIssuesAssigneeCandidatesRpc = Rpc.make(WS_METHODS.issuesAssigneeCandidates, {
-  payload: IssueRef,
-  success: IssueAssigneeCandidateList,
-  error: IssueRpcError,
-});
-
-export const WsIssuesSetAssigneesRpc = Rpc.make(WS_METHODS.issuesSetAssignees, {
-  payload: IssueAssigneeChangeInput,
-  success: Schema.Void,
-  error: IssueRpcError,
-});
-
-export const WsIssuesInvalidateRpc = Rpc.make(WS_METHODS.issuesInvalidate, {
-  payload: IssueInvalidateInput,
-  success: Schema.Void,
-  error: IssueRpcError,
 });
 
 /** Read when the label menu opens, for the same reason the reviewer candidates are. */
@@ -2197,12 +2134,6 @@ export const WsCoreRpcGroup = RpcGroup.make(
   WsPullRequestsSubscribeRefreshesRpc,
   WsPullRequestsReviewerCandidatesRpc,
   WsPullRequestsRequestReviewersRpc,
-  WsIssuesListRpc,
-  WsIssuesDetailRpc,
-  WsIssuesActivityRpc,
-  WsIssuesAssigneeCandidatesRpc,
-  WsIssuesSetAssigneesRpc,
-  WsIssuesInvalidateRpc,
   WsPullRequestsLabelCandidatesRpc,
   WsPullRequestsSetLabelsRpc,
   WsSourceControlLookupRepositoryRpc,

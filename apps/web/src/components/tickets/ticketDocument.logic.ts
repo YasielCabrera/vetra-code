@@ -1,11 +1,26 @@
-import type { TicketClaimedAttachment } from "@t3tools/contracts";
+import type { TicketClaimedAttachment, TicketPlanContentCommit } from "@t3tools/contracts";
 
 import { replaceClaimedAttachmentReferences } from "../../lib/attachmentReferences";
 
 /** What a write naming a stale revision resolves to, instead of a toast. */
 export const TICKET_REVISION_CONFLICT = "conflict";
 
-interface RevisionedBody {
+export type DocumentContentAcknowledgement =
+  | ({ readonly kind: "commit" } & TicketPlanContentCommit)
+  | { readonly kind: "metadata" }
+  | { readonly kind: "unverified" }
+  | { readonly kind: "legacy"; readonly revision: number };
+
+export type DocumentWriteOutcome<Summary> =
+  | {
+      readonly summary: Summary;
+      readonly acknowledgement: DocumentContentAcknowledgement;
+      readonly claimed: ReadonlyArray<TicketClaimedAttachment>;
+    }
+  | typeof TICKET_REVISION_CONFLICT
+  | null;
+
+export interface RevisionedBody {
   readonly revision: number;
   readonly body: string;
 }
@@ -46,11 +61,14 @@ export type TicketDocumentEvent =
     }
   | {
       readonly type: "writeLanded";
-      readonly revision: number;
+      readonly acknowledgement: DocumentContentAcknowledgement;
       readonly claimed: ReadonlyArray<TicketClaimedAttachment>;
     }
   | { readonly type: "writeFailed" }
-  | { readonly type: "writeConflicted" }
+  | {
+      readonly type: "writeConflicted";
+      readonly claimed?: ReadonlyArray<TicketClaimedAttachment>;
+    }
   /** Drop local edits and take what the server has. */
   | { readonly type: "reload" }
   /** Keep local edits and write them over the server's newer revision. */
@@ -88,6 +106,9 @@ export function shouldAutosave(state: TicketDocumentState): boolean {
  */
 function settle(state: TicketDocumentState): TicketDocumentState {
   if (state.writing !== null || state.server.revision <= state.base.revision) return state;
+  if (state.server.body === state.text && state.failedText === state.text) {
+    return { ...state, base: state.server, conflict: false, failedText: null };
+  }
   if (state.server.body === state.base.body) {
     return { ...state, base: state.server, conflict: false };
   }
@@ -97,6 +118,23 @@ function settle(state: TicketDocumentState): TicketDocumentState {
 
 function reload(state: TicketDocumentState): TicketDocumentState {
   return { ...state, text: state.server.body, base: state.server, conflict: false };
+}
+
+function withClaims(state: TicketDocumentState, claims: ReadonlyArray<TicketClaimedAttachment>) {
+  if (claims.length === 0) return state;
+  const claimed = [
+    ...new Map([...state.claimed, ...claims].map((claim) => [claim.pendingId, claim])).values(),
+  ];
+  return {
+    ...state,
+    claimed,
+    text: replaceClaimedAttachmentReferences(state.text, claimed),
+    base: { ...state.base, body: replaceClaimedAttachmentReferences(state.base.body, claimed) },
+    server: {
+      ...state.server,
+      body: replaceClaimedAttachmentReferences(state.server.body, claimed),
+    },
+  };
 }
 
 export function reduceTicketDocument(
@@ -132,31 +170,46 @@ export function reduceTicketDocument(
         writing: { sentBody: event.sentBody, expectedRevision: event.expectedRevision },
       };
     case "writeLanded": {
-      const claimed = [
-        ...new Map(
-          [...state.claimed, ...event.claimed].map((claim) => [claim.pendingId, claim]),
-        ).values(),
-      ];
+      const current = withClaims(state, event.claimed);
       const sentBody = state.writing?.sentBody ?? null;
       // A field write past someone else's change leaves `base` behind, so their body still counts.
       const followsBase = state.writing?.expectedRevision === state.base.revision;
+      const acknowledgement = event.acknowledgement;
+      switch (acknowledgement.kind) {
+        case "metadata":
+          return settle({ ...current, writing: null });
+        case "unverified":
+          return settle({
+            ...current,
+            writing: null,
+            failedText:
+              sentBody === null
+                ? current.failedText
+                : replaceClaimedAttachmentReferences(sentBody, current.claimed),
+          });
+        case "commit":
+        case "legacy":
+          break;
+        default: {
+          const _exhaustive: never = acknowledgement;
+          return _exhaustive;
+        }
+      }
+      const acknowledgesBase =
+        followsBase &&
+        (acknowledgement.kind === "legacy" ||
+          acknowledgement.observedRevision === state.base.revision);
       return settle({
-        ...state,
-        claimed,
+        ...current,
         writing: null,
-        text: replaceClaimedAttachmentReferences(state.text, claimed),
-        server: {
-          ...state.server,
-          body: replaceClaimedAttachmentReferences(state.server.body, claimed),
-        },
-        base: !followsBase
-          ? state.base
+        base: !acknowledgesBase
+          ? current.base
           : {
-              revision: event.revision,
+              revision: acknowledgement.revision,
               body:
                 sentBody === null
-                  ? state.base.body
-                  : replaceClaimedAttachmentReferences(sentBody, claimed),
+                  ? current.base.body
+                  : replaceClaimedAttachmentReferences(sentBody, current.claimed),
             },
       });
     }
@@ -168,7 +221,7 @@ export function reduceTicketDocument(
       };
     case "writeConflicted":
       return settle({
-        ...state,
+        ...withClaims(state, event.claimed ?? []),
         writing: null,
         conflict: state.conflict || (state.writing?.sentBody ?? null) !== null,
       });

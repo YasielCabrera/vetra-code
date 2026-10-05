@@ -27,6 +27,7 @@ import { cn } from "../../lib/utils";
 import { useTicketPlan } from "../../state/tickets";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { TicketActorName } from "./TicketActivityTimeline";
@@ -180,6 +181,9 @@ function TicketPlanRow(props: {
       >
         <span className="shrink-0 font-mono text-xs text-muted-foreground">P{plan.number}</span>
         <span className="min-w-0 flex-1 truncate">{plan.title}</span>
+        <Badge variant={plan.reviewStatus === "ready" ? "success" : "warning"}>
+          {plan.reviewStatus === "ready" ? "Ready" : "Draft"}
+        </Badge>
         {plan.openCommentCount > 0 ? (
           <span
             className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground tabular-nums"
@@ -248,7 +252,10 @@ export function TicketPlanPreview(props: {
           {summary.title}
         </h3>
         <p className="text-xs text-muted-foreground">
-          {summary.status === "archived" ? "Archived · " : null}
+          <Badge variant={summary.reviewStatus === "ready" ? "success" : "warning"}>
+            {summary.reviewStatus === "ready" ? "Ready" : "Draft"}
+          </Badge>{" "}
+          · {summary.status === "archived" ? "Archived · " : null}
           {openCommentsLabel(summary.openCommentCount)} · Updated{" "}
           {formatRelativeTimeLabel(summary.updatedAt)}
         </p>

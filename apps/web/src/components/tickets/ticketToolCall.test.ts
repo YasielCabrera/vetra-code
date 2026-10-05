@@ -49,7 +49,13 @@ describe("ticketToolCallTarget", () => {
   it("reads the plan a plan create or update wrote", () => {
     const written = {
       kind: "plan",
-      plan: { ticketId: "ticket-1", number: 2, ref: "T-42/P2", title: "Fix the cart total" },
+      plan: {
+        ticketId: "ticket-1",
+        number: 2,
+        ref: "T-42/P2",
+        title: "Fix the cart total",
+        reviewStatus: "draft",
+      },
     };
     expect(
       ticketToolCallTarget({
@@ -67,6 +73,26 @@ describe("ticketToolCallTarget", () => {
         output: { structuredContent: plan },
       }),
     ).toEqual(written);
+  });
+
+  it("preserves Ready from a plan write receipt", () => {
+    expect(
+      ticketToolCallTarget({
+        type: "dynamic_tool",
+        status: "completed",
+        toolName: "t3_ticket_plan_update",
+        output: { structuredContent: { ...plan, reviewStatus: "ready" } },
+      }),
+    ).toEqual({
+      kind: "plan",
+      plan: {
+        ticketId: "ticket-1",
+        number: 2,
+        ref: "T-42/P2",
+        title: "Fix the cart total",
+        reviewStatus: "ready",
+      },
+    });
   });
 
   it("ignores other tools, unfinished calls and failed results", () => {

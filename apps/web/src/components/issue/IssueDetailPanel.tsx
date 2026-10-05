@@ -1,11 +1,4 @@
-/**
- * One issue, read beside the list rather than in place of it.
- *
- * The panel owns its own reads the way the pull-request panel does: the page hands it a
- * reference and it fetches the detail and the activity itself, so several issues can sit open
- * as peer tabs without the page holding a query for each.
- */
-import type { EnvironmentId, IssueRef } from "@t3tools/contracts";
+import type { EnvironmentId, TicketLinkedIssueRef } from "@t3tools/contracts";
 import {
   ArrowDownUpIcon,
   ArrowUpRightIcon,
@@ -23,12 +16,12 @@ import {
   TagIcon,
   UserRoundIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useLiveRefresh } from "~/hooks/useLiveRefresh";
 import { readLocalApi } from "~/localApi";
-import { issueEnvironment } from "~/state/issues";
+import { ticketEnvironment } from "~/state/tickets";
 import { useEnvironmentQuery } from "~/state/query";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
@@ -114,29 +107,9 @@ function IssueSection({
 export function IssueDetailPanel({
   environmentId,
   reference,
-  refreshToken: forcedRefreshToken = 0,
-  onActed,
-  onStateChange,
 }: {
   readonly environmentId: EnvironmentId;
-  readonly reference: IssueRef;
-  /**
-   * Bumped by whatever holds the panel when a reader asks for everything on screen to be read
-   * again. The panel owns its own reads, so the page cannot refresh them for it.
-   */
-  readonly refreshToken?: number;
-  /**
-   * An action changed this issue on the host, so a list showing it is now out of date. Told
-   * rather than assumed: only the page knows whether it is showing one.
-   */
-  readonly onActed?: () => void;
-  /** Keeps compact chrome, such as the right-panel tab, in step with refreshed host state. */
-  readonly onStateChange?: (status: {
-    projectId: string;
-    repository: string;
-    number: number;
-    state: "open" | "closed";
-  }) => void;
+  readonly reference: TicketLinkedIssueRef;
 }) {
   const [tab, setTab] = useState<IssueDetailTab>("summary");
   const [timelineOrder, setTimelineOrder] = useState<"newest" | "oldest">("newest");
@@ -144,50 +117,43 @@ export function IssueDetailPanel({
   const [shown, setShown] = useState<{ readonly url: string; readonly count: number } | null>(null);
 
   const target = useMemo(() => ({ environmentId, input: reference }), [environmentId, reference]);
-  const detailQuery = useEnvironmentQuery(issueEnvironment.detail(target));
-  const activityQuery = useEnvironmentQuery(issueEnvironment.activity(target));
-  const detail = detailQuery.data;
+  const detailQuery = useEnvironmentQuery(ticketEnvironment.githubIssueDetail(target));
+  const activityQuery = useEnvironmentQuery(ticketEnvironment.githubIssueActivity(target));
+  const response = detailQuery.data;
+  const detail = useMemo(
+    () =>
+      response?.preview === undefined
+        ? null
+        : {
+            ...response.preview,
+            title: response.title,
+            body: response.body,
+            assignees: response.assignees,
+            comments: response.comments,
+          },
+    [response],
+  );
   const activity = activityQuery.data;
   const activityPending = activityQuery.isPending && activity === null;
   const activityError = activity === null ? activityQuery.error : null;
 
-  const issueKey = `${reference.projectId}:${reference.repository}#${reference.number}`;
-  // Keyed by the issue rather than by the panel, because this one panel shows a different issue
-  // every time a tab is switched.
+  const issueKey = `${environmentId}:${reference.ticketId}:${reference.linkedIssue.host}/${reference.linkedIssue.repository}#${reference.linkedIssue.number}`;
   useLiveRefresh(detailQuery.refresh, { key: `issue:${issueKey}` });
 
-  const invalidate = useAtomCommand(issueEnvironment.invalidate, { reportFailure: false });
+  const invalidate = useAtomCommand(ticketEnvironment.invalidateGitHubIssue, {
+    reportFailure: false,
+  });
   const [refreshing, setRefreshing] = useState(false);
-  const refreshFromHost = useCallback(async () => {
+  const refreshFromHost = async () => {
     setRefreshing(true);
     try {
-      await invalidate({ environmentId, input: { reference } });
+      await invalidate({ environmentId, input: reference });
     } finally {
       setRefreshing(false);
-      // The invalidation goes first so the re-reads miss the server's cache; if it fails, the
-      // reads still run and at worst answer from it.
       detailQuery.refresh();
       activityQuery.refresh();
     }
-  }, [activityQuery.refresh, detailQuery.refresh, environmentId, invalidate, reference]);
-
-  // A refresh asked for by the page, which cannot reach into the panel's own reads.
-  const appliedForcedToken = useRef(forcedRefreshToken);
-  useEffect(() => {
-    if (appliedForcedToken.current === forcedRefreshToken) return;
-    appliedForcedToken.current = forcedRefreshToken;
-    void refreshFromHost();
-  }, [forcedRefreshToken, refreshFromHost]);
-
-  useEffect(() => {
-    if (!detail) return;
-    onStateChange?.({
-      projectId: detail.projectId,
-      repository: detail.repository,
-      number: detail.number,
-      state: detail.state,
-    });
-  }, [detail, onStateChange]);
+  };
 
   const { copyToClipboard } = useCopyToClipboard({ target: "issue link" });
   const openExternal = (raw: string) => {
@@ -199,7 +165,10 @@ export function IssueDetailPanel({
   };
 
   if (detail === null) {
-    if (detailQuery.error !== null) {
+    const error =
+      detailQuery.error ??
+      (response === null ? null : "Issue preview unavailable on this environment.");
+    if (error !== null) {
       return (
         <div className="flex h-full min-h-0 w-full flex-col items-center justify-center bg-background">
           <Empty>
@@ -208,11 +177,25 @@ export function IssueDetailPanel({
             </EmptyMedia>
             <EmptyHeader>
               <EmptyTitle>Issue unavailable</EmptyTitle>
-              <EmptyDescription>{detailQuery.error}</EmptyDescription>
+              <EmptyDescription>{error}</EmptyDescription>
             </EmptyHeader>
             <Button size="sm" variant="outline" onClick={() => detailQuery.refresh()}>
               <RefreshCwIcon className="size-3.5" />
               Retry
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                openExternal(
+                  `https://${reference.linkedIssue.host}/${reference.linkedIssue.repository}/issues/${reference.linkedIssue.number}`,
+                )
+              }
+            >
+              <ArrowUpRightIcon aria-hidden />
+              {reference.linkedIssue.host === "github.com"
+                ? "Open on GitHub"
+                : `Open on ${reference.linkedIssue.host}`}
             </Button>
           </Empty>
         </div>
@@ -392,7 +375,7 @@ export function IssueDetailPanel({
                     reference={reference}
                     onAssigned={() => {
                       detailQuery.refresh();
-                      onActed?.();
+                      activityQuery.refresh();
                     }}
                   />
                 </span>

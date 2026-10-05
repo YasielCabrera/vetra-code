@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { ClipboardListIcon, SquareKanbanIcon } from "lucide-react";
 
 import { useTicket, useTicketStatuses } from "../../state/tickets";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { TicketStatusIcon } from "./ticketPresentation";
 import { ticketPlanRouteParams } from "./ticketPlans.logic";
@@ -71,6 +72,14 @@ function WrittenPlanCard(props: {
       <ClipboardListIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="shrink-0 text-muted-foreground">{props.plan.ref}</span>
       <span className="min-w-0 flex-1 truncate">{plan?.title ?? props.plan.title}</span>
+      <Badge
+        variant={
+          (plan?.reviewStatus ?? props.plan.reviewStatus) === "ready" ? "success" : "warning"
+        }
+      >
+        {(plan?.reviewStatus ?? props.plan.reviewStatus) === "ready" ? "Ready" : "Draft"}
+        {plan ? null : " snapshot"}
+      </Badge>
       {plan?.status === "archived" ? (
         <span className="shrink-0 text-xs text-muted-foreground">Archived</span>
       ) : null}

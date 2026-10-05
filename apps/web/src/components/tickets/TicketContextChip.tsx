@@ -38,7 +38,10 @@ export function TicketContextChip(props: {
 
 /** Links to the plan page; the title is live while the plan's ticket is loaded. */
 export function TicketPlanContextChip(props: {
-  record: Pick<TicketPlanContextRecord, "environmentId" | "ticketId" | "planId" | "ref" | "title">;
+  record: Pick<
+    TicketPlanContextRecord,
+    "environmentId" | "ticketId" | "planId" | "ref" | "title" | "reviewStatus"
+  >;
   copyMarkdown?: string;
 }) {
   const { environmentId, ticketId, planId, ref } = props.record;
@@ -48,6 +51,9 @@ export function TicketPlanContextChip(props: {
   const reference = parseTicketPlanReference(ref);
   const planNumber = plan?.number ?? (reference?.type === "number" ? reference.number : null);
   const scope = { environmentId, ticketId };
+  const review = props.record.reviewStatus;
+  const reviewLabel =
+    review === undefined ? "" : ` (${review === "ready" ? "Ready" : "Draft"} snapshot)`;
   return (
     <LinkedContextChip
       kind="ticket-plan"
@@ -62,8 +68,8 @@ export function TicketPlanContextChip(props: {
         )
       }
       icon={<ClipboardListIcon />}
-      label={`${ref} ${title}`}
-      ariaLabel={`Plan ${ref}, ${title}`}
+      label={`${ref} ${title}${reviewLabel}`}
+      ariaLabel={`Plan ${ref}, ${title}${reviewLabel}`}
       tooltip={plan ? "Open plan" : "Plan not available here"}
       copyMarkdown={props.copyMarkdown}
     />

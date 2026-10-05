@@ -112,6 +112,123 @@ const seedGitHubTicket = Effect.gen(function* () {
 });
 
 describe("TicketsToolkit", () => {
+  it.effect("returns authoritative review status across plan tools and rejects stale Ready", () =>
+    Effect.gen(function* () {
+      const ticket = yield* call("t3_ticket_create", { title: "Review", linkCaller: false });
+      const created = yield* call("t3_ticket_plan_create", {
+        ticket: "T-1",
+        title: "Plan",
+        body: "Before",
+      });
+      assert.deepStrictEqual(
+        [created.reviewStatus, created.status, created.revision, created.createdBy],
+        ["draft", "active", 1, AGENT],
+      );
+      const edited = yield* call("t3_ticket_plan_update", {
+        plan: created.ref,
+        expectedRevision: 1,
+        body: "New content",
+      });
+      const stale = yield* failure("t3_ticket_plan_update", {
+        plan: created.ref,
+        expectedRevision: 1,
+        reviewStatus: "ready",
+        status: "archived",
+      });
+      assert.strictEqual(stale._tag, "TicketPlanRevisionConflictError");
+      const afterStale = yield* call("t3_ticket_plan_get", { plan: created.ref });
+      assert.deepStrictEqual(
+        [
+          afterStale.plan.reviewStatus,
+          afterStale.plan.status,
+          afterStale.plan.revision,
+          afterStale.body,
+        ],
+        ["draft", "active", 2, "New content"],
+      );
+      const ready = yield* call("t3_ticket_plan_update", {
+        plan: created.ref,
+        expectedRevision: edited.revision,
+        reviewStatus: "ready",
+      });
+      const repeated = yield* call("t3_ticket_plan_update", {
+        plan: created.ref,
+        expectedRevision: 1,
+        reviewStatus: "ready",
+      });
+      assert.deepStrictEqual(repeated, ready);
+      const renamed = yield* call("t3_ticket_plan_update", {
+        plan: created.ref,
+        expectedRevision: 2,
+        title: "Reviewed title",
+      });
+      const archived = yield* call("t3_ticket_plan_update", {
+        plan: created.ref,
+        expectedRevision: 1,
+        status: "archived",
+      });
+      const draft = yield* call("t3_ticket_plan_update", {
+        plan: created.ref,
+        expectedRevision: 1,
+        reviewStatus: "draft",
+      });
+      const listed = yield* call("t3_ticket_plan_list", { ticket: "T-1" });
+      const read = yield* call("t3_ticket_plan_get", { plan: created.ref });
+      const ticketRead = yield* call("t3_ticket_get", { ticket: "T-1" });
+      assert.deepStrictEqual(
+        [
+          ready,
+          renamed,
+          archived,
+          draft,
+          listed.plans[0],
+          read.plan,
+          ticketRead.summary.plans[0],
+        ].map((plan) => [plan?.reviewStatus, plan?.status, plan?.revision, plan?.updatedBy]),
+        [
+          ["ready", "active", 2, AGENT],
+          ["ready", "active", 3, AGENT],
+          ["ready", "archived", 3, AGENT],
+          ["draft", "archived", 3, AGENT],
+          ["draft", "archived", 3, AGENT],
+          ["draft", "archived", 3, AGENT],
+          ["draft", "archived", 3, AGENT],
+        ],
+      );
+      assert.deepStrictEqual(
+        [read.body, ticketRead.summary.revision],
+        ["New content", ticket.revision],
+      );
+      assert.deepStrictEqual(
+        ticketRead.activity
+          .filter((activity) => activity.entry.type === "plan_review_status_changed")
+          .map((activity) => [activity.actor, activity.entry]),
+        [
+          [
+            AGENT,
+            {
+              type: "plan_review_status_changed",
+              planId: created.planId,
+              number: 1,
+              from: "draft",
+              to: "ready",
+            },
+          ],
+          [
+            AGENT,
+            {
+              type: "plan_review_status_changed",
+              planId: created.planId,
+              number: 1,
+              from: "ready",
+              to: "draft",
+            },
+          ],
+        ],
+      );
+    }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
+  );
+
   it.effect("exposes the source context distinguishing comments on repeated blocks", () =>
     Effect.gen(function* () {
       yield* call("t3_ticket_create", { title: "Diagram review" });

@@ -93,6 +93,7 @@ describe("useTitleDraft", () => {
     const reply = deferredWrite();
     writeTitle.mockReturnValueOnce(reply.promise).mockResolvedValue({
       summary: { revision: 2, title: "Retained title" },
+      acknowledgement: { kind: "legacy", revision: 2 },
       claimed: [],
     });
     await type("Retained title", true);
@@ -118,7 +119,11 @@ describe("useTitleDraft", () => {
     await type("Temporary title", true);
     await type("Saved title", true);
     await act(async () =>
-      reply.resolve({ summary: { revision: 2, title: "Temporary title" }, claimed: [] }),
+      reply.resolve({
+        summary: { revision: 2, title: "Temporary title" },
+        acknowledgement: { kind: "legacy", revision: 2 },
+        claimed: [],
+      }),
     );
     expect(writeTitle).toHaveBeenCalledTimes(2);
     expect(canUnload()).toBe(false);
@@ -126,13 +131,19 @@ describe("useTitleDraft", () => {
 
   it("saves a restoration after the earlier title reply lands ahead of its stream", async () => {
     const reply = deferredWrite();
-    writeTitle
-      .mockReturnValueOnce(reply.promise)
-      .mockResolvedValue({ summary: { revision: 3, title: "Saved title" }, claimed: [] });
+    writeTitle.mockReturnValueOnce(reply.promise).mockResolvedValue({
+      summary: { revision: 3, title: "Saved title" },
+      acknowledgement: { kind: "legacy", revision: 3 },
+      claimed: [],
+    });
     await type("Temporary title", true);
     await type("Saved title");
     await act(async () =>
-      reply.resolve({ summary: { revision: 2, title: "Temporary title" }, claimed: [] }),
+      reply.resolve({
+        summary: { revision: 2, title: "Temporary title" },
+        acknowledgement: { kind: "legacy", revision: 2 },
+        claimed: [],
+      }),
     );
     expect(canUnload()).toBe(false);
     await type("Saved title", true);

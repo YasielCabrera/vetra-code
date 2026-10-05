@@ -78,6 +78,13 @@ export const ticketRpcLayer = TicketsRpcGroup.toLayer(
         ),
       [WS_METHODS.ticketsGitHubIssueRefresh]: (input) =>
         observeEffect(WS_METHODS.ticketsGitHubIssueRefresh, tickets.refreshGitHubIssue(input)),
+      [WS_METHODS.ticketsGitHubIssueInvalidate]: (input) =>
+        observeEffect(
+          WS_METHODS.ticketsGitHubIssueInvalidate,
+          tickets.invalidateGitHubIssue(input),
+        ),
+      [WS_METHODS.ticketsIssueLinkCandidates]: (input) =>
+        observeEffect(WS_METHODS.ticketsIssueLinkCandidates, tickets.issueLinkCandidates(input)),
       [WS_METHODS.ticketsLaunchDraft]: (input) =>
         observeEffect(WS_METHODS.ticketsLaunchDraft, drafting.launchDraft(input)),
       [WS_METHODS.ticketsSubscribePlan]: (input) =>

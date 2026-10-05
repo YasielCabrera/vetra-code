@@ -160,6 +160,9 @@ export type GitHubIssueSnapshot = typeof GitHubIssueSnapshot.Type;
 export const TicketPlanStatus = Schema.Literals(["active", "archived"]);
 export type TicketPlanStatus = typeof TicketPlanStatus.Type;
 
+export const TicketPlanReviewStatus = Schema.Literals(["draft", "ready"]);
+export type TicketPlanReviewStatus = typeof TicketPlanReviewStatus.Type;
+
 /**
  * A plan without its body, as every ticket summary lists it. Lives here rather than in
  * `ticketPlan.ts` because `TicketSummary` embeds it and `ticketPlan.ts` imports this module.
@@ -173,7 +176,8 @@ export const TicketPlanSummary = Schema.Struct({
   number: PositiveInt,
   title: Schema.String,
   status: TicketPlanStatus,
-  /** Bumps only when the title or body changes; archiving and comments leave it alone. */
+  reviewStatus: TicketPlanReviewStatus.pipe(Schema.withDecodingDefault(Effect.succeed("draft"))),
+  /** Bumps only when the title or body changes; review, archiving and comments leave it alone. */
   revision: PositiveInt,
   /** Unresolved top-level comments; replies never count. */
   openCommentCount: NonNegativeInt,
@@ -258,6 +262,13 @@ export const TicketActivityEntry = Schema.Union([
     name: Schema.String,
   }),
   Schema.Struct({ type: Schema.Literal("synced"), changes: Schema.Array(TrimmedNonEmptyString) }),
+  Schema.Struct({
+    type: Schema.Literal("plan_review_status_changed"),
+    planId: TicketPlanId,
+    number: PositiveInt,
+    from: TicketPlanReviewStatus,
+    to: TicketPlanReviewStatus,
+  }),
   Schema.Struct({
     type: Schema.Literals([
       "plan_created",

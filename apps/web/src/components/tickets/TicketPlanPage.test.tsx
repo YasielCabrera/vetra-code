@@ -51,7 +51,7 @@ vi.mock("../WorkspacePageHeader", () => ({
 }));
 vi.mock("./TicketActivityTimeline", () => ({
   TicketActorName: () => "You",
-  PLAN_ENTRY_VERBS: {},
+  PLAN_ENTRY_VERBS: { plan_review_status_changed: "marked" },
 }));
 vi.mock("./TicketStartThreadMenu", () => ({ TicketStartThreadMenu: () => null }));
 vi.mock("./TicketPlanCommentSurface", () => ({
@@ -101,6 +101,7 @@ const plan: TicketPlan = {
     number: 1,
     title: "Saved title",
     status: "active",
+    reviewStatus: "draft",
     revision: 1,
     openCommentCount: 0,
     createdBy: { type: "user" },
@@ -212,6 +213,18 @@ async function editTextarea(label: string, value: string) {
   return textarea;
 }
 
+function deferredPlanWrite() {
+  let resolve = (_result: Awaited<ReturnType<typeof actions.updatePlan>>) => {};
+  const promise = new Promise<Awaited<ReturnType<typeof actions.updatePlan>>>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}
+
+function reviewLabel() {
+  return container.querySelector('[aria-label="Plan review status"]')?.textContent;
+}
+
 describe("TicketPlanPage loading", () => {
   it("opens the plan from the board while the ticket's detail is still loading", async () => {
     currentDetail = AsyncResult.initial(true);
@@ -285,6 +298,7 @@ describe("TicketPlanPage archive", () => {
       .mockReturnValueOnce(bodyReply)
       .mockResolvedValueOnce({
         plan: { ...plan.summary, status: "archived", revision: 3 },
+        contentCommit: { observedRevision: 3, revision: 3 },
         attachments: [],
       });
     await renderPage();
@@ -298,6 +312,7 @@ describe("TicketPlanPage archive", () => {
     await act(async () =>
       completeTitle({
         plan: { ...plan.summary, title: "New title", revision: 2 },
+        contentCommit: { observedRevision: 1, revision: 2 },
         attachments: [],
       }),
     );
@@ -308,7 +323,11 @@ describe("TicketPlanPage archive", () => {
     });
     expect(actions.updatePlan).toHaveBeenCalledTimes(2);
     await act(async () =>
-      completeBody({ plan: { ...plan.summary, revision: 3 }, attachments: [] }),
+      completeBody({
+        plan: { ...plan.summary, revision: 3 },
+        contentCommit: { observedRevision: 2, revision: 3 },
+        attachments: [],
+      }),
     );
     expect(actions.updatePlan).toHaveBeenCalledTimes(3);
     expect(actions.updatePlan).toHaveBeenLastCalledWith("environment-1", {
@@ -323,9 +342,11 @@ describe("TicketPlanPage archive", () => {
     const titleReply = new Promise<Awaited<ReturnType<typeof actions.updatePlan>>>((complete) => {
       completeTitle = complete;
     });
-    actions.updatePlan
-      .mockReturnValueOnce(titleReply)
-      .mockResolvedValue({ plan: { ...plan.summary, revision: 3 }, attachments: [] });
+    actions.updatePlan.mockReturnValueOnce(titleReply).mockResolvedValue({
+      plan: { ...plan.summary, revision: 3 },
+      contentCommit: { observedRevision: 2, revision: 3 },
+      attachments: [],
+    });
     await renderPage();
     await editTitle("Temporary title");
     await editTitle("Saved title");
@@ -333,6 +354,7 @@ describe("TicketPlanPage archive", () => {
     await act(async () =>
       completeTitle({
         plan: { ...plan.summary, title: "Temporary title", revision: 2 },
+        contentCommit: { observedRevision: 1, revision: 2 },
         attachments: [],
       }),
     );
@@ -348,7 +370,11 @@ describe("TicketPlanPage archive", () => {
     actions.updatePlan
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ plan: plan.summary, attachments: [] })
-      .mockResolvedValue({ plan: { ...plan.summary, revision: 2 }, attachments: [] });
+      .mockResolvedValue({
+        plan: { ...plan.summary, revision: 2 },
+        contentCommit: { observedRevision: 1, revision: 2 },
+        attachments: [],
+      });
     await renderPage();
     await click("Edit plan");
     await editTextarea("Plan", "Retained failed body");
@@ -368,6 +394,545 @@ describe("TicketPlanPage archive", () => {
       planId: "plan-1",
       expectedRevision: 1,
       body: "Retained failed body",
+    });
+  });
+});
+
+describe("TicketPlanPage review status", () => {
+  it("cancels Ready when a title save succeeds without a content receipt", async () => {
+    actions.updatePlan.mockResolvedValue({
+      plan: { ...plan.summary, title: "Reviewed title", revision: 2 },
+      attachments: [],
+    });
+    await renderPage();
+    await editTextarea("Plan title", "Reviewed title");
+    await click("Mark Ready");
+    expect(actions.updatePlan).toHaveBeenCalledExactlyOnceWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 1,
+      title: "Reviewed title",
+    });
+    expect(titleEditor().value).toBe("Reviewed title");
+    expect(titleEditor().disabled).toBe(false);
+    expect(reviewLabel()).toBe("Draft");
+  });
+
+  it("waits for full content after an ordinary old-server title save before allowing Ready", async () => {
+    actions.updatePlan.mockResolvedValue({
+      plan: { ...plan.summary, title: "Saved on older server", revision: 2 },
+      attachments: [],
+    });
+    await renderPage();
+    await editTitle("Saved on older server");
+    expect(actions.updatePlan).toHaveBeenCalledExactlyOnceWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 1,
+      title: "Saved on older server",
+    });
+    await click("Mark Ready");
+    expect(actions.updatePlan).toHaveBeenCalledTimes(1);
+    expect(reviewLabel()).toBe("Draft");
+    currentPlan = {
+      ...plan,
+      summary: { ...plan.summary, title: "Saved on older server", revision: 2 },
+      body: "Full streamed body to review",
+    };
+    await renderPage();
+    expect(container.textContent).toContain("Full streamed body to review");
+    await click("Mark Ready");
+    expect(actions.updatePlan).toHaveBeenLastCalledWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 2,
+      reviewStatus: "ready",
+    });
+    expect(actions.updatePlan).toHaveBeenCalledTimes(2);
+    expect(reviewLabel()).toBe("Draft");
+  });
+
+  it("settles an ordinary old-server autosave through full content before allowing Ready", async () => {
+    actions.updatePlan.mockResolvedValue({
+      plan: { ...plan.summary, revision: 2 },
+      attachments: [],
+    });
+    await renderPage();
+    await click("Edit plan");
+    const body = await editTextarea("Plan", "Older server saved this body");
+    await act(async () => vi.advanceTimersByTimeAsync(2400));
+    expect(actions.updatePlan).toHaveBeenCalledTimes(1);
+    expect(body.disabled).toBe(false);
+    expect(body.value).toBe("Older server saved this body");
+    await click("Mark Ready");
+    expect(actions.updatePlan).toHaveBeenCalledTimes(1);
+    currentPlan = {
+      ...plan,
+      summary: { ...plan.summary, revision: 2 },
+      body: "Older server saved this body",
+    };
+    await renderPage();
+    await click("Mark Ready");
+    expect(actions.updatePlan).toHaveBeenCalledTimes(2);
+    expect(actions.updatePlan).toHaveBeenLastCalledWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 2,
+      reviewStatus: "ready",
+    });
+    expect(reviewLabel()).toBe("Draft");
+  });
+
+  it("shows Ready and Draft destinations in the plan's history", async () => {
+    currentDetail = AsyncResult.success({
+      ...detail,
+      activity: [
+        {
+          id: 1,
+          ticketId: plan.summary.ticketId,
+          actor: { type: "user" },
+          createdAt: plan.summary.updatedAt,
+          entry: {
+            type: "plan_review_status_changed",
+            planId: plan.summary.planId,
+            number: 1,
+            from: "draft",
+            to: "ready",
+          },
+        },
+        {
+          id: 2,
+          ticketId: plan.summary.ticketId,
+          actor: { type: "user" },
+          createdAt: plan.summary.updatedAt,
+          entry: {
+            type: "plan_review_status_changed",
+            planId: plan.summary.planId,
+            number: 1,
+            from: "ready",
+            to: "draft",
+          },
+        },
+      ],
+    });
+    await renderPage();
+    await click("History");
+    const entries = [...container.querySelectorAll('[aria-label="Plan history"] li')].map(
+      (item) => item.textContent,
+    );
+    expect(entries[0]).toContain("You marked the plan Draft");
+    expect(entries[1]).toContain("You marked the plan Ready");
+  });
+
+  it("saves an outstanding title and body before Ready and waits for the subscribed status", async () => {
+    const titleReply = deferredPlanWrite();
+    const bodyReply = deferredPlanWrite();
+    const readyReply = deferredPlanWrite();
+    actions.updatePlan
+      .mockReturnValueOnce(titleReply.promise)
+      .mockReturnValueOnce(bodyReply.promise)
+      .mockReturnValueOnce(readyReply.promise);
+    await renderPage();
+    await editTitle("Reviewed title");
+    await click("Edit plan");
+    const body = await editTextarea("Plan", "Reviewed body");
+    await click("Mark Ready");
+    await click("Mark Ready");
+    expect(body.disabled).toBe(true);
+    expect(titleEditor().disabled).toBe(true);
+    expect(reviewLabel()).toBe("Draft");
+    expect(actions.updatePlan).toHaveBeenCalledTimes(1);
+    await act(async () =>
+      titleReply.resolve({
+        plan: { ...plan.summary, title: "Reviewed title", revision: 2 },
+        contentCommit: { observedRevision: 1, revision: 2 },
+        attachments: [],
+      }),
+    );
+    expect(actions.updatePlan).toHaveBeenLastCalledWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 2,
+      body: "Reviewed body",
+    });
+    await act(async () =>
+      bodyReply.resolve({
+        plan: { ...plan.summary, title: "Reviewed title", revision: 3 },
+        contentCommit: { observedRevision: 2, revision: 3 },
+        attachments: [],
+      }),
+    );
+    expect(actions.updatePlan).toHaveBeenLastCalledWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 3,
+      reviewStatus: "ready",
+    });
+    expect(reviewLabel()).toBe("Draft");
+    await act(async () =>
+      readyReply.resolve({
+        plan: { ...plan.summary, title: "Reviewed title", revision: 3, reviewStatus: "ready" },
+        contentCommit: { observedRevision: 3, revision: 3 },
+        attachments: [],
+      }),
+    );
+    expect(reviewLabel()).toBe("Draft");
+    expect(body.disabled).toBe(false);
+    currentPlan = {
+      ...plan,
+      body: "Reviewed body",
+      summary: { ...plan.summary, title: "Reviewed title", revision: 3, reviewStatus: "ready" },
+    };
+    await renderPage();
+    expect(reviewLabel()).toBe("Ready");
+  });
+
+  it.each([null, "conflict"] as const)(
+    "retains failed body drafts and aborts Ready after %s",
+    async (failure) => {
+      const bodyReply = deferredPlanWrite();
+      actions.updatePlan.mockReturnValue(bodyReply.promise);
+      await renderPage();
+      await click("Edit plan");
+      const body = await editTextarea("Plan", "Retain reviewed body");
+      await click("Mark Ready");
+      await click("Options for T-1/P1");
+      await click("Delete");
+      expect(actions.confirmDeletePlan).not.toHaveBeenCalled();
+      await act(async () => bodyReply.resolve(failure));
+      expect(body.disabled).toBe(false);
+      expect(body.value).toBe("Retain reviewed body");
+      expect(reviewLabel()).toBe("Draft");
+      expect(actions.updatePlan).toHaveBeenCalledTimes(1);
+      if (failure === "conflict")
+        expect(container.textContent).toContain("Someone else changed the plan");
+    },
+  );
+
+  it("retains a title draft and cancels Ready when its receipt includes a superseding edit", async () => {
+    const titleReply = deferredPlanWrite();
+    actions.updatePlan.mockReturnValue(titleReply.promise);
+    await renderPage();
+    await editTextarea("Plan title", "Reviewed title");
+    await click("Mark Ready");
+    await act(async () =>
+      titleReply.resolve({
+        plan: { ...plan.summary, title: "Other writer's title", revision: 3 },
+        contentCommit: { observedRevision: 1, revision: 2 },
+        attachments: [],
+      }),
+    );
+    expect(titleEditor().value).toBe("Reviewed title");
+    expect(titleEditor().disabled).toBe(false);
+    expect(reviewLabel()).toBe("Draft");
+    expect(actions.updatePlan).toHaveBeenCalledTimes(1);
+  });
+
+  it("protects title blur from a stale matching-title no-op with an unreviewed remote body", async () => {
+    const titleReply = deferredPlanWrite();
+    actions.updatePlan.mockReturnValue(titleReply.promise);
+    await renderPage();
+    await editTitle("Reviewed title");
+    expect(actions.updatePlan).toHaveBeenCalledWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 1,
+      title: "Reviewed title",
+    });
+    await click("Mark Ready");
+    currentPlan = {
+      ...plan,
+      body: "Unreviewed remote body",
+      summary: { ...plan.summary, title: "Reviewed title", revision: 2 },
+    };
+    await renderPage();
+    await act(async () =>
+      titleReply.resolve({
+        plan: currentPlan.summary,
+        contentCommit: { observedRevision: 2, revision: 2 },
+        attachments: [],
+      }),
+    );
+    expect(titleEditor().value).toBe("Reviewed title");
+    expect(titleEditor().disabled).toBe(false);
+    expect(container.textContent).toContain("Unreviewed remote body");
+    expect(reviewLabel()).toBe("Draft");
+    expect(actions.updatePlan).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["before", "after"])(
+    "cancels a matching-body no-op with an unreviewed remote title when the stream arrives %s the receipt",
+    async (streamOrder) => {
+      const bodyReply = deferredPlanWrite();
+      actions.updatePlan.mockReturnValue(bodyReply.promise);
+      await renderPage();
+      await click("Edit plan");
+      const body = await editTextarea("Plan", "Reviewed body");
+      await click("Mark Ready");
+      currentPlan = {
+        ...plan,
+        body: "Reviewed body",
+        summary: { ...plan.summary, title: "Unreviewed remote title", revision: 2 },
+      };
+      if (streamOrder === "before") await renderPage();
+      await act(async () =>
+        bodyReply.resolve({
+          plan: currentPlan.summary,
+          contentCommit: { observedRevision: 2, revision: 2 },
+          attachments: [],
+        }),
+      );
+      if (streamOrder === "after") await renderPage();
+      expect(body.value).toBe("Reviewed body");
+      expect(body.disabled).toBe(false);
+      expect(titleEditor().value).toBe("Unreviewed remote title");
+      expect(reviewLabel()).toBe("Draft");
+      expect(actions.updatePlan).toHaveBeenCalledTimes(1);
+      expect(actions.updatePlan).toHaveBeenCalledWith("environment-1", {
+        planId: "plan-1",
+        expectedRevision: 1,
+        body: "Reviewed body",
+      });
+    },
+  );
+
+  it("cancels Ready when remote content is adopted before the title flush completes", async () => {
+    const titleReply = deferredPlanWrite();
+    actions.updatePlan.mockReturnValue(titleReply.promise);
+    await renderPage();
+    await editTitle("Reviewed title");
+    await click("Mark Ready");
+    currentPlan = {
+      ...plan,
+      body: "New remote content",
+      summary: { ...plan.summary, title: "Remote title", revision: 3 },
+    };
+    await renderPage();
+    await act(async () =>
+      titleReply.resolve({
+        plan: { ...plan.summary, title: "Reviewed title", revision: 2 },
+        contentCommit: { observedRevision: 1, revision: 2 },
+        attachments: [],
+      }),
+    );
+    expect(container.textContent).toContain("New remote content");
+    expect(titleEditor().value).toBe("Reviewed title");
+    expect(reviewLabel()).toBe("Draft");
+    expect(actions.updatePlan).toHaveBeenCalledTimes(1);
+  });
+
+  it("settles a previously started autosave without deadlock before marking its content Ready", async () => {
+    const bodyReply = deferredPlanWrite();
+    actions.updatePlan.mockReturnValueOnce(bodyReply.promise).mockResolvedValue({
+      plan: { ...plan.summary, revision: 2, reviewStatus: "ready" },
+      contentCommit: { observedRevision: 2, revision: 2 },
+      attachments: [],
+    });
+    await renderPage();
+    await click("Edit plan");
+    const body = await editTextarea("Plan", "Autosaved reviewed body");
+    await act(async () => vi.advanceTimersByTimeAsync(800));
+    await click("Mark Ready");
+    currentPlan = {
+      ...plan,
+      body: "Autosaved reviewed body",
+      summary: { ...plan.summary, revision: 2 },
+    };
+    await renderPage();
+    await act(async () =>
+      bodyReply.resolve({
+        plan: currentPlan.summary,
+        contentCommit: { observedRevision: 1, revision: 2 },
+        attachments: [],
+      }),
+    );
+    expect(actions.updatePlan).toHaveBeenLastCalledWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 2,
+      reviewStatus: "ready",
+    });
+    expect(body.disabled).toBe(false);
+    expect(body.value).toBe("Autosaved reviewed body");
+  });
+
+  it("returns Ready to Draft without flushing a dirty body and ignores an equal-revision delayed reply", async () => {
+    const draftReply = deferredPlanWrite();
+    currentPlan = { ...plan, summary: { ...plan.summary, reviewStatus: "ready" } };
+    actions.updatePlan.mockReturnValue(draftReply.promise);
+    await renderPage();
+    await click("Edit plan");
+    const body = await editTextarea("Plan", "Unflushed local draft");
+    await click("Return to Draft");
+    expect(actions.updatePlan).toHaveBeenCalledWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 1,
+      reviewStatus: "draft",
+    });
+    currentPlan = { ...plan, summary: { ...plan.summary, reviewStatus: "draft" } };
+    await renderPage();
+    expect(reviewLabel()).toBe("Draft");
+    currentPlan = { ...plan, summary: { ...plan.summary, reviewStatus: "ready" } };
+    await renderPage();
+    await act(async () =>
+      draftReply.resolve({
+        plan: { ...plan.summary, reviewStatus: "draft" },
+        attachments: [],
+      }),
+    );
+    expect(reviewLabel()).toBe("Ready");
+    expect(body.value).toBe("Unflushed local draft");
+    expect(body.disabled).toBe(false);
+    expect(actions.updatePlan).toHaveBeenCalledTimes(1);
+  });
+
+  it("changes archived review metadata both ways while the document stays read-only", async () => {
+    currentPlan = { ...plan, summary: { ...plan.summary, status: "archived" } };
+    actions.updatePlan.mockResolvedValue({ plan: currentPlan.summary, attachments: [] });
+    await renderPage();
+    expect(container.textContent).toContain("This plan is archived");
+    expect(container.querySelector('[aria-label="Plan title"]')).toBeNull();
+    await click("Mark Ready");
+    expect(actions.updatePlan).toHaveBeenLastCalledWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 1,
+      reviewStatus: "ready",
+    });
+    expect(reviewLabel()).toBe("Draft");
+    currentPlan = {
+      ...plan,
+      summary: { ...plan.summary, status: "archived", reviewStatus: "ready" },
+    };
+    await renderPage();
+    expect(reviewLabel()).toBe("Ready");
+    await click("Return to Draft");
+    expect(actions.updatePlan).toHaveBeenLastCalledWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 1,
+      reviewStatus: "draft",
+    });
+    expect(container.querySelector('textarea[aria-label="Plan"]')).toBeNull();
+    expect(container.textContent).toContain("Saved body");
+    expect(actions.updatePlan).toHaveBeenCalledTimes(2);
+  });
+
+  it("adopts a newer body stream after Draft withdrawal returned its summary first", async () => {
+    currentPlan = { ...plan, summary: { ...plan.summary, reviewStatus: "ready" } };
+    actions.updatePlan.mockResolvedValue({
+      plan: { ...plan.summary, reviewStatus: "draft", revision: 2 },
+      contentCommit: { observedRevision: 1, revision: 1 },
+      attachments: [],
+    });
+    await renderPage();
+    await click("Return to Draft");
+    expect(reviewLabel()).toBe("Ready");
+    currentPlan = {
+      ...plan,
+      body: "New content from another client",
+      summary: { ...plan.summary, reviewStatus: "draft", revision: 2 },
+    };
+    await renderPage();
+    expect(reviewLabel()).toBe("Draft");
+    expect(container.textContent).toContain("New content from another client");
+  });
+
+  it("uses subscribed archive state after a delayed active reply when marking Ready", async () => {
+    const draftReply = deferredPlanWrite();
+    currentPlan = { ...plan, summary: { ...plan.summary, reviewStatus: "ready" } };
+    actions.updatePlan.mockReturnValueOnce(draftReply.promise).mockResolvedValue({
+      plan: { ...plan.summary, status: "archived", reviewStatus: "ready" },
+      attachments: [],
+    });
+    await renderPage();
+    await click("Edit plan");
+    await editTextarea("Plan", "Retained draft for restoration");
+    await click("Return to Draft");
+    currentPlan = {
+      ...plan,
+      summary: { ...plan.summary, status: "archived", reviewStatus: "draft" },
+    };
+    await renderPage();
+    await act(async () =>
+      draftReply.resolve({
+        plan: { ...plan.summary, status: "active", reviewStatus: "draft" },
+        attachments: [],
+      }),
+    );
+    expect(container.textContent).toContain("This plan is archived");
+    expect(container.querySelector('textarea[aria-label="Plan"]')).toBeNull();
+    await click("Mark Ready");
+    expect(actions.updatePlan).toHaveBeenLastCalledWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 1,
+      reviewStatus: "ready",
+    });
+    expect(actions.updatePlan).toHaveBeenCalledTimes(2);
+    expect(container.textContent).toContain("Saved body");
+    expect(container.textContent).not.toContain("Retained draft for restoration");
+    expect(container.querySelector('[aria-label="Plan title"]')).toBeNull();
+  });
+
+  it("marks loaded archived content Ready at its revision and retains a failed draft for restoration", async () => {
+    actions.updatePlan
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        plan: { ...plan.summary, status: "archived", reviewStatus: "ready", revision: 2 },
+        contentCommit: { observedRevision: 2, revision: 2 },
+        attachments: [],
+      })
+      .mockResolvedValueOnce({
+        plan: { ...plan.summary, status: "active", reviewStatus: "ready", revision: 2 },
+        contentCommit: { observedRevision: 2, revision: 2 },
+        attachments: [],
+      })
+      .mockResolvedValue("conflict");
+    await renderPage();
+    await click("Edit plan");
+    await editTextarea("Plan", "Failed local draft to keep");
+    await act(async () => vi.advanceTimersByTimeAsync(800));
+    currentPlan = {
+      ...plan,
+      body: "Persisted remote body",
+      summary: { ...plan.summary, status: "archived", revision: 2 },
+    };
+    await renderPage();
+    expect(container.textContent).toContain("Persisted remote body");
+    expect(container.textContent).not.toContain("Failed local draft to keep");
+    await click("Mark Ready");
+    expect(actions.updatePlan).toHaveBeenLastCalledWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 2,
+      reviewStatus: "ready",
+    });
+    expect(actions.updatePlan).toHaveBeenCalledTimes(2);
+    currentPlan = { ...currentPlan, summary: { ...currentPlan.summary, reviewStatus: "ready" } };
+    await renderPage();
+    await click("Restore");
+    currentPlan = { ...currentPlan, summary: { ...currentPlan.summary, status: "active" } };
+    await renderPage();
+    expect(container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Plan"]')?.value).toBe(
+      "Failed local draft to keep",
+    );
+    expect(container.textContent).toContain("Someone else changed the plan");
+    expect(reviewLabel()).toBe("Ready");
+  });
+
+  it("keeps subscribed Ready while editing the title and body", async () => {
+    currentPlan = { ...plan, summary: { ...plan.summary, reviewStatus: "ready" } };
+    actions.updatePlan
+      .mockResolvedValueOnce({
+        plan: { ...currentPlan.summary, title: "Revised title", revision: 2 },
+        contentCommit: { observedRevision: 1, revision: 2 },
+        attachments: [],
+      })
+      .mockResolvedValue({
+        plan: { ...currentPlan.summary, title: "Revised title", revision: 3 },
+        contentCommit: { observedRevision: 2, revision: 3 },
+        attachments: [],
+      });
+    await renderPage();
+    await editTitle("Revised title");
+    await click("Edit plan");
+    const body = await editTextarea("Plan", "Revised body");
+    await act(async () => vi.advanceTimersByTimeAsync(800));
+    expect(reviewLabel()).toBe("Ready");
+    expect(body.value).toBe("Revised body");
+    expect(actions.updatePlan).toHaveBeenLastCalledWith("environment-1", {
+      planId: "plan-1",
+      expectedRevision: 2,
+      body: "Revised body",
     });
   });
 });

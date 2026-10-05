@@ -39,3 +39,25 @@ describe("ticket MCP write limits", () => {
     ).toBe(false);
   });
 });
+
+describe("ticket plan MCP review status", () => {
+  const update = Schema.decodeUnknownSync(
+    TicketsToolkit.tools.t3_ticket_plan_update.parametersSchema,
+  );
+
+  it("decodes Draft and Ready separately from archive lifecycle and requires a revision", () => {
+    for (const reviewStatus of ["draft", "ready"] as const) {
+      expect(
+        update({ plan: "T-1/P1", expectedRevision: 2, status: "archived", reviewStatus }),
+      ).toEqual({ plan: "T-1/P1", expectedRevision: 2, status: "archived", reviewStatus });
+    }
+    expect(update({ plan: "T-1/P1", expectedRevision: 1 })).toEqual({
+      plan: "T-1/P1",
+      expectedRevision: 1,
+    });
+    for (const reviewStatus of ["active", "archived", "approved", "", null, 1]) {
+      expect(() => update({ plan: "T-1/P1", expectedRevision: 1, reviewStatus })).toThrow();
+    }
+    expect(() => update({ plan: "T-1/P1", reviewStatus: "ready" })).toThrow();
+  });
+});

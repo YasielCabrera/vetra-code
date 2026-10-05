@@ -1,109 +1,32 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
-import {
-  IssueActivity,
-  IssueAssigneeChangeInput,
-  IssueListInput,
-  IssueListResult,
-  type ProjectId,
-} from "./index.ts";
+import { IssueActivity } from "./issue.ts";
+import { WS_METHODS, WsRpcGroup } from "./rpc.ts";
 
-const decodeInput = Schema.decodeUnknownSync(IssueListInput);
-
-describe("IssueListInput", () => {
-  it("trims and bounds search text before it reaches a host query", () => {
-    expect(decodeInput({ state: "open", query: "  broken login  " }).query).toBe("broken login");
-    expect(decodeInput({ state: "open", query: "x".repeat(200) }).query).toHaveLength(200);
-    expect(() => decodeInput({ state: "open", query: "x".repeat(201) })).toThrow();
-  });
-
-  it("bounds the per-repository page to one GitHub API page", () => {
-    expect(decodeInput({ state: "all", limit: 99 }).limit).toBe(99);
-    expect(() => decodeInput({ state: "all", limit: 100 })).toThrow();
-  });
-
-  it("accepts the assignee sentinels and account names, and nothing that could add a qualifier", () => {
-    expect(decodeInput({ state: "open", assignee: "@me" }).assignee).toBe("@me");
-    expect(decodeInput({ state: "open", assignee: "@none" }).assignee).toBe("@none");
-    expect(decodeInput({ state: "open", assignee: "  gpuente  " }).assignee).toBe("gpuente");
-    // Each of these would end the qualifier it is written into and start another.
-    for (const assignee of [
-      "gpuente sort:created-asc",
-      "gpuente state:closed",
-      'gpuente"',
-      "-gpuente",
-      "@someone",
-      "x".repeat(65),
+describe("issue RPC registration", () => {
+  it("serves ticket workflows without the standalone Issues API", () => {
+    for (const method of [
+      "issues.list",
+      "issues.detail",
+      "issues.activity",
+      "issues.assigneeCandidates",
+      "issues.setAssignees",
+      "issues.invalidate",
     ]) {
-      expect(() => decodeInput({ state: "open", assignee })).toThrow();
+      expect(WsRpcGroup.requests.has(method)).toBe(false);
     }
-  });
-
-  it("bounds opaque continuation cursors before they reach the service", () => {
-    expect(
-      decodeInput({ state: "open", cursors: { "github.com acme/web": "cursor-1" } }).cursors,
-    ).toEqual({ "github.com acme/web": "cursor-1" });
-    expect(() =>
-      decodeInput({ state: "open", cursors: { "github.com acme/web": "x".repeat(4097) } }),
-    ).toThrow();
-  });
-});
-
-describe("IssueListResult", () => {
-  it("round-trips through the RPC JSON codec", () => {
-    const result: IssueListResult = {
-      providers: [
-        {
-          host: "github.com",
-          kind: "github",
-          projectCount: 1,
-          configured: true,
-          detail: null,
-        },
-      ],
-      repositories: [
-        {
-          provider: "github",
-          host: "github.com",
-          projectId: "p1" as ProjectId,
-          projectTitle: "web",
-          repository: "acme/web",
-          repositoryUrl: "https://github.com/acme/web",
-          newIssueUrl: "https://github.com/acme/web/issues/new",
-        },
-      ],
-      entries: [
-        {
-          provider: "github",
-          host: "github.com",
-          projectId: "p1" as ProjectId,
-          projectTitle: "web",
-          repository: "acme/web",
-          number: 7,
-          title: "Login fails",
-          url: "https://github.com/acme/web/issues/7",
-          author: { login: "octocat", name: null, avatarUrl: null },
-          state: "open",
-          createdAt: "2026-08-01T00:00:00Z",
-          updatedAt: "2026-08-02T00:00:00Z",
-          closedAt: null,
-          labels: [{ name: "bug", color: "ff0000", description: null }],
-          assignees: [],
-          milestone: null,
-        },
-      ],
-      errors: [],
-      truncated: true,
-      nextCursors: {
-        "github.com acme/web": "2026-08-01T00:00:00Z|99|7",
-      },
-    };
-    const codec = Schema.toCodecJson(IssueListResult);
-
-    expect(Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(result))).toStrictEqual(
-      result,
-    );
+    for (const method of [
+      WS_METHODS.ticketsIssueLinkCandidates,
+      WS_METHODS.ticketsGitHubIssueDetail,
+      WS_METHODS.ticketsGitHubIssueActivity,
+      WS_METHODS.ticketsGitHubIssueAssigneeCandidates,
+      WS_METHODS.ticketsGitHubIssueSetAssignees,
+      WS_METHODS.ticketsGitHubIssueInvalidate,
+      WS_METHODS.ticketsGitHubIssueRefresh,
+    ]) {
+      expect(WsRpcGroup.requests.has(method)).toBe(true);
+    }
   });
 });
 
@@ -144,39 +67,5 @@ describe("IssueActivity", () => {
     expect(
       Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(activity)),
     ).toStrictEqual(activity);
-  });
-});
-
-describe("IssueAssigneeChangeInput", () => {
-  const decode = Schema.decodeUnknownSync(IssueAssigneeChangeInput);
-
-  it("accepts a bounded provider identity list", () => {
-    expect(
-      decode({
-        projectId: "p1",
-        repository: "acme/web",
-        number: 7,
-        assignees: [" octocat "],
-        assigned: true,
-      }).assignees,
-    ).toEqual(["octocat"]);
-    expect(() =>
-      decode({
-        projectId: "p1",
-        repository: "acme/web",
-        number: 7,
-        assignees: [],
-        assigned: true,
-      }),
-    ).toThrow();
-    expect(() =>
-      decode({
-        projectId: "p1",
-        repository: "acme/web",
-        number: 7,
-        assignees: Array.from({ length: 11 }, (_, index) => `user-${index}`),
-        assigned: true,
-      }),
-    ).toThrow();
   });
 });

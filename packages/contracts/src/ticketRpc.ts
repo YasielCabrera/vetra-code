@@ -1,14 +1,10 @@
 import * as Schema from "effect/Schema";
+import * as Struct from "effect/Struct";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 
-import {
-  IssueActivity,
-  IssueActor,
-  IssueAssigneeCandidateList,
-  IssueAssigneeChangeInput,
-  IssueDetail,
-} from "./issue.ts";
+import { IssueActivity, IssueActor, IssueAssigneeCandidateList, IssueDetail } from "./issue.ts";
+import { ProjectId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { EnvironmentAuthorizationError } from "./auth.ts";
 import {
   TicketCommentInput,
@@ -17,6 +13,7 @@ import {
   TicketDetail,
   TicketError,
   TicketGitHubSource,
+  TicketGitHubRef,
   TicketGitHubSourceRef,
   TicketGitHubSourceRemoveInput,
   TicketGitHubSourceSet,
@@ -55,11 +52,22 @@ import {
   TicketPlanWriteResult,
 } from "./ticketPlan.ts";
 
-export const TicketGitHubIssueRef = TicketSubscribeDetailInput;
+export const TicketGitHubIssueRef = Schema.Struct({
+  ...TicketSubscribeDetailInput.fields,
+  linkedIssue: Schema.optional(TicketGitHubRef),
+});
 export type TicketGitHubIssueRef = typeof TicketGitHubIssueRef.Type;
+export const TicketLinkedIssueRef = Schema.Struct({
+  ...TicketSubscribeDetailInput.fields,
+  linkedIssue: TicketGitHubRef,
+});
+export type TicketLinkedIssueRef = typeof TicketLinkedIssueRef.Type;
 export const TicketGitHubIssueAssigneeChangeInput = Schema.Struct({
   ...TicketGitHubIssueRef.fields,
-  assignees: IssueAssigneeChangeInput.fields.assignees,
+  assignees: Schema.Array(TrimmedNonEmptyString).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(10),
+  ),
   assigned: Schema.Boolean,
 });
 export type TicketGitHubIssueAssigneeChangeInput = typeof TicketGitHubIssueAssigneeChangeInput.Type;
@@ -68,8 +76,29 @@ export const TicketGitHubIssueDetail = Schema.Struct({
   body: Schema.String,
   assignees: Schema.Array(IssueActor),
   comments: IssueDetail.fields.comments,
+  preview: Schema.optional(
+    IssueDetail.mapFields(Struct.omit(["title", "body", "assignees", "comments"])),
+  ),
 });
 export type TicketGitHubIssueDetail = typeof TicketGitHubIssueDetail.Type;
+export const TicketIssueLinkCandidates = Schema.Struct({
+  entries: Schema.Array(
+    Schema.Struct({
+      ...TicketGitHubRef.fields,
+      title: IssueDetail.fields.title,
+      state: IssueDetail.fields.state,
+      url: IssueDetail.fields.url,
+    }),
+  ),
+  errors: Schema.Array(
+    Schema.Struct({
+      projectId: ProjectId,
+      projectTitle: TrimmedNonEmptyString,
+      message: TrimmedNonEmptyString,
+    }),
+  ),
+});
+export type TicketIssueLinkCandidates = typeof TicketIssueLinkCandidates.Type;
 
 export const TICKET_WS_METHODS = {
   ticketsSubscribe: "tickets.subscribe",
@@ -96,6 +125,8 @@ export const TICKET_WS_METHODS = {
   ticketsGitHubIssueAssigneeCandidates: "tickets.githubIssue.assigneeCandidates",
   ticketsGitHubIssueSetAssignees: "tickets.githubIssue.setAssignees",
   ticketsGitHubIssueRefresh: "tickets.githubIssue.refresh",
+  ticketsGitHubIssueInvalidate: "tickets.githubIssue.invalidate",
+  ticketsIssueLinkCandidates: "tickets.issueLinkCandidates",
   ticketsLaunchDraft: "tickets.launchDraft",
   ticketsSubscribePlan: "tickets.subscribePlan",
   ticketsCreatePlan: "tickets.createPlan",
@@ -255,8 +286,17 @@ const WsTicketGitHubIssueSetAssigneesRpc = Rpc.make(
   { payload: TicketGitHubIssueAssigneeChangeInput, error: TicketRpcError },
 );
 const WsTicketGitHubIssueRefreshRpc = Rpc.make(TICKET_WS_METHODS.ticketsGitHubIssueRefresh, {
-  payload: TicketGitHubIssueRef,
+  payload: TicketSubscribeDetailInput,
   success: TicketSummary,
+  error: TicketRpcError,
+});
+const WsTicketGitHubIssueInvalidateRpc = Rpc.make(TICKET_WS_METHODS.ticketsGitHubIssueInvalidate, {
+  payload: TicketLinkedIssueRef,
+  error: TicketRpcError,
+});
+const WsTicketsIssueLinkCandidatesRpc = Rpc.make(TICKET_WS_METHODS.ticketsIssueLinkCandidates, {
+  payload: TicketSubscribeDetailInput,
+  success: TicketIssueLinkCandidates,
   error: TicketRpcError,
 });
 
@@ -334,6 +374,8 @@ export const TicketsRpcGroup = RpcGroup.make(
   WsTicketGitHubIssueAssigneeCandidatesRpc,
   WsTicketGitHubIssueSetAssigneesRpc,
   WsTicketGitHubIssueRefreshRpc,
+  WsTicketGitHubIssueInvalidateRpc,
+  WsTicketsIssueLinkCandidatesRpc,
   WsTicketsSubscribePlanRpc,
   WsTicketsCreatePlanRpc,
   WsTicketsUpdatePlanRpc,

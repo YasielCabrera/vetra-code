@@ -7,6 +7,7 @@ import { AsyncResult } from "effect/unstable/reactivity";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
+  CheckIcon,
   CopyIcon,
   MessageSquarePlusIcon,
   MoreHorizontalIcon,
@@ -19,6 +20,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { useTicketActions } from "../../hooks/useTicketActions";
 import { useTicket, useTicketDetail, useTicketPlan } from "../../state/tickets";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { ScrollArea } from "../ui/scroll-area";
@@ -142,6 +144,7 @@ function TicketPlanView(props: {
     doc,
     commitTitle: title.commit,
     uploading,
+    summary,
     onArchived: () => setEditing(null),
   });
   const [tab, setTab] = useState<PlanPanelTab>("open");
@@ -150,10 +153,11 @@ function TicketPlanView(props: {
   const surfaceRef = useRef<PlanCommentSurfaceHandle>(null);
   const sidePanel = useSidePanelFits();
   const archived = summary.status === "archived";
+  const displayedBody = archived ? plan.body : doc.state.text;
   const ticketLabel = formatTicketRef(ticket);
 
   // Locating outdated passages scans the whole body, so typing does not wait for it.
-  const commentedBody = useDeferredValue(doc.state.text);
+  const commentedBody = useDeferredValue(displayedBody);
   const threads = useMemo(
     () => orderPlanCommentThreads(commentedBody, plan.comments),
     [commentedBody, plan.comments],
@@ -216,6 +220,7 @@ function TicketPlanView(props: {
   }, [navigate, props.startEditing, summary.number, ticketKey]);
 
   const deletePlan = async () => {
+    if (status.changing) return;
     if (!(await actions.confirmDeletePlan(summary))) return;
     const discardDraft = doc.reload;
     discardDraft();
@@ -252,7 +257,11 @@ function TicketPlanView(props: {
           </MenuItem>
         )}
         <MenuSeparator />
-        <MenuItem variant="destructive" onClick={() => void deletePlan()}>
+        <MenuItem
+          disabled={status.changing}
+          variant="destructive"
+          onClick={() => void deletePlan()}
+        >
           <Trash2Icon aria-hidden />
           Delete
         </MenuItem>
@@ -344,6 +353,28 @@ function TicketPlanView(props: {
               >
                 Updated {formatRelativeTimeLabel(summary.updatedAt)}
               </time>
+              <Badge
+                aria-label="Plan review status"
+                size="control"
+                variant={summary.reviewStatus === "ready" ? "success" : "warning"}
+              >
+                {summary.reviewStatus === "ready" ? "Ready" : "Draft"}
+              </Badge>
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={status.changing || uploading}
+                onClick={() =>
+                  void status.setReviewStatus(summary.reviewStatus === "ready" ? "draft" : "ready")
+                }
+              >
+                {summary.reviewStatus === "ready" ? (
+                  <PencilIcon aria-hidden />
+                ) : (
+                  <CheckIcon aria-hidden />
+                )}
+                {summary.reviewStatus === "ready" ? "Return to Draft" : "Mark Ready"}
+              </Button>
               {archived || showEditor ? null : (
                 <div className="ms-auto">
                   <Button
@@ -382,6 +413,7 @@ function TicketPlanView(props: {
           <TicketDocumentEditor
             environmentId={environmentId}
             doc={doc}
+            {...(archived ? { readOnlyBody: plan.body } : {})}
             label="Plan"
             editing={showEditor}
             onDone={() => setEditing(null)}
@@ -390,7 +422,7 @@ function TicketPlanView(props: {
               placeholder:
                 "Describe how to implement the ticket. Paste or drop files to attach them.",
               autoFocus: editing === "body",
-              disabled: status.changing,
+              disabled: archived || status.changing,
               onUploadingChange: setUploading,
               minHeight: "16rem",
               document: "plan",
@@ -399,7 +431,7 @@ function TicketPlanView(props: {
           >
             <TicketPlanCommentSurface
               ref={surfaceRef}
-              body={doc.state.text}
+              body={displayedBody}
               revision={summary.revision}
               threads={openThreads}
               focusedId={focus?.id ?? null}
@@ -409,7 +441,7 @@ function TicketPlanView(props: {
             >
               <TicketMarkdownBody
                 environmentId={environmentId}
-                body={doc.state.text}
+                body={displayedBody}
                 attachments={plan.attachments}
                 onBodyChange={archived || status.changing ? undefined : doc.edit}
                 sourcePositions

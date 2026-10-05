@@ -20,6 +20,7 @@ import {
   type TicketPlanUpdateInput,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
+import * as Deferred from "effect/Deferred";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Queue from "effect/Queue";
@@ -27,6 +28,7 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
+import { vi } from "vite-plus/test";
 
 import { createPendingAttachmentId } from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
@@ -900,6 +902,547 @@ describe("TicketService plans", () => {
         sizeBytes: text.length,
       } as const;
     });
+
+  it.effect("stores Draft on every new plan and changes review metadata without revisions", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const ticketId = (yield* tickets.create({ title: "Review" }, USER)).ticket.id;
+        const created = (yield* tickets.createPlan({ ticketId, title: "Plan" }, USER)).plan;
+        const agentCreated = (yield* tickets.createPlan({ ticketId, title: "Alternative" }, agent))
+          .plan;
+        assert.deepStrictEqual(
+          [created, agentCreated, ...(yield* tickets.listPlans(ticketId))].map((plan) => [
+            plan.status,
+            plan.reviewStatus,
+            plan.revision,
+          ]),
+          Array.from({ length: 4 }, () => ["active", "draft", 1]),
+        );
+        const { planId } = created;
+        yield* TestClock.adjust("1 minute");
+        const ready = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, reviewStatus: "ready" },
+          USER,
+        )).plan;
+        yield* TestClock.adjust("1 minute");
+        const repeated = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 99, reviewStatus: "ready" },
+          agent,
+        )).plan;
+        const draft = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 99, reviewStatus: "draft" },
+          agent,
+        )).plan;
+        yield* TestClock.adjust("1 minute");
+        const draftAgain = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 99, reviewStatus: "draft" },
+          USER,
+        )).plan;
+        assert.deepStrictEqual(repeated, ready);
+        assert.deepStrictEqual(draftAgain, draft);
+        assert.deepStrictEqual(
+          [ready, draft, (yield* tickets.getPlan(planId)).summary].map((plan) => [
+            plan.reviewStatus,
+            plan.revision,
+            plan.updatedBy,
+            plan.updatedAt,
+          ]),
+          [
+            ["ready", 1, USER, "1970-01-01T00:01:00.000Z"],
+            ["draft", 1, agent, "1970-01-01T00:02:00.000Z"],
+            ["draft", 1, agent, "1970-01-01T00:02:00.000Z"],
+          ],
+        );
+        const detail = yield* tickets.get(ticketId);
+        assert.deepStrictEqual(
+          [detail.summary.revision, detail.summary.updatedAt],
+          [1, "1970-01-01T00:02:00.000Z"],
+        );
+        assert.deepStrictEqual(
+          detail.activity
+            .filter((activity) => activity.entry.type === "plan_review_status_changed")
+            .map((activity) => [activity.actor, activity.entry]),
+          [
+            [
+              USER,
+              { type: "plan_review_status_changed", planId, number: 1, from: "draft", to: "ready" },
+            ],
+            [
+              agent,
+              { type: "plan_review_status_changed", planId, number: 1, from: "ready", to: "draft" },
+            ],
+          ],
+        );
+      }),
+    ),
+  );
+
+  it.effect("receipts describe changed content, exact and stale no-ops, and mixed updates", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const ticketId = (yield* tickets.create({ title: "Receipt" }, USER)).ticket.id;
+        const created = yield* tickets.createPlan({ ticketId, title: "Title", body: "Body" }, USER);
+        assert.strictEqual(created.contentCommit, undefined);
+        const { planId } = created.plan;
+        const title = yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, title: "New title" },
+          USER,
+        );
+        assert.deepStrictEqual(title.contentCommit, { observedRevision: 1, revision: 2 });
+        const body = yield* tickets.updatePlan(
+          { planId, expectedRevision: 2, body: "New body" },
+          USER,
+        );
+        assert.deepStrictEqual(body.contentCommit, { observedRevision: 2, revision: 3 });
+        const before = yield* tickets.get(ticketId);
+        for (const expectedRevision of [1, 3]) {
+          for (const fields of [{ title: "New title" }, { body: "New body" }]) {
+            const noop = yield* tickets.updatePlan({ planId, expectedRevision, ...fields }, USER);
+            assert.deepStrictEqual(noop.contentCommit, { observedRevision: 3, revision: 3 });
+            assert.deepStrictEqual(noop.plan, body.plan);
+          }
+        }
+        assert.deepStrictEqual(yield* tickets.get(ticketId), before);
+        const ready = yield* tickets.updatePlan(
+          { planId, expectedRevision: 3, reviewStatus: "ready" },
+          USER,
+        );
+        const draft = yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, reviewStatus: "draft" },
+          agent,
+        );
+        assert.deepStrictEqual(
+          [ready.contentCommit, draft.contentCommit],
+          [
+            { observedRevision: 3, revision: 3 },
+            { observedRevision: 3, revision: 3 },
+          ],
+        );
+        const upload = yield* stageUpload("receipt.txt", "Attached");
+        const mixed = yield* tickets.updatePlan(
+          {
+            planId,
+            expectedRevision: 3,
+            title: "Final title",
+            body: `Final vetra-attachment://${upload.id}`,
+            attachments: [upload],
+            reviewStatus: "ready",
+          },
+          USER,
+        );
+        assert.deepStrictEqual(mixed.contentCommit, { observedRevision: 3, revision: 4 });
+        assert.strictEqual(mixed.plan.reviewStatus, "ready");
+        assert.strictEqual(mixed.attachments.length, 1);
+        const stored = yield* tickets.getPlan(planId);
+        assert.deepStrictEqual(stored.summary, mixed.plan);
+        assert.strictEqual(
+          stored.body,
+          `Final vetra-attachment://${mixed.attachments[0]?.attachmentId}`,
+        );
+        const retry = yield* tickets.updatePlan(
+          {
+            planId,
+            expectedRevision: 3,
+            title: "Final title",
+            body: stored.body,
+            reviewStatus: "ready",
+          },
+          USER,
+        );
+        assert.deepStrictEqual(retry.contentCommit, { observedRevision: 4, revision: 4 });
+        assert.deepStrictEqual(retry.plan, mixed.plan);
+      }),
+    ),
+  );
+
+  it.effect("keeps the committed receipt when another writer changes the later summary", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const ticketId = (yield* tickets.create({ title: "Interleaved receipt" }, USER)).ticket.id;
+        const { planId } = (yield* tickets.createPlan(
+          { ticketId, title: "Title", body: "Before" },
+          USER,
+        )).plan;
+        const sql = yield* SqlClient.SqlClient;
+        const committed = yield* Deferred.make<void>();
+        const resume = yield* Deferred.make<void>();
+        const withTransaction = sql.withTransaction;
+        let pauseNext = true;
+        const gatedTransaction = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+          withTransaction(effect).pipe(
+            Effect.tap(() => {
+              if (!pauseNext) return Effect.void;
+              pauseNext = false;
+              return Deferred.succeed(committed, undefined).pipe(
+                Effect.andThen(Deferred.await(resume)),
+              );
+            }),
+          );
+        const gate = vi.spyOn(sql, "withTransaction").mockImplementation(gatedTransaction);
+        yield* Effect.addFinalizer(() => Effect.sync(() => gate.mockRestore()));
+        const local = yield* tickets
+          .updatePlan({ planId, expectedRevision: 1, body: "Local" }, USER)
+          .pipe(Effect.forkScoped);
+        yield* Deferred.await(committed);
+        const remote = yield* tickets.updatePlan(
+          { planId, expectedRevision: 2, body: "Remote" },
+          agent,
+        );
+        yield* Deferred.succeed(resume, undefined);
+        const reply = yield* Fiber.join(local);
+        assert.deepStrictEqual(reply.contentCommit, { observedRevision: 1, revision: 2 });
+        assert.deepStrictEqual(remote.contentCommit, { observedRevision: 2, revision: 3 });
+        assert.deepStrictEqual(reply.plan, remote.plan);
+        assert.strictEqual((yield* tickets.getPlan(planId)).body, "Remote");
+      }).pipe(Effect.scoped),
+    ),
+  );
+
+  it.effect("rejects stale Ready requests before changing content, comments or attachments", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const config = yield* ServerConfig.ServerConfig;
+        const ticketId = (yield* tickets.create({ title: "Review" }, USER)).ticket.id;
+        const { planId } = (yield* tickets.createPlan(
+          { ticketId, title: "Plan", body: "Original" },
+          USER,
+        )).plan;
+        const comment = yield* tickets.addPlanComment({ planId, body: "Review this" }, USER);
+        yield* tickets.updatePlan({ planId, expectedRevision: 1, body: "Remote content" }, agent);
+        const before = yield* tickets.getPlan(planId);
+        const ticketBefore = yield* tickets.get(ticketId);
+        const upload = yield* stageUpload("rejected.txt", "rejected");
+        const requests = [
+          { reviewStatus: "ready" },
+          {
+            reviewStatus: "ready",
+            status: "archived",
+            title: "Unreviewed title",
+            body: `Unreviewed vetra-attachment://${upload.id}`,
+            attachments: [upload],
+            resolveCommentIds: [comment.id],
+          },
+          { reviewStatus: "ready", edits: [{ find: "Missing", replace: "Ignored" }] },
+        ] satisfies ReadonlyArray<Omit<TicketPlanUpdateInput, "planId" | "expectedRevision">>;
+        const errors = yield* Effect.forEach(requests, (fields) =>
+          tickets.updatePlan({ planId, expectedRevision: 1, ...fields }, USER).pipe(
+            Effect.flip,
+            Effect.map((error) =>
+              error._tag === "TicketPlanRevisionConflictError"
+                ? [error._tag, error.expectedRevision, error.actualRevision]
+                : error._tag,
+            ),
+          ),
+        );
+        assert.deepStrictEqual(
+          errors,
+          Array.from({ length: 3 }, () => ["TicketPlanRevisionConflictError", 1, 2]),
+        );
+        assert.deepStrictEqual(yield* tickets.getPlan(planId), before);
+        assert.deepStrictEqual(yield* tickets.get(ticketId), ticketBefore);
+        assert.deepStrictEqual(
+          NodeFS.readdirSync(config.attachmentsDir).filter((name) =>
+            name.startsWith(`ticket-${ticketId}-`),
+          ),
+          [],
+        );
+        const ready = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 2, reviewStatus: "ready" },
+          USER,
+        )).plan;
+        assert.deepStrictEqual([ready.reviewStatus, ready.revision], ["ready", 2]);
+        const reverseWithStaleContent = yield* tickets
+          .updatePlan({ planId, expectedRevision: 1, reviewStatus: "draft", title: "Lost" }, agent)
+          .pipe(Effect.flip);
+        assert.strictEqual(reverseWithStaleContent._tag, "TicketPlanRevisionConflictError");
+        assert.deepStrictEqual((yield* tickets.getPlan(planId)).summary, ready);
+      }),
+    ),
+  );
+
+  it.effect(
+    "protects stale saves with known content when the requested field already matches",
+    () =>
+      withTickets((tickets) =>
+        Effect.gen(function* () {
+          const ticketId = (yield* tickets.create({ title: "Review lineage" }, USER)).ticket.id;
+          const { planId } = (yield* tickets.createPlan(
+            { ticketId, title: "Before title", body: "Before body" },
+            USER,
+          )).plan;
+          yield* tickets.updatePlan(
+            { planId, expectedRevision: 1, title: "Reviewed title", body: "Unreviewed body" },
+            agent,
+          );
+          const unguarded = (yield* tickets.updatePlan(
+            { planId, expectedRevision: 1, title: "Reviewed title" },
+            USER,
+          )).plan;
+          assert.deepStrictEqual(
+            [unguarded.title, unguarded.revision, unguarded.reviewStatus],
+            ["Reviewed title", 2, "draft"],
+          );
+          const titleGuard = yield* tickets
+            .updatePlan(
+              { planId, expectedRevision: 1, title: "Reviewed title", body: "Before body" },
+              USER,
+            )
+            .pipe(Effect.flip);
+          assert.strictEqual(titleGuard._tag, "TicketPlanRevisionConflictError");
+          const protectedTitle = yield* tickets.getPlan(planId);
+          assert.deepStrictEqual(
+            [protectedTitle.summary, protectedTitle.body],
+            [unguarded, "Unreviewed body"],
+          );
+          const second = (yield* tickets.createPlan(
+            { ticketId, title: "Known title", body: "Before body" },
+            USER,
+          )).plan;
+          yield* tickets.updatePlan(
+            {
+              planId: second.planId,
+              expectedRevision: 1,
+              title: "Unreviewed title",
+              body: "Reviewed body",
+            },
+            agent,
+          );
+          const unguardedBody = (yield* tickets.updatePlan(
+            { planId: second.planId, expectedRevision: 1, body: "Reviewed body" },
+            USER,
+          )).plan;
+          assert.deepStrictEqual(
+            [unguardedBody.title, unguardedBody.revision, unguardedBody.reviewStatus],
+            ["Unreviewed title", 2, "draft"],
+          );
+          const bodyGuard = yield* tickets
+            .updatePlan(
+              {
+                planId: second.planId,
+                expectedRevision: 1,
+                title: "Known title",
+                body: "Reviewed body",
+              },
+              USER,
+            )
+            .pipe(Effect.flip);
+          assert.strictEqual(bodyGuard._tag, "TicketPlanRevisionConflictError");
+          const protectedBody = yield* tickets.getPlan(second.planId);
+          assert.deepStrictEqual(
+            [
+              protectedBody.summary.title,
+              protectedBody.body,
+              protectedBody.summary.revision,
+              protectedBody.summary.reviewStatus,
+            ],
+            ["Unreviewed title", "Reviewed body", 2, "draft"],
+          );
+        }),
+      ),
+  );
+
+  it.effect(
+    "atomically edits, marks Ready and resolves comments, and rolls back invalid requests",
+    () =>
+      withTickets((tickets) =>
+        Effect.gen(function* () {
+          const ticketId = (yield* tickets.create({ title: "Combined review" }, USER)).ticket.id;
+          const { planId } = (yield* tickets.createPlan(
+            { ticketId, title: "Draft title", body: "Before" },
+            USER,
+          )).plan;
+          const comment = yield* tickets.addPlanComment({ planId, body: "Change it" }, USER);
+          const failed = yield* tickets
+            .updatePlan(
+              {
+                planId,
+                expectedRevision: 1,
+                body: "After",
+                status: "archived",
+                reviewStatus: "ready",
+                resolveCommentIds: [TicketPlanCommentId.make("missing")],
+              },
+              agent,
+            )
+            .pipe(Effect.flip);
+          assert.strictEqual(failed._tag, "TicketError");
+          const before = yield* tickets.getPlan(planId);
+          assert.deepStrictEqual(
+            [
+              before.summary.reviewStatus,
+              before.summary.status,
+              before.summary.revision,
+              before.body,
+            ],
+            ["draft", "active", 1, "Before"],
+          );
+          const updated = (yield* tickets.updatePlan(
+            {
+              planId,
+              expectedRevision: 1,
+              title: "Reviewed title",
+              edits: [{ find: "Before", replace: "After" }],
+              reviewStatus: "ready",
+              resolveCommentIds: [comment.id],
+            },
+            agent,
+          )).plan;
+          const stored = yield* tickets.getPlan(planId);
+          assert.deepStrictEqual(
+            [
+              updated.title,
+              updated.reviewStatus,
+              updated.revision,
+              updated.openCommentCount,
+              stored.body,
+            ],
+            ["Reviewed title", "ready", 2, 0, "After"],
+          );
+          assert.deepStrictEqual(stored.summary, updated);
+          assert.deepStrictEqual(
+            stored.comments.map((entry) => entry.resolvedBy),
+            [agent],
+          );
+          assert.strictEqual((yield* tickets.get(ticketId)).summary.revision, 1);
+        }),
+      ),
+  );
+
+  it.effect("retains Ready through edits and archive lifecycle, with archived review changes", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const ticketId = (yield* tickets.create({ title: "Sticky review" }, USER)).ticket.id;
+        const { planId } = (yield* tickets.createPlan(
+          { ticketId, title: "Plan", body: "Before" },
+          USER,
+        )).plan;
+        yield* tickets.updatePlan({ planId, expectedRevision: 1, reviewStatus: "ready" }, USER);
+        const renamed = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, title: "Edited title" },
+          agent,
+        )).plan;
+        const edited = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 2, body: "After" },
+          agent,
+        )).plan;
+        const archived = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, status: "archived" },
+          USER,
+        )).plan;
+        const draft = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, reviewStatus: "draft" },
+          agent,
+        )).plan;
+        const stale = yield* tickets
+          .updatePlan({ planId, expectedRevision: 1, reviewStatus: "ready" }, USER)
+          .pipe(Effect.flip);
+        const readOnly = yield* tickets
+          .updatePlan({ planId, expectedRevision: 3, reviewStatus: "ready", body: "Lost" }, USER)
+          .pipe(Effect.flip);
+        const ready = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 3, reviewStatus: "ready" },
+          USER,
+        )).plan;
+        const restored = (yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, status: "active" },
+          agent,
+        )).plan;
+        assert.deepStrictEqual(
+          [renamed, edited, archived, draft, ready, restored].map((plan) => [
+            plan.status,
+            plan.reviewStatus,
+            plan.revision,
+          ]),
+          [
+            ["active", "ready", 2],
+            ["active", "ready", 3],
+            ["archived", "ready", 3],
+            ["archived", "draft", 3],
+            ["archived", "ready", 3],
+            ["active", "ready", 3],
+          ],
+        );
+        assert.deepStrictEqual(
+          [stale._tag, readOnly.message, (yield* tickets.getPlan(planId)).body],
+          [
+            "TicketPlanRevisionConflictError",
+            "T-1/P1 is archived. Restore it before editing it.",
+            "After",
+          ],
+        );
+      }),
+    ),
+  );
+
+  it.effect(
+    "publishes review transitions through ticket and plan streams and reconnect snapshots",
+    () =>
+      withTickets((tickets) =>
+        Effect.gen(function* () {
+          const ticketId = (yield* tickets.create({ title: "Live review" }, USER)).ticket.id;
+          const { planId } = (yield* tickets.createPlan({ ticketId, title: "Plan" }, USER)).plan;
+          const plans = yield* Queue.unbounded<TicketPlan>();
+          const details = yield* Queue.unbounded<TicketDetail>();
+          const lists = yield* Queue.unbounded<TicketListEvent>();
+          yield* tickets.subscribePlan(planId).pipe(
+            Stream.runForEach((plan) => Queue.offer(plans, plan)),
+            Effect.forkScoped,
+          );
+          yield* tickets.subscribeDetail(ticketId).pipe(
+            Stream.runForEach((detail) => Queue.offer(details, detail)),
+            Effect.forkScoped,
+          );
+          yield* tickets.subscribeList().pipe(
+            Stream.runForEach((event) => Queue.offer(lists, event)),
+            Effect.forkScoped,
+          );
+          assert.strictEqual((yield* Queue.take(plans)).summary.reviewStatus, "draft");
+          assert.strictEqual((yield* Queue.take(details)).summary.plans[0]?.reviewStatus, "draft");
+          const snapshot = yield* Queue.take(lists);
+          assert.deepStrictEqual(
+            snapshot.type === "snapshot"
+              ? snapshot.tickets[0]?.plans[0]?.reviewStatus
+              : snapshot.type,
+            "draft",
+          );
+          for (const reviewStatus of ["ready", "draft"] as const) {
+            yield* tickets.updatePlan({ planId, expectedRevision: 1, reviewStatus }, agent);
+            const plan = yield* Queue.take(plans);
+            const detail = yield* Queue.take(details);
+            yield* TestClock.adjust("50 millis");
+            const delta = yield* Queue.take(lists);
+            assert.deepStrictEqual(
+              [
+                plan.summary.reviewStatus,
+                plan.summary.revision,
+                detail.summary.plans[0]?.reviewStatus,
+                detail.summary.revision,
+                detail.activity.at(-1)?.entry,
+                delta.type === "delta" ? delta.upserted[0]?.plans[0]?.reviewStatus : delta.type,
+              ],
+              [
+                reviewStatus,
+                1,
+                reviewStatus,
+                1,
+                {
+                  type: "plan_review_status_changed",
+                  planId,
+                  number: 1,
+                  from: reviewStatus === "ready" ? "draft" : "ready",
+                  to: reviewStatus,
+                },
+                reviewStatus,
+              ],
+            );
+            const reconnect = yield* tickets
+              .subscribePlan(planId)
+              .pipe(Stream.take(1), Stream.runCollect);
+            assert.strictEqual(reconnect[0]?.summary.reviewStatus, reviewStatus);
+          }
+        }).pipe(Effect.scoped),
+      ),
+  );
 
   it.effect(
     "restores, edits and resolves comments together, and rolls all changes back on failure",

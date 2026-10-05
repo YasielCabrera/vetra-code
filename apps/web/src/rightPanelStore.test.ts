@@ -1,9 +1,11 @@
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { type EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { createJSONStorage } from "zustand/middleware";
+
+import { createMemoryStorage } from "./lib/storage";
 
 import {
-  issueSurfaceId,
   migratePersistedRightPanelState,
   pullRequestSurface,
   pullRequestSurfaceId,
@@ -13,7 +15,6 @@ import {
   selectThreadPanelOpen,
   selectThreadPanelVisibility,
   selectThreadRightPanelState,
-  updateIssueTabStatus,
   useRightPanelStore,
 } from "./rightPanelStore";
 
@@ -394,38 +395,104 @@ describe("rightPanelStore", () => {
     });
   });
 
-  it("drops the issue list's shared panel and any issue surface missing its reference", () => {
-    const id = issueSurfaceId({
+  describe("removed issue panels", () => {
+    const issue = {
+      id: "issue:env-1:project-a:acme%2Fapi:148",
+      kind: "issue",
       environmentId: "env-1",
       projectId: "project-a",
-      repository: "vetra-code/vetra-code",
-      number: 148,
-    });
-    const surface = {
-      id,
-      kind: "issue" as const,
-      environmentId: "env-1",
-      projectId: "project-a",
-      repository: "vetra-code/vetra-code",
+      repository: "acme/api",
       number: 148,
     };
-    expect(
-      migratePersistedRightPanelState({
-        byThreadKey: {
-          "env-1:issues-panel": { isOpen: true, activeSurfaceId: id, surfaces: [surface] },
-          "env-1:thread-A": {
-            isOpen: true,
-            activeSurfaceId: id,
-            // A stored issue tab with no number can never be read again, so it is not kept.
-            surfaces: [surface, { id: "issue:broken", kind: "issue", projectId: "project-a" }],
-          },
-        },
-      }),
-    ).toEqual({
+    const pullRequest = pullRequestSurface({
+      environmentId: "env-1",
+      projectId: "project-a",
+      host: "github.example.com",
+      repository: "acme/api",
+      number: 7,
+      url: "https://github.example.com/acme/api/pull/7",
+    });
+    const file = {
+      id: "file:src/index.ts",
+      kind: "file",
+      relativePath: "src/index.ts",
+      revealLine: 9,
+      revealRequestId: 2,
+      preview: true,
+    };
+    const browser = { id: "browser:tab-a", kind: "preview", resourceId: "tab-a" };
+    const issueOnlyPanel = { isOpen: true, activeSurfaceId: issue.id, surfaces: [issue] };
+    const saved = {
       byThreadKey: {
-        "env-1:thread-A": { isOpen: true, activeSurfaceId: id, surfaces: [surface] },
+        "env-1:thread-A": {
+          isOpen: true,
+          activeSurfaceId: issue.id,
+          surfaces: [file, issue, pullRequest, browser],
+        },
+        "env-1:thread-B": issueOnlyPanel,
+        "env-1:thread-C": {
+          isOpen: false,
+          activeSurfaceId: pullRequest.id,
+          surfaces: [pullRequest, issue],
+        },
+        "env-1:issues-panel": issueOnlyPanel,
+        "env-2:issues-panel": issueOnlyPanel,
       },
-      threadPanelVisibilityByThreadKey: {},
+      threadPanelVisibilityByThreadKey: {
+        "env-1:thread-A": { inlineOpen: false, popoverOpen: true },
+        "env-1:thread-B": { inlineOpen: false, popoverOpen: false },
+        "env-1:thread-C": { inlineOpen: false, popoverOpen: false },
+        "env-2:thread-D": { inlineOpen: false, popoverOpen: false },
+        "env-1:issues-panel": { inlineOpen: false, popoverOpen: true },
+        "env-2:issues-panel": { inlineOpen: false, popoverOpen: false },
+      },
+    };
+    const expected = {
+      byThreadKey: {
+        "env-1:thread-A": {
+          isOpen: true,
+          activeSurfaceId: file.id,
+          surfaces: [file, pullRequest, browser],
+        },
+        "env-1:thread-B": { isOpen: false, activeSurfaceId: null, surfaces: [] },
+        "env-1:thread-C": {
+          isOpen: false,
+          activeSurfaceId: pullRequest.id,
+          surfaces: [pullRequest],
+        },
+      },
+      threadPanelVisibilityByThreadKey: {
+        "env-1:thread-A": { inlineOpen: false, popoverOpen: false },
+        "env-1:thread-B": { inlineOpen: false, popoverOpen: false },
+        "env-1:thread-C": { inlineOpen: false, popoverOpen: false },
+        "env-2:thread-D": { inlineOpen: false, popoverOpen: false },
+      },
+    };
+
+    it("drops issues and both legacy list maps while retaining tabs and visibility preferences", () => {
+      expect(migratePersistedRightPanelState(saved)).toEqual(expected);
+    });
+
+    it("rehydrates version 15 state, selects a retained tab, and closes issue-only panels", async () => {
+      const options = useRightPanelStore.persist.getOptions();
+      const name = options.name;
+      if (name === undefined) throw new Error("Right-panel persistence has no storage key.");
+      const storage = createMemoryStorage();
+      const persistedStorage = createJSONStorage(() => storage);
+      useRightPanelStore.persist.setOptions({ storage: persistedStorage });
+      try {
+        storage.setItem(name, JSON.stringify({ version: 15, state: saved }));
+        await useRightPanelStore.persist.rehydrate();
+        const { byThreadKey, threadPanelVisibilityByThreadKey } = useRightPanelStore.getState();
+        expect({ byThreadKey, threadPanelVisibilityByThreadKey }).toEqual(expected);
+        expect(selectActiveRightPanel(byThreadKey, refA)).toBe("file");
+        expect(selectActiveRightPanel(byThreadKey, refB)).toBeNull();
+        const rewritten = await storage.getItem(name);
+        expect(rewritten).not.toBeNull();
+        expect(JSON.parse(rewritten ?? "null")).toMatchObject({ version: 16, state: expected });
+      } finally {
+        useRightPanelStore.persist.setOptions({ storage: options.storage });
+      }
     });
   });
 
@@ -980,46 +1047,6 @@ describe("rightPanelStore", () => {
     expect(state.surfaces[1]).not.toHaveProperty("url");
   });
 
-  it("tracks one surface per issue and keeps two servers' copies apart", () => {
-    const first = {
-      environmentId: "local",
-      projectId: "project-a",
-      repository: "vetra-code/vetra-code",
-      number: 148,
-    };
-    const second = { ...first, number: 149 };
-    const remote = { ...first, environmentId: "remote" };
-    useRightPanelStore.getState().openIssue(refA, first);
-    useRightPanelStore.getState().openIssue(refA, second);
-    useRightPanelStore.getState().openIssue(refA, remote);
-    useRightPanelStore.getState().openIssue(refA, first);
-
-    const state = selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA);
-    expect(state.surfaces.map((surface) => surface.id)).toEqual([
-      issueSurfaceId(first),
-      issueSurfaceId(second),
-      issueSurfaceId(remote),
-    ]);
-    expect(state.activeSurfaceId).toBe(issueSurfaceId(first));
-  });
-
-  it("keeps an issue and a pull request of the same number as separate tabs", () => {
-    const target = {
-      environmentId: "local",
-      projectId: "project-a",
-      repository: "vetra-code/vetra-code",
-      number: 148,
-    };
-    useRightPanelStore.getState().openPullRequest(refA, target);
-    useRightPanelStore.getState().openIssue(refA, target);
-
-    const state = selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA);
-    expect(state.surfaces.map((surface) => surface.id)).toEqual([
-      pullRequestSurfaceId(target),
-      issueSurfaceId(target),
-    ]);
-  });
-
   it("keeps matching repository and number on different hosts as separate tabs", () => {
     const first = { projectId: "project-a", repository: "acme/api", number: 7, host: "github.com" };
     const second = { ...first, host: "github.example.com" };
@@ -1095,32 +1122,6 @@ describe("rightPanelStore", () => {
         refAfterServerADisconnects,
       ).surfaces,
     ).toEqual([]);
-  });
-
-  describe("issue tab statuses", () => {
-    it("returns the identical map when the tab's state is unchanged", () => {
-      const status = {
-        projectId: "project-a",
-        repository: "vetra-code/vetra-code",
-        number: 148,
-        state: "open" as const,
-      };
-      const first = updateIssueTabStatus({}, "issue:1", status);
-      expect(updateIssueTabStatus(first, "issue:1", status)).toBe(first);
-    });
-
-    it("replaces the entry when the issue closes", () => {
-      const open: { projectId: string; repository: string; number: number; state: string } = {
-        projectId: "project-a",
-        repository: "vetra-code/vetra-code",
-        number: 148,
-        state: "open",
-      };
-      const first = updateIssueTabStatus({}, "issue:1", open);
-      const second = updateIssueTabStatus(first, "issue:1", { ...open, state: "closed" });
-      expect(second).not.toBe(first);
-      expect(second["issue:1"]?.state).toBe("closed");
-    });
   });
 
   it("tracks one surface per terminal session", () => {

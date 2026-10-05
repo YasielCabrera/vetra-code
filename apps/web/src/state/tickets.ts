@@ -30,6 +30,18 @@ import { environmentServerConfigsAtom } from "./server";
 
 export const ticketEnvironment = createTicketEnvironmentAtoms(connectionAtomRuntime);
 
+const supportsTicketIssueLinksAtom = Atom.family((environmentId: EnvironmentId) =>
+  Atom.make(
+    (get) =>
+      get(environmentServerConfigsAtom).get(environmentId)?.environment.capabilities
+        .ticketIssueLinks === true,
+  ),
+);
+
+export function useTicketIssueLinksSupported(environmentId: EnvironmentId): boolean {
+  return useAtomValue(supportsTicketIssueLinksAtom(environmentId));
+}
+
 const supportsTicketsAtom = Atom.family((environmentId: EnvironmentId) =>
   Atom.make(
     (get) =>

@@ -3,6 +3,7 @@ import type {
   EnvironmentId,
   TicketDetail,
   TicketPlan,
+  TicketPlanReviewStatus,
   TicketPlanStatus,
   TicketPlanSummary,
   TicketPlanWriteResult,
@@ -30,14 +31,28 @@ function ticketOutcome(
   result: TicketWriteResult | typeof TICKET_REVISION_CONFLICT | null,
 ): DocumentWriteOutcome<TicketSummary> {
   if (result === null || result === TICKET_REVISION_CONFLICT) return result;
-  return { summary: result.ticket, claimed: result.attachments };
+  return {
+    summary: result.ticket,
+    acknowledgement: { kind: "legacy", revision: result.ticket.revision },
+    claimed: result.attachments,
+  };
 }
 
 function planOutcome(
   result: TicketPlanWriteResult | typeof TICKET_REVISION_CONFLICT | null,
+  purpose: "content" | "metadata",
 ): DocumentWriteOutcome<TicketPlanSummary> {
   if (result === null || result === TICKET_REVISION_CONFLICT) return result;
-  return { summary: result.plan, claimed: result.attachments };
+  return {
+    summary: result.plan,
+    acknowledgement:
+      purpose === "metadata"
+        ? { kind: "metadata" }
+        : result.contentCommit === undefined
+          ? { kind: "unverified" }
+          : { kind: "commit", ...result.contentCommit },
+    claimed: result.attachments,
+  };
 }
 
 /** The detail page's writes to one ticket: its description, title, labels, attachments and status. */
@@ -84,7 +99,11 @@ export function useTicketDocument(ref: ScopedTicketRef, detail: TicketDetail) {
       writeFields(() => async (expectedRevision) => {
         const result = await move(ref, { expectedRevision, statusId });
         if (result === null || result === TICKET_REVISION_CONFLICT) return result;
-        return { summary: result, claimed: [] };
+        return {
+          summary: result,
+          acknowledgement: { kind: "legacy", revision: result.revision },
+          claimed: [],
+        };
       }),
     [move, ref, writeFields],
   );
@@ -95,7 +114,7 @@ export function useTicketDocument(ref: ScopedTicketRef, detail: TicketDetail) {
 export function useTicketPlanDocument(environmentId: EnvironmentId, plan: TicketPlan) {
   const { updatePlan } = useTicketActions();
   const { planId } = plan.summary;
-  const doc = useAutosavedDocument({
+  const doc = useAutosavedDocument<TicketPlanSummary>({
     summary: plan.summary,
     body: plan.body,
     writeBody: useCallback(
@@ -107,6 +126,7 @@ export function useTicketPlanDocument(environmentId: EnvironmentId, plan: Ticket
             body,
             ...withUploads(uploads),
           }),
+          "content",
         ),
       [environmentId, planId, updatePlan],
     ),
@@ -118,7 +138,14 @@ export function useTicketPlanDocument(environmentId: EnvironmentId, plan: Ticket
     (title: string) =>
       writeFields(
         () => async (expectedRevision) =>
-          planOutcome(await updatePlan(environmentId, { planId, expectedRevision, title })),
+          planOutcome(
+            await updatePlan(environmentId, {
+              planId,
+              expectedRevision,
+              title,
+            }),
+            "content",
+          ),
       ),
     [environmentId, planId, updatePlan, writeFields],
   );
@@ -127,26 +154,39 @@ export function useTicketPlanDocument(environmentId: EnvironmentId, plan: Ticket
     (status: TicketPlanStatus) =>
       writeFields(
         () => async (expectedRevision) =>
-          planOutcome(await updatePlan(environmentId, { planId, expectedRevision, status })),
+          planOutcome(
+            await updatePlan(environmentId, { planId, expectedRevision, status }),
+            "metadata",
+          ),
       ),
     [environmentId, planId, updatePlan, writeFields],
   );
 
-  return { ...doc, saveTitle, setStatus };
+  const setReviewStatus = useCallback(
+    (reviewStatus: TicketPlanReviewStatus, expectedRevision: number) =>
+      writeFields(
+        () => async () =>
+          planOutcome(
+            await updatePlan(environmentId, { planId, expectedRevision, reviewStatus }),
+            "metadata",
+          ),
+        { expectedRevision },
+      ),
+    [environmentId, planId, updatePlan, writeFields],
+  );
+
+  return { ...doc, saveTitle, setStatus, setReviewStatus };
 }
 
-/**
- * Archives or restores a plan, one change at a time. Archiving first saves the title and body and
- * stops if either fails; restoring then retries a draft that failed while the plan was archived.
- */
 export function usePlanStatus(options: {
   readonly doc: ReturnType<typeof useTicketPlanDocument>;
   /** Saves the title draft; false when it did not save. */
   readonly commitTitle: () => Promise<boolean>;
   readonly uploading: boolean;
+  readonly summary: Pick<TicketPlanSummary, "status" | "revision">;
   readonly onArchived: () => void;
 }) {
-  const { doc, commitTitle, uploading, onArchived } = options;
+  const { doc, commitTitle, uploading, summary, onArchived } = options;
   const [changing, setChanging] = useState(false);
   const changingRef = useRef(false);
   const setStatus = async (status: TicketPlanStatus) => {
@@ -163,5 +203,23 @@ export function usePlanStatus(options: {
       setChanging(false);
     }
   };
-  return { changing, setStatus };
+  const setReviewStatus = async (reviewStatus: TicketPlanReviewStatus) => {
+    if (changingRef.current || uploading) return;
+    changingRef.current = true;
+    setChanging(true);
+    const displayedRevision =
+      summary.status === "archived" ? summary.revision : doc.readBase().revision;
+    try {
+      const reviewedRevision =
+        reviewStatus === "ready" && summary.status !== "archived"
+          ? await doc.flushReviewed(commitTitle)
+          : displayedRevision;
+      if (reviewedRevision === null) return;
+      await doc.setReviewStatus(reviewStatus, reviewedRevision);
+    } finally {
+      changingRef.current = false;
+      setChanging(false);
+    }
+  };
+  return { changing, setStatus, setReviewStatus };
 }

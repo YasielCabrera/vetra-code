@@ -50,11 +50,11 @@ a ticket, a notice says so and links its thread, where you can follow up.
 Choose **Write it myself** to open a new ticket instead, with the selection as a quote or code
 block and the same links filled in.
 
-Select a linked pull request or issue to open it in the panel, with the same details, checks, and
-actions as the Pull Requests and Issues pages. Select a linked thread to see its status, model, and
-project, and open it from there. Select **Properties** to return to the ticket's properties. A pull
-request or issue opens in the panel only when one of the ticket's projects, or a GitHub source,
-uses its repository; otherwise the panel offers to open it on GitHub.
+Select a linked pull request to open it in the panel, with the same details, checks, and actions as
+the Pull Requests page. Select a linked issue to open it in the panel. Select a linked thread to
+see its status, model, and project, and open it from there. Select **Properties** to return to the
+ticket's properties. A pull request or issue opens in the panel only when one of the ticket's
+projects, or a GitHub source, uses its repository; otherwise the panel offers to open it on GitHub.
 
 ## Find tickets
 
@@ -123,6 +123,12 @@ Write one with **New plan** in the ticket's Plans section, or select **Ask agent
 agent draft it. Select text in a plan to comment on it. When the plan is ready, select **Open in new
 thread** to have an agent carry it out, or **Ask agent to revise** to have it address your comments.
 A new thread waits for you to send its first message.
+
+Plans start **Draft**. Select **Mark Ready** after reviewing a plan, or **Return to Draft** to change
+it back. Agents can change the review status too. Title and content edits retain **Ready** until
+you or an agent explicitly returns the plan to Draft. Archiving preserves its review status.
+Marking a plan Ready does not start implementation. You can ask an agent to implement or revise
+either a Draft or a Ready plan.
 
 - Edits save on their own. If an agent or another device changed the plan while you were editing,
   choose **Reload** or **Keep mine**. Earlier versions are not kept.

@@ -137,23 +137,33 @@ describe("RPC authorization scopes", () => {
     );
   });
 
-  it("reads the issue assignee menu but requires operate access to change it", () => {
+  it("reads linked ticket issues but requires operate access to change assignments", () => {
     for (const method of [
-      WS_METHODS.issuesList,
-      WS_METHODS.issuesDetail,
-      WS_METHODS.issuesActivity,
-      WS_METHODS.issuesAssigneeCandidates,
-      WS_METHODS.issuesInvalidate,
+      WS_METHODS.ticketsIssueLinkCandidates,
+      WS_METHODS.ticketsGitHubIssueDetail,
+      WS_METHODS.ticketsGitHubIssueActivity,
+      WS_METHODS.ticketsGitHubIssueAssigneeCandidates,
+      WS_METHODS.ticketsGitHubIssueInvalidate,
     ]) {
       expect(requiredScopeForRpcMethod(method)).toBe(AuthOrchestrationReadScope);
     }
-    expect(requiredScopeForRpcMethod(WS_METHODS.issuesSetAssignees)).toBe(
+    expect(requiredScopeForRpcMethod(WS_METHODS.ticketsGitHubIssueSetAssignees)).toBe(
       AuthOrchestrationOperateScope,
     );
   });
 
   it("rejects unknown RPC method names", () => {
-    for (const method of ["server.notRegistered", "toString", "constructor"]) {
+    for (const method of [
+      "server.notRegistered",
+      "toString",
+      "constructor",
+      "issues.list",
+      "issues.detail",
+      "issues.activity",
+      "issues.assigneeCandidates",
+      "issues.setAssignees",
+      "issues.invalidate",
+    ]) {
       expect(() => requiredScopeForRpcMethod(method)).toThrow(
         `RPC method ${method} has no declared authorization scope.`,
       );

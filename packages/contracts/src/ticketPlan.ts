@@ -19,6 +19,7 @@ import {
   TicketAttachmentUploads,
   TicketClaimedAttachment,
   TicketCommentInput,
+  TicketPlanReviewStatus,
   TicketPlanStatus,
   TicketPlanSummary,
   TicketTitle,
@@ -115,10 +116,11 @@ export type TicketPlanEdit = typeof TicketPlanEdit.Type;
 
 export const TicketPlanUpdateInput = Schema.Struct({
   planId: TicketPlanId,
-  /** Checked only when the title or body changes. */
+  /** Checked when title or body changes, and when a Draft plan becomes Ready. */
   expectedRevision: PositiveInt,
   /** Restores or archives the plan in the same transaction as its content and comments. */
   status: Schema.optional(TicketPlanStatus),
+  reviewStatus: Schema.optional(TicketPlanReviewStatus),
   title: Schema.optional(TicketTitle),
   /** Replaces the whole body; refused together with `edits`. */
   body: Schema.optional(TicketPlanBody),
@@ -155,10 +157,22 @@ export type TicketPlanCommentRefInput = typeof TicketPlanCommentRefInput.Type;
 export const TicketPlanSubscribeInput = Schema.Struct({ planId: TicketPlanId });
 export type TicketPlanSubscribeInput = typeof TicketPlanSubscribeInput.Type;
 
+export const TicketPlanContentCommit = Schema.Struct({
+  observedRevision: PositiveInt,
+  revision: PositiveInt,
+}).check(
+  Schema.makeFilter(
+    ({ observedRevision, revision }) =>
+      revision === observedRevision || revision === observedRevision + 1,
+  ),
+);
+export type TicketPlanContentCommit = typeof TicketPlanContentCommit.Type;
+
 /** What `createPlan` and `updatePlan` return: the summary and the uploads they claimed. */
 export const TicketPlanWriteResult = Schema.Struct({
   plan: TicketPlanSummary,
   attachments: Schema.Array(TicketClaimedAttachment),
+  contentCommit: Schema.optional(TicketPlanContentCommit),
 });
 export type TicketPlanWriteResult = typeof TicketPlanWriteResult.Type;
 

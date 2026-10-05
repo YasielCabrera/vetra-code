@@ -1,6 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
 import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
-import type { EnvironmentId, ProjectId, ThreadId, TicketLinkTarget } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  ProjectId,
+  ThreadId,
+  TicketId,
+  TicketLinkTarget,
+} from "@t3tools/contracts";
 import { formatModelSlugName } from "@t3tools/shared/model";
 import { ArrowLeftIcon, ExternalLinkIcon, MessageSquareIcon } from "lucide-react";
 import { useMemo } from "react";
@@ -8,6 +14,7 @@ import { useMemo } from "react";
 import { isElectron } from "../../env";
 import { cn } from "../../lib/utils";
 import { useProject, useThreadShell } from "../../state/entities";
+import { useTicketIssueLinksSupported } from "../../state/tickets";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { IssueDetailPanel } from "../issue/IssueDetailPanel";
@@ -32,39 +39,34 @@ function getShortcutContext() {
 
 export function TicketLinkPreview(props: {
   readonly environmentId: EnvironmentId;
+  readonly ticketId: TicketId;
   readonly target: TicketLinkPreviewTarget;
   readonly projectId: ProjectId | null;
   readonly stacked: boolean;
   readonly onBack: () => void;
 }) {
   const { target, projectId } = props;
-  const hosted = useMemo(
+  const issueLinksSupported = useTicketIssueLinksSupported(props.environmentId);
+  const reference = useMemo(
     () =>
-      target.kind === "thread" || projectId === null
-        ? null
-        : target.kind === "pull_request"
-          ? { kind: target.kind, reference: { projectId, ...target.ref } }
-          : {
-              kind: target.kind,
-              reference: {
-                projectId,
-                repository: target.ref.repository,
-                number: target.ref.number,
-              },
-            },
+      target.kind !== "pull_request" || projectId === null ? null : { projectId, ...target.ref },
     [projectId, target],
   );
+  const issueReference = useMemo(
+    () => (target.kind === "issue" ? { ticketId: props.ticketId, linkedIssue: target.ref } : null),
+    [props.ticketId, target],
+  );
   const hostedPanel =
-    hosted === null ? null : hosted.kind === "pull_request" ? (
+    reference !== null ? (
       <PullRequestDetailPanel
         environmentId={props.environmentId}
-        reference={hosted.reference}
+        reference={reference}
         shortcutsEnabled
         getShortcutContext={getShortcutContext}
       />
-    ) : (
-      <IssueDetailPanel environmentId={props.environmentId} reference={hosted.reference} />
-    );
+    ) : issueReference !== null && issueLinksSupported ? (
+      <IssueDetailPanel environmentId={props.environmentId} reference={issueReference} />
+    ) : null;
 
   return (
     <div
@@ -93,7 +95,15 @@ export function TicketLinkPreview(props: {
           {target.kind === "thread" ? (
             <ThreadPreviewCard environmentId={props.environmentId} threadId={target.threadId} />
           ) : (
-            <UnreadableLinkCard target={target} />
+            <UnreadableLinkCard
+              target={target}
+              {...(target.kind === "issue" && !issueLinksSupported
+                ? {
+                    description:
+                      "Inline issue previews are unavailable on this environment. Open the recorded link on GitHub.",
+                  }
+                : {})}
+            />
           )}
         </div>
       )}
@@ -172,6 +182,7 @@ function ThreadPreviewCard(props: {
 
 function UnreadableLinkCard(props: {
   readonly target: Exclude<TicketLinkPreviewTarget, { readonly kind: "thread" }>;
+  readonly description?: string;
 }) {
   const { ref, snapshot } = props.target;
   return (
@@ -183,7 +194,7 @@ function UnreadableLinkCard(props: {
         </p>
       </div>
       <p className="text-xs text-muted-foreground">
-        Link a project that uses {ref.repository} to see the details here.
+        {props.description ?? `Link a project that uses ${ref.repository} to see the details here.`}
       </p>
       <div>
         <Button size="sm" variant="outline" onClick={() => openOnGitHub(snapshot.url)}>

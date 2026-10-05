@@ -192,10 +192,11 @@ function TicketDocument(props: {
     return link === undefined || link.target.kind === "project" ? null : link.target;
   }, [detail.links, preview, summary.id]);
   const previewProjectId =
-    previewTarget === null || previewTarget.kind === "thread"
+    previewTarget === null || previewTarget.kind !== "pull_request"
       ? null
       : ticketRepositoryProjectId(ticketRef.environmentId, previewTarget.ref, repositoryContext);
-  const widePanel = previewProjectId !== null || previewPlan !== null;
+  const widePanel =
+    previewProjectId !== null || previewPlan !== null || previewTarget?.kind === "issue";
   const sidePanel = useSidePanelFits();
   const githubSource =
     githubTicket === null
@@ -295,6 +296,7 @@ function TicketDocument(props: {
       <TicketLinkPreview
         key={`${previewTarget.kind}:${ticketLinkTargetKey(previewTarget)}`}
         environmentId={ticketRef.environmentId}
+        ticketId={summary.id}
         target={previewTarget}
         projectId={previewProjectId}
         stacked={!sidePanel}

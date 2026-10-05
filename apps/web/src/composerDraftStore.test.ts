@@ -19,6 +19,7 @@ import {
   type ModelSelection,
   type PreviewAnnotationPayload,
   type ProviderOptionSelection,
+  type TicketPlanSummary,
 } from "@t3tools/contracts";
 import { createModelSelection } from "@t3tools/shared/model";
 import {
@@ -1252,12 +1253,13 @@ describe("composerDraftStore thread contexts", () => {
       number: 1,
       title: "Auth migration",
       status: "active" as const,
+      reviewStatus: "ready",
       revision: 4,
       openCommentCount: 2,
       createdBy: { type: "user" as const },
       updatedBy: { type: "user" as const },
       updatedAt: "2026-10-01T00:00:00.000Z",
-    };
+    } satisfies TicketPlanSummary;
     const ticket = {
       id: TicketId.make("ticket-1"),
       number: 42,
@@ -1290,6 +1292,7 @@ describe("composerDraftStore thread contexts", () => {
         ref: "T-42/P1",
         title: "Auth migration",
         revision: 4,
+        reviewStatus: "ready",
         openCommentCount: 2,
       },
       {
@@ -1308,6 +1311,7 @@ describe("composerDraftStore thread contexts", () => {
             ref: "T-42/P1",
             title: "Auth migration",
             status: "active",
+            reviewStatus: "ready",
             revision: 4,
             openCommentCount: 2,
           },

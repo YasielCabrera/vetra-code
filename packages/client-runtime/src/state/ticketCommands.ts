@@ -125,6 +125,15 @@ export function createTicketEnvironmentAtoms<R, E>(
       tag: WS_METHODS.ticketsGitHubIssueDetail,
       staleTimeMs: 15_000,
     }),
+    issueLinkCandidates: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:tickets:issue-link-candidates",
+      tag: WS_METHODS.ticketsIssueLinkCandidates,
+      staleTimeMs: 30_000,
+    }),
+    invalidateGitHubIssue: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:tickets:invalidate-github-issue",
+      tag: WS_METHODS.ticketsGitHubIssueInvalidate,
+    }),
     githubIssueActivity: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:tickets:github-activity",
       tag: WS_METHODS.ticketsGitHubIssueActivity,

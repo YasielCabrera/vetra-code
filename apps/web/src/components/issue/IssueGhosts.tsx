@@ -15,41 +15,6 @@ function GhostBar({ className }: { className?: string | undefined }) {
 const TITLE_WIDTHS = ["w-3/5", "w-2/5", "w-1/2", "w-2/3", "w-2/5", "w-3/5", "w-1/2"];
 const META_WIDTHS = ["w-2/5", "w-1/3", "w-2/5", "w-1/4", "w-1/3", "w-2/5", "w-1/3"];
 
-/** Rows in the list's own grid — glyph, title over meta, comment count. */
-export function IssueListGhost({
-  rows = 7,
-  caption,
-}: {
-  rows?: number;
-  /** Said where the group headers speak, for the states with something to say — a search. */
-  caption?: string;
-}) {
-  return (
-    <div
-      role="status"
-      aria-label={caption ?? "Loading issues"}
-      className="motion-safe:animate-skeleton space-y-0.5"
-    >
-      {caption ? (
-        <p className="px-3 pb-1 text-xs font-medium text-muted-foreground/70">{caption}</p>
-      ) : null}
-      {Array.from({ length: rows }, (_, index) => (
-        <div
-          key={index}
-          className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2"
-        >
-          <GhostBar className="size-4 rounded-full" />
-          <div className="min-w-0 space-y-1.5">
-            <GhostBar className={cn("h-3.5", TITLE_WIDTHS[index % TITLE_WIDTHS.length])} />
-            <GhostBar className={META_WIDTHS[index % META_WIDTHS.length]} />
-          </div>
-          <GhostBar className="w-10" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /**
  * The detail panel's shape while it reads. Keeping the chrome, the summary facts and the
  * description boundary in the ghost stops the loaded issue replacing one layout with another.

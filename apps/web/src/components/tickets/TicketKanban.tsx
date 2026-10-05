@@ -17,8 +17,10 @@ import {
 import { LegendList } from "@legendapp/list/react";
 import { type EnvironmentTicket, ticketKey } from "@t3tools/client-runtime/state/tickets";
 import type { EnvironmentId, TicketStatusDefinition, TicketStatusSet } from "@t3tools/contracts";
-import { ChevronRightIcon } from "lucide-react";
-import { memo, useCallback, useMemo, useState } from "react";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { memo, useCallback, useId, useMemo, useState, type MouseEvent } from "react";
+
+import "./TicketKanban.css";
 
 import { confirmGitHubStateChange, useTicketActions } from "../../hooks/useTicketActions";
 import { cn } from "../../lib/utils";
@@ -275,6 +277,7 @@ const TicketColumn = memo(function TicketColumn(props: {
 }) {
   const { column, collapsed, dropSlot } = props;
   const { setNodeRef } = useDroppable({ id: columnDroppableId(column.key) });
+  const cardsId = useId();
   const dropTargeted = dropSlot !== null;
   const status = useMemo(
     () => ({ name: column.name, color: column.color, category: column.category }),
@@ -286,33 +289,11 @@ const TicketColumn = memo(function TicketColumn(props: {
     () => ({ dropSlot, movingKeys, projectByKey }),
     [dropSlot, movingKeys, projectByKey],
   );
-
-  if (collapsed) {
-    return (
-      <button
-        ref={setNodeRef}
-        data-ticket-drop={columnDroppableId(column.key)}
-        type="button"
-        aria-expanded={false}
-        aria-label={`${column.name}, ${column.tickets.length} tickets`}
-        onClick={() => props.onToggle(column, true)}
-        className={cn(
-          "flex h-full w-10 shrink-0 flex-col items-center gap-2 rounded-xl bg-muted/40 py-3 text-xs font-medium text-muted-foreground outline-none hover:bg-muted/70 focus-visible:ring-1 focus-visible:ring-ring",
-          dropTargeted && "ring-1 ring-primary",
-        )}
-      >
-        <TicketStatusIcon color={column.color} category={column.category} />
-        <span className="tabular-nums">{column.tickets.length}</span>
-        <span className="text-foreground [writing-mode:vertical-rl]">{column.name}</span>
-      </button>
-    );
-  }
-
   const renderCard = (ticket: EnvironmentTicket, index: number) => (
     <DraggableTicketCard
       ticket={ticket}
       status={status}
-      moving={props.movingKeys.has(keyOf(ticket))}
+      moving={movingKeys.has(keyOf(ticket))}
       dropLine={
         dropSlot === index
           ? "before"
@@ -320,30 +301,56 @@ const TicketColumn = memo(function TicketColumn(props: {
             ? "after"
             : null
       }
-      projectByKey={props.projectByKey}
+      projectByKey={projectByKey}
       onOpen={props.onOpen}
     />
   );
+  const toggle = (event: MouseEvent<HTMLButtonElement>) => {
+    event.currentTarget.parentElement?.toggleAttribute("data-instant", event.detail === 0);
+    props.onToggle(column, collapsed);
+  };
 
   return (
     <section
       ref={setNodeRef}
       data-ticket-drop={columnDroppableId(column.key)}
+      data-kanban-column=""
+      data-collapsed={collapsed ? "" : undefined}
+      data-drop-target={dropTargeted ? "" : undefined}
       aria-label={column.name}
-      className="flex h-full w-72 shrink-0 flex-col rounded-xl bg-muted/40"
     >
       <button
         type="button"
-        aria-expanded
-        onClick={() => props.onToggle(column, false)}
-        className="flex h-10 shrink-0 items-center gap-2 rounded-t-xl px-3 text-left text-xs font-medium text-muted-foreground outline-none hover:bg-muted/70 focus-visible:ring-1 focus-visible:ring-ring"
+        data-kanban-toggle=""
+        className="text-xs font-medium text-muted-foreground"
+        aria-expanded={!collapsed}
+        aria-controls={cardsId}
+        aria-label={`${column.name}, ${column.tickets.length} tickets`}
+        onClick={toggle}
       >
-        <TicketStatusIcon color={column.color} category={column.category} />
-        <span className="min-w-0 truncate text-foreground">{column.name}</span>
-        <span className="tabular-nums">{column.tickets.length}</span>
-        <ChevronRightIcon aria-hidden className="ml-auto size-3.5 shrink-0 rotate-90" />
+        <span data-kanban-face="open" aria-hidden={collapsed || undefined}>
+          <TicketStatusIcon color={column.color} category={column.category} />
+          <span data-kanban-name="" className="text-foreground">
+            {column.name}
+          </span>
+          <span className="tabular-nums">{column.tickets.length}</span>
+          <ChevronLeftIcon data-kanban-chevron="" aria-hidden className="size-3.5 shrink-0" />
+        </span>
+        <span data-kanban-face="rail" aria-hidden={!collapsed || undefined}>
+          <TicketStatusIcon color={column.color} category={column.category} />
+          <ChevronRightIcon data-kanban-chevron="" aria-hidden className="size-3.5 shrink-0" />
+          <span className="tabular-nums">{column.tickets.length}</span>
+          <span data-kanban-name="" className="text-foreground">
+            {column.name}
+          </span>
+        </span>
       </button>
-      <div className="relative min-h-0 flex-1 pb-2">
+      <div
+        id={cardsId}
+        data-kanban-column-cards=""
+        inert={collapsed}
+        aria-hidden={collapsed || undefined}
+      >
         {dropTargeted && column.tickets.length === 0 ? <DropLine position="before" /> : null}
         {column.tickets.length > VIRTUALIZE_AFTER ? (
           <LegendList<EnvironmentTicket>
@@ -357,7 +364,7 @@ const TicketColumn = memo(function TicketColumn(props: {
             renderItem={({ item, index }) => renderCard(item, index)}
           />
         ) : (
-          <div className="h-full overflow-y-auto">
+          <div data-kanban-list="">
             {column.tickets.map((ticket, index) => (
               <div key={keyOf(ticket)}>{renderCard(ticket, index)}</div>
             ))}

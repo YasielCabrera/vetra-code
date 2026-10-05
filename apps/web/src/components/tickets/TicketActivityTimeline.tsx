@@ -13,6 +13,7 @@ import {
   ArchiveRestoreIcon,
   BotIcon,
   CircleDotIcon,
+  CheckIcon,
   FilePenIcon,
   FilePlusIcon,
   FileXIcon,
@@ -51,6 +52,7 @@ export const PLAN_ENTRY_VERBS = {
   plan_archived: "archived",
   plan_restored: "restored",
   plan_deleted: "deleted",
+  plan_review_status_changed: "marked",
 } as const;
 
 const SYNC_CHANGE_LABELS: Readonly<Record<string, string>> = {
@@ -104,6 +106,8 @@ function describeEntry(
     case "plan_restored":
     case "plan_deleted":
       return `${PLAN_ENTRY_VERBS[entry.type]} plan`;
+    case "plan_review_status_changed":
+      return "marked plan";
   }
 }
 
@@ -127,6 +131,7 @@ const EVENT_ICONS = {
   plan_archived: ArchiveIcon,
   plan_restored: ArchiveRestoreIcon,
   plan_deleted: FileXIcon,
+  plan_review_status_changed: CheckIcon,
 };
 
 function ActivityMarker(props: { readonly activity: TicketActivity }) {
@@ -247,6 +252,9 @@ export const TicketActivityTimeline = memo(function TicketActivityTimeline(props
                   )}
                 </>
               ) : null}
+              {activity.entry.type === "plan_review_status_changed"
+                ? ` ${activity.entry.to === "ready" ? "Ready" : "Draft"}`
+                : null}
               <time
                 dateTime={activity.createdAt}
                 aria-label={new Date(activity.createdAt).toLocaleString()}

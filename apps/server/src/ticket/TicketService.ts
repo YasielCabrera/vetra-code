@@ -5,6 +5,10 @@ import {
   type TicketGitHubIssueRef,
   type TicketGitHubIssueDetail,
   type TicketGitHubIssueAssigneeChangeInput,
+  type TicketLinkedIssueRef,
+  type TicketIssueLinkCandidates,
+  type TicketSubscribeDetailInput,
+  type OrchestrationProjectShell,
   type IssueActivity,
   type IssueAssigneeCandidateList,
   ChatAttachmentId,
@@ -37,11 +41,13 @@ import {
   TicketPlanCommentId,
   type TicketPlanCommentInput,
   type TicketPlanCommentRefInput,
+  type TicketPlanContentCommit,
   type TicketPlanCreateInput,
   type TicketPlanDeleteInput,
   TicketPlanId,
   TicketPlanNotFoundError,
   TicketPlanRevisionConflictError,
+  type TicketPlanReviewStatus,
   type TicketPlanStatus,
   TicketPlanSummary,
   type TicketPlanUpdateInput,
@@ -68,13 +74,19 @@ import {
 } from "@t3tools/contracts";
 import { parseChangeRequestUrl } from "@t3tools/shared/changeRequestUrl";
 import { isFractionalIndexKey, keyBetween } from "@t3tools/shared/fractionalIndex";
-import { normalizeThreadPullRequestKey } from "@t3tools/shared/threadPullRequests";
+import {
+  normalizeThreadPullRequestKey,
+  threadPullRequestKeysEqual,
+} from "@t3tools/shared/threadPullRequests";
 import { anchorFromSourceQuote } from "@t3tools/shared/ticketPlanAnchors";
 import * as Arr from "effect/Array";
+import * as Cache from "effect/Cache";
 import * as Context from "effect/Context";
+import * as Data from "effect/Data";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -89,10 +101,10 @@ import type * as Statement from "effect/unstable/sql/Statement";
 
 import { resolveAttachmentPath } from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
-import type {
-  IssueStateChange,
-  ProviderIssue,
-  IssueProviderApi,
+import {
+  type IssueStateChange,
+  type ProviderIssue,
+  type IssueProviderApi,
   IssueProviderError,
 } from "../issue/IssueProvider.ts";
 import {
@@ -106,6 +118,9 @@ import { applyPlanEdits } from "./ticketPlanEdits.ts";
 type TicketWriteError = TicketNotFoundError | TicketRevisionConflictError | TicketError;
 type TicketPlanWriteError = TicketPlanNotFoundError | TicketPlanRevisionConflictError | TicketError;
 type TicketUpload = NonNullable<TicketCreateInput["attachments"]>[number];
+type GitHubIssueTarget = Parameters<TicketGitHub.TicketGitHub["Service"]["run"]>[0] &
+  NonNullable<TicketGitHubIssueRef["linkedIssue"]>;
+type ResolvedGitHubIssueTarget = GitHubIssueTarget & { readonly projectId: ProjectId };
 
 /** What `list` narrows by; every field given must match. Hidden GitHub tickets never list. */
 interface TicketListFilter {
@@ -186,8 +201,14 @@ export class TicketService extends Context.Service<
       input: TicketGitHubIssueAssigneeChangeInput,
     ) => Effect.Effect<void, TicketWriteError>;
     readonly refreshGitHubIssue: (
-      input: TicketGitHubIssueRef,
+      input: TicketSubscribeDetailInput,
     ) => Effect.Effect<TicketSummary, TicketWriteError>;
+    readonly invalidateGitHubIssue: (
+      input: TicketLinkedIssueRef,
+    ) => Effect.Effect<void, TicketWriteError>;
+    readonly issueLinkCandidates: (
+      input: TicketSubscribeDetailInput,
+    ) => Effect.Effect<TicketIssueLinkCandidates, TicketWriteError>;
     readonly search: (input: TicketSearchInput) => Effect.Effect<TicketSearchResult, TicketError>;
     readonly list: (filter: TicketListFilter) => Effect.Effect<TicketListResult, TicketError>;
     readonly listForTarget: (
@@ -298,13 +319,16 @@ export class TicketService extends Context.Service<
       actor: TicketActor,
     ) => Effect.Effect<TicketPlanWriteResult, TicketNotFoundError | TicketError>;
     /**
-     * Conflicts on a stale `expectedRevision` only when the title or body would change. Edits apply
-     * to the stored body after that check.
+     * Conflicts on a stale `expectedRevision` when content changes or Draft becomes Ready.
+     * Edits apply to the stored body after that check.
      */
     readonly updatePlan: (
       input: TicketPlanUpdateInput,
       actor: TicketActor,
-    ) => Effect.Effect<TicketPlanWriteResult, TicketPlanWriteError>;
+    ) => Effect.Effect<
+      TicketPlanWriteResult & { readonly contentCommit: TicketPlanContentCommit },
+      TicketPlanWriteError
+    >;
     /** Deletes the plan and its comments; the ticket keeps the attachments it referenced. */
     readonly deletePlan: (
       input: TicketPlanDeleteInput,
@@ -397,6 +421,7 @@ interface PlanRow {
   readonly number: number;
   readonly title: string;
   readonly status: string;
+  readonly review_status: TicketPlanReviewStatus;
   readonly revision: number;
   readonly created_by_json: string;
   readonly updated_by_json: string;
@@ -457,6 +482,7 @@ const planFields = (row: PlanRow) =>
       number: row.number,
       title: row.title,
       status: row.status,
+      reviewStatus: row.review_status,
       revision: row.revision,
       openCommentCount: row.open_comment_count,
       createdBy: yield* decodeJson(row.created_by_json),
@@ -572,7 +598,8 @@ const make = Effect.gen(function* () {
 
   const selectPlanRows = (where: Statement.Fragment) => sql<PlanRow>`
     SELECT
-      p.plan_id, p.ticket_id, t.number AS ticket_number, p.number, p.title, p.status, p.revision,
+      p.plan_id, p.ticket_id, t.number AS ticket_number, p.number, p.title, p.status,
+      p.review_status, p.revision,
       p.created_by_json, p.updated_by_json, p.updated_at,
       (
         SELECT COUNT(*) FROM ticket_plan_comments c
@@ -1874,62 +1901,175 @@ const make = Effect.gen(function* () {
 
   const githubTarget = (input: TicketGitHubIssueRef) =>
     Effect.gen(function* () {
+      if (input.linkedIssue !== undefined) {
+        const owner = yield* get(input.ticketId);
+        const target = normalizeThreadPullRequestKey(input.linkedIssue);
+        const linked = owner.links.find(
+          (link) =>
+            link.target.kind === "issue" && threadPullRequestKeysEqual(link.target.ref, target),
+        );
+        if (linked === undefined)
+          return yield* new TicketError({ message: "This issue is not linked to the ticket." });
+        return { ...target, ticketId: owner.summary.id };
+      }
       const current = yield* requireSummary(input.ticketId);
       if (current.kind !== "github")
         return yield* new TicketError({ message: "This ticket has no GitHub issue." });
       return { ...current.github, ticketId: current.id };
     });
-  const runTicketIssue = <A>(
-    input: TicketGitHubIssueRef,
+  const runResolvedIssue = <A>(
+    target: GitHubIssueTarget,
     call: (
       api: IssueProviderApi,
       input: { cwd: string; host: string; repository: string; number: number },
+      project: OrchestrationProjectShell,
     ) => Effect.Effect<A, IssueProviderError>,
   ) =>
-    Effect.gen(function* () {
-      const target = yield* githubTarget(input);
-      return yield* github
-        .run(target, (api, cwd) =>
-          call(api, {
+    github
+      .run(target, (api, cwd, project) =>
+        call(
+          api,
+          {
             cwd,
             host: target.host,
             repository: target.repository,
             number: target.number,
-          }),
-        )
-        .pipe(
-          Effect.mapError(
-            (error) =>
-              new TicketError({ message: TicketGitHub.describeGitHubFailure(error), cause: error }),
-          ),
-        );
-    });
-  const githubIssueDetail: TicketService["Service"]["githubIssueDetail"] = (input) =>
-    runTicketIssue(input, (api, ref) => api.getIssue(ref));
-  const githubIssueActivity: TicketService["Service"]["githubIssueActivity"] = (input) =>
-    runTicketIssue(input, (api, ref) => api.getIssueActivity(ref));
-  const githubIssueAssigneeCandidates: TicketService["Service"]["githubIssueAssigneeCandidates"] = (
-    input,
-  ) => runTicketIssue(input, (api, ref) => api.listAssigneeCandidates(ref));
-  const githubIssueSetAssignees: TicketService["Service"]["githubIssueSetAssignees"] = (input) =>
-    runTicketIssue(input, (api, ref) =>
-      api.setAssignees({ ...ref, assignees: input.assignees, assigned: input.assigned }),
+          },
+          project,
+        ),
+      )
+      .pipe(
+        Effect.mapError(
+          (error) =>
+            new TicketError({ message: TicketGitHub.describeGitHubFailure(error), cause: error }),
+        ),
+      );
+  const runTicketIssue = <A>(
+    input: TicketGitHubIssueRef,
+    call: Parameters<typeof runResolvedIssue<A>>[1],
+  ) => githubTarget(input).pipe(Effect.flatMap((target) => runResolvedIssue(target, call)));
+  const readLinkedIssueDetail = (target: LinkedRead) =>
+    runResolvedIssue(target, (api, ref, project) =>
+      Effect.gen(function* (): Effect.fn.Return<TicketGitHubIssueDetail, IssueProviderError> {
+        const links = api.repositoryLinks(ref);
+        if (links === null)
+          return yield* new IssueProviderError({
+            provider: api.kind,
+            operation: "detail",
+            reason: "failed",
+            detail: "The linked issue's repository identity is not valid for this host.",
+          });
+        const issue = yield* api.getIssue(ref);
+        const { title, body, assignees, comments, stateReason: _stateReason, ...metadata } = issue;
+        return {
+          title,
+          body,
+          assignees,
+          comments,
+          preview: {
+            ...metadata,
+            ...links,
+            provider: api.kind,
+            host: ref.host,
+            repository: ref.repository,
+            projectId: project.id,
+            projectTitle: project.title,
+          },
+        };
+      }),
     );
-  const refreshGitHubIssue: TicketService["Service"]["refreshGitHubIssue"] = (input) =>
+  class LinkedRead extends Data.Class<{
+    readonly projectId: ProjectId;
+    readonly host: string;
+    readonly repository: string;
+    readonly number: number;
+  }> {}
+  const resolveIssueTarget = (input: TicketGitHubIssueRef) =>
     Effect.gen(function* () {
       const target = yield* githubTarget(input);
       const projectId = yield* github.projectFor(target);
       if (projectId === null)
-        return yield* new TicketError({ message: "No project can read this GitHub repository." });
-      const issue = yield* runTicketIssue(input, (api, ref) => api.getIssue(ref));
+        return yield* new TicketError({
+          message: `No project here can read ${target.host}/${target.repository}. Add an enabled GitHub source or link a project with this repository.`,
+        });
+      return { ...target, projectId };
+    });
+  const linkedReadKey = (target: ResolvedGitHubIssueTarget) =>
+    new LinkedRead({ projectId: target.projectId, ...normalizeThreadPullRequestKey(target) });
+  const linkedDetailCache = yield* Cache.makeWith(readLinkedIssueDetail, {
+    capacity: 512,
+    timeToLive: (exit) => (Exit.isSuccess(exit) ? Duration.seconds(15) : Duration.zero),
+  });
+  const linkedActivityCache = yield* Cache.makeWith(
+    (target: LinkedRead) => runResolvedIssue(target, (api, ref) => api.getIssueActivity(ref)),
+    {
+      capacity: 512,
+      timeToLive: (exit) => (Exit.isSuccess(exit) ? Duration.seconds(15) : Duration.zero),
+    },
+  );
+  const githubIssueDetail: TicketService["Service"]["githubIssueDetail"] = (input) =>
+    input.linkedIssue === undefined
+      ? runTicketIssue(input, (api, ref) => api.getIssue(ref)).pipe(
+          Effect.map(({ title, body, assignees, comments }) => ({
+            title,
+            body,
+            assignees,
+            comments,
+          })),
+        )
+      : resolveIssueTarget(input).pipe(
+          Effect.flatMap((target) => Cache.get(linkedDetailCache, linkedReadKey(target))),
+        );
+  const githubIssueActivity: TicketService["Service"]["githubIssueActivity"] = (input) =>
+    input.linkedIssue === undefined
+      ? runTicketIssue(input, (api, ref) => api.getIssueActivity(ref))
+      : resolveIssueTarget(input).pipe(
+          Effect.flatMap((target) => Cache.get(linkedActivityCache, linkedReadKey(target))),
+        );
+  const invalidateLinkedReads = (target: ResolvedGitHubIssueTarget) =>
+    Effect.all(
+      [
+        Cache.invalidate(linkedDetailCache, linkedReadKey(target)),
+        Cache.invalidate(linkedActivityCache, linkedReadKey(target)),
+      ],
+      { discard: true },
+    );
+  const invalidateGitHubIssue: TicketService["Service"]["invalidateGitHubIssue"] = (input) =>
+    resolveIssueTarget(input).pipe(Effect.flatMap(invalidateLinkedReads));
+  const issueLinkCandidates: TicketService["Service"]["issueLinkCandidates"] = (input) =>
+    get(input.ticketId).pipe(
+      Effect.flatMap((owner) =>
+        github.issueLinkCandidates(
+          owner.links.flatMap((link) =>
+            link.target.kind === "project" ? [link.target.projectId] : [],
+          ),
+        ),
+      ),
+    );
+  const githubIssueAssigneeCandidates: TicketService["Service"]["githubIssueAssigneeCandidates"] = (
+    input,
+  ) => runTicketIssue(input, (api, ref) => api.listAssigneeCandidates(ref));
+  const githubIssueSetAssignees: TicketService["Service"]["githubIssueSetAssignees"] = (input) =>
+    Effect.gen(function* () {
+      const target = yield* resolveIssueTarget(input);
+      yield* runResolvedIssue(target, (api, ref) =>
+        api.setAssignees({ ...ref, assignees: input.assignees, assigned: input.assigned }),
+      );
+      yield* invalidateLinkedReads(target);
+    });
+  const refreshGitHubIssue: TicketService["Service"]["refreshGitHubIssue"] = (input) =>
+    Effect.gen(function* () {
+      const target = yield* resolveIssueTarget(input);
+      const issue = yield* runResolvedIssue(target, (api, ref) => api.getIssue(ref));
       yield* upsertGitHubIssue({
         existingTicketId: input.ticketId,
         readKind: "direct",
-        projectId,
+        projectId: target.projectId,
         host: target.host,
         repository: target.repository,
         issue,
       });
+      yield* invalidateLinkedReads(target);
       return yield* requireSummary(input.ticketId);
     });
 
@@ -2252,9 +2392,10 @@ const make = Effect.gen(function* () {
       readonly title: string;
       readonly body: string;
       readonly status: string;
+      readonly review_status: TicketPlanReviewStatus;
       readonly revision: number;
     }>`
-      SELECT ticket_id, number, title, body, status, revision FROM ticket_plans
+      SELECT ticket_id, number, title, body, status, review_status, revision FROM ticket_plans
       WHERE plan_id = ${planId}
     `.pipe(
       Effect.flatMap(([row]) =>
@@ -2433,11 +2574,11 @@ const make = Effect.gen(function* () {
             }
             yield* sql`
               INSERT INTO ticket_plans (
-                plan_id, ticket_id, number, title, body, status, revision, created_by_json,
+                plan_id, ticket_id, number, title, body, status, review_status, revision, created_by_json,
                 updated_by_json, created_at, updated_at
               ) VALUES (
                 ${planId}, ${input.ticketId}, ${counter.number}, ${input.title}, ${claim.body ?? ""},
-                'active', 1, ${encodeJson(actor)}, ${encodeJson(actor)}, ${at}, ${at}
+                'active', 'draft', 1, ${encodeJson(actor)}, ${encodeJson(actor)}, ${at}, ${at}
               )
             `;
             const attachmentEntries = yield* insertAttachments(
@@ -2471,7 +2612,7 @@ const make = Effect.gen(function* () {
       }
       const { ticketId } = yield* requirePlan(input.planId);
       const claim = yield* claimUploads(ticketId, input.attachments ?? [], undefined);
-      const changed = yield* sql
+      const result = yield* sql
         .withTransaction(
           Effect.gen(function* () {
             const current = yield* requirePlan(input.planId);
@@ -2492,6 +2633,11 @@ const make = Effect.gen(function* () {
               actualRevision: current.revision,
             });
             const stale = current.revision !== input.expectedRevision;
+            const reviewStatus = input.reviewStatus ?? current.review_status;
+            const reviewChanged = reviewStatus !== current.review_status;
+            if (stale && reviewChanged && reviewStatus === "ready") {
+              return yield* conflict;
+            }
             if (stale && input.edits !== undefined && input.edits.length > 0) {
               return yield* conflict;
             }
@@ -2536,12 +2682,45 @@ const make = Effect.gen(function* () {
               input.status === undefined
                 ? false
                 : yield* changePlanStatus(current, input.planId, input.status, actor, at);
-            return edited || added.length > 0 || resolved || statusChanged;
+            if (reviewChanged) {
+              yield* sql`
+                UPDATE ticket_plans
+                SET review_status = ${reviewStatus}, updated_at = ${at},
+                  updated_by_json = ${encodeJson(actor)}
+                WHERE plan_id = ${input.planId}
+              `;
+              yield* appendActivity(
+                ticketId,
+                actor,
+                [
+                  {
+                    type: "plan_review_status_changed",
+                    planId: input.planId,
+                    number: current.number,
+                    from: current.review_status,
+                    to: reviewStatus,
+                  },
+                ],
+                at,
+              );
+              yield* touchTicket(ticketId, at);
+            }
+            return {
+              changed: edited || added.length > 0 || resolved || statusChanged || reviewChanged,
+              contentCommit: {
+                observedRevision: current.revision,
+                revision: current.revision + (edited ? 1 : 0),
+              },
+            };
           }),
         )
         .pipe(Effect.onError(() => releaseClaims(claim.claimedPaths)));
-      if (changed) yield* publishPlan(ticketId, input.planId);
-      return { plan: yield* requirePlanSummary(input.planId), attachments: claim.mapping };
+      if (result.changed) yield* publishPlan(ticketId, input.planId);
+      return {
+        plan: yield* requirePlanSummary(input.planId),
+        attachments: claim.mapping,
+        contentCommit: result.contentCommit,
+      };
     }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not update the plan.")));
 
   const deletePlan: TicketService["Service"]["deletePlan"] = (input, actor) =>
@@ -2694,6 +2873,8 @@ const make = Effect.gen(function* () {
     githubIssueActivity,
     githubIssueAssigneeCandidates,
     githubIssueSetAssignees,
+    invalidateGitHubIssue,
+    issueLinkCandidates,
     refreshGitHubIssue,
     releaseGitHubRepository,
     restoreGitHubRepository,

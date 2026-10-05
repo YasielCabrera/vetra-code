@@ -25,6 +25,7 @@ export function TicketDocumentEditor(props: {
   >;
   readonly label: "Description" | "Plan";
   readonly editing: boolean;
+  readonly readOnlyBody?: string;
   readonly onDone: () => void;
   readonly doneDisabled?: boolean;
   readonly editor: Omit<
@@ -38,20 +39,27 @@ export function TicketDocumentEditor(props: {
 }) {
   const { environmentId, doc, label, editing } = props;
   const noun = label.toLowerCase();
-  const unsaved = hasUnsavedBody(doc.state);
+  const displayedBody = props.readOnlyBody ?? doc.state.text;
+  const unsaved = props.readOnlyBody === undefined && hasUnsavedBody(doc.state);
 
   const editingRef = useRef(editing);
   useEffect(() => {
     editingRef.current = editing;
   }, [editing]);
   const { addPendingUpload } = doc;
+  const disabledRef = useRef(props.editor.disabled);
+  useEffect(() => {
+    disabledRef.current = props.editor.disabled;
+  }, [props.editor.disabled]);
   const onFiles = useCallback(
-    (files: ReadonlyArray<File>) =>
-      uploadTicketFiles(
+    (files: ReadonlyArray<File>) => {
+      if (disabledRef.current) return Promise.resolve([]);
+      return uploadTicketFiles(
         environmentId,
         files,
         (upload) => editingRef.current && addPendingUpload(upload),
-      ),
+      );
+    },
     [addPendingUpload, environmentId],
   );
 
@@ -66,10 +74,10 @@ export function TicketDocumentEditor(props: {
           <span className="min-w-0 flex-1">
             Someone else changed the {noun} while you were editing.
           </span>
-          <Button size="xs" variant="outline" onClick={doc.reload}>
+          <Button size="xs" variant="outline" disabled={props.editor.disabled} onClick={doc.reload}>
             Reload
           </Button>
-          <Button size="xs" onClick={doc.keepMine}>
+          <Button size="xs" disabled={props.editor.disabled} onClick={doc.keepMine}>
             Keep mine
           </Button>
         </div>
@@ -118,7 +126,7 @@ export function TicketDocumentEditor(props: {
           </div>
         ) : (
           <div className="min-w-0">
-            {doc.state.text.trim().length === 0 ? (
+            {displayedBody.trim().length === 0 ? (
               <p className="py-4 text-sm text-muted-foreground">{props.emptyText}</p>
             ) : (
               props.children

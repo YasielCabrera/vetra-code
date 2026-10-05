@@ -7,7 +7,7 @@ import * as Struct from "effect/Struct";
 
 const CreatedTicket = Schema.Struct({ id: TicketId, number: PositiveInt, title: Schema.String });
 const WrittenPlan = TicketPlanSummary.mapFields(
-  Struct.pick(["ticketId", "number", "ref", "title"]),
+  Struct.pick(["ticketId", "number", "ref", "title", "reviewStatus"]),
 );
 
 const decodeCreatedTicket = Schema.decodeUnknownOption(CreatedTicket);

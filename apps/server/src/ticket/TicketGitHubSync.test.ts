@@ -14,6 +14,7 @@ import * as Fiber from "effect/Fiber";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import * as TestClock from "effect/testing/TestClock";
@@ -35,6 +36,8 @@ import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
+import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
+import * as SourceControlProvider from "../sourceControl/SourceControlProvider.ts";
 import * as TicketGitHub from "./TicketGitHub.ts";
 import * as TicketGitHubSync from "./TicketGitHubSync.ts";
 import * as TicketService from "./TicketService.ts";
@@ -133,6 +136,11 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     setStateCalls: [] as Array<{ readonly number: number; readonly change: IssueStateChange }>,
     commentCalls: [] as Array<{ readonly number: number; readonly body: string }>,
     listCalls: 0,
+    listInputs: [] as Array<Parameters<IssueProviderApi["listIssues"]>[0]>,
+    listFailures: new Map<string, IssueProviderError>(),
+    assignees: new Map<number, ReadonlyArray<string>>(),
+    refinementCalls: [] as Array<string>,
+    providerAvailable: true,
     projectReads: 0,
     releaseGate: null as Deferred.Deferred<void> | null,
     releaseStarted: null as Deferred.Deferred<void> | null,
@@ -162,6 +170,8 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     staleList: null as ReadonlyArray<FakeIssue> | null,
     listGate: null as Deferred.Deferred<void> | null,
     listStarted: null as Deferred.Deferred<void> | null,
+    listAllGate: null as Deferred.Deferred<void> | null,
+    listAllStarted: null as Queue.Queue<void> | null,
     listFailure: null as IssueProviderError | null,
     getFailure: null as IssueProviderError | null,
     setStateFailure: null as IssueProviderError | null,
@@ -183,7 +193,11 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     updatedAt: issue.updatedAt,
     closedAt: null,
     labels: issue.labels.map((name) => ({ name, color: null, description: null })),
-    assignees: [],
+    assignees: (fake.assignees.get(issue.number) ?? []).map((login) => ({
+      login,
+      name: null,
+      avatarUrl: null,
+    })),
     milestone: null,
     body: issue.body,
   });
@@ -204,6 +218,11 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     listIssues: (input) =>
       Effect.gen(function* () {
         fake.listCalls += 1;
+        fake.listInputs.push(input);
+        if (fake.listAllGate !== null && fake.listAllStarted !== null) {
+          yield* Queue.offer(fake.listAllStarted, undefined);
+          yield* Deferred.await(fake.listAllGate);
+        }
         const gate = fake.listGate;
         fake.listGate = null;
         if (gate !== null) {
@@ -211,6 +230,8 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
           yield* Deferred.await(gate);
         }
         if (fake.listFailure !== null) return yield* fake.listFailure;
+        const failure = fake.listFailures.get(input.repository);
+        if (failure !== undefined) return yield* failure;
         return {
           issues: (
             fake.staleList ?? [...issues.values()].filter((issue) => issue.state === input.state)
@@ -248,6 +269,7 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     setAssignees: (input) =>
       Effect.sync(() => {
         fake.calls.push({ operation: "assignees", ...input });
+        fake.assignees.set(input.number, input.assigned ? input.assignees : []);
       }),
     setState: (input) =>
       Effect.suspend(() => {
@@ -302,6 +324,7 @@ const withSync = <A, E>(
   }) => Effect.Effect<A, E, never>,
 ) => {
   const { fake, api } = makeFakeGitHub(initial);
+  const registry = fromProviders([api]);
   const layer = TicketGitHubSync.layer.pipe(
     Layer.provideMerge(
       Layer.effect(
@@ -324,7 +347,40 @@ const withSync = <A, E>(
     Layer.provideMerge(TicketGitHub.layer),
     Layer.provideMerge(
       Layer.mergeAll(
-        Layer.succeed(IssueProviderRegistry, fromProviders([api])),
+        Layer.succeed(IssueProviderRegistry, {
+          ...registry,
+          get: (kind) => (fake.providerAvailable ? registry.get(kind) : null),
+        }),
+        Layer.effect(
+          SourceControlProviderRegistry.SourceControlProviderRegistry,
+          Effect.gen(function* () {
+            const provider = yield* SourceControlProvider.SourceControlProvider;
+            return SourceControlProviderRegistry.SourceControlProviderRegistry.of({
+              get: () => Effect.succeed(provider),
+              resolveHandle: (input) =>
+                Effect.sync(() => {
+                  fake.refinementCalls.push(input.cwd);
+                  return {
+                    provider,
+                    context:
+                      input.context === undefined
+                        ? null
+                        : {
+                            ...input.context,
+                            provider: { ...input.context.provider, kind: "github" },
+                          },
+                  };
+                }),
+              resolve: () => Effect.succeed(provider),
+              resolveLink: () => undefined,
+              discover: Effect.succeed([]),
+            });
+          }),
+        ).pipe(
+          Layer.provide(
+            Layer.mock(SourceControlProvider.SourceControlProvider)({ kind: "github" }),
+          ),
+        ),
         Layer.mock(ProjectService.ProjectService)({
           getShell: (projectId) =>
             Effect.sync(() => {
@@ -358,6 +414,488 @@ const withSync = <A, E>(
 const githubOf = (ticket: TicketSummary) => (ticket.kind === "github" ? ticket : null);
 
 describe("TicketGitHubSync", () => {
+  it.effect(
+    "reads a local ticket's recorded Enterprise issue through a secondary source and refreshes without changing its owner",
+    () =>
+      withSync([issue(7)], ({ tickets, sync, fake }) =>
+        Effect.gen(function* () {
+          const linkedIssue = { host: "github.acme.com", repository: "acme/fork", number: 7 };
+          yield* sync.upsertSource({
+            projectId: PROJECT,
+            host: linkedIssue.host,
+            repository: linkedIssue.repository,
+            enabled: true,
+          });
+          const owner = (yield* tickets.create({ title: "Owner title", body: "Owner body" }, USER))
+            .ticket;
+          yield* tickets.link(
+            {
+              ticketId: owner.id,
+              target: {
+                kind: "issue",
+                ref: linkedIssue,
+                snapshot: {
+                  title: "Linked issue",
+                  state: "open",
+                  url: "https://github.acme.com/acme/fork/issues/7",
+                },
+              },
+            },
+            USER,
+          );
+          const before = yield* tickets.get(owner.id);
+          const ref = { ticketId: owner.id, linkedIssue };
+          const detail = yield* tickets.githubIssueDetail(ref);
+          assert.strictEqual(detail.title, "Issue 7");
+          assert.strictEqual(detail.preview?.projectId, PROJECT);
+          assert.strictEqual(detail.preview?.projectTitle, "web");
+          assert.strictEqual(detail.preview?.host, linkedIssue.host);
+          assert.strictEqual(detail.preview?.repository, linkedIssue.repository);
+          assert.strictEqual(detail.preview?.repositoryUrl, "https://github.acme.com/acme/fork");
+          assert.strictEqual(
+            detail.preview?.newIssueUrl,
+            "https://github.acme.com/acme/fork/issues/new",
+          );
+          assert.strictEqual(detail.preview?.commentCount, 0);
+          assert.strictEqual(detail.preview?.commentsTruncated, false);
+          yield* tickets.githubIssueActivity(ref);
+          yield* tickets.githubIssueDetail(ref);
+          yield* tickets.githubIssueActivity(ref);
+          assert.deepStrictEqual(
+            fake.calls.map((call) => call.operation),
+            ["get", "activity"],
+          );
+          fake.edit(7, { title: "Updated issue", body: "Fresh body" });
+          yield* tickets.invalidateGitHubIssue(ref);
+          assert.strictEqual((yield* tickets.githubIssueDetail(ref)).body, "Fresh body");
+          yield* tickets.githubIssueActivity(ref);
+          yield* tickets.githubIssueSetAssignees({
+            ...ref,
+            assignees: ["octocat"],
+            assigned: true,
+          });
+          assert.deepStrictEqual(
+            (yield* tickets.githubIssueDetail(ref)).assignees.map((actor) => actor.login),
+            ["octocat"],
+          );
+          yield* tickets.githubIssueActivity(ref);
+          assert.deepStrictEqual(yield* tickets.get(owner.id), before);
+          assert.strictEqual(fake.calls.filter((call) => call.operation === "get").length, 3);
+          assert.strictEqual(fake.calls.filter((call) => call.operation === "activity").length, 3);
+          assert.strictEqual(fake.listCalls, 0);
+          for (const call of fake.calls)
+            assert.deepStrictEqual(
+              [call.cwd, call.host, call.repository, call.number],
+              ["/work/web", linkedIssue.host, linkedIssue.repository, 7],
+            );
+          yield* TestClock.adjust("16 seconds");
+          yield* tickets.githubIssueDetail(ref);
+          yield* tickets.githubIssueActivity(ref);
+          assert.strictEqual(fake.calls.filter((call) => call.operation === "get").length, 4);
+          assert.strictEqual(fake.calls.filter((call) => call.operation === "activity").length, 4);
+        }),
+      ),
+  );
+
+  it.effect(
+    "shares concurrent linked detail requests and leaves synced ticket reads uncached",
+    () =>
+      withSync([issue(7)], ({ tickets, sync, fake }) =>
+        Effect.gen(function* () {
+          yield* sync.syncNow(SOURCE);
+          const synced = yield* tickets.resolveRef("acme/web#7");
+          yield* tickets.githubIssueDetail({ ticketId: synced.id });
+          yield* tickets.githubIssueDetail({ ticketId: synced.id });
+          assert.strictEqual(fake.calls.filter((call) => call.operation === "get").length, 2);
+          const owner = (yield* tickets.create({ title: "Local" }, USER)).ticket;
+          const linkedIssue = { host: SOURCE.host, repository: SOURCE.repository, number: 7 };
+          yield* tickets.link(
+            {
+              ticketId: owner.id,
+              target: {
+                kind: "issue",
+                ref: linkedIssue,
+                snapshot: {
+                  title: "Linked",
+                  state: "open",
+                  url: "https://github.com/acme/web/issues/7",
+                },
+              },
+            },
+            USER,
+          );
+          const started = yield* Deferred.make<void>();
+          const gate = yield* Deferred.make<void>();
+          fake.duringGet = Deferred.succeed(started, undefined).pipe(
+            Effect.andThen(Deferred.await(gate)),
+          );
+          const ref = { ticketId: owner.id, linkedIssue };
+          const secondOwner = (yield* tickets.create({ title: "Another local owner" }, USER))
+            .ticket;
+          yield* tickets.link(
+            {
+              ticketId: secondOwner.id,
+              target: {
+                kind: "issue",
+                ref: linkedIssue,
+                snapshot: {
+                  title: "Linked",
+                  state: "open",
+                  url: "https://github.com/acme/web/issues/7",
+                },
+              },
+            },
+            USER,
+          );
+          const first = yield* tickets.githubIssueDetail(ref).pipe(Effect.forkScoped);
+          yield* Deferred.await(started);
+          const second = yield* tickets
+            .githubIssueDetail({ ticketId: secondOwner.id, linkedIssue })
+            .pipe(Effect.forkScoped);
+          yield* Deferred.succeed(gate, undefined);
+          const [left, right] = yield* Effect.all([Fiber.join(first), Fiber.join(second)]);
+          assert.deepStrictEqual(left, right);
+          assert.strictEqual(fake.calls.filter((call) => call.operation === "get").length, 3);
+        }).pipe(Effect.scoped),
+      ),
+  );
+
+  it.effect(
+    "shares linked reads between owners and invalidates them after linked and synced writes",
+    () =>
+      withSync([issue(7)], ({ tickets, sync, fake }) =>
+        Effect.gen(function* () {
+          yield* sync.syncNow(SOURCE);
+          const synced = yield* tickets.resolveRef("acme/web#7");
+          const linkedIssue = { host: SOURCE.host, repository: SOURCE.repository, number: 7 };
+          const createOwner = Effect.fnUntraced(function* (title: string) {
+            const owner = (yield* tickets.create({ title, body: `${title} description` }, USER))
+              .ticket;
+            yield* tickets.link(
+              {
+                ticketId: owner.id,
+                target: {
+                  kind: "issue",
+                  ref: linkedIssue,
+                  snapshot: {
+                    title: "Linked",
+                    state: "open",
+                    url: "https://github.com/acme/web/issues/7",
+                  },
+                },
+              },
+              USER,
+            );
+            return { ticketId: owner.id, linkedIssue };
+          });
+          const first = yield* createOwner("First owner");
+          const second = yield* createOwner("Second owner");
+          const refs = [first, second];
+          for (const ref of refs) {
+            yield* tickets.githubIssueDetail(ref);
+            yield* tickets.githubIssueActivity(ref);
+          }
+          assert.deepStrictEqual(
+            fake.calls.map((call) => call.operation),
+            ["get", "activity"],
+          );
+          yield* tickets.githubIssueSetAssignees({
+            ...first,
+            assignees: ["octocat"],
+            assigned: true,
+          });
+          assert.deepStrictEqual(
+            (yield* tickets.githubIssueDetail(second)).assignees.map((actor) => actor.login),
+            ["octocat"],
+          );
+          yield* tickets.githubIssueActivity(second);
+          yield* tickets.githubIssueSetAssignees({
+            ticketId: synced.id,
+            assignees: ["octocat"],
+            assigned: false,
+          });
+          assert.deepStrictEqual((yield* tickets.githubIssueDetail(first)).assignees, []);
+          yield* tickets.githubIssueActivity(first);
+          fake.edit(7, {
+            title: "Fresh after synced refresh",
+            body: "Updated description",
+            updatedAt: "2026-08-05T00:00:00Z",
+          });
+          yield* tickets.refreshGitHubIssue({ ticketId: synced.id });
+          assert.strictEqual(
+            (yield* tickets.githubIssueDetail(second)).body,
+            "Updated description",
+          );
+          yield* tickets.githubIssueActivity(second);
+          assert.strictEqual(fake.calls.filter((call) => call.operation === "get").length, 5);
+          assert.strictEqual(fake.calls.filter((call) => call.operation === "activity").length, 4);
+          yield* tickets.unlink(
+            { ticketId: first.ticketId, kind: "issue", targetKey: "github.com/acme/web#7" },
+            USER,
+          );
+          const rejected = yield* tickets.githubIssueDetail(first).pipe(Effect.flip);
+          assert.strictEqual(rejected.message, "This issue is not linked to the ticket.");
+          assert.strictEqual(
+            (yield* tickets.githubIssueDetail(second)).title,
+            "Fresh after synced refresh",
+          );
+          assert.strictEqual(fake.calls.filter((call) => call.operation === "get").length, 5);
+          for (const [index, ref] of refs.entries()) {
+            const owner = yield* tickets.get(ref.ticketId);
+            assert.strictEqual(owner.summary.kind, "local");
+            assert.strictEqual(owner.body, `${index === 0 ? "First" : "Second"} owner description`);
+          }
+          yield* sync.upsertSource({ ...SOURCE, enabled: false });
+          const missingSource = yield* tickets.githubIssueDetail(second).pipe(Effect.flip);
+          assert.include(missingSource.message, "No project here can read");
+          assert.strictEqual(fake.calls.filter((call) => call.operation === "get").length, 5);
+        }),
+      ),
+  );
+
+  it.effect("bounds repository discovery concurrency while retaining every repository result", () =>
+    withSync([issue(7)], ({ tickets, fake }) =>
+      Effect.gen(function* () {
+        const projectIds = Array.from({ length: 15 }, (_, index) =>
+          ProjectId.make(`repo-${index}`),
+        );
+        for (const projectId of projectIds)
+          fake.projects.set(projectId, {
+            ...shell,
+            id: projectId,
+            repositoryIdentity: {
+              canonicalKey: `github.com/acme/${projectId}`,
+              provider: "github",
+              displayName: `acme/${projectId}`,
+              locator: {
+                source: "git-remote",
+                remoteName: "origin",
+                remoteUrl: `https://github.com/acme/${projectId}.git`,
+              },
+            },
+          });
+        const owner = (yield* tickets.create(
+          {
+            title: "Many repos",
+            links: projectIds.map((projectId) => ({ kind: "project", projectId })),
+          },
+          USER,
+        )).ticket;
+        fake.listAllGate = yield* Deferred.make<void>();
+        fake.listAllStarted = yield* Queue.unbounded<void>();
+        const candidates = yield* tickets
+          .issueLinkCandidates({ ticketId: owner.id })
+          .pipe(Effect.forkScoped);
+        for (let index = 0; index < 12; index += 1) yield* Queue.take(fake.listAllStarted);
+        assert.strictEqual(fake.listCalls, 12);
+        yield* Deferred.succeed(fake.listAllGate, undefined);
+        const result = yield* Fiber.join(candidates);
+        assert.strictEqual(fake.listCalls, 15);
+        assert.strictEqual(result.entries.length, 15);
+        assert.deepStrictEqual(result.errors, []);
+      }).pipe(Effect.scoped),
+    ),
+  );
+
+  it.effect(
+    "rejects unrecorded linked identities and stops serving cached reads after unlinking",
+    () =>
+      withSync([issue(7)], ({ tickets, fake }) =>
+        Effect.gen(function* () {
+          const linkedIssue = { host: SOURCE.host, repository: SOURCE.repository, number: 7 };
+          const owner = (yield* tickets.create({ title: "Owner" }, USER)).ticket;
+          yield* tickets.link(
+            {
+              ticketId: owner.id,
+              target: {
+                kind: "issue",
+                ref: linkedIssue,
+                snapshot: {
+                  title: "Linked",
+                  state: "open",
+                  url: "https://github.com/acme/web/issues/7",
+                },
+              },
+            },
+            USER,
+          );
+          for (const wrong of [
+            { ...linkedIssue, host: "github.acme.com" },
+            { ...linkedIssue, repository: "acme/other" },
+            { ...linkedIssue, number: 8 },
+          ]) {
+            const error = yield* tickets
+              .githubIssueDetail({ ticketId: owner.id, linkedIssue: wrong })
+              .pipe(Effect.flip);
+            assert.strictEqual(error.message, "This issue is not linked to the ticket.");
+          }
+          assert.strictEqual(fake.calls.length, 0);
+          const ref = {
+            ticketId: owner.id,
+            linkedIssue: { ...linkedIssue, host: "GitHub.com", repository: "ACME/Web" },
+          };
+          yield* tickets.githubIssueDetail(ref);
+          yield* tickets.unlink(
+            { ticketId: owner.id, kind: "issue", targetKey: "github.com/acme/web#7" },
+            USER,
+          );
+          const error = yield* tickets.githubIssueDetail(ref).pipe(Effect.flip);
+          assert.strictEqual(error.message, "This issue is not linked to the ticket.");
+          assert.strictEqual(fake.calls.length, 1);
+        }),
+      ),
+  );
+
+  it.effect(
+    "bounds and shares candidate reads, deduplicates repositories and keeps partial failures",
+    () =>
+      withSync(
+        Array.from({ length: 35 }, (_, index) => issue(index + 1)),
+        ({ tickets, fake }) =>
+          Effect.gen(function* () {
+            const duplicate = ProjectId.make("duplicate-project");
+            const failing = ProjectId.make("failing-project");
+            const identity = {
+              canonicalKey: "github.com/acme/web",
+              provider: "github",
+              displayName: "acme/web",
+              locator: {
+                source: "git-remote" as const,
+                remoteName: "origin",
+                remoteUrl: "https://github.com/acme/web.git",
+              },
+            };
+            fake.projects.set(PROJECT, { ...shell, repositoryIdentity: identity });
+            fake.projects.set(duplicate, {
+              ...shell,
+              id: duplicate,
+              repositoryIdentity: {
+                ...identity,
+                canonicalKey: "GitHub.com/ACME/Web",
+                displayName: "ACME/Web",
+              },
+            });
+            fake.projects.set(failing, {
+              ...shell,
+              id: failing,
+              title: "private",
+              repositoryIdentity: {
+                ...identity,
+                canonicalKey: "github.com/acme/private",
+                displayName: "acme/private",
+              },
+            });
+            fake.listFailures.set(
+              "acme/private",
+              new IssueProviderError({
+                provider: "github",
+                operation: "list",
+                reason: "unauthenticated",
+                detail: "sign in",
+              }),
+            );
+            const owner = (yield* tickets.create(
+              {
+                title: "Owner",
+                links: [PROJECT, duplicate, failing].map((projectId) => ({
+                  kind: "project",
+                  projectId,
+                })),
+              },
+              USER,
+            )).ticket;
+            const candidates = yield* tickets.issueLinkCandidates({ ticketId: owner.id });
+            assert.strictEqual(candidates.entries.length, 30);
+            assert.strictEqual(candidates.errors.length, 1);
+            assert.strictEqual(candidates.errors[0]?.projectId, failing);
+            assert.include(candidates.errors[0]?.message ?? "", "acme/private");
+            assert.include(candidates.errors[0]?.message ?? "", "not signed in");
+            assert.deepStrictEqual(
+              fake.listInputs.map((input) => [
+                input.host,
+                input.repository,
+                input.state,
+                input.limit,
+              ]),
+              [
+                ["github.com", "acme/web", "open", 30],
+                ["github.com", "acme/private", "open", 30],
+              ],
+            );
+            yield* tickets.issueLinkCandidates({ ticketId: owner.id });
+            assert.strictEqual(fake.listCalls, 3);
+            yield* TestClock.adjust("31 seconds");
+            yield* tickets.issueLinkCandidates({ ticketId: owner.id });
+            assert.strictEqual(fake.listCalls, 5);
+          }),
+      ),
+  );
+
+  it.effect(
+    "refines legacy unknown repositories on Enterprise hosts and reports unavailable providers",
+    () =>
+      withSync([issue(7)], ({ tickets, fake }) =>
+        Effect.gen(function* () {
+          fake.projects.set(PROJECT, {
+            ...shell,
+            repositoryIdentity: {
+              canonicalKey: "github.acme.com/acme/web",
+              provider: "unknown",
+              displayName: "acme/web",
+              locator: {
+                source: "git-remote",
+                remoteName: "origin",
+                remoteUrl: "https://github.acme.com/acme/web.git",
+              },
+            },
+          });
+          const owner = (yield* tickets.create(
+            { title: "Owner", links: [{ kind: "project", projectId: PROJECT }] },
+            USER,
+          )).ticket;
+          const candidates = yield* tickets.issueLinkCandidates({ ticketId: owner.id });
+          assert.strictEqual(candidates.entries[0]?.host, "github.acme.com");
+          assert.deepStrictEqual(fake.refinementCalls, ["/work/web"]);
+          fake.providerAvailable = false;
+          const unavailable = yield* tickets.issueLinkCandidates({ ticketId: owner.id });
+          assert.strictEqual(unavailable.entries.length, 0);
+          assert.include(unavailable.errors[0]?.message ?? "", "not available");
+          assert.deepStrictEqual(fake.refinementCalls, ["/work/web"]);
+        }),
+      ),
+  );
+
+  it.effect(
+    "reports a recorded issue whose repository has no environment-local source or matching project",
+    () =>
+      withSync([issue(7)], ({ tickets, fake }) =>
+        Effect.gen(function* () {
+          const owner = (yield* tickets.create({ title: "Owner" }, USER)).ticket;
+          const linkedIssue = { host: "github.acme.com", repository: "acme/absent", number: 7 };
+          yield* tickets.link(
+            {
+              ticketId: owner.id,
+              target: {
+                kind: "issue",
+                ref: linkedIssue,
+                snapshot: {
+                  title: "Absent",
+                  state: "open",
+                  url: "https://github.acme.com/acme/absent/issues/7",
+                },
+              },
+            },
+            USER,
+          );
+          const error = yield* tickets
+            .githubIssueDetail({ ticketId: owner.id, linkedIssue })
+            .pipe(Effect.flip);
+          assert.include(error.message, "No project here can read github.acme.com/acme/absent");
+          assert.strictEqual(fake.calls.length, 0);
+        }),
+      ),
+  );
+
   it.effect(
     "routes ticket reads and writes through the stored Enterprise host and fork source",
     () =>

@@ -192,6 +192,7 @@ describe("prepareTicketDraftPaste", () => {
         status: "active",
         revision: 3,
         openCommentCount: 0,
+        reviewStatus: "draft",
         createdBy: { type: "user" },
         updatedBy: { type: "user" },
         updatedAt: "2026-10-01T00:00:00.000Z",

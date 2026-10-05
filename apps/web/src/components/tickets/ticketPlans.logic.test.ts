@@ -27,6 +27,7 @@ function plan(planId: TicketPlanId, number: number, status: "active" | "archived
     status,
     revision: 1,
     openCommentCount: 0,
+    reviewStatus: "draft",
     createdBy: { type: "user" },
     updatedBy: { type: "user" },
     updatedAt: "2026-10-01T10:00:00.000Z",

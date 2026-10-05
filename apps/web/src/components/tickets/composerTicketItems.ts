@@ -119,7 +119,7 @@ export function matchComposerTicketItems(input: {
       ticket,
       plan,
       label: plan.ref,
-      description: plan.status === "archived" ? `${plan.title} (archived)` : plan.title,
+      description: `${plan.title} (${plan.reviewStatus === "ready" ? "Ready" : "Draft"}${plan.status === "archived" ? ", archived" : ""})`,
     }));
   return [...ticketItems, ...planItems];
 }

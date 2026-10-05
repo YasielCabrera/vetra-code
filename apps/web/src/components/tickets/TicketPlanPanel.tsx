@@ -146,6 +146,9 @@ function TicketPlanHistory(props: {
             <TicketActorName environmentId={ticketRef.environmentId} actor={item.actor} />
           </span>{" "}
           {PLAN_ENTRY_VERBS[item.entry.type]} the plan
+          {item.entry.type === "plan_review_status_changed"
+            ? ` ${item.entry.to === "ready" ? "Ready" : "Draft"}`
+            : null}
           <time
             dateTime={item.createdAt}
             aria-label={new Date(item.createdAt).toLocaleString()}

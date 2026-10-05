@@ -1,7 +1,12 @@
-import { EnvironmentId, TicketId, TicketPlanId } from "@t3tools/contracts";
+import { EnvironmentId, TicketId, TicketPlanId, type TicketPlanSummary } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { askForPlanPrefill, revisePlanPrefill, ticketContextRecord } from "./ticketContextRecord";
+import {
+  askForPlanPrefill,
+  revisePlanPrefill,
+  ticketContextRecord,
+  ticketPlanContextRecord,
+} from "./ticketContextRecord";
 
 const environmentId = EnvironmentId.make("env-1");
 
@@ -11,13 +16,14 @@ function ticketWithPlans(count: number) {
     number: 42,
     title: "Login loop",
     linkRefs: [],
-    plans: Array.from({ length: count }, (_, index) => ({
+    plans: Array.from({ length: count }, (_, index): TicketPlanSummary => ({
       planId: TicketPlanId.make(`plan-${index + 1}`),
       ticketId: TicketId.make("ticket-1"),
       ref: `T-42/P${index + 1}`,
       number: index + 1,
       title: `Plan ${index + 1}`,
       status: "active" as const,
+      reviewStatus: "draft",
       revision: 1,
       openCommentCount: 0,
       createdBy: { type: "user" as const },
@@ -36,6 +42,16 @@ describe("ticketContextRecord", () => {
       "T-42/P50",
       false,
     ]);
+  });
+
+  it("snapshots review state in ticket references and directly attached plans", () => {
+    const ticket = ticketWithPlans(1);
+    const plan: TicketPlanSummary = { ...ticket.plans[0]!, reviewStatus: "ready" };
+    const context = ticketContextRecord({ environmentId, ticket: { ...ticket, plans: [plan] } });
+    const direct = ticketPlanContextRecord({ environmentId, plan });
+    expect([context.plans?.[0]?.reviewStatus, direct.reviewStatus]).toEqual(["ready", "ready"]);
+    expect([context.plans?.[0]?.revision, direct.revision]).toEqual([1, 1]);
+    expect(["body" in context.plans![0]!, "body" in direct]).toEqual([false, false]);
   });
 });
 

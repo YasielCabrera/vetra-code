@@ -46,12 +46,12 @@ describe("reduceTicketDocument", () => {
       { type: "writeStarted", sentBody: pending, expectedRevision: 1 },
       {
         type: "writeLanded",
-        revision: 2,
+        acknowledgement: { kind: "legacy", revision: 2 },
         claimed: [{ pendingId: "pending-shot", attachmentId: "ticket-shot" }],
       },
       { type: "edited", text: "Draft" },
       { type: "writeStarted", sentBody: "Draft", expectedRevision: 2 },
-      { type: "writeLanded", revision: 3, claimed: [] },
+      { type: "writeLanded", acknowledgement: { kind: "legacy", revision: 3 }, claimed: [] },
       { type: "edited", text: pending },
     ]);
     expect(state.text).toBe("![shot](vetra-attachment://ticket-shot)");
@@ -79,7 +79,7 @@ describe("reduceTicketDocument", () => {
       { type: "edited", text: `${sent}\nmore` },
       {
         type: "writeLanded",
-        revision: 2,
+        acknowledgement: { kind: "legacy", revision: 2 },
         claimed: [{ pendingId: "pending-1", attachmentId: "ticket-9-a" }],
       },
     ]);
@@ -101,7 +101,7 @@ describe("reduceTicketDocument", () => {
   it("names the landed revision on the next write when the reply beats the push", () => {
     const state = run([
       { type: "writeStarted", sentBody: null, expectedRevision: 1 },
-      { type: "writeLanded", revision: 2, claimed: [] },
+      { type: "writeLanded", acknowledgement: { kind: "legacy", revision: 2 }, claimed: [] },
       { type: "edited", text: "Typed after the title save" },
     ]);
     expect(state.base).toEqual({ revision: 2, body: "Draft" });
@@ -113,7 +113,7 @@ describe("reduceTicketDocument", () => {
       { type: "edited", text: "Final" },
       { type: "writeStarted", sentBody: "Final", expectedRevision: 1 },
       { type: "serverChanged", revision: 2, body: "Final" },
-      { type: "writeLanded", revision: 2, claimed: [] },
+      { type: "writeLanded", acknowledgement: { kind: "legacy", revision: 2 }, claimed: [] },
     ]);
     expect(saved.base).toEqual({ revision: 2, body: "Final" });
     expect(hasUnsavedBody(saved)).toBe(false);
@@ -161,7 +161,7 @@ describe("reduceTicketDocument", () => {
       { type: "writeStarted", sentBody: "Mine", expectedRevision: 1 },
       { type: "writeConflicted" },
       { type: "writeStarted", sentBody: null, expectedRevision: 3 },
-      { type: "writeLanded", revision: 4, claimed: [] },
+      { type: "writeLanded", acknowledgement: { kind: "legacy", revision: 4 }, claimed: [] },
       { type: "serverChanged", revision: 4, body: "Theirs" },
     ]);
     expect([state.conflict, state.base, state.text]).toEqual([

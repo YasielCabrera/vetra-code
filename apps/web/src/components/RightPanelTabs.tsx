@@ -25,7 +25,6 @@ import {
 import type {
   ContextMenuItem,
   EnvironmentId,
-  IssueState,
   PreviewSessionSnapshot,
   ProjectId,
   PullRequestState,
@@ -37,7 +36,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CircleDot,
   Database,
   FileDiff,
   Files,
@@ -164,7 +162,6 @@ interface RightPanelTabsProps {
   powerhouseAvailable: boolean;
   deviceAvailable: boolean;
   pullRequestStatusSeeds?: Readonly<Record<string, PullRequestTabStatusSeed>>;
-  issueStatuses?: Readonly<Record<string, IssueTabStatus>>;
   children: ReactNode;
 }
 
@@ -182,13 +179,6 @@ export function shouldOpenDefaultBrowserProfileFromMenuClick(
   pointerType: string | undefined,
 ): boolean {
   return pointerType !== "touch";
-}
-
-export interface IssueTabStatus {
-  projectId: string;
-  repository: string;
-  number: number;
-  state: IssueState;
 }
 
 // Replay tab layout animations only while sorting so a drop does not
@@ -697,7 +687,6 @@ function surfaceTitle(
         getTerminalLabel(surface.activeTerminalId)
       );
     case "pull-request":
-    case "issue":
       return `#${surface.number}`;
     case "pull-requests":
       return "Pull requests";
@@ -750,7 +739,6 @@ function SurfaceIcon({
   theme,
   environmentId,
   pullRequestStatusSeeds,
-  issueStatuses,
 }: {
   surface: RightPanelSurface;
   sessions: Readonly<Record<string, PreviewSessionSnapshot>>;
@@ -758,7 +746,6 @@ function SurfaceIcon({
   theme: "light" | "dark";
   environmentId: EnvironmentId | null;
   pullRequestStatusSeeds: Readonly<Record<string, PullRequestTabStatusSeed>> | undefined;
-  issueStatuses: Readonly<Record<string, IssueTabStatus>> | undefined;
 }) {
   switch (surface.kind) {
     case "preview": {
@@ -802,23 +789,6 @@ function SurfaceIcon({
       ) : (
         <Smartphone className="size-3 shrink-0" />
       );
-    case "issue": {
-      // The same vocabulary the issue rows use: open is green, closed is the violet a merged
-      // change request wears. Unknown until the panel has read it, so muted until then.
-      const state = issueStatuses?.[surface.id]?.state ?? null;
-      return (
-        <CircleDot
-          className={cn(
-            "size-3 shrink-0",
-            state === "open"
-              ? "text-success"
-              : state === "closed"
-                ? "text-merged"
-                : "text-muted-foreground",
-          )}
-        />
-      );
-    }
     case "powerhouse-models":
       return <Braces className="size-3 shrink-0" />;
     case "powerhouse-explorer":
@@ -1348,7 +1318,6 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                               theme={resolvedTheme}
                               environmentId={props.environmentId}
                               pullRequestStatusSeeds={props.pullRequestStatusSeeds}
-                              issueStatuses={props.issueStatuses}
                             />
                             {pending ? (
                               <span

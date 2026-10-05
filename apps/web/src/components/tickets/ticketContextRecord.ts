@@ -46,6 +46,7 @@ export function ticketContextRecord(input: {
             ref: plan.ref,
             title: plan.title,
             status: plan.status,
+            reviewStatus: plan.reviewStatus,
             revision: plan.revision,
             openCommentCount: plan.openCommentCount,
           })),
@@ -71,6 +72,7 @@ export function ticketPlanContextRecord(input: {
     ref: plan.ref,
     title: plan.title,
     revision: plan.revision,
+    reviewStatus: plan.reviewStatus,
     openCommentCount: plan.openCommentCount,
   };
 }

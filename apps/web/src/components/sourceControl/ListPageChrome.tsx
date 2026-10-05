@@ -1,18 +1,17 @@
-/**
- * The chrome a source-control list page wears once its controls scroll away.
- *
- * Both the pull-request and the issue list condense the same way: the title becomes the scope,
- * each segment a menu for that filter, and the search folds to an icon on the right. The two
- * pieces that do the folding live here so the pages behave alike rather than similarly.
- */
 import { ChevronDownIcon, SearchIcon } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ElementType, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import type { ListFilterOption } from "./ListFilterMenu";
+
+interface ListFilterOption<Value extends string> {
+  readonly value: Value;
+  readonly label: string;
+  readonly Icon: ElementType<{ className?: string }>;
+  readonly unavailable?: string | undefined;
+}
 
 /** A compact stand-in for one pill group when the header is narrow. */
 export function CompactFilterMenu<Value extends string>({

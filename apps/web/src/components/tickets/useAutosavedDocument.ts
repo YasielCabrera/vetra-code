@@ -1,4 +1,3 @@
-import type { TicketClaimedAttachment } from "@t3tools/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { attachmentReferenceIds } from "../../lib/attachmentReferences";
@@ -11,16 +10,14 @@ import {
   reduceTicketDocument,
   shouldAutosave,
   TICKET_REVISION_CONFLICT,
+  type DocumentWriteOutcome,
   type TicketDocumentEvent,
   type TicketDocumentState,
 } from "./ticketDocument.logic";
 
 const AUTOSAVE_DELAY_MS = 800;
 
-export type DocumentWriteOutcome<Summary> =
-  | { readonly summary: Summary; readonly claimed: ReadonlyArray<TicketClaimedAttachment> }
-  | typeof TICKET_REVISION_CONFLICT
-  | null;
+export type { DocumentWriteOutcome } from "./ticketDocument.logic";
 
 /** One server write naming the revision it was made against. */
 export type DocumentWrite<Summary> = (
@@ -62,6 +59,7 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
   const pendingUploadsRef = useRef(new Map<string, PendingTicketUpload>());
   const mountedRef = useRef(true);
   const queueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const reviewedRef = useRef<{ revision: number; failed: boolean } | null>(null);
 
   useEffect(() => keepNewestSummary(summary), [keepNewestSummary, summary]);
   useEffect(() => {
@@ -78,12 +76,30 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
   );
 
   const write = useCallback(
-    async (sentBody: string | null, run: DocumentWrite<Summary>): Promise<boolean> => {
+    async (
+      sentBody: string | null,
+      run: DocumentWrite<Summary>,
+      pinnedRevision?: number,
+    ): Promise<boolean> => {
+      const reviewed = reviewedRef.current;
       const expectedRevision =
-        sentBody === null ? latestRef.current.revision : stateRef.current.base.revision;
+        pinnedRevision ??
+        reviewed?.revision ??
+        (sentBody === null ? latestRef.current.revision : stateRef.current.base.revision);
       dispatch({ type: "writeStarted", sentBody, expectedRevision });
+      if (
+        reviewed !== null &&
+        (reviewed.failed ||
+          latestRef.current.revision !== reviewed.revision ||
+          stateRef.current.base.revision !== reviewed.revision)
+      ) {
+        reviewed.failed = true;
+        dispatch({ type: "writeConflicted" });
+        return false;
+      }
       const result = await run(expectedRevision);
       if (result === TICKET_REVISION_CONFLICT) {
+        if (reviewedRef.current !== null) reviewedRef.current.failed = true;
         dispatch({ type: "writeConflicted" });
         if (sentBody === null) {
           toastManager.add(
@@ -97,12 +113,42 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
         return false;
       }
       if (result === null) {
+        if (reviewedRef.current !== null) reviewedRef.current.failed = true;
         dispatch({ type: "writeFailed" });
         return false;
       }
-      keepNewestSummary(result.summary);
-      dispatch({ type: "writeLanded", revision: result.summary.revision, claimed: result.claimed });
-      return true;
+      const reviewing = reviewedRef.current;
+      const acknowledgement = result.acknowledgement;
+      const invalidCommit =
+        acknowledgement.kind === "commit" &&
+        (acknowledgement.observedRevision !== expectedRevision ||
+          (acknowledgement.revision !== expectedRevision &&
+            acknowledgement.revision !== expectedRevision + 1));
+      const invalidReview =
+        reviewing !== null &&
+        (reviewing.failed ||
+          acknowledgement.kind !== "commit" ||
+          expectedRevision !== reviewing.revision ||
+          result.summary.revision > acknowledgement.revision ||
+          latestRef.current.revision > acknowledgement.revision ||
+          stateRef.current.server.revision > acknowledgement.revision);
+      if (invalidCommit || invalidReview) {
+        if (reviewing !== null) reviewing.failed = true;
+        dispatch({ type: "writeConflicted", claimed: result.claimed });
+      } else {
+        if (reviewing !== null && acknowledgement.kind === "commit") {
+          reviewing.revision = acknowledgement.revision;
+        }
+        keepNewestSummary(result.summary);
+        dispatch({ type: "writeLanded", acknowledgement, claimed: result.claimed });
+      }
+      for (const claim of result.claimed) {
+        const upload = pendingUploadsRef.current.get(claim.pendingId);
+        if (upload === undefined) continue;
+        pendingUploadsRef.current.delete(claim.pendingId);
+        releaseAttachmentUpload(upload.localId);
+      }
+      return !invalidCommit && !invalidReview;
     },
     [dispatch, fieldConflictTitle, keepNewestSummary],
   );
@@ -126,8 +172,9 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
         );
         if (landed) {
           for (const upload of uploads) {
-            pendingUploadsRef.current.delete(upload.attachment.id);
-            releaseAttachmentUpload(upload.localId);
+            if (pendingUploadsRef.current.delete(upload.attachment.id)) {
+              releaseAttachmentUpload(upload.localId);
+            }
           }
         }
         return landed;
@@ -137,10 +184,15 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
 
   /** Queues a write without a body; `prepare` runs in turn and returns null to skip it. */
   const writeFields = useCallback(
-    (prepare: () => DocumentWrite<Summary> | null) =>
+    (
+      prepare: () => DocumentWrite<Summary> | null,
+      options?: {
+        readonly expectedRevision?: number;
+      },
+    ) =>
       enqueue(async () => {
         const run = prepare();
-        return run === null ? true : write(null, run);
+        return run === null ? true : write(null, run, options?.expectedRevision);
       }),
     [enqueue, write],
   );
@@ -185,6 +237,7 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
     readText: useCallback(() => stateRef.current.text, []),
     /** The newest summary, without subscribing to it. */
     readLatest: useCallback(() => latestRef.current, []),
+    readBase: useCallback(() => stateRef.current.base, []),
     edit: useCallback((text: string) => dispatch({ type: "edited", text }), [dispatch]),
     reload: useCallback(() => dispatch({ type: "reload" }), [dispatch]),
     keepMine: useCallback(() => {
@@ -193,6 +246,35 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
     }, [dispatch, saveBody]),
     /** Waits for queued writes and saves the current body; false if the body cannot save. */
     flush: saveBody,
+    flushReviewed: async (commitTitle: () => Promise<boolean>): Promise<number | null> => {
+      const reviewed = { revision: stateRef.current.base.revision, failed: false };
+      reviewedRef.current = reviewed;
+      try {
+        if (
+          stateRef.current.conflict ||
+          latestRef.current.revision !== reviewed.revision ||
+          !(await commitTitle()) ||
+          !(await saveBody()) ||
+          reviewed.failed ||
+          stateRef.current.conflict ||
+          hasUnsavedBody(stateRef.current) ||
+          stateRef.current.base.revision !== reviewed.revision ||
+          latestRef.current.revision !== reviewed.revision
+        ) {
+          toastManager.add(
+            stackedThreadToast({
+              type: "error",
+              title: fieldConflictTitle,
+              description: "Review the latest plan and try marking it Ready again.",
+            }),
+          );
+          return null;
+        }
+        return reviewed.revision;
+      } finally {
+        reviewedRef.current = null;
+      }
+    },
     /** Holds an upload for the save that references it; false once the page has closed. */
     addPendingUpload: useCallback((upload: PendingTicketUpload) => {
       if (mountedRef.current) pendingUploadsRef.current.set(upload.attachment.id, upload);

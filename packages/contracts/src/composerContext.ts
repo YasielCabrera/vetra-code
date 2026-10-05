@@ -10,7 +10,7 @@ import {
   TicketPlanId,
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
-import { TicketLinkRef, TicketPlanStatus } from "./ticket.ts";
+import { TicketLinkRef, TicketPlanReviewStatus, TicketPlanStatus } from "./ticket.ts";
 
 /**
  * Inline context records: the typed payload behind every composer chip.
@@ -251,6 +251,8 @@ const ticketPlanRef = {
   /** The plan's revision when the chip was made. */
   revision: PositiveInt,
   openCommentCount: NonNegativeInt,
+  /** A snapshot when present; historical records leave review status unspecified. */
+  reviewStatus: Schema.optional(TicketPlanReviewStatus),
 } as const;
 
 /**
