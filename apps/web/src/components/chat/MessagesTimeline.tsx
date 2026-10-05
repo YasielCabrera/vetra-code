@@ -181,7 +181,7 @@ import {
 } from "./timelineScrollAnchoring";
 import { MessageCopyButton } from "./MessageCopyButton";
 import { MessageReadAloudButton } from "./MessageReadAloudButton";
-import { type ReadAloud, stopSpeech, useReadAloud } from "../../readAloud";
+import { type ReadAloud, stopThreadSpeech, useReadAloud } from "../../readAloud";
 import { PierreEntryIcon } from "./PierreEntryIcon";
 import { inferEntryKindFromPath } from "../../pierre-icons";
 import { AssistantSelectionToolbar } from "./AssistantSelectionToolbar";
@@ -570,7 +570,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
 }: MessagesTimelineProps) {
   const listIdentityKey = displayThreadKey ?? routeThreadKey;
   // A reply read aloud belongs to its thread; leaving the thread takes its stop button away.
-  useEffect(() => stopSpeech, [routeThreadKey]);
+  useEffect(() => () => stopThreadSpeech(routeThreadKey), [routeThreadKey]);
   const readAloud = useReadAloud(activeThreadEnvironmentId);
   const rememberedPosition = useMemo(
     () => readTimelinePosition(listIdentityKey),
@@ -2667,6 +2667,7 @@ function AssistantMessageMeta({
       {!message.streaming && (
         <MessageReadAloudButton
           readAloud={ctx.readAloud}
+          routeThreadKey={ctx.routeThreadKey}
           messageId={message.id}
           text={message.text}
         />

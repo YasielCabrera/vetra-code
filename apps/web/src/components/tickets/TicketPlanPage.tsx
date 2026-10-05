@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
+import { documentSpeechKey, useStopSpeechOnLeave } from "../../readAloud";
 import { useTicketActions } from "../../hooks/useTicketActions";
 import { useTicket, useTicketDetail, useTicketPlan } from "../../state/tickets";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
@@ -25,6 +26,7 @@ import { Button } from "../ui/button";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { ScrollArea } from "../ui/scroll-area";
 import { SidebarInset } from "../ui/sidebar";
+import { DocumentReadAloudButton } from "./DocumentReadAloudButton";
 import { TicketActorName } from "./TicketActivityTimeline";
 import { openPlanPrefill, revisePlanPrefill } from "./ticketContextRecord";
 import { TicketDocumentEditor } from "./TicketDocumentEditor";
@@ -150,8 +152,11 @@ function TicketPlanView(props: {
   const [tab, setTab] = useState<PlanPanelTab>("open");
   const [focus, setFocus] = useState<PlanCommentFocus | null>(null);
   const [draft, setDraft] = useState<PlanCommentDraft | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<PlanCommentSurfaceHandle>(null);
   const sidePanel = useSidePanelFits();
+  const speechKey = documentSpeechKey(environmentId, "plan", summary.planId);
+  useStopSpeechOnLeave(speechKey);
   const archived = summary.status === "archived";
   const displayedBody = archived ? plan.body : doc.state.text;
   const ticketLabel = formatTicketRef(ticket);
@@ -325,7 +330,18 @@ function TicketPlanView(props: {
             />
           </>
         }
-        trailing={menu}
+        trailing={
+          <>
+            <DocumentReadAloudButton
+              environmentId={environmentId}
+              speechKey={speechKey}
+              bodyRef={bodyRef}
+              readRenderedBody={() => (showEditor ? null : displayedBody)}
+              readBody={() => (archived ? plan.body : doc.readText())}
+            />
+            {menu}
+          </>
+        }
         reachesWindowEdge={!sidePanel}
       />
       <ScrollArea className="min-h-0 flex-1">
@@ -441,13 +457,15 @@ function TicketPlanView(props: {
               onDraft={startDraft}
               onFocusThread={focusThread}
             >
-              <TicketMarkdownBody
-                environmentId={environmentId}
-                body={displayedBody}
-                attachments={plan.attachments}
-                onBodyChange={archived || status.changing ? undefined : doc.edit}
-                sourcePositions
-              />
+              <div ref={bodyRef}>
+                <TicketMarkdownBody
+                  environmentId={environmentId}
+                  body={displayedBody}
+                  attachments={plan.attachments}
+                  onBodyChange={archived || status.changing ? undefined : doc.edit}
+                  sourcePositions
+                />
+              </div>
             </TicketPlanCommentSurface>
           </TicketDocumentEditor>
 

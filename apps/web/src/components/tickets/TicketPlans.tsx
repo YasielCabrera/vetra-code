@@ -16,9 +16,10 @@ import {
   PlusIcon,
   SparklesIcon,
 } from "lucide-react";
-import { memo, useEffect, useMemo, useState } from "react";
+import { type RefObject, memo, useEffect, useMemo, useState } from "react";
 
 import { useTicketActions } from "../../hooks/useTicketActions";
+import { documentSpeechKey } from "../../readAloud";
 import { cn } from "../../lib/utils";
 import { useTicketPlan } from "../../state/tickets";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
@@ -27,6 +28,7 @@ import { Button } from "../ui/button";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { ScrollArea } from "../ui/scroll-area";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { DocumentReadAloudButton } from "./DocumentReadAloudButton";
 import { askForPlanPrefill, openPlanPrefill } from "./ticketContextRecord";
 import { TicketMarkdownBody } from "./TicketMarkdownBody";
 import { partitionTicketPlans, ticketPlanRouteParams } from "./ticketPlans.logic";
@@ -207,6 +209,7 @@ function TicketPlanRow(props: {
 }
 
 type TicketPlanPreviewProps = {
+  readonly bodyRef: RefObject<HTMLDivElement | null>;
   readonly ticketRef: ScopedTicketRef;
   readonly ticket: TicketSummary;
   readonly plan: TicketPlanSummary;
@@ -215,8 +218,10 @@ type TicketPlanPreviewProps = {
 };
 
 export function TicketPlanPreviewHeader(props: Omit<TicketPlanPreviewProps, "stacked">) {
-  const { ticketRef, plan: summary } = props;
+  const { ticketRef, plan: summary, bodyRef } = props;
   const navigate = useNavigate();
+  const result = useTicketPlan({ environmentId: ticketRef.environmentId, planId: summary.planId });
+  const loaded = Option.getOrNull(AsyncResult.value(result));
   return (
     <div className="flex h-full min-w-0 w-full items-center gap-2 border-b border-border/60 px-3">
       <Button
@@ -236,6 +241,15 @@ export function TicketPlanPreviewHeader(props: Omit<TicketPlanPreviewProps, "sta
         </TooltipTrigger>
         <TooltipPopup>{summary.title}</TooltipPopup>
       </Tooltip>
+      {loaded === null ? null : (
+        <DocumentReadAloudButton
+          environmentId={ticketRef.environmentId}
+          speechKey={documentSpeechKey(ticketRef.environmentId, "plan", summary.planId)}
+          bodyRef={bodyRef}
+          readBody={() => loaded.body}
+          readRenderedBody={() => loaded.body}
+        />
+      )}
       <Menu>
         <MenuTrigger
           render={
@@ -280,7 +294,7 @@ export function TicketPlanPreviewHeader(props: Omit<TicketPlanPreviewProps, "sta
 
 /** One plan, read-only, in the ticket page's side panel. */
 export function TicketPlanPreview(props: TicketPlanPreviewProps) {
-  const { ticketRef, plan: summary } = props;
+  const { ticketRef, plan: summary, bodyRef, stacked, onBack } = props;
   const result = useTicketPlan({ environmentId: ticketRef.environmentId, planId: summary.planId });
   const plan = Option.getOrNull(AsyncResult.value(result));
   const content = (
@@ -300,7 +314,7 @@ export function TicketPlanPreview(props: TicketPlanPreviewProps) {
       ) : plan.body.trim().length === 0 ? (
         <p className="text-sm text-muted-foreground">This plan is empty.</p>
       ) : (
-        <div className="min-w-0 text-sm">
+        <div ref={bodyRef} className="min-w-0 text-sm">
           <TicketMarkdownBody
             environmentId={ticketRef.environmentId}
             body={plan.body}
@@ -311,18 +325,19 @@ export function TicketPlanPreview(props: TicketPlanPreviewProps) {
     </div>
   );
   return (
-    <div className={cn("flex min-h-0 flex-col", !props.stacked && "flex-1")}>
-      {props.stacked ? (
+    <div className={cn("flex min-h-0 flex-col", !stacked && "flex-1")}>
+      {stacked ? (
         <div className="h-[var(--workspace-topbar-height)] shrink-0">
           <TicketPlanPreviewHeader
             ticketRef={ticketRef}
             ticket={props.ticket}
             plan={summary}
-            onBack={props.onBack}
+            bodyRef={bodyRef}
+            onBack={onBack}
           />
         </div>
       ) : null}
-      {props.stacked ? content : <ScrollArea className="min-h-0 flex-1">{content}</ScrollArea>}
+      {stacked ? content : <ScrollArea className="min-h-0 flex-1">{content}</ScrollArea>}
     </div>
   );
 }

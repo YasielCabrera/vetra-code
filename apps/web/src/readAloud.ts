@@ -3,8 +3,14 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
-import { type EnvironmentId, TEXT_TO_SPEECH_MAX_TEXT } from "@t3tools/contracts";
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import {
+  type EnvironmentId,
+  type MessageId,
+  type TicketId,
+  type TicketPlanId,
+  TEXT_TO_SPEECH_MAX_TEXT,
+} from "@t3tools/contracts";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { toastManager } from "./components/ui/toast";
 import { useEnvironmentSettings } from "./hooks/useSettings";
@@ -63,12 +69,38 @@ function end(run: SpeechRun) {
   publish(null);
 }
 
-/** Stops whatever is being read, from any surface. */
-export function stopSpeech() {
-  if (!active) return;
+export function stopSpeech(expectedKey?: string) {
+  if (!active || (expectedKey !== undefined && active.key !== expectedKey)) return;
   active.abort.abort();
   for (const source of active.sources) source.stop();
   end(active);
+}
+
+function threadSpeechPrefix(routeThreadKey: string) {
+  return `message:${encodeURIComponent(routeThreadKey)}:`;
+}
+
+export function messageSpeechKey(routeThreadKey: string, messageId: MessageId) {
+  return `${threadSpeechPrefix(routeThreadKey)}${encodeURIComponent(messageId)}`;
+}
+
+export function stopThreadSpeech(routeThreadKey: string) {
+  if (active?.key.startsWith(threadSpeechPrefix(routeThreadKey))) stopSpeech(active.key);
+}
+
+export function useStopSpeechOnLeave(key: string | null) {
+  useEffect(() => {
+    if (key === null) return;
+    return () => stopSpeech(key);
+  }, [key]);
+}
+
+export function documentSpeechKey(
+  environmentId: EnvironmentId,
+  kind: "ticket" | "plan",
+  id: TicketId | TicketPlanId,
+) {
+  return `${kind}:${encodeURIComponent(environmentId)}:${encodeURIComponent(id)}`;
 }
 
 /**

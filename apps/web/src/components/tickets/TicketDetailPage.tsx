@@ -30,11 +30,12 @@ import {
   PencilIcon,
   Trash2Icon,
 } from "lucide-react";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 
 import { useRunning } from "../../hooks/useRunning";
 import { confirmGitHubStateChange, useTicketActions } from "../../hooks/useTicketActions";
 import { cn } from "../../lib/utils";
+import { documentSpeechKey, useStopSpeechOnLeave } from "../../readAloud";
 import { useProjects } from "../../state/entities";
 import {
   useTicket,
@@ -47,6 +48,7 @@ import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/men
 import { ScrollArea } from "../ui/scroll-area";
 import { SidebarInset } from "../ui/sidebar";
 import { Textarea } from "../ui/textarea";
+import { DocumentReadAloudButton } from "./DocumentReadAloudButton";
 import { TicketActivityTimeline } from "./TicketActivityTimeline";
 import { TicketAttachmentChip } from "./ticketAttachments";
 import { TicketDocumentEditor } from "./TicketDocumentEditor";
@@ -121,6 +123,8 @@ function TicketDocument(props: {
   const statusSet = useTicketStatuses(ticketRef.environmentId);
   const [editing, setEditing] = useState(false);
   const doc = useTicketDocument(ticketRef, detail);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const previewBodyRef = useRef<HTMLDivElement>(null);
   const title = useTitleDraft(summary.title, doc);
   const readOnly = summary.kind === "github";
   const reference = formatTicketRef(summary);
@@ -161,6 +165,13 @@ function TicketDocument(props: {
     previewTarget === null || previewTarget.kind !== "pull_request"
       ? null
       : ticketRepositoryProjectId(ticketRef.environmentId, previewTarget.ref, repositoryContext);
+  const ticketSpeechKey = documentSpeechKey(ticketRef.environmentId, "ticket", summary.id);
+  useStopSpeechOnLeave(ticketSpeechKey);
+  useStopSpeechOnLeave(
+    previewPlan === null
+      ? null
+      : documentSpeechKey(ticketRef.environmentId, "plan", previewPlan.planId),
+  );
   const widePanel =
     previewProjectId !== null || previewPlan !== null || previewTarget?.kind === "issue";
   const sidePanel = useSidePanelFits();
@@ -256,6 +267,7 @@ function TicketDocument(props: {
         ticket={summary}
         plan={previewPlan}
         stacked={!sidePanel}
+        bodyRef={previewBodyRef}
         onBack={() => setPreview(null)}
       />
     ) : previewTarget !== null ? (
@@ -370,6 +382,7 @@ function TicketDocument(props: {
             ticketRef={ticketRef}
             ticket={summary}
             plan={previewPlan}
+            bodyRef={previewBodyRef}
             onBack={() => setPreview(null)}
           />
         )
@@ -394,7 +407,18 @@ function TicketDocument(props: {
             <TicketTitleInput title={title} label="Title" readOnly={readOnly} />
           </>
         }
-        trailing={menu}
+        trailing={
+          <>
+            <DocumentReadAloudButton
+              environmentId={ticketRef.environmentId}
+              speechKey={ticketSpeechKey}
+              bodyRef={bodyRef}
+              readRenderedBody={() => (editing ? null : doc.state.text)}
+              readBody={doc.readText}
+            />
+            {menu}
+          </>
+        }
         reachesWindowEdge={!sidePanel}
       />
       <ScrollArea className="min-h-0 flex-1">
@@ -468,12 +492,14 @@ function TicketDocument(props: {
               ) : null
             }
           >
-            <TicketMarkdownBody
-              environmentId={ticketRef.environmentId}
-              body={doc.state.text}
-              attachments={detail.attachments}
-              onBodyChange={readOnly ? undefined : doc.edit}
-            />
+            <div ref={bodyRef}>
+              <TicketMarkdownBody
+                environmentId={ticketRef.environmentId}
+                body={doc.state.text}
+                attachments={detail.attachments}
+                onBodyChange={readOnly ? undefined : doc.edit}
+              />
+            </div>
           </TicketDocumentEditor>
 
           <TicketPlansSection

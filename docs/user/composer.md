@@ -95,10 +95,10 @@ The quoted text and comment count toward the message limit.
 Mobile displays saved quotes and comments, but does not create citations or
 navigate to their sources.
 
-## Read a reply aloud
+## Read content aloud
 
 Open **Settings → Read aloud**, choose an environment, and download the voice model (about
-340 MB). The model is stored on that environment's machine and runs on its CPU, so replies are
+340 MB). The model is stored on that environment's machine and runs on its CPU, so the text is
 never sent to a speech service. Then turn on **Read aloud** and choose a voice and reading speed.
 
 Any finished assistant reply can then be read aloud from its actions, next to Copy. Audio starts
@@ -106,6 +106,9 @@ with the first sentence while the rest is still being generated, code blocks are
 paths are read as just the file name. While it plays, **Pause** keeps your place and **Resume**
 continues from the same word. **Stop** ends the reading, so the next one starts from the
 beginning. The command palette has the same actions, and switching threads stops reading.
+
+You can also read a ticket description, full plan, or plan preview from its header. Only the main
+body is read. Leaving that document stops its reading.
 
 Read aloud speaks English. It is not available when the environment runs on an Intel Mac.
 Removing the model in Settings deletes its files.

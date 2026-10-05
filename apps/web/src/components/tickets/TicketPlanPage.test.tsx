@@ -13,6 +13,8 @@ import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { setupSpeechTest, speechTest } from "../../readAloud.test-support";
+
 import type { useTicketActions } from "../../hooks/useTicketActions";
 import type TicketBodyEditor from "./TicketBodyEditor";
 import type { TicketPlanCommentSurface } from "./TicketPlanCommentSurface";
@@ -144,6 +146,7 @@ let container: HTMLDivElement;
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.useFakeTimers();
+  setupSpeechTest();
   actions.updatePlan.mockReset();
   actions.addPlanComment.mockReset();
   actions.confirmDeletePlan.mockReset();
@@ -1049,6 +1052,34 @@ describe("TicketPlanPage comments", () => {
       planId: "plan-1",
       body: "First comment",
       anchor: { source: "Selection A", revision: 1 },
+    });
+  });
+});
+
+describe("TicketPlanPage read aloud", () => {
+  it("reads the current unsaved plan without its comments or metadata", async () => {
+    await renderPage();
+    await click("Edit plan");
+    await editTextarea("Plan", "# Draft plan\nImplement **the change**.");
+    await click("Read aloud");
+    expect(speechTest.speak).toHaveBeenLastCalledWith({
+      environmentId: "environment-1",
+      input: { text: "Draft plan\nImplement the change." },
+    });
+    expect(container.querySelector('button[aria-label="Pause reading"]')).not.toBeNull();
+  });
+
+  it("reads the archived plan body", async () => {
+    currentPlan = {
+      ...plan,
+      summary: { ...plan.summary, status: "archived" },
+      body: "Archived implementation.",
+    };
+    await renderPage();
+    await click("Read aloud");
+    expect(speechTest.speak).toHaveBeenLastCalledWith({
+      environmentId: "environment-1",
+      input: { text: "Archived implementation." },
     });
   });
 });
