@@ -109,10 +109,37 @@ const layerFor = (
     Layer.provideMerge(
       Layer.effect(
         SqlClient.SqlClient,
-        Effect.map(SqlClient.SqlClient, (sql) => overrides.sql?.(sql) ?? sql),
+        Effect.gen(function* () {
+          const sql = yield* SqlClient.SqlClient;
+          const config = yield* ServerConfig.ServerConfig;
+          yield* sql`
+            INSERT INTO projection_projects (
+              project_id, title, workspace_root, scripts_json, created_at, updated_at
+            ) VALUES ('project', 'Caller project', ${config.cwd}, '[]', '2026-10-01', '2026-10-01')
+          `;
+          yield* sql`
+            INSERT INTO orchestration_v2_projection_threads (
+              thread_id, project_id, title, default_provider, runtime_mode, interaction_mode,
+              created_at, updated_at, payload_json
+            ) VALUES (
+              ${callerId}, 'project', 'Caller', 'codex', 'approval-required', 'default',
+              '2026-10-01', '2026-10-01', '{"worktreePath":null}'
+            )
+          `;
+          return overrides.sql?.(sql) ?? sql;
+        }),
       ).pipe(Layer.provide(SqlitePersistenceMemory)),
     ),
-    Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "vetra-ticket-local-" })),
+    Layer.provideMerge(
+      Layer.unwrap(
+        Effect.gen(function* () {
+          const fs = yield* FileSystem.FileSystem;
+          const path = yield* Path.Path;
+          const workspace = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-ticket-local-" });
+          return ServerConfig.layerTest(workspace, path.join(workspace, ".vetra-code"));
+        }),
+      ),
+    ),
     Layer.provideMerge(
       Layer.effect(
         FileSystem.FileSystem,
@@ -139,7 +166,7 @@ const source = Effect.fn(function* (name: string, bytes = name) {
   const config = yield* ServerConfig.ServerConfig;
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const directory = path.join(config.attachmentsDir, "..", "sources");
+  const directory = path.join(config.cwd, "sources");
   yield* fs.makeDirectory(directory, { recursive: true });
   const filePath = path.join(directory, name);
   yield* fs.writeFileString(filePath, bytes);
@@ -244,6 +271,48 @@ const attachmentWriteScenario = Effect.fn(function* (operation: (typeof attachme
 });
 
 describe("one-call local ticket and plan attachments", () => {
+  it.live("refuses Vetra-home paths through every ticket and plan attachment tool", () =>
+    Effect.gen(function* () {
+      const ticket = yield* call("t3_ticket_create", { title: "Unchanged", linkCaller: false });
+      const plan = yield* call("t3_ticket_plan_create", { ticket: ticket.id, title: "Unchanged" });
+      const config = yield* ServerConfig.ServerConfig;
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const secret = path.join(config.secretsDir, "synthetic-secret.txt");
+      yield* fs.makeDirectory(config.secretsDir, { recursive: true });
+      yield* fs.writeFileString(secret, "synthetic secret");
+      const local = yield* source("allowed.txt", "allowed");
+      const attachments = [local, { path: secret }];
+      const beforeTicket = yield* call("t3_ticket_get", { ticket: ticket.id });
+      const beforePlan = yield* call("t3_ticket_plan_get", { plan: plan.planId });
+      const writes = [
+        call("t3_ticket_create", { title: "Rejected", attachments, linkCaller: false }).pipe(
+          Effect.asVoid,
+        ),
+        call("t3_ticket_update", { ticket: ticket.id, expectedRevision: 1, attachments }).pipe(
+          Effect.asVoid,
+        ),
+        call("t3_ticket_plan_create", { ticket: ticket.id, title: "Rejected", attachments }).pipe(
+          Effect.asVoid,
+        ),
+        call("t3_ticket_plan_update", { plan: plan.planId, expectedRevision: 1, attachments }).pipe(
+          Effect.asVoid,
+        ),
+      ];
+      for (const write of writes) {
+        const error = yield* write.pipe(Effect.flip);
+        expect(error).toMatchObject({ _tag: "TicketError" });
+        expect(error.message).toContain("never from the Vetra home");
+        expect(error.message).toContain("Copy the file into the workspace first.");
+        expect(yield* ownedFiles()).toEqual([]);
+        expect(yield* call("t3_ticket_get", { ticket: ticket.id })).toEqual(beforeTicket);
+        expect(yield* call("t3_ticket_plan_get", { plan: plan.planId })).toEqual(beforePlan);
+      }
+      expect((yield* call("t3_ticket_list", {})).tickets).toHaveLength(1);
+      expect(yield* fs.readFileString(secret)).toBe("synthetic secret");
+    }).pipe(Effect.provide(layerFor())),
+  );
+
   it.live.skipIf(HostProcessPlatform.defaultValue() === "win32")(
     "preserves exact spaced paths and basenames when adjacent filenames contain different bytes",
     () =>
