@@ -1,3 +1,6 @@
+// @effect-diagnostics nodeBuiltinImport:off - FileSystem does not expose the OS temp root.
+import * as NodeOS from "node:os";
+
 import {
   ChatImageAttachment,
   ChatFileAttachment,
@@ -8,6 +11,7 @@ import {
   isProviderSendTurnSupportedImageMimeType,
   type AgentTicketLocalAttachment,
   type TicketCreateInput,
+  type TicketActor,
   type TicketId,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
@@ -16,6 +20,7 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Mime from "effect/unstable/http/Mime";
+import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { openMediaFile, statMediaFile, streamMediaFile } from "../assets/MediaFile.ts";
 import { writeAttachmentFile } from "../assets/writeAttachmentFile.ts";
@@ -103,6 +108,7 @@ type ClaimedTicketAttachments = Effect.Success<ReturnType<typeof claimTicketAtta
 export const claimTicketAttachments = Effect.fn("TicketAttachments.claim")(function* (
   ticketId: TicketId,
   sources: ReadonlyArray<TicketAttachmentSource>,
+  actor: TicketActor,
 ) {
   const config = yield* ServerConfig.ServerConfig;
   const fileSystem = yield* FileSystem.FileSystem;
@@ -124,6 +130,47 @@ export const claimTicketAttachments = Effect.fn("TicketAttachments.claim")(funct
     }
     references.add(reference);
   }
+  const localFileRoots = yield* Effect.gen(function* () {
+    if (actor.type !== "agent" || !sources.some((source) => "path" in source)) return null;
+    const sql = yield* SqlClient.SqlClient;
+    const [workspace] = yield* sql<{
+      readonly workspace_root: string;
+      readonly worktree_path: string | null;
+    }>`
+      SELECT p.workspace_root, json_extract(t.payload_json, '$.worktreePath') AS worktree_path
+      FROM orchestration_v2_projection_threads t
+      JOIN projection_projects p ON p.project_id = t.project_id
+      WHERE t.thread_id = ${actor.threadId} AND t.deleted_at IS NULL AND p.deleted_at IS NULL
+    `.pipe(
+      Effect.mapError(
+        (cause) =>
+          new TicketError({ message: "Cannot resolve the attachment caller's workspace.", cause }),
+      ),
+    );
+    if (workspace === undefined)
+      return yield* new TicketError({
+        message: "Cannot resolve the attachment caller's workspace.",
+      });
+    const canonicalRoot = (root: string) =>
+      fileSystem
+        .realPath(root)
+        .pipe(
+          Effect.mapError(
+            (cause) =>
+              new TicketError({ message: `Cannot resolve attachment root '${root}'.`, cause }),
+          ),
+        );
+    const excluded = yield* canonicalRoot(config.baseDir);
+    const roots = [workspace.workspace_root, NodeOS.tmpdir()];
+    if (workspace.worktree_path !== null) roots.push(workspace.worktree_path);
+    if (path.sep === "/") roots.push("/tmp");
+    const allowed = yield* Effect.forEach([...new Set(roots)], canonicalRoot);
+    return { allowed, excluded };
+  });
+  const containsPath = (root: string, filePath: string) => {
+    const relative = path.relative(root, filePath);
+    return relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+  };
   const claimed = yield* Effect.scoped(
     Effect.gen(function* () {
       const prepared = yield* Effect.forEach(sources, (source) =>
@@ -149,6 +196,15 @@ export const claimTicketAttachments = Effect.fn("TicketAttachments.claim")(funct
                   new TicketError({ message: `Cannot read attachment '${source.path}'.`, cause }),
               ),
             );
+          if (
+            localFileRoots !== null &&
+            (containsPath(localFileRoots.excluded, canonicalPath) ||
+              !localFileRoots.allowed.some((root) => containsPath(root, canonicalPath)))
+          ) {
+            return yield* new TicketError({
+              message: `Attachment '${source.path}' is not allowed: agents may attach local files only from their workspace, worktree, or OS temp directory, and never from the Vetra home. Copy the file into the workspace first.`,
+            });
+          }
           const file = yield* openMediaFile(canonicalPath).pipe(
             Effect.mapError(
               (cause) =>

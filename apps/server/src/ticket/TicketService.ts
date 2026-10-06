@@ -1131,11 +1131,13 @@ const make = Effect.gen(function* () {
   const claimAttachments = (
     ticketId: TicketId,
     sources: Parameters<typeof claimTicketAttachments>[1],
+    actor: TicketActor,
   ) =>
-    claimTicketAttachments(ticketId, sources).pipe(
+    claimTicketAttachments(ticketId, sources, actor).pipe(
       Effect.provideService(ServerConfig.ServerConfig, config),
       Effect.provideService(FileSystem.FileSystem, fileSystem),
       Effect.provideService(Path.Path, path),
+      Effect.provideService(SqlClient.SqlClient, sql),
     );
 
   const commitAttachmentWrite = <A, E>({
@@ -1244,7 +1246,7 @@ const make = Effect.gen(function* () {
   const create: TicketService["Service"]["create"] = (input, actor) =>
     Effect.gen(function* () {
       const ticketId = TicketId.make(NodeCrypto.randomUUID());
-      const claim = yield* claimAttachments(ticketId, input.attachments ?? []);
+      const claim = yield* claimAttachments(ticketId, input.attachments ?? [], actor);
       const body = yield* attachmentBody(input.body ?? "", claim, false);
       const storedAttachments: TicketAttachment[] = [];
       const linkedThreads: Array<ThreadId> = [];
@@ -1386,7 +1388,7 @@ const make = Effect.gen(function* () {
 
   const update: TicketService["Service"]["update"] = (input, actor) =>
     Effect.gen(function* () {
-      const claim = yield* claimAttachments(input.ticketId, input.attachments ?? []);
+      const claim = yield* claimAttachments(input.ticketId, input.attachments ?? [], actor);
       const body =
         input.body === undefined ? undefined : yield* attachmentBody(input.body, claim, false);
       const storedAttachments: TicketAttachment[] = [];
@@ -2575,7 +2577,7 @@ const make = Effect.gen(function* () {
   const createPlan: TicketService["Service"]["createPlan"] = (input, actor) =>
     Effect.gen(function* () {
       const planId = TicketPlanId.make(NodeCrypto.randomUUID());
-      const claim = yield* claimAttachments(input.ticketId, input.attachments ?? []);
+      const claim = yield* claimAttachments(input.ticketId, input.attachments ?? [], actor);
       const body = yield* attachmentBody(input.body ?? "", claim, true);
       const storedAttachments: TicketAttachment[] = [];
       yield* commitAttachmentWrite({
@@ -2632,7 +2634,7 @@ const make = Effect.gen(function* () {
         return yield* new TicketError({ message: "Send a new body or edits, not both." });
       }
       const { ticketId } = yield* requirePlan(input.planId);
-      const claim = yield* claimAttachments(ticketId, input.attachments ?? []);
+      const claim = yield* claimAttachments(ticketId, input.attachments ?? [], actor);
       const storedAttachments: TicketAttachment[] = [];
       const result = yield* commitAttachmentWrite({
         claim,
