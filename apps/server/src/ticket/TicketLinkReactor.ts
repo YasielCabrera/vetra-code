@@ -78,20 +78,23 @@ const AUTOMATION: TicketActor = { type: "automation" };
 /**
  * The event a pull request link moves its tickets on: its first link to the ticket, or its stored
  * snapshot turning merged. A repeated sync of the same state moves nothing, so a user's move back
- * sticks.
+ * sticks. A merge while another of the thread's pull requests is still open, such as the base of a
+ * stack, only counts as linked; the last merge finishes the ticket.
  */
 const pullRequestTransition = (
   target: Extract<TicketLinkTarget, { readonly kind: "pull_request" }>,
   previous: TicketLinkTarget | null,
+  othersOpen: boolean,
 ): AutoAdvanceEvent | null => {
   const state = target.snapshot.state;
+  const merged = othersOpen ? "pullRequestLinked" : "pullRequestMerged";
   if (previous === null) {
-    return state === "merged" ? "pullRequestMerged" : state === "open" ? "pullRequestLinked" : null;
+    return state === "merged" ? merged : state === "open" ? "pullRequestLinked" : null;
   }
   return state === "merged" &&
     previous.kind === "pull_request" &&
     previous.snapshot.state !== "merged"
-    ? "pullRequestMerged"
+    ? merged
     : null;
 };
 
@@ -162,8 +165,12 @@ export const make = Effect.gen(function* () {
       const linked = yield* tickets.listForTarget({ kind: "thread", targetKey: threadId });
       if (linked.length === 0) return;
       const context = yield* readContext;
+      const stateOf = (link: ThreadPullRequestLink) => link.snapshot?.state ?? "open";
       for (const pullRequest of pullRequests) {
-        const state = pullRequest.snapshot?.state ?? "open";
+        const state = stateOf(pullRequest);
+        const othersOpen = pullRequests.some(
+          (other) => other !== pullRequest && stateOf(other) === "open",
+        );
         const target = {
           kind: "pull_request" as const,
           ref: {
@@ -183,7 +190,7 @@ export const make = Effect.gen(function* () {
             linkAndAdvance(
               ticket.id,
               target,
-              (previous) => pullRequestTransition(target, previous),
+              (previous) => pullRequestTransition(target, previous, othersOpen),
               context,
             ),
           { discard: true },

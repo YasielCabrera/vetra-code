@@ -165,11 +165,11 @@ const sentMessage = (
   },
 });
 
-const pullRequest = (state: "open" | "merged"): ThreadPullRequestLink => ({
+const pullRequest = (state: "open" | "merged", number = 7): ThreadPullRequestLink => ({
   host: "github.com",
   repository: "acme/app",
-  number: 7,
-  url: "https://github.com/acme/app/pull/7",
+  number,
+  url: `https://github.com/acme/app/pull/${number}`,
   source: "agent",
   linkedAt: "2026-10-01T00:00:00.000Z",
   snapshot: {
@@ -187,7 +187,9 @@ const pullRequest = (state: "open" | "merged"): ThreadPullRequestLink => ({
 const pullRequestsSynced = (links: ReadonlyArray<ThreadPullRequestLink>) =>
   ({
     type: "thread.pull-request-synced",
-    id: EventId.make(`event:pr:${links.map((link) => link.snapshot?.state).join(",")}`),
+    id: EventId.make(
+      `event:pr:${links.map((link) => `${link.number}:${link.snapshot?.state}`).join(",")}`,
+    ),
     threadId: THREAD,
     occurredAt: NOW,
     payload: {
@@ -542,6 +544,30 @@ describe("TicketLinkReactor", () => {
             ],
           ],
         );
+      }),
+    ),
+  );
+
+  it.effect("a stack moves its ticket to Done only once no pull request is left open", () =>
+    withReactor(({ tickets, publish }) =>
+      Effect.gen(function* () {
+        const ticket = (yield* tickets.create({ title: "Login loop" }, USER)).ticket;
+        const statusAfter = (links: ReadonlyArray<ThreadPullRequestLink>) =>
+          publish(pullRequestsSynced(links)).pipe(
+            Effect.andThen(tickets.resolveRef("T-1")),
+            Effect.map((current) => current.statusId),
+          );
+        yield* publish(sentMessage([ticket]));
+
+        const baseMerged = yield* statusAfter([pullRequest("merged", 7), pullRequest("open", 8)]);
+        const dismissed = { ...pullRequest("open", 9), source: "stack-dismissed" as const };
+        const stackMerged = yield* statusAfter([
+          pullRequest("merged", 7),
+          pullRequest("merged", 8),
+          dismissed,
+        ]);
+
+        assert.deepStrictEqual([baseMerged, stackMerged], ["in_review", "done"]);
       }),
     ),
   );
