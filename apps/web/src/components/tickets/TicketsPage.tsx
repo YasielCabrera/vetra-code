@@ -5,7 +5,7 @@ import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { type EnvironmentTicket, ticketKey } from "@t3tools/client-runtime/state/tickets";
 import { type EnvironmentId, resolveEnvironmentMachineKind } from "@t3tools/contracts";
 import * as Option from "effect/Option";
-import { Atom } from "effect/unstable/reactivity";
+import { Atom } from "effect/reactivity";
 import { gitHubLoginAvatarUrl } from "@t3tools/shared/githubActor";
 import {
   BotIcon,

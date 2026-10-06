@@ -16,7 +16,7 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
-import { ChildProcessSpawner } from "effect/unstable/process";
+import { ChildProcessSpawner } from "effect/process";
 import * as TestClock from "effect/testing/TestClock";
 
 import * as ProcessRunner from "../processRunner.ts";
@@ -32,7 +32,7 @@ import {
   type ProviderIssueDetail,
 } from "../issue/IssueProvider.ts";
 import { fromProviders, IssueProviderRegistry } from "../issue/IssueProviderRegistry.ts";
-import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../persistence/Layers/Sqlite.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
@@ -398,7 +398,7 @@ const withSync = <A, E>(
         SourceControlRateLimit.layer,
       ),
     ),
-    Layer.provideMerge(SqlitePersistenceMemory),
+    Layer.provideMerge(SqlitePersistence.layerMemory),
     Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-ticket-github-" })),
     Layer.provideMerge(NodeServices.layer),
   );

@@ -9,7 +9,7 @@
  * @module Web3Chain
  */
 import * as Effect from "effect/Effect";
-import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http";
 
 import {
   DEFAULT_PUBLIC_CHAIN_ID,

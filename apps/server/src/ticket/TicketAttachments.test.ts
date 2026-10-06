@@ -6,13 +6,14 @@ import { assert, describe, it } from "@effect/vitest";
 import { ThreadId, TicketId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
+import * as SqlClient from "effect/sql/SqlClient";
 
 import { resolveAttachmentPath } from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
-import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../persistence/Layers/Sqlite.ts";
 import { claimTicketAttachments } from "./TicketAttachments.ts";
 
 const actor = { type: "agent", threadId: ThreadId.make("attachment-caller") } as const;
@@ -62,9 +63,11 @@ const withWorkspace = <A, E, R>(
       `;
       return yield* body({ workspaceRoot, worktreePath, outsideRoot, tempRoot });
     }).pipe(
-      Effect.provide(SqlitePersistenceMemory),
       Effect.provide(
-        ServerConfig.layerTest(workspaceRoot, path.join(workspaceRoot, ".vetra-code")),
+        Layer.merge(
+          SqlitePersistence.layerMemory,
+          ServerConfig.layerTest(workspaceRoot, path.join(workspaceRoot, ".vetra-code")),
+        ),
       ),
     );
   }).pipe(Effect.provide(NodeServices.layer), Effect.scoped);

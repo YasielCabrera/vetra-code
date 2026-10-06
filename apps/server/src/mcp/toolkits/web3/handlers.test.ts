@@ -14,9 +14,13 @@ import { PreviewWalletToolkit } from "./tools.ts";
 
 const invocation = {
   environmentId: EnvironmentId.make("environment-web3-test"),
-  threadId: ThreadId.make("thread-web3-test"),
-  providerSessionId: "provider-session-web3-test",
-  providerInstanceId: ProviderInstanceId.make("codex"),
+  requestNamespace: "provider-session-web3-test",
+  thread: {
+    threadId: ThreadId.make("thread-web3-test"),
+    providerSessionId: "provider-session-web3-test",
+    providerInstanceId: ProviderInstanceId.make("codex"),
+  },
+  client: undefined,
   capabilities: new Set(["preview"] as const),
   issuedAt: 1,
 };

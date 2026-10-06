@@ -44,7 +44,7 @@ const invokeWallet = Effect.fn("PreviewWalletToolkit.invoke")(function* <A>(
   input: { readonly tabId?: PreviewTabId | undefined; readonly [key: string]: unknown },
 ) {
   yield* requireWalletEnabled();
-  const scope = yield* McpInvocationContext.requireMcpCapability("preview");
+  const scope = yield* McpInvocationContext.requireThreadMcpCapability("preview");
   const broker = yield* PreviewAutomationBroker.PreviewAutomationBroker;
   const { tabId, ...operationInput } = input;
   return yield* broker.invoke<A>({

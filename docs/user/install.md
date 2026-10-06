@@ -21,7 +21,13 @@ node apps/server/dist/bin.mjs
 This starts the server and opens the web app. Where these guides show
 `vetra <command>`, run `node apps/server/dist/bin.mjs <command>` from the checkout.
 
-Run `vetra --help` for the full reference.
+Run `vetra help` or `vetra --help` for the full reference. To start in a new working
+directory, use an explicit path such as `vetra ./my-project`. A bare directory name
+is accepted only if it already exists.
+
+If `vetra` or `vetra start` reports an already running server, connect to that server
+instead. Stop it before starting a replacement, or use a different `--base-dir`
+for an independent server.
 
 `vetra update` and the background service do not apply to a server run this way;
 update it with `git pull` and a rebuild.

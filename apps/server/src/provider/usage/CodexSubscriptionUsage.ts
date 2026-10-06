@@ -12,8 +12,8 @@ import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import * as ChildProcess from "effect/unstable/process/ChildProcess";
-import type * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
+import * as ChildProcess from "effect/process/ChildProcess";
+import type * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
 import { expandHomePath } from "../../pathExpansion.ts";
 import type { ProviderSubscriptionUsageCapability, ProviderInstance } from "../ProviderDriver.ts";

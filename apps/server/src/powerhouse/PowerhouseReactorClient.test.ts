@@ -4,7 +4,7 @@ import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as TestClock from "effect/testing/TestClock";
-import { HttpClient, HttpClientError, HttpClientResponse } from "effect/unstable/http";
+import { HttpClient, HttpClientError, HttpClientResponse } from "effect/http";
 
 import * as PowerhouseReactorClient from "./PowerhouseReactorClient.ts";
 import { resolveGraphqlEndpoint } from "./PowerhouseReactorClient.ts";

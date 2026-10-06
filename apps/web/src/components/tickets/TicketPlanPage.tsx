@@ -3,7 +3,7 @@ import { parseTicketKey, type ScopedTicketRef } from "@t3tools/client-runtime/st
 import type { TicketPlan, TicketPlanCommentId, TicketSummary } from "@t3tools/contracts";
 import { orderPlanCommentThreads, type PlanCommentThread } from "@t3tools/shared/ticketPlanAnchors";
 import * as Option from "effect/Option";
-import { AsyncResult } from "effect/unstable/reactivity";
+import { AsyncResult } from "effect/reactivity";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,

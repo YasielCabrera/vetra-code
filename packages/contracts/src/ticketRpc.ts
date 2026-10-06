@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema";
 import * as Struct from "effect/Struct";
-import * as Rpc from "effect/unstable/rpc/Rpc";
-import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
+import * as Rpc from "effect/rpc/Rpc";
+import * as RpcGroup from "effect/rpc/RpcGroup";
 
 import { IssueActivity, IssueActor, IssueAssigneeCandidateList, IssueDetail } from "./issue.ts";
 import { ProjectId, TrimmedNonEmptyString } from "./baseSchemas.ts";

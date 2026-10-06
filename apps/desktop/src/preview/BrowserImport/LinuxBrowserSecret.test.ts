@@ -40,7 +40,7 @@ it.layer(NodeServices.layer)("Linux browser secret path", (it) => {
         yield* fileSystem.writeFileString(filename, "helper");
       }
       const resolve = (isPackaged: boolean, platform: NodeJS.Platform = "linux") => {
-        const environment = DesktopEnvironment.layer({
+        const layerEnvironment = DesktopEnvironment.layer({
           dirname: path.join(root, "apps", "desktop", "dist-electron"),
           homeDirectory: root,
           platform,
@@ -52,7 +52,7 @@ it.layer(NodeServices.layer)("Linux browser secret path", (it) => {
           runningUnderArm64Translation: false,
         }).pipe(Layer.provide(DesktopConfig.layerTest({})));
         return LinuxBrowserSecret.LinuxBrowserSecretPath.pipe(
-          Effect.provide(LinuxBrowserSecret.layer.pipe(Layer.provide(environment))),
+          Effect.provide(LinuxBrowserSecret.layer.pipe(Layer.provide(layerEnvironment))),
         );
       };
 

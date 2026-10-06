@@ -25,11 +25,11 @@ import * as Queue from "effect/Queue";
 import * as Schema from "effect/Schema";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
-import type * as Tool from "effect/unstable/ai/Tool";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
-import * as Statement from "effect/unstable/sql/Statement";
-import * as ChildProcess from "effect/unstable/process/ChildProcess";
-import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
+import type * as Tool from "effect/ai/Tool";
+import * as SqlClient from "effect/sql/SqlClient";
+import * as Statement from "effect/sql/Statement";
+import * as ChildProcess from "effect/process/ChildProcess";
+import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
 import {
   createPendingAttachmentId,
@@ -39,7 +39,7 @@ import {
 import * as ServerConfig from "../../../config.ts";
 import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementService.ts";
-import { SqlitePersistenceMemory } from "../../../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../../../persistence/Layers/Sqlite.ts";
 import * as TicketGitHub from "../../../ticket/TicketGitHub.ts";
 import * as TicketService from "../../../ticket/TicketService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
@@ -55,9 +55,13 @@ const externalLayers = Layer.mergeAll(
   Layer.succeed(HostProcessPlatform, HostProcessPlatform.defaultValue()),
   Layer.succeed(McpInvocationContext.McpInvocationContext, {
     environmentId: EnvironmentId.make("environment"),
-    threadId: callerId,
-    providerSessionId: "session",
-    providerInstanceId,
+    requestNamespace: "session",
+    thread: {
+      threadId: callerId,
+      providerSessionId: "session",
+      providerInstanceId,
+    },
+    client: undefined,
     issuedAt: 0,
     capabilities: new Set(["orchestration", "tickets"] as const),
   }),
@@ -128,7 +132,7 @@ const layerFor = (
           `;
           return overrides.sql?.(sql) ?? sql;
         }),
-      ).pipe(Layer.provide(SqlitePersistenceMemory)),
+      ).pipe(Layer.provide(SqlitePersistence.layerMemory)),
     ),
     Layer.provideMerge(
       Layer.unwrap(

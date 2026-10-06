@@ -383,12 +383,13 @@ function makeReplayClient(controller: OpenCodeReplayController): OpencodeClient 
       reply: (input: unknown) => request("question.reply", input),
     },
     mcp: {
+      status: () => request("mcp.status", {}),
       add: (input: unknown) => request("mcp.add", input),
     },
   } as unknown as OpencodeClient;
 }
 
-function makeOpenCodeReplayRuntimeLayer(transcript: OpenCodeSdkReplayTranscript) {
+function layerOpenCodeReplayRuntime(transcript: OpenCodeSdkReplayTranscript) {
   return Layer.effect(
     OpenCodeRuntime.OpenCodeRuntime,
     Effect.gen(function* () {
@@ -455,12 +456,12 @@ function makeOpenCodeReplayRuntimeLayer(transcript: OpenCodeSdkReplayTranscript)
   );
 }
 
-function makeOpenCodeProviderAdapterRegistryReplayLayer(transcript: OpenCodeSdkReplayTranscript) {
-  const serverConfigLayer = Layer.effect(
+function layerOpenCodeProviderAdapterRegistryReplay(transcript: OpenCodeSdkReplayTranscript) {
+  const layerServerConfig = Layer.effect(
     ServerConfig.ServerConfig,
     makeReplayServerConfig(transcript.scenario).pipe(Effect.orDie),
   ).pipe(Layer.provide(NodeServices.layer));
-  return ProviderAdapterRegistry.makeDriverLayer({
+  return ProviderAdapterRegistry.layerFromDrivers({
     drivers: [OpenCodeAdapterV2Driver],
     configMap: {
       [OPENCODE_DEFAULT_INSTANCE_ID]: {
@@ -471,8 +472,8 @@ function makeOpenCodeProviderAdapterRegistryReplayLayer(transcript: OpenCodeSdkR
   }).pipe(
     Layer.provide(
       Layer.mergeAll(
-        makeOpenCodeReplayRuntimeLayer(transcript),
-        serverConfigLayer,
+        layerOpenCodeReplayRuntime(transcript),
+        layerServerConfig,
         NodeServices.layer,
         IdAllocator.layer,
         Layer.succeed(
@@ -507,5 +508,5 @@ export const OpenCodeOrchestratorReplayHarness: OrchestratorV2ProviderReplayHarn
           }),
       ),
     ),
-  makeProviderAdapterRegistryLayer: makeOpenCodeProviderAdapterRegistryReplayLayer,
+  makeProviderAdapterRegistryLayer: layerOpenCodeProviderAdapterRegistryReplay,
 };

@@ -14,7 +14,7 @@ import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import type { HttpClient } from "effect/unstable/http";
+import type { HttpClient } from "effect/http";
 
 import type { ProviderInstance, ProviderSubscriptionUsageCapability } from "../ProviderDriver.ts";
 import { fetchCursorDashboardUsage } from "./CursorDashboardUsage.ts";

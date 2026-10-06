@@ -23,11 +23,11 @@ import * as Layer from "effect/Layer";
 import * as Queue from "effect/Queue";
 import * as Ref from "effect/Ref";
 import * as Stream from "effect/Stream";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
+import * as SqlClient from "effect/sql/SqlClient";
 
 import * as ServerConfig from "../config.ts";
 import * as Orchestrator from "../orchestration-v2/Orchestrator.ts";
-import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../persistence/Layers/Sqlite.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
 import * as TicketGitHub from "./TicketGitHub.ts";
 import * as TicketLinkReactor from "./TicketLinkReactor.ts";
@@ -42,7 +42,7 @@ const status = TicketStatusId.make;
 
 const ticketsLayer = TicketService.layer.pipe(
   Layer.provideMerge(Layer.mock(TicketGitHub.TicketGitHub)({})),
-  Layer.provideMerge(SqlitePersistenceMemory),
+  Layer.provideMerge(SqlitePersistence.layerMemory),
   Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-ticket-links-" })),
   Layer.provideMerge(NodeServices.layer),
 );

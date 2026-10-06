@@ -13,7 +13,7 @@ import * as Crypto from "effect/Crypto";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import { HttpClient } from "effect/unstable/http";
+import { HttpClient } from "effect/http";
 import { readCursorUsageLimits } from "../Layers/cursorUsageLimits.ts";
 
 import * as BackgroundPolicy from "../../background/BackgroundPolicy.ts";
@@ -243,7 +243,7 @@ export const CursorDriver: ProviderDriver<CursorSettings, CursorDriverEnv> = {
         Effect.provideService(FileSystem.FileSystem, fileSystem),
         Effect.provideService(Path.Path, path),
         Effect.map(stampSnapshot),
-        Effect.provide(CursorSdkCatalog.CursorSdkCatalogLive),
+        Effect.provide(CursorSdkCatalog.layer),
       );
 
       const snapshotSettings = makeProviderSnapshotSettingsSource(effectiveConfig, serverSettings);

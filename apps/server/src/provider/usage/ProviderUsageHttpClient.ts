@@ -1,6 +1,6 @@
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
-import { HttpClient, HttpClientRequest, type HttpClientResponse } from "effect/unstable/http";
+import { HttpClient, HttpClientRequest, type HttpClientResponse } from "effect/http";
 
 import { collectUint8StreamText } from "../../stream/collectUint8StreamText.ts";
 

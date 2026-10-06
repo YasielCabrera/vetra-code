@@ -1,6 +1,6 @@
 import * as Result from "effect/Result";
-import type * as HttpServer from "effect/unstable/http/HttpServer";
-import * as NetAddress from "effect/unstable/net/NetAddress";
+import type * as HttpServer from "effect/http/HttpServer";
+import * as NetAddress from "effect/net/NetAddress";
 
 export function providerHttpOrigin(address: HttpServer.HttpServer["Service"]["address"]) {
   if (!NetAddress.isInetAddress(address)) {

@@ -11,7 +11,7 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Layer from "effect/Layer";
-import { HttpBody, HttpClient, HttpClientResponse } from "effect/unstable/http";
+import { HttpBody, HttpClient, HttpClientResponse } from "effect/http";
 
 const JsonRpcCall = Schema.Struct({ method: Schema.String });
 const decodeJsonRpcCall = Schema.decodeSync(Schema.fromJsonString(JsonRpcCall));

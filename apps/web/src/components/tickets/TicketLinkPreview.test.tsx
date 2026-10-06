@@ -6,7 +6,7 @@ import {
   TicketId,
   type TicketGitHubIssueDetail,
 } from "@t3tools/contracts";
-import { Atom } from "effect/unstable/reactivity";
+import { Atom } from "effect/reactivity";
 import { act, useReducer } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -100,7 +100,7 @@ const liveIssue = {
 boundary.setDetail(liveIssue);
 
 vi.mock("../../state/server", async () => {
-  const { Atom: RuntimeAtom } = await import("effect/unstable/reactivity");
+  const { Atom: RuntimeAtom } = await import("effect/reactivity");
   const configs = RuntimeAtom.make(new Map<string, CapabilityConfig>());
   capabilityAtom.install(configs);
   return { environmentServerConfigsAtom: configs };

@@ -20,7 +20,7 @@ import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
+import * as SqlClient from "effect/sql/SqlClient";
 
 import { IssueProviderError, type IssueProviderApi } from "../issue/IssueProvider.ts";
 import { IssueProviderRegistry } from "../issue/IssueProviderRegistry.ts";

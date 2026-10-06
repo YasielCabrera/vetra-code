@@ -17,8 +17,8 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
-import * as Statement from "effect/unstable/sql/Statement";
+import * as SqlClient from "effect/sql/SqlClient";
+import * as Statement from "effect/sql/Statement";
 
 import {
   LIVE_STREAM_MAX_ITEMS,
@@ -27,13 +27,15 @@ import {
 import { PersistenceDecodeError } from "../Errors.ts";
 import { toShellApplicationEvent } from "../../orchestration-v2/ShellStream.ts";
 import * as OrchestrationEventStore from "../Services/OrchestrationEventStore.ts";
-import { OrchestrationEventStoreLive } from "./OrchestrationEventStore.ts";
-import { SqlitePersistenceMemory } from "./Sqlite.ts";
+import * as OrchestrationEventStoreLayer from "./OrchestrationEventStore.ts";
+import * as SqlitePersistence from "./Sqlite.ts";
 const isPersistenceDecodeError = Schema.is(PersistenceDecodeError);
 const isLiveStreamBufferError = Schema.is(LiveStreamBufferError);
 
-const TestLayer = OrchestrationEventStoreLive.pipe(Layer.provideMerge(SqlitePersistenceMemory));
-const layer = it.layer(TestLayer);
+const layerTest = OrchestrationEventStoreLayer.layer.pipe(
+  Layer.provideMerge(SqlitePersistence.layerMemory),
+);
+const layer = it.layer(layerTest);
 
 layer("OrchestrationEventStore", (it) => {
   it.effect("retains only shell metadata from oversized replay and live application events", () =>
@@ -464,7 +466,7 @@ it.effect.each(["high-water", "replay"] as const)(
           assert.isTrue(isLiveStreamBufferError(result.failure.cause));
         }
       }),
-    ).pipe(Effect.provide(Layer.fresh(TestLayer))),
+    ).pipe(Effect.provide(Layer.fresh(layerTest))),
 );
 
 it.effect("releases consumed application replay pages", () =>
@@ -516,5 +518,5 @@ it.effect("releases consumed application replay pages", () =>
         ),
       );
     assert.equal(count, 1501);
-  }).pipe(Effect.provide(TestLayer)),
+  }).pipe(Effect.provide(layerTest)),
 );

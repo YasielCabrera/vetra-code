@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { ScopedTicketRef } from "@t3tools/client-runtime/state/tickets";
 import type { TicketPlanId, TicketPlanSummary, TicketSummary } from "@t3tools/contracts";
 import * as Option from "effect/Option";
-import { AsyncResult } from "effect/unstable/reactivity";
+import { AsyncResult } from "effect/reactivity";
 import {
   ArrowLeftIcon,
   ChevronDownIcon,

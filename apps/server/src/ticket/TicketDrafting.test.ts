@@ -10,11 +10,11 @@ import {
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Ref from "effect/Ref";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
+import * as SqlClient from "effect/sql/SqlClient";
 
 import * as ServerConfig from "../config.ts";
 import * as ThreadLaunchService from "../orchestration-v2/ThreadLaunchService.ts";
-import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../persistence/Layers/Sqlite.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as TicketDrafting from "./TicketDrafting.ts";
@@ -73,7 +73,7 @@ const makeHarness = (options: { readonly failLaunch?: boolean } = {}) =>
           }),
         ),
       ),
-      Layer.provideMerge(SqlitePersistenceMemory),
+      Layer.provideMerge(SqlitePersistence.layerMemory),
       Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-ticket-drafts-" })),
       Layer.provideMerge(NodeServices.layer),
     );

@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
-import * as Tool from "effect/unstable/ai/Tool";
+import * as Tool from "effect/ai/Tool";
 import {
   TicketCreateInput,
   TicketUpdateInput,

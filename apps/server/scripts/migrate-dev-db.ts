@@ -38,8 +38,8 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
-import { Command, Flag } from "effect/unstable/cli";
+import * as SqlClient from "effect/sql/SqlClient";
+import { Command, Flag } from "effect/cli";
 
 import * as ProjectionStore from "../src/orchestration-v2/ProjectionStore.ts";
 import { migrationManifest, runMigrations } from "../src/persistence/Migrations.ts";
@@ -63,7 +63,7 @@ export class MigrateDevDbSharedHomeError extends Schema.TaggedError<MigrateDevDb
   }
 }
 
-/** Upstream T3 Code home. Still a live install on machines that used it. */
+/** Upstream Vetra Code home. Still a live install on machines that used it. */
 const LEGACY_HOME_DIRECTORY_NAME = ".t3";
 
 export class MigrateDevDbLiveInstallError extends Schema.TaggedError<MigrateDevDbLiveInstallError>()(

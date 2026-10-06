@@ -21,6 +21,7 @@
 - [Keyboard focus](./user/keyboard-focus.md)
 - [SnapShots](./user/snap-shot.md)
 - [Review usage](./user/usage.md)
+- [Visual replies](./user/html-renders.md)
 - [Import browser sessions](./user/browser-import.md)
 - [Devices and simulators](./user/devices.md)
 - [Remote access](./user/remote-access.md)

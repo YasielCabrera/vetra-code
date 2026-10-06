@@ -13,11 +13,11 @@ import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
+import * as SqlClient from "effect/sql/SqlClient";
 
 import * as GitWorkflowService from "../git/GitWorkflowService.ts";
 import * as ThreadLaunchService from "../orchestration-v2/ThreadLaunchService.ts";
-import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../persistence/Layers/Sqlite.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as AutomationRuns from "./AutomationRuns.ts";
 
@@ -118,7 +118,7 @@ it.effect("records a scheduled launch as a hidden run on a stable thread", () =>
     assert.equal(runs[0]?.threadId, first?.threadId);
     assert.equal(runs[0]?.scheduledTaskId, TASK_ID);
     assert.isNotNull(runs[0]?.hiddenAt);
-  }).pipe(Effect.scoped, Effect.provide(SqlitePersistenceMemory)),
+  }).pipe(Effect.scoped, Effect.provide(SqlitePersistence.layerMemory)),
 );
 
 it.effect("leaves launches that are not scheduled runs alone", () =>
@@ -129,7 +129,7 @@ it.effect("leaves launches that are not scheduled runs alone", () =>
 
     assert.isUndefined((yield* Ref.get(launches))[0]?.threadId);
     assert.deepStrictEqual((yield* snapshot).runs, []);
-  }).pipe(Effect.scoped, Effect.provide(SqlitePersistenceMemory)),
+  }).pipe(Effect.scoped, Effect.provide(SqlitePersistence.layerMemory)),
 );
 
 it.effect("moves a run into the sidebar and back", () =>
@@ -142,7 +142,7 @@ it.effect("moves a run into the sidebar and back", () =>
     assert.isNull((yield* snapshot).runs[0]?.hiddenAt);
     yield* runs.setHidden({ threadId, hidden: true });
     assert.isNotNull((yield* snapshot).runs[0]?.hiddenAt);
-  }).pipe(Effect.scoped, Effect.provide(SqlitePersistenceMemory)),
+  }).pipe(Effect.scoped, Effect.provide(SqlitePersistence.layerMemory)),
 );
 
 it.effect("hands back the hidden runs of a deleted task and keeps the rest", () =>
@@ -165,7 +165,7 @@ it.effect("hands back the hidden runs of a deleted task and keeps the rest", () 
       (yield* snapshot).runs.map((run) => run.threadId),
       ["kept-run"],
     );
-  }).pipe(Effect.scoped, Effect.provide(SqlitePersistenceMemory)),
+  }).pipe(Effect.scoped, Effect.provide(SqlitePersistence.layerMemory)),
 );
 
 it.effect("moves pre-existing automations onto scheduled tasks once", () =>
@@ -231,7 +231,7 @@ it.effect("moves pre-existing automations onto scheduled tasks once", () =>
       SELECT automation_id FROM projection_automations WHERE deleted_at IS NULL
     `;
     assert.deepStrictEqual(remaining, []);
-  }).pipe(Effect.scoped, Effect.provide(SqlitePersistenceMemory)),
+  }).pipe(Effect.scoped, Effect.provide(SqlitePersistence.layerMemory)),
 );
 
 it.effect("pauses a migrated automation whose schedule has no equivalent", () =>
@@ -262,7 +262,7 @@ it.effect("pauses a migrated automation whose schedule has no equivalent", () =>
     `;
     assert.equal(task?.enabled, 0);
     assert.equal(task?.title, "Monthly (schedule needs review)");
-  }).pipe(Effect.scoped, Effect.provide(SqlitePersistenceMemory)),
+  }).pipe(Effect.scoped, Effect.provide(SqlitePersistence.layerMemory)),
 );
 
 it.effect("keeps V1 run threads hidden after the V2 cutover", () =>
@@ -301,5 +301,5 @@ it.effect("keeps V1 run threads hidden after the V2 cutover", () =>
         ["v1-revealed", null],
       ],
     );
-  }).pipe(Effect.scoped, Effect.provide(SqlitePersistenceMemory)),
+  }).pipe(Effect.scoped, Effect.provide(SqlitePersistence.layerMemory)),
 );

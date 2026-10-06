@@ -1,4 +1,5 @@
 import {
+  OrchestratorMcpFailure,
   type TicketActor,
   TicketError,
   type TicketGitHubRef,
@@ -21,9 +22,17 @@ const reader = Effect.fn("TicketsToolkit.reader")(function* () {
   return (yield* readCaller()).caller;
 });
 
+/** Changes are recorded as the calling thread's agent, so a client outside a thread can only read. */
 const writer = Effect.fn("TicketsToolkit.writer")(function* () {
   yield* McpInvocationContext.requireMcpCapability("tickets");
   const { caller } = yield* readMutationCaller();
+  if (caller === undefined) {
+    return yield* new OrchestratorMcpFailure({
+      code: "thread_credential_required",
+      message:
+        "Changing tickets acts as the calling Vetra Code thread, so it needs an agent running inside Vetra Code. This MCP client signed in from outside a thread.",
+    });
+  }
   const actor: TicketActor = { type: "agent", threadId: caller.id };
   return { caller, actor };
 });

@@ -3,7 +3,7 @@ import type { PowerhouseDatabaseError, PowerhouseReactorError } from "@t3tools/c
 import * as Cause from "effect/Cause";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
-import { AsyncResult, Atom } from "effect/unstable/reactivity";
+import { AsyncResult, Atom } from "effect/reactivity";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 export interface ReactorQueryView<A> {

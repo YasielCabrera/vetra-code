@@ -10,7 +10,7 @@ import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
-import { HttpBody, HttpClient, HttpClientResponse } from "effect/unstable/http";
+import { HttpBody, HttpClient, HttpClientResponse } from "effect/http";
 import { vi } from "vite-plus/test";
 
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";

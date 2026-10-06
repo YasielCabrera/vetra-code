@@ -1,6 +1,6 @@
 import { it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
-import { HttpClient, HttpClientResponse } from "effect/unstable/http";
+import { HttpClient, HttpClientResponse } from "effect/http";
 import { describe, expect } from "vite-plus/test";
 
 import {

@@ -151,6 +151,7 @@ describe("schedule presets", () => {
     { type: "fixed_time", timeOfDay: "09:00", weekdays: [1, 3, 5] },
     { type: "interval", everyMs: 15 * 60_000 },
     { type: "interval", everyMs: 24 * 60 * 60_000 },
+    { type: "webhook", signature: null },
   ] as const)("refuses to round off a schedule the picker cannot express", (schedule) => {
     expect(presetFromSchedule(schedule)).toBeNull();
   });
@@ -175,6 +176,7 @@ describe("schedule presets", () => {
     expect(describeAutomationSchedule({ type: "interval", everyMs: 15 * 60_000 })).toBe(
       "Every 15 minutes",
     );
+    expect(describeAutomationSchedule({ type: "webhook", signature: null })).toBe("On webhook");
   });
 
   it("names the days of a schedule no preset covers", () => {

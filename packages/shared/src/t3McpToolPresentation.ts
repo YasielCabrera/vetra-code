@@ -38,6 +38,7 @@ export type T3McpToolSummaryAction =
   | "question-list"
   | "question-read"
   | "question-respond"
+  | "secret-request"
   | "worktree-handoff"
   | "worktree-list"
   | "worktree-status"
@@ -70,7 +71,9 @@ export type T3McpToolSummaryAction =
   | "ticket-plan-update"
   | "ticket-plan-comment"
   | "browser"
-  | "device";
+  | "device"
+  | "html-preview"
+  | "html-render";
 
 export interface T3McpToolDefinition {
   readonly displayName: string;
@@ -140,6 +143,7 @@ const VETRA_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     ["Delete", "Deleting", "Requested deletion of", "a scheduled task"],
     "schedule-delete",
   ),
+  request_secret: tool(["Ask for", "Asking for", "Asked for", "a secret"], "secret-request"),
   create_threads: tool(["Create", "Creating", "Created", "Vetra Code threads"], "thread-create"),
   t3_thread_start: tool(["Start", "Starting", "Started", "a Vetra Code thread"], "thread-create"),
   t3_thread_list: tool(["List", "Listing", "Listed", "Vetra Code threads"], "thread-list"),
@@ -320,6 +324,8 @@ const VETRA_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     ["Comment on", "Commenting on", "Commented on", "a ticket plan"],
     "ticket-plan-comment",
   ),
+  html_preview: tool(["Preview", "Previewing", "Previewed", "an HTML page"], "html-preview"),
+  html_render: tool(["Render", "Rendering", "Rendered", "an HTML page"], "html-render"),
 };
 
 /**
@@ -359,7 +365,22 @@ function resolveT3McpToolName(value: string): string | null {
 
   const prefixed = /^(?:mcp[-_]{1,2})?vetra[-_ ]?code(?:__|[-_.:/ ])(?<tool>.+)$/i.exec(label);
   const candidate = prefixed?.groups?.tool ?? label;
-  return Object.hasOwn(VETRA_MCP_TOOLS, candidate) ? candidate : null;
+  if (Object.hasOwn(VETRA_MCP_TOOLS, candidate)) return candidate;
+  // OpenCode 2 registers one server per thread, `vetra-code-<thread>`, and joins
+  // it to the tool with `_`. Thread ids can hold `_` too, so take the longest
+  // known tool name that ends the label.
+  if (!/^vetra-code-/i.test(label)) return null;
+  let longest: string | null = null;
+  for (const tool of Object.keys(VETRA_MCP_TOOLS)) {
+    if (label.endsWith(`_${tool}`) && tool.length > (longest?.length ?? 0)) longest = tool;
+  }
+  return longest;
+}
+
+/** The bare Vetra Code tool name (`html_render`) for any provider's spelling of it. */
+export function resolveT3McpToolId(toolName: string | null | undefined): string | null {
+  const name = toolName == null ? null : resolveT3McpToolName(toolName);
+  return name !== null && Object.hasOwn(VETRA_MCP_TOOLS, name) ? name : null;
 }
 
 export function resolveT3McpToolDefinition(

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Result from "effect/Result";
-import * as NetAddress from "effect/unstable/net/NetAddress";
+import * as NetAddress from "effect/net/NetAddress";
 
 import { providerHttpOrigin } from "./httpOrigin.ts";
 

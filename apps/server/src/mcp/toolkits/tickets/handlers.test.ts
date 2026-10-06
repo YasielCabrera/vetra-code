@@ -14,12 +14,12 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
-import type * as Tool from "effect/unstable/ai/Tool";
+import * as SqlClient from "effect/sql/SqlClient";
+import type * as Tool from "effect/ai/Tool";
 
 import * as ServerConfig from "../../../config.ts";
 import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementService.ts";
-import { SqlitePersistenceMemory } from "../../../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../../../persistence/Layers/Sqlite.ts";
 import * as TicketGitHub from "../../../ticket/TicketGitHub.ts";
 import * as TicketService from "../../../ticket/TicketService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
@@ -30,15 +30,23 @@ const callerId = ThreadId.make("caller-thread");
 const projectId = ProjectId.make("caller-project");
 const providerInstanceId = ProviderInstanceId.make("codex");
 
-const layerFor = (caller: { readonly activeRunId: string | null }) =>
+/** `null` is an MCP client signed in from outside any thread. */
+const layerFor = (caller: { readonly activeRunId: string | null } | null) =>
   TicketsToolkitHandlersLive.pipe(
     Layer.provideMerge(
       Layer.mergeAll(
         Layer.succeed(McpInvocationContext.McpInvocationContext, {
           environmentId: EnvironmentId.make("environment"),
-          threadId: callerId,
-          providerSessionId: "session",
-          providerInstanceId,
+          requestNamespace: "session",
+          ...(caller === null
+            ? {
+                thread: undefined,
+                client: { sessionId: "client", label: "CLI", runtimeModeCeiling: "full-access" },
+              }
+            : {
+                thread: { threadId: callerId, providerSessionId: "session", providerInstanceId },
+                client: undefined,
+              }),
           issuedAt: 0,
           capabilities: new Set(["orchestration", "tickets"] as const),
         }),
@@ -48,7 +56,7 @@ const layerFor = (caller: { readonly activeRunId: string | null }) =>
               id: callerId,
               projectId,
               providerInstanceId,
-              activeRunId: caller.activeRunId,
+              activeRunId: caller?.activeRunId ?? null,
               archivedAt: null,
               deletedAt: null,
             } as OrchestrationV2ThreadShell),
@@ -57,7 +65,7 @@ const layerFor = (caller: { readonly activeRunId: string | null }) =>
     ),
     Layer.provideMerge(TicketService.layer),
     Layer.provideMerge(Layer.mock(TicketGitHub.TicketGitHub)({})),
-    Layer.provideMerge(SqlitePersistenceMemory),
+    Layer.provideMerge(SqlitePersistence.layerMemory),
     Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-ticket-tools-" })),
     Layer.provideMerge(NodeServices.layer),
   );
@@ -436,6 +444,29 @@ describe("TicketsToolkit", () => {
         ["OrchestratorMcpFailure", "The calling provider no longer owns an active thread run."],
       );
     }).pipe(Effect.provide(layerFor({ activeRunId: null }))),
+  );
+
+  it.effect("lets a client outside a thread read but not write", () =>
+    Effect.gen(function* () {
+      const tickets = yield* TicketService.TicketService;
+      yield* tickets.create({ title: "Seeded" }, { type: "user" });
+
+      const listed = yield* call("t3_ticket_list", {});
+      const detail = yield* call("t3_ticket_get", { ticket: "T-1" });
+      const write = yield* failure("t3_ticket_create", { title: "From outside" });
+
+      assert.deepStrictEqual(
+        [listed.tickets.map((ticket) => ticket.title), detail.summary.title],
+        [["Seeded"], "Seeded"],
+      );
+      assert.deepStrictEqual(
+        [write._tag, write.message],
+        [
+          "OrchestratorMcpFailure",
+          "Changing tickets acts as the calling Vetra Code thread, so it needs an agent running inside Vetra Code. This MCP client signed in from outside a thread.",
+        ],
+      );
+    }).pipe(Effect.provide(layerFor(null))),
   );
 
   it.effect("a pull request an agent unlinked stays off when automation links it again", () =>

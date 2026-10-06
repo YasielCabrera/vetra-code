@@ -8,7 +8,7 @@ import {
   type TicketLink,
   type TicketLinkTarget,
 } from "@t3tools/contracts";
-import { Atom } from "effect/unstable/reactivity";
+import { Atom } from "effect/reactivity";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -75,7 +75,7 @@ const projectLink = {
 } satisfies TicketLink;
 
 vi.mock("../../state/server", async () => {
-  const { Atom: RuntimeAtom } = await import("effect/unstable/reactivity");
+  const { Atom: RuntimeAtom } = await import("effect/reactivity");
   const configs = RuntimeAtom.make(new Map<string, CapabilityConfig>());
   capabilityAtom.install(configs);
   return { environmentServerConfigsAtom: configs };

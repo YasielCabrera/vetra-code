@@ -1,5 +1,5 @@
 import * as Effect from "effect/Effect";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
+import * as SqlClient from "effect/sql/SqlClient";
 
 /** Links a user or agent removed, with their last stored target, so automation leaves them off. */
 export default Effect.gen(function* () {

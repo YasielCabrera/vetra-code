@@ -71,7 +71,7 @@ function prResult(pr: GitRunStackedActionResult["pr"]): Pick<GitRunStackedAction
   return { pr };
 }
 
-const makeDependencies = (
+const layerDependenciesFor = (
   dispatch: Orchestrator.OrchestratorV2Shape["dispatch"],
   threadShell: PullRequestTestThread | null = thread,
 ) =>
@@ -159,7 +159,7 @@ describe("linkCreatedPullRequest", () => {
           url: "https://github.com/vetra-code/vetra-code/pull/42",
         }),
         commandId,
-      }).pipe(Effect.provide(makeDependencies(dispatch)));
+      }).pipe(Effect.provide(layerDependenciesFor(dispatch)));
 
       expect(yield* Ref.get(commands)).toEqual([
         {
@@ -179,12 +179,12 @@ describe("linkCreatedPullRequest", () => {
   it.effect("dispatches nothing when the action produced no pull request", () =>
     Effect.gen(function* () {
       const { commands, dispatch } = yield* recordingDispatch();
-      const dependencies = makeDependencies(dispatch);
+      const layerDependencies = layerDependenciesFor(dispatch);
       yield* linkCreatedPullRequest({
         threadId: THREAD_ID,
         result: prResult({ status: "skipped_not_requested" }),
         commandId,
-      }).pipe(Effect.provide(dependencies));
+      }).pipe(Effect.provide(layerDependencies));
       yield* linkCreatedPullRequest({
         threadId: THREAD_ID,
         result: prResult({
@@ -192,7 +192,7 @@ describe("linkCreatedPullRequest", () => {
           url: "https://github.com/vetra-code/vetra-code/pull/42",
         }),
         commandId,
-      }).pipe(Effect.provide(dependencies));
+      }).pipe(Effect.provide(layerDependencies));
 
       expect(yield* Ref.get(commands)).toEqual([]);
     }),
@@ -214,14 +214,14 @@ describe("linkCreatedPullRequest", () => {
         url: "https://github.com/vetra-code/vetra-code/pull/7",
       });
       yield* linkCreatedPullRequest({ threadId: THREAD_ID, result, commandId }).pipe(
-        Effect.provide(makeDependencies(rejecting)),
+        Effect.provide(layerDependenciesFor(rejecting)),
       );
       yield* linkCreatedPullRequest({ threadId: THREAD_ID, result, commandId }).pipe(
-        Effect.provide(makeDependencies(() => Effect.die(new Error("engine down")))),
+        Effect.provide(layerDependenciesFor(() => Effect.die(new Error("engine down")))),
       );
       // A thread that vanished between the action and the link is not an error either.
       yield* linkCreatedPullRequest({ threadId: THREAD_ID, result, commandId }).pipe(
-        Effect.provide(makeDependencies(() => Effect.die(new Error("unreachable")), null)),
+        Effect.provide(layerDependenciesFor(() => Effect.die(new Error("unreachable")), null)),
       );
     }),
   );
@@ -232,7 +232,7 @@ it.effect(
   () =>
     Effect.gen(function* () {
       const refreshed: string[] = [];
-      const dependencies = Layer.mergeAll(
+      const layerDependencies = Layer.mergeAll(
         Layer.mock(Orchestrator.OrchestratorV2)({
           getThreadShell: () => Effect.succeed(v2PullRequestThread(thread)),
         }),
@@ -249,22 +249,22 @@ it.effect(
       yield* refreshPushedPullRequests(
         { cwd: "/worktree", threadId: THREAD_ID },
         { push: { status: "pushed" } },
-      ).pipe(Effect.provide(dependencies));
+      ).pipe(Effect.provide(layerDependencies));
       yield* refreshPushedPullRequests(
         { cwd: project.workspaceRoot },
         { push: { status: "pushed" } },
-      ).pipe(Effect.provide(dependencies));
+      ).pipe(Effect.provide(layerDependencies));
       yield* refreshPushedPullRequests({ cwd: "/unrelated" }, { push: { status: "pushed" } }).pipe(
-        Effect.provide(dependencies),
+        Effect.provide(layerDependencies),
       );
       yield* refreshPushedPullRequests(
         { cwd: project.workspaceRoot, threadId: THREAD_ID },
         { push: { status: "skipped_not_requested" } },
-      ).pipe(Effect.provide(dependencies));
+      ).pipe(Effect.provide(layerDependencies));
       yield* refreshPushedPullRequests(
         { cwd: "/draft-worktree", projectId: PROJECT_ID },
         { push: { status: "pushed" } },
-      ).pipe(Effect.provide(dependencies));
+      ).pipe(Effect.provide(layerDependencies));
       expect(refreshed).toEqual([PROJECT_ID, PROJECT_ID, PROJECT_ID]);
     }),
 );

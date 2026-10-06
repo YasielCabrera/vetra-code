@@ -27,12 +27,12 @@ import * as Queue from "effect/Queue";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
+import * as SqlClient from "effect/sql/SqlClient";
 import { vi } from "vite-plus/test";
 
 import { createPendingAttachmentId } from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
-import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../persistence/Layers/Sqlite.ts";
 import * as TicketGitHub from "./TicketGitHub.ts";
 import * as TicketService from "./TicketService.ts";
 
@@ -42,7 +42,7 @@ const status = TicketStatusId.make;
 
 const testLayer = TicketService.layer.pipe(
   Layer.provideMerge(Layer.mock(TicketGitHub.TicketGitHub)({})),
-  Layer.provideMerge(SqlitePersistenceMemory),
+  Layer.provideMerge(SqlitePersistence.layerMemory),
   Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-tickets-" })),
   Layer.provideMerge(NodeServices.layer),
 );

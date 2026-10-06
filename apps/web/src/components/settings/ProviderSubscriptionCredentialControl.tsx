@@ -6,7 +6,7 @@ import {
 import type { EnvironmentId, ProviderDriverKind, ProviderInstanceId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Redacted from "effect/Redacted";
-import { AsyncResult } from "effect/unstable/reactivity";
+import { AsyncResult } from "effect/reactivity";
 import { KeyRoundIcon, LoaderIcon, Trash2Icon } from "lucide-react";
 import { useRef, useState } from "react";
 

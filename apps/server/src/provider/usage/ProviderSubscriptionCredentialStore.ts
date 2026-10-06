@@ -3,7 +3,7 @@ import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
-import * as Encoding from "effect/Encoding";
+import * as Hex from "effect/encoding/Hex";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 
@@ -78,7 +78,7 @@ export const make = Effect.gen(function* () {
           onNone: () => Effect.succeed("automatic"),
           onSome: (secret) =>
             crypto.digest("SHA-256", encoder.encode(secret)).pipe(
-              Effect.map(Encoding.encodeHex),
+              Effect.map(Hex.encode),
               Effect.map((digest) => `manual:${digest}`),
               Effect.mapError(
                 () =>

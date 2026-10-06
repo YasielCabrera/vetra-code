@@ -8,8 +8,8 @@
  */
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
-import type { SqlError } from "effect/unstable/sql/SqlError";
+import * as SqlClient from "effect/sql/SqlClient";
+import type { SqlError } from "effect/sql/SqlError";
 
 import Migration001 from "./VetraMigrations/001_Tickets.ts";
 import Migration002 from "./VetraMigrations/002_TicketGitHubSources.ts";

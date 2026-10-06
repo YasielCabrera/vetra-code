@@ -2,7 +2,7 @@ import type { ScopedTicketRef } from "@t3tools/client-runtime/state/tickets";
 import type { TicketPlanId, TicketPlanSummary } from "@t3tools/contracts";
 import type { PlanCommentThread } from "@t3tools/shared/ticketPlanAnchors";
 import * as Option from "effect/Option";
-import { AsyncResult } from "effect/unstable/reactivity";
+import { AsyncResult } from "effect/reactivity";
 import { useEffect, useMemo, useRef } from "react";
 
 import { useTicketActions } from "../../hooks/useTicketActions";

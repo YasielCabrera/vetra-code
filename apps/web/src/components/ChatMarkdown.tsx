@@ -56,7 +56,7 @@ import {
 import { mediaFileReference, mediaUrlReference } from "@t3tools/client-runtime/media-reference";
 import { mediaKindFromPath, mediaMimeTypeFromExtension } from "@t3tools/shared/filePreview";
 import * as Cause from "effect/Cause";
-import { AsyncResult } from "effect/unstable/reactivity";
+import { AsyncResult } from "effect/reactivity";
 import React, {
   Children,
   Suspense,
@@ -1839,7 +1839,8 @@ export const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props
         | "workspace-file"
         | "media-file"
         | "source-control-attachment"
-        | "github-media";
+        | "github-media"
+        | "tool-output-image";
     }
   >;
   readonly kind?: "image" | "video";

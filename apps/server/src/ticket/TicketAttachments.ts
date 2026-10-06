@@ -19,8 +19,8 @@ import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import * as Mime from "effect/unstable/http/Mime";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
+import * as Mime from "effect/http/Mime";
+import * as SqlClient from "effect/sql/SqlClient";
 
 import { openMediaFile, statMediaFile, streamMediaFile } from "../assets/MediaFile.ts";
 import { writeAttachmentFile } from "../assets/writeAttachmentFile.ts";

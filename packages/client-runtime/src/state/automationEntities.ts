@@ -7,7 +7,7 @@ import type {
   ScheduledTaskListResult,
 } from "@t3tools/contracts";
 import * as Option from "effect/Option";
-import { AsyncResult, Atom } from "effect/unstable/reactivity";
+import { AsyncResult, Atom } from "effect/reactivity";
 
 import { scopeThreadRef, scopedThreadKey } from "../environment/scoped.ts";
 import type { EnvironmentCatalogState } from "./connections.ts";

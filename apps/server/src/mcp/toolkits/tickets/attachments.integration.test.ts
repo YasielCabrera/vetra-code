@@ -12,25 +12,26 @@ import {
 import * as Effect from "effect/Effect";
 import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
-import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient";
+import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
-import type * as Tool from "effect/unstable/ai/Tool";
-import { HttpClient, HttpClientRequest, HttpRouter, HttpServer } from "effect/unstable/http";
-import * as NetAddress from "effect/unstable/net/NetAddress";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
+import type * as Tool from "effect/ai/Tool";
+import { HttpClient, HttpClientRequest, HttpRouter, HttpServer } from "effect/http";
+import * as NetAddress from "effect/net/NetAddress";
+import * as SqlClient from "effect/sql/SqlClient";
 
 import { issueAssetUrl } from "../../../assets/AssetAccess.ts";
 import * as NativeAppIconResolver from "../../../assets/NativeAppIconResolver.ts";
 import { resolveAttachmentPathById } from "../../../attachmentStore.ts";
 import * as ServerSecretStore from "../../../auth/ServerSecretStore.ts";
 import * as ServerConfig from "../../../config.ts";
-import { assetRouteLayer, attachmentUploadRouteLayer } from "../../../http.ts";
+import * as ServerHttp from "../../../http.ts";
+import * as Orchestrator from "../../../orchestration-v2/Orchestrator.ts";
 import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementService.ts";
-import { SqlitePersistenceMemory } from "../../../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../../../persistence/Layers/Sqlite.ts";
 import * as ProjectFaviconResolver from "../../../project/ProjectFaviconResolver.ts";
 import * as T3ProjectFileLoader from "../../../project/T3ProjectFileLoader.ts";
 import * as GitHubCli from "../../../sourceControl/GitHubCli.ts";
@@ -40,7 +41,7 @@ import * as TicketService from "../../../ticket/TicketService.ts";
 import * as WorkspacePaths from "../../../workspace/WorkspacePaths.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import { providerHttpOrigin } from "../../httpOrigin.ts";
-import { AttachmentHandlersLive } from "../attachment/handlers.ts";
+import * as AttachmentHandlers from "../attachment/handlers.ts";
 import { AttachmentToolkit } from "../attachment/tools.ts";
 import { TicketsToolkitHandlersLive } from "./handlers.ts";
 import { TicketsToolkit } from "./tools.ts";
@@ -86,27 +87,32 @@ const configLayer = Layer.effect(
 const externalLayers = Layer.mergeAll(
   Layer.succeed(McpInvocationContext.McpInvocationContext, {
     environmentId: EnvironmentId.make("environment"),
-    threadId: caller.id,
-    providerSessionId: "session",
-    providerInstanceId: ProviderInstanceId.make("codex"),
+    requestNamespace: "session",
+    thread: {
+      threadId: caller.id,
+      providerSessionId: "session",
+      providerInstanceId: ProviderInstanceId.make("codex"),
+    },
+    client: undefined,
     issuedAt: 0,
     capabilities: new Set(["orchestration", "tickets"] as const),
   }),
   Layer.mock(ThreadManagement.ThreadManagementService)({
     getThreadShell: () => Effect.succeed(caller),
   }),
+  Layer.mock(Orchestrator.OrchestratorV2)({}),
   Layer.mock(TicketGitHub.TicketGitHub)({}),
   Layer.mock(ProjectFaviconResolver.ProjectFaviconResolver)({}),
   Layer.mock(T3ProjectFileLoader.T3ProjectFileLoader)({}),
   Layer.mock(NativeAppIconResolver.NativeAppIconResolver)({}),
   Layer.mock(SourceControlAttachmentResolver.SourceControlAttachmentResolver)({}),
   Layer.mock(GitHubCli.GitHubCli)({}),
-  SqlitePersistenceMemory,
+  SqlitePersistence.layerMemory,
 );
 const testLayer = Layer.mergeAll(
   TicketsToolkitHandlersLive,
-  AttachmentHandlersLive,
-  HttpRouter.serve(Layer.merge(assetRouteLayer, attachmentUploadRouteLayer), {
+  AttachmentHandlers.layer,
+  HttpRouter.serve(Layer.merge(ServerHttp.layerAssetRoute, ServerHttp.layerAttachmentUploadRoute), {
     disableListenLog: true,
     disableLogger: true,
   }),
