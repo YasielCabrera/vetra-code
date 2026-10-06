@@ -41,7 +41,10 @@ vi.mock("../../state/tickets", () => ({
   useTickets: () => board,
   useTicketGitHubSources: () => sources,
 }));
-vi.mock("../../state/entities", () => ({ useProjects: () => projects }));
+vi.mock("../../state/entities", () => ({
+  useProjects: () => projects,
+  useThreadShells: () => [],
+}));
 vi.mock("../../state/environments", () => ({
   useEnvironments: () => environments,
   usePrimaryEnvironmentId: () => null,

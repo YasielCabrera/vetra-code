@@ -47,7 +47,7 @@ import { isElectron } from "../../env";
 import { isHostedStaticApp } from "../../hostedPairing";
 import { useTicketActions } from "../../hooks/useTicketActions";
 import { cn } from "../../lib/utils";
-import { useProjects } from "../../state/entities";
+import { useProjects, useThreadShells } from "../../state/entities";
 import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
 import { environmentShell } from "../../state/shell";
 import { ticketEnvironment, useTicketGitHubSources, useTickets } from "../../state/tickets";
@@ -56,6 +56,7 @@ import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { GitHubIcon } from "../Icons";
 import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
 import { ProjectFavicon } from "../ProjectFavicon";
+import { sortScopedProjectsForSidebar } from "../Sidebar.logic";
 import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
 import { SourceControlActorAvatar } from "../SourceControlActorAvatar";
 import { Button } from "../ui/button";
@@ -339,6 +340,7 @@ export function TicketsPage() {
   const router = useRouter();
   const board = useTickets();
   const projects = useProjects();
+  const threads = useThreadShells();
   const { environments, isReady: environmentsReady } = useEnvironments();
   const liveProjectIds = useAtomValue(liveTicketProjectIdsAtom);
   const primaryEnvironmentId = usePrimaryEnvironmentId();
@@ -472,17 +474,19 @@ export function TicketsPage() {
   );
   const projectOptions = useMemo(
     () =>
-      projects
-        .filter((project) => board.environmentIds.includes(project.environmentId))
-        .map((project) => ({
-          value: `${project.environmentId}:${project.id}`,
-          label: project.title,
-          ...(environments.length > 1
-            ? { description: environmentLabels.get(project.environmentId) ?? project.environmentId }
-            : {}),
-          icon: <ProjectFavicon project={project} className="size-3.5" />,
-        })),
-    [board.environmentIds, environmentLabels, environments.length, projects],
+      sortScopedProjectsForSidebar(
+        projects.filter((project) => board.environmentIds.includes(project.environmentId)),
+        threads,
+        "updated_at",
+      ).map((project) => ({
+        value: `${project.environmentId}:${project.id}`,
+        label: project.title,
+        ...(environments.length > 1
+          ? { description: environmentLabels.get(project.environmentId) ?? project.environmentId }
+          : {}),
+        icon: <ProjectFavicon project={project} className="size-3.5" />,
+      })),
+    [board.environmentIds, environmentLabels, environments.length, projects, threads],
   );
   const labelOptions = useMemo(
     () =>
