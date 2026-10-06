@@ -34,6 +34,7 @@ import * as TicketLinkReactor from "./TicketLinkReactor.ts";
 import * as TicketService from "./TicketService.ts";
 
 const USER = { type: "user" } as const;
+const AGENT = { type: "agent", threadId: ThreadId.make("agent-thread") } as const;
 const THREAD = ThreadId.make("thread-1");
 const PROJECT = ProjectId.make("project-1");
 const NOW = DateTime.makeUnsafe("2026-10-01T00:00:00.000Z");
@@ -256,6 +257,14 @@ const githubIssue = (number: number) => ({
 
 const linksOf = (ticket: TicketSummary) =>
   ticket.linkRefs.map((ref) => `${ref.kind} ${ref.targetKey}`).toSorted();
+
+const PULL_REQUEST_KEY = "github.com/acme/app#7";
+
+const pullRequestTarget = (state: "open" | "merged", title = "Fix the login loop") => ({
+  kind: "pull_request" as const,
+  ref: { host: "github.com", repository: "acme/app", number: 7 },
+  snapshot: { title, state, url: "https://github.com/acme/app/pull/7" },
+});
 
 describe("TicketLinkReactor", () => {
   it.effect("a pull request the user unlinked stays off its ticket when the reactor starts", () =>
@@ -580,6 +589,115 @@ describe("TicketLinkReactor", () => {
         yield* publish(sentMessage([ticket]));
 
         assert.strictEqual((yield* tickets.resolveRef("T-1")).statusId, "in_progress");
+      }),
+    ),
+  );
+
+  it.effect("a pull request the user unlinked stays off on later syncs until linked again", () =>
+    withReactor(({ tickets, publish }) =>
+      Effect.gen(function* () {
+        const ticket = (yield* tickets.create({ title: "Login loop" }, USER)).ticket;
+        yield* publish(sentMessage([ticket]));
+        yield* publish(pullRequestsSynced([pullRequest("open")]));
+        yield* tickets.unlink(
+          { ticketId: ticket.id, kind: "pull_request", targetKey: PULL_REQUEST_KEY },
+          USER,
+        );
+        const unlinked = yield* tickets.resolveRef("T-1");
+        yield* tickets.move(
+          {
+            ticketId: ticket.id,
+            expectedRevision: unlinked.revision,
+            statusId: status("todo"),
+            sortKey: "a0",
+          },
+          USER,
+        );
+        const after = (event: OrchestrationV2DomainEvent) =>
+          publish(event).pipe(
+            Effect.andThen(tickets.resolveRef("T-1")),
+            Effect.map((current) => [current.statusId, linksOf(current)]),
+          );
+
+        const resynced = yield* after(pullRequestsSynced([pullRequest("open")]));
+        const merged = yield* after(pullRequestsSynced([pullRequest("merged")]));
+        yield* tickets.link({ ticketId: ticket.id, target: pullRequestTarget("open") }, USER);
+        const relinkedMerged = yield* after(pullRequestsSynced([pullRequest("merged")]));
+
+        assert.deepStrictEqual(
+          [resynced, merged, relinkedMerged],
+          [
+            ["todo", ["thread thread-1"]],
+            ["todo", ["thread thread-1"]],
+            ["done", ["pull_request github.com/acme/app#7", "thread thread-1"]],
+          ],
+        );
+      }),
+    ),
+  );
+
+  it.effect("an agent's unlink and placeholder re-link of a merged PR is not a fresh merge", () =>
+    withReactor(({ tickets, publish }) =>
+      Effect.gen(function* () {
+        const ticket = (yield* tickets.create({ title: "Login loop" }, USER)).ticket;
+        yield* publish(sentMessage([ticket]));
+        yield* publish(pullRequestsSynced([pullRequest("merged")]));
+        const merged = yield* tickets.resolveRef("T-1");
+        yield* tickets.move(
+          {
+            ticketId: ticket.id,
+            expectedRevision: merged.revision,
+            statusId: status("in_review"),
+            sortKey: "a0",
+          },
+          USER,
+        );
+        yield* tickets.unlink(
+          { ticketId: ticket.id, kind: "pull_request", targetKey: PULL_REQUEST_KEY },
+          AGENT,
+        );
+        yield* publish(pullRequestsSynced([pullRequest("merged")]));
+        const suppressed = yield* tickets.resolveRef("T-1");
+
+        yield* tickets.link(
+          { ticketId: ticket.id, target: pullRequestTarget("open", "acme/app#7") },
+          AGENT,
+        );
+        const relinked = (yield* tickets.get(ticket.id)).links.find(
+          (link) => link.target.kind === "pull_request",
+        )?.target;
+        yield* publish(pullRequestsSynced([pullRequest("merged")]));
+        const resynced = yield* tickets.resolveRef("T-1");
+
+        assert.deepStrictEqual(
+          [
+            [suppressed.statusId, linksOf(suppressed)],
+            relinked,
+            [resynced.statusId, linksOf(resynced)],
+          ],
+          [
+            ["in_review", ["thread thread-1"]],
+            pullRequestTarget("merged"),
+            ["in_review", ["pull_request github.com/acme/app#7", "thread thread-1"]],
+          ],
+        );
+      }),
+    ),
+  );
+
+  it.effect("a thread the user unlinked is not re-linked by another chip in it", () =>
+    withReactor(({ tickets, publish }) =>
+      Effect.gen(function* () {
+        const ticket = (yield* tickets.create({ title: "Login loop" }, USER)).ticket;
+        yield* tickets.link(
+          { ticketId: ticket.id, target: { kind: "thread", threadId: THREAD } },
+          USER,
+        );
+        yield* tickets.unlink({ ticketId: ticket.id, kind: "thread", targetKey: THREAD }, USER);
+        yield* publish(sentMessage([ticket]));
+
+        const after = yield* tickets.resolveRef("T-1");
+        assert.deepStrictEqual([after.statusId, linksOf(after)], ["todo", []]);
       }),
     ),
   );

@@ -167,7 +167,8 @@ Tickets move forward on their own as the work progresses:
 Tickets only move forward, never back, and a closed ticket stays where it is. Each step happens
 once, so a ticket you move back stays where you put it. Choose the target
 status for each step, or turn auto-advance off, in **Settings → Tickets**. Links are added either
-way.
+way. A thread or pull request you or an agent unlink stays unlinked and no longer moves the ticket;
+link it again from the ticket to bring it back.
 
 ## Agents and tickets
 

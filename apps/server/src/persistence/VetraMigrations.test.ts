@@ -112,7 +112,10 @@ it.effect("defaults existing active and archived plans to Draft and preserves da
     `;
     const beforePlans = yield* sql`SELECT ticket_plans.* FROM ticket_plans ORDER BY number`;
     const beforeComments = yield* sql`SELECT * FROM ticket_plan_comments`;
-    assert.deepStrictEqual(yield* runVetraMigrations(), ["005_TicketPlanReviewStatus"]);
+    assert.deepStrictEqual(yield* runVetraMigrations(), [
+      "005_TicketPlanReviewStatus",
+      "006_TicketLinkTombstones",
+    ]);
     const migratedPlans = yield* sql`
       SELECT plan_id, ticket_id, number, title, body, status, revision,
         created_by_json, updated_by_json, created_at, updated_at, review_status
@@ -140,6 +143,7 @@ it.effect("defaults existing active and archived plans to Draft and preserves da
         "003_TicketDrafts",
         "004_TicketPlans",
         "005_TicketPlanReviewStatus",
+        "006_TicketLinkTombstones",
       ],
       upstream: ["1_OrchestrationEvents"],
     });

@@ -438,6 +438,37 @@ describe("TicketsToolkit", () => {
     }).pipe(Effect.provide(layerFor({ activeRunId: null }))),
   );
 
+  it.effect("a pull request an agent unlinked stays off when automation links it again", () =>
+    Effect.gen(function* () {
+      const tickets = yield* TicketService.TicketService;
+      const ticket = yield* call("t3_ticket_create", { title: "Fix login", linkCaller: false });
+      const target = { kind: "pull_request" as const, url: "https://github.com/acme/app/pull/12" };
+      yield* call("t3_ticket_link", { ticket: "T-1", target });
+      yield* call("t3_ticket_unlink", {
+        ticket: "T-1",
+        kind: "pull_request",
+        targetKey: "github.com/acme/app#12",
+      });
+      const automated = yield* tickets.link(
+        {
+          ticketId: ticket.id,
+          target: {
+            kind: "pull_request",
+            ref: { host: "github.com", repository: "acme/app", number: 12 },
+            snapshot: { title: "Fix login", state: "open", url: target.url },
+          },
+        },
+        { type: "automation" },
+      );
+      const relinked = yield* call("t3_ticket_link", { ticket: "T-1", target });
+
+      assert.deepStrictEqual(
+        [automated.suppressed, automated.ticket.linkRefs, relinked.linkRefs],
+        [true, [], [{ kind: "pull_request", targetKey: "github.com/acme/app#12" }]],
+      );
+    }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
+  );
+
   it.effect("links what an agent names by ref or URL with a derived URL and placeholder", () =>
     Effect.gen(function* () {
       yield* call("t3_ticket_create", { title: "Fix login", linkCaller: false });

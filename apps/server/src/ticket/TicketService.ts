@@ -377,6 +377,8 @@ interface TicketLinkResult {
   readonly ticket: TicketSummary;
   /** The link as stored before this call; null when the call added it. */
   readonly previous: TicketLinkTarget | null;
+  /** Automation linked a target a user or agent removed; nothing was stored. */
+  readonly suppressed: boolean;
 }
 
 interface ChangeSubscriber<Id> {
@@ -521,6 +523,9 @@ const linkSourceFor = (actor: TicketActor): TicketLinkSource => {
       return "auto";
   }
 };
+
+/** A user's or agent's own link or unlink, which automation must not undo. */
+const isExplicit = (actor: TicketActor) => actor.type === "user" || actor.type === "agent";
 
 const mayNotCrossClosedLine = (actor: TicketActor) =>
   actor.type === "agent" || actor.type === "automation";
@@ -1567,6 +1572,7 @@ const make = Effect.gen(function* () {
       const target = normalizeLinkTarget(input.target);
       const targetKey = ticketLinkTargetKey(target);
       let previous: TicketLinkTarget | null = null;
+      let suppressed = false;
       const ticket = yield* writeTicket(input.ticketId, undefined, actor, (current, at) =>
         Effect.gen(function* () {
           if (isOwnIssue(current, target)) {
@@ -1578,8 +1584,29 @@ const make = Effect.gen(function* () {
               AND target_key = ${targetKey}
           `;
           if (stored === undefined) {
-            yield* insertLink(input.ticketId, target, linkSourceFor(actor), at);
-            return { entries: [{ type: "linked" as const, target }], revises: false };
+            const [tombstone] = yield* sql<{ readonly target_json: string }>`
+              SELECT target_json FROM ticket_link_tombstones
+              WHERE ticket_id = ${input.ticketId} AND kind = ${target.kind}
+                AND target_key = ${targetKey}
+            `;
+            if (tombstone !== undefined) {
+              if (!isExplicit(actor)) {
+                suppressed = true;
+                return UNCHANGED;
+              }
+              yield* sql`
+                DELETE FROM ticket_link_tombstones
+                WHERE ticket_id = ${input.ticketId} AND kind = ${target.kind}
+                  AND target_key = ${targetKey}
+              `;
+            }
+            // An agent's target is a placeholder; the removed link's snapshot is the better one.
+            const linked =
+              actor.type === "agent" && tombstone !== undefined
+                ? yield* decodeLinkTarget(tombstone.target_json)
+                : target;
+            yield* insertLink(input.ticketId, linked, linkSourceFor(actor), at);
+            return { entries: [{ type: "linked" as const, target: linked }], revises: false };
           }
           previous = yield* decodeLinkTarget(stored.target_json);
           const json = encodeJson(target);
@@ -1601,10 +1628,10 @@ const make = Effect.gen(function* () {
           return { ...UNCHANGED, touches: true };
         }),
       );
-      if (previous === null && target.kind === "thread") {
+      if (previous === null && !suppressed && target.kind === "thread") {
         yield* publishThreadLinks([target.threadId]);
       }
-      return { ticket, previous };
+      return { ticket, previous, suppressed };
     }).pipe(
       Effect.catchTags({
         SqlError: sqlFailure("Could not link the ticket."),
@@ -1614,7 +1641,7 @@ const make = Effect.gen(function* () {
     );
 
   const unlink: TicketService["Service"]["unlink"] = (input, actor) =>
-    writeTicket(input.ticketId, undefined, actor, (current) =>
+    writeTicket(input.ticketId, undefined, actor, (current, at) =>
       Effect.gen(function* () {
         if (
           input.kind === "project" &&
@@ -1632,12 +1659,20 @@ const make = Effect.gen(function* () {
               "Keep a project that can read this GitHub repository, or add an enabled GitHub source first.",
           });
         }
-        const deleted = yield* sql<{ readonly kind: string }>`
+        const [deleted] = yield* sql<{ readonly target_json: string }>`
           DELETE FROM ticket_links
           WHERE ticket_id = ${input.ticketId} AND kind = ${input.kind} AND target_key = ${input.targetKey}
-          RETURNING kind
+          RETURNING target_json
         `;
-        return deleted.length === 0
+        if (deleted !== undefined && isExplicit(actor)) {
+          yield* sql`
+            INSERT INTO ticket_link_tombstones (ticket_id, kind, target_key, target_json, removed_at)
+            VALUES (${input.ticketId}, ${input.kind}, ${input.targetKey}, ${deleted.target_json}, ${at})
+            ON CONFLICT (ticket_id, kind, target_key)
+            DO UPDATE SET target_json = excluded.target_json, removed_at = excluded.removed_at
+          `;
+        }
+        return deleted === undefined
           ? UNCHANGED
           : {
               entries: [

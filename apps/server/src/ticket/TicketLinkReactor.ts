@@ -114,7 +114,11 @@ export const make = Effect.gen(function* () {
     },
   ) =>
     Effect.gen(function* () {
-      const { ticket, previous } = yield* tickets.link({ ticketId, target }, AUTOMATION);
+      const { ticket, previous, suppressed } = yield* tickets.link(
+        { ticketId, target },
+        AUTOMATION,
+      );
+      if (suppressed) return;
       const event = transition(previous);
       const status = event === null ? null : autoAdvanceTarget({ event, ticket, ...context });
       if (status === null) return;
