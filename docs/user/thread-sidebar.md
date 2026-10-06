@@ -5,8 +5,12 @@ need a separate branch and working directory.
 
 ## Start a thread
 
-On web and desktop, a new thread keeps the current project and carries your model
-and mode selections, unless the destination project has its own model default.
+On web and desktop, press `Cmd+Shift+O` on macOS or `Ctrl+Shift+O` on Windows and
+Linux from any main page to choose a project for a new thread. Select a project to
+continue, or cancel to keep your current page and thread.
+
+A new thread carries your model and mode selections, unless the destination
+project has its own model default.
 Its branch and workspace mode come from your configured defaults. To continue in
 an existing worktree, use **New thread in this worktree** from the branch toolbar.
 

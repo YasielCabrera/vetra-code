@@ -144,6 +144,7 @@ import {
 import { onOpenCommandPalette, publishCommandPaletteProjectSelected } from "../commandPaletteBus";
 import { isPreviewFocused } from "../lib/previewFocus";
 import { isTerminalFocused } from "../lib/terminalFocus";
+import { isEditableFocused } from "../lib/editableFocus";
 import {
   PULL_REQUESTS_PANEL_REF,
   selectActiveRightPanel,
@@ -561,9 +562,18 @@ export function CommandPalette({ children }: { children: ReactNode }) {
           terminalOpen,
           previewFocus: isPreviewFocused(),
           previewOpen,
+          editableFocus: isEditableFocused(event.target),
           modelPickerOpen: composerHandleRef.current?.isModelPickerOpen() ?? false,
         },
       });
+      if (command === "chat.new") {
+        if (state.open) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.repeat) return;
+        openNewThreadIn();
+        return;
+      }
       if (command === "appearance.cycle") {
         event.preventDefault();
         event.stopPropagation();
@@ -626,10 +636,12 @@ export function CommandPalette({ children }: { children: ReactNode }) {
     appearanceMode,
     keybindings,
     navigate,
+    openNewThreadIn,
     previewOpen,
     resolvedTheme,
     setAppearanceMode,
     setOpen,
+    state.open,
     terminalOpen,
     theme,
     themeHalves,
@@ -1975,7 +1987,7 @@ function OpenCommandPaletteDialog(props: {
           </>
         ),
         icon: <SquarePenIcon className={ITEM_ICON_CLASS} />,
-        shortcutCommand: "chat.new",
+        shortcutCommand: "chat.newLocal",
         run: async () => {
           await startNewThreadFromContext({
             activeDraftThread,
@@ -1992,6 +2004,7 @@ function OpenCommandPaletteDialog(props: {
       value: "action:new-thread-in",
       searchTerms: ["new thread", "project", "pick", "choose", "select"],
       title: "New thread in...",
+      shortcutCommand: "chat.new",
       icon: <SquarePenIcon className={ITEM_ICON_CLASS} />,
       addonIcon: <SquarePenIcon className={ADDON_ICON_CLASS} />,
       groups: [{ value: "projects", label: "Projects", items: projectThreadItems }],

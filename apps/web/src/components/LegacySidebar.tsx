@@ -3331,9 +3331,11 @@ export default function LegacySidebar() {
     }),
     [platform],
   );
-  const newThreadShortcutLabel =
-    shortcutLabelForCommand(keybindings, "chat.newLocal", newThreadShortcutLabelOptions) ??
-    shortcutLabelForCommand(keybindings, "chat.new", newThreadShortcutLabelOptions);
+  const newThreadShortcutLabel = shortcutLabelForCommand(
+    keybindings,
+    "chat.newLocal",
+    newThreadShortcutLabelOptions,
+  );
 
   const navigateToThread = useCallback(
     (threadRef: ScopedThreadRef) => {
