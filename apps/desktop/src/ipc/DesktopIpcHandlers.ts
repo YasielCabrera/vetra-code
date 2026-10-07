@@ -154,11 +154,4 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   }
   yield* ipc.handle(PreviewIpc.listBrowserImportSources);
   yield* ipc.handle(PreviewIpc.importBrowserCookies);
-
-  yield* ipc.handle(PreviewIpc.walletMethods.walletStatus);
-  yield* ipc.handle(PreviewIpc.walletMethods.walletConfigure);
-  yield* ipc.handle(PreviewIpc.walletMethods.walletRequests);
-  yield* ipc.handle(PreviewIpc.walletMethods.walletApprove);
-  yield* ipc.handle(PreviewIpc.walletMethods.walletReject);
-  yield* ipc.handle(PreviewIpc.walletMethods.walletApplySettings);
 });

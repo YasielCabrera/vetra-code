@@ -1,61 +1,7 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
-import {
-  DesktopEnvironmentBootstrapSchema,
-  DesktopPreviewWalletConfigureInputSchema,
-} from "./ipc.ts";
-
-describe("DesktopPreviewWalletConfigureInputSchema", () => {
-  const decode = Schema.decodeUnknownSync(DesktopPreviewWalletConfigureInputSchema);
-
-  it("accepts an empty tab id so Settings can add an account without a preview tab", () => {
-    const decoded = decode({
-      tabId: "",
-      input: { generateAccount: true },
-    });
-    expect(decoded.tabId).toBe("");
-    expect(decoded.input.generateAccount).toBe(true);
-  });
-
-  it("accepts an account address to remove", () => {
-    const decoded = decode({
-      tabId: "",
-      input: { removeAccount: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" },
-    });
-    expect(decoded.input.removeAccount).toBe("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
-  });
-
-  it("accepts a renamed account label", () => {
-    const decoded = decode({
-      tabId: "",
-      input: {
-        accountLabel: {
-          address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-          label: "  Treasury  ",
-        },
-      },
-    });
-    expect(decoded.input.accountLabel).toEqual({
-      address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-      label: "Treasury",
-    });
-  });
-
-  it("rejects an empty account label", () => {
-    expect(() =>
-      decode({
-        tabId: "",
-        input: {
-          accountLabel: {
-            address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-            label: "   ",
-          },
-        },
-      }),
-    ).toThrow();
-  });
-});
+import { DesktopEnvironmentBootstrapSchema } from "./ipc.ts";
 
 describe("DesktopEnvironmentBootstrapSchema", () => {
   const decode = Schema.decodeUnknownSync(DesktopEnvironmentBootstrapSchema);

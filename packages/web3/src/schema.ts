@@ -25,6 +25,11 @@ export type Web3Address = typeof Web3Address.Type;
 export const Web3Hex = Schema.String.check(Schema.isPattern(/^0x(?:[0-9a-fA-F]{2})*$/));
 export type Web3Hex = typeof Web3Hex.Type;
 
+/** A JSON-RPC quantity: `0x`-prefixed hex without leading zeros, so chain 1 is `0x1`. */
+export const Web3Quantity = Schema.String.check(
+  Schema.isPattern(/^0x(?:0|[1-9a-fA-F][0-9a-fA-F]*)$/),
+);
+
 /**
  * Chain ids cross the wire as decimal numbers. The EIP-1193 surface speaks
  * hex (`eth_chainId`, `wallet_switchEthereumChain`), so conversion happens at
@@ -149,6 +154,117 @@ export const WEB3_REJECT_MESSAGES: Readonly<Record<Web3RejectCode, string>> = {
   4902: "The provider is not connected to the requested chain.",
 };
 
+/**
+ * Preview wallet preferences, stored in the environment's server settings.
+ *
+ * Keys and mnemonics are deliberately absent: they live in the environment's
+ * secret store, never in settings that clients read.
+ */
+export const Web3WalletSettings = Schema.Struct({
+  enabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  approvalMode: Web3ApprovalMode.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_WEB3_APPROVAL_MODE)),
+  ),
+  /** Null means automatic: prefer a local node, then use the bundled public networks. */
+  chainId: Schema.NullOr(Web3ChainId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  rpcUrl: Schema.NullOr(Web3RpcUrl).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  /**
+   * Built-in chain ids hidden from the picker and from `wallet_switchEthereumChain`.
+   * Empty means every bundled network is enabled, which is the default.
+   */
+  disabledBuiltInChainIds: Schema.Array(Web3ChainId).pipe(
+    Schema.withDecodingDefault(Effect.succeed([])),
+  ),
+  /** User-authored networks, shown alongside the enabled built-in catalog. */
+  customNetworks: Schema.Array(Web3CustomNetwork).pipe(
+    Schema.withDecodingDefault(Effect.succeed([])),
+  ),
+  /** Skip the per-origin connect prompt for loopback origins. */
+  autoConnectLoopback: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+}).pipe(Schema.withDecodingDefault(Effect.succeed({})));
+export type Web3WalletSettings = typeof Web3WalletSettings.Type;
+
+/** Account changes, which anyone allowed to operate the preview may make. */
+export const Web3WalletAccountConfigureInput = Schema.Struct({
+  selectedAddress: Schema.optional(
+    Web3Address.annotate({
+      description: "Account to report first from eth_accounts. Must already exist in the wallet.",
+    }),
+  ).annotate({ description: "Account to make active." }),
+  accountLabel: Schema.optional(
+    Schema.Struct({
+      address: Web3Address.annotate({
+        description: "Account to rename. Must already exist in the wallet.",
+      }),
+      label: TrimmedNonEmpty.check(Schema.isMaxLength(WEB3_ACCOUNT_LABEL_MAX_LENGTH)).annotate({
+        description: "Human-readable label shown in the wallet UI.",
+      }),
+    }),
+  ).annotate({
+    description:
+      "Rename an existing account. Does not change which account is active or what pages see.",
+  }),
+  generateAccount: Schema.optional(
+    Schema.Boolean.annotate({
+      description: "Derive one more throwaway account from the wallet mnemonic and make it active.",
+    }),
+  ).annotate({ description: "Add a generated test account." }),
+  removeAccount: Schema.optional(
+    Web3Address.annotate({
+      description: "Account to drop from the wallet. Must already exist.",
+    }),
+  ).annotate({
+    description:
+      "Remove a test account. If it was active, another remaining account becomes active.",
+  }),
+  clearConnectedOrigins: Schema.optional(
+    Schema.Boolean.annotate({
+      description:
+        "Forget every origin's account grant so the next eth_requestAccounts prompts again.",
+    }),
+  ).annotate({ description: "Reset per-origin connect grants." }),
+});
+export type Web3WalletAccountConfigureInput = typeof Web3WalletAccountConfigureInput.Type;
+
+/**
+ * Account changes plus temporary test overrides. The overrides last until the
+ * environment's wallet settings change or the server restarts.
+ */
+export const Web3WalletConfigureInput = Schema.Struct({
+  approvalMode: Schema.optional(
+    Web3ApprovalMode.annotate({
+      description:
+        "auto-for-agents approves silently while a tab is agent-driven; always-ask parks every request for preview_wallet_approve; always-auto approves everything.",
+    }),
+  ).annotate({
+    description:
+      "How signing requests are gated. Switch to always-ask to test rejection paths deterministically.",
+  }),
+  ...Web3WalletAccountConfigureInput.fields,
+  chainId: Schema.optional(
+    Schema.NullOr(Web3ChainId).annotate({
+      description: "Decimal chain id to report to pages. Null clears the override.",
+    }),
+  ).annotate({ description: "Chain id override." }),
+  rpcUrl: Schema.optional(
+    Schema.NullOr(Web3RpcUrl).annotate({
+      description: "HTTP JSON-RPC endpoint for reads and broadcasts. Null clears the override.",
+    }),
+  ).annotate({ description: "JSON-RPC endpoint override." }),
+});
+export type Web3WalletConfigureInput = typeof Web3WalletConfigureInput.Type;
+
+export const Web3WalletResolution = Schema.Struct({
+  requestId: Web3RequestId,
+  method: Schema.String,
+  outcome: Schema.Literals(["approved", "rejected"]),
+  /** Whatever the page received on approval — a signature, a tx hash, or null. */
+  result: Schema.Unknown,
+  /** Set when an approved request then failed, for example a reverted send. */
+  failure: Schema.NullOr(Schema.String),
+});
+export type Web3WalletResolution = typeof Web3WalletResolution.Type;
+
 export const Web3WalletStatus = Schema.Struct({
   enabled: Schema.Boolean.annotate({
     description: "Whether the preview wallet is turned on in Settings > Web3.",
@@ -176,6 +292,44 @@ export const Web3WalletStatus = Schema.Struct({
   }),
 });
 export type Web3WalletStatus = typeof Web3WalletStatus.Type;
+
+// ── Pages ────────────────────────────────────────────────────────────
+
+/**
+ * What a page's provider may learn from the wallet. Account addresses reach a
+ * page only for an origin in `connectedOrigins` (see `./page`).
+ */
+export const Web3PageState = Schema.Struct({
+  enabled: Schema.Boolean,
+  /** Stable for the life of the signer, so EIP-6963 identity does not change per document. */
+  uuid: TrimmedNonEmpty.check(Schema.isMaxLength(64)),
+  /** Hex chain id, as `eth_chainId` returns it. */
+  chainId: Schema.NullOr(Web3Quantity),
+  /** Every account, the active one first. */
+  accounts: Schema.Array(Web3Address),
+  connectedOrigins: Schema.Array(Trimmed.check(Schema.isMaxLength(2048))),
+});
+export type Web3PageState = typeof Web3PageState.Type;
+
+/**
+ * A page's wallet answer, as an envelope rather than a thrown error: browser
+ * bridges reword rejections and drop the `code` dapps branch on.
+ */
+export const Web3GuestReply = Schema.Union([
+  Schema.Struct({ ok: Schema.Literal(true), result: Schema.Unknown }),
+  Schema.Struct({
+    ok: Schema.Literal(false),
+    code: Schema.Int,
+    message: Schema.String.check(Schema.isMaxLength(4000)),
+  }),
+]);
+export type Web3GuestReply = typeof Web3GuestReply.Type;
+
+/** Params larger than this are refused before they can queue or reach a client. */
+export const WEB3_GUEST_PARAMS_MAX_BYTES = 256 * 1024;
+/** Requests one tab, and the whole wallet, may have waiting for approval. */
+export const WEB3_PENDING_PER_GUEST = 32;
+export const WEB3_PENDING_MAX = 256;
 
 // ── Persisted keystore ───────────────────────────────────────────────
 
@@ -238,7 +392,7 @@ export class PreviewWalletNoAccountError extends Schema.TaggedError<PreviewWalle
   {},
 ) {
   override get message(): string {
-    return "The preview wallet holds no accounts. Generate or import one in Settings > Web3.";
+    return "The preview wallet holds no accounts. Generate one in Settings > Web3 or with preview_wallet_configure.";
   }
 }
 

@@ -25,8 +25,10 @@ import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import * as DesktopBackendManager from "./DesktopBackendManager.ts";
 import * as DesktopApp from "../app/DesktopApp.ts";
 import * as DesktopBackendPool from "./DesktopBackendPool.ts";
+import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import * as DesktopObservability from "../app/DesktopObservability.ts";
 import * as DesktopTelemetryPublisher from "../telemetry/DesktopTelemetryPublisher.ts";
+import * as DesktopBrowserHost from "../preview/DesktopBrowserHost.ts";
 import * as DesktopWslEnvironment from "../wsl/DesktopWslEnvironment.ts";
 
 const decodeDesktopBackendBootstrap = Schema.decodeEffect(
@@ -68,6 +70,20 @@ const configWithObservability: DesktopBackendBootstrapValue = {
   desktopTelemetryFd: 4,
   otlpTracesUrl: "http://127.0.0.1:4318/v1/traces",
 };
+
+// The browser host reads the desktop's old preview wallet only when a backend reads its events.
+const layerBrowserHost = DesktopBrowserHost.layer.pipe(
+  Layer.provide([
+    FileSystem.layerNoop({}),
+    Layer.succeed(
+      DesktopEnvironment.DesktopEnvironment,
+      DesktopEnvironment.DesktopEnvironment.of({
+        previewWalletsDir: "/unused/preview-wallets",
+        path: { join: (...parts: ReadonlyArray<string>) => parts.join("/") },
+      } as DesktopEnvironment.DesktopEnvironment["Service"]),
+    ),
+  ]),
+);
 
 function makeProcess(options?: {
   readonly stdout?: Stream.Stream<Uint8Array, PlatformError.PlatformError>;
@@ -173,6 +189,7 @@ function makeTestInstance(input: MakeInstanceInput) {
       updateCancellations: Stream.empty,
       ...input.desktopTelemetryPublisher,
     }),
+    layerBrowserHost,
     DesktopWslEnvironment.layerTest(
       input.pruneRuntimes === undefined ? {} : { pruneRuntimes: input.pruneRuntimes },
     ),

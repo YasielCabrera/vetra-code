@@ -374,7 +374,7 @@ list):
 | `T3 Connect` / `t3-connect/`                           | `Vetra Connect` / `vetra-connect/`                              |
 | `T3 Chat` / `t3-chat`                                  | `Vetra Chat` / `vetra-chat`                                     |
 | `T3Tools`                                              | `Vetra-Code`                                                    |
-| `npx t3 ` / `` `t3 ``                                  | `vetra ` / `` `vetra ``                                         |
+| `npx t3 ` / `` `t3 `` / `<code>t3 `                    | `vetra ` / `` `vetra `` / `<code>vetra `                        |
 | `T3CODE_` / `T3_`                                      | `VETRA_`                                                        |
 | `com.t3tools.*` / `/com/t3tools/`                      | `com.vetra.*` / `/com/vetra/`                                   |
 | `T3SnapShot` / `snap-shot@t3.codes`                    | `VetraSnapShot` / `snap-shot@vetra.code`                        |
@@ -383,10 +383,13 @@ list):
 | `t3code.service` / `t3.json`                           | `vetra-code.service` / `vetra.json`                             |
 | `t3_session` / `t3_code`                               | `vetra_session` / `vetra_code`                                  |
 | `t3-code` (MCP server name, not `t3-codex`)            | `vetra-code`                                                    |
+| `mcp add … t3 ` / `mcp login t3` (outside-agent setup) | `mcp add … vetra-code ` / `mcp login vetra-code`                |
 | `T3 thread` / `T3-owned` / `T3 tool`                   | `Vetra Code thread` / `Vetra-owned` / `Vetra Code tool`         |
-| `"t3code.` / `"t3code:` / `t3.pullRequests.`           | `"vetra.` / `"vetra:` / `vetra.pullRequests.`                   |
+| `"t3code.` / `"t3code:` / `` `t3code: ``               | `"vetra.` / `"vetra:` / `` `vetra: ``                           |
+| `t3.pullRequests.`                                     | `vetra.pullRequests.`                                           |
 | `.well-known/t3/` / `t3-env:`                          | `.well-known/vetra/` / `vetra-env:`                             |
 | `t3-citation` / `t3-context` / `t3-assistant-citation` | `vetra-citation` / `vetra-context` / `vetra-assistant-citation` |
+| `t3-thread://` / `"t3-thread"`                         | `vetra-thread://` / `"vetra-thread"`                            |
 | `.t3-capture-` / `t3-snap-shot-` / `t3-kde-bus-`       | `.vetra-capture-` / `vetra-snap-shot-` / `vetra-kde-bus-`       |
 | `t3-relay` / `t3-test`                                 | `vetra-relay` / `vetra-test`                                    |
 

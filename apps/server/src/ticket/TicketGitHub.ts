@@ -25,6 +25,7 @@ import * as SqlClient from "effect/sql/SqlClient";
 import { IssueProviderError, type IssueProviderApi } from "../issue/IssueProvider.ts";
 import { IssueProviderRegistry } from "../issue/IssueProviderRegistry.ts";
 import * as ProjectService from "../project/ProjectService.ts";
+import { AllowGitHubReserve } from "../sourceControl/GitHubApi.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
 import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
 
@@ -63,9 +64,9 @@ export const describeGitHubFailure = (error: IssueProviderError | TicketError): 
   if (error._tag === "TicketError") return error.message;
   switch (error.reason) {
     case "missing-tool":
-      return "GitHub CLI (`gh`) is not installed on this environment.";
+      return "Connect GitHub in Settings → Source Control on this environment.";
     case "unauthenticated":
-      return "GitHub CLI is not signed in on this environment. Run `gh auth login` there.";
+      return "GitHub is not signed in on this environment. Connect an account or save a token in Settings → Source Control.";
     case "rate-limited":
       return "GitHub's request limit was reached. Try again after it resets.";
     case "failed":
@@ -150,18 +151,21 @@ const make = Effect.gen(function* () {
       }
       const project = yield* workingProject(target);
       const key = { provider: "github", host: target.host } as const;
-      const lease = yield* rateLimits.check(key).pipe(
-        Effect.mapError(
-          (cause) =>
-            new IssueProviderError({
-              provider: "github",
-              operation: "rateLimit",
-              reason: "rate-limited",
-              detail: cause.detail,
-              cause,
-            }),
-        ),
-      );
+      const allowReserve = yield* AllowGitHubReserve;
+      const lease = yield* rateLimits
+        .check(key, allowReserve ? { allowPaused: true } : undefined)
+        .pipe(
+          Effect.mapError(
+            (cause) =>
+              new IssueProviderError({
+                provider: "github",
+                operation: "rateLimit",
+                reason: "rate-limited",
+                detail: cause.detail,
+                cause,
+              }),
+          ),
+        );
       return yield* call(api, project.workspaceRoot, project).pipe(
         Effect.tap(() => rateLimits.recordSuccess({ ...key, lease })),
         Effect.tapError((error) =>
@@ -187,7 +191,7 @@ const make = Effect.gen(function* () {
           state: "open",
           limit: 30,
         }),
-      ),
+      ).pipe(Effect.provideService(AllowGitHubReserve, true)),
     {
       capacity: 512,
       timeToLive: (exit) => (Exit.isSuccess(exit) ? Duration.seconds(30) : Duration.zero),

@@ -1,5 +1,7 @@
+import { useAtomValue } from "@effect/atom-react";
 import type { EnvironmentAutomation } from "@t3tools/client-runtime/state/automations";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
+import type { EnvironmentId } from "@t3tools/contracts";
 import {
   type AtomCommandResult,
   isAtomCommandInterrupted,
@@ -38,6 +40,15 @@ export function describeAutomationDeletion(input: { readonly revealedRunCount: n
   return input.revealedRunCount > 0
     ? `This deletes the automation and archives its hidden runs. The ${input.revealedRunCount} run(s) you moved to the sidebar stay.`
     : "This deletes the automation and archives its runs.";
+}
+
+/**
+ * Whether this connection may create, change, run, or delete automations in an
+ * environment. Every one of those needs the same grant, so controls read this
+ * once instead of failing on click; the server still decides.
+ */
+export function useCanOperateAutomations(environmentId: EnvironmentId | null): boolean {
+  return useAtomValue(serverEnvironment.upsertScheduledTask.permissionAtom(environmentId));
 }
 
 export function useAutomationActions(): AutomationActions {

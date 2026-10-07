@@ -15,30 +15,27 @@
  */
 import { installWeb3InpageProvider, WEB3_PROVIDER_ICON } from "@t3tools/web3/inpage";
 import type { Web3InpageWindow, Web3ProviderEvent } from "@t3tools/web3/inpage";
+import type { Web3GuestReply } from "@t3tools/web3/schema";
 import { ipcRenderer } from "electron";
 
 import {
   PREVIEW_WALLET_BOOTSTRAP_CHANNEL,
   PREVIEW_WALLET_PROVIDER_EVENT_CHANNEL,
   PREVIEW_WALLET_REQUEST_CHANNEL,
-  type PreviewWalletReply,
+  type PreviewWalletBootstrap,
 } from "./GuestProtocol.ts";
 
-interface WalletBootstrap {
-  readonly enabled: boolean;
-  readonly uuid: string;
-  readonly chainId: string | null;
-  readonly selectedAddress: string | null;
-}
-
-const isBootstrap = (value: unknown): value is WalletBootstrap =>
+const isEnabledBootstrap = (
+  value: unknown,
+): value is Extract<PreviewWalletBootstrap, { enabled: true }> =>
   typeof value === "object" &&
   value !== null &&
-  typeof (value as { enabled?: unknown }).enabled === "boolean" &&
-  typeof (value as { uuid?: unknown }).uuid === "string";
+  (value as { enabled?: unknown }).enabled === true &&
+  typeof (value as { uuid?: unknown }).uuid === "string" &&
+  typeof (value as { documentId?: unknown }).documentId === "string";
 
 /** Rebuilds the EIP-1193 error the envelope describes, `code` included. */
-const rejectionFrom = (reply: Extract<PreviewWalletReply, { ok: false }>): Error => {
+const rejectionFrom = (reply: Extract<Web3GuestReply, { ok: false }>): Error => {
   const error = new Error(reply.message) as Error & { code: number };
   error.code = reply.code;
   return error;
@@ -52,14 +49,15 @@ export function installPreviewWallet(): void {
     // An older main process without the wallet bridge simply has no wallet.
     return;
   }
-  if (!isBootstrap(bootstrap) || !bootstrap.enabled) return;
+  if (!isEnabledBootstrap(bootstrap)) return;
 
   const handle = installWeb3InpageProvider(window as unknown as Web3InpageWindow, {
     transport: async (args) => {
       const reply = (await ipcRenderer.invoke(PREVIEW_WALLET_REQUEST_CHANNEL, {
+        documentId: bootstrap.documentId,
         method: args.method,
         params: args.params,
-      })) as PreviewWalletReply | undefined;
+      })) as Web3GuestReply | undefined;
       if (reply === undefined)
         throw rejectionFrom({ ok: false, code: -32603, message: "No reply." });
       if (reply.ok) return reply.result;

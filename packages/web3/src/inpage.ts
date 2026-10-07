@@ -87,215 +87,301 @@ export interface Web3InpageHandle {
   readonly uninstall: () => void;
 }
 
-/**
- * `rdns` is `io.metamask` deliberately: dapps route on it, and a wallet that
- * announces something else is invisible to a large slice of the ecosystem the
- * preview exists to test. `name` carries the honest label so a human looking at
- * the wallet picker can still tell what they are connected to.
- */
-export const WEB3_PROVIDER_INFO = {
-  name: "MetaMask",
-  rdns: "io.metamask",
-} as const;
-
 export const WEB3_PROVIDER_ICON =
   "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iI2Y2ODUxYiIvPjxwYXRoIGQ9Ik0yMyA5bC01LjIgMy45IDEtMi4zeiIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik05IDlsNS4xIDMuOS0uOS0yLjN6bTEyLjggMTAuMkwyMCAyMmwzLjkgMS4xIDEuMS0zLjh6bS0xNC44IDBMOC4xIDIzLjEgMTIgMjJsLTEuOC0yLjh6IiBmaWxsPSIjZmZmIi8+PC9zdmc+";
 
-function providerError(code: number, message: string, data?: unknown): Eip1193ProviderRpcError {
-  const error = new Error(message) as Error & { code: number; data?: unknown };
-  error.code = code;
-  if (data !== undefined) error.data = data;
-  return error as Eip1193ProviderRpcError;
+/**
+ * The provider and its installer, self-contained: a server tab runs this
+ * function from its source text, so nothing inside may refer to anything
+ * outside it. Types are fine; they are erased.
+ */
+function web3InpageRuntime() {
+  /**
+   * `rdns` is `io.metamask` deliberately: dapps route on it, and a wallet that
+   * announces something else is invisible to a large slice of the ecosystem the
+   * preview exists to test. `name` carries the honest label so a human looking at
+   * the wallet picker can still tell what they are connected to.
+   */
+  const info = { name: "MetaMask", rdns: "io.metamask" } as const;
+
+  function providerError(code: number, message: string, data?: unknown): Eip1193ProviderRpcError {
+    const error = new Error(message) as Error & { code: number; data?: unknown };
+    error.code = code;
+    if (data !== undefined) error.data = data;
+    return error as Eip1193ProviderRpcError;
+  }
+
+  function createProvider(options: Web3InpageOptions): {
+    readonly provider: Web3InpageProvider;
+    readonly emit: (event: Web3ProviderEvent) => void;
+  } {
+    const listeners = new Map<string, Set<Listener>>();
+
+    const emitLocal = (event: string, payload: unknown): void => {
+      const bucket = listeners.get(event);
+      if (!bucket) return;
+      // Snapshot first: a listener that calls removeListener during dispatch
+      // would otherwise mutate the set mid-iteration and skip its peers.
+      const snapshot = Array.from(bucket);
+      for (const listener of snapshot) {
+        try {
+          listener(payload);
+        } catch {
+          // A throwing dapp listener must not break the wallet or its siblings.
+        }
+      }
+    };
+
+    const provider: Web3InpageProvider = {
+      isMetaMask: true,
+      isVetraPreviewWallet: true,
+      chainId: options.chainId ?? null,
+      networkVersion:
+        options.chainId === undefined || options.chainId === null
+          ? null
+          : String(Number.parseInt(options.chainId, 16)),
+      selectedAddress: options.selectedAddress ?? null,
+
+      async request(args) {
+        if (typeof args?.method !== "string" || args.method.length === 0) {
+          throw providerError(-32600, "Invalid request: method is required.");
+        }
+        const result = await options.transport({ method: args.method, params: args.params });
+        if (args.method === "eth_accounts" || args.method === "eth_requestAccounts") {
+          const accounts = Array.isArray(result) ? result : [];
+          provider.selectedAddress = typeof accounts[0] === "string" ? accounts[0] : null;
+        } else if (args.method === "wallet_revokePermissions") {
+          provider.selectedAddress = null;
+        }
+        return result;
+      },
+
+      on(event, listener) {
+        const bucket = listeners.get(event) ?? new Set<Listener>();
+        bucket.add(listener);
+        listeners.set(event, bucket);
+        return provider;
+      },
+
+      addListener(event, listener) {
+        return provider.on(event, listener);
+      },
+
+      removeListener(event, listener) {
+        listeners.get(event)?.delete(listener);
+        return provider;
+      },
+
+      removeAllListeners(event) {
+        if (event === undefined) listeners.clear();
+        else listeners.delete(event);
+        return provider;
+      },
+
+      enable() {
+        return provider.request({ method: "eth_requestAccounts" });
+      },
+
+      send(methodOrPayload, paramsOrCallback) {
+        if (typeof methodOrPayload === "string") {
+          return provider.request({
+            method: methodOrPayload,
+            ...(paramsOrCallback === undefined ? {} : { params: paramsOrCallback }),
+          });
+        }
+        const payload = methodOrPayload as { method: string; params?: unknown; id?: unknown };
+        if (typeof paramsOrCallback === "function") {
+          provider.sendAsync(payload, paramsOrCallback as (e: unknown, r?: unknown) => void);
+          return undefined;
+        }
+        return provider.request({ method: payload.method, params: payload.params });
+      },
+
+      sendAsync(payload, callback) {
+        provider
+          .request({ method: payload.method, params: payload.params })
+          .then((result) => {
+            callback(null, { id: payload.id ?? null, jsonrpc: "2.0", result });
+          })
+          .catch((error: unknown) => {
+            callback(error);
+          });
+      },
+
+      _metamask: {
+        isUnlocked() {
+          return Promise.resolve(true);
+        },
+      },
+    };
+
+    const emit = (event: Web3ProviderEvent): void => {
+      switch (event.event) {
+        case "chainChanged": {
+          const chainId = typeof event.payload === "string" ? event.payload : null;
+          provider.chainId = chainId;
+          provider.networkVersion = chainId === null ? null : String(Number.parseInt(chainId, 16));
+          break;
+        }
+        case "accountsChanged": {
+          const accounts = Array.isArray(event.payload) ? event.payload : [];
+          provider.selectedAddress = typeof accounts[0] === "string" ? accounts[0] : null;
+          break;
+        }
+        case "connect": {
+          const payload = event.payload as { chainId?: unknown } | null;
+          if (payload && typeof payload.chainId === "string") {
+            provider.chainId = payload.chainId;
+            provider.networkVersion = String(Number.parseInt(payload.chainId, 16));
+          }
+          break;
+        }
+        case "disconnect": {
+          provider.selectedAddress = null;
+          break;
+        }
+        default:
+          break;
+      }
+      emitLocal(event.event, event.payload);
+    };
+
+    return { provider, emit };
+  }
+
+  /**
+   * Install the provider on `window` and wire EIP-6963.
+   *
+   * Announces immediately *and* on every `eip6963:requestProvider`. The second
+   * half is what makes late installation safe: a dapp that already ran its
+   * discovery re-requests, and we answer.
+   */
+  function install(target: Web3InpageWindow, options: Web3InpageOptions): Web3InpageHandle {
+    const { provider, emit } = createProvider(options);
+    const detail = Object.freeze({
+      info: Object.freeze({ ...info, uuid: options.uuid, icon: options.icon }),
+      provider,
+    });
+
+    const announce = (): void => {
+      try {
+        target.dispatchEvent(new target.CustomEvent("eip6963:announceProvider", { detail }));
+      } catch {
+        // A page that has broken CustomEvent still gets window.ethereum.
+      }
+    };
+
+    const onRequestProvider = (): void => {
+      announce();
+    };
+
+    try {
+      target.ethereum = provider;
+    } catch {
+      // Some pages define a non-configurable `ethereum`; EIP-6963 still works.
+    }
+
+    target.addEventListener("eip6963:requestProvider", onRequestProvider);
+    announce();
+
+    return {
+      provider,
+      emit,
+      announce,
+      uninstall: () => {
+        target.removeEventListener?.("eip6963:requestProvider", onRequestProvider);
+        if (target.ethereum === provider) {
+          try {
+            delete target.ethereum;
+          } catch {
+            target.ethereum = undefined;
+          }
+        }
+        provider.removeAllListeners();
+      },
+    };
+  }
+
+  return { info, createProvider, install };
 }
 
-export function createWeb3InpageProvider(options: Web3InpageOptions): {
-  readonly provider: Web3InpageProvider;
-  readonly emit: (event: Web3ProviderEvent) => void;
-} {
-  const listeners = new Map<string, Set<Listener>>();
+const runtime = web3InpageRuntime();
 
-  const emitLocal = (event: string, payload: unknown): void => {
-    const bucket = listeners.get(event);
-    if (!bucket) return;
-    // Snapshot first: a listener that calls removeListener during dispatch
-    // would otherwise mutate the set mid-iteration and skip its peers.
-    const snapshot = Array.from(bucket);
-    for (const listener of snapshot) {
-      try {
-        listener(payload);
-      } catch {
-        // A throwing dapp listener must not break the wallet or its siblings.
-      }
-    }
-  };
+export const WEB3_PROVIDER_INFO = runtime.info;
+export const createWeb3InpageProvider = runtime.createProvider;
+export const installWeb3InpageProvider = runtime.install;
 
-  const provider: Web3InpageProvider = {
-    isMetaMask: true,
-    isVetraPreviewWallet: true,
-    chainId: options.chainId ?? null,
-    networkVersion:
-      options.chainId === undefined || options.chainId === null
-        ? null
-        : String(Number.parseInt(options.chainId, 16)),
-    selectedAddress: options.selectedAddress ?? null,
-
-    async request(args) {
-      if (typeof args?.method !== "string" || args.method.length === 0) {
-        throw providerError(-32600, "Invalid request: method is required.");
-      }
-      const result = await options.transport({ method: args.method, params: args.params });
-      if (args.method === "eth_accounts" || args.method === "eth_requestAccounts") {
-        const accounts = Array.isArray(result) ? result : [];
-        provider.selectedAddress = typeof accounts[0] === "string" ? accounts[0] : null;
-      } else if (args.method === "wallet_revokePermissions") {
-        provider.selectedAddress = null;
-      }
-      return result;
-    },
-
-    on(event, listener) {
-      const bucket = listeners.get(event) ?? new Set<Listener>();
-      bucket.add(listener);
-      listeners.set(event, bucket);
-      return provider;
-    },
-
-    addListener(event, listener) {
-      return provider.on(event, listener);
-    },
-
-    removeListener(event, listener) {
-      listeners.get(event)?.delete(listener);
-      return provider;
-    },
-
-    removeAllListeners(event) {
-      if (event === undefined) listeners.clear();
-      else listeners.delete(event);
-      return provider;
-    },
-
-    enable() {
-      return provider.request({ method: "eth_requestAccounts" });
-    },
-
-    send(methodOrPayload, paramsOrCallback) {
-      if (typeof methodOrPayload === "string") {
-        return provider.request({
-          method: methodOrPayload,
-          ...(paramsOrCallback === undefined ? {} : { params: paramsOrCallback }),
-        });
-      }
-      const payload = methodOrPayload as { method: string; params?: unknown; id?: unknown };
-      if (typeof paramsOrCallback === "function") {
-        provider.sendAsync(payload, paramsOrCallback as (e: unknown, r?: unknown) => void);
-        return undefined;
-      }
-      return provider.request({ method: payload.method, params: payload.params });
-    },
-
-    sendAsync(payload, callback) {
-      provider
-        .request({ method: payload.method, params: payload.params })
-        .then((result) => {
-          callback(null, { id: payload.id ?? null, jsonrpc: "2.0", result });
-        })
-        .catch((error: unknown) => {
-          callback(error);
-        });
-    },
-
-    _metamask: {
-      isUnlocked() {
-        return Promise.resolve(true);
-      },
-    },
-  };
-
-  const emit = (event: Web3ProviderEvent): void => {
-    switch (event.event) {
-      case "chainChanged": {
-        const chainId = typeof event.payload === "string" ? event.payload : null;
-        provider.chainId = chainId;
-        provider.networkVersion = chainId === null ? null : String(Number.parseInt(chainId, 16));
-        break;
-      }
-      case "accountsChanged": {
-        const accounts = Array.isArray(event.payload) ? event.payload : [];
-        provider.selectedAddress = typeof accounts[0] === "string" ? accounts[0] : null;
-        break;
-      }
-      case "connect": {
-        const payload = event.payload as { chainId?: unknown } | null;
-        if (payload && typeof payload.chainId === "string") {
-          provider.chainId = payload.chainId;
-          provider.networkVersion = String(Number.parseInt(payload.chainId, 16));
-        }
-        break;
-      }
-      case "disconnect": {
-        provider.selectedAddress = null;
-        break;
-      }
-      default:
-        break;
-    }
-    emitLocal(event.event, event.payload);
-  };
-
-  return { provider, emit };
+/** What a server tab's init script needs besides the provider itself. */
+export interface Web3ServerPageConfig {
+  readonly uuid: string;
+  readonly icon: string;
+  readonly chainId: string | null;
+  /** Page binding that carries `{ kind, documentId, ... }` calls to the wallet. */
+  readonly binding: string;
+  /** Global the host calls with provider events for this document. */
+  readonly emitHook: string;
 }
 
 /**
- * Install the provider on `window` and wire EIP-6963.
- *
- * Announces immediately *and* on every `eip6963:requestProvider`. The second
- * half is what makes late installation safe: a dapp that already ran its
- * discovery re-requests, and we answer.
+ * Runs in a server tab before the page's scripts, so `window.ethereum` exists
+ * for the dapp's first inline script. Accounts arrive from the host a moment
+ * later, filtered for the page's origin; the script itself carries no account.
+ * Self-contained for the same reason as `web3InpageRuntime`.
  */
-export function installWeb3InpageProvider(
-  target: Web3InpageWindow,
-  options: Web3InpageOptions,
-): Web3InpageHandle {
-  const { provider, emit } = createWeb3InpageProvider(options);
-  const info = Object.freeze({ ...WEB3_PROVIDER_INFO, uuid: options.uuid, icon: options.icon });
-  const detail = Object.freeze({ info, provider });
+function installOnServerPage(
+  runtimeFactory: typeof web3InpageRuntime,
+  config: Web3ServerPageConfig,
+): void {
+  const target = globalThis as unknown as Web3InpageWindow & Record<string, unknown>;
+  const binding = target[config.binding];
+  if (typeof binding !== "function") return;
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  const documentId = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const call = (payload: Record<string, unknown>) =>
+    Promise.resolve((binding as (payload: unknown) => unknown)({ ...payload, documentId }));
 
-  const announce = (): void => {
-    try {
-      target.dispatchEvent(new target.CustomEvent("eip6963:announceProvider", { detail }));
-    } catch {
-      // A page that has broken CustomEvent still gets window.ethereum.
-    }
-  };
-
-  const onRequestProvider = (): void => {
-    announce();
-  };
-
-  try {
-    target.ethereum = provider;
-  } catch {
-    // Some pages define a non-configurable `ethereum`; EIP-6963 still works.
-  }
-
-  target.addEventListener("eip6963:requestProvider", onRequestProvider);
-  announce();
-
-  return {
-    provider,
-    emit,
-    announce,
-    uninstall: () => {
-      target.removeEventListener?.("eip6963:requestProvider", onRequestProvider);
-      if (target.ethereum === provider) {
-        try {
-          delete target.ethereum;
-        } catch {
-          target.ethereum = undefined;
-        }
-      }
-      provider.removeAllListeners();
+  const handle = runtimeFactory().install(target, {
+    transport: async (args) => {
+      const reply = (await call({ kind: "request", method: args.method, params: args.params })) as {
+        readonly ok?: unknown;
+        readonly result?: unknown;
+        readonly code?: unknown;
+        readonly message?: unknown;
+      } | null;
+      if (reply?.ok === true) return reply.result;
+      const error = new Error(
+        typeof reply?.message === "string" ? reply.message : "The preview wallet did not answer.",
+      ) as Error & { code: number };
+      error.code = typeof reply?.code === "number" ? reply.code : -32603;
+      throw error;
     },
+    uuid: config.uuid,
+    icon: config.icon,
+    chainId: config.chainId,
+    selectedAddress: null,
+  });
+
+  const emit = (events: unknown): void => {
+    if (!Array.isArray(events)) return;
+    for (const event of events) handle.emit(event as Web3ProviderEvent);
   };
+  Object.defineProperty(target, config.emitHook, { value: emit, configurable: true });
+
+  // The first answer only fills in state, so a granted page starts connected
+  // without an accountsChanged it did not cause.
+  void call({ kind: "bootstrap", chainId: config.chainId }).then(
+    (view) => {
+      const current = view as { readonly accounts?: unknown; readonly events?: unknown } | null;
+      const accounts = Array.isArray(current?.accounts) ? current.accounts : [];
+      handle.provider.selectedAddress = typeof accounts[0] === "string" ? accounts[0] : null;
+      emit(current?.events);
+    },
+    () => {},
+  );
+}
+
+/** The init script a server tab installs to give every document the provider. */
+export function web3ServerPageScript(config: Web3ServerPageConfig): string {
+  return `(${installOnServerPage.toString()})(${web3InpageRuntime.toString()}, ${JSON.stringify(config)});`;
 }

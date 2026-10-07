@@ -1,6 +1,7 @@
-import * as NodeCrypto from "node:crypto";
-
 import {
+  AuthSourceControlWriteScope,
+  authScopeRequiredResponse,
+  EnvironmentAuthorizationError,
   type ChatAttachment,
   type TicketGitHubIssueRef,
   type TicketGitHubIssueDetail,
@@ -81,6 +82,7 @@ import { anchorFromSourceQuote } from "@t3tools/shared/ticketPlanAnchors";
 import * as Arr from "effect/Array";
 import * as Cache from "effect/Cache";
 import * as Context from "effect/Context";
+import * as Crypto from "effect/Crypto";
 import * as Data from "effect/Data";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
@@ -114,9 +116,11 @@ import {
   type WithAttachmentSources,
 } from "./TicketAttachments.ts";
 import * as TicketGitHub from "./TicketGitHub.ts";
+import { AllowGitHubReserve } from "../sourceControl/GitHubApi.ts";
 import { applyPlanEdits } from "./ticketPlanEdits.ts";
 
 type TicketWriteError = TicketNotFoundError | TicketRevisionConflictError | TicketError;
+type TicketGitHubWriteError = TicketWriteError | EnvironmentAuthorizationError;
 type TicketPlanWriteError = TicketPlanNotFoundError | TicketPlanRevisionConflictError | TicketError;
 type GitHubIssueTarget = Parameters<TicketGitHub.TicketGitHub["Service"]["run"]>[0] &
   NonNullable<TicketGitHubIssueRef["linkedIssue"]>;
@@ -199,7 +203,7 @@ export class TicketService extends Context.Service<
     ) => Effect.Effect<IssueAssigneeCandidateList, TicketWriteError>;
     readonly githubIssueSetAssignees: (
       input: TicketGitHubIssueAssigneeChangeInput,
-    ) => Effect.Effect<void, TicketWriteError>;
+    ) => Effect.Effect<void, TicketGitHubWriteError>;
     readonly refreshGitHubIssue: (
       input: TicketSubscribeDetailInput,
     ) => Effect.Effect<TicketSummary, TicketWriteError>;
@@ -241,7 +245,7 @@ export class TicketService extends Context.Service<
     readonly move: (
       input: TicketMoveInput,
       actor: TicketActor,
-    ) => Effect.Effect<TicketSummary, TicketWriteError>;
+    ) => Effect.Effect<TicketSummary, TicketGitHubWriteError>;
     readonly delete: (input: TicketDeleteInput) => Effect.Effect<void, TicketWriteError>;
     /**
      * Adds a link, or refreshes a pull request's or issue's snapshot. Their refs are normalized
@@ -266,7 +270,7 @@ export class TicketService extends Context.Service<
      */
     readonly postUserComment: (
       input: TicketCommentInput,
-    ) => Effect.Effect<TicketSummary, TicketWriteError>;
+    ) => Effect.Effect<TicketSummary, TicketGitHubWriteError>;
     /** The user stops tracking a GitHub ticket, or tracks it again. Sync skips hidden tickets. */
     readonly setHidden: (
       input: TicketSetHiddenInput,
@@ -363,6 +367,21 @@ export class TicketService extends Context.Service<
     ) => Effect.Effect<TicketPlanSummary, TicketPlanNotFoundError | TicketError>;
   }
 >()("t3/ticket/TicketService") {}
+
+/**
+ * Ticket RPCs provide the connection's source-control grant when executing a GitHub write.
+ */
+export const GitHubWriteAccess = Context.Reference<boolean>("t3/ticket/GitHubWriteAccess", {
+  defaultValue: () => false,
+});
+
+const requireGitHubWriteAccess = Effect.gen(function* () {
+  if (yield* GitHubWriteAccess) return;
+  return yield* new EnvironmentAuthorizationError({
+    message: `Writing to GitHub needs the ${AuthSourceControlWriteScope} permission.`,
+    ...authScopeRequiredResponse(AuthSourceControlWriteScope),
+  });
+});
 
 interface TicketWrite {
   readonly entries: ReadonlyArray<TicketActivityEntry>;
@@ -595,6 +614,8 @@ const isOwnIssue = (ticket: TicketSummary, target: TicketLinkTarget) =>
 
 const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
+  const crypto = yield* Crypto.Crypto;
+  const randomId = crypto.randomUUIDv4.pipe(Effect.orDie);
   const config = yield* ServerConfig.ServerConfig;
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
@@ -964,6 +985,7 @@ const make = Effect.gen(function* () {
           actualRevision: current.revision,
         });
       }
+      yield* requireGitHubWriteAccess;
       const change: IssueStateChange =
         to.category === "closed" ? { state: "closed", reason: to.closeReason } : { state: "open" };
       const target = current.github;
@@ -973,6 +995,7 @@ const make = Effect.gen(function* () {
           api.setState({ cwd, ...ref, change }),
         )
         .pipe(
+          Effect.provideService(AllowGitHubReserve, true),
           Effect.mapError(
             (error) =>
               new TicketError({
@@ -983,7 +1006,10 @@ const make = Effect.gen(function* () {
         );
       const issue = yield* github
         .run({ ...target, ticketId: current.id }, (api, cwd) => api.getIssue({ cwd, ...ref }))
-        .pipe(Effect.orElseSucceed(() => null));
+        .pipe(
+          Effect.provideService(AllowGitHubReserve, true),
+          Effect.orElseSucceed(() => null),
+        );
       return { change, issue };
     });
 
@@ -1143,6 +1169,7 @@ const make = Effect.gen(function* () {
       Effect.provideService(FileSystem.FileSystem, fileSystem),
       Effect.provideService(Path.Path, path),
       Effect.provideService(SqlClient.SqlClient, sql),
+      Effect.provideService(Crypto.Crypto, crypto),
     );
 
   const commitAttachmentWrite = <A, E>({
@@ -1250,7 +1277,7 @@ const make = Effect.gen(function* () {
 
   const create: TicketService["Service"]["create"] = (input, actor) =>
     Effect.gen(function* () {
-      const ticketId = TicketId.make(NodeCrypto.randomUUID());
+      const ticketId = TicketId.make(yield* randomId);
       const claim = yield* claimAttachments(ticketId, input.attachments ?? [], actor);
       const body = yield* attachmentBody(input.body ?? "", claim, false);
       const storedAttachments: TicketAttachment[] = [];
@@ -1487,7 +1514,10 @@ const make = Effect.gen(function* () {
         attachments: claim.mapping,
         storedAttachments,
       };
-    }).pipe(Effect.scoped, Effect.catchTag("SqlError", sqlFailure("Could not update the ticket.")));
+    }).pipe(
+      Effect.scoped,
+      Effect.catchTags({ SqlError: sqlFailure("Could not update the ticket.") }),
+    );
 
   /** The issue was closed or reopened but the move was not saved; the next sync catches up. */
   const notePushedState = (ticketId: TicketId) =>
@@ -1538,7 +1568,7 @@ const make = Effect.gen(function* () {
           pushed === null ? Effect.void : notePushedState(input.ticketId).pipe(Effect.ignore),
         ),
       );
-    }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not move the ticket.")));
+    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not move the ticket.") }));
 
   const deleteTicket: TicketService["Service"]["delete"] = (input) =>
     Effect.gen(function* () {
@@ -1565,7 +1595,7 @@ const make = Effect.gen(function* () {
       yield* publishTickets([input.ticketId]);
       yield* publishPlans(planIds);
       yield* removeAttachmentFiles(attachments);
-    }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not delete the ticket.")));
+    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the ticket.") }));
 
   const link: TicketService["Service"]["link"] = (input, actor) =>
     Effect.gen(function* () {
@@ -1681,17 +1711,18 @@ const make = Effect.gen(function* () {
               revises: false,
             };
       }),
-    ).pipe(Effect.catchTag("SqlError", sqlFailure("Could not unlink the ticket.")));
+    ).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not unlink the ticket.") }));
 
   const addComment: TicketService["Service"]["addComment"] = (input, actor) =>
     writeTicket(input.ticketId, undefined, actor, () =>
       Effect.succeed({ entries: [{ type: "comment" as const, body: input.body }], revises: false }),
-    ).pipe(Effect.catchTag("SqlError", sqlFailure("Could not add the comment.")));
+    ).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not add the comment.") }));
 
   const postUserComment: TicketService["Service"]["postUserComment"] = (input) =>
     Effect.gen(function* () {
       const current = yield* requireSummary(input.ticketId);
       if (current.kind === "local") return yield* addComment(input, { type: "user" });
+      yield* requireGitHubWriteAccess;
       const issue = current.github;
       yield* github
         .run({ ...issue, ticketId: current.id }, (api, cwd) =>
@@ -1704,6 +1735,7 @@ const make = Effect.gen(function* () {
           }),
         )
         .pipe(
+          Effect.provideService(AllowGitHubReserve, true),
           Effect.mapError(
             (error) =>
               new TicketError({
@@ -1737,7 +1769,7 @@ const make = Effect.gen(function* () {
       `;
       yield* publishTickets([input.ticketId]);
       return yield* requireSummary(input.ticketId);
-    }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not update the ticket.")));
+    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not update the ticket.") }));
 
   const reconciledStatus = (
     statuses: TicketStatusSet["statuses"],
@@ -1855,7 +1887,7 @@ const make = Effect.gen(function* () {
           if (row === undefined) {
             const statusId = reconciledStatus(statuses, null, issue)?.id;
             if (issue.state !== "open" || statusId === undefined) return null;
-            const ticketId = TicketId.make(NodeCrypto.randomUUID());
+            const ticketId = TicketId.make(yield* randomId);
             yield* sql`
               INSERT INTO tickets (
                 ticket_id, number, kind, title, body, labels_json, status_id, sort_key,
@@ -1991,6 +2023,7 @@ const make = Effect.gen(function* () {
         ),
       )
       .pipe(
+        Effect.provideService(AllowGitHubReserve, true),
         Effect.mapError(
           (error) =>
             new TicketError({ message: TicketGitHub.describeGitHubFailure(error), cause: error }),
@@ -2103,6 +2136,7 @@ const make = Effect.gen(function* () {
   ) => runTicketIssue(input, (api, ref) => api.listAssigneeCandidates(ref));
   const githubIssueSetAssignees: TicketService["Service"]["githubIssueSetAssignees"] = (input) =>
     Effect.gen(function* () {
+      yield* requireGitHubWriteAccess;
       const target = yield* resolveIssueTarget(input);
       yield* runResolvedIssue(target, (api, ref) =>
         api.setAssignees({ ...ref, assignees: input.assignees, assigned: input.assigned }),
@@ -2220,7 +2254,7 @@ const make = Effect.gen(function* () {
           const closeReason = input.category === "closed" ? input.closeReason : null;
           let statusId = input.statusId;
           if (statusId === undefined) {
-            statusId = TicketStatusId.make(NodeCrypto.randomUUID());
+            statusId = TicketStatusId.make(yield* randomId);
             yield* sql`
               INSERT INTO ticket_statuses (
                 status_id, name, color, category, close_reason, position, collapsed_by_default,
@@ -2265,7 +2299,7 @@ const make = Effect.gen(function* () {
       );
       yield* publishStatuses;
       return set;
-    }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not save the status.")));
+    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not save the status.") }));
 
   const reorderStatuses: TicketService["Service"]["reorderStatuses"] = (input) =>
     Effect.gen(function* () {
@@ -2292,7 +2326,7 @@ const make = Effect.gen(function* () {
       );
       yield* publishStatuses;
       return set;
-    }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not reorder the statuses.")));
+    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not reorder the statuses.") }));
 
   const deleteStatus: TicketService["Service"]["deleteStatus"] = (input, actor) =>
     Effect.gen(function* () {
@@ -2345,7 +2379,7 @@ const make = Effect.gen(function* () {
       yield* publishStatuses;
       yield* publishTickets(moved);
       return set;
-    }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not delete the status.")));
+    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the status.") }));
 
   const readDelta = (ticketIds: ReadonlyArray<TicketId>) =>
     Effect.gen(function* () {
@@ -2611,7 +2645,7 @@ const make = Effect.gen(function* () {
 
   const createPlan: TicketService["Service"]["createPlan"] = (input, actor) =>
     Effect.gen(function* () {
-      const planId = TicketPlanId.make(NodeCrypto.randomUUID());
+      const planId = TicketPlanId.make(yield* randomId);
       const claim = yield* claimAttachments(input.ticketId, input.attachments ?? [], actor);
       const body = yield* attachmentBody(input.body ?? "", claim, true);
       const storedAttachments: TicketAttachment[] = [];
@@ -2782,7 +2816,10 @@ const make = Effect.gen(function* () {
         storedAttachments,
         contentCommit: result.contentCommit,
       };
-    }).pipe(Effect.scoped, Effect.catchTag("SqlError", sqlFailure("Could not update the plan.")));
+    }).pipe(
+      Effect.scoped,
+      Effect.catchTags({ SqlError: sqlFailure("Could not update the plan.") }),
+    );
 
   const deletePlan: TicketService["Service"]["deletePlan"] = (input, actor) =>
     Effect.gen(function* () {
@@ -2807,7 +2844,7 @@ const make = Effect.gen(function* () {
         }),
       );
       yield* publishPlan(ticketId, input.planId);
-    }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not delete the plan.")));
+    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the plan.") }));
 
   const addPlanComment: TicketService["Service"]["addPlanComment"] = (input, actor) =>
     Effect.gen(function* () {
@@ -2840,7 +2877,7 @@ const make = Effect.gen(function* () {
               ? null
               : yield* requireComment(input.planId, input.parentCommentId);
           const comment: TicketPlanComment = {
-            id: TicketPlanCommentId.make(NodeCrypto.randomUUID()),
+            id: TicketPlanCommentId.make(yield* randomId),
             parentId:
               parent === null
                 ? null
@@ -2868,7 +2905,7 @@ const make = Effect.gen(function* () {
         ? publishPlan(ticketId, input.planId)
         : publishPlans([input.planId]);
       return comment;
-    }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not add the comment.")));
+    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not add the comment.") }));
 
   const reopenPlanComment: TicketService["Service"]["reopenPlanComment"] = (input) =>
     Effect.gen(function* () {
@@ -2886,7 +2923,7 @@ const make = Effect.gen(function* () {
       );
       if (reopened) yield* publishPlan(ticketId, input.planId);
       return yield* requirePlanSummary(input.planId);
-    }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not reopen the comment.")));
+    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not reopen the comment.") }));
 
   const deletePlanComment: TicketService["Service"]["deletePlanComment"] = (input) =>
     Effect.gen(function* () {
@@ -2908,7 +2945,7 @@ const make = Effect.gen(function* () {
       );
       yield* reply ? publishPlans([input.planId]) : publishPlan(ticketId, input.planId);
       return yield* requirePlanSummary(input.planId);
-    }).pipe(Effect.catchTag("SqlError", sqlFailure("Could not delete the comment.")));
+    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the comment.") }));
 
   return TicketService.of({
     subscribeList,

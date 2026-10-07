@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import { assert, it } from "@effect/vitest";
 import {
   CheckpointId,
@@ -21,7 +22,7 @@ import * as Layer from "effect/Layer";
 import * as Ref from "effect/Ref";
 import * as SqlClient from "effect/sql/SqlClient";
 
-import * as SqlitePersistence from "../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as CheckpointStore from "../checkpointing/CheckpointStore.ts";
 import { VcsProcessTimeoutError } from "@t3tools/contracts";
 import * as CheckpointService from "./CheckpointService.ts";
@@ -274,6 +275,7 @@ it.layer(layerProjectionStoreTest)("CheckpointCaptureServiceV2", (it) => {
                     Layer.provide(
                       Layer.mergeAll(
                         IdAllocator.layer,
+                        NodeCrypto.layer,
                         Layer.mock(CheckpointStore.CheckpointStore)({
                           isGitRepository: () => Effect.succeed(true),
                           captureCheckpoint: () => Effect.void,

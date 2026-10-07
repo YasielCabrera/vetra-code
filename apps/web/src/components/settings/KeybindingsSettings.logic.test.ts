@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import type { ResolvedKeybindingsConfig } from "@t3tools/contracts";
+import { STATIC_KEYBINDING_COMMANDS, type ResolvedKeybindingsConfig } from "@t3tools/contracts";
 import { DEFAULT_RESOLVED_KEYBINDINGS } from "@t3tools/shared/keybindings";
 
 import {
@@ -7,6 +7,7 @@ import {
   buildKeybindingCommandOptions,
   buildWhenVariableOptions,
   commandLabel,
+  groupKeybindingRows,
   keybindingConflictLabels,
   keybindingFromKeyboardEvent,
   parseWhenExpressionDraft,
@@ -58,6 +59,52 @@ describe("KeybindingsSettings.logic", () => {
       );
     },
   );
+  it("groups rows by command area in page order and drops empty groups", () => {
+    const groups = groupKeybindingRows(buildKeybindingRows(DEFAULT_RESOLVED_KEYBINDINGS, ""));
+    expect(groups.map((group) => group.title)).toEqual([
+      "Navigation",
+      "Threads",
+      "Composer",
+      "Terminal",
+      "Preview & diff",
+      "Appearance",
+    ]);
+    const composer = groups.find((group) => group.id === "composer");
+    expect(composer?.rows.map((row) => row.command)).toEqual(
+      expect.arrayContaining(["composer.host", "modelPicker.toggle"]),
+    );
+    expect(groupKeybindingRows(buildKeybindingRows(DEFAULT_RESOLVED_KEYBINDINGS, "split"))).toEqual(
+      [expect.objectContaining({ id: "terminal" })],
+    );
+  });
+  it("groups every supported command, including custom-only fork commands, by area", () => {
+    const [binding] = DEFAULT_RESOLVED_KEYBINDINGS;
+    const groups = groupKeybindingRows(
+      buildKeybindingRows(
+        [
+          ...DEFAULT_RESOLVED_KEYBINDINGS,
+          ...STATIC_KEYBINDING_COMMANDS.map((command) => ({ ...binding!, command })),
+          { ...binding!, command: "powerhouse.toggle" },
+        ],
+        "",
+      ),
+    );
+    const groupOf = (command: string) =>
+      groups.find((group) => group.rows.some((row) => row.command === command))?.id;
+    expect(groupOf("ticket.new")).toBe("threads");
+    expect(groupOf("powerhouse.openExplorer")).toBe("preview");
+    expect(groupOf("powerhouse.toggle")).toBe("preview");
+    expect(groupOf("powerhouse.openModels")).toBe("preview");
+    expect(groupOf("powerhouse.openDatabase")).toBe("preview");
+    expect(groupOf("powerhouse.openSwitchboard")).toBe("preview");
+    expect(groupOf("threadPanel.toggle")).toBe("threads");
+    expect(groupOf("view.reopenClosed")).toBe("navigation");
+    expect(groupOf("navigation.back")).toBe("navigation");
+    expect(groupOf("navigation.forward")).toBe("navigation");
+    expect(groupOf("projectSearch.toggle")).toBe("navigation");
+    expect(groupOf("usage.open")).toBe("navigation");
+    expect(groups.some((group) => group.id === "other")).toBe(false);
+  });
   it("orders Usage bindings and command choices like the page", () => {
     const expected = [
       "usage.open",
@@ -263,6 +310,7 @@ describe("KeybindingsSettings.logic", () => {
   it("formats static and project script command labels", () => {
     expect(commandLabel("commandPalette.toggle")).toBe("Command Palette: Toggle");
     expect(commandLabel("themeEditor.toggle")).toBe("Theme Editor: Toggle");
+    expect(commandLabel("view.reopenClosed")).toBe("Reopen Closed Tab");
     expect(commandLabel("script.setup-db.run")).toBe("Run Script: Setup Db");
   });
 

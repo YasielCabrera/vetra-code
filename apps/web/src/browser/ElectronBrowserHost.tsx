@@ -1,43 +1,54 @@
 "use client";
 
 import { parseScopedThreadKey } from "@t3tools/client-runtime/environment";
-import { FILL_PREVIEW_VIEWPORT } from "@t3tools/contracts";
-import { useEffect, useMemo } from "react";
+import { AuthPreviewOperateScope, FILL_PREVIEW_VIEWPORT } from "@t3tools/contracts";
+import { useAtomValue } from "@effect/atom-react";
+import { type ComponentProps, useEffect, useMemo } from "react";
+
+import { primaryEnvironmentIdAtom } from "~/state/primaryEnvironment";
 
 import { isElectron } from "~/env";
-import { usePrimarySettings } from "~/hooks/useSettings";
 import { useTheme } from "~/hooks/useTheme";
 import { useActivePreviewSessions } from "~/previewStateStore";
+import { useEnvironmentScope } from "~/state/session";
 
 import { readPreviewAnnotationTheme } from "./annotationTheme";
 import { useBrowserPointerStore } from "./browserPointerStore";
 import { HostedBrowserWebview } from "./HostedBrowserWebview";
+import { rendersServerTabNatively } from "./previewRuntime";
 import { previewRuntimeTabId } from "./previewRuntimeTabId";
 
 export function ElectronBrowserHost() {
   const { resolvedTheme } = useTheme();
-  const web3Wallet = usePrimarySettings((settings) => settings.web3Wallet);
   const previewByThreadKey = useActivePreviewSessions();
+  const primaryEnvironmentId = useAtomValue(primaryEnvironmentIdAtom);
   const sessions = useMemo(
     () =>
       Object.entries(previewByThreadKey).flatMap(([threadKey, previewState]) => {
         const threadRef = parseScopedThreadKey(threadKey);
+        // Server tabs of other environments stream; this desktop's own server tabs render here.
         return threadRef
-          ? Object.values(previewState.sessions).map((snapshot) => ({
-              threadRef,
-              snapshot,
-              runtimeTabId: previewRuntimeTabId(
+          ? Object.values(previewState.sessions)
+              .filter(
+                (snapshot) =>
+                  snapshot.runtime !== "server" ||
+                  rendersServerTabNatively(threadRef.environmentId, primaryEnvironmentId, snapshot),
+              )
+              .map((snapshot) => ({
                 threadRef,
-                previewState.serverEpoch,
-                snapshot.tabId,
-              ),
-              pictureInPicture:
-                previewState.desktopByTabId[snapshot.tabId]?.pictureInPicture ?? false,
-              zoomFactor: previewState.desktopByTabId[snapshot.tabId]?.zoomFactor ?? 1,
-            }))
+                snapshot,
+                runtimeTabId: previewRuntimeTabId(
+                  threadRef,
+                  previewState.serverEpoch,
+                  snapshot.tabId,
+                ),
+                pictureInPicture:
+                  previewState.desktopByTabId[snapshot.tabId]?.pictureInPicture ?? false,
+                zoomFactor: previewState.desktopByTabId[snapshot.tabId]?.zoomFactor ?? 1,
+              }))
           : [];
       }),
-    [previewByThreadKey],
+    [previewByThreadKey, primaryEnvironmentId],
   );
 
   useEffect(() => {
@@ -81,35 +92,13 @@ export function ElectronBrowserHost() {
     });
   }, []);
 
-  // The main process reads settings.json for its startup value, but nothing
-  // notifies it when the server rewrites the file. Pushing the wallet block
-  // from here is what makes toggling Settings > Web3 take effect without a
-  // desktop restart.
-  useEffect(() => {
-    const preview = window.desktopBridge?.preview;
-    if (!preview) return;
-    void preview.wallet
-      .applySettings({
-        enabled: web3Wallet.enabled,
-        approvalMode: web3Wallet.approvalMode,
-        chainId: web3Wallet.chainId,
-        rpcUrl: web3Wallet.rpcUrl,
-        autoConnectLoopback: web3Wallet.autoConnectLoopback,
-        disabledBuiltInChainIds: web3Wallet.disabledBuiltInChainIds,
-        customNetworks: web3Wallet.customNetworks,
-      })
-      .catch(() => {
-        // An older main process has no wallet bridge; the preview still works.
-      });
-  }, [web3Wallet]);
-
   if (!isElectron) return null;
   return (
     <div className="contents" data-electron-browser-host>
       {sessions.map(({ threadRef, snapshot, runtimeTabId, pictureInPicture, zoomFactor }) => {
         const url = snapshot.navStatus._tag === "Idle" ? null : snapshot.navStatus.url;
         return (
-          <HostedBrowserWebview
+          <AuthorizedBrowserWebview
             key={runtimeTabId}
             threadRef={threadRef}
             tabId={snapshot.tabId}
@@ -119,9 +108,26 @@ export function ElectronBrowserHost() {
             pictureInPicture={pictureInPicture}
             profileId={snapshot.profileId}
             zoomFactor={zoomFactor}
+            serverDriven={snapshot.runtime === "server"}
+            {...(snapshot.runtime === "server"
+              ? {
+                  serverRendering: {
+                    colorScheme: snapshot.colorScheme ?? "system",
+                    zoomFactor: snapshot.zoomFactor ?? 1,
+                  },
+                }
+              : {})}
           />
         );
       })}
     </div>
   );
+}
+
+function AuthorizedBrowserWebview(props: ComponentProps<typeof HostedBrowserWebview>) {
+  const canOperatePreview = useEnvironmentScope(
+    props.threadRef.environmentId,
+    AuthPreviewOperateScope,
+  );
+  return canOperatePreview ? <HostedBrowserWebview {...props} /> : null;
 }

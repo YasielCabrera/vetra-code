@@ -1,5 +1,3 @@
-import * as NodeCrypto from "node:crypto";
-
 import {
   CommandId,
   DEFAULT_PROVIDER_INTERACTION_MODE,
@@ -13,6 +11,7 @@ import {
 import { escapeComposerContextPayloadText } from "@t3tools/shared/composerContextReferences";
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import * as Context from "effect/Context";
+import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -86,6 +85,7 @@ function draftMessageText(input: {
 
 const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
+  const crypto = yield* Crypto.Crypto;
   const threadLaunch = yield* ThreadLaunchService.ThreadLaunchService;
   const projects = yield* ProjectService.ProjectService;
   const serverSettings = yield* ServerSettings.ServerSettingsService;
@@ -117,7 +117,7 @@ const make = Effect.gen(function* () {
       ),
     );
     const { statuses } = yield* tickets.readStatuses;
-    const commandId = CommandId.make(NodeCrypto.randomUUID());
+    const commandId = CommandId.make(yield* crypto.randomUUIDv4.pipe(Effect.orDie));
     const threadId = ThreadId.make(commandId);
     yield* sql`
       INSERT INTO ticket_drafts (thread_id, source_thread_id, project_id, instruction, created_at)

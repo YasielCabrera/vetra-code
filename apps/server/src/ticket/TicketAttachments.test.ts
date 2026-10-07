@@ -13,7 +13,7 @@ import * as SqlClient from "effect/sql/SqlClient";
 
 import { resolveAttachmentPath } from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
-import * as SqlitePersistence from "../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import { claimTicketAttachments } from "./TicketAttachments.ts";
 
 const actor = { type: "agent", threadId: ThreadId.make("attachment-caller") } as const;

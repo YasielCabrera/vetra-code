@@ -24,6 +24,7 @@ vi.mock("../../state/tickets", () => ({
   useTicket: () => detail.summary,
   useTicketDetail: () => AsyncResult.success(detail),
   useTicketStatuses: () => null,
+  useTicketGitHubWriteAllowed: () => true,
   useTicketGitHubSources: () => [],
   useTicketPlan: () => AsyncResult.success(plan),
 }));

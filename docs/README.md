@@ -25,6 +25,7 @@
 - [Import browser sessions](./user/browser-import.md)
 - [Devices and simulators](./user/devices.md)
 - [Remote access](./user/remote-access.md)
+- [Outside agents (MCP)](./user/outside-agents.md)
 - [Keeping app and server in sync](./user/updating.md)
 - [Preview wallet (Web3)](./user/preview-wallet.md)
 - [Background service (Linux)](./user/background-service.md)

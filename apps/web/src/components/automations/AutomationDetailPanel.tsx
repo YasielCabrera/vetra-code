@@ -39,7 +39,7 @@ import {
 
 import { onCommandPaletteProjectSelected, openCommandPalette } from "../../commandPaletteBus";
 import { isElectron } from "../../env";
-import { useAutomationActions } from "../../hooks/useAutomationActions";
+import { useAutomationActions, useCanOperateAutomations } from "../../hooks/useAutomationActions";
 import { useMarkAutomationRunsRead } from "../../hooks/useAutomationRunsRead";
 import { useProjectGroups } from "../../hooks/useProjectGroups";
 import { useResizableWidth } from "../../hooks/useResizableWidth";
@@ -307,7 +307,9 @@ export function AutomationDetailPanel(props: {
     [unreadRunThreads],
   );
 
-  const targetEnvironmentId = automation?.environmentId ?? primaryEnvironmentId;
+  const canRevealRuns = useAtomValue(
+    automationEnvironment.setRunHidden.permissionAtom(automation?.environmentId ?? null),
+  );
   const scheduleLabel = describeAutomationSchedule(draftSchedule(draft), {
     use24Hour: timestampFormat === "24-hour",
   });
@@ -364,6 +366,14 @@ export function AutomationDetailPanel(props: {
           ) ?? null),
     [draft.projectKey, projects],
   );
+  const targetEnvironmentId =
+    automation?.environmentId ?? selectedProject?.environmentId ?? primaryEnvironmentId;
+  const canOperate = useCanOperateAutomations(targetEnvironmentId);
+  const canCreateProject = useAtomValue(
+    projectEnvironment.createNew.permissionAtom(targetEnvironmentId),
+  );
+  const canSave =
+    canOperate && (automation !== null || selectedProject !== null || canCreateProject);
   // A worktree task needs a base branch; until one is picked it is the
   // project's current branch, the one a new thread would start from.
   const currentRefQuery = useEnvironmentQuery(
@@ -895,6 +905,7 @@ export function AutomationDetailPanel(props: {
           <label className="flex items-center gap-2 text-sm text-foreground">
             <Switch
               checked={draft.enabled}
+              disabled={!canOperate}
               onCheckedChange={(checked) => void handleToggleEnabled(checked === true)}
             />
             {draft.enabled ? "Active" : "Paused"}
@@ -902,17 +913,27 @@ export function AutomationDetailPanel(props: {
           <div className="flex items-center gap-2">
             {!isNew ? (
               <>
-                <Button size="sm" variant="outline" onClick={() => void handleRunNow()}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!canOperate}
+                  onClick={() => void handleRunNow()}
+                >
                   <PlayIcon />
                   Run now
                 </Button>
-                <Button size="sm" variant="destructive-outline" onClick={() => void handleDelete()}>
+                <Button
+                  size="sm"
+                  variant="destructive-outline"
+                  disabled={!canOperate}
+                  onClick={() => void handleDelete()}
+                >
                   <Trash2Icon />
                   Delete
                 </Button>
               </>
             ) : null}
-            <Button size="sm" onClick={() => void handleSave()}>
+            <Button size="sm" disabled={!canSave} onClick={() => void handleSave()}>
               {isNew ? "Create automation" : "Save"}
             </Button>
           </div>
@@ -995,6 +1016,7 @@ export function AutomationDetailPanel(props: {
                           <Button
                             size="sm"
                             variant="ghost"
+                            disabled={!canRevealRuns}
                             onClick={() => void handleRevealRun(thread.environmentId, thread.id)}
                           >
                             Show in sidebar

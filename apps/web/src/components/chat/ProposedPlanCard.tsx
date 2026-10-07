@@ -5,7 +5,11 @@ import {
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import type { EnvironmentTicket } from "@t3tools/client-runtime/state/tickets";
-import type { EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
+import {
+  AuthFilesystemWriteScope,
+  type EnvironmentId,
+  type ScopedThreadRef,
+} from "@t3tools/contracts";
 import {
   buildCollapsedProposedPlanPreviewMarkdown,
   buildProposedPlanMarkdownFilename,
@@ -47,6 +51,7 @@ import { useTicketActions } from "~/hooks/useTicketActions";
 import { useTicketsForThread } from "~/state/tickets";
 import { ticketPlanRouteParams } from "../tickets/ticketPlans.logic";
 import { formatTicketRef } from "../tickets/ticketRefs";
+import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 
 export const ProposedPlanCard = memo(function ProposedPlanCard({
   planMarkdown,
@@ -62,6 +67,7 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
   workspaceRoot: string | undefined;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const canWriteFiles = useEnvironmentScope(environmentId, AuthFilesystemWriteScope);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [savePath, setSavePath] = useState("");
   const [isSavingToWorkspace, setIsSavingToWorkspace] = useState(false);
@@ -104,6 +110,7 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
   };
 
   const openSaveDialog = () => {
+    if (!canWriteFiles) return;
     if (!workspaceRoot) {
       toastManager.add(
         stackedThreadToast({
@@ -148,7 +155,7 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
 
   const handleSaveToWorkspace = () => {
     const relativePath = savePath.trim();
-    if (!workspaceRoot) {
+    if (!workspaceRoot || !readEnvironmentScope(environmentId, AuthFilesystemWriteScope)) {
       return;
     }
     if (!relativePath) {
@@ -212,7 +219,10 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
               {isCopied ? "Copied!" : "Copy to clipboard"}
             </MenuItem>
             <MenuItem onClick={handleDownload}>Download as markdown</MenuItem>
-            <MenuItem onClick={openSaveDialog} disabled={!workspaceRoot || isSavingToWorkspace}>
+            <MenuItem
+              onClick={openSaveDialog}
+              disabled={!canWriteFiles || !workspaceRoot || isSavingToWorkspace}
+            >
               Save to workspace
             </MenuItem>
             {linkedTickets.length === 1 ? (
@@ -316,7 +326,7 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
             <Button
               size="sm"
               onClick={() => void handleSaveToWorkspace()}
-              disabled={isSavingToWorkspace}
+              disabled={!canWriteFiles || isSavingToWorkspace}
             >
               {isSavingToWorkspace ? "Saving..." : "Save"}
             </Button>

@@ -377,7 +377,7 @@ Traces are best for one request. Metrics are best for trends.
 Good metric families to watch:
 
 - `vetra_rpc_request_duration`
-- `vetra_provider_turn_duration`
+- `vetra_provider_turn_duration` (how long the provider adapter takes to start a turn, not the turn's run time)
 - `vetra_git_command_duration`
 
 Counters tell you volume and failure rate:
@@ -552,7 +552,7 @@ const program = doWork().pipe(
 
 ### Runtime Wiring
 
-The server observability layer is assembled in `apps/server/src/observability/Layers/Observability.ts`.
+The server observability layer is assembled in `apps/server/src/observability/Observability.ts`.
 
 It provides:
 
@@ -579,7 +579,7 @@ Local trace file:
 - `VETRA_TRACE_FILE`: override trace file path
 - `VETRA_TRACE_MAX_BYTES`: per-file rotation size, default `10485760`
 - `VETRA_TRACE_MAX_FILES`: rotated file count, default `10`
-- `VETRA_TRACE_BATCH_WINDOW_MS`: flush window, default `200`
+- `VETRA_TRACE_BATCH_WINDOW_MS`: flush window, default `1000`
 - `VETRA_TRACE_MIN_LEVEL`: minimum trace level, default `Info`
 - `VETRA_TRACE_TIMING_ENABLED`: enable timing metadata, default `true`
 
@@ -635,8 +635,8 @@ wins for its signal. `otlp` is the default, and any other exporter name, such as
 
 Current high-value span and metric boundaries include:
 
-- Effect RPC websocket request spans from `effect/rpc`
-- RPC request metrics in `apps/server/src/observability/RpcInstrumentation.ts`
+- WebSocket RPC request spans (`ws.rpc.<method>`) and metrics in
+  `apps/server/src/observability/RpcInstrumentation.ts`
 - startup phases
 - orchestration command processing
 - provider session and turn operations

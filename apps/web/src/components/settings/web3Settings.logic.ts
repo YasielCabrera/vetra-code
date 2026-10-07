@@ -282,6 +282,21 @@ export function pendingRequestTitle(method: string): string {
   }
 }
 
+/**
+ * The parked requests one preview tab's page made, oldest first. Tab ids repeat
+ * across threads, so both ids must match.
+ */
+export function pendingRequestsForTab<
+  Request extends { readonly threadId: string; readonly tabId: string },
+>(
+  requests: readonly Request[],
+  tab: { readonly threadId: string; readonly tabId: string },
+): readonly Request[] {
+  return requests.filter(
+    (request) => request.threadId === tab.threadId && request.tabId === tab.tabId,
+  );
+}
+
 /** Hostname for the origin badge; falls back to the raw string if it is not a URL. */
 export function originHostname(origin: string): string {
   try {

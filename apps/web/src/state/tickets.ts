@@ -30,6 +30,16 @@ import { environmentServerConfigsAtom } from "./server";
 
 export const ticketEnvironment = createTicketEnvironmentAtoms(connectionAtomRuntime);
 
+export function useTicketGitHubWriteAllowed(environmentId: EnvironmentId): boolean {
+  return useAtomValue(ticketEnvironment.githubIssueSetAssignees.permissionAtom(environmentId));
+}
+
+export function readTicketGitHubWriteAllowed(environmentId: EnvironmentId): boolean {
+  return appAtomRegistry.get(
+    ticketEnvironment.githubIssueSetAssignees.permissionAtom(environmentId),
+  );
+}
+
 const supportsTicketIssueLinksAtom = Atom.family((environmentId: EnvironmentId) =>
   Atom.make(
     (get) =>

@@ -7,13 +7,20 @@
  * actions. Reject always tells the page the user declined (`4001`); other
  * EIP-1193 codes stay on `preview_wallet_reject` for agent-driven tests.
  */
+import { useAtomValue } from "@effect/atom-react";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
-import type { PreviewAutomationWalletConfigureInput } from "@t3tools/contracts";
+import {
+  AuthSettingsWriteScope,
+  type EnvironmentId,
+  type PreviewWalletPendingRequest,
+  type PreviewWalletStatus,
+  type ThreadId,
+} from "@t3tools/contracts";
 import { enabledBuiltInNetworks, findCustomNetwork } from "@t3tools/web3/networks";
 import {
   DEFAULT_WEB3_REJECT_CODE,
   type Web3Account,
-  type Web3PendingRequest,
+  type Web3WalletAccountConfigureInput,
 } from "@t3tools/web3/schema";
 import {
   CheckIcon,
@@ -26,17 +33,25 @@ import {
   TriangleAlertIcon,
   WalletIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { acquireHostedBrowserPointerLock } from "~/browser/hostedBrowserPointerLock";
 import { cn } from "~/lib/utils";
-import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
+import { useConnectedEnvironmentIds } from "~/state/environments";
+import {
+  previewWalletEnvironment,
+  previewWalletFailureMessage,
+  usePreviewWalletStatus,
+} from "~/state/previewWallet";
+import { useEnvironmentScope } from "~/state/session";
+import { useAtomCommand } from "~/state/use-atom-command";
+import { useEnvironmentSettings, useUpdateEnvironmentSettings } from "../../hooks/useSettings";
 import { ensureLocalApi } from "../../localApi";
 import { AccountIdenticon } from "../settings/AccountIdenticon";
 import { AccountLabelEditor } from "../settings/AccountLabelEditor";
-import { getWalletStatus, useWalletStatus } from "../settings/useWalletStatus";
 import {
   originHostname,
+  pendingRequestsForTab,
   pendingRequestTitle,
   removeAccountConfirmationMessage,
   shortenAddress,
@@ -48,7 +63,6 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../
 import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { NetworkIcon } from "../web3/NetworkIcon";
-import { previewBridge } from "./previewBridge";
 
 function CopyAddressButton({ address }: { readonly address: string }) {
   const [copied, setCopied] = useState(false);
@@ -273,51 +287,54 @@ function ActiveAccountRow({
   );
 }
 
+// Further requests wait their turn; each card can carry a long decoded summary.
+const MAX_SHOWN_REQUESTS = 3;
+const NO_REQUESTS: readonly PreviewWalletPendingRequest[] = [];
+
 function PendingRequestCard({
+  environmentId,
   request,
+  disabled,
   onResolved,
 }: {
-  readonly request: Web3PendingRequest;
-  readonly onResolved: (completed: boolean) => void;
+  readonly environmentId: EnvironmentId;
+  readonly request: PreviewWalletPendingRequest;
+  readonly disabled: boolean;
+  readonly onResolved: (request: PreviewWalletPendingRequest) => void;
 }) {
+  // Stays set after success: the server's next push removes the card.
   const [busy, setBusy] = useState(false);
-  const bridge = previewBridge?.wallet ?? null;
+  const approve = useAtomCommand(previewWalletEnvironment.approve, { reportFailure: false });
+  const reject = useAtomCommand(previewWalletEnvironment.reject, { reportFailure: false });
 
-  const resolve = useCallback(
-    async (action: "approve" | "reject") => {
-      if (!bridge || busy) return;
-      setBusy(true);
-      try {
-        if (action === "approve") {
-          const resolution = await bridge.approve("", { requestId: request.requestId });
-          if (resolution.failure !== null) {
-            toastManager.add({
-              type: "error",
-              title: "Could not approve request",
-              description: resolution.failure,
-            });
-          }
-        } else {
-          await bridge.reject("", {
-            requestId: request.requestId,
-            code: DEFAULT_WEB3_REJECT_CODE,
-          });
-        }
-        onResolved(true);
-      } catch (error) {
+  const resolve = async (action: "approve" | "reject") => {
+    if (busy) return;
+    setBusy(true);
+    const { requestId } = request;
+    const result =
+      action === "approve"
+        ? await approve({ environmentId, input: { requestId } })
+        : await reject({ environmentId, input: { requestId, code: DEFAULT_WEB3_REJECT_CODE } });
+    if (result._tag === "Success") {
+      if (result.value.failure !== null) {
         toastManager.add({
           type: "error",
-          title: action === "approve" ? "Could not approve request" : "Could not reject request",
-          description:
-            error instanceof Error ? error.message : "The preview wallet did not respond.",
+          title: "Could not approve request",
+          description: result.value.failure,
         });
-        onResolved(false);
-      } finally {
-        setBusy(false);
       }
-    },
-    [bridge, busy, onResolved, request.requestId],
-  );
+      onResolved(request);
+      return;
+    }
+    setBusy(false);
+    const failure = previewWalletFailureMessage(result);
+    if (failure === null) return;
+    toastManager.add({
+      type: "error",
+      title: action === "approve" ? "Could not approve request" : "Could not reject request",
+      description: failure,
+    });
+  };
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-accent/30 p-3">
@@ -335,7 +352,7 @@ function PendingRequestCard({
           size="compact"
           variant="outline"
           className="h-8"
-          disabled={busy}
+          disabled={busy || disabled}
           onClick={() => void resolve("reject")}
         >
           Reject
@@ -343,7 +360,7 @@ function PendingRequestCard({
         <Button
           size="compact"
           className="h-8"
-          disabled={busy}
+          disabled={busy || disabled}
           onClick={() => void resolve("approve")}
         >
           Approve
@@ -353,77 +370,107 @@ function PendingRequestCard({
   );
 }
 
-export function PreviewWalletChip() {
-  const { status, refresh } = useWalletStatus();
-  const walletSettings = usePrimarySettings((settings) => settings.web3Wallet);
-  const updateSettings = useUpdatePrimarySettings();
-  const bridge = previewBridge?.wallet ?? null;
+interface PreviewWalletTab {
+  readonly environmentId: EnvironmentId;
+  readonly threadId: ThreadId;
+  readonly tabId: string;
+  /** Whether this client draws the tab in a native `<webview>`, which an overlay cannot cover. */
+  readonly nativeGuest: boolean;
+}
+
+/** The wallet chip for one preview tab, shown while the tab's environment has its wallet on. */
+export function PreviewWalletChip(props: PreviewWalletTab) {
+  const status = usePreviewWalletStatus(props.environmentId);
+  // Keyed by tab so switching tabs drops the previous tab's open sheet and seen requests.
+  return status?.enabled ? (
+    <PreviewWalletPopover
+      key={JSON.stringify([props.environmentId, props.threadId, props.tabId])}
+      {...props}
+      status={status}
+    />
+  ) : null;
+}
+
+function PreviewWalletPopover({
+  environmentId,
+  threadId,
+  tabId,
+  nativeGuest,
+  status,
+}: PreviewWalletTab & { readonly status: PreviewWalletStatus }) {
+  const walletSettings = useEnvironmentSettings(environmentId, (settings) => settings.web3Wallet);
+  const updateSettings = useUpdateEnvironmentSettings(environmentId);
+  const connected = useConnectedEnvironmentIds().includes(environmentId);
+  const canConfigure = useAtomValue(
+    previewWalletEnvironment.configure.permissionAtom(environmentId),
+  );
+  const canResolve = useAtomValue(previewWalletEnvironment.approve.permissionAtom(environmentId));
+  const canWriteSettings = useEnvironmentScope(environmentId, AuthSettingsWriteScope);
+  const runConfigure = useAtomCommand(previewWalletEnvironment.configure, {
+    reportFailure: false,
+  });
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
-  const [busyAction, setBusyAction] = useState<string | null>(null);
-  const previousPendingKey = useRef("");
+  const [busy, setBusy] = useState(false);
   const pointerInsidePopup = useRef(false);
-  const pendingKey = status?.pendingRequests.map((request) => request.requestId).join("|") ?? "";
+  // A dropped connection keeps the last status, whose prompts may already be settled.
+  const requests = useMemo(
+    () =>
+      connected ? pendingRequestsForTab(status.pendingRequests, { threadId, tabId }) : NO_REQUESTS,
+    [connected, status.pendingRequests, tabId, threadId],
+  );
+  const requestsRef = useRef(requests);
+  const seenRequestIds = useRef<ReadonlySet<string>>(new Set());
 
   // A wallet extension opens its approval surface when a page asks to sign.
   // The preview chip should do the same instead of expecting the user to notice
   // a badge and open it while the dapp is blocked on a Promise.
   useEffect(() => {
-    if (pendingKey.length > 0 && pendingKey !== previousPendingKey.current) setOpen(true);
-    previousPendingKey.current = pendingKey;
-  }, [pendingKey]);
+    requestsRef.current = requests;
+    if (requests.some((request) => !seenRequestIds.current.has(request.requestId))) setOpen(true);
+    seenRequestIds.current = new Set(requests.map((request) => request.requestId));
+  }, [requests]);
 
   // Electron's preview webview is a native guest. Clicks on this popover also
   // hit the page underneath unless the webview ignores pointer events for the
   // duration of the overlay — otherwise the dapp treats Approve as an outside
-  // click and dismisses its own modal.
+  // click and dismisses its own modal. A streamed tab is renderer HTML.
   useLayoutEffect(() => {
     if (!open) {
       pointerInsidePopup.current = false;
       return;
     }
-    return acquireHostedBrowserPointerLock();
-  }, [open]);
+    return nativeGuest ? acquireHostedBrowserPointerLock() : undefined;
+  }, [nativeGuest, open]);
 
-  // Clicking the guest still moves focus out of the renderer without producing
-  // the outside press Base UI uses to dismiss a popover. Ignore blur while the
-  // pointer is on the popover itself; that is the overlapping-webview case.
   useEffect(() => {
     if (!open) setRenaming(false);
   }, [open]);
 
-  // Clicking the guest still moves focus out of the renderer without producing
-  // the outside press Base UI uses to dismiss a popover. Ignore blur while the
-  // pointer is on the popover itself; that is the overlapping-webview case.
+  // Clicking a native guest still moves focus out of the renderer without
+  // producing the outside press Base UI uses to dismiss a popover. Ignore blur
+  // while the pointer is on the popover itself; that is the overlapping case.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !nativeGuest) return;
     const close = () => {
       if (pointerInsidePopup.current) return;
       setOpen(false);
     };
     window.addEventListener("blur", close);
     return () => window.removeEventListener("blur", close);
-  }, [open]);
+  }, [nativeGuest, open]);
 
   const configure = useCallback(
-    async (action: string, input: PreviewAutomationWalletConfigureInput, failedTitle: string) => {
-      if (!bridge || busyAction !== null) return;
-      setBusyAction(action);
-      try {
-        await bridge.configure("", input);
-        await refresh();
-      } catch (error) {
-        toastManager.add({
-          type: "error",
-          title: failedTitle,
-          description:
-            error instanceof Error ? error.message : "The preview wallet did not respond.",
-        });
-      } finally {
-        setBusyAction(null);
+    async (input: Web3WalletAccountConfigureInput, failedTitle: string) => {
+      if (busy) return;
+      setBusy(true);
+      const failure = previewWalletFailureMessage(await runConfigure({ environmentId, input }));
+      setBusy(false);
+      if (failure !== null) {
+        toastManager.add({ type: "error", title: failedTitle, description: failure });
       }
     },
-    [bridge, busyAction, refresh],
+    [busy, environmentId, runConfigure],
   );
 
   const confirmRemoveAccount = useCallback(
@@ -434,29 +481,20 @@ export function PreviewWalletChip() {
         { variant: "destructive" },
       );
       if (!confirmed) return;
-      await configure(
-        `remove:${account.address}`,
-        { removeAccount: account.address },
-        "Could not remove the account",
-      );
+      await configure({ removeAccount: account.address }, "Could not remove the account");
     },
     [configure],
   );
 
-  const handleRequestResolved = useCallback(
-    (completed: boolean) => {
-      if (completed) setOpen(false);
-      void refresh().then(() => {
-        if ((getWalletStatus()?.pendingRequests.length ?? 0) === 0) setOpen(false);
-      });
-    },
-    [refresh],
-  );
+  const handleRequestResolved = useCallback((resolved: PreviewWalletPendingRequest) => {
+    if (requestsRef.current.every((request) => request.requestId === resolved.requestId)) {
+      setOpen(false);
+    }
+  }, []);
 
-  if (!status?.enabled) return null;
-
-  const pendingCount = status.pendingRequests.length;
-  const controlsDisabled = !bridge || busyAction !== null;
+  const pendingCount = requests.length;
+  const controlsDisabled = busy || !connected || !canConfigure;
+  const networkDisabled = !connected || !canWriteSettings;
   const activeChainId = status.chain?.chainId ?? null;
   const listedBuiltIn = enabledBuiltInNetworks(walletSettings.disabledBuiltInChainIds);
   const customNetworks = walletSettings.customNetworks;
@@ -489,19 +527,11 @@ export function PreviewWalletChip() {
     disabled: controlsDisabled,
     renaming,
     onSelect: (address: string) =>
-      void configure(
-        `account:${address}`,
-        { selectedAddress: address },
-        "Could not switch account",
-      ),
+      void configure({ selectedAddress: address }, "Could not switch account"),
     onStartRename: () => setRenaming(true),
     onFinishRename: () => setRenaming(false),
     onCommitLabel: (address: string, nextLabel: string) =>
-      void configure(
-        `label:${address}`,
-        { accountLabel: { address, label: nextLabel } },
-        "Could not rename account",
-      ),
+      void configure({ accountLabel: { address, label: nextLabel } }, "Could not rename account"),
     onRemove: () => {
       if (activeAccount !== undefined) void confirmRemoveAccount(activeAccount);
     },
@@ -552,34 +582,23 @@ export function PreviewWalletChip() {
               value={activeNetworkValue}
               onValueChange={(value) => {
                 if (typeof value !== "string" || value === activeNetworkValue) return;
+                // The environment's wallet follows its settings, so this is the only write.
                 if (value.startsWith("custom:")) {
                   const chainId = Number(value.slice("custom:".length));
                   const custom = findCustomNetwork(customNetworks, chainId);
                   if (custom === null || !Number.isSafeInteger(chainId) || chainId <= 0) {
                     return;
                   }
-                  updateSettings({
-                    web3Wallet: { chainId, rpcUrl: custom.rpcUrl },
-                  });
-                  void configure(
-                    `custom:${chainId}`,
-                    { chainId, rpcUrl: custom.rpcUrl },
-                    "Could not switch network",
-                  );
+                  updateSettings({ web3Wallet: { chainId, rpcUrl: custom.rpcUrl } });
                   return;
                 }
                 if (!value.startsWith("network:")) return;
                 const chainId = Number(value.slice("network:".length));
                 if (!Number.isSafeInteger(chainId) || chainId <= 0) return;
                 updateSettings({ web3Wallet: { chainId, rpcUrl: null } });
-                void configure(
-                  `network:${chainId}`,
-                  { chainId, rpcUrl: null },
-                  "Could not switch network",
-                );
               }}
             >
-              <NetworkPillTrigger aria-label="Preview wallet network" disabled={controlsDisabled}>
+              <NetworkPillTrigger aria-label="Preview wallet network" disabled={networkDisabled}>
                 {activeChainId === null ? null : <NetworkIcon chainId={activeChainId} />}
                 <SelectValue>{status.chain?.name ?? "No network"}</SelectValue>
               </NetworkPillTrigger>
@@ -656,11 +675,7 @@ export function PreviewWalletChip() {
                 className="mt-1"
                 disabled={controlsDisabled}
                 onClick={() =>
-                  void configure(
-                    "new-account",
-                    { generateAccount: true },
-                    "Could not create account",
-                  )
+                  void configure({ generateAccount: true }, "Could not create account")
                 }
               >
                 <PlusIcon className="size-3" aria-hidden />
@@ -688,13 +703,20 @@ export function PreviewWalletChip() {
               <span className="text-2xs font-medium">
                 {pendingCount === 1 ? "Approval request" : `${pendingCount} approval requests`}
               </span>
-              {status.pendingRequests.map((request) => (
+              {requests.slice(0, MAX_SHOWN_REQUESTS).map((request) => (
                 <PendingRequestCard
                   key={request.requestId}
+                  environmentId={environmentId}
                   request={request}
+                  disabled={!canResolve}
                   onResolved={handleRequestResolved}
                 />
               ))}
+              {pendingCount > MAX_SHOWN_REQUESTS ? (
+                <span className="text-2xs text-muted-foreground">
+                  {pendingCount - MAX_SHOWN_REQUESTS} more waiting
+                </span>
+              ) : null}
             </div>
           )}
         </div>

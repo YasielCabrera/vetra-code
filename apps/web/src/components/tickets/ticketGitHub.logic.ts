@@ -8,6 +8,7 @@ import {
   type TicketGitHubSource,
   type TicketStatusDefinition,
   type TicketStatusSet,
+  type TicketSummary,
   type VcsRemote,
 } from "@t3tools/contracts";
 import {
@@ -16,6 +17,17 @@ import {
 } from "@t3tools/shared/sourceControl";
 
 export type GitHubTicket = Extract<EnvironmentTicket, { kind: "github" }>;
+
+export function ticketStatusWritesGitHub(
+  ticket: TicketSummary,
+  to: TicketStatusDefinition,
+): boolean {
+  return (
+    ticket.kind === "github" &&
+    ticket.hiddenAt === null &&
+    (ticket.github.state === "closed") !== (to.category === "closed")
+  );
+}
 
 type ScopedSource = TicketGitHubSource & { readonly environmentId: EnvironmentId };
 

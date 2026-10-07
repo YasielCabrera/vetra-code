@@ -17,7 +17,7 @@ import * as Path from "effect/Path";
 
 import { resolveClaudeSdkExecutablePath } from "../Drivers/ClaudeExecutable.ts";
 import { makeClaudeEnvironment } from "../Drivers/ClaudeHome.ts";
-import { buildClaudeCapabilitiesProbeQueryOptions } from "../Layers/ClaudeProvider.ts";
+import { buildClaudeCapabilitiesProbeQueryOptions } from "../ClaudeProvider.ts";
 import type { ProviderInstance, ProviderSubscriptionUsageCapability } from "../ProviderDriver.ts";
 import {
   configFingerprint,
@@ -290,7 +290,7 @@ export const makeClaudeSubscriptionUsageCapability = (input: {
       const abortProbe = () => abort.abort();
       signal.addEventListener("abort", abortProbe, { once: true });
       const q = claudeQuery({
-        // oxlint-disable-next-line require-yield
+        // oxlint-disable-next-line require-yield -- The probe reads account state only; no prompt may reach the API.
         prompt: (async function* (): AsyncGenerator<SDKUserMessage> {
           await waitForAbortSignal(abort.signal);
         })(),
@@ -305,7 +305,9 @@ export const makeClaudeSubscriptionUsageCapability = (input: {
         const init = await q.initializationResult();
         const usageMethod = (
           q as {
-            usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET?: () => Promise<SDKControlGetUsageResponse>;
+            usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET?: (opts?: {
+              readonly skipBehaviors?: boolean;
+            }) => Promise<SDKControlGetUsageResponse>;
           }
         ).usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET;
         if (typeof usageMethod !== "function") {
@@ -316,7 +318,9 @@ export const makeClaudeSubscriptionUsageCapability = (input: {
             details: [],
           });
         }
-        const response = await usageMethod.call(q);
+        // Only the rate limits are read; the transcript scan behind `behaviors` outlasts the
+        // timeout for users with large histories.
+        const response = await usageMethod.call(q, { skipBehaviors: true });
         const account = init.account as { readonly email?: string } | undefined;
         return parseClaudeSubscriptionUsage({
           identity,

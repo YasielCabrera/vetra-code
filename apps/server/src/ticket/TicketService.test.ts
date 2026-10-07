@@ -32,7 +32,7 @@ import { vi } from "vite-plus/test";
 
 import { createPendingAttachmentId } from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
-import * as SqlitePersistence from "../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as TicketGitHub from "./TicketGitHub.ts";
 import * as TicketService from "./TicketService.ts";
 

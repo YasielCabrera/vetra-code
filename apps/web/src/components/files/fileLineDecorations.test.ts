@@ -134,13 +134,6 @@ class FakeElement {
   }
 
   querySelector(selector: string): FakeElement | null {
-    if (
-      selector === "[data-content][contenteditable=true]" &&
-      this.hasAttribute("data-content") &&
-      this.getAttribute("contenteditable") === "true"
-    ) {
-      return this;
-    }
     const attribute = /^\[([^\]]+)\]$/.exec(selector)?.[1];
     if (attribute && this.hasAttribute(attribute)) return this;
     for (const child of this.children) {
@@ -213,7 +206,7 @@ describe("inline blame styling", () => {
     expect(FILE_LINE_DECORATIONS_UNSAFE_CSS).not.toContain("data-vetra-blame-column");
   });
 
-  it("tracks focus and caret movement inside Pierre's shadow editor", () => {
+  it("tracks focus and caret movement in Pierre's shadow editor, made editable after install", () => {
     Object.defineProperty(globalThis, "HTMLElement", {
       configurable: true,
       value: FakeElement,
@@ -223,7 +216,6 @@ describe("inline blame styling", () => {
     container.shadowRoot = root;
     const content = new FakeElement();
     content.setAttribute("data-content", "");
-    content.setAttribute("contenteditable", "true");
     root.append(content);
     const onFocus = vi.fn();
     const onBlur = vi.fn();
@@ -235,6 +227,7 @@ describe("inline blame styling", () => {
       onCaretMove,
     });
     expect(listeners?.content).toBe(content as unknown as HTMLElement);
+    content.setAttribute("contenteditable", "true");
 
     content.focused = true;
     content.dispatch("focus");

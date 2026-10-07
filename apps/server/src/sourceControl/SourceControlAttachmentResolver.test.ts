@@ -1,13 +1,13 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { afterEach, describe, expect, it, vi } from "@effect/vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import { ChildProcessSpawner } from "effect/process";
 import { FetchHttpClient } from "effect/http";
 
-import * as ServerConfig from "../config.ts";
+import * as ServerSettings from "../serverSettings.ts";
 import * as VcsProcess from "../vcs/VcsProcess.ts";
-import * as GitHubCli from "./GitHubCli.ts";
+import * as GitHubCredentials from "./GitHubCredentials.ts";
 import * as SourceControlAttachmentResolver from "./SourceControlAttachmentResolver.ts";
 
 const ATTACHMENT_URL =
@@ -26,20 +26,24 @@ const mockRun = vi.fn<VcsProcess.VcsProcess["Service"]["run"]>();
 const mockFetch = vi.fn<(...args: Parameters<typeof globalThis.fetch>) => Promise<Response>>();
 
 const layer = SourceControlAttachmentResolver.layer.pipe(
-  Layer.provide(GitHubCli.layer),
+  Layer.provide(GitHubCredentials.layer),
   Layer.provide(Layer.mock(VcsProcess.VcsProcess)({ run: mockRun })),
+  Layer.provide(ServerSettings.layerTest()),
   Layer.provide(FetchHttpClient.layer),
   Layer.provide(Layer.succeed(FetchHttpClient.Fetch, mockFetch)),
-  Layer.provide(
-    ServerConfig.ServerConfig.layerTest(process.cwd(), {
-      prefix: "vetra-source-control-attachment-test-",
-    }).pipe(Layer.provide(NodeServices.layer)),
-  ),
+  Layer.provide(NodeServices.layer),
 );
+
+// An environment token would win over gh, so the gh path under test needs none.
+beforeEach(() => {
+  for (const name of ["GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN"])
+    vi.stubEnv(name, "");
+});
 
 afterEach(() => {
   mockRun.mockReset();
   mockFetch.mockReset();
+  vi.unstubAllEnvs();
 });
 
 describe("SourceControlAttachmentResolver", () => {

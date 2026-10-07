@@ -30,8 +30,11 @@ import {
   type ProviderInstanceId,
   type ThreadId,
 } from "@t3tools/contracts";
+import * as Clock from "effect/Clock";
+import * as Data from "effect/Data";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
+import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -80,6 +83,18 @@ export { cursorSdkModelSelection } from "../../provider/cursorSdkModel.ts";
 export const CURSOR_DRIVER_KIND = CursorAgentSdk.CURSOR_PROVIDER;
 export const CURSOR_DEFAULT_INSTANCE_ID = defaultInstanceIdForDriver(CURSOR_DRIVER_KIND);
 const DEFAULT_CURSOR_SETTINGS = Schema.decodeSync(CursorSettings)({});
+
+// Cursor can leave a run pending forever: updates stop but `run.wait()` never
+// settles, so the turn stays running until someone interrupts it by hand.
+// Measured from the last SDK update, and generous so a turn that is merely
+// thinking is never mistaken for a stalled one. A running tool reports nothing
+// until it finishes, so a long build or test run gets much longer.
+const CURSOR_TURN_INACTIVITY_TIMEOUT = Duration.minutes(10);
+const CURSOR_ACTIVE_TOOL_INACTIVITY_TIMEOUT = Duration.minutes(30);
+
+class CursorTurnStalledError extends Data.TaggedError("CursorTurnStalledError")<{
+  readonly timeout: Duration.Duration;
+}> {}
 
 export const CursorProviderCapabilitiesV2 = {
   sessions: {
@@ -832,6 +847,8 @@ interface ActiveCursorTurn {
   readonly assistant: ActiveCursorTextStream;
   readonly assistantReply: CursorTransportFailure;
   readonly reasoning: ActiveCursorTextStream;
+  /** Monotonic, so a system clock change cannot make a live turn look stalled. */
+  lastActivityAtNanos: bigint;
   interrupted: boolean;
   finalized: boolean;
 }
@@ -1572,10 +1589,10 @@ export function makeCursorAdapterV2(
               },
               prompt: args.prompt,
               title: args.description,
-              model: args.model?.trim() || null,
               result: null,
               startedAt: now,
             }),
+            model: args.model?.trim() || existing?.task.model || null,
             nativeTaskRef: {
               driver: CursorAgentSdk.CURSOR_PROVIDER,
               nativeId: input.callId,
@@ -1876,6 +1893,7 @@ export function makeCursorAdapterV2(
           if (context.finalized) {
             return;
           }
+          context.lastActivityAtNanos = yield* Clock.monotonicTimeNanos;
           switch (update.type) {
             case "text-delta":
               context.assistantReply.push(update.text);
@@ -2043,6 +2061,31 @@ export function makeCursorAdapterV2(
             current?.providerTurnId === input.context.providerTurnId ? null : current,
           );
           yield* Deferred.succeed(input.context.completed, undefined);
+        });
+
+        /** Fails once the turn has gone without an SDK update for its inactivity timeout. */
+        const failWhenStalled = Effect.fnUntraced(function* (context: ActiveCursorTurn) {
+          while (true) {
+            const toolRunning =
+              context.tools.size > 0 ||
+              Array.from(context.subagents.values()).some((subagent) =>
+                isOrchestrationV2WorkActive(subagent.task.status),
+              );
+            const timeout = toolRunning
+              ? CURSOR_ACTIVE_TOOL_INACTIVITY_TIMEOUT
+              : CURSOR_TURN_INACTIVITY_TIMEOUT;
+            const remainingNanos =
+              Duration.toNanosUnsafe(timeout) -
+              ((yield* Clock.monotonicTimeNanos) - context.lastActivityAtNanos);
+            if (remainingNanos <= 0n) {
+              return yield* new CursorTurnStalledError({ timeout });
+            }
+            // Re-evaluate within the idle timeout when an active tool finishes.
+            const idleNanos = Duration.toNanosUnsafe(CURSOR_TURN_INACTIVITY_TIMEOUT);
+            yield* Effect.sleep(
+              Duration.nanos(remainingNanos < idleNanos ? remainingNanos : idleNanos),
+            );
+          }
         });
 
         const terminalStatus = (
@@ -2245,6 +2288,7 @@ export function makeCursorAdapterV2(
                 current: null,
                 nextSegment: 0,
               },
+              lastActivityAtNanos: yield* Clock.monotonicTimeNanos,
               interrupted: false,
               finalized: false,
             };
@@ -2273,6 +2317,7 @@ export function makeCursorAdapterV2(
             }
 
             yield* sdkRun.wait.pipe(
+              Effect.raceFirst(failWhenStalled(context)),
               Effect.flatMap((result) =>
                 Effect.gen(function* () {
                   if (
@@ -2315,13 +2360,23 @@ export function makeCursorAdapterV2(
               Effect.catch((cause) =>
                 Effect.gen(function* () {
                   if (context !== null) {
+                    const stalled = cause instanceof CursorTurnStalledError;
+                    if (stalled) {
+                      // Stop the agent working on a turn nobody is waiting on.
+                      yield* context.run.cancel.pipe(Effect.timeout("10 seconds"), Effect.ignore);
+                    }
                     yield* finalizeTurn({
                       context,
                       status: context.interrupted ? "interrupted" : "failed",
                       ...(context.interrupted
                         ? {}
                         : {
-                            failure: makeProviderFailure({ cause, class: "transport_error" }),
+                            failure: stalled
+                              ? makeProviderFailure({
+                                  class: "provider_error",
+                                  message: `Cursor stopped sending updates for ${Duration.toMinutes(cause.timeout)} minutes and the turn never finished. The turn was cancelled; send another message to continue.`,
+                                })
+                              : makeProviderFailure({ cause, class: "transport_error" }),
                           }),
                     });
                   }

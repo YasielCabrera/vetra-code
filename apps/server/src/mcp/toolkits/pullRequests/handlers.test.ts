@@ -23,6 +23,8 @@ import {
 } from "../../../orchestration-v2/testkit/pullRequestFixtures.ts";
 import * as ProjectService from "../../../project/ProjectService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
+import * as McpToolAccess from "../../McpToolAccess.ts";
+import * as McpToolAccessTestkit from "../../McpToolAccess.testkit.ts";
 import { listThreadPullRequests } from "./handlers.ts";
 import * as PullRequestsHandlers from "./handlers.ts";
 import { PullRequestLinkFailedError, PullRequestsToolkit } from "./tools.ts";
@@ -163,9 +165,14 @@ const makeHarness = Effect.fn("makePullRequestsToolkitHarness")(function* (
       dispatch,
     }),
     Layer.succeed(Crypto.Crypto, testCrypto),
+    McpToolAccessTestkit.liveThreadsLayer,
   );
   const toolkit = yield* PullRequestsToolkit.pipe(
-    Effect.provide(PullRequestsHandlers.layer.pipe(Layer.provide(layerDependencies))),
+    Effect.provide(
+      McpToolAccess.HandlersLayer.layer(PullRequestsHandlers.layer).pipe(
+        Layer.provide(layerDependencies),
+      ),
+    ),
   );
   const call = <Name extends keyof typeof PullRequestsToolkit.tools>(
     name: Name,
@@ -268,11 +275,14 @@ describe("pull request toolkit handlers", () => {
         ]),
       });
       const error = yield* harness
-        .call("watch_pull_request", { repository: "t3tools/t3code", number: 1 })
+        .call("watch_pull_request", { repository: "vetra-code/vetra-code", number: 1 })
         .pipe(Effect.flip);
       expect(error).toMatchObject({ _tag: "PullRequestNotOpenError", state: "merged" });
       expect(
-        yield* harness.call("unwatch_pull_request", { repository: "t3tools/t3code", number: 3 }),
+        yield* harness.call("unwatch_pull_request", {
+          repository: "vetra-code/vetra-code",
+          number: 3,
+        }),
       ).toMatchObject({ wasWatching: true });
       expect(yield* Ref.get(harness.commands)).toMatchObject([
         { type: "thread.pull-request.watch", number: 3, watching: false },
@@ -288,7 +298,7 @@ describe("pull request toolkit handlers", () => {
           { ...closed, snapshot: closed.snapshot && { ...closed.snapshot, state: "closed" } },
         ]),
       });
-      yield* harness.call("watch_pull_request", { repository: "t3tools/t3code", number: 1 });
+      yield* harness.call("watch_pull_request", { repository: "vetra-code/vetra-code", number: 1 });
       expect(yield* Ref.get(harness.commands)).toMatchObject([
         { type: "thread.pull-request.watch", number: 1, watching: true },
       ]);
@@ -308,7 +318,7 @@ describe("pull request toolkit handlers", () => {
         },
       });
       const error = yield* harness
-        .call("watch_pull_request", { repository: "t3tools/t3code", number: 1 })
+        .call("watch_pull_request", { repository: "vetra-code/vetra-code", number: 1 })
         .pipe(Effect.flip);
       expect(error).toMatchObject({ _tag: "PullRequestWatchFromSubagentError" });
       expect(yield* Ref.get(harness.commands)).toEqual([]);

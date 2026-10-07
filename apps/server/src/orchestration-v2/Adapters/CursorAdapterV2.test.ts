@@ -21,6 +21,7 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
+import * as TestClock from "effect/testing/TestClock";
 
 import * as ServerConfig from "../../config.ts";
 import * as McpProviderSession from "../../mcp/McpProviderSession.ts";
@@ -40,12 +41,14 @@ const decodeCursorSettings = Schema.decodeEffect(CursorSettings);
 
 describe("CursorAdapterV2", () => {
   it.effect.each([
-    { status: "finished", model: undefined },
-    { status: "cancelled", model: "claude-opus-4-6" },
-    { status: "error", model: "custom-fable" },
+    { status: "finished", model: undefined, lateModel: undefined },
+    { status: "cancelled", model: "claude-opus-4-6", lateModel: undefined },
+    { status: "error", model: "custom-fable", lateModel: undefined },
+    { status: "finished", model: undefined, lateModel: "gpt-6-sol" },
+    { status: "finished", model: "gpt-6-sol", lateModel: null },
   ] as const)(
-    "settles missing task completions when the Cursor run is $status",
-    ({ status, model }) =>
+    "projects Cursor tasks: $status, late model $lateModel",
+    ({ status, model, lateModel }) =>
       Effect.gen(function* () {
         const fileSystem = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
@@ -96,12 +99,24 @@ describe("CursorAdapterV2", () => {
                         mode: "unspecified" as const,
                       },
                     };
-                    for (const type of ["partial-tool-call", "tool-call-started"] as const) {
+                    const updates =
+                      lateModel !== undefined
+                        ? (["tool-call-started", "tool-call-completed"] as const)
+                        : (["partial-tool-call", "tool-call-started"] as const);
+                    for (const type of updates) {
                       yield* input.onDelta!({
                         type,
                         modelCallId: "model-call",
                         callId: "task-call",
-                        toolCall: taskToolCall,
+                        toolCall: {
+                          ...taskToolCall,
+                          args: {
+                            ...taskToolCall.args,
+                            ...(type === "tool-call-completed"
+                              ? { model: lateModel ?? undefined }
+                              : {}),
+                          },
+                        },
                       }).pipe(Effect.orDie);
                     }
                     return {
@@ -180,9 +195,16 @@ describe("CursorAdapterV2", () => {
         const rows = events.filter((event) => event.type === "subagent.updated");
         assert.equal(rows[0]?.subagent.status, "running");
         assert.equal(rows[0]?.subagent.model, model ?? null);
+        assert.equal(rows.at(-1)?.subagent.model, lateModel ?? model ?? null);
         assert.equal(
           rows.at(-1)?.subagent.status,
-          status === "finished" ? "idle" : status === "cancelled" ? "cancelled" : "failed",
+          lateModel !== undefined
+            ? "completed"
+            : status === "finished"
+              ? "idle"
+              : status === "cancelled"
+                ? "cancelled"
+                : "failed",
         );
         assert.isNotNull(rows.at(-1)?.subagent.completedAt);
       }).pipe(Effect.scoped, Effect.provide(Layer.merge(NodeServices.layer, IdAllocator.layer))),
@@ -336,6 +358,185 @@ describe("CursorAdapterV2", () => {
       );
       assert.equal(sentMessages[1], "/compress");
     }).pipe(Effect.scoped, Effect.provide(Layer.merge(NodeServices.layer, IdAllocator.layer))),
+  );
+
+  it.effect.each([
+    { scenario: "idle", timeoutMinutes: 10, elapsedMinutes: 10 },
+    { scenario: "active-tool", timeoutMinutes: 30, elapsedMinutes: 30 },
+    { scenario: "completed-tool", timeoutMinutes: 10, elapsedMinutes: 11 },
+    { scenario: "long-tool", timeoutMinutes: 10, elapsedMinutes: 35 },
+    { scenario: "text-progress", timeoutMinutes: 10, elapsedMinutes: 15 },
+  ] as const)(
+    "fails and cancels a silent Cursor turn: $scenario",
+    ({ scenario, timeoutMinutes, elapsedMinutes }) =>
+      Effect.gen(function* () {
+        const fileSystem = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const workspace = yield* fileSystem.makeTempDirectoryScoped({ prefix: "cursor-v2-stall-" });
+        const instanceId = ProviderInstanceId.make("cursor");
+        const threadId = ThreadId.make("cursor-stall-thread");
+        const modelSelection = { instanceId, model: "composer-2.5" };
+        const runtimePolicy = ProviderAdapterV2RuntimePolicy.make({
+          runtimeMode: "full-access",
+          interactionMode: "default",
+          cwd: workspace,
+        });
+        let emit: ((update: InteractionUpdate) => Effect.Effect<void>) | undefined;
+        let cancelCalls = 0;
+        const adapter = makeCursorAdapterV2({
+          instanceId,
+          settings: yield* decodeCursorSettings({}),
+          environment: { HOME: workspace },
+          fileSystem,
+          path,
+          idAllocator: yield* IdAllocator.IdAllocatorV2,
+          serverConfig: yield* ServerConfig.ServerConfig.pipe(
+            Effect.provide(
+              ServerConfig.layerTest(workspace, { prefix: "cursor-v2-stall-config-" }),
+            ),
+          ),
+          runner: {
+            assertComplete: Effect.void,
+            open: () =>
+              Effect.succeed({
+                agentId: "native-cursor-stall",
+                listMessages: Effect.succeed([]),
+                close: Effect.void,
+                send: (input) =>
+                  Effect.sync(() => {
+                    emit = (update) => input.onDelta!(update).pipe(Effect.orDie);
+                    return {
+                      agentId: "native-cursor-stall",
+                      runId: "native-cursor-stall-run",
+                      wait: Effect.never,
+                      cancel: Effect.sync(() => {
+                        cancelCalls += 1;
+                      }),
+                    };
+                  }),
+              }),
+          },
+        });
+        const runtime = yield* adapter.openSession({
+          threadId,
+          providerSessionId: ProviderSessionId.make("cursor-stall-session"),
+          modelSelection,
+          runtimePolicy,
+        });
+        const providerThread = yield* runtime.ensureThread({
+          threadId,
+          modelSelection,
+          runtimePolicy,
+        });
+        const now = yield* DateTime.now;
+        yield* runtime.startTurn({
+          threadId,
+          providerThread,
+          modelSelection,
+          runtimePolicy,
+          runId: RunId.make("cursor-stall-run"),
+          runOrdinal: 1,
+          providerTurnOrdinal: 1,
+          attemptId: RunAttemptId.make("cursor-stall-attempt"),
+          rootNodeId: NodeId.make("cursor-stall-root"),
+          appThread: {
+            id: threadId,
+            projectId: ProjectId.make("cursor-stall-project"),
+            createdBy: "user",
+            creationSource: "web",
+            title: "Cursor stall",
+            providerInstanceId: instanceId,
+            modelSelection,
+            runtimeMode: "full-access",
+            interactionMode: "default",
+            branch: null,
+            worktreePath: null,
+            activeProviderThreadId: providerThread.id,
+            lineage: { parentThreadId: null, relationshipToParent: null, rootThreadId: threadId },
+            forkedFrom: null,
+            createdAt: now,
+            updatedAt: now,
+            archivedAt: null,
+            settledOverride: null,
+            settledAt: null,
+            lastVisitedAt: null,
+            deletedAt: null,
+          },
+          message: {
+            messageId: MessageId.make("cursor-stall-message"),
+            createdBy: "user",
+            creationSource: "web",
+            text: "Run the build.",
+            attachments: [],
+          },
+        });
+        const buildTool = (type: "tool-call-started" | "tool-call-completed") =>
+          ({
+            type,
+            modelCallId: "native-model-call",
+            callId: "mcp-build",
+            toolCall: {
+              type: "mcp" as const,
+              args: { providerIdentifier: "build", toolName: "run", args: {} },
+              ...(type === "tool-call-completed"
+                ? { result: { status: "success" as const, value: { content: [], isError: false } } }
+                : {}),
+            },
+          }) satisfies InteractionUpdate;
+
+        switch (scenario) {
+          case "idle":
+            yield* TestClock.adjust("9 minutes");
+            break;
+          case "active-tool":
+            yield* emit!(buildTool("tool-call-started"));
+            yield* TestClock.adjust("29 minutes");
+            break;
+          case "completed-tool":
+          case "long-tool":
+            yield* emit!(buildTool("tool-call-started"));
+            yield* TestClock.adjust(scenario === "long-tool" ? "25 minutes" : "1 minute");
+            assert.equal(cancelCalls, 0);
+            yield* emit!(buildTool("tool-call-completed"));
+            yield* TestClock.adjust("9 minutes");
+            break;
+          case "text-progress":
+            yield* TestClock.adjust("5 minutes");
+            yield* emit!({ type: "text-delta", text: "Still working." });
+            yield* TestClock.adjust("9 minutes");
+            break;
+        }
+        assert.equal(cancelCalls, 0);
+        yield* TestClock.adjust("1 minute");
+
+        const events = yield* runtime.events.pipe(
+          Stream.takeUntil((event) => event.type === "turn.terminal"),
+          Stream.runCollect,
+        );
+        const terminal = events.find((event) => event.type === "turn.terminal");
+        assert.equal(terminal?.status, "failed");
+        assert.include(
+          terminal?.failure?.message ?? "",
+          `stopped sending updates for ${timeoutMinutes} minutes`,
+        );
+        const settled = events.findLast(
+          (event) =>
+            event.type === "provider_turn.updated" && event.providerTurn.status === "failed",
+        );
+        assert.isDefined(settled);
+        if (
+          settled?.type === "provider_turn.updated" &&
+          settled.providerTurn.completedAt !== null &&
+          settled.providerTurn.startedAt !== null
+        ) {
+          assert.equal(
+            DateTime.toEpochMillis(settled.providerTurn.completedAt) -
+              DateTime.toEpochMillis(settled.providerTurn.startedAt),
+            elapsedMinutes * 60_000,
+          );
+        }
+        assert.equal(cancelCalls, 1);
+      }).pipe(Effect.scoped, Effect.provide(Layer.merge(NodeServices.layer, IdAllocator.layer))),
   );
 
   it.effect("projects Cursor directory trees and lint diagnostics as file search results", () =>

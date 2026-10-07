@@ -12,11 +12,14 @@ import {
   TicketStatusId,
   type OrchestrationV2DomainEvent,
   type OrchestrationV2ThreadShell,
+  type PullRequestRef,
+  type PullRequestSummary,
   type ServerSettings,
   type ThreadPullRequestLink,
   type TicketPlanSummary,
   type TicketSummary,
 } from "@t3tools/contracts";
+import { threadPullRequestKeyOf } from "@t3tools/shared/threadPullRequests";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -27,7 +30,10 @@ import * as SqlClient from "effect/sql/SqlClient";
 
 import * as ServerConfig from "../config.ts";
 import * as Orchestrator from "../orchestration-v2/Orchestrator.ts";
-import * as SqlitePersistence from "../persistence/Layers/Sqlite.ts";
+import * as ProjectionStore from "../orchestration-v2/ProjectionStore.ts";
+import * as PullRequestSyncReactor from "../orchestration-v2/PullRequestSyncReactor.ts";
+import * as SqlitePersistence from "../persistence/Sqlite.ts";
+import * as PullRequestService from "../pullRequest/PullRequestService.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
 import * as TicketGitHub from "./TicketGitHub.ts";
 import * as TicketLinkReactor from "./TicketLinkReactor.ts";
@@ -45,6 +51,15 @@ const ticketsLayer = TicketService.layer.pipe(
   Layer.provideMerge(SqlitePersistence.layerMemory),
   Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-ticket-links-" })),
   Layer.provideMerge(NodeServices.layer),
+);
+
+/** For tests that never reach a settled thread's pull requests. */
+const noSettledPullRequests = Layer.mergeAll(
+  Layer.mock(ProjectionStore.ProjectionStoreV2)({
+    getThreadsWithPullRequests: () => Effect.succeed([]),
+  }),
+  Layer.mock(PullRequestService.PullRequestService)({}),
+  Layer.mock(PullRequestSyncReactor.PullRequestSyncReactor)({}),
 );
 
 const withReactor = <A, E>(
@@ -85,6 +100,7 @@ const withReactor = <A, E>(
           ),
         }),
         Layer.mock(ServerSettingsService)({ getSettings: Ref.get(settings) }),
+        noSettledPullRequests,
       );
       return yield* Effect.gen(function* () {
         const reactor = yield* TicketLinkReactor.make;
@@ -260,6 +276,35 @@ const linksOf = (ticket: TicketSummary) =>
 
 const PULL_REQUEST_KEY = "github.com/acme/app#7";
 
+const pullRequestSummary = (
+  ref: PullRequestRef,
+  state: PullRequestSummary["state"],
+): PullRequestSummary => ({
+  provider: "github",
+  projectId: ref.projectId,
+  repository: ref.repository,
+  number: ref.number,
+  title: "Fix the login loop",
+  url: `https://github.com/${ref.repository}/pull/${ref.number}`,
+  state,
+  headBranch: "fix/login",
+  baseBranch: "main",
+  updatedAt: "2026-10-01T00:00:00.000Z",
+});
+
+const projectionThread = (
+  id: string,
+  pullRequests: ReadonlyArray<ThreadPullRequestLink>,
+  settled = true,
+): ProjectionStore.ProjectionThreadPullRequests => ({
+  id: ThreadId.make(id),
+  projectId: PROJECT,
+  lineage: { rootThreadId: ThreadId.make(id), parentThreadId: null, relationshipToParent: null },
+  settledOverride: settled ? "settled" : null,
+  settledAt: settled ? NOW : null,
+  pullRequests,
+});
+
 const pullRequestTarget = (state: "open" | "merged", title = "Fix the login loop") => ({
   kind: "pull_request" as const,
   ref: { host: "github.com", repository: "acme/app", number: 7 },
@@ -305,6 +350,7 @@ describe("TicketLinkReactor", () => {
         Layer.mock(ServerSettingsService)({
           getSettings: Effect.succeed(DEFAULT_SERVER_SETTINGS),
         }),
+        noSettledPullRequests,
       );
       yield* Effect.gen(function* () {
         const reactor = yield* TicketLinkReactor.make;
@@ -321,6 +367,138 @@ describe("TicketLinkReactor", () => {
       }).pipe(Effect.provide(dependencies));
     }).pipe(Effect.scoped, Effect.provide(ticketsLayer)),
   );
+  it.effect(
+    "hands a settled thread's merge to pull request sync while an open ticket links it",
+    () =>
+      Effect.gen(function* () {
+        const tickets = yield* TicketService.TicketService;
+        const linkThreads = (title: string, threadIds: ReadonlyArray<string>, statusId?: string) =>
+          tickets.create(
+            {
+              title,
+              ...(statusId === undefined ? {} : { statusId: status(statusId) }),
+              links: threadIds.map((id) => ({
+                kind: "thread" as const,
+                threadId: ThreadId.make(id),
+              })),
+            },
+            USER,
+          );
+        yield* linkThreads("Open", ["merged-since", "still-open", "active", "known-merged"]);
+        yield* linkThreads("Shipped", ["done-ticket"], "done");
+        const threads = [
+          projectionThread("merged-since", [pullRequest("open", 7)]),
+          projectionThread("still-open", [pullRequest("open", 8)]),
+          projectionThread("done-ticket", [pullRequest("open", 9)]),
+          // The sync sweep still reads an unsettled thread's pull requests.
+          projectionThread("active", [pullRequest("open", 10)], false),
+          projectionThread("known-merged", [pullRequest("merged", 11)]),
+          projectionThread("no-ticket", [pullRequest("open", 12)]),
+        ];
+        const passes = yield* Queue.unbounded<void>();
+        const reads = yield* Ref.make<ReadonlyArray<number>>([]);
+        const requested = yield* Ref.make<ReadonlyArray<string>>([]);
+        const dependencies = Layer.mergeAll(
+          Layer.mock(Orchestrator.OrchestratorV2)({ streamDomainEvents: Stream.never }),
+          Layer.mock(ServerSettingsService)({
+            getSettings: Effect.succeed(DEFAULT_SERVER_SETTINGS),
+          }),
+          Layer.mock(ProjectionStore.ProjectionStoreV2)({
+            getThreadsWithPullRequests: () =>
+              Queue.offer(passes, undefined).pipe(Effect.as(threads)),
+          }),
+          Layer.mock(PullRequestService.PullRequestService)({
+            summary: (ref, options) =>
+              Ref.update(reads, (numbers) => [...numbers, ref.number]).pipe(
+                Effect.as(
+                  pullRequestSummary(
+                    ref,
+                    options?.recoverTransientFailure === false && ref.number === 7
+                      ? "merged"
+                      : "open",
+                  ),
+                ),
+              ),
+          }),
+          Layer.mock(PullRequestSyncReactor.PullRequestSyncReactor)({
+            requestSync: (key) =>
+              Ref.update(requested, (keys) => [...keys, threadPullRequestKeyOf(key)]),
+          }),
+        );
+        yield* Effect.gen(function* () {
+          const reactor = yield* TicketLinkReactor.make;
+          yield* reactor.start();
+          yield* Queue.take(passes);
+          yield* reactor.drain;
+        }).pipe(Effect.provide(dependencies));
+
+        assert.deepStrictEqual(
+          [(yield* Ref.get(reads)).toSorted(), yield* Ref.get(requested)],
+          [[7, 8], [PULL_REQUEST_KEY]],
+        );
+      }).pipe(Effect.scoped, Effect.provide(ticketsLayer)),
+  );
+
+  it.effect("moves a ticket to Done when a manually settled thread's PR later merges", () =>
+    Effect.gen(function* () {
+      const tickets = yield* TicketService.TicketService;
+      const ticket = (yield* tickets.create(
+        {
+          title: "Ship",
+          statusId: status("in_review"),
+          links: [{ kind: "thread", threadId: THREAD }],
+        },
+        USER,
+      )).ticket;
+      const events = yield* Queue.unbounded<OrchestrationV2DomainEvent>();
+      const pulls = yield* Queue.unbounded<void>();
+      const passes = yield* Queue.unbounded<void>();
+      const dependencies = Layer.mergeAll(
+        Layer.mock(Orchestrator.OrchestratorV2)({
+          streamDomainEvents: Stream.fromEffectRepeat(
+            Queue.offer(pulls, undefined).pipe(Effect.andThen(Queue.take(events))),
+          ),
+          dispatch: (command) => {
+            if (command.type !== "thread.pull-request-link.sync")
+              return Effect.die("Unexpected command");
+            const event = pullRequestsSynced([
+              { ...pullRequest("open"), snapshot: command.snapshot },
+            ]);
+            return Queue.offer(events, {
+              ...event,
+              payload: { ...event.payload, settledOverride: "settled", settledAt: NOW },
+            }).pipe(Effect.as({ sequence: 1, storedEvents: [] }));
+          },
+        }),
+        Layer.mock(ProjectionStore.ProjectionStoreV2)({
+          getThreadsWithPullRequests: () =>
+            Queue.offer(passes, undefined).pipe(
+              Effect.as([projectionThread(THREAD, [pullRequest("open")])]),
+            ),
+        }),
+        Layer.mock(PullRequestService.PullRequestService)({
+          summary: (ref) => Effect.succeed({ ...pullRequestSummary(ref, "merged"), stack: null }),
+          invalidate: () => Effect.void,
+        }),
+        Layer.mock(ServerSettingsService)({ getSettings: Effect.succeed(DEFAULT_SERVER_SETTINGS) }),
+      );
+      yield* Effect.gen(function* () {
+        const prSync = yield* PullRequestSyncReactor.make;
+        const reactor = yield* TicketLinkReactor.make.pipe(
+          Effect.provideService(PullRequestSyncReactor.PullRequestSyncReactor, prSync),
+        );
+        yield* reactor.start();
+        yield* Queue.take(pulls);
+        yield* Queue.take(passes);
+        yield* reactor.drain;
+        yield* prSync.drain;
+        yield* Queue.take(pulls);
+        yield* reactor.drain;
+        assert.strictEqual((yield* tickets.get(ticket.id)).summary.statusId, "done");
+      }).pipe(Effect.provide(dependencies));
+    }).pipe(Effect.scoped, Effect.provide(ticketsLayer)),
+  );
+
   it.effect("catches up existing pull requests when any service caller links a thread", () =>
     withReactor(({ tickets, publish, setPullRequests, waitThreadLinks }) =>
       Effect.gen(function* () {

@@ -3,10 +3,10 @@ import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Redacted from "effect/Redacted";
 import { FetchHttpClient, HttpClient } from "effect/http";
 
-import * as ServerConfig from "../config.ts";
-import * as GitHubCli from "./GitHubCli.ts";
+import * as GitHubCredentials from "./GitHubCredentials.ts";
 
 const ATTACHMENT_REDIRECT_TIMEOUT = Duration.seconds(15);
 
@@ -38,18 +38,14 @@ function signedStorageUrl(location: string | undefined): string | null {
 }
 
 export const make = Effect.gen(function* () {
-  const config = yield* ServerConfig.ServerConfig;
-  const github = yield* GitHubCli.GitHubCli;
+  const credentials = yield* GitHubCredentials.GitHubCredentials;
   const httpClient = yield* HttpClient.HttpClient;
 
-  // `gh` only holds tokens for hosts the user signed in to, so an unknown host fails here
+  // Credentials exist only for hosts the user signed in to, so an unknown host fails here
   // without a single byte leaving the machine.
   const readToken = (host: string) =>
-    github.execute({ cwd: config.stateDir, args: ["auth", "token", "--hostname", host] }).pipe(
-      Effect.map((output) => {
-        const token = output.stdout.trim();
-        return token.length > 0 ? token : null;
-      }),
+    credentials.get(host).pipe(
+      Effect.map((credential) => Redacted.value(credential.token)),
       Effect.tapError((cause) =>
         Effect.logDebug("No GitHub credential for a source control attachment.", { host, cause }),
       ),

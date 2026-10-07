@@ -1,3 +1,4 @@
+// @effect-diagnostics-next-line nodeBuiltinImport:off -- serverHeaders is a synchronous request builder inside a capability whose effects carry no services.
 import * as NodeCrypto from "node:crypto";
 
 import type {

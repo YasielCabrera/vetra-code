@@ -15,7 +15,6 @@ import {
   applyServerSettingsPatch,
   isModelSelectionProviderEnabled,
   parsePersistedServerObservabilitySettings,
-  parsePersistedWeb3WalletSettings,
   resolveSourceControlWriterModelSelection,
   resolveProjectAgentBrowserAccess,
   resolveProjectAutoPull,
@@ -41,6 +40,17 @@ describe("serverSettings helpers", () => {
       browserArtifactsAfterDays: null,
       logsAfterDays: 30,
     });
+  });
+  it("replaces GitHub host choices so a cleared account pin does not survive", () => {
+    const pinned = applyServerSettingsPatch(DEFAULT_SERVER_SETTINGS, {
+      github: { hosts: { "github.com": { account: "work", enabled: true } } },
+    });
+    expect(pinned.github.hosts).toEqual({ "github.com": { account: "work", enabled: true } });
+    expect(
+      applyServerSettingsPatch(pinned, {
+        github: { hosts: { "github.com": { enabled: false } } },
+      }).github.hosts,
+    ).toEqual({ "github.com": { enabled: false } });
   });
   it("replaces SSH host lists when saving, editing, and removing hosts", () => {
     const host = { id: "mini", label: "Mac mini", target: "mini" };
@@ -794,41 +804,6 @@ describe("serverSettings helpers", () => {
     });
 
     expect(resolved.pauseWhenOnBattery).toBe(false);
-  });
-});
-
-describe("parsePersistedWeb3WalletSettings", () => {
-  it("reads the wallet block straight out of settings.json", () => {
-    const wallet = parsePersistedWeb3WalletSettings(
-      '{"web3Wallet":{"enabled":true,"approvalMode":"always-ask","chainId":31337,"rpcUrl":"http://127.0.0.1:8545"}}',
-    );
-
-    expect(wallet.enabled).toBe(true);
-    expect(wallet.approvalMode).toBe("always-ask");
-    expect(wallet.chainId).toBe(31337);
-    expect(wallet.rpcUrl).toBe("http://127.0.0.1:8545");
-  });
-
-  it("fills defaults when the file has no wallet block yet", () => {
-    expect(parsePersistedWeb3WalletSettings('{"enableProviderUpdateChecks":false}')).toEqual(
-      DEFAULT_SERVER_SETTINGS.web3Wallet,
-    );
-  });
-
-  it("tolerates the JSONC the settings file allows", () => {
-    const wallet = parsePersistedWeb3WalletSettings(
-      '{\n  // wallet on for local testing\n  "web3Wallet": { "enabled": true },\n}',
-    );
-    expect(wallet.enabled).toBe(true);
-  });
-
-  it("fails closed on an undecodable file rather than assuming enabled", () => {
-    // A wallet that can sign must not turn itself on because a file got corrupted.
-    expect(parsePersistedWeb3WalletSettings("{ not json").enabled).toBe(false);
-    expect(parsePersistedWeb3WalletSettings("").enabled).toBe(false);
-    expect(parsePersistedWeb3WalletSettings('{"web3Wallet":{"enabled":"yes"}}').enabled).toBe(
-      false,
-    );
   });
 });
 

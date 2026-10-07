@@ -12,6 +12,7 @@ import {
   parseCustomNetworkDraft,
   parseRpcUrlInput,
   pendingRequestTitle,
+  pendingRequestsForTab,
   removeAccountConfirmationMessage,
   removeCustomNetworkConfirmationMessage,
   resolveAccountLabelCommit,
@@ -337,6 +338,27 @@ describe("pendingRequestTitle", () => {
 
   it("falls back to the method name for anything unrecognised", () => {
     expect(pendingRequestTitle("anvil_setBalance")).toBe("anvil_setBalance");
+  });
+});
+
+describe("pendingRequestsForTab", () => {
+  it("keeps only the requests one tab made, though tab ids repeat across threads", () => {
+    const request = (requestId: string, threadId: string, tabId: string) => ({
+      requestId,
+      threadId,
+      tabId,
+    });
+    expect(
+      pendingRequestsForTab(
+        [
+          request("a", "thread-1", "tab-1"),
+          request("b", "thread-2", "tab-1"),
+          request("c", "thread-1", "tab-2"),
+          request("d", "thread-1", "tab-1"),
+        ],
+        { threadId: "thread-1", tabId: "tab-1" },
+      ).map((entry) => entry.requestId),
+    ).toEqual(["a", "d"]);
   });
 });
 

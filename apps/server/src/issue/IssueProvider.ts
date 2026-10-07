@@ -38,7 +38,7 @@ export interface ProviderIssue {
   readonly url: string;
   readonly author: IssueActor | null;
   readonly state: IssueState;
-  /** The host's lowercase close reason, such as `completed` or `not_planned`; only issue reads carry it. */
+  /** The host's lowercase close reason, such as `completed` or `not_planned`. */
   readonly stateReason?: string;
   readonly createdAt: string;
   readonly updatedAt: string;

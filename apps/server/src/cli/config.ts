@@ -357,8 +357,11 @@ export const resolveServerConfig = (
       () => mode === "desktop",
     );
     const desktopBootstrapToken = bootstrap?.desktopBootstrapToken;
+    const desktopBootstrapSecret = bootstrap?.desktopBootstrapSecret;
     const desktopTelemetryFd = bootstrap?.desktopTelemetryFd;
     const desktopTelemetryControlFd = bootstrap?.desktopTelemetryControlFd;
+    const desktopBrowserFd = bootstrap?.desktopBrowserFd;
+    const desktopBrowserControlFd = bootstrap?.desktopBrowserControlFd;
     const resourceMonitorPath = bootstrap?.resourceMonitorPath;
     const autoBootstrapProjectFromCwd = Option.getOrElse(
       resolveOptionPrecedence(
@@ -462,8 +465,11 @@ export const resolveServerConfig = (
       noBrowser,
       startupPresentation,
       desktopBootstrapToken,
+      ...(desktopBootstrapSecret === undefined ? {} : { desktopBootstrapSecret }),
       desktopTelemetryFd,
       desktopTelemetryControlFd,
+      desktopBrowserFd,
+      desktopBrowserControlFd,
       resourceMonitorPath,
       autoBootstrapProjectFromCwd,
       logWebSocketEvents,

@@ -39,10 +39,11 @@ import {
 import * as ServerConfig from "../../../config.ts";
 import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementService.ts";
-import * as SqlitePersistence from "../../../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../../../persistence/Sqlite.ts";
 import * as TicketGitHub from "../../../ticket/TicketGitHub.ts";
 import * as TicketService from "../../../ticket/TicketService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
+import * as McpToolAccess from "../../McpToolAccess.ts";
 import { TicketsToolkitHandlersLive } from "./handlers.ts";
 import { TicketsToolkit } from "./tools.ts";
 
@@ -107,7 +108,7 @@ const layerFor = (
     readonly sql?: (sql: SqlClient.SqlClient) => SqlClient.SqlClient;
   } = {},
 ) =>
-  TicketsToolkitHandlersLive.pipe(
+  McpToolAccess.HandlersLayer.layer(TicketsToolkitHandlersLive).pipe(
     Layer.provideMerge(TicketService.layer),
     Layer.provideMerge(externalLayers),
     Layer.provideMerge(

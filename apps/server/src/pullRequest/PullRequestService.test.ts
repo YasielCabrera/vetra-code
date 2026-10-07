@@ -25,7 +25,7 @@ import * as ServerSettingsService from "../serverSettings.ts";
 import { PullRequestOperationError } from "@t3tools/contracts";
 
 import * as ProjectService from "../project/ProjectService.ts";
-import * as SqlitePersistence from "../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as PullRequestFilesViewed from "../persistence/PullRequestFilesViewed.ts";
 import * as RepositoryIdentityResolver from "../project/RepositoryIdentityResolver.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
@@ -5021,6 +5021,62 @@ it.effect("reuses an observed merged state for strict settlement reads", () =>
     const summary = yield* service.summary(reference, { recoverTransientFailure: false });
     assert.strictEqual(summary.state, "merged");
     assert.strictEqual(summary.updatedAt, "2026-07-03T00:00:00Z");
+  }),
+);
+
+it.effect("announces state a detail read sees first or newly", () =>
+  Effect.gen(function* () {
+    let detail = {
+      state: "open" as "open" | "closed" | "merged",
+      updatedAt: "2026-07-02T00:00:00Z",
+    };
+    let summaryState: "open" | "merged" = "open";
+    const reference = { projectId: "p1" as ProjectId, repository: "acme/web", number: 1 };
+    const service = yield* makeService({
+      projects: [project({ id: "p1", title: "web", workspaceRoot: "/a", repository: "acme/web" })],
+      providers: [
+        fakeProvider("github", {
+          getChangeRequest: () => Effect.succeed({ ...hostedChangeRequest("body"), ...detail }),
+          getChangeRequestSummary: () =>
+            Effect.succeed({
+              ...changeRequest(1, "2026-07-04T00:00:00Z"),
+              state: summaryState,
+            }),
+        }),
+      ],
+    });
+    const announced: Array<string> = [];
+    yield* Stream.runForEach(yield* service.subscribeStateChanges, (key) =>
+      Effect.sync(() => announced.push(`${key.host}/${key.repository}#${key.number}`)),
+    ).pipe(Effect.forkChild({ startImmediately: true }));
+    const readDetail = Effect.gen(function* () {
+      yield* service.invalidate({ reference });
+      yield* service.detail(reference);
+      yield* Effect.yieldNow;
+    });
+
+    // First sight announces; the same state again, even from a fresh read, does not.
+    yield* readDetail;
+    yield* readDetail;
+    assert.deepStrictEqual(announced, ["github.com/acme/web#1"]);
+
+    detail = { state: "closed", updatedAt: "2026-07-03T00:00:00Z" };
+    yield* readDetail;
+    assert.strictEqual(announced.length, 2);
+
+    // A summary seeing the merge first does not hide it from the detail read after.
+    summaryState = "merged";
+    yield* service.summary(reference, { recoverTransientFailure: false });
+    yield* Effect.yieldNow;
+    assert.strictEqual(announced.length, 2);
+    detail = { state: "merged", updatedAt: "2026-07-04T00:00:00Z" };
+    yield* readDetail;
+    assert.strictEqual(announced.length, 3);
+
+    // A detail read older than the merge cannot announce a reopen.
+    detail = { state: "open", updatedAt: "2026-07-03T00:00:00Z" };
+    yield* readDetail;
+    assert.strictEqual(announced.length, 3);
   }),
 );
 

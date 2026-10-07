@@ -34,7 +34,7 @@ import { makeCodexTextGeneration } from "../../textGeneration/CodexTextGeneratio
 import * as BackgroundPolicy from "../../background/BackgroundPolicy.ts";
 import * as ServerConfig from "../../config.ts";
 import { expandHomePath } from "../../pathExpansion.ts";
-import * as ProviderEventLoggers from "../Layers/ProviderEventLoggers.ts";
+import * as ProviderEventLoggers from "../ProviderEventLoggers.ts";
 import {
   createCodexAdapterV2,
   type CodexAdapterV2DriverEnv,
@@ -42,14 +42,14 @@ import {
 import * as ServerSettings from "../../serverSettings.ts";
 import * as UsageService from "../../usage/UsageService.ts";
 import { ProviderDriverError } from "../Errors.ts";
-import * as ResetCreditCoordinator from "../Layers/resetCreditCoordinator.ts";
+import * as ResetCreditCoordinator from "../resetCreditCoordinator.ts";
 import {
   checkCodexProviderStatus,
   makePendingCodexProvider,
   probeCodexSkillsForCwd,
   withCodexAppServerClient,
-} from "../Layers/CodexProvider.ts";
-import { resolveCodexLaunchArgs } from "../Layers/codexLaunchArgs.ts";
+} from "../CodexProvider.ts";
+import { resolveCodexLaunchArgs } from "../codexLaunchArgs.ts";
 import { makeManagedServerProvider } from "../makeManagedServerProvider.ts";
 import * as ModelManifest from "../ModelManifest.ts";
 import type { ProviderDriver, ProviderInstance } from "../ProviderDriver.ts";

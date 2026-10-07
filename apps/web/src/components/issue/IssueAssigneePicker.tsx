@@ -8,7 +8,7 @@ import { CheckIcon, UserPlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 
-import { ticketEnvironment } from "~/state/tickets";
+import { ticketEnvironment, useTicketGitHubWriteAllowed } from "~/state/tickets";
 import { useEnvironmentQuery } from "~/state/query";
 import { useAtomCommand } from "~/state/use-atom-command";
 
@@ -50,6 +50,7 @@ export function IssueAssigneePicker({
   readonly reference: TicketGitHubIssueRef;
   readonly onAssigned: () => void;
 }) {
+  const canAssign = useTicketGitHubWriteAllowed(environmentId);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [pending, setPending] = useState<string | null>(null);
@@ -69,7 +70,7 @@ export function IssueAssigneePicker({
   );
 
   const toggle = async (candidate: IssueAssigneeCandidate) => {
-    if (pending !== null) return;
+    if (!canAssign || pending !== null) return;
     setPending(candidate.id);
     const assigned = !candidate.isAssigned;
     const result = await setTicketAssignees({
@@ -96,10 +97,15 @@ export function IssueAssigneePicker({
   };
 
   return (
-    <Menu open={open} onOpenChange={setOpen}>
+    <Menu open={open && canAssign} onOpenChange={setOpen}>
       <MenuTrigger
         render={
-          <Button size="icon-xs" variant="ghost" aria-label="Assign someone to this issue">
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            disabled={!canAssign}
+            aria-label="Assign someone to this issue"
+          >
             <UserPlusIcon className="size-3.5" />
           </Button>
         }
@@ -108,7 +114,7 @@ export function IssueAssigneePicker({
         {viewer !== null ? (
           <button
             type="button"
-            disabled={pending !== null}
+            disabled={!canAssign || pending !== null}
             onClick={() => void toggle(viewer)}
             className="flex w-full items-center gap-2 border-b border-border/60 px-3 py-2 text-left text-xs hover:bg-accent/60 disabled:opacity-60"
           >
@@ -150,7 +156,7 @@ export function IssueAssigneePicker({
               <button
                 key={candidate.id}
                 type="button"
-                disabled={pending !== null}
+                disabled={!canAssign || pending !== null}
                 onClick={() => void toggle(candidate)}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent/60 disabled:opacity-60"
               >

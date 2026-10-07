@@ -81,7 +81,7 @@ function lineResult<Hit extends LineHit>(
 }
 
 /** The file each Pierre container last rendered, which places lines not in the DOM yet. */
-const renderedFiles = new WeakMap<Element, VirtualizedFile<unknown>>();
+const renderedFiles = new WeakMap<Element, VirtualizedFile<unknown, undefined>>();
 
 /** Searches a file Pierre renders in a `Virtualizer`, rendered with `usePierreFileFindSource`. */
 function pierreFileFindSource(contents: string): FindSource {
@@ -104,7 +104,8 @@ function pierreFileFindSource(contents: string): FindSource {
       return lineResult(hits, truncated, query, renderedLines, ({ key }) => {
         const container = host.querySelector<HTMLElement>(DIFFS_TAG_NAME);
         const file = container === null ? undefined : renderedFiles.get(container);
-        const scroller = file?.getScrollContainer();
+        const root = file?.getEditorViewport();
+        const scroller = root instanceof Document ? root.documentElement : root;
         const line = file?.getLinePosition(Number(key));
         if (container === null || scroller === undefined || line === undefined) return;
         const viewport = scroller.getBoundingClientRect();
@@ -121,7 +122,7 @@ function pierreFileFindSource(contents: string): FindSource {
   };
 }
 
-type FilePostRender<LAnnotation> = NonNullable<FileOptions<LAnnotation>["onPostRender"]>;
+type FilePostRender<LAnnotation> = NonNullable<FileOptions<LAnnotation, undefined>["onPostRender"]>;
 
 /**
  * Find for a Pierre file surface: host its `Virtualizer` in `FindSourceHost` with `source`,
@@ -186,7 +187,7 @@ function codeViewFindModel(files: ReadonlyArray<CodeViewFindFile>) {
 
 /** Searches the expanded hunks of every file in a `CodeView`, rendered or not. */
 export function codeViewFindSource<LAnnotation>(
-  codeView: CodeViewHandle<LAnnotation>,
+  codeView: CodeViewHandle<LAnnotation, undefined>,
   files: ReadonlyArray<CodeViewFindFile>,
 ): FindSource {
   // Built on the first search: the diff panel remakes its source each time files load or collapse.

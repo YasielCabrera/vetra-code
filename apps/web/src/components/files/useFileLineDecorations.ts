@@ -1,6 +1,6 @@
 import type { EnvironmentId } from "@t3tools/contracts";
 import { countTextLines, fileContentRevision } from "@t3tools/shared/fileRevision";
-import type { FileOptions } from "@pierre/diffs/react";
+import type { File as FileInstance, PostRenderPhase } from "@pierre/diffs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useEnvironmentQuery } from "~/state/query";
@@ -20,7 +20,11 @@ import {
 } from "./fileLineDecorations";
 import { computeLineShift, type FileLineShift } from "./fileLineShift";
 
-type FilePostRender = NonNullable<FileOptions<unknown>["onPostRender"]>;
+type FilePostRender = <LAnnotation>(
+  fileContainer: HTMLElement,
+  instance: FileInstance<LAnnotation, undefined>,
+  phase: PostRenderPhase,
+) => void;
 
 export interface FileEditorCaretListeners {
   readonly content: HTMLElement;
@@ -127,7 +131,9 @@ export function installFileEditorCaretListeners(
   },
 ): FileEditorCaretListeners | null {
   const root = fileContainer.shadowRoot ?? fileContainer;
-  const content = root.querySelector<HTMLElement>("[data-content][contenteditable=true]");
+  // Pierre's editor makes this column editable after the file's post-render, so a
+  // listener that waited for `contenteditable` would miss the first focus.
+  const content = root.querySelector<HTMLElement>("[data-content]");
   if (!content) return null;
   const onSelectionChange = () => {
     if (content.matches(":focus")) handlers.onCaretMove();

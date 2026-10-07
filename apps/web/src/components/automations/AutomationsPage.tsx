@@ -19,7 +19,7 @@ import { memo, useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { isElectron } from "../../env";
 import { useAllEnvironmentShellsBootstrapped, useThreadShells } from "../../state/entities";
-import { useAutomationActions } from "../../hooks/useAutomationActions";
+import { useAutomationActions, useCanOperateAutomations } from "../../hooks/useAutomationActions";
 import { useMarkAutomationRunsRead } from "../../hooks/useAutomationRunsRead";
 import { useUiStateStore } from "../../uiStateStore";
 import {
@@ -83,6 +83,7 @@ export function AutomationsPage(props?: {
   // that has to understand them. An older server gets told, not a command it
   // would reject.
   const canCreate = useEnvironmentSupportsAutomations(primaryEnvironmentId);
+  const canOperate = useCanOperateAutomations(primaryEnvironmentId);
   const [query, setQuery] = useState("");
 
   const projectTitleByKey = useMemo(
@@ -259,7 +260,7 @@ export function AutomationsPage(props?: {
                   size="sm"
                   variant="outline"
                   className="shrink-0"
-                  disabled={!canCreate}
+                  disabled={!canCreate || !canOperate}
                   aria-label="New automation"
                   title={
                     canCreate
@@ -285,7 +286,7 @@ export function AutomationsPage(props?: {
                   }
                   action={
                     canCreate ? (
-                      <Button size="sm" onClick={() => newAutomation()}>
+                      <Button size="sm" disabled={!canOperate} onClick={() => newAutomation()}>
                         <PlusIcon />
                         New automation
                       </Button>
@@ -331,6 +332,7 @@ export function AutomationsPage(props?: {
                       <AutomationTemplateRow
                         key={template.id}
                         template={template}
+                        disabled={!canCreate || !canOperate}
                         onSelect={newAutomation}
                       />
                     ))}
@@ -412,6 +414,7 @@ const AutomationRow = memo(function AutomationRow({
   const { confirmAndDelete, runNow, setEnabled } = useAutomationActions();
   const markRunsRead = useMarkAutomationRunsRead();
   const automation = row.automation;
+  const canOperate = useCanOperateAutomations(automation.environmentId);
   const unreadRunCount = row.unreadRunThreads.length;
   return (
     <li className="group/automation-row flex items-center gap-1 rounded-lg pr-1 transition-colors hover:bg-accent/60">
@@ -493,11 +496,14 @@ const AutomationRow = memo(function AutomationRow({
           </MenuTrigger>
         </span>
         <MenuPopup align="end" className="w-44">
-          <MenuItem onClick={() => void runNow(automation)}>
+          <MenuItem disabled={!canOperate} onClick={() => void runNow(automation)}>
             <PlayIcon aria-hidden />
             Run now
           </MenuItem>
-          <MenuItem onClick={() => void setEnabled(automation, !automation.enabled)}>
+          <MenuItem
+            disabled={!canOperate}
+            onClick={() => void setEnabled(automation, !automation.enabled)}
+          >
             {automation.enabled ? <PauseIcon aria-hidden /> : <PlayCircleIcon aria-hidden />}
             {automation.enabled ? "Pause" : "Resume"}
           </MenuItem>
@@ -512,6 +518,7 @@ const AutomationRow = memo(function AutomationRow({
           <MenuSeparator />
           <MenuItem
             variant="destructive"
+            disabled={!canOperate}
             onClick={() => void confirmAndDelete(automation, row.runThreads)}
           >
             <Trash2Icon aria-hidden />
@@ -525,9 +532,11 @@ const AutomationRow = memo(function AutomationRow({
 
 function AutomationTemplateRow({
   template,
+  disabled,
   onSelect,
 }: {
   template: AutomationTemplate;
+  disabled: boolean;
   onSelect: (template: AutomationTemplate) => void;
 }) {
   const Icon = template.icon;
@@ -535,6 +544,7 @@ function AutomationTemplateRow({
     <li className="list-none">
       <button
         type="button"
+        disabled={disabled}
         onClick={() => onSelect(template)}
         className="flex w-full min-w-0 items-start gap-3 rounded-lg p-2 text-left outline-none transition-colors hover:bg-accent/60 focus-visible:ring-1 focus-visible:ring-ring"
       >

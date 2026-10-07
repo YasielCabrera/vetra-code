@@ -12,6 +12,7 @@ import {
 import * as Effect from "effect/Effect";
 import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
+import * as HttpServerRequest from "effect/http/HttpServerRequest";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -31,15 +32,16 @@ import * as ServerConfig from "../../../config.ts";
 import * as ServerHttp from "../../../http.ts";
 import * as Orchestrator from "../../../orchestration-v2/Orchestrator.ts";
 import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementService.ts";
-import * as SqlitePersistence from "../../../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../../../persistence/Sqlite.ts";
 import * as ProjectFaviconResolver from "../../../project/ProjectFaviconResolver.ts";
 import * as T3ProjectFileLoader from "../../../project/T3ProjectFileLoader.ts";
-import * as GitHubCli from "../../../sourceControl/GitHubCli.ts";
+import * as GitHubCredentials from "../../../sourceControl/GitHubCredentials.ts";
 import * as SourceControlAttachmentResolver from "../../../sourceControl/SourceControlAttachmentResolver.ts";
 import * as TicketGitHub from "../../../ticket/TicketGitHub.ts";
 import * as TicketService from "../../../ticket/TicketService.ts";
 import * as WorkspacePaths from "../../../workspace/WorkspacePaths.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
+import * as McpToolAccess from "../../McpToolAccess.ts";
 import { providerHttpOrigin } from "../../httpOrigin.ts";
 import * as AttachmentHandlers from "../attachment/handlers.ts";
 import { AttachmentToolkit } from "../attachment/tools.ts";
@@ -106,12 +108,12 @@ const externalLayers = Layer.mergeAll(
   Layer.mock(T3ProjectFileLoader.T3ProjectFileLoader)({}),
   Layer.mock(NativeAppIconResolver.NativeAppIconResolver)({}),
   Layer.mock(SourceControlAttachmentResolver.SourceControlAttachmentResolver)({}),
-  Layer.mock(GitHubCli.GitHubCli)({}),
+  Layer.mock(GitHubCredentials.GitHubCredentials)({}),
   SqlitePersistence.layerMemory,
 );
 const testLayer = Layer.mergeAll(
-  TicketsToolkitHandlersLive,
-  AttachmentHandlers.layer,
+  McpToolAccess.HandlersLayer.layer(TicketsToolkitHandlersLive),
+  McpToolAccess.HandlersLayer.layer(AttachmentHandlers.layer),
   HttpRouter.serve(Layer.merge(ServerHttp.layerAssetRoute, ServerHttp.layerAttachmentUploadRoute), {
     disableListenLog: true,
     disableLogger: true,
@@ -543,3 +545,47 @@ describe("ticket attachments through MCP and HTTP", () => {
     }).pipe(Effect.provide(testLayer)),
   );
 });
+
+it.effect.each([
+  {
+    url: "http://vetra.lan:8080/mcp",
+    headers: { host: "vetra.lan:8080" },
+    origin: "http://vetra.lan:8080",
+  },
+  {
+    url: "http://127.0.0.1/mcp",
+    headers: { host: "box.example.ts.net", "x-forwarded-proto": "https" },
+    origin: "https://box.example.ts.net",
+  },
+])("outside clients get an upload URL reachable through $origin", ({ url, headers, origin }) =>
+  Effect.gen(function* () {
+    const invocation = yield* McpInvocationContext.McpInvocationContext;
+    const prepared = yield* prepare({
+      type: "file",
+      name: "report.txt",
+      mimeType: "text/plain",
+      sizeBytes: 4,
+    }).pipe(
+      Effect.provideService(McpInvocationContext.McpInvocationContext, {
+        ...invocation,
+        thread: undefined,
+        client: { sessionId: "outside", label: "CLI", access: "full-access" },
+      }),
+      Effect.provideService(
+        HttpServerRequest.HttpServerRequest,
+        HttpServerRequest.fromWeb(new Request(url, { headers })),
+      ),
+    );
+    expect(new URL(prepared.uploadUrl).origin).toBe(origin);
+    expect(new URL(prepared.uploadUrl).pathname).toBe(prepared.relativeUrl);
+    // Submit the same signed path to the test listener as the public proxy would.
+    const listener = Result.getOrThrow(providerHttpOrigin((yield* HttpServer.HttpServer).address));
+    const response = yield* request(
+      HttpClientRequest.post(new URL(prepared.relativeUrl, listener).href).pipe(
+        HttpClientRequest.bodyUint8Array(new TextEncoder().encode("test")),
+      ),
+    );
+    expect(response.status).toBe(204);
+    expect(yield* readBytes(prepared.attachmentId)).toBe("test");
+  }).pipe(Effect.provide(testLayer)),
+);

@@ -1,0 +1,23 @@
+diff --git a/dist/model/gitStatus.js b/dist/model/gitStatus.js
+index 1e57ee3cbdcbfafaa4c42186008015383ecd390f..bcb82f102a20d61bcf6d68190ac4fdf36b77d9c4 100644
+--- a/dist/model/gitStatus.js
++++ b/dist/model/gitStatus.js
+@@ -106,13 +106,16 @@ function removeGitStatusPath({ canonicalPath, changeCountByDirectoryPath, direct
+ 	if (previousStatus == null) return false;
+ 	statusByPath.delete(canonicalPath);
+ 	if (previousStatus === "ignored" && canonicalPath.endsWith("/")) ignoredDirectoryPaths.delete(canonicalPath);
+-	decrementAncestorChangeCounts(changeCountByDirectoryPath, directoriesWithChanges, canonicalPath);
++	if (previousStatus !== "ignored") decrementAncestorChangeCounts(changeCountByDirectoryPath, directoriesWithChanges, canonicalPath);
+ 	return true;
+ }
+ function setGitStatusPath({ canonicalPath, changeCountByDirectoryPath, directoriesWithChanges, ignoredDirectoryPaths, isDirectory, status, statusByPath }) {
+ 	const previousStatus = statusByPath.get(canonicalPath);
+ 	if (previousStatus === status) return false;
+-	if (previousStatus == null) incrementAncestorChangeCounts(changeCountByDirectoryPath, directoriesWithChanges, canonicalPath);
++	const wasCounted = previousStatus != null && previousStatus !== "ignored";
++	const isCounted = status !== "ignored";
++	if (!wasCounted && isCounted) incrementAncestorChangeCounts(changeCountByDirectoryPath, directoriesWithChanges, canonicalPath);
++	else if (wasCounted && !isCounted) decrementAncestorChangeCounts(changeCountByDirectoryPath, directoriesWithChanges, canonicalPath);
+ 	statusByPath.set(canonicalPath, status);
+ 	if (status === "ignored" && isDirectory) ignoredDirectoryPaths.add(canonicalPath);
+ 	else if (isDirectory) ignoredDirectoryPaths.delete(canonicalPath);

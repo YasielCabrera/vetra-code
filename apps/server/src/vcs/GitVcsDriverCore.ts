@@ -65,6 +65,10 @@ const RANGE_DIFF_SUMMARY_MAX_OUTPUT_BYTES = 19_000;
 const RANGE_DIFF_PATCH_MAX_OUTPUT_BYTES = 59_000;
 const REVIEW_DIFF_PATCH_MAX_OUTPUT_BYTES = 120_000;
 const REVIEW_METADATA_MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
+// Every status refresh adds the untracked files to a temporary index, and git add's cost grows
+// much faster than the file count (50k files took about 30 seconds). Past this many, the
+// totals are reported incomplete instead.
+const REVIEW_UNTRACKED_MAX_FILES = 5_000;
 const REVIEW_DIFF_FILE_MAX_OUTPUT_BYTES = 1024 * 1024;
 // Patches the clients render are parsed against git's default a/ and b/ path
 // prefixes. A repository or global diff.noprefix or diff.mnemonicPrefix would
@@ -1240,6 +1244,9 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
               cwd: commandInput.cwd,
               env: {
                 ...process.env,
+                // Status polling runs beside the user's own git commands; without this,
+                // `git status` takes index.lock to save its refreshed index.
+                GIT_OPTIONAL_LOCKS: "0",
                 ...input.env,
                 ...trace2Monitor.env,
               },
@@ -2441,10 +2448,12 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     const statusCacheKey = repositoryPaths?.gitCommonDir;
     const [numstatStdout, defaultBranch, hasPrimaryRemote] = yield* Effect.all(
       [
+        // Plumbing, because porcelain `git diff` rewrites the index even with
+        // GIT_OPTIONAL_LOCKS=0. -M keeps porcelain's rename detection.
         executeGitWithStableDiagnostics(
           "GitVcsDriver.statusDetails.numstat",
           cwd,
-          ["diff", "HEAD", "--numstat", "-z", "--"],
+          ["diff-index", "-M", "--numstat", "-z", "HEAD", "--"],
           { allowNonZeroExit: true },
         ).pipe(
           Effect.flatMap((result) => {
@@ -2453,7 +2462,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
               return Effect.map(
                 Effect.all([
                   runGitStdout("GitVcsDriver.statusDetails.numstat.unborn", cwd, [
-                    "diff",
+                    "diff-files",
                     "--numstat",
                     "-z",
                   ]),
@@ -2488,9 +2497,9 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
                 ...gitCommandContext({
                   operation: "GitVcsDriver.statusDetails.numstat",
                   cwd,
-                  args: ["diff", "HEAD", "--numstat", "-z", "--"],
+                  args: ["diff-index", "-M", "--numstat", "-z", "HEAD", "--"],
                 }),
-                detail: "git diff HEAD --numstat failed.",
+                detail: "git diff-index HEAD --numstat failed.",
                 exitCode: result.exitCode,
                 stdoutLength: result.stdout.length,
                 stderrLength: result.stderr.length,
@@ -3161,7 +3170,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
   });
 
   // Lists untracked files and adds them to a temporary index, so a diff against any commit
-  // shows them as new. Returns null when the list is too big to read. Needs a Scope.
+  // shows them as new. Returns null when the list is too big to read or to index. Needs a Scope.
   const prepareUntrackedReviewIndex = Effect.fn("prepareUntrackedReviewIndex")(function* (
     cwd: string,
     pathArgs: ReadonlyArray<string>,
@@ -3183,6 +3192,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       (candidate) => onlyPath === undefined || candidate === onlyPath,
     );
     if (paths.length === 0) return { env: undefined };
+    if (paths.length > REVIEW_UNTRACKED_MAX_FILES) return null;
     const env = yield* prepareReviewIndex(cwd, paths).pipe(
       Effect.catchTags({
         PlatformError: (cause) =>
@@ -4502,6 +4512,26 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       }),
     );
 
+  const listWorktreePaths: GitVcsDriver.GitVcsDriver["Service"]["listWorktreePaths"] = (cwd) =>
+    runGitStdout("GitVcsDriver.listWorktreePaths", cwd, [
+      "worktree",
+      "list",
+      "--porcelain",
+      "-z",
+    ]).pipe(
+      // One record per worktree, each ended by an empty field. A `prunable`
+      // record's directory is gone, and another checkout may now sit there.
+      Effect.map((stdout) =>
+        stdout.split("\0\0").flatMap((record) => {
+          const fields = record.split("\0");
+          const worktree = fields.find((field) => field.startsWith("worktree "));
+          return worktree === undefined || fields.some((field) => field.startsWith("prunable"))
+            ? []
+            : [path.resolve(cwd, worktree.slice("worktree ".length))];
+        }),
+      ),
+    );
+
   const withListRefsInvalidation = <A, E>(
     cwd: string,
     effect: Effect.Effect<A, E>,
@@ -4574,5 +4604,6 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     switchRef: (input) => withListRefsInvalidation(input.cwd, switchRef(input)),
     initRepo: initRepoWithListRefsInvalidation,
     listLocalBranchNames,
+    listWorktreePaths,
   });
 });

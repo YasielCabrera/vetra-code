@@ -34,7 +34,7 @@ import { stackedThreadToast, toastManager } from "../components/ui/toast";
 import { TICKET_REVISION_CONFLICT } from "../components/tickets/ticketDocument.logic";
 import { formatTicketRef } from "../components/tickets/ticketRefs";
 import { readLocalApi } from "../localApi";
-import { readTicketBoard, ticketEnvironment } from "../state/tickets";
+import { readTicketBoard, readTicketGitHubWriteAllowed, ticketEnvironment } from "../state/tickets";
 import { useAtomCommand } from "../state/use-atom-command";
 
 function isRevisionConflict(error: unknown): boolean {
@@ -59,6 +59,7 @@ export async function confirmGitHubStateChange(
   if (ticket.kind !== "github" || ticket.hiddenAt !== null) return true;
   const closing = to.category === "closed";
   if ((ticket.github.state === "closed") === closing) return true;
+  if (!readTicketGitHubWriteAllowed(ticket.environmentId)) return false;
   const issue = `${ticket.github.repository}#${ticket.github.number}`;
   return (
     (await readLocalApi()?.dialogs.confirm(

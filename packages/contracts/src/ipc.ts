@@ -1,22 +1,5 @@
 import * as Schema from "effect/Schema";
 
-import {
-  PreviewAutomationClickInput,
-  PreviewAutomationEvaluateInput,
-  PreviewAutomationPressInput,
-  PreviewAutomationScrollInput,
-  PreviewAutomationSnapshot,
-  PreviewAutomationStatus,
-  PreviewAutomationTypeInput,
-  PreviewAutomationWaitForInput,
-  PreviewAutomationWalletApproveInput,
-  PreviewAutomationWalletConfigureInput,
-  PreviewAutomationWalletRejectInput,
-  PreviewAutomationWalletRequestList,
-  PreviewAutomationWalletResolution,
-} from "./previewAutomation.ts";
-import { Web3CustomNetwork, Web3WalletStatus } from "@t3tools/web3/schema";
-import type { Web3ProviderEvent } from "@t3tools/web3/inpage";
 import { SnapShotSource } from "./chatAttachment.ts";
 import { EnvironmentId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { BrowserProfileId } from "./browserProfile.ts";
@@ -30,6 +13,7 @@ import { AdvertisedEndpoint } from "./remoteAccess.ts";
 import { ExecutionEnvironmentDescriptor } from "./environment.ts";
 import { type ClientSettings, type QuitConfirmationMode, SnapShotShortcut } from "./settings.ts";
 import type { EditorId } from "./editor.ts";
+import type { PreviewForwardedShortcut } from "./keybindings.ts";
 
 import type {
   DesktopAppActivationRequest,
@@ -654,12 +638,6 @@ export const DesktopPreviewTabIdSchema = Schema.String.check(Schema.isTrimmed())
   Schema.isNonEmpty(),
 );
 
-export const DesktopPreviewAutomationStatusSchema = Schema.Struct({
-  ...PreviewAutomationStatus.fields,
-  tabId: Schema.NullOr(DesktopPreviewTabIdSchema),
-});
-export type DesktopPreviewAutomationStatus = typeof DesktopPreviewAutomationStatusSchema.Type;
-
 export interface DesktopPreviewPointerEvent {
   tabId: string;
   phase: "move" | "click";
@@ -1033,11 +1011,16 @@ export const DesktopPreviewCreateTabInputSchema = Schema.Struct({
   tabId: DesktopPreviewTabIdSchema,
   zoomFactor: Schema.optional(Schema.Number.check(Schema.isGreaterThan(0))),
   colorScheme: Schema.optional(DesktopPreviewColorSchemeSchema),
+  serverTab: Schema.optional(
+    Schema.Struct({ threadId: TrimmedNonEmptyString, tabId: TrimmedNonEmptyString }),
+  ),
 });
 
 export interface DesktopPreviewTabDefaults {
   readonly zoomFactor?: number | undefined;
   readonly colorScheme?: DesktopPreviewColorScheme | undefined;
+  /** A tab of the desktop's own server: the server drives it through the desktop browser channel. */
+  readonly serverTab?: { readonly threadId: string; readonly tabId: string } | undefined;
 }
 
 export const DesktopPreviewRegisterWebviewInputSchema = Schema.Struct({
@@ -1072,6 +1055,11 @@ export const DesktopPreviewSetColorSchemeInputSchema = Schema.Struct({
   colorScheme: DesktopPreviewColorSchemeSchema,
 });
 
+export const DesktopPreviewSetZoomFactorInputSchema = Schema.Struct({
+  tabId: DesktopPreviewTabIdSchema,
+  zoomFactor: Schema.Number.check(Schema.isGreaterThan(0)),
+});
+
 export const DesktopPreviewSetAudioMutedInputSchema = Schema.Struct({
   tabId: DesktopPreviewTabIdSchema,
   audioMuted: Schema.Boolean,
@@ -1079,6 +1067,11 @@ export const DesktopPreviewSetAudioMutedInputSchema = Schema.Struct({
 
 export const DesktopPreviewAnnotationThemeInputSchema = Schema.Struct({
   theme: DesktopPreviewAnnotationThemeSchema,
+});
+
+export const DesktopPreviewAnnotationSendEnabledInputSchema = Schema.Struct({
+  tabId: DesktopPreviewTabIdSchema,
+  enabled: Schema.Boolean,
 });
 
 export const DesktopPreviewArtifactInputSchema = Schema.Struct({
@@ -1090,81 +1083,6 @@ export const DesktopPreviewRecordingSaveInputSchema = Schema.Struct({
   mimeType: Schema.String.check(Schema.isTrimmed()).check(Schema.isNonEmpty()),
   data: Schema.Uint8Array,
 });
-
-export const DesktopPreviewAutomationClickInputSchema = Schema.Struct({
-  tabId: DesktopPreviewTabIdSchema,
-  input: PreviewAutomationClickInput,
-});
-
-export const DesktopPreviewAutomationTypeInputSchema = Schema.Struct({
-  tabId: DesktopPreviewTabIdSchema,
-  input: PreviewAutomationTypeInput,
-});
-
-export const DesktopPreviewAutomationPressInputSchema = Schema.Struct({
-  tabId: DesktopPreviewTabIdSchema,
-  input: PreviewAutomationPressInput,
-});
-
-export const DesktopPreviewAutomationScrollInputSchema = Schema.Struct({
-  tabId: DesktopPreviewTabIdSchema,
-  input: PreviewAutomationScrollInput,
-});
-
-export const DesktopPreviewAutomationEvaluateInputSchema = Schema.Struct({
-  tabId: DesktopPreviewTabIdSchema,
-  input: PreviewAutomationEvaluateInput,
-});
-
-export const DesktopPreviewAutomationWaitForInputSchema = Schema.Struct({
-  tabId: DesktopPreviewTabIdSchema,
-  input: PreviewAutomationWaitForInput,
-});
-
-/**
- * Wallet operations are host-scoped: one wallet per desktop runtime. A tab id
- * is accepted so the automation broker can keep its sticky host lease, but
- * Settings and the approval chip have no preview tab and send `""`. The
- * handler ignores the value either way, so it must not require a real tab id.
- */
-export const DesktopPreviewWalletIpcTabIdSchema = Schema.String;
-
-export const DesktopPreviewWalletConfigureInputSchema = Schema.Struct({
-  tabId: DesktopPreviewWalletIpcTabIdSchema,
-  input: PreviewAutomationWalletConfigureInput,
-});
-
-export const DesktopPreviewWalletApproveInputSchema = Schema.Struct({
-  tabId: DesktopPreviewWalletIpcTabIdSchema,
-  input: PreviewAutomationWalletApproveInput,
-});
-
-export const DesktopPreviewWalletRejectInputSchema = Schema.Struct({
-  tabId: DesktopPreviewWalletIpcTabIdSchema,
-  input: PreviewAutomationWalletRejectInput,
-});
-
-/**
- * Settings the renderer pushes down so the main process does not have to hold
- * its own RPC client. Main also reads `settings.json` directly, so this is a
- * fast path, not the source of truth.
- */
-export const DesktopPreviewWalletSettingsSchema = Schema.Struct({
-  enabled: Schema.Boolean,
-  approvalMode: Schema.String,
-  chainId: Schema.NullOr(Schema.Int),
-  rpcUrl: Schema.NullOr(Schema.String),
-  autoConnectLoopback: Schema.Boolean,
-  disabledBuiltInChainIds: Schema.Array(Schema.Int),
-  customNetworks: Schema.Array(Web3CustomNetwork),
-});
-export type DesktopPreviewWalletSettings = typeof DesktopPreviewWalletSettingsSchema.Type;
-
-/** Emitted to the renderer whenever wallet state or the pending queue changes. */
-export const DesktopPreviewWalletStateSchema = Schema.Struct({
-  status: Web3WalletStatus,
-});
-export type DesktopPreviewWalletState = typeof DesktopPreviewWalletStateSchema.Type;
 
 /**
  * A System Settings pane the app can deep-link to. The identifier crosses IPC
@@ -1314,6 +1232,7 @@ export interface DesktopBridge {
 export const DESKTOP_PREVIEW_RECORDING_CAPTURE_TRIGGER = "__t3DesktopPreviewRecordingCapture";
 
 export interface DesktopPreviewBridge {
+  setForwardedShortcuts?: (shortcuts: ReadonlyArray<PreviewForwardedShortcut>) => Promise<void>;
   createTab: (tabId: string, defaults?: DesktopPreviewTabDefaults) => Promise<void>;
   closeTab: (tabId: string) => Promise<void>;
   registerWebview: (tabId: string, webContentsId: number) => Promise<void>;
@@ -1324,6 +1243,8 @@ export interface DesktopPreviewBridge {
   zoomIn: (tabId: string) => Promise<void>;
   zoomOut: (tabId: string) => Promise<void>;
   resetZoom: (tabId: string) => Promise<void>;
+  /** Sets a tab's zoom to the factor its environment published, for tabs the server drives. */
+  setZoomFactor: (tabId: string, zoomFactor: number) => Promise<void>;
   /** Reload bypassing the HTTP cache. */
   hardReload: (tabId: string) => Promise<void>;
   /**
@@ -1362,6 +1283,8 @@ export interface DesktopPreviewBridge {
     readonly targetProfileId: string;
   }) => Promise<BrowserImportResult>;
   setAnnotationTheme: (theme: DesktopPreviewAnnotationTheme) => Promise<void>;
+  /** Keep an open annotation picker's send shortcut in sync with its thread grant. */
+  setAnnotationSendEnabled: (tabId: string, enabled: boolean) => Promise<void>;
   /**
    * Activate the in-page element picker for the given tab. Resolves with
    * the picked annotation and its attach/send intent, or `null` when the
@@ -1389,47 +1312,9 @@ export interface DesktopPreviewBridge {
     ) => Promise<DesktopPreviewRecordingArtifact>;
     onFrame: (listener: (frame: DesktopPreviewRecordingFrame) => void) => () => void;
   };
-  automation: {
-    status: (tabId: string) => Promise<DesktopPreviewAutomationStatus>;
-    snapshot: (tabId: string) => Promise<PreviewAutomationSnapshot>;
-    click: (tabId: string, input: PreviewAutomationClickInput) => Promise<void>;
-    type: (tabId: string, input: PreviewAutomationTypeInput) => Promise<void>;
-    press: (tabId: string, input: PreviewAutomationPressInput) => Promise<void>;
-    scroll: (tabId: string, input: PreviewAutomationScrollInput) => Promise<void>;
-    evaluate: (tabId: string, input: PreviewAutomationEvaluateInput) => Promise<unknown>;
-    waitFor: (tabId: string, input: PreviewAutomationWaitForInput) => Promise<void>;
-  };
-  wallet: {
-    status: () => Promise<Web3WalletStatus>;
-    configure: (
-      tabId: string,
-      input: PreviewAutomationWalletConfigureInput,
-    ) => Promise<Web3WalletStatus>;
-    requests: () => Promise<PreviewAutomationWalletRequestList>;
-    approve: (
-      tabId: string,
-      input: PreviewAutomationWalletApproveInput,
-    ) => Promise<PreviewAutomationWalletResolution>;
-    reject: (
-      tabId: string,
-      input: PreviewAutomationWalletRejectInput,
-    ) => Promise<PreviewAutomationWalletResolution>;
-    /** Pushes the current server settings so main can react without polling. */
-    applySettings: (settings: DesktopPreviewWalletSettings) => Promise<void>;
-    onStateChange: (listener: (state: DesktopPreviewWalletState) => void) => () => void;
-  };
   onStateChange: (listener: (tabId: string, state: DesktopPreviewTabState) => void) => () => void;
   onPointerEvent: (listener: (event: DesktopPreviewPointerEvent) => void) => () => void;
 }
-
-/** Guest-to-main wallet JSON-RPC hop, sent from the preview preload. */
-export interface DesktopPreviewWalletRequest {
-  readonly method: string;
-  readonly params?: unknown;
-  readonly origin: string;
-}
-
-export type DesktopPreviewWalletProviderEvent = Web3ProviderEvent;
 
 export type ConfirmDialogVariant = "default" | "destructive";
 

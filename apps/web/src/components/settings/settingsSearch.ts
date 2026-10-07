@@ -766,6 +766,16 @@ export const SETTINGS_SEARCH_ITEMS = [
     scope: "project-defaults",
   },
   {
+    id: "github-accounts",
+    title: "GitHub accounts and token",
+    to: "/settings/source-control",
+    searchTerms: [
+      "github gh account login user host enterprise ghes switch multiple accounts disable sign in token personal access token pat api key credential",
+    ],
+    environmentOnly: true,
+    scope: "environment-defaults",
+  },
+  {
     id: "bitbucket-credentials",
     title: "Bitbucket credentials",
     to: "/settings/source-control",
@@ -811,7 +821,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     to: "/settings/connections",
     targetId: "connections-environment",
     searchTerms: ["machine glyph sidebar mac mini studio laptop desktop server cloud vm"],
-    localBackendManagementOnly: true,
   },
   {
     id: "local-environment",
@@ -1018,8 +1027,8 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   // The model is downloaded to, and speaks from, one environment's server.
   "/settings/read-aloud": "environment",
   "/settings/snap-shot": null,
-  // Keybindings fan out to the selection; Providers shows the representative
-  // environment at any selection. Neither needs a particular scope to render.
+  // Keybindings fan out to the selection; Providers and Web3 show the
+  // representative environment at any selection. None needs a particular scope.
   "/settings/keybindings": null,
   "/settings/providers": null,
   "/settings/integrations": null,
@@ -1028,7 +1037,6 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/storage": "project-defaults",
   "/settings/connections": "connections",
   "/settings/archived": "project-defaults",
-  // Wallet and reactor connections are client-held, so no scope applies.
   "/settings/web3": null,
 };
 

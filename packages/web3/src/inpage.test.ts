@@ -1,10 +1,14 @@
+// @effect-diagnostics nodeBuiltinImport:off globalTimers:off - Runs the server tab script in a fresh realm and lets its promise callbacks finish.
+import * as NodeVM from "node:vm";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import {
   installWeb3InpageProvider,
+  web3ServerPageScript,
   WEB3_PROVIDER_ICON,
   WEB3_PROVIDER_INFO,
   type Eip1193RequestArgs,
+  type Web3InpageProvider,
   type Web3InpageWindow,
 } from "./inpage.ts";
 
@@ -312,5 +316,110 @@ describe("installWeb3InpageProvider", () => {
     expect(window.ethereum).toBeUndefined();
     window.fire("eip6963:requestProvider");
     expect(announcements(window)).toHaveLength(1);
+  });
+});
+
+describe("web3ServerPageScript", () => {
+  const BINDING = "__walletBinding";
+  const EMIT = "__walletEmit";
+  const ADDRESS = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+
+  /**
+   * A fresh realm with only the browser globals the script may use, so a
+   * reference to anything from this module would throw.
+   */
+  const runInPage = (answer: (call: Record<string, unknown>) => unknown, withBinding = true) => {
+    const calls: Array<Record<string, unknown>> = [];
+    const window = makeWindow();
+    const page = Object.assign(window, {
+      crypto: {
+        getRandomValues: (bytes: Uint8Array) => {
+          for (let index = 0; index < bytes.length; index += 1) bytes[index] = index * 7;
+          return bytes;
+        },
+      },
+    });
+    const globals = page as unknown as Record<string, unknown>;
+    if (withBinding) {
+      globals[BINDING] = (call: Record<string, unknown>) => {
+        calls.push(call);
+        return Promise.resolve(answer(call));
+      };
+    }
+    const context = NodeVM.createContext(page);
+    NodeVM.runInContext(
+      web3ServerPageScript({
+        uuid: "wallet-uuid",
+        icon: WEB3_PROVIDER_ICON,
+        chainId: "0x7a69",
+        binding: BINDING,
+        emitHook: EMIT,
+      }),
+      context,
+    );
+    return {
+      window,
+      calls,
+      provider: () => window.ethereum as Web3InpageProvider,
+      emit: (events: unknown) => (globals[EMIT] as (events: unknown) => void)(events),
+    };
+  };
+
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it("installs the provider before page scripts and announces it", () => {
+    const page = runInPage(() => ({ accounts: [], events: [] }));
+    expect(page.provider().isMetaMask).toBe(true);
+    expect(page.provider().isVetraPreviewWallet).toBe(true);
+    expect(page.provider().chainId).toBe("0x7a69");
+    expect(announcements(page.window)).toHaveLength(1);
+  });
+
+  it("does nothing without the host binding", () => {
+    const page = runInPage(() => null, false);
+    expect(page.window.ethereum).toBeUndefined();
+  });
+
+  it("fills in a granted page's account from the bootstrap without an event", async () => {
+    const page = runInPage(() => ({ accounts: [ADDRESS], events: [] }));
+    const changed = vi.fn();
+    page.provider().on("accountsChanged", changed);
+    await settle();
+    expect(page.calls[0]).toMatchObject({ kind: "bootstrap", chainId: "0x7a69" });
+    expect(page.provider().selectedAddress).toBe(ADDRESS);
+    expect(changed).not.toHaveBeenCalled();
+  });
+
+  it("sends requests with one document id and rebuilds the EIP-1193 error", async () => {
+    const page = runInPage((call) =>
+      call.kind === "bootstrap"
+        ? { accounts: [], events: [] }
+        : call.method === "personal_sign"
+          ? { ok: false, code: 4001, message: "User rejected the request." }
+          : { ok: true, result: [ADDRESS] },
+    );
+    expect(await page.provider().request({ method: "eth_requestAccounts" })).toEqual([ADDRESS]);
+    await expect(
+      page.provider().request({ method: "personal_sign", params: ["0x68656c6c6f", ADDRESS] }),
+    ).rejects.toMatchObject({ code: 4001, message: "User rejected the request." });
+
+    const requests = page.calls.filter((call) => call.kind === "request");
+    expect(requests[0]).toMatchObject({ method: "eth_requestAccounts" });
+    expect(requests[1]).toMatchObject({
+      method: "personal_sign",
+      params: ["0x68656c6c6f", ADDRESS],
+    });
+    expect(new Set(page.calls.map((call) => call.documentId)).size).toBe(1);
+    expect(page.calls[0]?.documentId).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it("delivers host events to the page's listeners", () => {
+    const page = runInPage(() => ({ accounts: [], events: [] }));
+    const chainChanged = vi.fn();
+    page.provider().on("chainChanged", chainChanged);
+    page.emit([{ event: "chainChanged", payload: "0x1" }]);
+    expect(page.provider().chainId).toBe("0x1");
+    expect(page.provider().networkVersion).toBe("1");
+    expect(chainChanged).toHaveBeenCalledWith("0x1");
   });
 });

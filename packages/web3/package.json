@@ -19,6 +19,10 @@
       "types": "./src/networks.ts",
       "import": "./src/networks.ts"
     },
+    "./page": {
+      "types": "./src/page.ts",
+      "import": "./src/page.ts"
+    },
     "./rpc": {
       "types": "./src/rpc.ts",
       "import": "./src/rpc.ts"
@@ -30,6 +34,10 @@
     "./signer": {
       "types": "./src/signer.ts",
       "import": "./src/signer.ts"
+    },
+    "./wallet": {
+      "types": "./src/wallet.ts",
+      "import": "./src/wallet.ts"
     }
   },
   "scripts": {

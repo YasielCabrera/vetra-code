@@ -19,7 +19,7 @@ import * as Ref from "effect/Ref";
 import * as Semaphore from "effect/Semaphore";
 
 import type { ProviderInstance } from "../ProviderDriver.ts";
-import { ProviderInstanceRegistry } from "../Services/ProviderInstanceRegistry.ts";
+import * as ProviderInstanceRegistry from "../ProviderInstanceRegistry.ts";
 import { ProviderSubscriptionCredentialStore } from "./ProviderSubscriptionCredentialStore.ts";
 
 const HEALTHY_TTL_MS = 5 * 60_000;
@@ -126,7 +126,7 @@ export class ProviderSubscriptionUsageService extends Context.Reference<Provider
 ) {}
 
 export const make = Effect.gen(function* () {
-  const registry = yield* ProviderInstanceRegistry;
+  const registry = yield* ProviderInstanceRegistry.ProviderInstanceRegistry;
   const credentials = yield* ProviderSubscriptionCredentialStore;
   const cache = yield* Ref.make(new Map<ProviderInstanceId, CachedResult>());
   const latestFingerprints = yield* Ref.make(new Map<ProviderInstanceId, string>());

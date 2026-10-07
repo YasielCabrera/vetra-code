@@ -136,7 +136,6 @@ describe("Cursor dashboard usage", () => {
         cookie: "WorkosCursorSessionToken=test",
         origin: "https://cursor.com",
       });
-      // @effect-diagnostics-next-line preferSchemaOverJson:off
       expect(JSON.parse(requests[0]?.body ?? "{}")).toMatchObject({ page: 1, pageSize: 1_000 });
     });
   });

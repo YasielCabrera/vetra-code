@@ -162,7 +162,7 @@ const runUninstall = Effect.fn("cli.uninstall.run")(function* (input: {
     }
     const confirmed = yield* Prompt.run(
       Prompt.Confirm({ message: "Remove vetra from this machine?", initial: false }),
-    ).pipe(Effect.catchTag("QuitError", () => Effect.succeed(false)));
+    ).pipe(Effect.catchTags({ QuitError: () => Effect.succeed(false) }));
     if (!confirmed) {
       yield* Console.log("Left as is.");
       return;

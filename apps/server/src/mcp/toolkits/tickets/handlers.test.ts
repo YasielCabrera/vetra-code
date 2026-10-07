@@ -19,10 +19,11 @@ import type * as Tool from "effect/ai/Tool";
 
 import * as ServerConfig from "../../../config.ts";
 import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementService.ts";
-import * as SqlitePersistence from "../../../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../../../persistence/Sqlite.ts";
 import * as TicketGitHub from "../../../ticket/TicketGitHub.ts";
 import * as TicketService from "../../../ticket/TicketService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
+import * as McpToolAccess from "../../McpToolAccess.ts";
 import { TicketsToolkitHandlersLive } from "./handlers.ts";
 import { TicketsToolkit } from "./tools.ts";
 
@@ -32,7 +33,7 @@ const providerInstanceId = ProviderInstanceId.make("codex");
 
 /** `null` is an MCP client signed in from outside any thread. */
 const layerFor = (caller: { readonly activeRunId: string | null } | null) =>
-  TicketsToolkitHandlersLive.pipe(
+  McpToolAccess.HandlersLayer.layer(TicketsToolkitHandlersLive).pipe(
     Layer.provideMerge(
       Layer.mergeAll(
         Layer.succeed(McpInvocationContext.McpInvocationContext, {
@@ -41,7 +42,7 @@ const layerFor = (caller: { readonly activeRunId: string | null } | null) =>
           ...(caller === null
             ? {
                 thread: undefined,
-                client: { sessionId: "client", label: "CLI", runtimeModeCeiling: "full-access" },
+                client: { sessionId: "client", label: "CLI", access: "full-access" },
               }
             : {
                 thread: { threadId: callerId, providerSessionId: "session", providerInstanceId },
@@ -449,11 +450,33 @@ describe("TicketsToolkit", () => {
   it.effect("lets a client outside a thread read but not write", () =>
     Effect.gen(function* () {
       const tickets = yield* TicketService.TicketService;
-      yield* tickets.create({ title: "Seeded" }, { type: "user" });
+      const ticket = (yield* tickets.create({ title: "Seeded" }, { type: "user" })).ticket;
+      const plan = (yield* tickets.createPlan(
+        { ticketId: ticket.id, title: "Plan", body: "Steps" },
+        { type: "user" },
+      )).plan;
 
       const listed = yield* call("t3_ticket_list", {});
       const detail = yield* call("t3_ticket_get", { ticket: "T-1" });
       const write = yield* failure("t3_ticket_create", { title: "From outside" });
+      assert.strictEqual(
+        (yield* call("t3_ticket_plan_list", { ticket: `T-${ticket.number}` })).plans[0]?.planId,
+        plan.planId,
+      );
+      assert.strictEqual((yield* call("t3_ticket_plan_get", { plan: plan.ref })).body, "Steps");
+      const note = yield* failure("t3_ticket_note", {
+        ticket: `T-${ticket.number}`,
+        body: "Outside",
+      });
+      const edit = yield* failure("t3_ticket_plan_update", {
+        plan: plan.ref,
+        expectedRevision: plan.revision,
+        body: "Outside",
+      });
+      assert.deepStrictEqual(
+        [note, edit].map((error) => error.message),
+        [write.message, write.message],
+      );
 
       assert.deepStrictEqual(
         [listed.tickets.map((ticket) => ticket.title), detail.summary.title],

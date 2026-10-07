@@ -87,6 +87,7 @@ const RawComment = Schema.Struct({
   url: Schema.optional(Schema.NullOr(Schema.String)),
 });
 
+/** An issue as GraphQL selects it; detail reads add its body and comments. */
 const RawIssue = Schema.Struct({
   number: Schema.Int,
   title: Schema.String,
@@ -98,11 +99,66 @@ const RawIssue = Schema.Struct({
   createdAt: Schema.String,
   updatedAt: Schema.String,
   closedAt: Schema.optional(Schema.NullOr(Schema.String)),
-  labels: Schema.optional(Schema.Array(RawLabel)),
-  assignees: Schema.optional(Schema.Array(RawActor)),
+  labels: Schema.optional(
+    Schema.NullOr(Schema.Struct({ nodes: Schema.Array(Schema.NullOr(RawLabel)) })),
+  ),
+  assignees: Schema.optional(Schema.Struct({ nodes: Schema.Array(Schema.NullOr(RawActor)) })),
   milestone: Schema.optional(Schema.NullOr(RawMilestone)),
-  comments: Schema.optional(Schema.Array(RawComment)),
+  comments: Schema.optional(
+    Schema.Struct({
+      totalCount: Schema.Int,
+      nodes: Schema.Array(Schema.NullOr(RawComment)),
+    }),
+  ),
 });
+
+const RawIssueSearch = Schema.Struct({
+  data: Schema.Struct({
+    search: Schema.Struct({
+      pageInfo: Schema.Struct({
+        hasNextPage: Schema.Boolean,
+        endCursor: Schema.optional(Schema.NullOr(Schema.String)),
+      }),
+      nodes: Schema.Array(Schema.Unknown),
+    }),
+  }),
+});
+
+const RawIssueDetail = Schema.Struct({
+  data: Schema.Struct({
+    repository: Schema.NullOr(Schema.Struct({ issue: Schema.NullOr(RawIssue) })),
+  }),
+});
+
+/** Comments a detail read carries; `commentsTruncated` says when an issue has more. */
+const COMMENT_LIMIT = 100;
+const ACTOR_SELECTION = "login ... on User { name }";
+/** The issue fields every read selects. */
+const ISSUE_NODE_SELECTION = `number title url state stateReason createdAt updatedAt closedAt author { ${ACTOR_SELECTION} } labels(first: 100) { nodes { name color description } } assignees(first: 100) { nodes { login name } } milestone { number title state dueOn }`;
+
+/**
+ * One page of an issue search. `$query` carries the whole search string, user text included, so
+ * it travels as a variable rather than in the traced document.
+ */
+export const ISSUE_SEARCH_GRAPHQL_QUERY = `query($query: String!, $first: Int!, $after: String, $withBody: Boolean!) {
+  search(query: $query, type: ISSUE, first: $first, after: $after) {
+    pageInfo { hasNextPage endCursor }
+    nodes { ... on Issue { ${ISSUE_NODE_SELECTION} body @include(if: $withBody) } }
+  }
+}`;
+
+export const ISSUE_DETAIL_GRAPHQL_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) {
+      ${ISSUE_NODE_SELECTION}
+      body
+      comments(first: ${COMMENT_LIMIT}) {
+        totalCount
+        nodes { id author { ${ACTOR_SELECTION} } body createdAt updatedAt url }
+      }
+    }
+  }
+}`;
 
 const RawTimelineSourceIssue = Schema.Struct({
   number: Schema.Int,
@@ -183,6 +239,8 @@ export interface GitHubIssueListBatch {
   readonly items: ReadonlyArray<GitHubIssue>;
   /** Counted before malformed rows are skipped so one bad row cannot hide truncation. */
   readonly rawCount: number;
+  /** Where the search's next page starts, or null on its last page. */
+  readonly endCursor: string | null;
 }
 
 export interface GitHubIssueTimelinePage {
@@ -191,11 +249,11 @@ export interface GitHubIssueTimelinePage {
   readonly rawCount: number;
 }
 
-const COMMENT_LIMIT = 100;
 const decodeUnknownList = decodeJsonResult(Schema.Array(Schema.Unknown));
+const decodeSearch = decodeJsonResult(RawIssueSearch);
 const decodeListItem = Schema.decodeUnknownExit(RawIssue);
 const decodeTimelineItem = Schema.decodeUnknownExit(RawTimelineItem);
-const decodeDetail = decodeJsonResult(RawIssue);
+const decodeDetail = decodeJsonResult(RawIssueDetail);
 const decodeAssigneeCandidates = decodeJsonResult(RawAssigneeCandidates);
 type DecodeFailure = Cause.Cause<Schema.SchemaError>;
 
@@ -296,8 +354,11 @@ function stateOf(raw: string): IssueState | null {
   }
 }
 
-function labelsOf(raw: RawIssue["labels"]): ReadonlyArray<IssueLabel> {
+function labelsOf(
+  raw: ReadonlyArray<typeof RawLabel.Type | null> | undefined,
+): ReadonlyArray<IssueLabel> {
   return (raw ?? []).flatMap((label) => {
+    if (label === null) return [];
     const name = label.name.trim();
     if (!name) return [];
     const color = label.color?.trim();
@@ -342,11 +403,12 @@ function issueOf(raw: RawIssue): GitHubIssue | null {
   const url = raw.url.trim();
   const state = stateOf(raw.state);
   if (raw.number < 1 || !title || !url || state === null) return null;
-  const comments = (raw.comments ?? []).flatMap((comment) => {
-    const normalized = commentOf(comment);
+  const commentNodes = raw.comments?.nodes ?? [];
+  const comments = commentNodes.flatMap((comment) => {
+    const normalized = comment === null ? null : commentOf(comment);
     return normalized === null ? [] : [normalized];
   });
-  const commentCount = raw.comments?.length ?? 0;
+  const commentCount = raw.comments?.totalCount ?? 0;
   const stateReason = raw.stateReason?.trim().toLowerCase();
   return {
     number: raw.number,
@@ -359,39 +421,49 @@ function issueOf(raw: RawIssue): GitHubIssue | null {
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
     closedAt: raw.closedAt ?? null,
-    labels: labelsOf(raw.labels),
-    assignees: (raw.assignees ?? []).flatMap((actor) => {
+    labels: labelsOf(raw.labels?.nodes),
+    assignees: (raw.assignees?.nodes ?? []).flatMap((actor) => {
       const normalized = actorOf(actor);
       return normalized === null ? [] : [normalized];
     }),
     milestone: milestoneOf(raw.milestone),
-    comments: comments.slice(0, COMMENT_LIMIT),
+    comments,
     commentCount,
-    commentsTruncated: commentCount > COMMENT_LIMIT,
+    // Against what GitHub sent, so a skipped malformed comment does not read as more to load.
+    commentsTruncated: commentCount > commentNodes.length,
   };
 }
 
+/** One page of `ISSUE_SEARCH_GRAPHQL_QUERY`. */
 export function decodeIssueListJson(
   raw: string,
 ): Result.Result<GitHubIssueListBatch, DecodeFailure> {
-  const decoded = decodeUnknownList(raw);
+  const decoded = decodeSearch(raw);
   if (!Result.isSuccess(decoded)) return Result.fail(decoded.failure);
+  const { nodes, pageInfo } = decoded.success.data.search;
   const items: GitHubIssue[] = [];
-  for (const value of decoded.success) {
+  for (const value of nodes) {
     const row = decodeListItem(value);
     if (!Exit.isSuccess(row)) continue;
     const issue = issueOf(row.value);
     if (issue !== null) items.push(issue);
   }
-  return Result.succeed({ items, rawCount: decoded.success.length });
+  return Result.succeed({
+    items,
+    rawCount: nodes.length,
+    endCursor: pageInfo.hasNextPage ? (pageInfo.endCursor ?? null) : null,
+  });
 }
 
+/** An `ISSUE_DETAIL_GRAPHQL_QUERY` answer; null when GitHub has no such issue there. */
 export function decodeIssueDetailJson(
   raw: string,
-): Result.Result<GitHubIssue, DecodeFailure | Error> {
+): Result.Result<GitHubIssue | null, DecodeFailure | Error> {
   const decoded = decodeDetail(raw);
   if (!Result.isSuccess(decoded)) return Result.fail(decoded.failure);
-  const issue = issueOf(decoded.success);
+  const node = decoded.success.data.repository?.issue ?? null;
+  if (node === null) return Result.succeed(null);
+  const issue = issueOf(node);
   return issue === null ? Result.fail(new Error("Invalid issue response")) : Result.succeed(issue);
 }
 

@@ -63,7 +63,7 @@ function withAvatar(actor: IssueActor | null, host: string): IssueActor | null {
   return avatarUrl === null ? actor : { ...actor, avatarUrl };
 }
 
-/** `gh issue --json` names actors but omits their avatars, so fill them at the adapter edge. */
+/** Issue reads select actors' logins, not their avatars, so fill those at the adapter edge. */
 function withAvatars(issue: GitHubIssue, host: string): GitHubIssue {
   const commentWithAvatar = (comment: IssueComment): IssueComment => ({
     ...comment,

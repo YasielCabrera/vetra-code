@@ -5,6 +5,7 @@ import type {
   ProviderSubscriptionUsageInstanceResult,
   ProviderSubscriptionUsageWindow,
 } from "@t3tools/contracts";
+// @effect-diagnostics-next-line nodeBuiltinImport:off -- configFingerprint is a synchronous pure helper; Effect's Crypto digest is effectful.
 import * as NodeCrypto from "node:crypto";
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";

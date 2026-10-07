@@ -1,7 +1,9 @@
 import {
   type OrchestrationV2DomainEvent,
+  type PullRequestRef,
   type ThreadId,
   type ThreadPullRequestLink,
+  type ThreadPullRequestKey,
   type TicketActor,
   type TicketAutoAdvanceSettings,
   type TicketId,
@@ -11,13 +13,21 @@ import {
   type TicketSummary,
 } from "@t3tools/contracts";
 import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
-import { visibleThreadPullRequests } from "@t3tools/shared/threadPullRequests";
+import {
+  normalizeThreadPullRequestKey,
+  threadPullRequestKeyOf,
+  visibleThreadPullRequests,
+} from "@t3tools/shared/threadPullRequests";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
+import * as Schedule from "effect/Schedule";
 import * as Stream from "effect/Stream";
 import * as SqlClient from "effect/sql/SqlClient";
 
 import * as Orchestrator from "../orchestration-v2/Orchestrator.ts";
+import * as ProjectionStore from "../orchestration-v2/ProjectionStore.ts";
+import * as PullRequestSyncReactor from "../orchestration-v2/PullRequestSyncReactor.ts";
+import * as PullRequestService from "../pullRequest/PullRequestService.ts";
 import { forkParked } from "../serverActivation.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
 import * as TicketService from "./TicketService.ts";
@@ -25,7 +35,8 @@ import * as TicketService from "./TicketService.ts";
 type AutoAdvanceEvent = "threadStarted" | "pullRequestLinked" | "pullRequestMerged";
 type LinkWork =
   | { readonly type: "event"; readonly event: OrchestrationV2DomainEvent }
-  | { readonly type: "thread-linked"; readonly threadId: ThreadId };
+  | { readonly type: "thread-linked"; readonly threadId: ThreadId }
+  | { readonly type: "settled-pull-requests" };
 
 const AUTO_ADVANCE_RULES: Record<
   AutoAdvanceEvent,
@@ -103,6 +114,9 @@ export const make = Effect.gen(function* () {
   const tickets = yield* TicketService.TicketService;
   const settingsService = yield* ServerSettingsService;
   const sql = yield* SqlClient.SqlClient;
+  const projections = yield* ProjectionStore.ProjectionStoreV2;
+  const pullRequests = yield* PullRequestService.PullRequestService;
+  const pullRequestSync = yield* PullRequestSyncReactor.PullRequestSyncReactor;
 
   const linkAndAdvance = (
     ticketId: TicketId,
@@ -202,6 +216,46 @@ export const make = Effect.gen(function* () {
       }
     });
 
+  /** Keep ticket auto-advance watching settled threads until their linked tickets close. */
+  const syncSettledPullRequests = Effect.gen(function* () {
+    const linkedRows = yield* sql<{ readonly target_key: string }>`
+      SELECT DISTINCT l.target_key
+      FROM ticket_links l
+      JOIN tickets t ON t.ticket_id = l.ticket_id
+      JOIN ticket_statuses s ON s.status_id = t.status_id
+      WHERE l.kind = 'thread' AND s.category <> 'closed' AND t.hidden_at IS NULL
+    `;
+    if (linkedRows.length === 0) return;
+    const linkedThreads = new Set(linkedRows.map((row) => row.target_key));
+    const due = new Map<string, PullRequestRef & ThreadPullRequestKey>();
+    for (const thread of yield* projections.getThreadsWithPullRequests()) {
+      const settled = thread.settledOverride === "settled" || thread.settledAt !== null;
+      if (!settled || !linkedThreads.has(thread.id)) continue;
+      for (const link of visibleThreadPullRequests(thread.pullRequests ?? [])) {
+        if (link.snapshot?.state !== "open") continue;
+        due.set(threadPullRequestKeyOf(link), {
+          projectId: thread.projectId,
+          host: normalizeThreadPullRequestKey(link).host,
+          repository: link.repository,
+          number: link.number,
+        });
+      }
+    }
+    yield* Effect.forEach(
+      due,
+      ([key, ref]) =>
+        pullRequests.summary(ref, { recoverTransientFailure: false }).pipe(
+          Effect.flatMap((summary) =>
+            summary.state === "open" ? Effect.void : pullRequestSync.requestSync(ref),
+          ),
+          Effect.catch((error) =>
+            Effect.logDebug("settled pull request check skipped", { key, reason: error._tag }),
+          ),
+        ),
+      { concurrency: 25, discard: true },
+    );
+  });
+
   const process = (event: OrchestrationV2DomainEvent) => {
     switch (event.type) {
       case "message.updated": {
@@ -227,6 +281,7 @@ export const make = Effect.gen(function* () {
 
   const processWork = Effect.fnUntraced(function* (work: LinkWork) {
     if (work.type === "event") return yield* process(work.event);
+    if (work.type === "settled-pull-requests") return yield* syncSettledPullRequests;
     const thread = yield* orchestrator.getThreadShell(work.threadId);
     if (thread === null || thread.deletedAt !== null) return;
     yield* onPullRequestsSynced(work.threadId, thread.pullRequests);
@@ -238,7 +293,11 @@ export const make = Effect.gen(function* () {
         (cause) => !Cause.hasInterruptsOnly(cause),
         (cause) =>
           Effect.logWarning("ticket link update skipped", {
-            threadId: work.type === "event" ? work.event.threadId : work.threadId,
+            ...(work.type === "event"
+              ? { threadId: work.event.threadId }
+              : work.type === "thread-linked"
+                ? { threadId: work.threadId }
+                : {}),
             cause: Cause.pretty(cause),
           }),
       ),
@@ -270,6 +329,12 @@ export const make = Effect.gen(function* () {
           Effect.logWarning("ticket thread link stream failed", { cause: Cause.pretty(cause) }),
         ),
       ),
+    );
+    yield* forkParked(
+      Effect.gen(function* () {
+        yield* worker.enqueue({ type: "settled-pull-requests" });
+        yield* worker.drain;
+      }).pipe(Effect.repeat(Schedule.spaced("1 minute")), Effect.asVoid),
     );
   });
 

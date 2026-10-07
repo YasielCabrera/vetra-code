@@ -5,22 +5,28 @@ sign a message, sign typed data, send a transaction, switch chains — work with
 installing a browser extension. You can drive it by hand, and agents can drive it
 through the `preview_wallet_*` tools.
 
+Each environment has one wallet, held by that environment's server. Every
+preview tab of the environment uses it, whether the tab shows in the desktop app
+or in a browser, so all of them see the same accounts.
+
 It identifies itself to pages as MetaMask (`window.ethereum.isMetaMask`, and
 `io.metamask` over [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963)), so dapps
 that gate on MetaMask detection find it.
 
 > [!WARNING]
-> **This is a test wallet.** Keys are unencrypted, and agents can use, create, or
-> delete wallets without notice. Never import a mnemonic or private key that
-> holds real funds.
+> **This is a test wallet.** Keys are unencrypted on the machine running the
+> environment's server, and agents can use, create, or delete accounts without
+> notice. Never fund its accounts with anything of real value.
 
 ## Turning it on
 
-Settings → **Web3** → _Preview wallet_.
+Settings → **Web3** → _Preview wallet_, with the environment selected at the top
+of Settings. Each environment's wallet is turned on and configured separately.
 
-The first time you enable it, Vetra generates a throwaway 12-word mnemonic and
-derives three accounts from it. They persist across restarts, so balances you
-fund on a local test node stay put.
+The first time you enable it, the server generates a throwaway 12-word mnemonic
+and derives three accounts from it. They persist across restarts, so balances you
+fund on a local test node stay put. Reload pages that were open before you turned
+the wallet on; a page only gets the wallet when it loads.
 
 > [!NOTE]
 > The `preview_wallet_*` MCP tools are only advertised to agents if the wallet was
@@ -38,8 +44,11 @@ _Wallet approvals_ decides who confirms a signature or transaction request:
 | **Always ask**                   | Every request waits for you. Use this to test rejection paths deterministically.                                                                     |
 | **Approve everything**           | Approves without asking — except the _first_ request from a non-localhost origin, which still waits once.                                            |
 
-When a page asks for approval, the wallet popover opens from the preview toolbar
-with a decoded summary of what approving would do. Approve or reject closes it.
+When a page asks for approval, the wallet popover of that tab opens from the
+preview toolbar with a decoded summary of what approving would do. Approve or
+reject closes it. Approving or rejecting, and changing accounts, needs permission
+to operate previews in that environment; a connection that can only read sees
+the wallet's state without those controls.
 Reject tells the page the user declined (`4001`). Agents can still reject with other EIP-1193 codes
 (`4100` unauthorized, `4900` disconnected, `4902` unknown chain) through
 `preview_wallet_reject` to exercise a dapp's error branches. If the wallet
@@ -59,8 +68,9 @@ again to put it back. A reset control on that list turns every built-in back on.
 
 Automatic selection when no network is pinned:
 
-1. If a node is listening on `http://127.0.0.1:8545` (Anvil, Hardhat), the wallet
-   adopts it and reports its chain id.
+1. If a node is listening on `http://127.0.0.1:8545` (Anvil, Hardhat) on the
+   machine running the environment's server, the wallet adopts it and reports its
+   chain id.
 2. Otherwise the wallet starts on the first enabled built-in network, preferring
    Ethereum Mainnet.
 3. If every built-in is disabled, it uses the first custom network, or stays
@@ -118,7 +128,10 @@ clears them, so the next `eth_requestAccounts` prompts again.
 
 ## Driving it from an agent
 
-Five tools, available when the wallet is enabled:
+Five tools, available when the wallet is enabled. An agent sees and resolves
+only the requests from preview tabs it opened in its own thread; pass `tabId` to
+narrow to one of them. Approve or reject by the `requestId` from
+`preview_wallet_requests`, even with several tabs open.
 
 | Tool                       | Use                                                                                                            |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -131,19 +144,28 @@ Five tools, available when the wallet is enabled:
 A typical rejection-path test:
 
 ```
-preview_wallet_configure { approval: "always-ask" }
+preview_wallet_configure { approvalMode: "always-ask" }
 preview_click        <the dapp's sign button>
 preview_wallet_requests
 preview_wallet_reject { requestId: "…", code: 4001 }
 preview_snapshot     <assert the dapp showed its rejection state>
 ```
 
-Importing a private key is deliberately **not** available to agents — only
-through Settings → Web3, where the warning is visible. Agents can generate or
-remove throwaway accounts, which is all an automated test needs.
+Approval mode and chain changes from `preview_wallet_configure` last until the
+wallet's settings change or the server restarts. There is no way to import a key:
+agents and Settings can only generate or remove throwaway accounts, which is all
+an automated test needs.
 
 ## Where the keys live
 
-`<state dir>/preview-wallets/shared.json`, mode `0600`, with the warning written
-into the file. Deleting it makes the wallet generate a fresh mnemonic next time
-it is enabled.
+On the machine running the environment's server, in its secret store:
+`~/.vetra-code/userdata/secrets/preview-wallet-v1.bin` by default (a server
+started with `--home-dir <path>` uses `<path>/userdata`), mode `0600`, with the
+warning written into it. Deleting it makes the wallet generate a fresh mnemonic
+the next time it is enabled.
+
+Earlier desktop releases kept the wallet in the desktop app, at
+`preview-wallets/shared.json` in its state directory. The first time the desktop
+app starts its own server with this release, it hands that wallet to the server,
+if the server has none yet, and renames the file to `shared.json.migrated`. Remote
+environments never receive it.

@@ -9,9 +9,11 @@ import * as Stream from "effect/Stream";
 import { HttpClient } from "effect/http";
 import { ChildProcessSpawner } from "effect/process";
 
+import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import * as DesktopObservability from "../app/DesktopObservability.ts";
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopTelemetryPublisher from "../telemetry/DesktopTelemetryPublisher.ts";
+import * as DesktopBrowserHost from "../preview/DesktopBrowserHost.ts";
 import * as ElectronDialog from "../electron/ElectronDialog.ts";
 import * as DesktopWindow from "../window/DesktopWindow.ts";
 import * as DesktopWslEnvironment from "../wsl/DesktopWslEnvironment.ts";
@@ -40,6 +42,20 @@ function makeStubInstance(
     waitForReady: (_timeout: Duration.Duration) => Effect.succeed(false),
   };
 }
+
+// The browser host reads the desktop's old preview wallet only when a backend reads its events.
+const layerBrowserHost = DesktopBrowserHost.layer.pipe(
+  Layer.provide([
+    FileSystem.layerNoop({}),
+    Layer.succeed(
+      DesktopEnvironment.DesktopEnvironment,
+      DesktopEnvironment.DesktopEnvironment.of({
+        previewWalletsDir: "/unused/preview-wallets",
+        path: { join: (...parts: ReadonlyArray<string>) => parts.join("/") },
+      } as DesktopEnvironment.DesktopEnvironment["Service"]),
+    ),
+  ]),
+);
 
 function layerPool(labelRef: Ref.Ref<string>): Layer.Layer<DesktopBackendPool.DesktopBackendPool> {
   return DesktopBackendPool.layer.pipe(
@@ -75,10 +91,12 @@ function layerPool(labelRef: Ref.Ref<string>): Layer.Layer<DesktopBackendPool.De
           updateCommits: Stream.empty,
           updateCancellations: Stream.empty,
         }),
+        layerBrowserHost,
         Layer.succeed(DesktopBackendConfiguration.DesktopBackendConfiguration, {
           resolvePrimary: Effect.die("unexpected primary config resolve"),
           resolvePrimaryLabel: Ref.get(labelRef),
           resolveWsl: () => Effect.die("unexpected WSL config resolve"),
+          currentBootstrapToken: Effect.die("unexpected bootstrap token read"),
         } satisfies DesktopBackendConfiguration.DesktopBackendConfiguration["Service"]),
         DesktopAppSettings.layerTest(),
         DesktopWslEnvironment.layerTest(),

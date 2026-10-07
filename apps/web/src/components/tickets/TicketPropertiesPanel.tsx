@@ -8,6 +8,7 @@ import {
   type TicketLinkTarget,
   type TicketStatusId,
   type TicketStatusSet,
+  type TicketStatusDefinition,
   ticketLinkTargetKey,
 } from "@t3tools/contracts";
 import {
@@ -20,7 +21,7 @@ import {
 import { memo, useMemo, useState, type ReactNode } from "react";
 
 import { useThreadShells } from "../../state/entities";
-import { useTicketIssueLinksSupported } from "../../state/tickets";
+import { useTicketGitHubWriteAllowed, useTicketIssueLinksSupported } from "../../state/tickets";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
@@ -31,6 +32,7 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { addTicketLabel } from "./ticketDraft.logic";
 import { openOnGitHub } from "./TicketGitHub";
+import { ticketStatusWritesGitHub } from "./ticketGitHub.logic";
 import type { TicketLinkPreviewTarget } from "./TicketLinkPreview";
 import { TicketLinkPicker } from "./TicketLinkPicker";
 import { TicketPropertyRow, TicketStatusIcon } from "./ticketPresentation";
@@ -57,6 +59,7 @@ export function TicketStatusSelect(props: {
   readonly statusSet: TicketStatusSet | null;
   readonly value: TicketStatusId;
   readonly onChange: (statusId: TicketStatusId) => void;
+  readonly isDisabled?: (status: TicketStatusDefinition) => boolean;
 }) {
   const statuses = props.statusSet?.statuses ?? [];
   const selected = statuses.find((status) => status.id === props.value);
@@ -82,7 +85,7 @@ export function TicketStatusSelect(props: {
       </SelectTrigger>
       <SelectPopup>
         {statuses.map((status) => (
-          <SelectItem key={status.id} value={status.id}>
+          <SelectItem key={status.id} value={status.id} disabled={props.isDisabled?.(status)}>
             <span className="flex min-w-0 items-center gap-2">
               <TicketStatusIcon color={status.color} category={status.category} />
               <span className="min-w-0 flex-1 truncate">{status.name}</span>
@@ -258,6 +261,7 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
   const threads = useThreadShells();
   const issueLinksSupported = useTicketIssueLinksSupported(props.environmentId);
   const { summary, links } = props.detail;
+  const canWriteGitHub = useTicketGitHubWriteAllowed(props.environmentId);
   const author =
     summary.kind === "github"
       ? (summary.github.author ?? "Unknown author")
@@ -331,6 +335,7 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
             statusSet={props.statusSet}
             value={summary.statusId}
             onChange={props.onStatusChange}
+            isDisabled={(status) => !canWriteGitHub && ticketStatusWritesGitHub(summary, status)}
           />
         </TicketPropertyRow>
         <TicketPropertyRow label="Labels">

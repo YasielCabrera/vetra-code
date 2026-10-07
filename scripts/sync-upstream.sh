@@ -136,6 +136,15 @@ RENAMES=(
   # backtick and a trailing space so repository URLs, `t3.codes` hosts, and the
   # `t3.large` instance type are untouched.
   '`t3 =`vetra '
+  # The same references inside JSX, as `<code>t3 auth pairing create</code>`.
+  '<code>t3 =<code>vetra '
+  # The name upstream tells users to register this server under in outside
+  # agents (`claude mcp add --transport http t3 <url>`). Agents see it as the
+  # tool prefix, so it must match the `vetra-code` name every adapter uses.
+  'mcp add --transport http t3 =mcp add --transport http vetra-code '
+  'mcp add t3 =mcp add vetra-code '
+  're:mcp login t3(?![A-Za-z0-9_.-])=mcp login vetra-code'
+  'mcp list` shows `t3`=mcp list` shows `vetra-code`'
 
   # Desktop application identity. Two installed apps cannot share an
   # application id, a D-Bus name, or a URL scheme.
@@ -157,6 +166,10 @@ RENAMES=(
   # installs it into. Mapped onto `vetra.code` to match PRODUCT_DESKTOP_APP_ID
   # rather than inventing a domain.
   'snap-shot@t3.codes=snap-shot@vetra.code'
+  # Committer email for commits the server writes on a user's behalf (stack
+  # rebases). Must not attribute fork commits to T3's domain; `vetra.invalid`
+  # matches the other placeholders until Vetra owns a mail domain.
+  'noreply@t3.codes=noreply@vetra.invalid'
   # Upstream spells its URL scheme with the same word as its product slug. This
   # fork splits them: the slug is `vetra-code` but the scheme is
   # PRODUCT_DESKTOP_PROTOCOL, `vetra`. A bare `scheme: "t3code"` literal still
@@ -188,6 +201,8 @@ RENAMES=(
   # (browser-favicons, chunk-load-reloaded, default-theme-applied,
   # remote-open-hint-seen); renaming them is a migration, not a sync.
   '"t3code:="vetra:'
+  # The same keys built in template literals (`t3code:permission-update:v1:<env>`).
+  '`t3code:=`vetra:'
   't3.pullRequests.=vetra.pullRequests.'
   # Hidden git refs written into users' repositories (checkpoints). Two products
   # sharing one repo must not share a ref namespace.
@@ -204,6 +219,14 @@ RENAMES=(
   't3-assistant-citation=vetra-assistant-citation'
   't3-citation=vetra-citation'
   't3-context=vetra-context'
+  # In-app thread links agents write into persisted messages
+  # (`[title](t3-thread://v1/<env>/<thread>)`) and the protocol constant that
+  # parses them. Keyed on `://` and the closing quote so `t3-thread-context-drop`
+  # and `tool-t3-thread-read` ids stay upstream's.
+  't3-thread://=vetra-thread://'
+  # The same scheme as tests spell it inside a regex literal.
+  't3-thread:\/\/=vetra-thread:\/\/'
+  '"t3-thread"="vetra-thread"'
   # Theme ids persisted in a user's settings.
   't3-chat=vetra-chat'
   # The MCP server name agents address tools by.

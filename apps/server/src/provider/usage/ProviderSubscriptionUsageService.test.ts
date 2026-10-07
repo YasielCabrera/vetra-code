@@ -15,7 +15,7 @@ import * as TestClock from "effect/testing/TestClock";
 import { describe, expect } from "vite-plus/test";
 
 import type { ProviderInstance, ProviderSubscriptionUsageProbe } from "../ProviderDriver.ts";
-import { ProviderInstanceRegistry } from "../Services/ProviderInstanceRegistry.ts";
+import * as ProviderInstanceRegistry from "../ProviderInstanceRegistry.ts";
 import {
   ProviderSubscriptionCredentialStore,
   type ProviderSubscriptionCredentialStoreShape,
@@ -100,7 +100,7 @@ const makeCredentialStore = (cleared: string[] = []): ProviderSubscriptionCreden
 const makeRegistryHarness = Effect.gen(function* () {
   const instances = yield* Ref.make<ReadonlyArray<ProviderInstance>>([]);
   const changes = yield* PubSub.unbounded<void>();
-  const registry: ProviderInstanceRegistry["Service"] = {
+  const registry: ProviderInstanceRegistry.ProviderInstanceRegistry["Service"] = {
     getInstance: (id) =>
       Ref.get(instances).pipe(
         Effect.map((entries) => entries.find((entry) => entry.instanceId === id)),
@@ -114,11 +114,11 @@ const makeRegistryHarness = Effect.gen(function* () {
 });
 
 const makeService = (
-  registry: ProviderInstanceRegistry["Service"],
+  registry: ProviderInstanceRegistry.ProviderInstanceRegistry["Service"],
   credentials: ProviderSubscriptionCredentialStoreShape = makeCredentialStore(),
 ) =>
   make.pipe(
-    Effect.provideService(ProviderInstanceRegistry, registry),
+    Effect.provideService(ProviderInstanceRegistry.ProviderInstanceRegistry, registry),
     Effect.provideService(ProviderSubscriptionCredentialStore, credentials),
   );
 

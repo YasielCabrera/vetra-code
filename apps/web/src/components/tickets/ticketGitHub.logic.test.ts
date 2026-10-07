@@ -17,6 +17,7 @@ import {
   ticketGitHubSource,
   ticketIssueRef,
   ticketRepositoryProjectId,
+  ticketStatusWritesGitHub,
 } from "./ticketGitHub.logic";
 
 const LOCAL = EnvironmentId.make("env-local");
@@ -394,4 +395,33 @@ describe("issueStateTargetStatus", () => {
     );
     expect(issueStateTargetStatus(null, "close")).toBeUndefined();
   });
+});
+
+it("requires GitHub write access for close and reopen, keeping local and hidden moves available", () => {
+  const open = {
+    id: TicketStatusId.make("todo"),
+    name: "Todo",
+    category: "open",
+    color: "gray",
+    position: 0,
+    isDefault: true,
+    collapsedByDefault: false,
+  } as const;
+  const closed = {
+    ...open,
+    id: TicketStatusId.make("done"),
+    name: "Done",
+    category: "closed",
+    closeReason: "completed",
+  } as const;
+  expect(ticketStatusWritesGitHub(TICKET, closed)).toBe(true);
+  expect(ticketStatusWritesGitHub(TICKET, open)).toBe(false);
+  expect(
+    ticketStatusWritesGitHub({ ...TICKET, github: { ...TICKET.github, state: "closed" } }, open),
+  ).toBe(true);
+  expect(ticketStatusWritesGitHub({ ...TICKET, hiddenAt: "2026-10-01T00:00:00Z" }, closed)).toBe(
+    false,
+  );
+  const { github: _github, ...local } = TICKET;
+  expect(ticketStatusWritesGitHub({ ...local, kind: "local" }, closed)).toBe(false);
 });

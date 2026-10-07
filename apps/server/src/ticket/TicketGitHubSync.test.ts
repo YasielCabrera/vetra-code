@@ -16,11 +16,8 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
-import { ChildProcessSpawner } from "effect/process";
 import * as TestClock from "effect/testing/TestClock";
 
-import * as ProcessRunner from "../processRunner.ts";
-import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitHubIssueCli from "../issue/GitHubIssueCli.ts";
 import * as GitHubIssueProvider from "../issue/GitHubIssueProvider.ts";
 import * as ServerConfig from "../config.ts";
@@ -32,9 +29,10 @@ import {
   type ProviderIssueDetail,
 } from "../issue/IssueProvider.ts";
 import { fromProviders, IssueProviderRegistry } from "../issue/IssueProviderRegistry.ts";
-import * as SqlitePersistence from "../persistence/Layers/Sqlite.ts";
+import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as ProjectService from "../project/ProjectService.ts";
-import * as GitHubCli from "../sourceControl/GitHubCli.ts";
+import * as GitHubApi from "../sourceControl/GitHubApi.ts";
+import * as GitHubGraphQlBudget from "../sourceControl/githubGraphQlBudget.ts";
 import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
 import * as SourceControlProvider from "../sourceControl/SourceControlProvider.ts";
@@ -75,54 +73,21 @@ const missingIssueThroughClassifier = (input: {
   readonly number: number;
 }) =>
   Effect.gen(function* () {
-    const process = yield* VcsProcess.make.pipe(
-      Effect.provideService(
-        ProcessRunner.ProcessRunner,
-        ProcessRunner.ProcessRunner.of({
-          run: () =>
-            Effect.succeed({
-              stdout: "",
-              stderr: `GraphQL: Could not resolve to an Issue with the number of ${input.number}. (repository.issue)`,
-              code: ChildProcessSpawner.ExitCode(1),
-              timedOut: false,
-              stdoutTruncated: false,
-              stderrTruncated: false,
-              stdoutInvalidUtf8: false,
-              stderrInvalidUtf8: false,
-            }),
-        }),
-      ),
-    );
-    const read = process
-      .run({
-        command: "gh",
-        cwd: input.cwd,
-        operation: "GitHubIssueCli.getIssue",
-        args: [
-          "issue",
-          "view",
-          String(input.number),
-          "--repo",
-          `${input.host}/${input.repository}`,
-        ],
-      })
-      .pipe(
-        Effect.mapError((error) =>
-          GitHubCli.fromVcsError({ command: "gh", cwd: input.cwd }, error),
-        ),
-        Effect.andThen(Effect.die("Expected a missing issue")),
-      );
     const provider = yield* GitHubIssueProvider.make.pipe(
+      Effect.provideServiceEffect(GitHubIssueCli.GitHubIssueCli, GitHubIssueCli.make),
       Effect.provideService(
-        GitHubIssueCli.GitHubIssueCli,
-        GitHubIssueCli.GitHubIssueCli.of({
-          listIssues: () => Effect.die("unused"),
-          getIssue: () => read,
-          getIssueActivity: () => Effect.die("unused"),
-          listAssigneeCandidates: () => Effect.die("unused"),
-          setAssignees: () => Effect.die("unused"),
-          setState: () => Effect.die("unused"),
-          addComment: () => Effect.die("unused"),
+        GitHubApi.GitHubApi,
+        GitHubApi.GitHubApi.of({
+          // GitHub answers a missing issue with a NOT_FOUND error, which the API fails as such.
+          graphql: (request) =>
+            Effect.fail(
+              new GitHubApi.GitHubApiNotFoundError({
+                host: request.host,
+                operation: request.operation,
+              }),
+            ),
+          rest: () => Effect.die("unused"),
+          credential: () => Effect.die("unused"),
         }),
       ),
     );
@@ -136,6 +101,7 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     setStateCalls: [] as Array<{ readonly number: number; readonly change: IssueStateChange }>,
     commentCalls: [] as Array<{ readonly number: number; readonly body: string }>,
     listCalls: 0,
+    beforeRead: Effect.void as Effect.Effect<void, IssueProviderError>,
     listInputs: [] as Array<Parameters<IssueProviderApi["listIssues"]>[0]>,
     listFailures: new Map<string, IssueProviderError>(),
     assignees: new Map<number, ReadonlyArray<string>>(),
@@ -217,6 +183,7 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     }),
     listIssues: (input) =>
       Effect.gen(function* () {
+        yield* fake.beforeRead;
         fake.listCalls += 1;
         fake.listInputs.push(input);
         if (fake.listAllGate !== null && fake.listAllStarted !== null) {
@@ -254,7 +221,10 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
                 ...detail(issue),
                 url: `https://${input.host}/${input.repository}/issues/${issue.number}`,
               });
-        return fake.duringGet.pipe(Effect.orDie, Effect.andThen(read));
+        return fake.beforeRead.pipe(
+          Effect.andThen(fake.duringGet.pipe(Effect.orDie)),
+          Effect.andThen(read),
+        );
       }),
     getIssueActivity: (input) =>
       Effect.sync(() => {
@@ -320,6 +290,8 @@ const withSync = <A, E>(
   body: (context: {
     readonly tickets: TicketService.TicketService["Service"];
     readonly sync: TicketGitHubSync.TicketGitHubSync["Service"];
+    readonly budget: GitHubGraphQlBudget.GitHubGraphQlBudget["Service"];
+    readonly rateLimits: SourceControlRateLimit.SourceControlRateLimit["Service"];
     readonly fake: ReturnType<typeof makeFakeGitHub>["fake"];
   }) => Effect.Effect<A, E, never>,
 ) => {
@@ -396,6 +368,7 @@ const withSync = <A, E>(
             ),
         }),
         SourceControlRateLimit.layer,
+        GitHubGraphQlBudget.layer,
       ),
     ),
     Layer.provideMerge(SqlitePersistence.layerMemory),
@@ -407,13 +380,181 @@ const withSync = <A, E>(
     const tickets = yield* TicketService.TicketService;
     const sync = yield* TicketGitHubSync.TicketGitHubSync;
     yield* sync.upsertSource({ ...SOURCE, enabled: true });
-    return yield* body({ tickets, sync, fake });
-  }).pipe(Effect.provide(layer));
+    return yield* body({
+      tickets,
+      sync,
+      fake,
+      budget: yield* GitHubGraphQlBudget.GitHubGraphQlBudget,
+      rateLimits: yield* SourceControlRateLimit.SourceControlRateLimit,
+    });
+  }).pipe(Effect.provideService(TicketService.GitHubWriteAccess, true), Effect.provide(layer));
 };
 
 const githubOf = (ticket: TicketSummary) => (ticket.kind === "github" ? ticket : null);
 
 describe("TicketGitHubSync", () => {
+  it.effect("requires a source-control grant only when a ticket operation writes to GitHub", () =>
+    withSync([issue(7)], ({ tickets, sync, fake }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        const ticket = yield* tickets.resolveRef("acme/web#7");
+        const denied = <A, E>(effect: Effect.Effect<A, E>) =>
+          effect.pipe(Effect.provideService(TicketService.GitHubWriteAccess, false), Effect.flip);
+        const close = yield* denied(
+          tickets.move(
+            { ticketId: ticket.id, expectedRevision: 1, statusId: status("done"), sortKey: "a0" },
+            USER,
+          ),
+        );
+        const comment = yield* denied(
+          tickets.postUserComment({ ticketId: ticket.id, body: "Denied" }),
+        );
+        const assign = yield* denied(
+          tickets.githubIssueSetAssignees({
+            ticketId: ticket.id,
+            assignees: ["alice"],
+            assigned: true,
+          }),
+        );
+        assert.deepStrictEqual(
+          [close, comment, assign].map((error) => error._tag),
+          Array(3).fill("EnvironmentAuthorizationError"),
+        );
+        assert.deepStrictEqual(
+          [fake.setStateCalls, fake.commentCalls, [...fake.assignees]],
+          [[], [], []],
+        );
+        assert.strictEqual((yield* tickets.resolveRef("acme/web#7")).revision, 1);
+        const local = (yield* tickets.create({ title: "Local" }, USER)).ticket;
+        yield* tickets
+          .move(
+            { ticketId: local.id, expectedRevision: 1, statusId: status("done"), sortKey: "a1" },
+            USER,
+          )
+          .pipe(Effect.provideService(TicketService.GitHubWriteAccess, false));
+        yield* tickets
+          .postUserComment({ ticketId: local.id, body: "Local comment" })
+          .pipe(Effect.provideService(TicketService.GitHubWriteAccess, false));
+        yield* tickets
+          .move(
+            {
+              ticketId: ticket.id,
+              expectedRevision: 1,
+              statusId: status("in_progress"),
+              sortKey: "a0",
+            },
+            USER,
+          )
+          .pipe(Effect.provideService(TicketService.GitHubWriteAccess, false));
+        const closed = yield* tickets.move(
+          { ticketId: ticket.id, expectedRevision: 2, statusId: status("done"), sortKey: "a0" },
+          USER,
+        );
+        const reopen = yield* denied(
+          tickets.move(
+            {
+              ticketId: ticket.id,
+              expectedRevision: closed.revision,
+              statusId: status("todo"),
+              sortKey: "a0",
+            },
+            USER,
+          ),
+        );
+        assert.strictEqual(reopen._tag, "EnvironmentAuthorizationError");
+        assert.strictEqual((yield* tickets.resolveRef("acme/web#7")).statusId, "done");
+        yield* tickets.setHidden({ ticketId: ticket.id, hidden: true });
+        yield* tickets
+          .move(
+            {
+              ticketId: ticket.id,
+              expectedRevision: closed.revision,
+              statusId: status("todo"),
+              sortKey: "a0",
+            },
+            USER,
+          )
+          .pipe(Effect.provideService(TicketService.GitHubWriteAccess, false));
+        assert.deepStrictEqual(fake.setStateCalls, [
+          { number: 7, change: { state: "closed", reason: "completed" } },
+        ]);
+      }),
+    ),
+  );
+
+  it.effect("interactive ticket reads spend the reserve and bypass a background budget pause", () =>
+    withSync([issue(7)], ({ tickets, sync, fake, budget, rateLimits }) =>
+      Effect.gen(function* () {
+        const key = { provider: "github", host: SOURCE.host } as const;
+        yield* budget.observe(
+          SOURCE.host,
+          JSON.stringify({
+            data: {
+              rateLimit: {
+                cost: 1,
+                limit: 1000,
+                remaining: 100,
+                resetAt: "2026-09-01T01:00:00.000Z",
+              },
+            },
+          }),
+        );
+        fake.beforeRead = Effect.gen(function* () {
+          const allowReserve = yield* GitHubApi.AllowGitHubReserve;
+          yield* budget.query(SOURCE.host, "query { viewer { login } }", { allowReserve });
+        }).pipe(
+          Effect.mapError(
+            (cause) =>
+              new IssueProviderError({
+                provider: "github",
+                operation: "read",
+                reason: "rate-limited",
+                detail: cause.detail,
+                cause,
+              }),
+          ),
+        );
+        yield* sync.syncDue;
+        assert.strictEqual(fake.listCalls, 0);
+        assert.strictEqual(
+          (yield* rateLimits.check(key).pipe(Effect.flip))._tag,
+          "SourceControlRateLimitPausedError",
+        );
+        const synced = yield* sync.syncNow(SOURCE);
+        assert.strictEqual(synced.lastError, null);
+        const ticket = yield* tickets.resolveRef("acme/web#7");
+        yield* tickets.refreshGitHubIssue({ ticketId: ticket.id });
+        yield* tickets.githubIssueDetail({ ticketId: ticket.id });
+        const candidates = yield* tickets.issueLinkCandidates({ ticketId: ticket.id });
+        assert.strictEqual(candidates.entries[0]?.number, 7);
+        assert.deepStrictEqual(candidates.errors, []);
+        yield* tickets.githubIssueSetAssignees({
+          ticketId: ticket.id,
+          assignees: ["alice"],
+          assigned: true,
+        });
+        yield* tickets.postUserComment({ ticketId: ticket.id, body: "Interactive comment" });
+        yield* tickets.move(
+          {
+            ticketId: ticket.id,
+            expectedRevision: ticket.revision,
+            statusId: status("done"),
+            sortKey: "a0",
+          },
+          USER,
+        );
+        assert.deepStrictEqual(fake.commentCalls, [{ number: 7, body: "Interactive comment" }]);
+        assert.deepStrictEqual(fake.assignees.get(7), ["alice"]);
+        assert.deepStrictEqual(fake.setStateCalls, [
+          { number: 7, change: { state: "closed", reason: "completed" } },
+        ]);
+        assert.strictEqual(
+          (yield* rateLimits.check(key).pipe(Effect.flip))._tag,
+          "SourceControlRateLimitPausedError",
+        );
+      }),
+    ),
+  );
   it.effect(
     "reads a local ticket's recorded Enterprise issue through a secondary source and refreshes without changing its owner",
     () =>
@@ -1272,7 +1413,10 @@ describe("TicketGitHubSync", () => {
 
         assert.deepStrictEqual(
           [source.lastError, source.lastSyncedAt],
-          ["GitHub CLI is not signed in on this environment. Run `gh auth login` there.", null],
+          [
+            "GitHub is not signed in on this environment. Connect an account or save a token in Settings → Source Control.",
+            null,
+          ],
         );
       }),
     ),

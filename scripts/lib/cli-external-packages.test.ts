@@ -90,6 +90,7 @@ describe("selectCliRuntimeExternalDependencies", () => {
         "node-pty",
         "onnxruntime-node",
         "phonemizer",
+        "playwright-core",
       ],
     );
   });

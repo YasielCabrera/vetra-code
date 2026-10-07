@@ -20,17 +20,24 @@ function issue(number: number, overrides: Readonly<Record<string, unknown>> = {}
     state: "OPEN",
     createdAt: "2026-08-01T00:00:00Z",
     updatedAt: "2026-08-02T00:00:00Z",
-    labels: [{ name: " bug ", color: "FF0000", description: "A defect" }],
+    labels: { nodes: [{ name: " bug ", color: "FF0000", description: "A defect" }] },
     ...overrides,
   };
 }
 
+function searchPage(nodes: ReadonlyArray<unknown>, endCursor: string | null = null) {
+  return encodeJson({
+    data: { search: { pageInfo: { hasNextPage: endCursor !== null, endCursor }, nodes } },
+  });
+}
+
 it("skips malformed list rows while preserving the raw count", () => {
-  const decoded = decodeIssueListJson(encodeJson([issue(1), { title: "missing number" }]));
+  const decoded = decodeIssueListJson(searchPage([issue(1), { title: "missing number" }], "c2"));
 
   expect(Result.isSuccess(decoded)).toBe(true);
   if (!Result.isSuccess(decoded)) return;
   expect(decoded.success.rawCount).toBe(2);
+  expect(decoded.success.endCursor).toBe("c2");
   expect(decoded.success.items).toHaveLength(1);
   expect(decoded.success.items[0]?.author?.login).toBe("octocat");
   expect(decoded.success.items[0]?.labels[0]).toEqual({
@@ -42,7 +49,7 @@ it("skips malformed list rows while preserving the raw count", () => {
 
 it("drops unsafe label colors rather than placing them in CSS", () => {
   const decoded = decodeIssueListJson(
-    encodeJson([issue(1, { labels: [{ name: "bug", color: "red;display:none" }] })]),
+    searchPage([issue(1, { labels: { nodes: [{ name: "bug", color: "red;display:none" }] } })]),
   );
 
   expect(Result.isSuccess(decoded)).toBe(true);
@@ -50,20 +57,35 @@ it("drops unsafe label colors rather than placing them in CSS", () => {
   expect(decoded.success.items[0]?.labels[0]?.color).toBeNull();
 });
 
-it("bounds a detail conversation and reports that more comments exist", () => {
-  const comments = Array.from({ length: 101 }, (_, index) => ({
+it("reports that more comments exist than a detail read carries", () => {
+  const nodes = Array.from({ length: 100 }, (_, index) => ({
     id: `c${index}`,
     author: { login: "hubot" },
     body: `Comment ${index}`,
     createdAt: "2026-08-02T00:00:00Z",
   }));
-  const decoded = decodeIssueDetailJson(encodeJson(issue(1, { body: "Body", comments })));
+  const decoded = decodeIssueDetailJson(
+    encodeJson({
+      data: {
+        repository: {
+          issue: issue(1, { body: "Body", comments: { totalCount: 101, nodes } }),
+        },
+      },
+    }),
+  );
 
   expect(Result.isSuccess(decoded)).toBe(true);
   if (!Result.isSuccess(decoded)) return;
-  expect(decoded.success.comments).toHaveLength(100);
-  expect(decoded.success.commentCount).toBe(101);
-  expect(decoded.success.commentsTruncated).toBe(true);
+  expect(decoded.success?.comments).toHaveLength(100);
+  expect(decoded.success?.commentCount).toBe(101);
+  expect(decoded.success?.commentsTruncated).toBe(true);
+});
+
+it("reads a detail answer without the issue as no issue", () => {
+  const missingIssue = decodeIssueDetailJson(encodeJson({ data: { repository: { issue: null } } }));
+  const missingRepository = decodeIssueDetailJson(encodeJson({ data: { repository: null } }));
+
+  expect([missingIssue, missingRepository]).toEqual([Result.succeed(null), Result.succeed(null)]);
 });
 
 it("normalizes comments and contextual events from GitHub's issue timeline", () => {

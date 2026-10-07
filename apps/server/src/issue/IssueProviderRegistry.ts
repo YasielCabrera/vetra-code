@@ -3,7 +3,6 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import type { SourceControlProviderKind } from "@t3tools/contracts";
 
-import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 import * as GitHubIssueCli from "./GitHubIssueCli.ts";
 import * as GitHubIssueProvider from "./GitHubIssueProvider.ts";
 import type { IssueProviderApi } from "./IssueProvider.ts";
@@ -28,6 +27,7 @@ export function fromProviders(
 
 export const make = Effect.map(GitHubIssueProvider.make, (github) => fromProviders([github]));
 
+/** Reads GitHub through the server's one `GitHubApi`, sharing its credentials and rate limits. */
 export const layer = Layer.effect(IssueProviderRegistry, make).pipe(
-  Layer.provide(GitHubIssueCli.layer.pipe(Layer.provide(GitHubCli.layer))),
+  Layer.provide(GitHubIssueCli.layer),
 );

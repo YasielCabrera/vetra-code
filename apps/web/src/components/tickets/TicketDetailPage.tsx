@@ -42,6 +42,7 @@ import {
   useTicketDetail,
   useTicketGitHubSources,
   useTicketStatuses,
+  useTicketGitHubWriteAllowed,
 } from "../../state/tickets";
 import { Button } from "../ui/button";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
@@ -121,6 +122,7 @@ function TicketDocument(props: {
   const navigate = useNavigate();
   const actions = useTicketActions();
   const statusSet = useTicketStatuses(ticketRef.environmentId);
+  const canWriteGitHub = useTicketGitHubWriteAllowed(ticketRef.environmentId);
   const [editing, setEditing] = useState(false);
   const doc = useTicketDocument(ticketRef, detail);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -335,12 +337,18 @@ function TicketDocument(props: {
             </MenuItem>
             <MenuSeparator />
             {githubTicket.github.state === "open" ? (
-              <MenuItem onClick={() => moveIssue("close")}>
+              <MenuItem
+                disabled={!canWriteGitHub && githubTicket.hiddenAt === null}
+                onClick={() => moveIssue("close")}
+              >
                 <CircleCheckIcon aria-hidden />
                 Close issue
               </MenuItem>
             ) : (
-              <MenuItem onClick={() => moveIssue("reopen")}>
+              <MenuItem
+                disabled={!canWriteGitHub && githubTicket.hiddenAt === null}
+                onClick={() => moveIssue("reopen")}
+              >
                 <CircleDotIcon aria-hidden />
                 Reopen issue
               </MenuItem>
@@ -556,11 +564,13 @@ const TicketCommentComposer = memo(function TicketCommentComposer(props: {
   readonly onPosted: () => Promise<void>;
 }) {
   const actions = useTicketActions();
+  const canWriteGitHub = useTicketGitHubWriteAllowed(props.ticketRef.environmentId);
+  const canComment = !props.github || canWriteGitHub;
   const [comment, setComment] = useState("");
   const [commenting, setCommenting] = useState(false);
   const submit = async () => {
     const body = comment.trim();
-    if (!body || commenting) return;
+    if (!canComment || !body || commenting) return;
     setCommenting(true);
     const result = await actions.comment(props.ticketRef, body);
     setCommenting(false);
@@ -575,7 +585,7 @@ const TicketCommentComposer = memo(function TicketCommentComposer(props: {
         aria-label={props.github ? "Comment on GitHub" : "Comment"}
         placeholder={props.github ? "Comment on the GitHub issue" : "Leave a comment…"}
         rows={3}
-        readOnly={commenting}
+        readOnly={commenting || !canComment}
         onChange={(event) => setComment(event.currentTarget.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
@@ -586,7 +596,11 @@ const TicketCommentComposer = memo(function TicketCommentComposer(props: {
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">⌘ / Ctrl + Enter to comment</span>
-        <Button size="sm" disabled={!comment.trim() || commenting} onClick={() => void submit()}>
+        <Button
+          size="sm"
+          disabled={!canComment || !comment.trim() || commenting}
+          onClick={() => void submit()}
+        >
           {commenting ? "Posting…" : props.github ? "Comment on GitHub" : "Comment"}
         </Button>
       </div>

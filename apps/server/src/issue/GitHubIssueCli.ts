@@ -10,6 +10,7 @@ import {
   type IssueAssigneeCandidateList,
 } from "@t3tools/contracts";
 
+import * as GitHubApi from "../sourceControl/GitHubApi.ts";
 import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 import type { IssueStateChange, ProviderIssueListCursor } from "./IssueProvider.ts";
 import {
@@ -18,20 +19,22 @@ import {
   decodeIssueListJson,
   decodeIssueTimelineJson,
   ISSUE_ASSIGNEE_CANDIDATES_GRAPHQL_QUERY,
+  ISSUE_DETAIL_GRAPHQL_QUERY,
+  ISSUE_SEARCH_GRAPHQL_QUERY,
   type GitHubIssue,
 } from "./githubIssueJson.ts";
 
-const LIST_FIELDS =
-  "assignees,author,closedAt,createdAt,labels,milestone,number,state,title,updatedAt,url";
-const DETAIL_FIELDS = `${LIST_FIELDS},body,comments,stateReason`;
-const MAX_LIST_OUTPUT_BYTES = 2 * 1024 * 1024;
-const MAX_DETAIL_OUTPUT_BYTES = 4 * 1024 * 1024;
-const MAX_TIMELINE_PAGE_OUTPUT_BYTES = 4 * 1024 * 1024;
-const MAX_ASSIGNEE_CANDIDATES_OUTPUT_BYTES = 2 * 1024 * 1024;
+// A REST page cut at its cap is refused here as a `GitHubIssueReadError`; `GitHubApi` refuses a
+// cut GraphQL body itself, which arrives as a `GitHubCliCommandError`.
+const MAX_LIST_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_DETAIL_RESPONSE_BYTES = 4 * 1024 * 1024;
+const MAX_TIMELINE_PAGE_RESPONSE_BYTES = 4 * 1024 * 1024;
+const MAX_ASSIGNEE_CANDIDATES_RESPONSE_BYTES = 2 * 1024 * 1024;
+/** GraphQL `search` hands back at most this many rows per page. */
+const SEARCH_PAGE_SIZE = 100;
 const TIMELINE_PAGE_SIZE = 100;
 const MAX_TIMELINE_PAGES = 5;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/u;
-const encodeJson = Schema.encodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
 
 export class GitHubIssueReadError extends Schema.TaggedError<GitHubIssueReadError>()(
   "GitHubIssueReadError",
@@ -50,6 +53,7 @@ export interface GitHubIssueBatch {
   readonly truncated: boolean;
 }
 
+/** GitHub issue reads and writes, made through the GitHub API with the server's credential. */
 export class GitHubIssueCli extends Context.Service<
   GitHubIssueCli,
   {
@@ -107,15 +111,15 @@ export class GitHubIssueCli extends Context.Service<
   }
 >()("t3/issue/GitHubIssueCli") {}
 
+/** `owner/name`, with no `.` or `..` part that would climb out of a REST path. */
 function validRepository(repository: string): boolean {
-  return REPOSITORY_PATTERN.test(repository);
+  return (
+    REPOSITORY_PATTERN.test(repository) &&
+    repository.split("/").every((part) => part !== "." && part !== "..")
+  );
 }
 
-function repositoryArgs(host: string, repository: string): ReadonlyArray<string> {
-  return ["--repo", `${host}/${repository}`];
-}
-
-/** User text is one escaped phrase, never a GitHub search qualifier or a CLI flag. */
+/** User text is one escaped phrase, never a GitHub search qualifier. */
 function searchPhrase(query: string): string {
   return `"${query.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }
@@ -132,13 +136,19 @@ function assigneeQualifier(assignee: string): string {
   return `assignee:"${assignee.replaceAll('"', "").trim()}"`;
 }
 
+/** The whole search: the repository's issues in one state, then the caller's narrowing. */
 function searchQuery(input: {
+  readonly repository: string;
+  readonly state: "all" | "open" | "closed";
   readonly query?: string;
   readonly assignee?: string;
   readonly cursor?: ProviderIssueListCursor;
 }): string {
   const query = input.query?.trim() ?? "";
   return [
+    `repo:${input.repository}`,
+    "is:issue",
+    ...(input.state === "all" ? [] : [`is:${input.state}`]),
     ...(query.length === 0 ? [] : [searchPhrase(query)]),
     ...(input.assignee === undefined ? [] : [assigneeQualifier(input.assignee)]),
     // Inclusive so issues sharing the boundary instant remain reachable; the service drops the
@@ -169,50 +179,148 @@ function expectedIssueUrl(
 }
 
 export const make = Effect.gen(function* () {
-  const github = yield* GitHubCli.GitHubCli;
+  const api = yield* GitHubApi.GitHubApi;
 
-  const rejectRepository = (cwd: string, operation: string) =>
-    Effect.fail(
-      new GitHubIssueReadError({
-        cwd,
-        operation,
-        detail: "A repository was named that GitHub cannot address.",
-      }),
-    );
+  const unaddressable = (cwd: string, operation: string) =>
+    new GitHubIssueReadError({
+      cwd,
+      operation,
+      detail: "A repository was named that GitHub cannot address.",
+    });
+
+  const graphql = (cwd: string, input: GitHubApi.GitHubGraphQlInput) =>
+    api.graphql(input).pipe(Effect.mapError((error) => GitHubCli.fromGitHubApiError(cwd, error)));
+
+  const rest = (cwd: string, input: GitHubApi.GitHubRestInput) =>
+    api.rest(input).pipe(Effect.mapError((error) => GitHubCli.fromGitHubApiError(cwd, error)));
+
+  /** `repos/<owner>/<name>/issues/<number>`, for an already validated repository. */
+  const issuePath = (input: { readonly repository: string; readonly number: number }) =>
+    `repos/${input.repository}/issues/${input.number}`;
+
+  // The background sync and a user's view share `listIssues` and `getIssue`, so those, like the
+  // writes, follow the caller's `AllowGitHubReserve`. Activity and assignee candidates are only
+  // read for a user's open view, so they may always spend the reserve.
+
+  const listIssues: GitHubIssueCli["Service"]["listIssues"] = Effect.fn(
+    "GitHubIssueCli.listIssues",
+  )(function* (input) {
+    if (!validRepository(input.repository)) {
+      return yield* unaddressable(input.cwd, "listIssues");
+    }
+    // A continued query includes the already-delivered boundary rows. Ask past them, plus one
+    // probe row, so a large group sharing one update instant cannot strand older issues.
+    const usableRows = input.limit + (input.cursor?.seenAt.length ?? 0);
+    // That can pass GraphQL's 100-row page, so the search is read page by page.
+    const wanted = usableRows + 1;
+    const query = searchQuery(input);
+    const issues: GitHubIssue[] = [];
+    let rawCount = 0;
+    let after: string | null = null;
+    do {
+      const raw: string = yield* graphql(input.cwd, {
+        host: input.host,
+        operation: "listIssues",
+        query: ISSUE_SEARCH_GRAPHQL_QUERY,
+        variables: {
+          query,
+          first: Math.min(SEARCH_PAGE_SIZE, wanted - rawCount),
+          after,
+          withBody: input.includeBody === true,
+        },
+        maxResponseBytes:
+          input.includeBody === true ? MAX_DETAIL_RESPONSE_BYTES : MAX_LIST_RESPONSE_BYTES,
+      });
+      const decoded = decodeIssueListJson(raw);
+      if (!Result.isSuccess(decoded)) {
+        return yield* new GitHubIssueReadError({
+          cwd: input.cwd,
+          operation: "listIssues",
+          detail: "GitHub returned an unreadable issue list.",
+          cause: decoded.failure,
+        });
+      }
+      issues.push(...decoded.success.items);
+      rawCount += decoded.success.rawCount;
+      after = decoded.success.rawCount === 0 ? null : decoded.success.endCursor;
+    } while (after !== null && rawCount < wanted);
+    const valid = issues.flatMap((issue) => {
+      const url = expectedIssueUrl(issue.url, input.host, input.repository, issue.number);
+      return url === null ? [] : [{ ...issue, url }];
+    });
+    return { issues: valid.slice(0, usableRows), truncated: rawCount > usableRows };
+  });
+
+  const getIssue: GitHubIssueCli["Service"]["getIssue"] = Effect.fn("GitHubIssueCli.getIssue")(
+    function* (input) {
+      if (!validRepository(input.repository)) {
+        return yield* unaddressable(input.cwd, "getIssue");
+      }
+      const [owner, name] = input.repository.split("/");
+      // A missing issue or repository is a NOT_FOUND answer, which the API fails as not found.
+      const raw = yield* graphql(input.cwd, {
+        host: input.host,
+        operation: "getIssue",
+        query: ISSUE_DETAIL_GRAPHQL_QUERY,
+        variables: { owner, name, number: input.number },
+        maxResponseBytes: MAX_DETAIL_RESPONSE_BYTES,
+      });
+      const decoded = decodeIssueDetailJson(raw);
+      if (!Result.isSuccess(decoded)) {
+        return yield* new GitHubIssueReadError({
+          cwd: input.cwd,
+          operation: "getIssue",
+          detail: "GitHub returned unreadable issue details.",
+          cause: decoded.failure,
+        });
+      }
+      if (decoded.success === null) {
+        return yield* new GitHubCli.GitHubPullRequestNotFoundError({
+          command: "gh",
+          cwd: input.cwd,
+          cause: new Error("GitHub has no such issue in this repository."),
+        });
+      }
+      const url = expectedIssueUrl(decoded.success.url, input.host, input.repository, input.number);
+      if (url === null) {
+        return yield* new GitHubIssueReadError({
+          cwd: input.cwd,
+          operation: "getIssue",
+          detail: "GitHub returned an issue URL outside the selected repository.",
+        });
+      }
+      return { ...decoded.success, url };
+    },
+  );
 
   const getIssueActivity: GitHubIssueCli["Service"]["getIssueActivity"] = Effect.fn(
     "GitHubIssueCli.getIssueActivity",
   )(function* (input) {
     if (!validRepository(input.repository)) {
-      return yield* rejectRepository(input.cwd, "getIssueActivity");
+      return yield* unaddressable(input.cwd, "getIssueActivity");
     }
     const items: IssueActivity["items"][number][] = [];
     for (let page = 1; page <= MAX_TIMELINE_PAGES; page += 1) {
-      const output = yield* github.execute({
-        cwd: input.cwd,
-        args: [
-          "api",
-          "--hostname",
-          input.host,
-          "-H",
-          "Accept: application/vnd.github+json",
-          `repos/${input.repository}/issues/${input.number}/timeline?per_page=${TIMELINE_PAGE_SIZE}&page=${page}`,
-        ],
-        maxOutputBytes: MAX_TIMELINE_PAGE_OUTPUT_BYTES,
+      const response = yield* rest(input.cwd, {
+        host: input.host,
+        operation: "getIssueActivity",
+        path: `${issuePath(input)}/timeline?per_page=${TIMELINE_PAGE_SIZE}&page=${page}`,
+        maxResponseBytes: MAX_TIMELINE_PAGE_RESPONSE_BYTES,
+        allowReserve: true,
       });
-      if (output.stdoutTruncated) {
+      if (response.truncated) {
         return yield* new GitHubIssueReadError({
           cwd: input.cwd,
           operation: "getIssueActivity",
           detail: `GitHub returned timeline page ${page} larger than the safe response limit.`,
         });
       }
-      const decoded = decodeIssueTimelineJson(output.stdout.trim() || "[]", input.host);
+      const decoded = decodeIssueTimelineJson(response.body.trim() || "[]", input.host);
       if (!Result.isSuccess(decoded)) {
         return yield* new GitHubIssueReadError({
           cwd: input.cwd,
           operation: "getIssueActivity",
-          detail: "GitHub CLI returned an unreadable issue timeline.",
+          detail: "GitHub returned an unreadable issue timeline.",
           cause: decoded.failure,
         });
       }
@@ -224,221 +332,89 @@ export const make = Effect.gen(function* () {
     return { items, truncated: true };
   });
 
-  return GitHubIssueCli.of({
-    listIssues: (input) => {
-      if (!validRepository(input.repository)) return rejectRepository(input.cwd, "listIssues");
-      // A continued query includes the already-delivered boundary rows. Ask past them, plus one
-      // probe row, so a large group sharing one update instant cannot strand older issues.
-      const usableRows = input.limit + (input.cursor?.seenAt.length ?? 0);
-      return github
-        .execute({
-          cwd: input.cwd,
-          args: [
-            "issue",
-            "list",
-            ...repositoryArgs(input.host, input.repository),
-            "--state",
-            input.state,
-            "--limit",
-            String(usableRows + 1),
-            "--json",
-            input.includeBody === true ? `${LIST_FIELDS},body` : LIST_FIELDS,
-            "--search",
-            searchQuery(input),
-          ],
-          maxOutputBytes:
-            input.includeBody === true ? MAX_DETAIL_OUTPUT_BYTES : MAX_LIST_OUTPUT_BYTES,
-        })
-        .pipe(
-          Effect.flatMap((output) => {
-            if (output.stdoutTruncated) {
-              return Effect.fail(
-                new GitHubIssueReadError({
-                  cwd: input.cwd,
-                  operation: "listIssues",
-                  detail: "GitHub returned an issue list larger than the safe response limit.",
-                }),
-              );
-            }
-            const decoded = decodeIssueListJson(output.stdout.trim() || "[]");
-            if (!Result.isSuccess(decoded)) {
-              return Effect.fail(
-                new GitHubIssueReadError({
-                  cwd: input.cwd,
-                  operation: "listIssues",
-                  detail: "GitHub CLI returned an unreadable issue list.",
-                  cause: decoded.failure,
-                }),
-              );
-            }
-            const valid = decoded.success.items.flatMap((issue) => {
-              const url = expectedIssueUrl(issue.url, input.host, input.repository, issue.number);
-              return url === null ? [] : [{ ...issue, url }];
-            });
-            return Effect.succeed({
-              issues: valid.slice(0, usableRows),
-              truncated: decoded.success.rawCount > usableRows,
-            });
-          }),
-        );
-    },
-    getIssue: (input) => {
-      if (!validRepository(input.repository)) return rejectRepository(input.cwd, "getIssue");
-      return github
-        .execute({
-          cwd: input.cwd,
-          args: [
-            "issue",
-            "view",
-            String(input.number),
-            ...repositoryArgs(input.host, input.repository),
-            "--comments",
-            "--json",
-            DETAIL_FIELDS,
-          ],
-          maxOutputBytes: MAX_DETAIL_OUTPUT_BYTES,
-        })
-        .pipe(
-          Effect.flatMap((output) => {
-            if (output.stdoutTruncated) {
-              return Effect.fail(
-                new GitHubIssueReadError({
-                  cwd: input.cwd,
-                  operation: "getIssue",
-                  detail: "GitHub returned issue details larger than the safe response limit.",
-                }),
-              );
-            }
-            const decoded = decodeIssueDetailJson(output.stdout.trim());
-            if (!Result.isSuccess(decoded)) {
-              return Effect.fail(
-                new GitHubIssueReadError({
-                  cwd: input.cwd,
-                  operation: "getIssue",
-                  detail: "GitHub CLI returned unreadable issue details.",
-                  cause: decoded.failure,
-                }),
-              );
-            }
-            const url = expectedIssueUrl(
-              decoded.success.url,
-              input.host,
-              input.repository,
-              input.number,
-            );
-            return url === null
-              ? Effect.fail(
-                  new GitHubIssueReadError({
-                    cwd: input.cwd,
-                    operation: "getIssue",
-                    detail: "GitHub returned an issue URL outside the selected repository.",
-                  }),
-                )
-              : Effect.succeed({ ...decoded.success, url });
-          }),
-        );
-    },
-    listAssigneeCandidates: (input) => {
+  const listAssigneeCandidates: GitHubIssueCli["Service"]["listAssigneeCandidates"] = Effect.fn(
+    "GitHubIssueCli.listAssigneeCandidates",
+  )(function* (input) {
+    if (!validRepository(input.repository)) {
+      return yield* unaddressable(input.cwd, "listAssigneeCandidates");
+    }
+    const [owner, name] = input.repository.split("/");
+    const raw = yield* graphql(input.cwd, {
+      host: input.host,
+      operation: "listAssigneeCandidates",
+      query: ISSUE_ASSIGNEE_CANDIDATES_GRAPHQL_QUERY,
+      variables: { owner, name, number: input.number },
+      maxResponseBytes: MAX_ASSIGNEE_CANDIDATES_RESPONSE_BYTES,
+      allowReserve: true,
+    });
+    const decoded = decodeIssueAssigneeCandidatesJson(raw);
+    if (!Result.isSuccess(decoded)) {
+      return yield* new GitHubIssueReadError({
+        cwd: input.cwd,
+        operation: "listAssigneeCandidates",
+        detail: "GitHub returned an unreadable assignee list.",
+        cause: decoded.failure,
+      });
+    }
+    return decoded.success;
+  });
+
+  const setAssignees: GitHubIssueCli["Service"]["setAssignees"] = Effect.fn(
+    "GitHubIssueCli.setAssignees",
+  )(function* (input) {
+    if (!validRepository(input.repository)) {
+      return yield* unaddressable(input.cwd, "setAssignees");
+    }
+    yield* rest(input.cwd, {
+      host: input.host,
+      operation: "setAssignees",
+      method: input.assigned ? "POST" : "DELETE",
+      path: `${issuePath(input)}/assignees`,
+      body: { assignees: input.assignees },
+    });
+  });
+
+  const setState: GitHubIssueCli["Service"]["setState"] = Effect.fn("GitHubIssueCli.setState")(
+    function* (input) {
       if (!validRepository(input.repository)) {
-        return rejectRepository(input.cwd, "listAssigneeCandidates");
+        return yield* unaddressable(input.cwd, "setState");
       }
-      const [owner, name] = input.repository.split("/");
-      return github
-        .execute({
-          cwd: input.cwd,
-          args: ["api", "graphql", "--hostname", input.host, "--input", "-"],
-          stdin: encodeJson({
-            query: ISSUE_ASSIGNEE_CANDIDATES_GRAPHQL_QUERY,
-            variables: { owner, name, number: input.number },
-          }),
-          maxOutputBytes: MAX_ASSIGNEE_CANDIDATES_OUTPUT_BYTES,
-        })
-        .pipe(
-          Effect.flatMap((output) => {
-            if (output.stdoutTruncated) {
-              return Effect.fail(
-                new GitHubIssueReadError({
-                  cwd: input.cwd,
-                  operation: "listAssigneeCandidates",
-                  detail: "GitHub returned an assignee list larger than the safe response limit.",
-                }),
-              );
-            }
-            const decoded = decodeIssueAssigneeCandidatesJson(output.stdout.trim());
-            return Result.isSuccess(decoded)
-              ? Effect.succeed(decoded.success)
-              : Effect.fail(
-                  new GitHubIssueReadError({
-                    cwd: input.cwd,
-                    operation: "listAssigneeCandidates",
-                    detail: "GitHub CLI returned an unreadable assignee list.",
-                    cause: decoded.failure,
-                  }),
-                );
-          }),
-        );
+      yield* rest(input.cwd, {
+        host: input.host,
+        operation: "setState",
+        method: "PATCH",
+        path: issuePath(input),
+        body:
+          input.change.state === "open"
+            ? { state: "open" }
+            : { state: "closed", state_reason: input.change.reason },
+      });
     },
-    setAssignees: (input) => {
-      if (!validRepository(input.repository)) return rejectRepository(input.cwd, "setAssignees");
-      return github
-        .execute({
-          cwd: input.cwd,
-          args: [
-            "api",
-            "--method",
-            input.assigned ? "POST" : "DELETE",
-            "--hostname",
-            input.host,
-            `repos/${input.repository}/issues/${input.number}/assignees`,
-            "--input",
-            "-",
-          ],
-          stdin: encodeJson({ assignees: input.assignees }),
-        })
-        .pipe(Effect.asVoid);
-    },
-    setState: (input) => {
-      if (!validRepository(input.repository)) return rejectRepository(input.cwd, "setState");
-      return github
-        .execute({
-          cwd: input.cwd,
-          args:
-            input.change.state === "open"
-              ? [
-                  "issue",
-                  "reopen",
-                  String(input.number),
-                  ...repositoryArgs(input.host, input.repository),
-                ]
-              : [
-                  "issue",
-                  "close",
-                  String(input.number),
-                  ...repositoryArgs(input.host, input.repository),
-                  "--reason",
-                  input.change.reason === "not_planned" ? "not planned" : "completed",
-                ],
-        })
-        .pipe(Effect.asVoid);
-    },
-    addComment: (input) => {
-      if (!validRepository(input.repository)) return rejectRepository(input.cwd, "addComment");
-      return github
-        .execute({
-          cwd: input.cwd,
-          args: [
-            "issue",
-            "comment",
-            String(input.number),
-            ...repositoryArgs(input.host, input.repository),
-            "--body-file",
-            "-",
-          ],
-          stdin: input.body,
-        })
-        .pipe(Effect.asVoid);
-    },
+  );
+
+  const addComment: GitHubIssueCli["Service"]["addComment"] = Effect.fn(
+    "GitHubIssueCli.addComment",
+  )(function* (input) {
+    if (!validRepository(input.repository)) {
+      return yield* unaddressable(input.cwd, "addComment");
+    }
+    yield* rest(input.cwd, {
+      host: input.host,
+      operation: "addComment",
+      method: "POST",
+      path: `${issuePath(input)}/comments`,
+      body: { body: input.body },
+    });
+  });
+
+  return GitHubIssueCli.of({
+    listIssues,
+    getIssue,
     getIssueActivity,
+    listAssigneeCandidates,
+    setAssignees,
+    setState,
+    addComment,
   });
 });
 

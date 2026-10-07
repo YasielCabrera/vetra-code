@@ -183,6 +183,10 @@
       "types": "./src/dpop.ts",
       "import": "./src/dpop.ts"
     },
+    "./desktopBootstrapToken": {
+      "types": "./src/desktopBootstrapToken.ts",
+      "import": "./src/desktopBootstrapToken.ts"
+    },
     "./dpopCommon": {
       "types": "./src/dpopCommon.ts",
       "import": "./src/dpopCommon.ts"
@@ -254,6 +258,10 @@
     "./assistantCitations": {
       "types": "./src/assistantCitations.ts",
       "import": "./src/assistantCitations.ts"
+    },
+    "./threadLinks": {
+      "types": "./src/threadLinks.ts",
+      "import": "./src/threadLinks.ts"
     },
     "./composerContextReferences": {
       "types": "./src/composerContextReferences.ts",

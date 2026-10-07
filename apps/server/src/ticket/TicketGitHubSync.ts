@@ -25,6 +25,7 @@ import { IssueProviderRegistry } from "../issue/IssueProviderRegistry.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
 import * as TicketGitHub from "./TicketGitHub.ts";
+import { AllowGitHubReserve } from "../sourceControl/GitHubApi.ts";
 import * as TicketService from "./TicketService.ts";
 
 const SYNC_INTERVAL = Duration.minutes(10);
@@ -296,16 +297,17 @@ const make = Effect.gen(function* () {
       yield* publish;
       return yield* readSources;
     }).pipe(
-      Effect.catchTag("SqlError", (cause) =>
-        Effect.fail(new TicketError({ message: "Could not remove the GitHub source.", cause })),
-      ),
+      Effect.catchTags({
+        SqlError: (cause) =>
+          Effect.fail(new TicketError({ message: "Could not remove the GitHub source.", cause })),
+      }),
       lock.withPermits(1),
     );
 
   const syncNow: TicketGitHubSync["Service"]["syncNow"] = (input) =>
     Effect.gen(function* () {
       yield* readSource(input);
-      yield* syncSource(input);
+      yield* syncSource(input).pipe(Effect.provideService(AllowGitHubReserve, true));
       return yield* readSource(input);
     });
 

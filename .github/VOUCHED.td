@@ -21,6 +21,7 @@ github:chuks-qua
 github:cursoragent
 github:D3OXY
 github:eggfriedrice24
+github:esthor
 github:extoci
 github:f-trycua
 github:flamboh

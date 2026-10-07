@@ -12,6 +12,7 @@ import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import { HttpClient, HttpClientResponse } from "effect/http";
 import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+// @effect-diagnostics-next-line nodeBuiltinImport:off -- Assertions compare against a synchronous SHA-256 of fixture bytes.
 import * as NodeCrypto from "node:crypto";
 import * as NodeModule from "node:module";
 

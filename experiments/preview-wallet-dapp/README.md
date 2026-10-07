@@ -32,7 +32,7 @@ preview_wallet_status                              # enabled, one account, chain
 preview_click          { locator: "text=eth_requestAccounts" }   # auto-approves
 preview_snapshot                                   # accounts rendered
 
-preview_wallet_configure { approval: "always-ask" }
+preview_wallet_configure { approvalMode: "always-ask" }
 preview_click          { locator: "text=personal_sign" }
 preview_wallet_requests                            # parked, with a decoded summary
 preview_wallet_approve { requestId: "…" }

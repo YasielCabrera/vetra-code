@@ -5,7 +5,8 @@ import { VETRA_PIERRE_FOLDER_ICON_CSS } from "~/pierre-icons";
 /** Shadow-root overrides that make a Pierre file tree read as part of the app chrome. */
 export const PIERRE_TREE_UNSAFE_CSS = `
   :host {
-    --trees-bg-override: transparent;
+    /* Middle-truncation markers mask the filename with the panel background. */
+    --trees-bg-override: var(--background);
     --trees-selected-bg-override: color-mix(in srgb, currentColor 12%, transparent);
     --trees-hover-bg-override: color-mix(in srgb, currentColor 7%, transparent);
     --trees-border-color-override: color-mix(in srgb, currentColor 14%, transparent);

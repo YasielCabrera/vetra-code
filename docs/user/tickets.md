@@ -84,10 +84,11 @@ that would close or reopen their issues; move the tickets first.
 
 Bring a repository's open GitHub issues onto the board. In **Settings → Tickets**, under GitHub
 sources, select **Add repository** and pick a project whose remote is on GitHub. The environment
-runs the GitHub CLI (`gh`) in that project, so `gh` must be installed and signed in there. The
-first sync starts at once; after that, enabled sources sync every 10 minutes. Select **Sync now**
+uses the GitHub account selected for that host in **Settings → Source Control → GitHub**.
+A saved token or `GH_TOKEN` takes precedence over the selected CLI account; a saved token works
+without the GitHub CLI. The first sync starts at once; after that, enabled sources sync every 10 minutes. Select **Sync now**
 on a source, or the sync button on the board, to sync right away. A source that cannot sync
-shows why, such as `gh` being signed out. A repository with more than 1,000 open issues shows a
+shows why, such as GitHub being signed out. A repository with more than 1,000 open issues shows a
 warning.
 
 Each issue becomes a ticket with its own `T-` reference, linked to the project, and marked with

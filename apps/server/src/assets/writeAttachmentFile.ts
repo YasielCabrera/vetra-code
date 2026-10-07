@@ -1,5 +1,4 @@
-import * as NodeCrypto from "node:crypto";
-
+import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -22,7 +21,9 @@ export const writeAttachmentFile = Effect.fn("writeAttachmentFile")(function* <E
 }) {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const partPath = `${input.destinationPath}.${NodeCrypto.randomUUID()}.part`;
+  const crypto = yield* Crypto.Crypto;
+  const partId = yield* crypto.randomUUIDv4.pipe(Effect.orDie);
+  const partPath = `${input.destinationPath}.${partId}.part`;
   let receivedBytes = 0;
   yield* Effect.gen(function* () {
     yield* fileSystem.makeDirectory(path.dirname(input.destinationPath), { recursive: true });

@@ -6,10 +6,8 @@
  * exercised by a person or driven by an agent through the `preview_wallet_*`
  * MCP tools.
  */
-import {
-  DEFAULT_SERVER_SETTINGS,
-  type PreviewAutomationWalletConfigureInput,
-} from "@t3tools/contracts";
+import { useAtomValue } from "@effect/atom-react";
+import { DEFAULT_SERVER_SETTINGS, type EnvironmentId } from "@t3tools/contracts";
 import {
   DEFAULT_WEB3_NETWORKS,
   nextChainSelectionAfterCatalogChange,
@@ -17,7 +15,12 @@ import {
   replaceCustomNetwork,
   setBuiltInNetworkEnabled,
 } from "@t3tools/web3/networks";
-import type { Web3Account, Web3ApprovalMode, Web3CustomNetwork } from "@t3tools/web3/schema";
+import type {
+  Web3Account,
+  Web3ApprovalMode,
+  Web3CustomNetwork,
+  Web3WalletAccountConfigureInput,
+} from "@t3tools/web3/schema";
 import {
   CheckIcon,
   CopyIcon,
@@ -28,9 +31,15 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
+import { useEnvironmentSettings, useUpdateEnvironmentSettings } from "../../hooks/useSettings";
 import { ensureLocalApi } from "../../localApi";
-import { previewBridge } from "../preview/previewBridge";
+import { useEnvironment } from "../../state/environments";
+import {
+  previewWalletEnvironment,
+  previewWalletFailureMessage,
+  usePreviewWalletStatus,
+} from "../../state/previewWallet";
+import { useAtomCommand } from "../../state/use-atom-command";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -65,17 +74,17 @@ import {
   removeCustomNetworkConfirmationMessage,
   shortenAddress,
 } from "./web3Settings.logic";
-import { useWalletStatus } from "./useWalletStatus";
 
 const DEFAULTS = DEFAULT_SERVER_SETTINGS.web3Wallet;
 
-function TestWalletWarning() {
+function TestWalletWarning({ environmentLabel }: { readonly environmentLabel: string }) {
   return (
     <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-warning-foreground">
       <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
       <p>
-        This is a <strong>test wallet</strong>. Keys are unencrypted, and agents can use, create, or
-        delete wallets without notice. Never import a mnemonic or private key that holds real funds.
+        This is a <strong>test wallet</strong>. Its keys sit unencrypted on {environmentLabel},
+        every preview tab there signs with them, and agents can use, create, or delete wallets
+        without notice. Never import a mnemonic or private key that holds real funds.
       </p>
     </div>
   );
@@ -234,64 +243,27 @@ function CustomNetworkDialog({
   );
 }
 
-export function Web3SettingsPanel() {
-  const settings = usePrimarySettings();
-  const updateSettings = useUpdatePrimarySettings();
-  const wallet = settings.web3Wallet;
-  const { status, refresh } = useWalletStatus();
+/** Settings > Web3 for one environment: its server holds the wallet and its preferences. */
+export function Web3SettingsPanel({ environmentId }: { readonly environmentId: EnvironmentId }) {
+  const wallet = useEnvironmentSettings(environmentId, (settings) => settings.web3Wallet);
+  const updateSettings = useUpdateEnvironmentSettings(environmentId);
+  const status = usePreviewWalletStatus(environmentId);
+  const environmentLabel = useEnvironment(environmentId)?.label ?? "this environment";
+  const canConfigure = useAtomValue(
+    previewWalletEnvironment.configure.permissionAtom(environmentId),
+  );
+  const configure = useAtomCommand(previewWalletEnvironment.configure, { reportFailure: false });
   const [networkDialog, setNetworkDialog] = useState<Web3CustomNetwork | "add" | null>(null);
-
-  const bridge = previewBridge?.wallet ?? null;
-
-  const pushWalletSettings = useCallback(async () => {
-    if (!bridge) return;
-    await bridge.applySettings({
-      enabled: wallet.enabled,
-      approvalMode: wallet.approvalMode,
-      chainId: wallet.chainId,
-      rpcUrl: wallet.rpcUrl,
-      autoConnectLoopback: wallet.autoConnectLoopback,
-      disabledBuiltInChainIds: wallet.disabledBuiltInChainIds,
-      customNetworks: wallet.customNetworks,
-    });
-  }, [
-    bridge,
-    wallet.approvalMode,
-    wallet.autoConnectLoopback,
-    wallet.chainId,
-    wallet.customNetworks,
-    wallet.disabledBuiltInChainIds,
-    wallet.enabled,
-    wallet.rpcUrl,
-  ]);
-
-  // ElectronBrowserHost also pushes this, but Settings is where a stale
-  // "wallet is off" is visible — retry here so toggling on actually seeds
-  // the keystore even if the host effect ran before the wallet IPC was ready.
-  useEffect(() => {
-    if (!bridge) return;
-    void pushWalletSettings()
-      .then(() => refresh())
-      .catch(() => undefined);
-  }, [bridge, pushWalletSettings, refresh]);
+  const accountsDisabled = !canConfigure || !wallet.enabled;
 
   const runWalletConfigure = useCallback(
-    async (input: PreviewAutomationWalletConfigureInput, failedTitle: string) => {
-      if (!bridge) return;
-      try {
-        await pushWalletSettings();
-        await bridge.configure("", input);
-        await refresh();
-      } catch (error) {
-        toastManager.add({
-          type: "error",
-          title: failedTitle,
-          description:
-            error instanceof Error ? error.message : "The preview wallet did not respond.",
-        });
+    async (input: Web3WalletAccountConfigureInput, failedTitle: string) => {
+      const failure = previewWalletFailureMessage(await configure({ environmentId, input }));
+      if (failure !== null) {
+        toastManager.add({ type: "error", title: failedTitle, description: failure });
       }
     },
-    [bridge, pushWalletSettings, refresh],
+    [configure, environmentId],
   );
 
   const generateAccount = useCallback(async () => {
@@ -430,7 +402,7 @@ export function Web3SettingsPanel() {
     <SettingsPageContainer>
       <SettingsSection id="web3-wallet" title="Preview wallet">
         <div className="px-1 pb-2">
-          <TestWalletWarning />
+          <TestWalletWarning environmentLabel={environmentLabel} />
         </div>
 
         <SettingsRow
@@ -527,17 +499,13 @@ export function Web3SettingsPanel() {
       <SettingsSection id="web3-accounts" title="Accounts">
         <SettingsRow
           {...searchableSetting("web3-wallet-accounts")}
-          description={
-            bridge
-              ? "Generated when the wallet is first enabled. Click a name to rename it. The active account is returned first."
-              : "Accounts are only available in the desktop app, where the browser preview runs."
-          }
+          description="Generated when the wallet is first enabled. Click a name to rename it. The active account is returned first."
           control={
             <Button
               variant="outline"
               size="sm"
               onClick={() => void generateAccount()}
-              disabled={!bridge || !wallet.enabled}
+              disabled={accountsDisabled}
             >
               <PlusIcon className="size-3.5" aria-hidden />
               Add account
@@ -559,7 +527,7 @@ export function Web3SettingsPanel() {
                     <AccountLabelEditor
                       address={account.address}
                       label={account.label}
-                      disabled={!bridge || !wallet.enabled}
+                      disabled={accountsDisabled}
                       className="text-xs font-medium"
                       onCommit={(address, nextLabel) => void renameAccount(address, nextLabel)}
                     />
@@ -580,6 +548,7 @@ export function Web3SettingsPanel() {
                         <Button
                           variant="ghost"
                           size="compact"
+                          disabled={accountsDisabled}
                           onClick={() => void selectAccount(account.address)}
                         >
                           Make active
@@ -593,7 +562,7 @@ export function Web3SettingsPanel() {
                             variant="ghost-destructive"
                             size="icon-xs"
                             aria-label={`Remove ${account.label}`}
-                            disabled={!bridge || !wallet.enabled}
+                            disabled={accountsDisabled}
                             onClick={() => void removeAccount(account)}
                           />
                         }
@@ -621,7 +590,7 @@ export function Web3SettingsPanel() {
               variant="outline"
               size="sm"
               onClick={() => void clearOrigins()}
-              disabled={!bridge || !status || status.connectedOrigins.length === 0}
+              disabled={!canConfigure || !status || status.connectedOrigins.length === 0}
             >
               Forget all
             </Button>

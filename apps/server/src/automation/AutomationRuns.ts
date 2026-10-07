@@ -1,5 +1,3 @@
-import * as NodeCrypto from "node:crypto";
-
 import {
   AutomationError,
   type AutomationRun,
@@ -12,6 +10,7 @@ import {
   ThreadId,
 } from "@t3tools/contracts";
 import * as Context from "effect/Context";
+import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -19,6 +18,7 @@ import * as Option from "effect/Option";
 import * as PubSub from "effect/PubSub";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
+import * as Hex from "effect/encoding/Hex";
 import * as SqlClient from "effect/sql/SqlClient";
 
 import * as GitWorkflowService from "../git/GitWorkflowService.ts";
@@ -81,11 +81,11 @@ const automationError = (message: string) => (cause: unknown) =>
   new AutomationError({ message, cause });
 
 /**
- * The thread id a scheduled launch gets, derived from its command id so a
- * retried launch reuses the same thread instead of recording a second run.
+ * The thread id a scheduled launch gets, derived from the SHA-256 of its
+ * command id so a retried launch reuses the same thread instead of recording a
+ * second run.
  */
-export function automationRunThreadId(commandId: string): ThreadId {
-  const hex = NodeCrypto.createHash("sha256").update(commandId).digest("hex");
+function automationRunThreadId(hex: string): ThreadId {
   const variant = ((Number.parseInt(hex.slice(16, 17), 16) & 0x3) | 0x8).toString(16);
   return ThreadId.make(
     `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`,
@@ -372,20 +372,26 @@ export const trackingThreadLaunchLayer = Layer.effect(
   Effect.gen(function* () {
     const inner = yield* ThreadLaunchService.ThreadLaunchService;
     const runs = yield* AutomationRuns;
+    const crypto = yield* Crypto.Crypto;
     return ThreadLaunchService.ThreadLaunchService.of({
       launch: (input) => {
         const scheduledTaskId = input.initialMessage?.scheduledTaskId;
         if (scheduledTaskId === undefined || input.threadId !== undefined) {
           return inner.launch(input);
         }
-        const threadId = automationRunThreadId(input.commandId);
-        return runs.recordLaunch({ threadId, scheduledTaskId }).pipe(
-          // A run that cannot be recorded still runs; it just shows up as an
-          // ordinary thread.
-          Effect.catch((cause) =>
-            Effect.logWarning("Could not record an automation run", { scheduledTaskId, cause }),
+        return crypto.digest("SHA-256", new TextEncoder().encode(input.commandId)).pipe(
+          Effect.orDie,
+          Effect.map((digest) => automationRunThreadId(Hex.encode(digest))),
+          Effect.flatMap((threadId) =>
+            runs.recordLaunch({ threadId, scheduledTaskId }).pipe(
+              // A run that cannot be recorded still runs; it just shows up as an
+              // ordinary thread.
+              Effect.catch((cause) =>
+                Effect.logWarning("Could not record an automation run", { scheduledTaskId, cause }),
+              ),
+              Effect.andThen(inner.launch({ ...input, threadId })),
+            ),
           ),
-          Effect.andThen(inner.launch({ ...input, threadId })),
         );
       },
       retryPreparation: inner.retryPreparation,
