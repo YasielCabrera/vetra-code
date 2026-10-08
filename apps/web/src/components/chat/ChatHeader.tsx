@@ -9,7 +9,6 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
-import type { AgentControlState } from "@t3tools/client-runtime/state/subagentRuntime";
 import { ChevronDownIcon } from "lucide-react";
 import {
   memo,
@@ -24,7 +23,6 @@ import {
 import { isTrailingDoubleClick } from "../Sidebar.logic";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { toastManager } from "../ui/toast";
-import { ThreadAgentsControl } from "./ThreadAgentsControl";
 import { useThreadActionMenu } from "~/hooks/useThreadActionMenu";
 import { readLocalApi } from "~/localApi";
 import { threadEnvironment } from "../../state/threads";
@@ -48,10 +46,7 @@ interface ChatHeaderProps {
   isServerThread: boolean;
   activeProject: EnvironmentProject | null;
   rightPanelOpen: boolean;
-  /** This thread's subagent roster; omitted from the header when null. */
-  agentControlState: AgentControlState | null;
   onNewThreadInProject: () => void;
-  onOpenAgents: () => void;
   onOpenProjectSettings?: (() => void) | undefined;
 }
 
@@ -83,9 +78,7 @@ export const ChatHeader = memo(function ChatHeader({
   isServerThread,
   activeProject,
   rightPanelOpen,
-  agentControlState,
   onNewThreadInProject,
-  onOpenAgents,
   onOpenProjectSettings,
 }: ChatHeaderProps) {
   const activeProjectName = activeProject?.title;
@@ -225,9 +218,6 @@ export const ChatHeader = memo(function ChatHeader({
   const handleHeaderContextMenu = useCallback(
     (event: ReactMouseEvent) => {
       if (renamingTitle !== null) return;
-      // The agents chip keeps its own behavior; only the breadcrumb area opens
-      // the thread menu.
-      if ((event.target as HTMLElement).closest("[data-chat-header-actions]")) return;
       if (!isServerThread && onOpenProjectSettings === undefined) return;
       cancelPendingTitleMenu();
       event.preventDefault();
@@ -365,11 +355,6 @@ export const ChatHeader = memo(function ChatHeader({
           )}
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
-      {agentControlState ? (
-        <div data-chat-header-actions className="flex shrink-0 items-center">
-          <ThreadAgentsControl state={agentControlState} onOpenAgents={onOpenAgents} />
-        </div>
-      ) : null}
     </div>
   );
 });

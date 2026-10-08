@@ -292,10 +292,6 @@ import { useDeviceState } from "~/state/device";
 import { DeviceSetup } from "./device/DeviceSetup";
 import { Dialog } from "./ui/dialog";
 import { WizardPopup } from "./ui/wizard";
-import {
-  deriveAgentControlState,
-  projectedSubagentsToRuntime,
-} from "@t3tools/client-runtime/state/subagentRuntime";
 import { BranchToolbar, type BranchToolbarHandle } from "./BranchToolbar";
 import { makeWorkspaceFileDropHandlers } from "./chat/workspaceFileDrop";
 import { isEditableFocused } from "../lib/editableFocus";
@@ -3485,11 +3481,6 @@ export default function ChatView(props: ChatViewProps) {
     }
     return findLatestProposedPlan(serverProjection, activeLatestRun?.runId ?? null);
   }, [activeLatestRun?.runId, latestRunSettled, serverProjection]);
-  // Header Agents chip: this thread's subagent roster, flattened to one group.
-  const agentControlState = useMemo(
-    () => deriveAgentControlState(projectedSubagentsToRuntime(serverProjection?.subagents ?? [])),
-    [serverProjection?.subagents],
-  );
   const showPlanFollowUpPrompt = shouldShowPlanFollowUpPrompt({
     pendingUserInputCount: pendingUserInputs.length,
     interactionMode,
@@ -6108,13 +6099,6 @@ export default function ChatView(props: ChatViewProps) {
   const toggleThreadPanel = useCallback(() => {
     if (!activeThreadRef) return;
     useRightPanelStore.getState().toggleThreadPanel(activeThreadRef, threadPanelPresentation);
-  }, [activeThreadRef, threadPanelPresentation]);
-  // The header Agents chip hands off to the thread panel, which owns the roster.
-  const openThreadPanelFromAgents = useCallback(() => {
-    if (!activeThreadRef) return;
-    useRightPanelStore
-      .getState()
-      .setThreadPanelOpen(activeThreadRef, threadPanelPresentation, true);
   }, [activeThreadRef, threadPanelPresentation]);
   const toggleRightPanelMaximized = useCallback(() => {
     if (!canMaximizeRightPanel) return;
@@ -11342,9 +11326,7 @@ export default function ChatView(props: ChatViewProps) {
             activeThreadTitle={activeThread.title}
             activeProject={activeProject ?? null}
             rightPanelOpen={inlineRightPanelOwnsTitleBar}
-            agentControlState={agentControlState}
             onNewThreadInProject={handleNewThreadInActiveProject}
-            onOpenAgents={openThreadPanelFromAgents}
             {...(activeDraftLogicalProjectKey
               ? { onOpenProjectSettings: handleOpenDraftProjectSettings }
               : {})}
