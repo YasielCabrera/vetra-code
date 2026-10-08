@@ -29,6 +29,7 @@ import * as Stream from "effect/Stream";
 import * as SqlClient from "effect/sql/SqlClient";
 
 import * as ServerConfig from "../config.ts";
+import * as GitManager from "../git/GitManager.ts";
 import * as Orchestrator from "../orchestration-v2/Orchestrator.ts";
 import * as ProjectionStore from "../orchestration-v2/ProjectionStore.ts";
 import * as PullRequestSyncReactor from "../orchestration-v2/PullRequestSyncReactor.ts";
@@ -479,6 +480,9 @@ describe("TicketLinkReactor", () => {
         Layer.mock(PullRequestService.PullRequestService)({
           summary: (ref) => Effect.succeed({ ...pullRequestSummary(ref, "merged"), stack: null }),
           invalidate: () => Effect.void,
+        }),
+        Layer.mock(GitManager.GitManager)({
+          subscribePullRequestStateChanges: Effect.succeed(Stream.empty),
         }),
         Layer.mock(ServerSettingsService)({ getSettings: Effect.succeed(DEFAULT_SERVER_SETTINGS) }),
       );

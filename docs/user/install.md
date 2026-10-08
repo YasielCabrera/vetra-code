@@ -37,6 +37,15 @@ update it with `git pull` and a rebuild.
 Vetra Code does not publish desktop releases yet. After `pnpm build:desktop`,
 start it from the same checkout with `pnpm start:desktop`.
 
+### The `vetra` command
+
+The desktop app includes the `vetra` command-line tool. To run it from any
+terminal, open **Settings → General → About** and choose **Install** next to
+**vetra command**. On macOS and Linux it adds a `vetra` link to a folder on your
+`PATH`; on Windows it adds the app's command folder to your `PATH`. Open a new
+terminal afterwards. **Remove** takes it off again. If another `vetra` command
+is already installed, it stays as it is.
+
 ### Windows Subsystem for Linux
 
 Choose a WSL distro in **Settings → Connections** to run agents and projects
@@ -73,6 +82,7 @@ computer.
 | OpenCode    | Install [OpenCode](https://opencode.ai), then run `opencode auth login`.                                                                                  |
 | Antigravity | Install and sign in with Google from Vetra Code's provider settings.                                                                                      |
 | Pi          | Install [Pi](https://pi.dev), then run `pi` once to finish its login or API-key setup.                                                                    |
+| Muse Code   | Install [Muse Code](https://dev.meta.ai/docs/muse-code) on the server, run `muse login`, then enable it in Settings → Providers.                          |
 
 Provider CLIs must be on the server's `PATH`. If Vetra Code cannot find one, set its
 **Binary path** in provider settings, especially when using a version manager.
@@ -101,7 +111,8 @@ their original values.
 
 For provider-specific setup and accounts, see [Codex](./providers-codex.md),
 [Claude](./providers-claude.md), [OpenCode](./providers-opencode.md),
-[Antigravity](./providers-antigravity.md), and [Pi](./providers-pi.md).
+[Antigravity](./providers-antigravity.md), [Pi](./providers-pi.md), and
+[Muse Code](./providers-muse.md).
 
 ## Next steps
 

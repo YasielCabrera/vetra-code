@@ -81,8 +81,7 @@ const ticketError = (message: string) => (cause: unknown) => new TicketError({ m
 
 /** A deleted or transferred issue reads as not found; any other failure is a real one. */
 const isMissingIssue = (error: IssueProviderError | TicketError) =>
-  error._tag === "IssueProviderError" &&
-  Predicate.isTagged(error.cause, "GitHubPullRequestNotFoundError");
+  error._tag === "IssueProviderError" && Predicate.isTagged(error.cause, "GitHubApiNotFoundError");
 
 const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;

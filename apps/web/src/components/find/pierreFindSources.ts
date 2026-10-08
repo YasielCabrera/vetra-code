@@ -1,17 +1,12 @@
-import {
-  DIFFS_TAG_NAME,
-  VirtualizedFile,
-  type FileDiffMetadata,
-  type SelectionSide,
-} from "@pierre/diffs";
-import type { CodeViewHandle, FileOptions } from "@pierre/diffs/react";
+import { DIFFS_TAG_NAME, VirtualizedFile } from "@pierre/diffs";
+import type { FileOptions } from "@pierre/diffs/react";
 import { useCallback, useMemo } from "react";
 
 import { resolveCenteredFileLineScrollTop } from "~/components/files/fileLineReveal";
 
 import { findLineOccurrences } from "./findScope.logic";
 import { isRangeUnobscured, lineRanges, type FindResult, type FindSource } from "./findSource";
-import { diffFindLines, fileFindLines, type DiffFindLine } from "./pierreFind.logic";
+import { fileFindLines } from "./pierreFind.logic";
 
 const OBSERVED_MUTATIONS = { childList: true, subtree: true, characterData: true };
 
@@ -145,82 +140,4 @@ export function usePierreFileFindSource<LAnnotation>(
     [onPostRender],
   );
   return { source, onPostRender: trackPostRender };
-}
-
-export interface CodeViewFindFile {
-  readonly fileKey: string;
-  readonly fileDiff: FileDiffMetadata;
-  readonly collapsed: boolean;
-}
-
-const diffLinesCache = new WeakMap<FileDiffMetadata, DiffFindLine[]>();
-
-function cachedDiffLines(fileDiff: FileDiffMetadata): DiffFindLine[] {
-  let lines = diffLinesCache.get(fileDiff);
-  if (lines === undefined) {
-    lines = diffFindLines(fileDiff);
-    diffLinesCache.set(fileDiff, lines);
-  }
-  return lines;
-}
-
-function diffLineKey(itemId: string, side: SelectionSide, lineNumber: number | string): string {
-  return `${itemId}\n${side}\n${lineNumber}`;
-}
-
-/** Unified view marks deletions by line type; split view by the column the line sits in. */
-function renderedDiffLineSide(line: Element): SelectionSide {
-  const column = line.closest("[data-code]");
-  const isDeletion =
-    column?.hasAttribute("data-deletions") === true ||
-    (column?.hasAttribute("data-unified") === true &&
-      line.getAttribute("data-line-type") === "change-deletion");
-  return isDeletion ? "deletions" : "additions";
-}
-
-function codeViewFindModel(files: ReadonlyArray<CodeViewFindFile>) {
-  const lines = files.flatMap(({ fileKey, fileDiff, collapsed }) =>
-    collapsed ? [] : cachedDiffLines(fileDiff).map((line) => ({ fileKey, ...line })),
-  );
-  return { lines, texts: lines.map((line) => line.text) };
-}
-
-/** Searches the expanded hunks of every file in a `CodeView`, rendered or not. */
-export function codeViewFindSource<LAnnotation>(
-  codeView: CodeViewHandle<LAnnotation, undefined>,
-  files: ReadonlyArray<CodeViewFindFile>,
-): FindSource {
-  // Built on the first search: the diff panel remakes its source each time files load or collapse.
-  let model: ReturnType<typeof codeViewFindModel> | undefined;
-  return {
-    observe: observePierreRenders,
-    find: (_host, query, limit) => {
-      const { lines, texts } = (model ??= codeViewFindModel(files));
-      const { matches, truncated } = findLineOccurrences(texts, query, limit);
-      const located = matches.map(({ line, occurrence }) => {
-        const { fileKey, side, lineNumber } = lines[line]!;
-        return {
-          key: diffLineKey(fileKey, side, lineNumber),
-          occurrence,
-          fileKey,
-          side,
-          lineNumber,
-        };
-      });
-      const renderedLines = () => {
-        const elements = new Map<string, Element>();
-        for (const item of codeView.getInstance()?.getRenderedItems() ?? []) {
-          const root = item.element.shadowRoot ?? item.element;
-          for (const line of root.querySelectorAll("[data-code] [data-line]")) {
-            const lineNumber = line.getAttribute("data-line") ?? "";
-            elements.set(diffLineKey(item.id, renderedDiffLineSide(line), lineNumber), line);
-          }
-        }
-        return elements;
-      };
-      return lineResult(located, truncated, query, renderedLines, ({ fileKey, side, lineNumber }) =>
-        codeView.scrollTo({ type: "line", id: fileKey, lineNumber, side, align: "center" }),
-      );
-    },
-  };
 }

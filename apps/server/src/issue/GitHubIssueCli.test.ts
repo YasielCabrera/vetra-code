@@ -4,8 +4,6 @@ import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 
 import * as GitHubApi from "../sourceControl/GitHubApi.ts";
-import * as GitHubCredentials from "../sourceControl/GitHubCredentials.ts";
-import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
 import * as GitHubIssueCli from "./GitHubIssueCli.ts";
 
 const graphql = vi.fn<GitHubApi.GitHubApi["Service"]["graphql"]>();
@@ -263,53 +261,9 @@ layer("GitHubIssueCli.layer", (it) => {
       graphql.mockReturnValueOnce(issueDetail(null));
       const empty = yield* Effect.flip(cli.getIssue({ ...repository, number: 404 }));
 
-      expect([refused._tag, empty._tag]).toEqual([
-        "GitHubPullRequestNotFoundError",
-        "GitHubPullRequestNotFoundError",
-      ]);
-      expect([refused.cwd, empty.cwd]).toEqual(["/w", "/w"]);
-    }),
-  );
-
-  it.effect("maps credential and rate-limit refusals onto the GitHub errors callers handle", () =>
-    Effect.gen(function* () {
-      const cli = yield* GitHubIssueCli.GitHubIssueCli;
-      const failWith = (error: GitHubApi.GitHubApiError) =>
-        Effect.gen(function* () {
-          rest.mockReturnValueOnce(Effect.fail(error));
-          return yield* Effect.flip(cli.addComment({ ...repository, number: 7, body: "Hi" }));
-        });
-
-      const unauthenticated = yield* failWith(
-        new GitHubApi.GitHubApiAuthenticationError({ host: "github.com", operation: "x" }),
-      );
-      const signedOut = yield* failWith(
-        new GitHubCredentials.GitHubNotSignedInError({ host: "github.com" }),
-      );
-      const limited = yield* failWith(
-        new GitHubApi.GitHubApiRateLimitError({
-          host: "github.com",
-          operation: "x",
-          retryAt: 1_000,
-        }),
-      );
-      const paused = yield* failWith(
-        new SourceControlRateLimit.SourceControlRateLimitPausedError({
-          provider: "github",
-          host: "github.com",
-          retryAt: 2_000,
-        }),
-      );
-
-      expect([unauthenticated._tag, signedOut._tag]).toEqual([
-        "GitHubCliAuthenticationError",
-        "GitHubCliAuthenticationError",
-      ]);
-      expect(
-        [limited, paused].map((error) => [error._tag, "retryAt" in error && error.retryAt]),
-      ).toEqual([
-        ["GitHubCliRateLimitError", 1_000],
-        ["GitHubCliRateLimitError", 2_000],
+      expect([refused, empty]).toMatchObject([
+        { _tag: "GitHubApiNotFoundError" },
+        { _tag: "GitHubApiNotFoundError", host: "github.com", operation: "getIssue" },
       ]);
     }),
   );
@@ -483,9 +437,9 @@ layer("GitHubIssueCli.layer", (it) => {
         ["github.acme.com", "repos/YasielCabrera/vetra-code/issues/7/comments"],
       ]);
       expect(failed).toMatchObject({
-        _tag: "GitHubCliCommandError",
-        cwd: "/fork",
-        httpStatus: 422,
+        _tag: "GitHubApiResponseError",
+        host: "github.acme.com",
+        status: 422,
       });
     }),
   );

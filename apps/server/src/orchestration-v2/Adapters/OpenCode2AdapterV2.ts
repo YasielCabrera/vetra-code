@@ -334,7 +334,7 @@ interface ThreadState {
   /**
    * Set when a turn ended here while OpenCode may still be running it: a Stop
    * that timed out, a prompt whose request failed without a clear answer, or a
-   * request T3 could not answer. Execution events carry only the session id,
+   * request Vetra Code could not answer. Execution events carry only the session id,
    * so the next execution end belongs to that run; it clears this and ends no turn.
    */
   unsettled: boolean;
@@ -1812,7 +1812,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
     });
 
     /**
-     * Ends the turn a request T3 could not answer would block, and stops the
+     * Ends the turn a request Vetra Code could not answer would block, and stops the
      * session: OpenCode waits on an unanswered request forever. The stopped
      * run's end is its own, not the next turn's.
      */

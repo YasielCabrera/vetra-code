@@ -88,6 +88,10 @@ const createFixtureSource = Effect.fn("createMigrateDevDbFixtureSource")(functio
           'full-access', 'default', 'user', 'user', '2026-08-01', '2026-08-01', 'never', 0)`;
       yield* sql`INSERT INTO auth_sessions (session_id, subject, scopes, method, issued_at, expires_at)
         VALUES ('session-1', 'user', '[]', 'pairing', '2026-08-01', '2027-08-01')`;
+      // The fork's ticket search index, from VetraMigrations/001_Tickets.
+      yield* sql`CREATE VIRTUAL TABLE tickets_fts USING fts5(title, body, labels)`;
+      yield* sql`INSERT INTO tickets_fts (rowid, title, body, labels)
+        VALUES (7, 'Flaky sync', 'Fails on virtual tables', 'bug')`;
     }),
   );
   return databasePath;
@@ -118,12 +122,14 @@ it.layer(NodeServices.layer)("migrate-dev-db", (it) => {
             SELECT stream_id FROM orchestration_events ORDER BY stream_id`;
           const sessions = yield* sql<{ provider_session_id: string }>`
             SELECT provider_session_id FROM orchestration_v2_projection_provider_sessions`;
+          const tickets = yield* sql<{ rowid: number; title: string }>`
+            SELECT rowid, title FROM tickets_fts WHERE tickets_fts MATCH 'virtual'`;
           const [leftovers] = yield* sql<{ auth: number; tasks: number; transfers: number }>`
             SELECT
               (SELECT COUNT(*) FROM auth_sessions) AS auth,
               (SELECT COUNT(*) FROM scheduled_tasks) AS tasks,
               (SELECT COUNT(*) FROM orchestration_v2_projection_context_transfers) AS transfers`;
-          return { threads, events, sessions, leftovers };
+          return { threads, events, sessions, tickets, leftovers };
         }),
       );
       assert.deepStrictEqual(
@@ -138,7 +144,67 @@ it.layer(NodeServices.layer)("migrate-dev-db", (it) => {
         kept.sessions.map((row) => row.provider_session_id),
         ["session-shared"],
       );
+      assert.deepStrictEqual(kept.tickets, [{ rowid: 7, title: "Flaky sync" }]);
       assert.deepStrictEqual(kept.leftovers, { auth: 0, tasks: 0, transfers: 0 });
+    }),
+  );
+
+  it.effect("never copies a settled thread's rows, and new events append after the source's", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const sourceDir = yield* fs.makeTempDirectoryScoped({ prefix: "migrate-dev-db-slice-" });
+      const destDir = yield* fs.makeTempDirectoryScoped({ prefix: "migrate-dev-db-slice-dest-" });
+      const source = yield* createFixtureSource(sourceDir);
+      const [sourceSequence] = yield* withDatabase(
+        source,
+        Effect.gen(function* () {
+          const sql = yield* SqlClient.SqlClient;
+          return yield* sql<{ seq: number }>`
+            SELECT seq FROM sqlite_sequence WHERE name = 'orchestration_events'`;
+        }),
+      );
+
+      // Keep every family, so only the copy can leave the settled one out.
+      const result = yield* runMigrateDevDb(
+        { baseDir: destDir, source, projects: 5, threadsPerProject: 100 },
+        { sharedHome: sourceDir },
+      );
+
+      const copied = yield* withDatabase(
+        result.databasePath,
+        Effect.gen(function* () {
+          const sql = yield* SqlClient.SqlClient;
+          const [settledRows] = yield* sql<{ count: number }>`
+            SELECT
+              (SELECT COUNT(*) FROM orchestration_v2_projection_runs WHERE thread_id = 'settled-thread')
+              + (SELECT COUNT(*) FROM orchestration_events WHERE stream_id = 'settled-thread')
+              AS count`;
+          const [sequence] = yield* sql<{ seq: number }>`
+            SELECT seq FROM sqlite_sequence WHERE name = 'orchestration_events'`;
+          return { settledRows: settledRows?.count, sequence: sequence?.seq };
+        }),
+      );
+      assert.equal(copied.settledRows, 0);
+      assert.equal(copied.sequence, sourceSequence?.seq);
+    }),
+  );
+
+  it.effect("upgrades a source from before the V2 thread tables", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const sourceDir = yield* fs.makeTempDirectoryScoped({ prefix: "migrate-dev-db-v1-" });
+      const destDir = yield* fs.makeTempDirectoryScoped({ prefix: "migrate-dev-db-v1-dest-" });
+      const stateDir = path.join(sourceDir, "userdata");
+      const source = path.join(stateDir, "statev2.sqlite");
+      yield* fs.makeDirectory(stateDir, { recursive: true });
+      yield* withDatabase(source, runMigrations({ toMigrationInclusive: 55 }));
+
+      const result = yield* runMigrateDevDb(
+        { baseDir: destDir, source, projects: 5, threadsPerProject: 10 },
+        { sharedHome: sourceDir },
+      );
+      assert.include(result.executedMigrations, "56_OrchestrationV2");
     }),
   );
 

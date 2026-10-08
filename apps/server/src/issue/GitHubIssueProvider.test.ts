@@ -2,6 +2,9 @@ import { expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
+import * as GitHubApi from "../sourceControl/GitHubApi.ts";
+import * as GitHubCredentials from "../sourceControl/GitHubCredentials.ts";
+import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
 import * as GitHubIssueCli from "./GitHubIssueCli.ts";
 import { make } from "./GitHubIssueProvider.ts";
 import type { GitHubIssue } from "./githubIssueJson.ts";
@@ -89,4 +92,44 @@ it.effect("adds GitHub avatar URLs to issue actors while retaining generic fallb
       }),
     ),
   ),
+);
+
+it.effect("says why GitHub refused an issue request", () =>
+  Effect.gen(function* () {
+    const refusals = [
+      new GitHubCredentials.GitHubCliMissingError({ host: "github.com" }),
+      new GitHubCredentials.GitHubNotSignedInError({ host: "github.com" }),
+      new GitHubApi.GitHubApiAuthenticationError({ host: "github.com", operation: "x" }),
+      new GitHubApi.GitHubApiRateLimitError({ host: "github.com", operation: "x", retryAt: 1_000 }),
+      new SourceControlRateLimit.SourceControlRateLimitPausedError({
+        provider: "github",
+        host: "github.com",
+        retryAt: 2_000,
+      }),
+      new GitHubApi.GitHubApiNotFoundError({ host: "github.com", operation: "x" }),
+      new GitHubApi.GitHubApiResponseError({ host: "github.com", operation: "x", status: 422 }),
+    ];
+    const failures = yield* Effect.forEach(refusals, (refusal) =>
+      Effect.gen(function* () {
+        const provider = yield* make;
+        return yield* Effect.flip(
+          provider.getIssue({ cwd: "/w", host: "github.com", repository: "acme/web", number: 7 }),
+        );
+      }).pipe(
+        Effect.provide(
+          Layer.mock(GitHubIssueCli.GitHubIssueCli)({ getIssue: () => Effect.fail(refusal) }),
+        ),
+      ),
+    );
+
+    expect(failures.map(({ reason, detail }) => [reason, detail])).toEqual([
+      ["missing-tool", "GitHub CLI (`gh`) is not available."],
+      ["unauthenticated", "GitHub CLI is not authenticated."],
+      ["unauthenticated", "GitHub CLI is not authenticated."],
+      ["rate-limited", "GitHub's request limit has been reached."],
+      ["rate-limited", "GitHub's request limit has been reached."],
+      ["failed", "The issue was not found."],
+      ["failed", "GitHub could not complete the issue request."],
+    ]);
+  }),
 );

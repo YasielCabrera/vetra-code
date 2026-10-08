@@ -32,7 +32,7 @@ import { fromProviders, IssueProviderRegistry } from "../issue/IssueProviderRegi
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as GitHubApi from "../sourceControl/GitHubApi.ts";
-import * as GitHubGraphQlBudget from "../sourceControl/githubGraphQlBudget.ts";
+import * as GitHubQuota from "../sourceControl/githubQuota.ts";
 import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
 import * as SourceControlProvider from "../sourceControl/SourceControlProvider.ts";
@@ -290,7 +290,7 @@ const withSync = <A, E>(
   body: (context: {
     readonly tickets: TicketService.TicketService["Service"];
     readonly sync: TicketGitHubSync.TicketGitHubSync["Service"];
-    readonly budget: GitHubGraphQlBudget.GitHubGraphQlBudget["Service"];
+    readonly quota: GitHubQuota.GitHubQuota["Service"];
     readonly rateLimits: SourceControlRateLimit.SourceControlRateLimit["Service"];
     readonly fake: ReturnType<typeof makeFakeGitHub>["fake"];
   }) => Effect.Effect<A, E, never>,
@@ -368,7 +368,7 @@ const withSync = <A, E>(
             ),
         }),
         SourceControlRateLimit.layer,
-        GitHubGraphQlBudget.layer,
+        GitHubQuota.layer,
       ),
     ),
     Layer.provideMerge(SqlitePersistence.layerMemory),
@@ -384,7 +384,7 @@ const withSync = <A, E>(
       tickets,
       sync,
       fake,
-      budget: yield* GitHubGraphQlBudget.GitHubGraphQlBudget,
+      quota: yield* GitHubQuota.GitHubQuota,
       rateLimits: yield* SourceControlRateLimit.SourceControlRateLimit,
     });
   }).pipe(Effect.provideService(TicketService.GitHubWriteAccess, true), Effect.provide(layer));
@@ -483,25 +483,19 @@ describe("TicketGitHubSync", () => {
   );
 
   it.effect("interactive ticket reads spend the reserve and bypass a background budget pause", () =>
-    withSync([issue(7)], ({ tickets, sync, fake, budget, rateLimits }) =>
+    withSync([issue(7)], ({ tickets, sync, fake, quota, rateLimits }) =>
       Effect.gen(function* () {
         const key = { provider: "github", host: SOURCE.host } as const;
-        yield* budget.observe(
-          SOURCE.host,
-          JSON.stringify({
-            data: {
-              rateLimit: {
-                cost: 1,
-                limit: 1000,
-                remaining: 100,
-                resetAt: "2026-09-01T01:00:00.000Z",
-              },
-            },
-          }),
-        );
+        // Just under the tenth of the quota a background read leaves for interactive ones.
+        yield* quota.observe(SOURCE.host, {
+          "x-ratelimit-resource": "graphql",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": "99",
+          "x-ratelimit-reset": String(Date.parse("2026-09-01T01:00:00.000Z") / 1_000),
+        });
         fake.beforeRead = Effect.gen(function* () {
           const allowReserve = yield* GitHubApi.AllowGitHubReserve;
-          yield* budget.query(SOURCE.host, "query { viewer { login } }", { allowReserve });
+          yield* quota.admit(SOURCE.host, "graphql", { allowReserve });
         }).pipe(
           Effect.mapError(
             (cause) =>

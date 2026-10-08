@@ -11,7 +11,6 @@ import {
 } from "@t3tools/contracts";
 
 import * as GitHubApi from "../sourceControl/GitHubApi.ts";
-import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 import type { IssueStateChange, ProviderIssueListCursor } from "./IssueProvider.ts";
 import {
   decodeIssueAssigneeCandidatesJson,
@@ -25,7 +24,7 @@ import {
 } from "./githubIssueJson.ts";
 
 // A REST page cut at its cap is refused here as a `GitHubIssueReadError`; `GitHubApi` refuses a
-// cut GraphQL body itself, which arrives as a `GitHubCliCommandError`.
+// cut GraphQL body itself, which arrives as a `GitHubApiResponseError`.
 const MAX_LIST_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_DETAIL_RESPONSE_BYTES = 4 * 1024 * 1024;
 const MAX_TIMELINE_PAGE_RESPONSE_BYTES = 4 * 1024 * 1024;
@@ -46,7 +45,7 @@ export class GitHubIssueReadError extends Schema.TaggedError<GitHubIssueReadErro
   },
 ) {}
 
-export type GitHubIssueCliError = GitHubCli.GitHubCliError | GitHubIssueReadError;
+export type GitHubIssueCliError = GitHubApi.GitHubApiError | GitHubIssueReadError;
 
 export interface GitHubIssueBatch {
   readonly issues: ReadonlyArray<GitHubIssue>;
@@ -188,12 +187,6 @@ export const make = Effect.gen(function* () {
       detail: "A repository was named that GitHub cannot address.",
     });
 
-  const graphql = (cwd: string, input: GitHubApi.GitHubGraphQlInput) =>
-    api.graphql(input).pipe(Effect.mapError((error) => GitHubCli.fromGitHubApiError(cwd, error)));
-
-  const rest = (cwd: string, input: GitHubApi.GitHubRestInput) =>
-    api.rest(input).pipe(Effect.mapError((error) => GitHubCli.fromGitHubApiError(cwd, error)));
-
   /** `repos/<owner>/<name>/issues/<number>`, for an already validated repository. */
   const issuePath = (input: { readonly repository: string; readonly number: number }) =>
     `repos/${input.repository}/issues/${input.number}`;
@@ -218,7 +211,7 @@ export const make = Effect.gen(function* () {
     let rawCount = 0;
     let after: string | null = null;
     do {
-      const raw: string = yield* graphql(input.cwd, {
+      const raw: string = yield* api.graphql({
         host: input.host,
         operation: "listIssues",
         query: ISSUE_SEARCH_GRAPHQL_QUERY,
@@ -258,7 +251,7 @@ export const make = Effect.gen(function* () {
       }
       const [owner, name] = input.repository.split("/");
       // A missing issue or repository is a NOT_FOUND answer, which the API fails as not found.
-      const raw = yield* graphql(input.cwd, {
+      const raw = yield* api.graphql({
         host: input.host,
         operation: "getIssue",
         query: ISSUE_DETAIL_GRAPHQL_QUERY,
@@ -275,10 +268,9 @@ export const make = Effect.gen(function* () {
         });
       }
       if (decoded.success === null) {
-        return yield* new GitHubCli.GitHubPullRequestNotFoundError({
-          command: "gh",
-          cwd: input.cwd,
-          cause: new Error("GitHub has no such issue in this repository."),
+        return yield* new GitHubApi.GitHubApiNotFoundError({
+          host: input.host,
+          operation: "getIssue",
         });
       }
       const url = expectedIssueUrl(decoded.success.url, input.host, input.repository, input.number);
@@ -301,7 +293,7 @@ export const make = Effect.gen(function* () {
     }
     const items: IssueActivity["items"][number][] = [];
     for (let page = 1; page <= MAX_TIMELINE_PAGES; page += 1) {
-      const response = yield* rest(input.cwd, {
+      const response = yield* api.rest({
         host: input.host,
         operation: "getIssueActivity",
         path: `${issuePath(input)}/timeline?per_page=${TIMELINE_PAGE_SIZE}&page=${page}`,
@@ -339,7 +331,7 @@ export const make = Effect.gen(function* () {
       return yield* unaddressable(input.cwd, "listAssigneeCandidates");
     }
     const [owner, name] = input.repository.split("/");
-    const raw = yield* graphql(input.cwd, {
+    const raw = yield* api.graphql({
       host: input.host,
       operation: "listAssigneeCandidates",
       query: ISSUE_ASSIGNEE_CANDIDATES_GRAPHQL_QUERY,
@@ -365,7 +357,7 @@ export const make = Effect.gen(function* () {
     if (!validRepository(input.repository)) {
       return yield* unaddressable(input.cwd, "setAssignees");
     }
-    yield* rest(input.cwd, {
+    yield* api.rest({
       host: input.host,
       operation: "setAssignees",
       method: input.assigned ? "POST" : "DELETE",
@@ -379,7 +371,7 @@ export const make = Effect.gen(function* () {
       if (!validRepository(input.repository)) {
         return yield* unaddressable(input.cwd, "setState");
       }
-      yield* rest(input.cwd, {
+      yield* api.rest({
         host: input.host,
         operation: "setState",
         method: "PATCH",
@@ -398,7 +390,7 @@ export const make = Effect.gen(function* () {
     if (!validRepository(input.repository)) {
       return yield* unaddressable(input.cwd, "addComment");
     }
-    yield* rest(input.cwd, {
+    yield* api.rest({
       host: input.host,
       operation: "addComment",
       method: "POST",

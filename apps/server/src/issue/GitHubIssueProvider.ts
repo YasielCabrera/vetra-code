@@ -4,7 +4,11 @@ import type { IssueActivity, IssueActor, IssueComment } from "@t3tools/contracts
 import { gitHubLoginAvatarUrl } from "@t3tools/shared/githubActor";
 import * as GitHubIssueCli from "./GitHubIssueCli.ts";
 import type { GitHubIssue } from "./githubIssueJson.ts";
-import { IssueProviderError, type IssueProviderApi } from "./IssueProvider.ts";
+import {
+  IssueProviderError,
+  type IssueProviderApi,
+  type IssueProviderFailureReason,
+} from "./IssueProvider.ts";
 
 const REPOSITORY_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/u;
 
@@ -27,16 +31,25 @@ function originOf(host: string): string | null {
   }
 }
 
+function failureReason(error: GitHubIssueCli.GitHubIssueCliError): IssueProviderFailureReason {
+  switch (error._tag) {
+    case "GitHubCliMissingError":
+      return "missing-tool";
+    case "GitHubNotSignedInError":
+    case "GitHubHostDisabledError":
+    case "GitHubApiAuthenticationError":
+      return "unauthenticated";
+    case "GitHubApiRateLimitError":
+    case "SourceControlRateLimitPausedError":
+      return "rate-limited";
+    default:
+      return "failed";
+  }
+}
+
 function providerError(operation: string) {
   return (error: GitHubIssueCli.GitHubIssueCliError): IssueProviderError => {
-    const reason =
-      error._tag === "GitHubCliUnavailableError"
-        ? "missing-tool"
-        : error._tag === "GitHubCliAuthenticationError"
-          ? "unauthenticated"
-          : error._tag === "GitHubCliRateLimitError"
-            ? "rate-limited"
-            : "failed";
+    const reason = failureReason(error);
     const detail =
       reason === "missing-tool"
         ? "GitHub CLI (`gh`) is not available."
@@ -44,7 +57,7 @@ function providerError(operation: string) {
           ? "GitHub CLI is not authenticated."
           : reason === "rate-limited"
             ? "GitHub's request limit has been reached."
-            : error._tag === "GitHubPullRequestNotFoundError"
+            : error._tag === "GitHubApiNotFoundError"
               ? "The issue was not found."
               : "GitHub could not complete the issue request.";
     return new IssueProviderError({

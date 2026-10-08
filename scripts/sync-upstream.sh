@@ -64,6 +64,7 @@ PRUNE_PATHS=(
   docs/user/mobile-notifications.md
   # Firebase/APNs setup for the mobile client's push notifications.
   docs/operations/android-notifications.md
+  docs/operations/mobile-screens-fork.md
   # Upstream's Connect operator guide is written for T3's hosted Clerk and
   # relay. Restore it only once Vetra owns those destinations.
   docs/operations/connect-setup.md
@@ -263,6 +264,9 @@ RENAMES=(
   'T3 orchestration=Vetra Code orchestration'
   'T3 transport=Vetra Code transport'
   'when T3 runs as=when Vetra Code runs as'
+  'T3 server host=Vetra Code server host'
+  'T3 could not=Vetra Code could not'
+  'T3 conversations=Vetra Code conversations'
   # Upstream's GitHub org / winget publisher, never a TypeScript identifier.
   'T3Tools=Vetra-Code'
   # The project file this fork reads. Upstream's own t3.json is pruned above.

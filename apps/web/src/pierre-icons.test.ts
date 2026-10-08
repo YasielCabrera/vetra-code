@@ -44,7 +44,10 @@ describe("Pierre file icons", () => {
 
   it("ships every custom icon referenced by the extended resolver", () => {
     const customIconNames = new Set(
-      Object.values(VETRA_PIERRE_ICONS.byFileName).filter((name) => name.startsWith("vetra-")),
+      [
+        ...Object.values(VETRA_PIERRE_ICONS.byFileName),
+        ...Object.values(VETRA_PIERRE_ICONS.byFileExtension),
+      ].filter((name) => name.startsWith("vetra-")),
     );
     for (const iconName of customIconNames) {
       assert.include(VETRA_PIERRE_ICONS.spriteSheet, `id="${iconName}"`);
@@ -102,5 +105,24 @@ describe("Pierre file icons", () => {
 
   it("gives a dockerfile fence the Docker icon", () => {
     assert.isTrue(hasSpecificPierreIconForFileName(syntheticFileNameForLanguageId("dockerfile")));
+  });
+
+  it.each([
+    "csharp",
+    "dart",
+    "diff",
+    "elixir",
+    "haskell",
+    "java",
+    "kotlin",
+    "lua",
+    "php",
+    "powershell",
+    "r",
+    "scala",
+    "toml",
+    "xml",
+  ])("gives a %s fence a language icon", (language) => {
+    assert.isTrue(hasSpecificPierreIconForFileName(syntheticFileNameForLanguageId(language)));
   });
 });

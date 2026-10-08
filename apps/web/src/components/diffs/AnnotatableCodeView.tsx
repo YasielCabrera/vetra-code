@@ -97,6 +97,8 @@ interface AnnotatableCodeViewProps {
     collapsed: boolean,
   ) => ReactNode;
   onCreateTicket?: ((comment: ReviewCommentContext) => void) | undefined;
+  /** Unfold a collapsed file that holds the find match being navigated to. */
+  onRevealSearchMatch: (fileKey: string) => void;
 }
 
 interface DiffSelectionContext {
@@ -118,6 +120,7 @@ export function AnnotatableCodeView({
   renderHeaderFilenameSuffix,
   renderHeaderPrefix,
   onCreateTicket,
+  onRevealSearchMatch,
 }: AnnotatableCodeViewProps) {
   const addReviewComment = useComposerDraftStore((store) => store.addReviewComment);
   const removeReviewComment = useComposerDraftStore((store) => store.removeReviewComment);
@@ -280,6 +283,7 @@ export function AnnotatableCodeView({
       items={items}
       selectedLines={selectedLines}
       onSelectedLinesChange={setSelectedLines}
+      onRevealSearchMatch={(item) => onRevealSearchMatch(item.id)}
       options={{
         ...options,
         enableGutterUtility: !hasOpenComment,

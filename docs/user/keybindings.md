@@ -48,12 +48,16 @@ or “Copy Number”. They copy the selected PR and leave terminal input alone.
 
 ## Find in a panel
 
-Click into the diff panel, a file preview, or the Powerhouse document models or document
-explorer panel, then press `mod+f` to find text in it. The search covers the whole diff,
-file, or document state, including lines that are scrolled out of view. In the diff panel,
-find skips collapsed files and the unchanged lines between hunks, even after you expand them.
-`Enter` and `Shift+Enter` move between matches, and `Escape` closes the find bar.
-This shortcut is fixed and does not appear in Settings.
+Click into a diff in the Diff panel or a pull request's Code tab, then press
+`mod+f` to search every file in it, including folded files and unchanged lines
+hidden between changes. Enter and `Shift+Enter` move between matches, and a
+match in a folded file opens it. Escape closes the search. This shortcut is not
+configurable. A very large uncommitted diff loads its files as you scroll, and
+find only searches the files loaded so far.
+
+The same shortcut finds text in a file preview and in the Powerhouse document
+models and document explorer panels, including lines that are scrolled out of
+view.
 
 ## iPad
 

@@ -247,6 +247,10 @@
       "types": "./src/state/usage.ts",
       "default": "./src/state/usage.ts"
     },
+    "./state/usage-progress": {
+      "types": "./src/state/usageProgress.ts",
+      "default": "./src/state/usageProgress.ts"
+    },
     "./state/server": {
       "types": "./src/state/server.ts",
       "default": "./src/state/server.ts"
@@ -406,6 +410,14 @@
     "./device/duo-control": {
       "types": "./src/device/duoControl.ts",
       "default": "./src/device/duoControl.ts"
+    },
+    "./mcp-apps": {
+      "types": "./src/mcpApps/host.ts",
+      "default": "./src/mcpApps/host.ts"
+    },
+    "./state/mcp-apps": {
+      "types": "./src/state/mcpApps.ts",
+      "default": "./src/state/mcpApps.ts"
     }
   },
   "scripts": {
