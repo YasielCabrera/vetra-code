@@ -1,5 +1,8 @@
 # Vetra Code
 
+> [!IMPORTANT]
+> **This is a personal fork of [T3 Code](https://github.com/pingdotgg/t3code).** We changed it to fit our own workflows. We do not support it, publish releases, or commit to maintaining it, and we may not respond to issues or pull requests. If you want T3 Code, use [pingdotgg/t3code](https://github.com/pingdotgg/t3code).
+
 Vetra Code is a web and desktop workspace for building full-stack applications with coding agents. It preserves the established bring-your-own-subscription runtime—Codex, Claude Code, Cursor, Grok, OpenCode, and Antigravity adapters; event-sourced orchestration; terminals; Git; files; previews; and checkpoints—while the product and builder experience evolve independently.
 
 This repository is an early fork foundation. The marketing and mobile applications have been removed. Cloud execution and custom harnesses are planned, but the first runnable milestone is intentionally local web + desktop.
@@ -97,4 +100,4 @@ pnpm dev --dry-run
 
 ## Origin and license
 
-Vetra Code began as an open-source fork. The original copyright notice and MIT terms remain in [LICENSE](./LICENSE) while the product evolves independently.
+Vetra Code is a fork of [pingdotgg/t3code](https://github.com/pingdotgg/t3code) and regularly merges its changes. The original copyright notice and MIT terms remain in [LICENSE](./LICENSE) while the product evolves independently.
