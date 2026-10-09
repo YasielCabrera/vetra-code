@@ -431,6 +431,11 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
   incoming hunk is a new `T3_*` constant, add `VETRA_*` in our tree and a `RENAMES` pair.
 - **Lockfile vs deleted workspaces.** After prune, `pnpm install` must regenerate the lockfile so
   it does not reference `@t3tools/mobile` / marketing packages.
+- **`@types/hast` split.** `@pierre/diffs` ships its own `@types/hast@3.0.4` inside `dist`, and the
+  MDX packages augment whichever `@types/hast` they resolve. A regenerated lockfile can move the
+  `hast-util-*` / `mdast-util-*` / `rehype-*` packages onto another version, and `apps/web` then
+  fails with `Root is not assignable to Nodes`. Keep their `@types/hast` entries on the version
+  `main`'s lockfile used.
 - **Clean merge, wrong names.** If the script printed `rewrote N file(s)` but `git diff --cached`
   still shows `T3 Code`, the rewrite was not staged. That was a real bug once; the script now
   stages clean rewrites. If it happens again, stop and fix the script rather than committing.
@@ -441,7 +446,13 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
   [`Tickets.ts`](../../apps/server/src/ticket/Tickets.ts). Upstream files carry small additive
   hooks: `rpc.ts` spreads the method names and merges the ticket RPC group onto `WsCoreRpcGroup`,
   `ws.ts` provides the ticket RPC layer, and `runtimeLayer.ts` provides the service layer.
-  Incoming RPCs stay in `WsCoreRpcGroup`.
+  Incoming RPCs stay in `WsCoreRpcGroup`. Powerhouse follows the same pattern
+  ([`powerhouseRpc.ts`](../../packages/contracts/src/powerhouseRpc.ts)). This is also a type-check
+  limit, not only conflict hygiene: `WsCoreRpcGroup.toLayer` in `ws.ts` sits near TypeScript's
+  instantiation limit, and past it the checker reports TS2589 only with `--checkers 1`; the default
+  parallel run instead degrades the WebSocket route's requirements to `any` (effect
+  `anyUnknownInErrorContext` errors in `server.ts`). When that appears after a sync, move another
+  fork feature's RPCs out of the core group rather than restructuring upstream's handlers.
 
 ## Abort and recovery
 

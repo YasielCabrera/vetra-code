@@ -10,7 +10,7 @@ import * as NodeCrypto from "node:crypto";
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 
-import type { ProviderSubscriptionUsageProbe } from "../ProviderDriver.ts";
+import type { ProviderSubscriptionUsageProbe } from "@t3tools/provider-core/server/driver";
 
 export interface ProviderSubscriptionUsageIdentity {
   readonly instanceId: ProviderInstanceId;

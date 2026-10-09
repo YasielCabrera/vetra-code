@@ -68,11 +68,8 @@ export type ComposerDraftContextRecord =
   | {
       kind: "preview-annotation";
       record: PreviewAnnotationPayload;
-      /**
-       * The draft keeps annotations compact by blanking `screenshot.dataUrl`, so the
-       * crop has to come from the composer image the pick staged alongside it.
-       */
-      screenshotUrl?: string | undefined;
+      /** The crop, which the draft stores as an image sharing the annotation's id. */
+      screenshot?: ComposerImageAttachment | undefined;
     }
   | { kind: "image"; record: ComposerImageAttachment; upload?: AttachmentUploadState | undefined }
   | { kind: "file"; record: ComposerFileAttachment; upload?: AttachmentUploadState | undefined }
@@ -142,13 +139,12 @@ export function composerContextRecordsFromDraft(input: {
   for (const record of input.reviewComments ?? []) {
     records.set(reviewCommentContextId(record.id), { kind: "review-comment", record });
   }
+  const imagesById = new Map((input.images ?? []).map((image) => [image.id, image]));
   for (const record of input.previewAnnotations ?? []) {
-    // The pick stages its crop as an image sharing the annotation's id.
-    const screenshot = input.images?.find((image) => image.id === record.id);
     records.set(previewAnnotationContextId(record.id), {
       kind: "preview-annotation",
       record,
-      screenshotUrl: screenshot?.previewUrl,
+      screenshot: imagesById.get(record.id),
     });
   }
   for (const record of input.threadContexts ?? []) {
@@ -327,18 +323,19 @@ function ComposerReviewCommentDetails({ comment }: { comment: ReviewCommentConte
 
 function ComposerPreviewAnnotationDetails({
   annotation,
-  screenshotUrl,
+  screenshot,
 }: {
   annotation: PreviewAnnotationPayload;
-  screenshotUrl: string | undefined;
+  screenshot: ComposerImageAttachment | undefined;
 }) {
   const summary = previewAnnotationTooltip(annotation);
-  const cropUrl = screenshotUrl || annotation.screenshot?.dataUrl || null;
+  // The draft drops the annotation's own data URL and keeps the crop as an image.
+  const screenshotUrl = annotation.screenshot?.dataUrl || screenshot?.previewUrl;
   return (
     <div className="overflow-hidden rounded-lg border border-border/70 bg-background/70">
-      {cropUrl ? (
+      {screenshotUrl ? (
         <img
-          src={cropUrl}
+          src={screenshotUrl}
           alt="Annotated preview crop"
           className="max-h-64 w-full border-border/70 border-b bg-muted object-contain"
         />
@@ -457,7 +454,7 @@ const composerContextPresentationRegistry = createContextPresentationRegistry<
             details={
               <ComposerPreviewAnnotationDetails
                 annotation={entry.record}
-                screenshotUrl={entry.screenshotUrl}
+                screenshot={entry.screenshot}
               />
             }
             detailsMode={definition.capabilities.details}

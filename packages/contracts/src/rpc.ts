@@ -1,3 +1,8 @@
+import {
+  OrchestrationV2SearchThreadError,
+  OrchestrationV2SearchThreadInput,
+  OrchestrationV2SearchThreadResult,
+} from "./orchestrationV2.ts";
 import { OrchestrationDispatchCommandError } from "./orchestrationDispatch.ts";
 import {
   McpAppCallToolInput,
@@ -83,41 +88,6 @@ import {
   FilesystemBrowseResult,
   FilesystemBrowseError,
 } from "./filesystem.ts";
-import {
-  PowerhouseDatabaseCatalogInput,
-  PowerhouseDatabaseCatalogResult,
-  PowerhouseDatabaseDiscoverInput,
-  PowerhouseDatabaseDiscoverResult,
-  PowerhouseDatabaseError,
-  PowerhouseDatabaseExecuteQueryInput,
-  PowerhouseDatabaseExecuteQueryResult,
-  PowerhouseDatabaseGetRelationInput,
-  PowerhouseDatabaseGetRelationResult,
-  PowerhouseDatabasePreviewRelationInput,
-  PowerhouseDatabasePreviewRelationResult,
-  PowerhouseDatabaseRefreshSnapshotInput,
-  PowerhouseDatabaseRefreshSnapshotResult,
-  PowerhouseDocumentModel,
-  PowerhouseGetDocumentModelInput,
-  PowerhouseListProjectsInput,
-  PowerhouseListProjectsResult,
-  PowerhouseListDocumentModelsInput,
-  PowerhouseListDocumentModelsResult,
-  PowerhouseProjectError,
-  PowerhouseReactorConnection,
-  PowerhouseReactorDocument,
-  PowerhouseReactorError,
-  PowerhouseReactorExecuteGraphqlInput,
-  PowerhouseReactorExecuteGraphqlResult,
-  PowerhouseReactorGetDocumentInput,
-  PowerhouseReactorGetOperationsInput,
-  PowerhouseReactorGetOperationsResult,
-  PowerhouseReactorListDocumentsInput,
-  PowerhouseReactorListDocumentsResult,
-  PowerhouseReactorListDrivesInput,
-  PowerhouseReactorListDrivesResult,
-  PowerhouseReactorProbeInput,
-} from "./powerhouse.ts";
 import {
   AgentSessionImportInput,
   AgentSessionImportProjectChangedError,
@@ -246,6 +216,7 @@ import {
 } from "./automation.ts";
 import { TICKET_WS_METHODS, TicketsRpcGroup } from "./ticketRpc.ts";
 import { PREVIEW_WALLET_WS_METHODS, PreviewWalletRpcGroup } from "./previewWallet.ts";
+import { POWERHOUSE_WS_METHODS, PowerhouseRpcGroup } from "./powerhouseRpc.ts";
 import {
   RelayClientInstallFailedError,
   RelayClientInstallProgressEventSchema,
@@ -305,6 +276,7 @@ import {
   PreviewListResult,
   PreviewClearProfileError,
   PreviewClearProfileInput,
+  PreviewReportProfilesInput,
   PreviewNavigateInput,
   PreviewOpenInput,
   PreviewRefreshInput,
@@ -470,23 +442,6 @@ export const WS_METHODS = {
   textToSpeechRemove: "textToSpeech.remove",
   textToSpeechSpeak: "textToSpeech.speak",
 
-  // Powerhouse panel methods
-  powerhouseListProjects: "powerhouse.listProjects",
-  powerhouseListDocumentModels: "powerhouse.listDocumentModels",
-  powerhouseGetDocumentModel: "powerhouse.getDocumentModel",
-  powerhouseReactorProbe: "powerhouse.reactorProbe",
-  powerhouseReactorListDrives: "powerhouse.reactorListDrives",
-  powerhouseReactorListDocuments: "powerhouse.reactorListDocuments",
-  powerhouseReactorGetDocument: "powerhouse.reactorGetDocument",
-  powerhouseReactorGetOperations: "powerhouse.reactorGetOperations",
-  powerhouseReactorExecuteGraphql: "powerhouse.reactorExecuteGraphql",
-  powerhouseDatabaseDiscover: "powerhouse.databaseDiscover",
-  powerhouseDatabaseCatalog: "powerhouse.databaseCatalog",
-  powerhouseDatabaseGetRelation: "powerhouse.databaseGetRelation",
-  powerhouseDatabasePreviewRelation: "powerhouse.databasePreviewRelation",
-  powerhouseDatabaseExecuteQuery: "powerhouse.databaseExecuteQuery",
-  powerhouseDatabaseRefreshSnapshot: "powerhouse.databaseRefreshSnapshot",
-
   // VCS methods
   vcsPull: "vcs.pull",
   vcsRefreshStatus: "vcs.refreshStatus",
@@ -528,6 +483,7 @@ export const WS_METHODS = {
   previewClose: "preview.close",
   previewList: "preview.list",
   previewClearProfile: "preview.clearProfile",
+  previewReportProfiles: "preview.reportProfiles",
   previewReportStatus: "preview.reportStatus",
 
   // Device methods
@@ -599,6 +555,7 @@ export const WS_METHODS = {
 
   ...TICKET_WS_METHODS,
   ...PREVIEW_WALLET_WS_METHODS,
+  ...POWERHOUSE_WS_METHODS,
 
   // Cloud environment methods
   cloudGetRelayClientStatus: "cloud.getRelayClientStatus",
@@ -1399,145 +1356,6 @@ const WsAssetsCreateUrlRpc = Rpc.make(WS_METHODS.assetsCreateUrl, {
   error: Schema.Union([AssetAccessError, EnvironmentAuthorizationError]),
 });
 
-export const WsPowerhouseListProjectsRpc = Rpc.make(WS_METHODS.powerhouseListProjects, {
-  payload: PowerhouseListProjectsInput,
-  success: PowerhouseListProjectsResult,
-  error: Schema.Union([PowerhouseProjectError, EnvironmentAuthorizationError]),
-});
-
-export const WsPowerhouseListDocumentModelsRpc = Rpc.make(WS_METHODS.powerhouseListDocumentModels, {
-  payload: PowerhouseListDocumentModelsInput,
-  success: PowerhouseListDocumentModelsResult,
-  error: Schema.Union([PowerhouseProjectError, EnvironmentAuthorizationError]),
-});
-
-export const WsPowerhouseGetDocumentModelRpc = Rpc.make(WS_METHODS.powerhouseGetDocumentModel, {
-  payload: PowerhouseGetDocumentModelInput,
-  success: PowerhouseDocumentModel,
-  error: Schema.Union([PowerhouseProjectError, EnvironmentAuthorizationError]),
-});
-
-export const WsPowerhouseReactorProbeRpc = Rpc.make(WS_METHODS.powerhouseReactorProbe, {
-  payload: PowerhouseReactorProbeInput,
-  success: PowerhouseReactorConnection,
-  error: Schema.Union([
-    PowerhouseReactorError,
-    PowerhouseProjectError,
-    EnvironmentAuthorizationError,
-  ]),
-});
-
-export const WsPowerhouseReactorListDrivesRpc = Rpc.make(WS_METHODS.powerhouseReactorListDrives, {
-  payload: PowerhouseReactorListDrivesInput,
-  success: PowerhouseReactorListDrivesResult,
-  error: Schema.Union([PowerhouseReactorError, EnvironmentAuthorizationError]),
-});
-
-export const WsPowerhouseReactorListDocumentsRpc = Rpc.make(
-  WS_METHODS.powerhouseReactorListDocuments,
-  {
-    payload: PowerhouseReactorListDocumentsInput,
-    success: PowerhouseReactorListDocumentsResult,
-    error: Schema.Union([PowerhouseReactorError, EnvironmentAuthorizationError]),
-  },
-);
-
-export const WsPowerhouseReactorGetDocumentRpc = Rpc.make(WS_METHODS.powerhouseReactorGetDocument, {
-  payload: PowerhouseReactorGetDocumentInput,
-  success: PowerhouseReactorDocument,
-  error: Schema.Union([PowerhouseReactorError, EnvironmentAuthorizationError]),
-});
-
-export const WsPowerhouseReactorGetOperationsRpc = Rpc.make(
-  WS_METHODS.powerhouseReactorGetOperations,
-  {
-    payload: PowerhouseReactorGetOperationsInput,
-    success: PowerhouseReactorGetOperationsResult,
-    error: Schema.Union([PowerhouseReactorError, EnvironmentAuthorizationError]),
-  },
-);
-
-export const WsPowerhouseReactorExecuteGraphqlRpc = Rpc.make(
-  WS_METHODS.powerhouseReactorExecuteGraphql,
-  {
-    payload: PowerhouseReactorExecuteGraphqlInput,
-    success: PowerhouseReactorExecuteGraphqlResult,
-    error: Schema.Union([PowerhouseReactorError, EnvironmentAuthorizationError]),
-  },
-);
-
-export const WsPowerhouseDatabaseDiscoverRpc = Rpc.make(WS_METHODS.powerhouseDatabaseDiscover, {
-  payload: PowerhouseDatabaseDiscoverInput,
-  success: PowerhouseDatabaseDiscoverResult,
-  error: Schema.Union([
-    PowerhouseDatabaseError,
-    PowerhouseProjectError,
-    EnvironmentAuthorizationError,
-  ]),
-});
-
-export const WsPowerhouseDatabaseCatalogRpc = Rpc.make(WS_METHODS.powerhouseDatabaseCatalog, {
-  payload: PowerhouseDatabaseCatalogInput,
-  success: PowerhouseDatabaseCatalogResult,
-  error: Schema.Union([
-    PowerhouseDatabaseError,
-    PowerhouseProjectError,
-    EnvironmentAuthorizationError,
-  ]),
-});
-
-export const WsPowerhouseDatabaseGetRelationRpc = Rpc.make(
-  WS_METHODS.powerhouseDatabaseGetRelation,
-  {
-    payload: PowerhouseDatabaseGetRelationInput,
-    success: PowerhouseDatabaseGetRelationResult,
-    error: Schema.Union([
-      PowerhouseDatabaseError,
-      PowerhouseProjectError,
-      EnvironmentAuthorizationError,
-    ]),
-  },
-);
-
-export const WsPowerhouseDatabasePreviewRelationRpc = Rpc.make(
-  WS_METHODS.powerhouseDatabasePreviewRelation,
-  {
-    payload: PowerhouseDatabasePreviewRelationInput,
-    success: PowerhouseDatabasePreviewRelationResult,
-    error: Schema.Union([
-      PowerhouseDatabaseError,
-      PowerhouseProjectError,
-      EnvironmentAuthorizationError,
-    ]),
-  },
-);
-
-export const WsPowerhouseDatabaseExecuteQueryRpc = Rpc.make(
-  WS_METHODS.powerhouseDatabaseExecuteQuery,
-  {
-    payload: PowerhouseDatabaseExecuteQueryInput,
-    success: PowerhouseDatabaseExecuteQueryResult,
-    error: Schema.Union([
-      PowerhouseDatabaseError,
-      PowerhouseProjectError,
-      EnvironmentAuthorizationError,
-    ]),
-  },
-);
-
-export const WsPowerhouseDatabaseRefreshSnapshotRpc = Rpc.make(
-  WS_METHODS.powerhouseDatabaseRefreshSnapshot,
-  {
-    payload: PowerhouseDatabaseRefreshSnapshotInput,
-    success: PowerhouseDatabaseRefreshSnapshotResult,
-    error: Schema.Union([
-      PowerhouseDatabaseError,
-      PowerhouseProjectError,
-      EnvironmentAuthorizationError,
-    ]),
-  },
-);
-
 const WsAssetsPersistChatAttachmentsRpc = Rpc.make(WS_METHODS.assetsPersistChatAttachments, {
   payload: PersistChatAttachmentsInput,
   success: PersistChatAttachmentsResult,
@@ -1795,6 +1613,11 @@ const WsPreviewClearProfileRpc = Rpc.make(WS_METHODS.previewClearProfile, {
   error: Schema.Union([PreviewClearProfileError, EnvironmentAuthorizationError]),
 });
 
+const WsPreviewReportProfilesRpc = Rpc.make(WS_METHODS.previewReportProfiles, {
+  payload: PreviewReportProfilesInput,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsPreviewReportStatusRpc = Rpc.make(WS_METHODS.previewReportStatus, {
   payload: PreviewReportStatusInput,
   error: Schema.Union([PreviewError, EnvironmentAuthorizationError]),
@@ -1887,6 +1710,22 @@ const WsOrchestrationV2GetFullThreadDiffRpc = Rpc.make(
     payload: OrchestrationV2RpcSchemas.getFullThreadDiff.input,
     success: OrchestrationV2RpcSchemas.getFullThreadDiff.output,
     error: Schema.Union([OrchestrationGetFullThreadDiffError, EnvironmentAuthorizationError]),
+  },
+);
+
+const WsOrchestrationV2SearchThreadRpc = Rpc.make(ORCHESTRATION_V2_WS_METHODS.searchThread, {
+  payload: OrchestrationV2SearchThreadInput,
+  success: OrchestrationV2SearchThreadResult,
+  error: Schema.Union([OrchestrationV2SearchThreadError, EnvironmentAuthorizationError]),
+});
+
+const WsOrchestrationV2SearchThreadStreamRpc = Rpc.make(
+  ORCHESTRATION_V2_WS_METHODS.searchThreadStream,
+  {
+    payload: OrchestrationV2SearchThreadInput,
+    success: OrchestrationV2SearchThreadResult,
+    error: Schema.Union([OrchestrationV2SearchThreadError, EnvironmentAuthorizationError]),
+    stream: true,
   },
 );
 
@@ -2287,6 +2126,7 @@ export const WsCoreRpcGroup = RpcGroup.make(
   WsPreviewCloseRpc,
   WsPreviewListRpc,
   WsPreviewClearProfileRpc,
+  WsPreviewReportProfilesRpc,
   WsPreviewReportStatusRpc,
   WsSubscribePreviewEventsRpc,
   WsSubscribeDiscoveredLocalServersRpc,
@@ -2310,30 +2150,19 @@ export const WsCoreRpcGroup = RpcGroup.make(
   WsOrchestrationV2GetTurnDiffRpc,
   WsOrchestrationV2GetFullThreadDiffRpc,
   WsOrchestrationV2SearchThreadsRpc,
+  WsOrchestrationV2SearchThreadRpc,
+  WsOrchestrationV2SearchThreadStreamRpc,
   WsOrchestrationV2GetArchivedShellSnapshotRpc,
   WsOrchestrationV2GetThreadProjectionRpc,
   WsOrchestrationV2LaunchThreadRpc,
   WsOrchestrationV2SubscribeArchivedShellRpc,
   WsOrchestrationV2SubscribeShellRpc,
   WsOrchestrationV2SubscribeThreadRpc,
-  WsPowerhouseListProjectsRpc,
-  WsPowerhouseListDocumentModelsRpc,
-  WsPowerhouseGetDocumentModelRpc,
-  WsPowerhouseReactorProbeRpc,
-  WsPowerhouseReactorListDrivesRpc,
-  WsPowerhouseReactorListDocumentsRpc,
-  WsPowerhouseReactorGetDocumentRpc,
-  WsPowerhouseReactorGetOperationsRpc,
-  WsPowerhouseReactorExecuteGraphqlRpc,
-  WsPowerhouseDatabaseDiscoverRpc,
-  WsPowerhouseDatabaseCatalogRpc,
-  WsPowerhouseDatabaseGetRelationRpc,
-  WsPowerhouseDatabasePreviewRelationRpc,
-  WsPowerhouseDatabaseExecuteQueryRpc,
-  WsPowerhouseDatabaseRefreshSnapshotRpc,
 );
 
 // Merge before the middleware: `.middleware` only covers RPCs already in the group.
-export const WsRpcGroup = WsCoreRpcGroup.merge(TicketsRpcGroup, PreviewWalletRpcGroup).middleware(
-  RpcScopeAuthorization,
-);
+export const WsRpcGroup = WsCoreRpcGroup.merge(
+  TicketsRpcGroup,
+  PreviewWalletRpcGroup,
+  PowerhouseRpcGroup,
+).middleware(RpcScopeAuthorization);

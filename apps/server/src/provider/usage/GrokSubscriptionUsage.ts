@@ -1,9 +1,9 @@
 import type {
-  GrokSettings,
   ProviderSubscriptionUsageDetail,
   ProviderSubscriptionUsageInstanceResult,
   ProviderSubscriptionUsageWindow,
 } from "@t3tools/contracts";
+import type { GrokSettings } from "@t3tools/provider-grok/settings";
 import * as EffectAcpClient from "effect-acp/client";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import * as DateTime from "effect/DateTime";
@@ -14,8 +14,11 @@ import * as Schema from "effect/Schema";
 import * as ChildProcess from "effect/process/ChildProcess";
 import type * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
-import { buildGrokAcpSpawnInput } from "../acp/GrokAcpSupport.ts";
-import type { ProviderInstance, ProviderSubscriptionUsageCapability } from "../ProviderDriver.ts";
+import { buildGrokAcpSpawnInput } from "@t3tools/provider-grok/server/acpSupport";
+import type {
+  ProviderInstance,
+  ProviderSubscriptionUsageCapability,
+} from "@t3tools/provider-core/server/driver";
 import {
   configFingerprint,
   failureProbe,

@@ -14,7 +14,10 @@ import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import { describe, expect } from "vite-plus/test";
 
-import type { ProviderInstance, ProviderSubscriptionUsageProbe } from "../ProviderDriver.ts";
+import type {
+  ProviderInstance,
+  ProviderSubscriptionUsageProbe,
+} from "@t3tools/provider-core/server/driver";
 import * as ProviderInstanceRegistry from "../ProviderInstanceRegistry.ts";
 import {
   ProviderSubscriptionCredentialStore,

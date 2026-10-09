@@ -2,18 +2,21 @@
 import * as NodeCrypto from "node:crypto";
 
 import type {
-  OpenCodeSettings,
   ProviderSubscriptionUsageDetail,
   ProviderSubscriptionUsageInstanceResult,
   ProviderSubscriptionUsageWindow,
 } from "@t3tools/contracts";
+import type { OpenCodeSettings } from "@t3tools/provider-opencode/settings";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import type { HttpClient } from "effect/http";
 
-import type { ProviderInstance, ProviderSubscriptionUsageCapability } from "../ProviderDriver.ts";
+import type {
+  ProviderInstance,
+  ProviderSubscriptionUsageCapability,
+} from "@t3tools/provider-core/server/driver";
 import type { ProviderSubscriptionCredentialStoreShape } from "./ProviderSubscriptionCredentialStore.ts";
 import {
   configFingerprint,

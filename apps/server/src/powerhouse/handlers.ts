@@ -1,8 +1,9 @@
 /**
- * handlers - the Powerhouse panel's RPC handlers, packaged as one record.
+ * handlers - the Powerhouse panel's RPC handlers, served as their own RPC group.
  *
- * Kept out of `ws.ts` so the whole surface stays deletable: `ws.ts` imports this
- * and spreads it, and removing the feature removes both lines.
+ * Kept out of `ws.ts` so the whole surface stays deletable: `ws.ts` merges
+ * `powerhouseRpcLayer` into each socket's handlers, and removing the feature
+ * removes that line.
  *
  * @module handlers
  */
@@ -21,6 +22,7 @@ import {
   type PowerhouseReactorExecuteGraphqlInput,
   type PowerhouseReactorGetOperationsInput,
   type PowerhouseReactorListDocumentsInput,
+  PowerhouseRpcGroup,
   WS_METHODS,
 } from "@t3tools/contracts";
 
@@ -58,11 +60,8 @@ export function reactorCandidates(input: {
   return candidates;
 }
 
-/**
- * Build the panel's handler record. Callers spread the result into
- * `WsRpcGroup.of({...})`.
- */
-export const makePowerhouseWsHandlers = Effect.gen(function* () {
+/** Build the panel's handler record. */
+const makePowerhouseWsHandlers = Effect.gen(function* () {
   const project = yield* PowerhouseProject.PowerhouseProject;
   const reactor = yield* PowerhouseReactorClient.PowerhouseReactorClient;
   const database = yield* PowerhouseDatabaseInspector.PowerhouseDatabaseInspector;
@@ -124,3 +123,8 @@ export const makePowerhouseWsHandlers = Effect.gen(function* () {
     ) => database.refreshSnapshot(input),
   };
 });
+
+/** The Powerhouse RPCs over one socket session. */
+export const powerhouseRpcLayer = PowerhouseRpcGroup.toLayer(
+  Effect.map(makePowerhouseWsHandlers, (handlers) => PowerhouseRpcGroup.of(handlers)),
+);

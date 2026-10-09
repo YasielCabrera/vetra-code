@@ -20,16 +20,24 @@
  *
  * @module provider/builtInDrivers
  */
-import { AcpRegistryDriver, type AcpRegistryDriverEnv } from "./Drivers/AcpRegistryDriver.ts";
+import {
+  AcpRegistryDriver,
+  type AcpRegistryDriverEnv,
+} from "@t3tools/provider-acp-registry/server";
 import { AntigravityDriver, type AntigravityDriverEnv } from "./Drivers/AntigravityDriver.ts";
 import { ClaudeDriver, type ClaudeDriverEnv } from "./Drivers/ClaudeDriver.ts";
 import { CodexDriver, type CodexDriverEnv } from "./Drivers/CodexDriver.ts";
-import { CursorDriver, type CursorDriverEnv } from "./Drivers/CursorDriver.ts";
-import { GrokDriver, type GrokDriverEnv } from "./Drivers/GrokDriver.ts";
-import { OpenCodeDriver, type OpenCodeDriverEnv } from "./Drivers/OpenCodeDriver.ts";
-import { MuseDriver, type MuseDriverEnv } from "./Drivers/MuseDriver.ts";
-import { PiDriver, type PiDriverEnv } from "./Drivers/PiDriver.ts";
-import type { AnyProviderDriver } from "./ProviderDriver.ts";
+import type { CursorDriverEnv } from "@t3tools/provider-cursor/server";
+import type { GrokDriverEnv } from "@t3tools/provider-grok/server";
+import type { OpenCodeDriverEnv } from "@t3tools/provider-opencode/server";
+import { MuseDriver, type MuseDriverEnv } from "@t3tools/provider-muse/server";
+import { PiDriver, type PiDriverEnv } from "@t3tools/provider-pi/server";
+import type { AnyProviderDriver } from "@t3tools/provider-core/server/driver";
+import {
+  CursorDriverWithSubscriptionUsage,
+  GrokDriverWithSubscriptionUsage,
+  OpenCodeDriverWithSubscriptionUsage,
+} from "./usage/ProviderPackageSubscriptionUsage.ts";
 
 /**
  * Union of infrastructure services required to construct any built-in
@@ -55,9 +63,9 @@ export type BuiltInDriversEnv =
 export const BUILT_IN_DRIVERS: ReadonlyArray<AnyProviderDriver<BuiltInDriversEnv>> = [
   CodexDriver,
   ClaudeDriver,
-  CursorDriver,
-  GrokDriver,
-  OpenCodeDriver,
+  CursorDriverWithSubscriptionUsage,
+  GrokDriverWithSubscriptionUsage,
+  OpenCodeDriverWithSubscriptionUsage,
   AntigravityDriver,
   PiDriver,
   MuseDriver,

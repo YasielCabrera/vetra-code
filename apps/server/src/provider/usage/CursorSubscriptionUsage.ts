@@ -16,7 +16,10 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import type { HttpClient } from "effect/http";
 
-import type { ProviderInstance, ProviderSubscriptionUsageCapability } from "../ProviderDriver.ts";
+import type {
+  ProviderInstance,
+  ProviderSubscriptionUsageCapability,
+} from "@t3tools/provider-core/server/driver";
 import { fetchCursorDashboardUsage } from "./CursorDashboardUsage.ts";
 import type { ProviderSubscriptionCredentialStoreShape } from "./ProviderSubscriptionCredentialStore.ts";
 import {

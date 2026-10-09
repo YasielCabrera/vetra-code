@@ -34,7 +34,7 @@ import {
   PowerhouseReactorSystemInfo,
 } from "@t3tools/contracts";
 
-import { collectUint8StreamText } from "../stream/collectUint8StreamText.ts";
+import { collectUint8StreamText } from "@t3tools/provider-core/server/collectStreamText";
 
 /** Documents of these types are drives; the reactor has no drive-listing query. */
 const DRIVE_DOCUMENT_TYPES = ["powerhouse/document-drive", "powerhouse/reactor-drive"] as const;

@@ -2,7 +2,7 @@ import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import { HttpClient, HttpClientRequest, type HttpClientResponse } from "effect/http";
 
-import { collectUint8StreamText } from "../../stream/collectUint8StreamText.ts";
+import { collectUint8StreamText } from "@t3tools/provider-core/server/collectStreamText";
 
 const MAX_RESPONSE_BYTES = 1024 * 1024;
 

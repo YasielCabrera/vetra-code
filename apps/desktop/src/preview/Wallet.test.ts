@@ -157,6 +157,7 @@ const withBridge = <A, E>(
       attach: () => {},
       detach: () => {},
       placeDownload: () => false,
+      humanStartedDownload: () => false,
       walletState: () => state,
       walletStates: Stream.fromPubSub(states),
       walletRequest: (input) =>
@@ -323,6 +324,7 @@ const makeRegistrableGuest = (id: number, url: string) => {
       hostWebContents: { id: 1, isDestroyed: () => false },
       getTitle: () => "",
       isLoading: () => false,
+      isLoadingMainFrame: () => false,
       getZoomFactor: () => 1,
       setZoomFactor: ignore,
       setAudioMuted: ignore,

@@ -8,6 +8,44 @@ import {
 } from "./composerContextPresentation";
 
 describe("composerContextRecordsFromDraft", () => {
+  it("pairs a picked element with its crop, which the draft keeps as an image", () => {
+    const annotation = {
+      id: "pick-1",
+      pageUrl: "http://localhost:3000/",
+      pageTitle: "Example",
+      comment: "",
+      elements: [],
+      regions: [],
+      strokes: [],
+      styleChanges: [],
+      // The draft stores annotations without their data URL.
+      screenshot: {
+        dataUrl: "",
+        width: 10,
+        height: 10,
+        cropRect: { x: 0, y: 0, width: 10, height: 10 },
+      },
+      createdAt: "2026-10-08T00:00:00.000Z",
+    };
+    const crop = {
+      type: "image" as const,
+      id: "pick-1",
+      name: "preview-annotation-pick-1.png",
+      mimeType: "image/png",
+      sizeBytes: 1,
+      previewUrl: "blob:crop",
+      file: new File(["x"], "preview-annotation-pick-1.png"),
+    };
+
+    expect(
+      composerContextRecordsFromDraft({
+        terminalContexts: [],
+        previewAnnotations: [annotation],
+        images: [crop],
+      }).get("preview-annotation_pick-1"),
+    ).toMatchObject({ kind: "preview-annotation", screenshot: { previewUrl: "blob:crop" } });
+  });
+
   it("recovers the uploaded record when clipboard data points at an attachment already in the draft", () => {
     const file = {
       type: "file" as const,
@@ -27,49 +65,6 @@ describe("composerContextRecordsFromDraft", () => {
       kind: "file",
       contextId: "file_file-1",
       attachmentId: "attachment-1",
-    });
-  });
-
-  it("carries the staged crop for a preview annotation whose draft copy was compacted", () => {
-    const id = "annotation-1";
-    // The draft blanks `dataUrl` so persisted drafts stay small; without the
-    // staged image the chip has nothing left to render.
-    const annotation = {
-      id,
-      pageUrl: "http://localhost:3000",
-      pageTitle: "Example",
-      comment: "Tighten this spacing",
-      elements: [],
-      regions: [],
-      strokes: [],
-      styleChanges: [],
-      screenshot: {
-        dataUrl: "",
-        width: 10,
-        height: 10,
-        cropRect: { x: 0, y: 0, width: 10, height: 10 },
-      },
-      createdAt: "2026-01-01T00:00:00.000Z",
-    };
-    const image = {
-      type: "image" as const,
-      id,
-      name: `preview-annotation-${id}.png`,
-      mimeType: "image/png",
-      sizeBytes: 1,
-      file: new File(["x"], `preview-annotation-${id}.png`),
-      previewUrl: "data:image/png;base64,c2hvdA==",
-    };
-
-    const record = composerContextRecordsFromDraft({
-      terminalContexts: [],
-      previewAnnotations: [annotation],
-      images: [image],
-    }).get(`preview-annotation_${id}`);
-
-    expect(record).toMatchObject({
-      kind: "preview-annotation",
-      screenshotUrl: "data:image/png;base64,c2hvdA==",
     });
   });
 

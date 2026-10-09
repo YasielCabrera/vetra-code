@@ -18,7 +18,7 @@ import * as PubSub from "effect/PubSub";
 import * as Ref from "effect/Ref";
 import * as Semaphore from "effect/Semaphore";
 
-import type { ProviderInstance } from "../ProviderDriver.ts";
+import type { ProviderInstance } from "@t3tools/provider-core/server/driver";
 import * as ProviderInstanceRegistry from "../ProviderInstanceRegistry.ts";
 import { ProviderSubscriptionCredentialStore } from "./ProviderSubscriptionCredentialStore.ts";
 

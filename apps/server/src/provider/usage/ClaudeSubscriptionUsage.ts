@@ -18,7 +18,10 @@ import * as Path from "effect/Path";
 import { resolveClaudeSdkExecutablePath } from "../Drivers/ClaudeExecutable.ts";
 import { makeClaudeEnvironment } from "../Drivers/ClaudeHome.ts";
 import { buildClaudeCapabilitiesProbeQueryOptions } from "../ClaudeProvider.ts";
-import type { ProviderInstance, ProviderSubscriptionUsageCapability } from "../ProviderDriver.ts";
+import type {
+  ProviderInstance,
+  ProviderSubscriptionUsageCapability,
+} from "@t3tools/provider-core/server/driver";
 import {
   configFingerprint,
   failureProbe,

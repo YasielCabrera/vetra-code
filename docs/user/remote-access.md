@@ -38,11 +38,14 @@ connect to a different server and read or modify that environment's state.
 
 ## Reach one machine several ways
 
-A machine can have more than one route: LAN, Tailscale, a public URL, SSH, or
-Vetra Connect. To add one, choose **Add route** in the machine's route list, or
-next to it in the Vetra Connect list. Pairing the same machine again over another
-address also adds a route instead of a second machine. A new route is placed by
-speed, in that order, and you can reorder routes at any time.
+A machine can have more than one route: LAN, Tailscale, another VPN, a public
+URL, SSH, or Vetra Connect. Tailscale shares its `100.64.0.0/10` address range with
+other VPNs such as Cloudflare WARP, so an address in that range shows as VPN
+unless the machine confirms it is on Tailscale. To add a route, choose **Add
+route** in the machine's route list, or next to it in the Vetra Connect list.
+Pairing the same machine again over another address also adds a route instead
+of a second machine. A new route is placed by speed, in that order, and you can
+reorder routes at any time.
 
 While connected through Vetra Connect or a paired address, Vetra Code also learns the
 machine's current LAN and Tailscale addresses and adds them as routes, so
@@ -66,6 +69,12 @@ you can still reach another way stays saved.
 
 Vetra Connect routes appear only once Vetra Connect is configured; see
 [Deferred connection modes](#deferred-connection-modes).
+
+Open **Permissions** next to **Routes** in web or desktop to see what your
+current connection can do on that environment. For a remote environment, this
+is in its route details. Permissions shown there apply only to the route marked
+**In use**; other routes are not checked. Direct pairing and Vetra Connect have
+separate sessions and may grant different permissions.
 
 ## Balance new threads across machines
 

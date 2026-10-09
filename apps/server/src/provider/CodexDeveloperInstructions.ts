@@ -1,11 +1,11 @@
 import type { ProviderInteractionMode } from "@t3tools/contracts";
 import type { V2TurnStartParams__AdditionalContextEntry } from "effect-codex-app-server/schema";
-import { buildRuntimeInstructions } from "./RuntimeInstructions.ts";
+import { buildRuntimeInstructions } from "@t3tools/provider-core/server/runtimeInstructions";
 
 import {
   VETRA_CODE_BROWSER_TOOL_INSTRUCTIONS,
   VETRA_CODE_ORCHESTRATION_INSTRUCTIONS,
-} from "./T3OrchestrationInstructions.ts";
+} from "@t3tools/provider-core/server/orchestrationInstructions";
 
 const VETRA_CODE_DEVICE_TOOL_INSTRUCTIONS = `## Vetra Code devices
 

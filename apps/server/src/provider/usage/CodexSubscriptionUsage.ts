@@ -15,8 +15,11 @@ import * as Layer from "effect/Layer";
 import * as ChildProcess from "effect/process/ChildProcess";
 import type * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
-import { expandHomePath } from "../../pathExpansion.ts";
-import type { ProviderSubscriptionUsageCapability, ProviderInstance } from "../ProviderDriver.ts";
+import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
+import type {
+  ProviderSubscriptionUsageCapability,
+  ProviderInstance,
+} from "@t3tools/provider-core/server/driver";
 import { codexSubscriptionUsageAppServerArgs, resolveCodexLaunchArgs } from "../codexLaunchArgs.ts";
 import {
   configFingerprint,

@@ -1415,6 +1415,8 @@ function startAnnotation(sendEnabled: boolean): void {
           annotation,
           screenshotRect,
           submission === "send" && !sendEnabled ? "attach" : submission,
+          // Main crops a full-page capture, whose pixels are CSS px × this.
+          window.devicePixelRatio,
         );
       })
       .catch(() => {
