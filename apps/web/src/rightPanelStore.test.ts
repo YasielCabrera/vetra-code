@@ -1,5 +1,5 @@
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
-import { type EnvironmentId, ThreadId } from "@t3tools/contracts";
+import { EnvironmentId, TicketId, ThreadId } from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { createJSONStorage } from "zustand/middleware";
 
@@ -589,7 +589,7 @@ describe("rightPanelStore", () => {
         expect(selectActiveRightPanel(byThreadKey, refB)).toBeNull();
         const rewritten = await storage.getItem(name);
         expect(rewritten).not.toBeNull();
-        expect(JSON.parse(rewritten ?? "null")).toMatchObject({ version: 16, state: expected });
+        expect(JSON.parse(rewritten ?? "null")).toMatchObject({ version: 17, state: expected });
       } finally {
         useRightPanelStore.persist.setOptions({ storage: options.storage });
       }
@@ -1488,5 +1488,134 @@ describe("rightPanelStore", () => {
       },
       threadPanelVisibilityByThreadKey: {},
     });
+  });
+});
+
+describe("ticket panel lifecycle", () => {
+  const ticketRef = {
+    environmentId: EnvironmentId.make("env-2"),
+    ticketId: TicketId.make("ticket-1"),
+  };
+  const ticket = { kind: "ticket", ticketRef } as const;
+  const plan = { kind: "ticket-plan", ticketRef, planNumber: 1 } as const;
+
+  it("opens deduplicated peer tabs in the owner thread while retaining resource environments", () => {
+    const store = useRightPanelStore.getState();
+    store.open(refA, "diff");
+    store.openTicketResource(refA, ticket);
+    store.openTicketResource(refA, plan);
+    store.openTicketResource(refA, ticket);
+    store.openTicketResource(refA, {
+      kind: "ticket",
+      ticketRef: { ...ticketRef, environmentId: EnvironmentId.make("env-1") },
+    });
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).surfaces.map(
+        (surface) => surface.id,
+      ),
+    ).toEqual([
+      "diff",
+      "ticket:env-2%3Aticket-1",
+      "ticket-plan:env-2%3Aticket-1:1",
+      "ticket:env-1%3Aticket-1",
+    ]);
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refB).surfaces,
+    ).toEqual([]);
+  });
+
+  it("consumes new-plan edit intent and strips it from storage and reopening", async () => {
+    const store = useRightPanelStore.getState();
+    store.openTicketResource(refA, plan, { edit: true });
+    const options = useRightPanelStore.persist.getOptions();
+    expect(
+      await options.storage?.getItem(options.name ?? "vetra:right-panel-state:v2"),
+    ).toMatchObject({
+      state: {
+        byThreadKey: {
+          "env-1:thread-A": {
+            surfaces: [
+              {
+                id: "ticket-plan:env-2%3Aticket-1:1",
+                kind: "ticket-plan",
+                ticketRef,
+                planNumber: 1,
+              },
+            ],
+          },
+        },
+      },
+    });
+    const persisted = await options.storage?.getItem(options.name ?? "vetra:right-panel-state:v2");
+    expect(JSON.stringify(persisted)).not.toContain("startEditing");
+    store.consumeTicketPlanEdit(refA, "ticket-plan:env-2%3Aticket-1:1");
+    expect(selectActiveRightPanelSurface(useRightPanelStore.getState().byThreadKey, refA)).toEqual({
+      id: "ticket-plan:env-2%3Aticket-1:1",
+      ...plan,
+    });
+    store.openTicketResource(refA, plan, { edit: true });
+    store.closeSurface(refA, "ticket-plan:env-2%3Aticket-1:1");
+    const entry = useClosedViewStore.getState().entries[0];
+    expect(entry?.kind === "panel-tab" && entry.surface).toEqual({
+      id: "ticket-plan:env-2%3Aticket-1:1",
+      ...plan,
+    });
+    if (entry?.kind === "panel-tab") store.restoreSurface(refA, entry.surface);
+    expect(selectActiveRightPanelSurface(useRightPanelStore.getState().byThreadKey, refA)).toEqual({
+      id: "ticket-plan:env-2%3Aticket-1:1",
+      ...plan,
+    });
+  });
+
+  it("removes deleted plans and tickets across owner threads and closed history", () => {
+    const store = useRightPanelStore.getState();
+    store.open(refA, "diff");
+    store.openTicketResource(refA, ticket);
+    store.openTicketResource(refA, plan);
+    store.openTicketResource(refB, plan);
+    store.closeSurface(refB, "ticket-plan:env-2%3Aticket-1:1");
+    store.removeTicketResource(plan);
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).surfaces.map(
+        (surface) => surface.id,
+      ),
+    ).toEqual(["diff", "ticket:env-2%3Aticket-1"]);
+    expect(useClosedViewStore.getState().entries).toEqual([]);
+    store.openTicketResource(refA, plan);
+    store.openTicketResource(refB, ticket);
+    store.openTicketResource(refB, { ...plan, planNumber: 2 });
+    store.removeTicketResource(ticket);
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA),
+    ).toMatchObject({
+      isOpen: true,
+      activeSurfaceId: "diff",
+      surfaces: [{ id: "diff", kind: "diff" }],
+    });
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refB),
+    ).toMatchObject({ isOpen: false, activeSurfaceId: null, surfaces: [] });
+    expect(useClosedViewStore.getState().entries).toEqual([]);
+  });
+
+  it("rehydrates valid coordinates and discards malformed plans", () => {
+    const migrated = migratePersistedRightPanelState({
+      byThreadKey: {
+        "env-1:thread-A": {
+          isOpen: true,
+          activeSurfaceId: "ticket-plan:env-2%3Aticket-1:1",
+          surfaces: [
+            { id: "ticket-plan:env-2%3Aticket-1:1", ...plan, startEditing: true },
+            { id: "invalid", ...plan, planNumber: 0 },
+            { id: "invalid", ...ticket, ticketRef: { environmentId: 1, ticketId: "bad" } },
+          ],
+        },
+      },
+    });
+    expect(selectActiveRightPanelSurface(migrated.byThreadKey, refA)).toEqual({
+      id: "ticket-plan:env-2%3Aticket-1:1",
+      ...plan,
+    });
+    expect(selectThreadRightPanelState(migrated.byThreadKey, refA).surfaces).toHaveLength(1);
   });
 });

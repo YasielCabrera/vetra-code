@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 /**
  * A ticket's or plan's title edited in place over `saved`, the title the stream last sent. A
@@ -48,6 +48,9 @@ export function useTitleDraft(
     writeRef.current = { draft: submitted, saved: write };
     return write;
   };
+
+  const commitOnLeave = useEffectEvent(() => void commit());
+  useEffect(() => () => commitOnLeave(), []);
 
   return {
     saved,

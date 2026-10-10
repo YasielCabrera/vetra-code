@@ -21,6 +21,13 @@ import { usePowerhousePanelStore } from "./components/powerhouse/powerhousePanel
 import { resolveStorage } from "./lib/storage";
 import type { ThreadPanelPresentation } from "./rightPanelLayout";
 import type { ChatFileAttachment } from "./types";
+import {
+  matchesTicketResource,
+  parseTicketResourceSurface,
+  ticketResourceSurface,
+  type TicketResourceSurface,
+  type TicketResourceTarget,
+} from "./ticketResource";
 
 const POWERHOUSE_PANEL_KINDS = [
   "powerhouse-models",
@@ -39,6 +46,8 @@ const RIGHT_PANEL_KINDS = [
   "terminal",
   "pull-request",
   "pull-requests",
+  "ticket",
+  "ticket-plan",
   ...POWERHOUSE_PANEL_KINDS,
 ] as const;
 export type RightPanelKind = (typeof RIGHT_PANEL_KINDS)[number];
@@ -51,6 +60,7 @@ export interface DeviceTabTarget {
 }
 
 export type RightPanelSurface =
+  | TicketResourceSurface
   | { id: `browser:${string}`; kind: "preview"; resourceId: string }
   | { id: "browser:new"; kind: "preview"; resourceId: null }
   | { id: "device" | `device:${string}`; kind: "device"; target?: DeviceTabTarget; title?: string }
@@ -114,7 +124,7 @@ const RIGHT_PANEL_STORAGE_KEY = "vetra:right-panel-state:v2";
 // v13 adds issue surfaces, whose list panel is session state like the pull-request one.
 // v14 adds the device surface and the thread's linked pull requests tab.
 // v15 removes the agents surface; lineage lives in the thread title bar.
-const RIGHT_PANEL_STORAGE_VERSION = 16;
+const RIGHT_PANEL_STORAGE_VERSION = 17;
 
 /** A fixed workspace-level ref: each PR surface carries its own real environment. */
 export const PULL_REQUESTS_PANEL_REF = scopeThreadRef(
@@ -155,7 +165,10 @@ interface RightPanelStoreState {
   ) => boolean;
   open: (
     ref: ScopedThreadRef,
-    kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request" | PowerhousePanelKind>,
+    kind: Exclude<
+      RightPanelKind,
+      "file" | "terminal" | "pull-request" | "ticket" | "ticket-plan" | PowerhousePanelKind
+    >,
   ) => void;
   openPowerhouse: (ref: ScopedThreadRef, kind: PowerhousePanelKind) => void;
   restoreSurface: (
@@ -185,6 +198,13 @@ interface RightPanelStoreState {
       url?: string;
     },
   ) => void;
+  openTicketResource: (
+    ref: ScopedThreadRef,
+    target: TicketResourceTarget,
+    intent?: { edit?: boolean },
+  ) => void;
+  consumeTicketPlanEdit: (ref: ScopedThreadRef, surfaceId: string) => void;
+  removeTicketResource: (target: TicketResourceTarget) => void;
   openTerminal: (ref: ScopedThreadRef, terminalId: string) => void;
   splitTerminal: (
     ref: ScopedThreadRef,
@@ -211,7 +231,10 @@ interface RightPanelStoreState {
   toggleVisibility: (ref: ScopedThreadRef) => void;
   toggle: (
     ref: ScopedThreadRef,
-    kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request" | PowerhousePanelKind>,
+    kind: Exclude<
+      RightPanelKind,
+      "file" | "terminal" | "pull-request" | "ticket" | "ticket-plan" | PowerhousePanelKind
+    >,
   ) => void;
   setThreadPanelOpen: (
     ref: ScopedThreadRef,
@@ -236,7 +259,13 @@ const DEFAULT_THREAD_PANEL_VISIBILITY: ThreadPanelVisibility = {
 const singletonSurface = (
   kind: Exclude<
     RightPanelKind,
-    "file" | "preview" | "terminal" | "pull-request" | PowerhousePanelKind
+    | "file"
+    | "preview"
+    | "terminal"
+    | "pull-request"
+    | "ticket"
+    | "ticket-plan"
+    | PowerhousePanelKind
   >,
 ): RightPanelSurface => {
   switch (kind) {
@@ -528,6 +557,10 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                     if (kind === "powerhouse") {
                       return [powerhouseSurface("powerhouse-models", "legacy")];
                     }
+                    if (surface.kind === "ticket" || surface.kind === "ticket-plan") {
+                      const resource = parseTicketResourceSurface(surface);
+                      return resource === null ? [] : [resource];
+                    }
                     if (surface.kind === "file") {
                       const revealLine =
                         typeof surface.revealLine === "number" &&
@@ -801,6 +834,76 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
               : next;
           }),
         ),
+      openTicketResource: (ref, target, intent) =>
+        set((state) =>
+          userAction(state, scopedThreadKey(ref), (current) => {
+            const resource = ticketResourceSurface(target);
+            const surface: TicketResourceSurface =
+              resource.kind === "ticket-plan" && intent?.edit
+                ? { ...resource, startEditing: true }
+                : resource;
+            const next = upsertSurface(current, surface);
+            return intent?.edit
+              ? {
+                  ...next,
+                  surfaces: next.surfaces.map((entry) =>
+                    entry.id === surface.id ? surface : entry,
+                  ),
+                }
+              : next;
+          }),
+        ),
+      consumeTicketPlanEdit: (ref, surfaceId) =>
+        set((state) =>
+          automaticUpdate(state, scopedThreadKey(ref), (current) => ({
+            ...current,
+            surfaces: current.surfaces.map((surface) => {
+              if (
+                surface.id !== surfaceId ||
+                surface.kind !== "ticket-plan" ||
+                !surface.startEditing
+              )
+                return surface;
+              const { startEditing: _intent, ...resource } = surface;
+              return resource;
+            }),
+          })),
+        ),
+      removeTicketResource: (target) => {
+        set((state) => {
+          let next = state;
+          for (const [key, current] of Object.entries(state.byThreadKey)) {
+            const surfaces = current.surfaces.filter(
+              (surface) =>
+                (surface.kind !== "ticket" && surface.kind !== "ticket-plan") ||
+                !matchesTicketResource(surface, target),
+            );
+            if (surfaces.length === current.surfaces.length) continue;
+            if (next === state) next = { ...state };
+            Object.assign(
+              next,
+              userAction(next, key, () => ({
+                ...current,
+                surfaces,
+                isOpen: current.isOpen && surfaces.length > 0,
+                activeSurfaceId: surfaces.some((surface) => surface.id === current.activeSurfaceId)
+                  ? current.activeSurfaceId
+                  : (surfaces.at(-1)?.id ?? null),
+              })),
+            );
+          }
+          return next;
+        });
+        const closed = useClosedViewStore.getState();
+        for (const entry of closed.entries) {
+          if (
+            entry.kind === "panel-tab" &&
+            (entry.surface.kind === "ticket" || entry.surface.kind === "ticket-plan") &&
+            matchesTicketResource(entry.surface, target)
+          )
+            closed.remove(entry.id);
+        }
+      },
       openFile: (ref, requestedPath, line, options) =>
         set((state) =>
           userAction(state, scopedThreadKey(ref), (current) => {
@@ -1189,7 +1292,17 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
       ),
       partialize: (state) => ({
         byThreadKey: Object.fromEntries(
-          Object.entries(state.byThreadKey).filter(([threadKey]) => !isSessionPanelKey(threadKey)),
+          Object.entries(state.byThreadKey)
+            .filter(([threadKey]) => !isSessionPanelKey(threadKey))
+            .map(([threadKey, panel]) => [
+              threadKey,
+              {
+                ...panel,
+                surfaces: panel.surfaces.map((surface) =>
+                  surface.kind === "ticket-plan" ? ticketResourceSurface(surface) : surface,
+                ),
+              },
+            ]),
         ),
         threadPanelVisibilityByThreadKey: Object.fromEntries(
           Object.entries(state.threadPanelVisibilityByThreadKey).flatMap(
@@ -1226,7 +1339,11 @@ useRightPanelStore.subscribe((next, previous) => {
         (surface.kind === "preview" && surface.resourceId !== null)
       )
         continue;
-      useClosedViewStore.getState().remember({ kind: "panel-tab", threadRef, surface });
+      useClosedViewStore.getState().remember({
+        kind: "panel-tab",
+        threadRef,
+        surface,
+      });
     }
   }
 });

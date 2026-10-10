@@ -1,15 +1,13 @@
-import { ticketKey } from "@t3tools/client-runtime/state/tickets";
 import {
   parseTicketPlanReference,
   type TicketContextRecord,
   type TicketPlanContextRecord,
 } from "@t3tools/contracts";
-import { Link } from "@tanstack/react-router";
 import { ClipboardListIcon, SquareKanbanIcon } from "lucide-react";
 
 import { useTicket } from "~/state/tickets";
 import { LinkedContextChip } from "../ContextChip";
-import { ticketPlanRouteParams } from "./ticketPlans.logic";
+import { TicketResourceLink } from "./ThreadTicketWorkspace";
 
 export function TicketContextChip(props: {
   record: Pick<TicketContextRecord, "environmentId" | "ticketId" | "ref" | "title">;
@@ -22,10 +20,7 @@ export function TicketContextChip(props: {
     <LinkedContextChip
       kind="ticket"
       link={
-        <Link
-          to="/tickets/$ticketKey"
-          params={{ ticketKey: ticketKey({ environmentId, ticketId }) }}
-        />
+        <TicketResourceLink target={{ kind: "ticket", ticketRef: { environmentId, ticketId } }} />
       }
       icon={<SquareKanbanIcon />}
       label={`${ref} ${title}`}
@@ -59,12 +54,9 @@ export function TicketPlanContextChip(props: {
       kind="ticket-plan"
       link={
         planNumber === null ? (
-          <Link to="/tickets/$ticketKey" params={{ ticketKey: ticketKey(scope) }} />
+          <TicketResourceLink target={{ kind: "ticket", ticketRef: scope }} />
         ) : (
-          <Link
-            to="/tickets/$ticketKey/plans/$planNumber"
-            params={ticketPlanRouteParams(scope, planNumber)}
-          />
+          <TicketResourceLink target={{ kind: "ticket-plan", ticketRef: scope, planNumber }} />
         )
       }
       icon={<ClipboardListIcon />}

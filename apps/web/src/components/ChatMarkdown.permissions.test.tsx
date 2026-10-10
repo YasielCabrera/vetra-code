@@ -156,7 +156,7 @@ beforeEach(() => {
   state.copy.mockReset().mockResolvedValue(undefined);
   state.toast.mockReset();
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  vi.stubGlobal("window", {});
+  vi.stubGlobal("window", { location: { origin: "https://vetra.example" } });
   vi.stubGlobal("navigator", { clipboard: { writeText: state.copy } });
 });
 

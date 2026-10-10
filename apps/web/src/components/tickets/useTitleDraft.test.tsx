@@ -48,7 +48,7 @@ let container: HTMLDivElement;
 
 beforeEach(async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  writeTitle.mockReset();
+  writeTitle.mockReset().mockResolvedValue(null);
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -83,6 +83,17 @@ function canUnload() {
 }
 
 describe("useTitleDraft", () => {
+  it("saves a focused title when its panel unmounts without blur", async () => {
+    writeTitle.mockResolvedValue({
+      summary: { revision: 2, title: "Saved across tab switch" },
+      acknowledgement: { kind: "legacy", revision: 2 },
+      claimed: [],
+    });
+    await type("Saved across tab switch");
+    await act(async () => root.render(null));
+    expect(writeTitle.mock.calls).toEqual([[1, "Saved across tab switch"]]);
+  });
+
   it("protects a focused changed title before its first write", async () => {
     await type("Unsaved focused title");
     expect(canUnload()).toBe(false);

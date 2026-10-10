@@ -1,3 +1,5 @@
+import { ticketKey } from "@t3tools/client-runtime/state/tickets";
+import { ThreadTicketWorkspace } from "./tickets/ThreadTicketWorkspace";
 import { ThreadFind, ThreadFindCanvas, type ThreadFindControls } from "./chat/ThreadFindProvider";
 import { THREAD_FIND_BAR_RESERVED_HEIGHT } from "./chat/ThreadFindBar";
 import { usageLimitRecoveryBannerItem } from "./chat/UsageLimitRecoveryBanner";
@@ -721,6 +723,13 @@ function useDraftHeroLayoutTransition(
     captureComposerRect,
   } as const;
 }
+
+const TicketDetailPage = lazy(() =>
+  import("./tickets/TicketDetailPage").then((module) => ({ default: module.TicketDetailPage })),
+);
+const TicketPlanPage = lazy(() =>
+  import("./tickets/TicketPlanPage").then((module) => ({ default: module.TicketPlanPage })),
+);
 
 const PreviewPanel = lazy(() =>
   import("./preview/PreviewPanel").then((module) => ({ default: module.PreviewPanel })),
@@ -11061,6 +11070,29 @@ export default function ChatView(props: ChatViewProps) {
           }}
         />
       </Suspense>
+    ) : renderedRightPanelSurface?.kind === "ticket" ? (
+      <Suspense fallback={null}>
+        <TicketDetailPage
+          key={renderedRightPanelSurface.id}
+          ticketKey={ticketKey(renderedRightPanelSurface.ticketRef)}
+          presentation="panel"
+        />
+      </Suspense>
+    ) : renderedRightPanelSurface?.kind === "ticket-plan" ? (
+      <Suspense fallback={null}>
+        <TicketPlanPage
+          key={renderedRightPanelSurface.id}
+          ticketKey={ticketKey(renderedRightPanelSurface.ticketRef)}
+          planNumber={String(renderedRightPanelSurface.planNumber)}
+          startEditing={renderedRightPanelSurface.startEditing === true}
+          presentation="panel"
+          onEditStarted={() =>
+            useRightPanelStore
+              .getState()
+              .consumeTicketPlanEdit(activeThreadRef, renderedRightPanelSurface.id)
+          }
+        />
+      </Suspense>
     ) : renderedRightPanelSurface?.kind === "terminal" ? (
       <PersistentThreadTerminalPanel
         visible={rightPanelOpen}
@@ -11339,7 +11371,7 @@ export default function ChatView(props: ChatViewProps) {
     addFolders: (folders) => composerRef.current?.addDroppedFolders(folders),
   });
 
-  return (
+  const workspace = (
     <div
       ref={workspaceLayoutRef}
       className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background"
@@ -12202,6 +12234,7 @@ export default function ChatView(props: ChatViewProps) {
       )}
     </div>
   );
+  return <ThreadTicketWorkspace threadRef={activeThreadRef}>{workspace}</ThreadTicketWorkspace>;
 }
 
 /** Keeps the thread's preview tabs synced while no browser panel is mounted. */

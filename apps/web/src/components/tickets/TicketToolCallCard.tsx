@@ -1,13 +1,11 @@
-import { ticketKey } from "@t3tools/client-runtime/state/tickets";
 import type { EnvironmentId } from "@t3tools/contracts";
-import { Link } from "@tanstack/react-router";
 import { ClipboardListIcon, SquareKanbanIcon } from "lucide-react";
 
 import { useTicket, useTicketStatuses } from "../../state/tickets";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { TicketStatusIcon } from "./ticketPresentation";
-import { ticketPlanRouteParams } from "./ticketPlans.logic";
+import { TicketResourceLink } from "./ThreadTicketWorkspace";
 import { formatTicketRef } from "./ticketRefs";
 import type { TicketToolCallTarget } from "./ticketToolCall";
 
@@ -47,9 +45,8 @@ function CreatedTicketCard(props: {
           size="xs"
           variant="ghost"
           render={
-            <Link
-              to="/tickets/$ticketKey"
-              params={{ ticketKey: ticketKey({ environmentId, ticketId: ticket.id }) }}
+            <TicketResourceLink
+              target={{ kind: "ticket", ticketRef: { environmentId, ticketId: ticket.id } }}
             />
           }
         >
@@ -88,9 +85,8 @@ function WrittenPlanCard(props: {
           size="xs"
           variant="ghost"
           render={
-            <Link
-              to="/tickets/$ticketKey/plans/$planNumber"
-              params={ticketPlanRouteParams(ticketRef, plan.number)}
+            <TicketResourceLink
+              target={{ kind: "ticket-plan", ticketRef, planNumber: plan.number }}
             />
           }
         >

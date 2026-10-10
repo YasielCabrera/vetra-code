@@ -9,7 +9,6 @@ import type {
   TicketPlanSummary,
   TicketStatusSet,
 } from "@t3tools/contracts";
-import { Link } from "@tanstack/react-router";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
@@ -42,7 +41,7 @@ import {
   type TicketActivityFamily,
   type TicketActivityRow,
 } from "./ticketActivity.logic";
-import { ticketPlanRouteParams } from "./ticketPlans.logic";
+import { TicketResourceLink } from "./ThreadTicketWorkspace";
 
 const FIELD_LABELS = { title: "the title", body: "the description", labels: "the labels" } as const;
 const LINK_KIND_LABELS = {
@@ -227,16 +226,16 @@ function PlanReference(props: {
 }) {
   if (!props.view.planIds.has(props.planId)) return `P${props.number}`;
   return (
-    <Link
-      to="/tickets/$ticketKey/plans/$planNumber"
-      params={ticketPlanRouteParams(
-        { environmentId: props.view.environmentId, ticketId: props.ticketId },
-        props.number,
-      )}
+    <TicketResourceLink
+      target={{
+        kind: "ticket-plan",
+        ticketRef: { environmentId: props.view.environmentId, ticketId: props.ticketId },
+        planNumber: props.number,
+      }}
       className="font-medium text-foreground hover:underline"
     >
       P{props.number}
-    </Link>
+    </TicketResourceLink>
   );
 }
 

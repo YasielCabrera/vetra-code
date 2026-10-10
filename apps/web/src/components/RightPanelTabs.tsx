@@ -1,3 +1,5 @@
+import { useTicket } from "~/state/tickets";
+import { formatTicketRef } from "./tickets/ticketRefs";
 import {
   DndContext,
   PointerSensor,
@@ -33,6 +35,8 @@ import type {
 import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
 import {
   Braces,
+  SquareKanbanIcon,
+  ClipboardListIcon,
   Smartphone,
   ChevronDown,
   ChevronLeft,
@@ -679,6 +683,10 @@ function surfaceTitle(
   terminalLabelsById: ReadonlyMap<string, string>,
 ): string {
   switch (surface.kind) {
+    case "ticket":
+      return "Ticket";
+    case "ticket-plan":
+      return "Plan P" + surface.planNumber;
     case "diff":
       return "Diff";
     case "files":
@@ -717,6 +725,30 @@ function surfaceTitle(
       }
     }
   }
+}
+
+function TicketTabLabel(props: {
+  readonly surface: RightPanelSurface;
+  readonly fallback: string;
+  readonly children: (title: string) => ReactNode;
+}) {
+  const surface = props.surface;
+  const ticket = useTicket(
+    surface.kind === "ticket" || surface.kind === "ticket-plan" ? surface.ticketRef : null,
+  );
+  const plan =
+    surface.kind === "ticket-plan"
+      ? ticket?.plans.find((plan) => plan.number === surface.planNumber)
+      : null;
+  const title =
+    ticket === null
+      ? props.fallback
+      : surface.kind === "ticket-plan"
+        ? plan === undefined || plan === null
+          ? props.fallback
+          : plan.ref + " " + plan.title
+        : formatTicketRef(ticket) + " " + ticket.title;
+  return props.children(title);
 }
 
 function PreviewFavicon({ capturedUrl, url }: { capturedUrl: string | null; url: string | null }) {
@@ -762,6 +794,10 @@ function SurfaceIcon({
         favicon && url && sameOrigin(favicon.pageUrl, url) ? favicon.dataUrl : null;
       return <PreviewFavicon capturedUrl={capturedUrl} url={url} />;
     }
+    case "ticket":
+      return <SquareKanbanIcon className="size-3 shrink-0" />;
+    case "ticket-plan":
+      return <ClipboardListIcon className="size-3 shrink-0" />;
     case "diff":
       return <FileDiff className="size-3 shrink-0" />;
     case "files":
@@ -1310,142 +1346,146 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                     ? (props.previewRuntimeTabId?.(previewTabId) ?? null)
                     : null;
                   return (
-                    <SortableSurfaceTab key={surface.id} id={surface.id}>
-                      {(bag) => (
-                        <div
-                          ref={bag.setNodeRef}
-                          style={{
-                            transform: CSS.Translate.toString(bag.transform),
-                            transition: bag.transition,
-                          }}
-                          {...bag.listeners}
-                          data-active-tab={active}
-                          onMouseDown={handleTabMouseDown}
-                          onAuxClick={(event) => handleTabAuxClick(event, surface)}
-                          onDoubleClick={
-                            filePreview ? () => props.onPinSurface?.(surface) : undefined
-                          }
-                          onContextMenu={(event) => void handleTabContextMenu(event, surface)}
-                          className={cn(
-                            "cursor-pointer group/tab flex h-6 max-w-36 shrink-0 items-center gap-0.5 rounded-md pr-2 pl-1.5 text-xs",
-                            // The tab bar doubles as the desktop window drag-region;
-                            // opt the tab out so dragging it sorts instead of moving
-                            // the window.
-                            ownsDesktopTitleBar && "[-webkit-app-region:no-drag]",
-                            active
-                              ? "bg-accent text-foreground"
-                              : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-                            bag.isDragging && "relative z-10 opacity-80",
-                          )}
-                        >
-                          <PanelTabCloseButton
-                            label={`Close ${title}`}
-                            onClick={() => props.onCloseSurface(surface)}
-                          >
-                            <SurfaceIcon
-                              surface={surface}
-                              sessions={props.previewSessions}
-                              desktopByTabId={props.desktopByTabId}
-                              theme={resolvedTheme}
-                              environmentId={props.environmentId}
-                              pullRequestStatusSeeds={props.pullRequestStatusSeeds}
-                            />
-                            {pending ? (
-                              <span
-                                className="absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full bg-current"
-                                aria-hidden
-                              />
-                            ) : null}
-                          </PanelTabCloseButton>
-                          {audio === "none" || !audioRuntimeTabId ? null : (
-                            <Tooltip>
-                              <TooltipTrigger
-                                render={
-                                  <button
-                                    type="button"
-                                    className="cursor-pointer flex size-4 shrink-0 items-center justify-center rounded-sm hover:bg-muted"
-                                    aria-label={
-                                      audio === "muted" ? `Unmute ${title}` : `Mute ${title}`
-                                    }
-                                    onClick={(event) => {
-                                      // Sibling of the close button, inside a tab that
-                                      // activates on click: keep this to the toggle.
-                                      event.stopPropagation();
-                                      void previewBridge
-                                        ?.setAudioMuted(audioRuntimeTabId, audio !== "muted")
-                                        .catch(() => undefined);
-                                    }}
-                                  >
-                                    <MorphIcon
-                                      className="size-3"
-                                      icon={audio === "muted" ? VolumeOff : Volume2}
-                                    />
-                                  </button>
-                                }
-                              />
-                              <TooltipPopup>
-                                {audio === "muted" ? "Unmute tab" : "Mute tab"}
-                              </TooltipPopup>
-                            </Tooltip>
-                          )}
-                          {renamingDevice === surface.id ? (
-                            <input
-                              aria-label="Device tab name"
-                              className="w-24 min-w-0 rounded-sm bg-background px-1 outline-none ring-1 ring-ring"
-                              defaultValue={title}
-                              ref={(element) => {
-                                element?.focus();
-                                element?.select();
+                    <TicketTabLabel key={surface.id} surface={surface} fallback={title}>
+                      {(title) => (
+                        <SortableSurfaceTab id={surface.id}>
+                          {(bag) => (
+                            <div
+                              ref={bag.setNodeRef}
+                              style={{
+                                transform: CSS.Translate.toString(bag.transform),
+                                transition: bag.transition,
                               }}
-                              onBlur={(event) => {
-                                props.onRenameDevice?.(surface.id, event.currentTarget.value);
-                                setRenamingDevice(null);
-                              }}
-                              onKeyDown={(event) => {
-                                event.stopPropagation();
-                                if (event.key === "Enter") event.currentTarget.blur();
-                                if (event.key === "Escape") {
-                                  event.currentTarget.value = title;
-                                  event.currentTarget.blur();
-                                }
-                              }}
-                            />
-                          ) : (
-                            <Tooltip>
-                              <TooltipTrigger
-                                render={
-                                  <button
-                                    type="button"
-                                    onDoubleClick={() => {
-                                      if (surface.kind === "device" && props.onRenameDevice)
-                                        setRenamingDevice(surface.id);
-                                    }}
-                                    className="cursor-pointer flex min-w-0 items-center"
-                                    onClick={() => props.onActivate(surface)}
-                                  >
-                                    {/* Italic marks a preview tab: the next single-click open reuses it. */}
-                                    <span className={cn("truncate", filePreview && "italic")}>
-                                      {title}
-                                    </span>
-                                  </button>
-                                }
-                              />
-                              <TooltipPopup>
-                                {surface.kind === "device" ? (
-                                  <DeviceTabTooltip
-                                    surface={surface}
-                                    environmentId={props.environmentId}
-                                    title={title}
+                              {...bag.listeners}
+                              data-active-tab={active}
+                              onMouseDown={handleTabMouseDown}
+                              onAuxClick={(event) => handleTabAuxClick(event, surface)}
+                              onDoubleClick={
+                                filePreview ? () => props.onPinSurface?.(surface) : undefined
+                              }
+                              onContextMenu={(event) => void handleTabContextMenu(event, surface)}
+                              className={cn(
+                                "cursor-pointer group/tab flex h-6 max-w-36 shrink-0 items-center gap-0.5 rounded-md pr-2 pl-1.5 text-xs",
+                                // The tab bar doubles as the desktop window drag-region;
+                                // opt the tab out so dragging it sorts instead of moving
+                                // the window.
+                                ownsDesktopTitleBar && "[-webkit-app-region:no-drag]",
+                                active
+                                  ? "bg-accent text-foreground"
+                                  : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                                bag.isDragging && "relative z-10 opacity-80",
+                              )}
+                            >
+                              <PanelTabCloseButton
+                                label={`Close ${title}`}
+                                onClick={() => props.onCloseSurface(surface)}
+                              >
+                                <SurfaceIcon
+                                  surface={surface}
+                                  sessions={props.previewSessions}
+                                  desktopByTabId={props.desktopByTabId}
+                                  theme={resolvedTheme}
+                                  environmentId={props.environmentId}
+                                  pullRequestStatusSeeds={props.pullRequestStatusSeeds}
+                                />
+                                {pending ? (
+                                  <span
+                                    className="absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full bg-current"
+                                    aria-hidden
                                   />
-                                ) : (
-                                  title
-                                )}
-                              </TooltipPopup>
-                            </Tooltip>
+                                ) : null}
+                              </PanelTabCloseButton>
+                              {audio === "none" || !audioRuntimeTabId ? null : (
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <button
+                                        type="button"
+                                        className="cursor-pointer flex size-4 shrink-0 items-center justify-center rounded-sm hover:bg-muted"
+                                        aria-label={
+                                          audio === "muted" ? `Unmute ${title}` : `Mute ${title}`
+                                        }
+                                        onClick={(event) => {
+                                          // Sibling of the close button, inside a tab that
+                                          // activates on click: keep this to the toggle.
+                                          event.stopPropagation();
+                                          void previewBridge
+                                            ?.setAudioMuted(audioRuntimeTabId, audio !== "muted")
+                                            .catch(() => undefined);
+                                        }}
+                                      >
+                                        <MorphIcon
+                                          className="size-3"
+                                          icon={audio === "muted" ? VolumeOff : Volume2}
+                                        />
+                                      </button>
+                                    }
+                                  />
+                                  <TooltipPopup>
+                                    {audio === "muted" ? "Unmute tab" : "Mute tab"}
+                                  </TooltipPopup>
+                                </Tooltip>
+                              )}
+                              {renamingDevice === surface.id ? (
+                                <input
+                                  aria-label="Device tab name"
+                                  className="w-24 min-w-0 rounded-sm bg-background px-1 outline-none ring-1 ring-ring"
+                                  defaultValue={title}
+                                  ref={(element) => {
+                                    element?.focus();
+                                    element?.select();
+                                  }}
+                                  onBlur={(event) => {
+                                    props.onRenameDevice?.(surface.id, event.currentTarget.value);
+                                    setRenamingDevice(null);
+                                  }}
+                                  onKeyDown={(event) => {
+                                    event.stopPropagation();
+                                    if (event.key === "Enter") event.currentTarget.blur();
+                                    if (event.key === "Escape") {
+                                      event.currentTarget.value = title;
+                                      event.currentTarget.blur();
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <button
+                                        type="button"
+                                        onDoubleClick={() => {
+                                          if (surface.kind === "device" && props.onRenameDevice)
+                                            setRenamingDevice(surface.id);
+                                        }}
+                                        className="cursor-pointer flex min-w-0 items-center"
+                                        onClick={() => props.onActivate(surface)}
+                                      >
+                                        {/* Italic marks a preview tab: the next single-click open reuses it. */}
+                                        <span className={cn("truncate", filePreview && "italic")}>
+                                          {title}
+                                        </span>
+                                      </button>
+                                    }
+                                  />
+                                  <TooltipPopup>
+                                    {surface.kind === "device" ? (
+                                      <DeviceTabTooltip
+                                        surface={surface}
+                                        environmentId={props.environmentId}
+                                        title={title}
+                                      />
+                                    ) : (
+                                      title
+                                    )}
+                                  </TooltipPopup>
+                                </Tooltip>
+                              )}
+                            </div>
                           )}
-                        </div>
+                        </SortableSurfaceTab>
                       )}
-                    </SortableSurfaceTab>
+                    </TicketTabLabel>
                   );
                 })}
               </SortableContext>

@@ -1,5 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { parseTicketKey, ticketKey } from "@t3tools/client-runtime/state/tickets";
+import { ExternalLinkIcon } from "lucide-react";
+import type { TicketResourceTarget } from "../../ticketResource";
+import { Button } from "../ui/button";
+import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
+import { TicketResourceLink } from "./ThreadTicketWorkspace";
 
 import { isElectron } from "../../env";
 import { toastManager } from "../ui/toast";
@@ -24,41 +30,51 @@ export function TicketBreadcrumbHeader(props: {
   readonly ticket?: { readonly label: string; readonly ticketKey: string } | null;
   readonly trailing?: ReactNode;
   readonly reachesWindowEdge?: boolean;
+  readonly presentation?: "page" | "panel";
+  readonly pageTarget?: TicketResourceTarget | undefined;
 }) {
   const navigate = useNavigate();
+  const panel = props.presentation === "panel";
+  const parentRef = props.ticket == null ? null : parseTicketKey(props.ticket.ticketKey);
   const copy = props.copy ?? (typeof props.current === "string" ? props.current : null);
   return (
     <WorkspacePageHeader
-      electron={isElectron}
-      reserveNativeControls={isElectron && props.reachesWindowEdge !== false}
+      electron={isElectron && !panel}
+      reserveSidebarControls={!panel}
+      reserveNativeControls={!panel && isElectron && props.reachesWindowEdge !== false}
     >
       <WorkspaceBreadcrumb ariaLabel="Ticket breadcrumb" className="flex-1">
-        <WorkspaceBreadcrumbItem>
-          <button
-            type="button"
-            className="hover:text-foreground"
-            onClick={() => void navigate({ to: "/tickets", search: {} })}
-          >
-            Tickets
-          </button>
-        </WorkspaceBreadcrumbItem>
+        {panel ? null : (
+          <WorkspaceBreadcrumbItem>
+            <button
+              type="button"
+              className="hover:text-foreground"
+              onClick={() => void navigate({ to: "/tickets", search: {} })}
+            >
+              Tickets
+            </button>
+          </WorkspaceBreadcrumbItem>
+        )}
         {props.ticket == null ? null : (
           <>
-            <WorkspaceBreadcrumbSeparator />
+            {panel ? null : <WorkspaceBreadcrumbSeparator />}
             <WorkspaceBreadcrumbItem>
-              <Link
-                to="/tickets/$ticketKey"
-                params={{ ticketKey: props.ticket.ticketKey }}
-                className="font-mono hover:text-foreground"
-              >
-                {props.ticket.label}
-              </Link>
+              {parentRef === null ? (
+                props.ticket.label
+              ) : (
+                <TicketResourceLink
+                  target={{ kind: "ticket", ticketRef: parentRef }}
+                  className="font-mono hover:text-foreground"
+                >
+                  {props.ticket.label}
+                </TicketResourceLink>
+              )}
             </WorkspaceBreadcrumbItem>
           </>
         )}
         {props.current == null ? null : (
           <>
-            <WorkspaceBreadcrumbSeparator />
+            {panel && props.ticket == null ? null : <WorkspaceBreadcrumbSeparator />}
             <WorkspaceBreadcrumbItem current className="flex-1">
               {typeof props.current === "string" ? (
                 <h1 className="min-w-0 truncate font-mono">
@@ -78,6 +94,42 @@ export function TicketBreadcrumbHeader(props: {
           </>
         )}
       </WorkspaceBreadcrumb>
+      {panel && props.pageTarget !== undefined ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                aria-label={
+                  props.pageTarget.kind === "ticket" ? "Open ticket page" : "Open plan page"
+                }
+                render={
+                  props.pageTarget.kind === "ticket" ? (
+                    <Link
+                      to="/tickets/$ticketKey"
+                      params={{ ticketKey: ticketKey(props.pageTarget.ticketRef) }}
+                    />
+                  ) : (
+                    <Link
+                      to="/tickets/$ticketKey/plans/$planNumber"
+                      params={{
+                        ticketKey: ticketKey(props.pageTarget.ticketRef),
+                        planNumber: String(props.pageTarget.planNumber),
+                      }}
+                    />
+                  )
+                }
+              >
+                <ExternalLinkIcon aria-hidden className="size-4" />
+              </Button>
+            }
+          />
+          <TooltipPopup>
+            {props.pageTarget.kind === "ticket" ? "Open ticket page" : "Open plan page"}
+          </TooltipPopup>
+        </Tooltip>
+      ) : null}
       {props.trailing}
     </WorkspacePageHeader>
   );

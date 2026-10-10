@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 
+import { useRightPanelStore } from "../../rightPanelStore";
+import { useOpenTicketResource } from "./ThreadTicketWorkspace";
 import { useRunning } from "../../hooks/useRunning";
 import { confirmGitHubStateChange, useTicketActions } from "../../hooks/useTicketActions";
 import { cn } from "../../lib/utils";
@@ -83,20 +85,39 @@ const PANEL_DEFAULT_WIDTH = 300;
 const PREVIEW_WIDTH_STORAGE_KEY = "vetra:ticket-preview-width";
 const PREVIEW_DEFAULT_WIDTH = 560;
 
-export function TicketDetailPage(props: { readonly ticketKey: string }) {
+export function TicketDetailPage(props: {
+  readonly ticketKey: string;
+  readonly presentation?: "page" | "panel";
+}) {
   const ref = useMemo(() => parseTicketKey(props.ticketKey), [props.ticketKey]);
   const detail = useTicketDetail(ref);
   const loaded = Option.getOrNull(AsyncResult.value(detail));
   const summary = useTicket(ref);
+  const Shell = props.presentation === "panel" ? "div" : SidebarInset;
 
   return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
+    <Shell
+      className={
+        props.presentation === "panel"
+          ? "flex min-h-0 min-w-0 flex-1 overflow-hidden"
+          : "h-dvh min-h-0 overflow-hidden overscroll-y-none isolate"
+      }
+    >
       {ref !== null && loaded !== null ? (
-        <TicketDocument ticketRef={ref} detail={loaded} />
+        <TicketDocument
+          key={props.ticketKey}
+          ticketRef={ref}
+          detail={loaded}
+          presentation={props.presentation ?? "page"}
+        />
       ) : (
         <TicketPagePlaceholder
           header={
-            <TicketBreadcrumbHeader current={summary === null ? null : formatTicketRef(summary)} />
+            <TicketBreadcrumbHeader
+              current={summary === null ? null : formatTicketRef(summary)}
+              presentation={props.presentation ?? "page"}
+              pageTarget={ref === null ? undefined : { kind: "ticket", ticketRef: ref }}
+            />
           }
           title={summary?.title ?? null}
         >
@@ -105,7 +126,7 @@ export function TicketDetailPage(props: { readonly ticketKey: string }) {
             : "Loading ticket…"}
         </TicketPagePlaceholder>
       )}
-    </SidebarInset>
+    </Shell>
   );
 }
 
@@ -116,10 +137,12 @@ type TicketPanelPreview =
 function TicketDocument(props: {
   readonly ticketRef: ScopedTicketRef;
   readonly detail: TicketDetail;
+  readonly presentation?: "page" | "panel";
 }) {
   const { ticketRef, detail } = props;
   const { summary } = detail;
   const navigate = useNavigate();
+  const openResource = useOpenTicketResource();
   const actions = useTicketActions();
   const statusSet = useTicketStatuses(ticketRef.environmentId);
   const canWriteGitHub = useTicketGitHubWriteAllowed(ticketRef.environmentId);
@@ -176,7 +199,8 @@ function TicketDocument(props: {
   );
   const widePanel =
     previewProjectId !== null || previewPlan !== null || previewTarget?.kind === "issue";
-  const sidePanel = useSidePanelFits();
+  const layout = useSidePanelFits(props.presentation);
+  const { sidePanel } = layout;
   const githubSource =
     githubTicket === null
       ? null
@@ -226,8 +250,14 @@ function TicketDocument(props: {
     [summary.id],
   );
   const onPreviewPlan = useCallback(
-    (planId: TicketPlanId) => setPreview({ ticketId: summary.id, kind: "plan", planId }),
-    [summary.id],
+    (planId: TicketPlanId) => {
+      if (props.presentation === "panel") {
+        const plan = summary.plans.find((candidate) => candidate.planId === planId);
+        if (plan !== undefined)
+          openResource({ kind: "ticket-plan", ticketRef, planNumber: plan.number });
+      } else setPreview({ ticketId: summary.id, kind: "plan", planId });
+    },
+    [openResource, props.presentation, summary.id, summary.plans, ticketRef],
   );
   const lastSyncedAt = githubSource?.lastSyncedAt ?? null;
   const hasSource = githubSource !== null;
@@ -368,7 +398,12 @@ function TicketDocument(props: {
                 void actions
                   .confirmAndDelete({ ...summary, environmentId: ticketRef.environmentId })
                   .then((deleted) => {
-                    if (deleted) void navigate({ to: "/tickets", search: {} });
+                    if (!deleted) return;
+                    useRightPanelStore
+                      .getState()
+                      .removeTicketResource({ kind: "ticket", ticketRef });
+                    if (props.presentation !== "panel")
+                      void navigate({ to: "/tickets", search: {} });
                   })
               }
             >
@@ -384,6 +419,9 @@ function TicketDocument(props: {
   return (
     <TicketSidePanelLayout
       sidePanel={sidePanel}
+      onContainerElement={layout.ref}
+      containerWidth={layout.width}
+      presentation={props.presentation ?? "page"}
       panelHeader={
         previewPlan === null ? undefined : (
           <TicketPlanPreviewHeader
@@ -409,6 +447,8 @@ function TicketDocument(props: {
       resizeLabel="Resize ticket panel"
     >
       <TicketBreadcrumbHeader
+        presentation={props.presentation ?? "page"}
+        pageTarget={{ kind: "ticket", ticketRef }}
         current={
           <>
             <span className="me-2 shrink-0 font-mono text-muted-foreground">{reference}</span>

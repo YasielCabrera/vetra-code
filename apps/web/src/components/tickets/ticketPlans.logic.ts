@@ -1,10 +1,4 @@
-import { ticketKey, type ScopedTicketRef } from "@t3tools/client-runtime/state/tickets";
 import type { TicketActivity, TicketPlanId, TicketPlanSummary } from "@t3tools/contracts";
-
-/** The `/tickets/$ticketKey/plans/$planNumber` params for one of a ticket's plans. */
-export function ticketPlanRouteParams(ticket: ScopedTicketRef, planNumber: number) {
-  return { ticketKey: ticketKey(ticket), planNumber: String(planNumber) };
-}
 
 /** The plan a `$planNumber` route param names, or null for a bad number or a deleted plan. */
 export function findTicketPlanByNumber(

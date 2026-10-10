@@ -1,3 +1,5 @@
+import { parseTicketResourceHref } from "../ticketResource";
+import { TicketResourceLink } from "./tickets/ThreadTicketWorkspace";
 import { MarkdownFindContext, useFindRevealRef } from "./chat/markdownFindContext";
 import {
   buildFileLinkParentSuffixByPath,
@@ -3043,6 +3045,17 @@ const CHAT_MARKDOWN_COMPONENTS = {
         renderContextReference({ ...contextReference, label })
       ) : (
         <span>{label}</span>
+      );
+    }
+    const ticketResource =
+      href && typeof window !== "undefined"
+        ? parseTicketResourceHref(href, window.location.origin)
+        : null;
+    if (ticketResource !== null) {
+      return (
+        <TicketResourceLink {...props} target={ticketResource}>
+          {children}
+        </TicketResourceLink>
       );
     }
     const normalizedHref = href ? normalizeMarkdownLinkHrefKey(href) : "";

@@ -1,12 +1,11 @@
 import type { EnvironmentTicket } from "@t3tools/client-runtime/state/tickets";
-import { ticketKey } from "@t3tools/client-runtime/state/tickets";
 import type { ScopedThreadRef } from "@t3tools/contracts";
-import { Link } from "@tanstack/react-router";
 import { Unlink2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { useTicketActions } from "~/hooks/useTicketActions";
 import { useTicketStatuses, useTicketsForThread } from "~/state/tickets";
+import { TicketResourceLink } from "../tickets/ThreadTicketWorkspace";
 import { TicketStatusMark } from "../tickets/TicketListRow";
 import { formatTicketRef } from "../tickets/ticketRefs";
 import { stackedThreadToast, toastManager } from "../ui/toast";
@@ -75,13 +74,10 @@ export function ThreadTicketsPanel(props: { readonly threadRef: ScopedThreadRef 
                       className="pe-8"
                       aria-label={`Open ticket ${reference}, ${ticket.title}`}
                       render={
-                        <Link
-                          to="/tickets/$ticketKey"
-                          params={{
-                            ticketKey: ticketKey({
-                              environmentId: ticket.environmentId,
-                              ticketId: ticket.id,
-                            }),
+                        <TicketResourceLink
+                          target={{
+                            kind: "ticket",
+                            ticketRef: { environmentId: ticket.environmentId, ticketId: ticket.id },
                           }}
                         />
                       }

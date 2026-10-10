@@ -11,6 +11,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import { resolveStorage } from "./lib/storage";
 import { randomUUID } from "./lib/utils";
+import { parseTicketResourceSurface, ticketResourceSurface } from "./ticketResource";
 import { type RightPanelSurface } from "./rightPanelStore";
 
 export type ClosedView =
@@ -60,6 +61,9 @@ const isClosedViewEntry = (entry: unknown): entry is ClosedViewEntry => {
   const surface = view.surface;
   if (!surface || typeof surface.id !== "string") return false;
   switch (surface.kind) {
+    case "ticket":
+    case "ticket-plan":
+      return parseTicketResourceSurface(surface)?.id === surface.id;
     case "diff":
     case "files":
     case "pull-requests":
@@ -113,7 +117,13 @@ export const useClosedViewStore = create<ClosedViewStoreState>()(
         const id = randomUUID();
         set((state) => ({
           entries: [
-            { ...view, id },
+            {
+              ...view,
+              ...(view.kind === "panel-tab" && view.surface.kind === "ticket-plan"
+                ? { surface: ticketResourceSurface(view.surface) }
+                : {}),
+              id,
+            },
             ...state.entries.filter((entry) => !sameTarget(entry, view)),
           ].slice(0, 20),
         }));
@@ -134,13 +144,20 @@ export const useClosedViewStore = create<ClosedViewStoreState>()(
       storage: createJSONStorage(() =>
         resolveStorage(typeof window !== "undefined" ? window.localStorage : undefined),
       ),
-      version: 2,
+      version: 3,
       migrate: (persisted) => {
         const entries = (persisted as Partial<Pick<ClosedViewStoreState, "entries">> | null)
           ?.entries;
         return {
           entries: Array.isArray(entries)
-            ? entries.filter(isClosedViewEntry).filter(isPersistentView)
+            ? entries
+                .filter(isClosedViewEntry)
+                .filter(isPersistentView)
+                .map((entry) =>
+                  entry.kind === "panel-tab" && entry.surface.kind === "ticket-plan"
+                    ? { ...entry, surface: ticketResourceSurface(entry.surface) }
+                    : entry,
+                )
             : [],
         };
       },

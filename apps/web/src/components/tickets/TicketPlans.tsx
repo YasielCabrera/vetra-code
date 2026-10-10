@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useOpenTicketResource } from "./ThreadTicketWorkspace";
 import type { ScopedTicketRef } from "@t3tools/client-runtime/state/tickets";
 import type { TicketPlanId, TicketPlanSummary, TicketSummary } from "@t3tools/contracts";
 import * as Option from "effect/Option";
@@ -16,7 +16,7 @@ import {
   PlusIcon,
   SparklesIcon,
 } from "lucide-react";
-import { type RefObject, memo, useEffect, useMemo, useState } from "react";
+import { type RefObject, memo, useEffect, useEffectEvent, useMemo, useState } from "react";
 
 import { useTicketActions } from "../../hooks/useTicketActions";
 import { documentSpeechKey } from "../../readAloud";
@@ -31,7 +31,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { DocumentReadAloudButton } from "./DocumentReadAloudButton";
 import { askForPlanPrefill, openPlanPrefill } from "./ticketContextRecord";
 import { TicketMarkdownBody } from "./TicketMarkdownBody";
-import { partitionTicketPlans, ticketPlanRouteParams } from "./ticketPlans.logic";
+import { partitionTicketPlans } from "./ticketPlans.logic";
 import { copyText } from "./ticketPageHeader";
 import { TicketStartThreadMenu, TicketStartThreadSubmenu } from "./TicketStartThreadMenu";
 
@@ -54,7 +54,7 @@ export const TicketPlansSection = memo(function TicketPlansSection(props: {
 }) {
   const { ticketRef, ticket } = props;
   const { plans } = ticket;
-  const navigate = useNavigate();
+  const openResource = useOpenTicketResource();
   const { createPlan } = useTicketActions();
   const { active, archived } = useMemo(() => partitionTicketPlans(plans), [plans]);
   const [showArchived, setShowArchived] = useState(false);
@@ -67,14 +67,13 @@ export const TicketPlansSection = memo(function TicketPlansSection(props: {
     plans.some((plan) => plan.number === newPlan.number)
       ? newPlan.number
       : null;
+  const openCreatedPlan = useEffectEvent((planNumber: number) => {
+    setNewPlan(null);
+    openResource({ kind: "ticket-plan", ticketRef, planNumber }, { edit: true });
+  });
   useEffect(() => {
-    if (openNumber === null) return;
-    void navigate({
-      to: "/tickets/$ticketKey/plans/$planNumber",
-      params: ticketPlanRouteParams(ticketRef, openNumber),
-      search: { edit: true },
-    });
-  }, [navigate, openNumber, ticketRef]);
+    if (openNumber !== null) openCreatedPlan(openNumber);
+  }, [openNumber]);
 
   const create = async () => {
     setNewPlan("creating");
@@ -219,7 +218,7 @@ type TicketPlanPreviewProps = {
 
 export function TicketPlanPreviewHeader(props: Omit<TicketPlanPreviewProps, "stacked">) {
   const { ticketRef, plan: summary, bodyRef } = props;
-  const navigate = useNavigate();
+  const openResource = useOpenTicketResource();
   const result = useTicketPlan({ environmentId: ticketRef.environmentId, planId: summary.planId });
   const loaded = Option.getOrNull(AsyncResult.value(result));
   return (
@@ -265,10 +264,7 @@ export function TicketPlanPreviewHeader(props: Omit<TicketPlanPreviewProps, "sta
         <MenuPopup align="end" keepMounted>
           <MenuItem
             onClick={() =>
-              void navigate({
-                to: "/tickets/$ticketKey/plans/$planNumber",
-                params: ticketPlanRouteParams(ticketRef, summary.number),
-              })
+              openResource({ kind: "ticket-plan", ticketRef, planNumber: summary.number })
             }
           >
             <ExternalLinkIcon aria-hidden />

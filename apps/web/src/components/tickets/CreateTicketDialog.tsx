@@ -1,6 +1,7 @@
 import { useAtomValue } from "@effect/atom-react";
 import { useNavigate } from "@tanstack/react-router";
 import { subscribe } from "@t3tools/client-runtime/rpc";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   createEnvironmentQueryAtomFamily,
   createEnvironmentSubscriptionAtomFamily,
@@ -16,6 +17,7 @@ import {
   type ModelSelection,
   type ProjectId,
   type RunId,
+  type ScopedThreadRef,
   type ThreadId,
 } from "@t3tools/contracts";
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
@@ -25,6 +27,7 @@ import * as Stream from "effect/Stream";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { create } from "zustand";
 
+import { useRightPanelStore } from "../../rightPanelStore";
 import { environmentCatalog } from "../../connection/catalog";
 import { connectionAtomRuntime } from "../../connection/runtime";
 import { useEnvironmentSettings } from "../../hooks/useSettings";
@@ -92,6 +95,7 @@ interface PendingDraft {
   readonly environmentId: EnvironmentId;
   readonly threadId: ThreadId;
   readonly toastId: string;
+  readonly sourceThreadRef: ScopedThreadRef | null;
 }
 
 const usePendingDrafts = create<{ readonly drafts: ReadonlyArray<PendingDraft> }>(() => ({
@@ -226,6 +230,17 @@ function PendingDraftWatcher(props: { readonly draft: PendingDraft }) {
           children: "Open ticket",
           onClick: () => {
             toastManager.close(toastId);
+            if (draft.sourceThreadRef !== null) {
+              useRightPanelStore.getState().openTicketResource(draft.sourceThreadRef, {
+                kind: "ticket",
+                ticketRef: { environmentId: ticket.environmentId, ticketId: ticket.id },
+              });
+              void navigate({
+                to: "/$environmentId/$threadId",
+                params: draft.sourceThreadRef,
+              });
+              return;
+            }
             void navigate({
               to: "/tickets/$ticketKey",
               params: {
@@ -392,7 +407,18 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
         }),
       );
       usePendingDrafts.setState((state) => ({
-        drafts: [...state.drafts, { environmentId, threadId, toastId }],
+        drafts: [
+          ...state.drafts,
+          {
+            environmentId,
+            threadId,
+            toastId,
+            sourceThreadRef:
+              capture.sourceThreadId === null
+                ? null
+                : scopeThreadRef(capture.environmentId, capture.sourceThreadId),
+          },
+        ],
       }));
       if (useCreateTicketRequest.getState().requestId === launchedRequestId) {
         closeCreateTicketDialog();

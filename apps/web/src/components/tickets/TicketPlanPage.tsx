@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { parseTicketKey, type ScopedTicketRef } from "@t3tools/client-runtime/state/tickets";
 import type { TicketPlan, TicketPlanCommentId, TicketSummary } from "@t3tools/contracts";
 import { orderPlanCommentThreads, type PlanCommentThread } from "@t3tools/shared/ticketPlanAnchors";
@@ -17,6 +17,12 @@ import {
 } from "lucide-react";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
+import { useRightPanelStore } from "../../rightPanelStore";
+import {
+  TicketResourceLink,
+  useOpenTicketResource,
+  useThreadTicketWorkspace,
+} from "./ThreadTicketWorkspace";
 import { documentSpeechKey, useStopSpeechOnLeave } from "../../readAloud";
 import { useTicketActions } from "../../hooks/useTicketActions";
 import { useTicket, useTicketDetail, useTicketPlan } from "../../state/tickets";
@@ -55,6 +61,8 @@ export function TicketPlanPage(props: {
   readonly planNumber: string;
   /** Opened right after creating the plan: edit mode, title focused. */
   readonly startEditing: boolean;
+  readonly presentation?: "page" | "panel";
+  readonly onEditStarted?: (() => void) | undefined;
 }) {
   const ticketRef = useMemo(() => parseTicketKey(props.ticketKey), [props.ticketKey]);
   const boardTicket = useTicket(ticketRef);
@@ -69,26 +77,48 @@ export function TicketPlanPage(props: {
   );
   const plan = Option.getOrNull(AsyncResult.value(planResult));
   const ticketLabel = ticket === null ? null : formatTicketRef(ticket);
+  const Shell = props.presentation === "panel" ? "div" : SidebarInset;
 
   if (ticketRef !== null && ticket !== null && plan !== null && summary !== null) {
     return (
-      <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
+      <Shell
+        className={
+          props.presentation === "panel"
+            ? "flex min-h-0 min-w-0 flex-1 overflow-hidden"
+            : "h-dvh min-h-0 overflow-hidden overscroll-y-none isolate"
+        }
+      >
         <TicketPlanView
           ticketKey={props.ticketKey}
           ticketRef={ticketRef}
           ticket={ticket}
           plan={plan}
+          key={plan.summary.planId}
           startEditing={props.startEditing}
+          presentation={props.presentation ?? "page"}
+          onEditStarted={props.onEditStarted}
         />
-      </SidebarInset>
+      </Shell>
     );
   }
 
   return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
+    <Shell
+      className={
+        props.presentation === "panel"
+          ? "flex min-h-0 min-w-0 flex-1 overflow-hidden"
+          : "h-dvh min-h-0 overflow-hidden overscroll-y-none isolate"
+      }
+    >
       <TicketPagePlaceholder
         header={
           <TicketBreadcrumbHeader
+            presentation={props.presentation ?? "page"}
+            pageTarget={
+              ticketRef === null
+                ? undefined
+                : { kind: "ticket-plan", ticketRef, planNumber: Number(props.planNumber) }
+            }
             ticket={
               ticketRef === null || ticketLabel === null
                 ? null
@@ -106,13 +136,12 @@ export function TicketPlanPage(props: {
         ) : summary === null ? (
           <>
             This plan does not exist.{" "}
-            <Link
-              to="/tickets/$ticketKey"
-              params={{ ticketKey: props.ticketKey }}
+            <TicketResourceLink
+              target={{ kind: "ticket", ticketRef }}
               className="text-foreground underline-offset-4 hover:underline"
             >
               Back to {ticketLabel ?? "the ticket"}
-            </Link>
+            </TicketResourceLink>
           </>
         ) : AsyncResult.isFailure(planResult) ? (
           "This plan could not be loaded."
@@ -120,7 +149,7 @@ export function TicketPlanPage(props: {
           "Loading plan…"
         )}
       </TicketPagePlaceholder>
-    </SidebarInset>
+    </Shell>
   );
 }
 
@@ -130,11 +159,15 @@ function TicketPlanView(props: {
   readonly ticket: TicketSummary;
   readonly plan: TicketPlan;
   readonly startEditing: boolean;
+  readonly presentation?: "page" | "panel";
+  readonly onEditStarted?: (() => void) | undefined;
 }) {
-  const { ticketKey, ticketRef, ticket, plan } = props;
+  const { ticketKey, ticketRef, ticket, plan, startEditing, presentation, onEditStarted } = props;
   const { environmentId } = ticketRef;
   const { summary } = plan;
   const navigate = useNavigate();
+  const owner = useThreadTicketWorkspace();
+  const openResource = useOpenTicketResource();
   const actions = useTicketActions();
   const [editing, setEditing] = useState<"title" | "body" | null>(
     props.startEditing ? "title" : null,
@@ -154,7 +187,8 @@ function TicketPlanView(props: {
   const [draft, setDraft] = useState<PlanCommentDraft | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<PlanCommentSurfaceHandle>(null);
-  const sidePanel = useSidePanelFits();
+  const layout = useSidePanelFits(props.presentation);
+  const { sidePanel } = layout;
   const speechKey = documentSpeechKey(environmentId, "plan", summary.planId);
   useStopSpeechOnLeave(speechKey);
   const archived = summary.status === "archived";
@@ -212,9 +246,13 @@ function TicketPlanView(props: {
 
   const titleRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
-    if (!props.startEditing) return;
+    if (!startEditing) return;
     titleRef.current?.focus();
     titleRef.current?.select();
+    if (presentation === "panel") {
+      onEditStarted?.();
+      return;
+    }
     // The flag only means "just created"; drop it so a reload opens the plan as usual.
     void navigate({
       to: "/tickets/$ticketKey/plans/$planNumber",
@@ -222,7 +260,7 @@ function TicketPlanView(props: {
       search: {},
       replace: true,
     });
-  }, [navigate, props.startEditing, summary.number, ticketKey]);
+  }, [navigate, startEditing, presentation, onEditStarted, summary.number, ticketKey]);
 
   const deletePlan = async () => {
     if (status.changing) return;
@@ -230,7 +268,12 @@ function TicketPlanView(props: {
     const discardDraft = doc.reload;
     discardDraft();
     if (await actions.deletePlan(environmentId, summary.planId)) {
-      void navigate({ to: "/tickets/$ticketKey", params: { ticketKey } });
+      useRightPanelStore
+        .getState()
+        .removeTicketResource({ kind: "ticket-plan", ticketRef, planNumber: summary.number });
+      if (props.presentation === "panel" && owner !== null)
+        openResource({ kind: "ticket", ticketRef });
+      else void navigate({ to: "/tickets/$ticketKey", params: { ticketKey } });
     }
   };
   const showEditor = editing !== null && !archived;
@@ -311,12 +354,17 @@ function TicketPlanView(props: {
   return (
     <TicketSidePanelLayout
       sidePanel={sidePanel}
+      onContainerElement={layout.ref}
+      containerWidth={layout.width}
+      presentation={props.presentation ?? "page"}
       panel={<ScrollArea className="min-h-0 flex-1">{panel}</ScrollArea>}
       storageKey={PANEL_WIDTH_STORAGE_KEY}
       defaultWidth={PANEL_DEFAULT_WIDTH}
       resizeLabel="Resize plan panel"
     >
       <TicketBreadcrumbHeader
+        presentation={props.presentation ?? "page"}
+        pageTarget={{ kind: "ticket-plan", ticketRef, planNumber: summary.number }}
         ticket={{ label: ticketLabel, ticketKey }}
         current={
           <>
@@ -350,13 +398,12 @@ function TicketPlanView(props: {
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
               <span>
                 Plan for{" "}
-                <Link
-                  to="/tickets/$ticketKey"
-                  params={{ ticketKey }}
+                <TicketResourceLink
+                  target={{ kind: "ticket", ticketRef }}
                   className="text-foreground hover:underline"
                 >
                   {ticketLabel} {ticket.title}
-                </Link>
+                </TicketResourceLink>
               </span>
               <span>
                 By <TicketActorName environmentId={environmentId} actor={summary.createdBy} />

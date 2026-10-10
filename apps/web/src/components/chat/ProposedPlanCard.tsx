@@ -1,12 +1,13 @@
+import { useNavigate } from "@tanstack/react-router";
+import { useRightPanelStore } from "../../rightPanelStore";
 import { proposedPlanTitle, stripDisplayedPlanMarkdown } from "@t3tools/shared/proposedPlanText";
 import { memo, useCallback, useState, useId } from "react";
 import { useFindRevealRef } from "./markdownFindContext";
-import { useNavigate } from "@tanstack/react-router";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
-import type { EnvironmentTicket } from "@t3tools/client-runtime/state/tickets";
+import { ticketKey, type EnvironmentTicket } from "@t3tools/client-runtime/state/tickets";
 import {
   AuthFilesystemWriteScope,
   type EnvironmentId,
@@ -49,7 +50,6 @@ import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { useTicketActions } from "~/hooks/useTicketActions";
 import { useTicketsForThread } from "~/state/tickets";
-import { ticketPlanRouteParams } from "../tickets/ticketPlans.logic";
 import { formatTicketRef } from "../tickets/ticketRefs";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 
@@ -76,7 +76,6 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
   const writeProjectFile = useAtomCommand(projectEnvironment.writeFile, {
     reportFailure: false,
   });
-  const navigate = useNavigate();
   const { createPlan } = useTicketActions();
   const linkedTickets = useTicketsForThread(threadRef ?? null);
   const [isSavingAsTicketPlan, setIsSavingAsTicketPlan] = useState(false);
@@ -133,6 +132,8 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
     setIsSaveDialogOpen(true);
   };
 
+  const navigate = useNavigate();
+
   const handleSaveAsTicketPlan = async (ticket: EnvironmentTicket) => {
     setIsSavingAsTicketPlan(true);
     const result = await createPlan(ticket.environmentId, {
@@ -149,14 +150,25 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
       description: plan.title,
       actionProps: {
         children: "Open plan",
-        onClick: () =>
-          void navigate({
-            to: "/tickets/$ticketKey/plans/$planNumber",
-            params: ticketPlanRouteParams(
-              { environmentId: ticket.environmentId, ticketId: ticket.id },
-              plan.number,
-            ),
-          }),
+        onClick: () => {
+          const target = {
+            kind: "ticket-plan",
+            ticketRef: { environmentId: ticket.environmentId, ticketId: ticket.id },
+            planNumber: plan.number,
+          } as const;
+          if (threadRef === undefined) {
+            void navigate({
+              to: "/tickets/$ticketKey/plans/$planNumber",
+              params: {
+                ticketKey: ticketKey(target.ticketRef),
+                planNumber: String(target.planNumber),
+              },
+            });
+            return;
+          }
+          useRightPanelStore.getState().openTicketResource(threadRef, target);
+          void navigate({ to: "/$environmentId/$threadId", params: threadRef });
+        },
       },
     });
   };
