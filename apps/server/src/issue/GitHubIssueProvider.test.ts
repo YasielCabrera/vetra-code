@@ -2,9 +2,9 @@ import { expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
-import * as GitHubApi from "../sourceControl/GitHubApi.ts";
-import * as GitHubCredentials from "../sourceControl/GitHubCredentials.ts";
-import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
+import * as GitHubApi from "@t3tools/source-control-github/server/GitHubApi";
+import * as GitHubCredentials from "@t3tools/source-control-github/server/GitHubCredentials";
+import * as SourceControlRateLimit from "@t3tools/source-control-core/server/SourceControlRateLimit";
 import * as GitHubIssueCli from "./GitHubIssueCli.ts";
 import { make } from "./GitHubIssueProvider.ts";
 import type { GitHubIssue } from "./githubIssueJson.ts";

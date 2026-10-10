@@ -1,7 +1,7 @@
 import * as Layer from "effect/Layer";
 
 import * as IssueProviderRegistry from "../issue/IssueProviderRegistry.ts";
-import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
+import * as SourceControlRateLimit from "@t3tools/source-control-core/server/SourceControlRateLimit";
 import * as TicketDrafting from "./TicketDrafting.ts";
 import * as TicketGitHub from "./TicketGitHub.ts";
 import * as TicketGitHubSync from "./TicketGitHubSync.ts";

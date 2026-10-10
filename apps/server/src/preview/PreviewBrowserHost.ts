@@ -1,13 +1,13 @@
 /**
  * Host setup the shared headless browser needs, and the one command that does
  * it. Every failure here names that command, so the server log, an agent's tool
- * error, and the viewer all offer the same fix: `sudo t3 browser setup`.
+ * error, and the viewer all offer the same fix: `sudo vetra browser setup`.
  *
  * T3 never turns Chrome's sandbox off by itself. A host that cannot give it one
  * gets the command instead, and only the operator's explicit
  * `VETRA_SERVER_BROWSER_SANDBOX=0` launches without it.
  */
-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Schema from "effect/Schema";
@@ -29,7 +29,7 @@ const USERNS_RESTRICTION = "/proc/sys/kernel/apparmor_restrict_unprivileged_user
 export const APPARMOR_PROFILE_PATH = "/etc/apparmor.d/t3-chrome-headless-shell";
 
 /**
- * Lets T3's headless browser, in any T3 home and at any pinned version, create
+ * Lets Vetra Code's headless browser, in any Vetra home and at any pinned version, create
  * the user namespace Chrome's sandbox runs in. Modelled on the profile Ubuntu
  * ships for Google Chrome; `unconfined` adds nothing beyond `userns`.
  */
@@ -74,7 +74,7 @@ export class PreviewBrowserSandboxError extends Schema.TaggedError<PreviewBrowse
   { setupCommand: Schema.String },
 ) {
   override get message(): string {
-    return `This host blocks the sandbox T3's browser runs in (AppArmor on Ubuntu 23.10+). Run \`${this.setupCommand}\` on the host once to allow it, then try again.`;
+    return `This host blocks the sandbox Vetra Code's browser runs in (AppArmor on Ubuntu 23.10+). Run \`${this.setupCommand}\` on the host once to allow it, then try again.`;
   }
 }
 
@@ -83,7 +83,7 @@ export class PreviewBrowserLibrariesError extends Schema.TaggedError<PreviewBrow
   { setupCommand: Schema.String, libraries: Schema.Array(Schema.String) },
 ) {
   override get message(): string {
-    return `This host is missing libraries T3's browser needs (${this.libraries.join(", ")}). Run \`${this.setupCommand}\` on the host to install them, then try again.`;
+    return `This host is missing libraries Vetra Code's browser needs (${this.libraries.join(", ")}). Run \`${this.setupCommand}\` on the host to install them, then try again.`;
   }
 }
 
@@ -108,7 +108,7 @@ export const diagnoseLaunchFailure = Effect.fn("PreviewBrowserHost.diagnoseLaunc
     if (input.output.includes(NO_SANDBOX_SIGNATURE)) {
       return new PreviewBrowserSandboxError({ setupCommand });
     }
-    if ((yield* HostProcessPlatform) !== "linux") return undefined;
+    if ((yield* HostProcess.Platform) !== "linux") return undefined;
     const libraries = yield* missingLibraries(input.executable);
     return libraries.length === 0
       ? undefined
@@ -143,11 +143,11 @@ export const missingLibraries = Effect.fn("PreviewBrowserHost.missingLibraries")
 
 /**
  * Whether Chrome's sandbox will be blocked here: the host restricts user
- * namespaces and T3's AppArmor profile is not installed. Readable without
+ * namespaces and Vetra Code's AppArmor profile is not installed. Readable without
  * root, so the server checks it at startup.
  */
 export const sandboxBlocked = Effect.gen(function* () {
-  if ((yield* HostProcessPlatform) !== "linux") return false;
+  if ((yield* HostProcess.Platform) !== "linux") return false;
   const fs = yield* FileSystem.FileSystem;
   const restricted = yield* fs.readFileString(USERNS_RESTRICTION).pipe(
     Effect.map((value) => value.trim() === "1"),

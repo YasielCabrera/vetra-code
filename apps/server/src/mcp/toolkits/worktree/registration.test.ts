@@ -1,3 +1,4 @@
+import * as ServerPreviewWallet from "../../../web3/ServerPreviewWallet.ts";
 import * as Orchestrator from "../../../orchestration-v2/Orchestrator.ts";
 import * as ProjectionStore from "../../../orchestration-v2/ProjectionStore.ts";
 import * as DeviceService from "../../../device/DeviceService.ts";
@@ -23,6 +24,13 @@ import * as SecretRequests from "../../../secrets/SecretRequests.ts";
 import * as ServerSettings from "../../../serverSettings.ts";
 import * as TicketService from "../../../ticket/TicketService.ts";
 import * as VcsStatusBroadcaster from "../../../vcs/VcsStatusBroadcaster.ts";
+import * as ServerSecretStore from "../../../auth/ServerSecretStore.ts";
+import * as ManagedProjectFolders from "../../../project/ManagedProjectFolders.ts";
+import * as ThreadLaunchService from "../../../orchestration-v2/ThreadLaunchService.ts";
+import * as ThreadSearch from "../../../orchestration-v2/ThreadSearch.ts";
+import * as PreviewManager from "../../../preview/Manager.ts";
+import * as SourceControlRepositoryService from "../../../sourceControl/SourceControlRepositoryService.ts";
+import * as GitVcsDriver from "../../../vcs/GitVcsDriver.ts";
 import * as McpHttpServer from "../../McpHttpServer.ts";
 import * as McpSessionRegistry from "../../McpSessionRegistry.ts";
 import * as PreviewAutomationBroker from "../../PreviewAutomationBroker.ts";
@@ -30,6 +38,7 @@ import * as PreviewBrowser from "../../../preview/PreviewBrowser.ts";
 
 const layerStubServices = Layer.mergeAll(
   Layer.mock(Orchestrator.OrchestratorV2)({}),
+  Layer.mock(ServerPreviewWallet.ServerPreviewWallet)({}),
   Layer.mock(ProjectionStore.ProjectionStoreV2)({}),
   Layer.mock(DeviceService.DeviceService)({}),
   Layer.mock(ThreadManagementService.ThreadManagementService)({}),
@@ -43,6 +52,13 @@ const layerStubServices = Layer.mergeAll(
   Layer.mock(ProjectSetupScriptRunner.ProjectSetupScriptRunner)({}),
   Layer.mock(VcsStatusBroadcaster.VcsStatusBroadcaster)({}),
   Layer.mock(TicketService.TicketService)({}),
+  Layer.mock(GitVcsDriver.GitVcsDriver)({}),
+  Layer.mock(ManagedProjectFolders.ManagedProjectFolders)({ namedProjectsRoot: "/unused" }),
+  Layer.mock(PreviewManager.PreviewManager)({}),
+  Layer.mock(ServerSecretStore.ServerSecretStore)({}),
+  Layer.mock(SourceControlRepositoryService.SourceControlRepositoryService)({}),
+  Layer.mock(ThreadLaunchService.ThreadLaunchService)({}),
+  Layer.mock(ThreadSearch.ThreadSearch)({}),
 );
 
 const ToolsListPayload = Schema.fromJsonString(

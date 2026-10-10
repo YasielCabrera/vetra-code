@@ -74,7 +74,7 @@ import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
 import * as OpenCode2Client from "./OpenCode2Client.ts";
 import * as OpenCode2Server from "./OpenCode2Server.ts";
 import * as OpenCodeRuntime from "../OpenCodeRuntime.ts";
-import * as McpProviderSession from "@t3tools/provider-core/server/mcpSession";
+import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import { buildRuntimeInstructions } from "@t3tools/provider-core/server/runtimeInstructions";
 import { t3OrchestrationSystemPrompt } from "@t3tools/provider-core/server/orchestrationInstructions";
 import { SKILL_MENTION_PATTERN } from "@t3tools/shared/composerInlineTokens";
@@ -88,7 +88,7 @@ import {
   backgroundWorkNotification,
   type BackgroundWorkReport,
 } from "@t3tools/provider-core/server/notification";
-import * as ProviderContinuationRequests from "@t3tools/provider-core/server/continuationRequests";
+import * as ProviderContinuationRequests from "@t3tools/provider-core/server/ProviderContinuationRequests";
 import { makeProviderFailure } from "@t3tools/provider-core/server/failure";
 import {
   makeSubagentChildThread,
@@ -233,7 +233,7 @@ interface ActiveTurn {
   lastStep: Tokens | undefined;
   /**
    * The history item this turn's execution follows, for a turn with no prompt
-   * id of T3's: the session's newest item before a `/name` command (null when
+   * id of Vetra Code's: the session's newest item before a `/name` command (null when
    * the history was empty), since `session.command` takes no id and answers
    * without one; the report a continuation turn's execution answers; or, on a
    * subagent's session, the first item queued for its turn. A reconnect
@@ -291,6 +291,8 @@ interface SubagentCall {
   model: string | null;
   /** The tool returned while the subagent runs on; the report OpenCode gives its parent settles it. */
   background: boolean;
+  /** The running call whose subagent run this call joined, so that run's one report settles both. */
+  joined: SubagentCall | undefined;
   child: ThreadState | undefined;
   status: OrchestrationV2Subagent["status"];
   result: string | null;
@@ -345,6 +347,8 @@ interface ThreadState {
    * rules stay in force, and a changed mode switches it before prompting.
    */
   agent: string;
+  /** The native session's title as T3 last read or wrote it. */
+  title: string | undefined;
   /** The native session's rules as T3 last read or wrote them, and the policy they are for. */
   rules: ReadonlyArray<Rule> | undefined;
   policy: RulesPolicy;
@@ -396,7 +400,7 @@ interface ThreadState {
    * inbox, where the next prompt would deliver them first, so it cancels them.
    */
   readonly strandedSteers: Set<string>;
-  /** T3's MCP server as registered for this thread, and the instructions entry sent with it. */
+  /** Vetra Code's MCP server as registered for this thread, and the instructions entry sent with it. */
   mcp:
     | { readonly name: string; readonly directory: string; readonly credential: string }
     | undefined;
@@ -447,7 +451,7 @@ const rule = (action: string, effect: Rule["effect"]): Rule => ({ action, resour
  * otherwise override; `grants` are "Always allow this session" answers.
  */
 /**
- * T3's MCP server is registered per directory, not per session, so each thread
+ * Vetra Code's MCP server is registered per directory, not per session, so each thread
  * gets its own `vetra-code-<thread>` entry with its own credential. OpenCode names
  * an MCP tool's permission `<server>_<tool>` (non-alphanumerics become `_`).
  * OpenCode skips every tool of a server whose name is over 64 characters (its
@@ -465,7 +469,7 @@ export const t3McpServerName = Effect.fn("t3McpServerName")(function* (threadId:
 });
 
 /**
- * The rules that keep T3's MCP servers to their own thread, after the mode's:
+ * The rules that keep Vetra Code's MCP servers to their own thread, after the mode's:
  * the last matching rule wins, so every thread's T3 server is denied and then
  * this thread's own is allowed again, in every mode. A subagent's session
  * inherits the thread's.
@@ -564,7 +568,7 @@ const formQuestions = (
   return { questions };
 };
 
-/** T3's answers in OpenCode's shape: a list for a multi-select, text otherwise. */
+/** Vetra Code's answers in OpenCode's shape: a list for a multi-select, text otherwise. */
 const formAnswer = (form: NativeForm, answers: Readonly<Record<string, unknown>>) => {
   const answer: Record<string, string | ReadonlyArray<string>> = {};
   for (const field of form.fields) {
@@ -596,7 +600,7 @@ const formGone = {
   SessionNotFoundError: () => Effect.void,
 };
 
-/** The session rules an agent keeps for its own directories, which T3's blanket rules would override. */
+/** The session rules an agent keeps for its own directories, which Vetra Code's blanket rules would override. */
 const agentPaths = (rules: ReadonlyArray<Rule>) =>
   rules.filter(
     (entry) =>
@@ -779,7 +783,7 @@ const sameModel = (left: ModelRef, right: ModelRef | undefined) =>
   left.id === right?.id &&
   (left.variant ?? "default") === (right?.variant ?? "default");
 
-/** OpenCode's own agents for T3's interaction modes; plan mode is its read-only `plan` agent. */
+/** OpenCode's own agents for Vetra Code's interaction modes; plan mode is its read-only `plan` agent. */
 const agentFor = (input: ProviderAdapter.ProviderAdapterV2TurnInput) =>
   input.runtimePolicy.interactionMode === "plan" ? "plan" : "build";
 
@@ -831,6 +835,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
   const server = yield* OpenCode2Server.OpenCode2Server;
   const idAllocator = yield* IdAllocator.IdAllocatorV2;
   const host = yield* ProviderHost.ProviderHost;
+  const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
   const continuationRequests = yield* ProviderContinuationRequests.ProviderContinuationRequests;
   const crypto = yield* Crypto.Crypto;
   const driver = OPENCODE_PROVIDER;
@@ -858,7 +863,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
   });
 
   const openSession = Effect.fn("OpenCode2Adapter.openSession")(function* (
-    input: Parameters<ProviderAdapter.ProviderAdapterV2Shape["openSession"]>[0],
+    input: Parameters<ProviderAdapter.ProviderAdapterV2["Service"]["openSession"]>[0],
     initial: {
       readonly connection: OpenCode2Server.OpenCode2Connection;
       readonly scope: Scope.Closeable;
@@ -933,6 +938,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
       unsettled: false,
       directory,
       agent: "build",
+      title: undefined,
       rules: undefined,
       policy: input.runtimePolicy,
       grants: [],
@@ -1489,6 +1495,14 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
       // ran (each one's native id is its own), its grants and rules, and the
       // background work an earlier call left running, which Stop must reach.
       const previous = threads.get(childId);
+      // Called again while it runs, the subagent takes the prompt as a steer
+      // and OpenCode reports that run once, for every call that joined it.
+      if (previous?.active !== undefined) {
+        call.joined = [...call.state.calls.values()].findLast(
+          (candidate) =>
+            candidate !== call && candidate.child === previous && candidate.joined === undefined,
+        );
+      }
       const subagent = {
         call,
         appThread,
@@ -1847,7 +1861,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
     });
 
     /**
-     * Settles a request OpenCode answered or dropped on its own. T3's own
+     * Settles a request OpenCode answered or dropped on its own. Vetra Code's own
      * answers are only forgotten: the orchestrator already recorded them.
      */
     const settleRequest = Effect.fnUntraced(function* (
@@ -1876,7 +1890,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
     });
 
     /**
-     * Stops a run no turn of T3's waits on (one a Stop left running, or one
+     * Stops a run no turn of Vetra Code's waits on (one a Stop left running, or one
      * found asking after a reconnect): a reject without a message and a
      * cancelled form both end OpenCode's execution. Its end is not a turn's.
      */
@@ -1933,7 +1947,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
     /**
      * Shows a permission ask or question form on the thread whose session (or
      * subagent session) asked, under that thread's running turn. A request no
-     * turn of T3's is waiting on is left for OpenCode's own clients.
+     * turn of Vetra Code's is waiting on is left for OpenCode's own clients.
      */
     const showRequest = Effect.fnUntraced(function* (
       sessionId: string,
@@ -2063,7 +2077,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
           requestKind: openCodePermissionRequestKind(data.action, toolName),
           prompt: data.resources.length === 0 ? data.action : data.resources.join("\n"),
           // "Always" in OpenCode saves a grant for the whole project, so the
-          // session-wide choice is T3's own rule on this session instead.
+          // session-wide choice is Vetra Code's own rule on this session instead.
           options: [
             { decision: "cancel", label: "Cancel" },
             { decision: "decline", label: "Decline" },
@@ -2175,6 +2189,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
         agent: undefined,
         model: null,
         background: false,
+        joined: undefined,
         child: undefined,
         status: "running",
         result: null,
@@ -2240,8 +2255,13 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
           if (call !== undefined) {
             const childId = stringField(event.data.metadata, "sessionID");
             if (childId !== undefined) yield* attachChild(call, childId);
-            // A background call returns at launch; its report settles it.
-            if (event.data.metadata?.["status"] === "running") return;
+            // A background call returns at launch, and so does one that joined a
+            // background run; the report settles it.
+            if (event.data.metadata?.["status"] === "running") {
+              if (call.background) return;
+              call.background = true;
+              return yield* emitSubagent(call);
+            }
             return yield* settleCall(call, "completed", subagentOutput(textOf(event.data.content)));
           }
           const output = textOf(event.data.content);
@@ -2320,7 +2340,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
     });
 
     /**
-     * An execution OpenCode started on a thread's session with no turn of T3's
+     * An execution OpenCode started on a thread's session with no turn of Vetra Code's
      * running: the parent's answer to a background subagent's report. It is
      * held for the continuation turn it asks for, or stopped when it only
      * reports subagents a Stop ended.
@@ -2379,6 +2399,9 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
       const call = [...state.calls.values()].find(
         (candidate) => candidate.child?.sessionId === childId,
       );
+      const calls = [...state.calls.values()].filter(
+        (candidate) => candidate === call || (call !== undefined && candidate.joined === call),
+      );
       const outcome = reportOutcome(stringField(payload.metadata, "state"));
       state.reports.set(inboxId, {
         inboxId,
@@ -2391,18 +2414,14 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
           outcome,
         },
       });
-      if (call === undefined) return;
-      yield* settleCall(
-        call,
-        state.stoppedChildren.has(childId)
-          ? "interrupted"
-          : outcome === "failed"
-            ? "failed"
-            : outcome === "cancelled"
-              ? "cancelled"
-              : "completed",
-        subagentOutput(payload.text),
-      );
+      const status = state.stoppedChildren.has(childId)
+        ? "interrupted"
+        : outcome === "failed"
+          ? "failed"
+          : outcome === "cancelled"
+            ? "cancelled"
+            : "completed";
+      for (const each of calls) yield* settleCall(each, status, subagentOutput(payload.text));
     });
 
     /**
@@ -2447,7 +2466,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
       const sessionId = sessionOfEvent(event);
       // `revert.clear` wakes the session into an empty execution of its own
       // (2.0.18's `Session.revert.clear` ends with a wake). It is no run of
-      // T3's, and no follow-up to a subagent either.
+      // Vetra Code's, and no follow-up to a subagent either.
       const cleared = sessionId === undefined ? undefined : clearing.get(sessionId);
       if (cleared !== undefined) {
         if (event.type === "unreadable.execution.ended" || executionEnd(event.type)) {
@@ -2547,7 +2566,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
         return yield* onAsked({ type: "form", form: event.data.form });
       // Answered in another OpenCode client, or dropped by OpenCode: a reject
       // it sends on its own (a Stop, or another reject in the same session)
-      // cancels the request. T3's own answers are settled where they are sent.
+      // cancels the request. Vetra Code's own answers are settled where they are sent.
       if (
         event.type === "permission.replied" ||
         event.type === "form.replied" ||
@@ -2843,7 +2862,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
       client = next.client;
       currentScope = scope;
       yield* Scope.close(previous, Exit.void);
-      // A restarted server forgot T3's MCP servers; the next turn adds them again.
+      // A restarted server forgot Vetra Code's MCP servers; the next turn adds them again.
       for (const state of threads.values()) state.mcp = undefined;
       yield* lock.withPermit(reconcile).pipe(Effect.timeout(RECONCILE_TIMEOUT));
       return stream;
@@ -3011,12 +3030,22 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
       state.policy = policy;
     });
 
+    /** Names the session after its thread when they differ. */
+    const writeTitle = Effect.fnUntraced(function* (state: ThreadState, title: string) {
+      const next = title.trim();
+      // An empty title asks OpenCode to generate one.
+      if (next === "" || next === state.title) return;
+      yield* client.session.update({ sessionID: Session.ID.make(state.sessionId), title: next });
+      state.title = next;
+    });
+
     const register = (
       providerThread: OrchestrationV2ProviderThread,
       native: {
         readonly id: string;
         readonly model?: ModelRef | undefined;
         readonly agent?: string | undefined;
+        readonly title?: string | undefined;
         readonly permissions?: ReadonlyArray<Rule> | undefined;
       },
       directory: string,
@@ -3028,12 +3057,14 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
         existing.model = native.model;
         existing.directory = directory;
         existing.agent = native.agent ?? existing.agent;
+        existing.title = native.title;
         existing.rules = native.permissions;
         return existing;
       }
       const state = newThreadState(native.id, providerThread, directory, undefined);
       state.model = native.model;
       state.agent = native.agent ?? state.agent;
+      state.title = native.title;
       state.rules = native.permissions;
       threads.set(native.id, state);
       return state;
@@ -3041,7 +3072,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
 
     /**
      * Refuses to cut or copy a session's history while something writes to
-     * it: a turn of T3's, an execution seen running on the stream (a held
+     * it: a turn of Vetra Code's, an execution seen running on the stream (a held
      * follow-up), or a run on the server this runtime does not own: one a
      * timed-out Stop or an unanswered request left behind, or any run on a
      * session loaded after the server outlived T3. Only that last case asks
@@ -3094,7 +3125,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
 
     /**
      * Clears a staged revert and waits out the empty execution `clear` runs,
-     * which is no turn of T3's. 2.0.18 wakes the session after every clear,
+     * which is no turn of Vetra Code's. 2.0.18 wakes the session after every clear,
      * with or without a stage (seen live), so that execution always comes.
      */
     const clearRevert = Effect.fnUntraced(function* (sessionId: string) {
@@ -3228,7 +3259,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
         client.mcp.remove({ server: mcp.name, location: { directory: mcp.directory } }),
       ).pipe(Effect.timeout("5 seconds"), Effect.ignore({ log: true }));
 
-    // T3's MCP registrations outlive a session only on an external server; a
+    // Vetra Code's MCP registrations outlive a session only on an external server; a
     // spawned one forgets them when it stops.
     yield* Effect.addFinalizer(() =>
       Effect.forEach(
@@ -3239,7 +3270,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
     );
 
     /**
-     * T3's MCP server for this thread, and the per-turn instructions. The MCP
+     * Vetra Code's MCP server for this thread, and the per-turn instructions. The MCP
      * server is registered for the session's directory under the thread's own
      * name and credential (the session rules allow only it), and removed when
      * the thread unloads or the session closes. OpenCode 2 has no per-prompt
@@ -3251,10 +3282,10 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
       state: ThreadState,
       turnInput: ProviderAdapter.ProviderAdapterV2TurnInput,
     ) {
-      const mcpSession = McpProviderSession.readMcpProviderSession(turnInput.threadId);
+      const mcpSession = yield* mcpSessions.read(turnInput.threadId);
       const directory = turnInput.runtimePolicy.cwd ?? host.paths.cwd;
       const name = yield* mcpServerNameFor(turnInput.threadId);
-      // An external server may not reach T3's MCP endpoint, as with 1.x.
+      // An external server may not reach Vetra Code's MCP endpoint, as with 1.x.
       const wanted =
         mcpSession === undefined || connection.external
           ? undefined
@@ -3268,7 +3299,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
         yield* removeMcp(state.mcp);
         state.mcp = undefined;
       }
-      // T3's tools are an addition: a server that cannot add them still runs the turn.
+      // Vetra Code's tools are an addition: a server that cannot add them still runs the turn.
       if (wanted !== undefined && state.mcp === undefined) {
         const added = yield* client.mcp
           .add({
@@ -3535,7 +3566,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
           Effect.orElseSucceed(() => []),
         );
         if (commands.some((entry) => entry.name === command.name)) {
-          // `session.command` takes no id of T3's and its answer carries none,
+          // `session.command` takes no id of Vetra Code's and its answer carries none,
           // so the turn remembers where the history stood before it.
           const newest = yield* client.message.list({ sessionID, order: "desc", limit: 1 });
           yield* markBefore(sessionId, newest.data[0]?.id ?? null);
@@ -3614,10 +3645,13 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
             policy,
             threadInput.threadId,
           );
+          const title = threadInput.title?.trim() || undefined;
+          // A session created with a title is never titled by OpenCode's own model.
           const created = yield* client.session.create({
             location: Location.PublicRef.make({ directory: AbsolutePath.make(directory) }),
             model,
             permissions,
+            ...(title === undefined ? {} : { title }),
           });
           const createdAt = yield* DateTime.now;
           const providerThread: OrchestrationV2ProviderThread = {
@@ -3641,7 +3675,13 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
           };
           const state = register(
             providerThread,
-            { id: created.id, model: created.model, agent: created.agent, permissions },
+            {
+              id: created.id,
+              model: created.model,
+              agent: created.agent,
+              title: title ?? created.title,
+              permissions,
+            },
             directory,
           );
           state.policy = policy;
@@ -3800,6 +3840,11 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
               // and its subagents still running hold the rules they started with.
               // Those run on whether or not this turn starts, so theirs are best effort.
               yield* writeRules(state, turnInput.runtimePolicy);
+              // A thread renamed since the last turn, or titled after its first prompt.
+              yield* writeTitle(state, turnInput.appThread.title).pipe(
+                Effect.timeout(REQUEST_REPLY_TIMEOUT),
+                Effect.ignore({ log: true }),
+              );
               for (const call of runningCalls(state)) {
                 if (call.child === undefined) continue;
                 yield* writeRules(call.child, turnInput.runtimePolicy).pipe(

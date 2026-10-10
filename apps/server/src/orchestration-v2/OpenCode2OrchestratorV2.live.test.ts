@@ -13,7 +13,7 @@
  * `opencode/big-pickle` model; `OPENCODE2_MODEL` picks another (its provider's
  * key comes from the test's environment, which the spawned server inherits).
  * A second run covers plan mode, a workspace command and skill, and `/compact`;
- * a third a generated title, T3's MCP server (`OPENCODE2_MCP_URL` names a
+ * a third a generated title, Vetra Code's MCP server (`OPENCODE2_MCP_URL` names a
  * stand-in one) and a turn cut off by a killed server. Each step waits up to
  * `OPENCODE2_STEP_WAIT` seconds (120 by default).
  */
@@ -55,7 +55,9 @@ import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
 import * as ModelManifest from "../provider/ModelManifest.ts";
 import * as UsageService from "../usage/UsageService.ts";
 import * as ProviderInstanceRegistryHydration from "../provider/ProviderInstanceRegistryHydration.ts";
-import * as ProviderEventLoggers from "../provider/ProviderEventLoggers.ts";
+import * as ProviderLatestVersions from "@t3tools/provider-core/server/ProviderLatestVersions";
+import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
+import * as ProviderEventLoggers from "@t3tools/provider-core/server/ProviderEventLoggers";
 import * as OpenCode2Client from "@t3tools/provider-opencode/server/v2/OpenCode2Client";
 import * as OpenCodeRuntime from "@t3tools/provider-opencode/server/OpenCodeRuntime";
 import * as OpenCodeServerLedger from "@t3tools/provider-opencode/server/OpenCodeServerLedger";
@@ -68,7 +70,7 @@ import * as ProviderInstanceRegistry from "../provider/ProviderInstanceRegistry.
 import * as ProviderTurnStartServiceTestkit from "./ProviderTurnStartService.testkit.ts";
 import * as RuntimeLayer from "./runtimeLayer.ts";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
-import * as ProviderContinuationRequests from "@t3tools/provider-core/server/continuationRequests";
+import * as ProviderContinuationRequests from "@t3tools/provider-core/server/ProviderContinuationRequests";
 import * as ProviderContinuationService from "./ProviderContinuationService.ts";
 import * as ThreadManagementService from "./ThreadManagementService.ts";
 import * as McpSessionRegistry from "../mcp/McpSessionRegistry.ts";
@@ -97,7 +99,7 @@ const layerSpawnedServers = Layer.succeed(
 );
 
 /**
- * Credentials for T3's MCP server. `OPENCODE2_MCP_URL` points them at a stand-in
+ * Credentials for Vetra Code's MCP server. `OPENCODE2_MCP_URL` points them at a stand-in
  * MCP server the run can see called; without it they point nowhere, as in replay.
  */
 const MCP_URL = process.env.OPENCODE2_MCP_URL ?? "http://127.0.0.1/mcp";
@@ -186,6 +188,7 @@ const layerProviderInstanceRegistry = ProviderInstanceRegistryHydration.layer.pi
         ProviderEventLoggers.ProviderEventLoggers,
         ProviderEventLoggers.NoOpProviderEventLoggers,
       ),
+      ProviderLatestVersions.layer,
       ModelManifest.layerTest,
       UsageService.layerTest,
       AntigravityInstallation.AntigravityInstallation.layer.pipe(
@@ -217,6 +220,7 @@ const layerOrchestration = RuntimeLayer.layer.pipe(
   Layer.provide(ResetCreditCoordinator.layer),
   Layer.provide(layerBackgroundPolicy),
   Layer.provide(layerPlatformTest),
+  Layer.provide(McpProviderSessions.layer),
 );
 
 // Starts the continuation run a provider wake asks for, as the production layer does.
@@ -886,7 +890,7 @@ describe.runIf(binaryPath !== undefined && ROOT !== "")("OpenCode 2 live orchest
         assert.include(assistantText(forked, forked.runs[0]!.id).toUpperCase(), "NO");
 
         // 4. Roll the source back to the first turn: OpenCode's history drops the
-        // later turns and T3's checkpoint puts ALPHA back.
+        // later turns and Vetra Code's checkpoint puts ALPHA back.
         const checkpoint = drained.checkpoints.find(
           (candidate) => candidate.appRunOrdinal === 1 && candidate.status === "ready",
         );
@@ -1035,7 +1039,7 @@ describe.runIf(binaryPath !== undefined && ROOT !== "")("OpenCode 2 live orchest
   );
 
   it.live(
-    "generates a title, calls T3's MCP server, and reconciles a turn cut off by a killed server",
+    "generates a title, calls Vetra Code's MCP server, and reconciles a turn cut off by a killed server",
     () =>
       Effect.gen(function* () {
         const work = `${ROOT}/work`;
@@ -1072,7 +1076,7 @@ describe.runIf(binaryPath !== undefined && ROOT !== "")("OpenCode 2 live orchest
         const runs = (count: number) => (projection: OrchestrationV2ThreadProjection) =>
           projection.runs.length === count && settled(projection);
 
-        // T3's MCP server for this thread: the stand-in's one tool answers a marker.
+        // Vetra Code's MCP server for this thread: the stand-in's one tool answers a marker.
         if (process.env.OPENCODE2_MCP_URL !== undefined) {
           yield* send(
             threadId,

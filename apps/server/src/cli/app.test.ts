@@ -8,11 +8,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import type { DesktopAppActivationRequest } from "@t3tools/contracts";
 import { resolveDesktopAppControlAddress } from "@t3tools/shared/desktopAppControl";
-import {
-  HostProcessPlatform,
-  HostProcessUserId,
-  HostProcessWorkingDirectory,
-} from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as NetService from "@t3tools/shared/Net";
 import { PRODUCT_HOME_DIRECTORY_NAME } from "@t3tools/shared/productIdentity";
 import * as ConfigProvider from "effect/ConfigProvider";
@@ -20,17 +16,10 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import { Command } from "effect/cli";
-import { afterEach, describe, expect, vi } from "vite-plus/test";
+import { describe, expect } from "vite-plus/test";
 
 import { makeCli } from "../binCli.ts";
 import { PersistedServerRuntimeState } from "../serverRuntimeState.ts";
-
-vi.mock("node:os", async (importOriginal) => {
-  const os = await importOriginal<typeof import("node:os")>();
-  return { ...os, homedir: vi.fn(os.homedir) };
-});
-
-afterEach(() => vi.mocked(NodeOS.homedir).mockReset());
 
 const encodeRuntimeState = Schema.encodeEffect(Schema.fromJsonString(PersistedServerRuntimeState));
 
@@ -117,8 +106,8 @@ async function startFakeDesktop(input: {
 const fakeDesktop = Effect.fn(function* (
   input: Omit<Parameters<typeof startFakeDesktop>[0], "platform" | "userId">,
 ) {
-  const platform = yield* HostProcessPlatform;
-  const userId = yield* HostProcessUserId;
+  const platform = yield* HostProcess.Platform;
+  const userId = yield* HostProcess.UserId;
   return yield* Effect.acquireRelease(
     Effect.promise(() => startFakeDesktop({ ...input, platform, userId })),
     (server) => Effect.promise(() => server.close()),
@@ -149,7 +138,7 @@ describe("vetra server command safety", () => {
           "C:new-project",
         ]) {
           const error = yield* runCli([word, "--base-dir", baseDir]).pipe(
-            Effect.provideService(HostProcessPlatform, "linux"),
+            Effect.provideService(HostProcess.Platform, "linux"),
             Effect.flip,
           );
           expect(String(error)).toContain(`Unknown command "${word}"`);
@@ -188,7 +177,7 @@ describe("vetra server command safety", () => {
         yield* Effect.promise(() => NodeFSP.mkdir(stateDir, { recursive: true }));
         yield* Effect.promise(() => NodeFSP.writeFile(statePath, record));
         const newDirectory = NodePath.join(root, "new-project");
-        const platform = yield* HostProcessPlatform;
+        const platform = yield* HostProcess.Platform;
         for (const args of [
           [],
           ["start"],
@@ -200,7 +189,7 @@ describe("vetra server command safety", () => {
         ]) {
           const error = yield* runCli(args, { VETRA_HOME: baseDir }).pipe(
             Effect.provideService(
-              HostProcessPlatform,
+              HostProcess.Platform,
               args[0] === "C:new-project" ? "win32" : platform,
             ),
             Effect.flip,
@@ -241,7 +230,7 @@ describe("vetra app", () => {
       Effect.gen(function* () {
         const baseDir = NodePath.join(root, "missing-vetra-home");
         const error = yield* runCli(["app", "--base-dir", baseDir]).pipe(
-          Effect.provideService(HostProcessPlatform, "freebsd"),
+          Effect.provideService(HostProcess.Platform, "freebsd"),
           Effect.flip,
         );
 
@@ -264,7 +253,7 @@ describe("vetra app", () => {
         expect(error).toMatchObject({
           _tag: "DesktopAppUnreachableError",
           candidateAddresses: [expect.any(String)],
-          workspaceRoot: yield* HostProcessWorkingDirectory,
+          workspaceRoot: yield* HostProcess.WorkingDirectory,
           message: expect.stringContaining("Could not reach the Vetra Code desktop app."),
           cause: { code: "ENOENT" },
         });
@@ -278,8 +267,8 @@ describe("vetra app", () => {
       Effect.gen(function* () {
         const baseDir = NodePath.join(root, "vetra-home");
         const explicitPath = NodePath.join(root, "project");
-        const platform = yield* HostProcessPlatform;
-        const workingDirectory = yield* HostProcessWorkingDirectory;
+        const platform = yield* HostProcess.Platform;
+        const workingDirectory = yield* HostProcess.WorkingDirectory;
         const desktop = yield* fakeDesktop({ baseDir });
 
         yield* runCli(["app"], { VETRA_HOME: baseDir });
@@ -297,7 +286,6 @@ describe("vetra app", () => {
   it.effect("prefers the installed desktop app when a dev desktop is also running", () =>
     withTempDirectory("vetra-app-preferred-test-", (root) =>
       Effect.gen(function* () {
-        vi.mocked(NodeOS.homedir).mockReturnValue(root);
         const baseDir = NodePath.join(root, PRODUCT_HOME_DIRECTORY_NAME);
         const desktop = yield* fakeDesktop({ baseDir });
         const development = yield* fakeDesktop({ baseDir, stateSubdirectory: "dev" });
@@ -306,14 +294,13 @@ describe("vetra app", () => {
 
         expect(desktop.received).toHaveLength(1);
         expect(development.received).toHaveLength(0);
-      }).pipe(Effect.scoped),
+      }).pipe(Effect.provideService(HostProcess.HomeDirectory, root), Effect.scoped),
     ),
   );
 
   it.effect("finds the dev desktop when the default desktop socket is absent", () =>
     withTempDirectory("vetra-app-dev-test-", (root) =>
       Effect.gen(function* () {
-        vi.mocked(NodeOS.homedir).mockReturnValue(root);
         const baseDir = NodePath.join(root, PRODUCT_HOME_DIRECTORY_NAME);
         const development = yield* fakeDesktop({ baseDir, stateSubdirectory: "dev" });
 
@@ -322,14 +309,13 @@ describe("vetra app", () => {
 
         expect(development.received).toHaveLength(2);
         expect(yield* pathExists(baseDir)).toBe(false);
-      }).pipe(Effect.scoped),
+      }).pipe(Effect.provideService(HostProcess.HomeDirectory, root), Effect.scoped),
     ),
   );
 
   it.effect("never searches a dev state directory for an explicit Vetra home", () =>
     withTempDirectory("vetra-app-explicit-test-", (root) =>
       Effect.gen(function* () {
-        vi.mocked(NodeOS.homedir).mockReturnValue(root);
         const baseDir = NodePath.join(root, PRODUCT_HOME_DIRECTORY_NAME);
         const development = yield* fakeDesktop({ baseDir, stateSubdirectory: "dev" });
 
@@ -339,7 +325,7 @@ describe("vetra app", () => {
         expect(flagError).toMatchObject({ _tag: "DesktopAppUnreachableError" });
         expect(envError).toMatchObject({ _tag: "DesktopAppUnreachableError" });
         expect(development.received).toHaveLength(0);
-      }).pipe(Effect.scoped),
+      }).pipe(Effect.provideService(HostProcess.HomeDirectory, root), Effect.scoped),
     ),
   );
 
@@ -348,7 +334,6 @@ describe("vetra app", () => {
     (responseKind) =>
       withTempDirectory("t3-app-response-test-", (root) =>
         Effect.gen(function* () {
-          vi.mocked(NodeOS.homedir).mockReturnValue(root);
           const baseDir = NodePath.join(root, PRODUCT_HOME_DIRECTORY_NAME);
           const desktop = yield* fakeDesktop({
             baseDir,
@@ -374,7 +359,7 @@ describe("vetra app", () => {
               _tag: "DesktopAppRequestFailedError",
               code: "project-create-failed",
               requestId: desktop.received[0]?.requestId,
-              workspaceRoot: yield* HostProcessWorkingDirectory,
+              workspaceRoot: yield* HostProcess.WorkingDirectory,
               message: expect.stringContaining("project-create-failed"),
               cause: {
                 ok: false,
@@ -388,7 +373,7 @@ describe("vetra app", () => {
               cause: { message: "The desktop app response is invalid." },
             });
           }
-        }).pipe(Effect.scoped),
+        }).pipe(Effect.provideService(HostProcess.HomeDirectory, root), Effect.scoped),
       ),
   );
 });

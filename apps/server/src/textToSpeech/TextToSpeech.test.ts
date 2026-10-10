@@ -11,7 +11,7 @@ import * as Path from "effect/Path";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import { HttpClient, HttpClientResponse } from "effect/http";
-import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 // @effect-diagnostics-next-line nodeBuiltinImport:off -- Assertions compare against a synchronous SHA-256 of fixture bytes.
 import * as NodeCrypto from "node:crypto";
 import * as NodeModule from "node:module";
@@ -88,8 +88,8 @@ const makeHarness = Effect.fn("test.makeTextToSpeech")(function* (options: {
         }),
       ),
     ),
-    Effect.provideService(HostProcessPlatform, options.intelMac ? "darwin" : "linux"),
-    Effect.provideService(HostProcessArchitecture, "x64"),
+    Effect.provideService(HostProcess.Platform, options.intelMac ? "darwin" : "linux"),
+    Effect.provideService(HostProcess.Architecture, "x64"),
     Effect.provide(
       Layer.mock(ServerSettingsService)({
         getSettings: Effect.succeed({

@@ -12,7 +12,7 @@ import * as Layer from "effect/Layer";
 
 import { ProviderTurnPricing } from "../orchestration-v2/ProviderEventIngestor.ts";
 import * as UsageService from "./UsageService.ts";
-import { totalTokens } from "./usageTranscripts.ts";
+import { totalTokens } from "@t3tools/provider-core/server/usage";
 
 /** Turn usage counts input inclusive of cache reads and writes; pricing wants them apart. */
 export function turnUsageToTotals(usage: TurnTokenUsage): UsageTokenTotals | null {

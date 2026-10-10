@@ -65,6 +65,7 @@ export type EnvironmentSubscriptionRpcTag =
   | typeof WS_METHODS.ticketsSubscribePlan
   | typeof WS_METHODS.ticketsStatusesSubscribe
   | typeof WS_METHODS.ticketsGitHubSourcesSubscribe
+  | typeof WS_METHODS.serverGetStorageCleanupReport
   | typeof WS_METHODS.subscribeTerminalEvents
   | typeof WS_METHODS.subscribeTerminalMetadata
   | typeof WS_METHODS.subscribePreviewEvents

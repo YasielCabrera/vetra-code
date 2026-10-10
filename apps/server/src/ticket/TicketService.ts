@@ -116,7 +116,7 @@ import {
   type WithAttachmentSources,
 } from "./TicketAttachments.ts";
 import * as TicketGitHub from "./TicketGitHub.ts";
-import { AllowGitHubReserve } from "../sourceControl/GitHubApi.ts";
+import { Interactive } from "@t3tools/source-control-core/server/SourceControlRateLimit";
 import { applyPlanEdits } from "./ticketPlanEdits.ts";
 
 type TicketWriteError = TicketNotFoundError | TicketRevisionConflictError | TicketError;
@@ -995,7 +995,7 @@ const make = Effect.gen(function* () {
           api.setState({ cwd, ...ref, change }),
         )
         .pipe(
-          Effect.provideService(AllowGitHubReserve, true),
+          Effect.provideService(Interactive, true),
           Effect.mapError(
             (error) =>
               new TicketError({
@@ -1007,7 +1007,7 @@ const make = Effect.gen(function* () {
       const issue = yield* github
         .run({ ...target, ticketId: current.id }, (api, cwd) => api.getIssue({ cwd, ...ref }))
         .pipe(
-          Effect.provideService(AllowGitHubReserve, true),
+          Effect.provideService(Interactive, true),
           Effect.orElseSucceed(() => null),
         );
       return { change, issue };
@@ -1735,7 +1735,7 @@ const make = Effect.gen(function* () {
           }),
         )
         .pipe(
-          Effect.provideService(AllowGitHubReserve, true),
+          Effect.provideService(Interactive, true),
           Effect.mapError(
             (error) =>
               new TicketError({
@@ -2023,7 +2023,7 @@ const make = Effect.gen(function* () {
         ),
       )
       .pipe(
-        Effect.provideService(AllowGitHubReserve, true),
+        Effect.provideService(Interactive, true),
         Effect.mapError(
           (error) =>
             new TicketError({ message: TicketGitHub.describeGitHubFailure(error), cause: error }),

@@ -25,7 +25,7 @@ import { IssueProviderRegistry } from "../issue/IssueProviderRegistry.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
 import * as TicketGitHub from "./TicketGitHub.ts";
-import { AllowGitHubReserve } from "../sourceControl/GitHubApi.ts";
+import { Interactive } from "@t3tools/source-control-core/server/SourceControlRateLimit";
 import * as TicketService from "./TicketService.ts";
 
 const SYNC_INTERVAL = Duration.minutes(10);
@@ -306,7 +306,7 @@ const make = Effect.gen(function* () {
   const syncNow: TicketGitHubSync["Service"]["syncNow"] = (input) =>
     Effect.gen(function* () {
       yield* readSource(input);
-      yield* syncSource(input).pipe(Effect.provideService(AllowGitHubReserve, true));
+      yield* syncSource(input).pipe(Effect.provideService(Interactive, true));
       return yield* readSource(input);
     });
 

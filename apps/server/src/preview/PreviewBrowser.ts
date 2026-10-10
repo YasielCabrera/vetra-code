@@ -1,6 +1,6 @@
 // @effect-diagnostics nodeBuiltinImport:off - Effect has no incremental digest.
 import * as EffectNodeStream from "@effect/platform-node/NodeStream";
-import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
@@ -123,7 +123,7 @@ export class PreviewBrowserUnsupportedError extends Schema.TaggedError<PreviewBr
   { platform: Schema.String, arch: Schema.String },
 ) {
   override get message(): string {
-    return `T3's headless browser is not available on ${this.platform}-${this.arch}: Chrome for Testing has no headless shell for it.`;
+    return `Vetra Code's headless browser is not available on ${this.platform}-${this.arch}: Chrome for Testing has no headless shell for it.`;
   }
 }
 
@@ -175,8 +175,8 @@ export const makePreviewBrowser = Effect.fn("PreviewBrowser.make")(function* (
   const http = yield* HttpClient.HttpClient;
   // Installs belong to the service, so they finish even when no caller is still waiting.
   const serviceScope = yield* Effect.scope;
-  const platform = yield* HostProcessPlatform;
-  const arch = yield* HostProcessArchitecture;
+  const platform = yield* HostProcess.Platform;
+  const arch = yield* HostProcess.Architecture;
   const release =
     options.release === undefined ? previewBrowserRelease(platform, arch) : options.release;
   const wait = options.wait ?? "45 seconds";
@@ -312,7 +312,9 @@ export const makePreviewBrowser = Effect.fn("PreviewBrowser.make")(function* (
     },
     Effect.scoped,
     Effect.mapError(
-      wrapFailure("Could not unpack the browser. Check free disk space in T3's home directory."),
+      wrapFailure(
+        "Could not unpack the browser. Check free disk space in Vetra Code's home directory.",
+      ),
     ),
   );
 
@@ -363,7 +365,7 @@ export const makePreviewBrowser = Effect.fn("PreviewBrowser.make")(function* (
       );
       return path.join(installRoot, release.version, executableName);
     },
-    Effect.mapError(wrapFailure("Could not save the browser in T3's home directory.")),
+    Effect.mapError(wrapFailure("Could not save the browser in Vetra Code's home directory.")),
   );
 
   // Joins the current install or starts one. A failure is reported once, then cleared.

@@ -332,6 +332,35 @@ describe("rightPanelStore", () => {
     expect(selectActiveRightPanel(useRightPanelStore.getState().byThreadKey, refA)).toBe("diff");
   });
 
+  it("keeps a maximized panel per thread without counting it as a manual choice", () => {
+    const store = useRightPanelStore.getState();
+    store.open(refA, "preview");
+    store.open(refB, "diff");
+    const revision = store.getUserActionRevision(refA);
+    store.setMaximized(refA, true);
+    store.setMaximized(refB, true);
+    store.setMaximized(refB, false);
+
+    const { byThreadKey } = useRightPanelStore.getState();
+    expect(selectThreadRightPanelState(byThreadKey, refA).maximized).toBe(true);
+    expect(selectThreadRightPanelState(byThreadKey, refB).maximized).toBeUndefined();
+    expect(store.getUserActionRevision(refA)).toBe(revision);
+  });
+
+  it("restores a saved maximized panel during migration", () => {
+    const migrated = migratePersistedRightPanelState({
+      byThreadKey: {
+        "env-1:thread-A": {
+          isOpen: true,
+          activeSurfaceId: "browser:new",
+          surfaces: [{ id: "browser:new", kind: "preview", resourceId: null }],
+          maximized: true,
+        },
+      },
+    });
+    expect(selectThreadRightPanelState(migrated.byThreadKey, refA).maximized).toBe(true);
+  });
+
   it("drops the legacy singleton terminal surface during migration", () => {
     expect(
       migratePersistedRightPanelState({
@@ -1409,7 +1438,7 @@ describe("rightPanelStore", () => {
     useRightPanelStore.getState().openBrowser(refA, "tab-a");
     useRightPanelStore.getState().openFile(refA, "src/index.ts");
 
-    useRightPanelStore.getState().moveSurface(refA, "file:src/index.ts", "terminal:term-1");
+    useRightPanelStore.getState().moveSurface(refA, "file:src/index.ts", 0);
 
     expect(
       selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).surfaces.map(
@@ -1418,12 +1447,12 @@ describe("rightPanelStore", () => {
     ).toEqual(["file:src/index.ts", "terminal:term-1", "browser:tab-a"]);
   });
 
-  it("ignores a move whose source or target surface is gone", () => {
+  it("ignores a move whose source is gone or target index is invalid", () => {
     useRightPanelStore.getState().openBrowser(refA, "tab-a");
     const before = selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA);
 
-    useRightPanelStore.getState().moveSurface(refA, "browser:tab-a", "browser:closed");
-    useRightPanelStore.getState().moveSurface(refA, "browser:closed", "browser:tab-a");
+    useRightPanelStore.getState().moveSurface(refA, "browser:tab-a", -1);
+    useRightPanelStore.getState().moveSurface(refA, "browser:closed", 0);
 
     expect(selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA)).toBe(
       before,
@@ -1433,7 +1462,7 @@ describe("rightPanelStore", () => {
   it("keeps a dragged order when reconciling browser surfaces", () => {
     useRightPanelStore.getState().openTerminal(refA, "term-1");
     useRightPanelStore.getState().openBrowser(refA, "tab-a");
-    useRightPanelStore.getState().moveSurface(refA, "browser:tab-a", "terminal:term-1");
+    useRightPanelStore.getState().moveSurface(refA, "browser:tab-a", 0);
 
     useRightPanelStore.getState().reconcileBrowserSurfaces(refA, ["tab-a", "tab-b"]);
 
@@ -1617,5 +1646,28 @@ describe("ticket panel lifecycle", () => {
       ...plan,
     });
     expect(selectThreadRightPanelState(migrated.byThreadKey, refA).surfaces).toHaveLength(1);
+  });
+
+  it("moves a surface to a new index and keeps it there through browser reconciliation", () => {
+    const store = useRightPanelStore.getState();
+    store.openTerminal(refA, "term-1");
+    store.openBrowser(refA, "tab-a");
+    store.open(refA, "diff");
+    const revision = store.getUserActionRevision(refA);
+    const surfaceIds = () =>
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).surfaces.map(
+        (surface) => surface.id,
+      );
+
+    store.moveSurface(refA, "browser:tab-a", 0);
+    expect(surfaceIds()).toEqual(["browser:tab-a", "terminal:term-1", "diff"]);
+    store.moveSurface(refA, "browser:tab-a", 2);
+    expect(surfaceIds()).toEqual(["terminal:term-1", "diff", "browser:tab-a"]);
+    store.moveSurface(refA, "browser:tab-a", 0);
+
+    store.reconcileBrowserSurfaces(refA, ["tab-a", "tab-b"]);
+    expect(surfaceIds()).toEqual(["browser:tab-a", "terminal:term-1", "diff", "browser:tab-b"]);
+    // Reordering is not a choice about what the panel shows.
+    expect(store.getUserActionRevision(refA)).toBe(revision);
   });
 });

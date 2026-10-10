@@ -140,6 +140,8 @@ export interface ThreadRightPanelState {
   activeSurfaceId: string | null;
   surfaces: RightPanelSurface[];
   dismissedDeviceSurfaceIds?: string[];
+  /** Kept with the thread so the layout survives a ChatView remount or a reload. */
+  maximized?: true;
 }
 
 export interface ThreadPanelVisibility {
@@ -149,6 +151,13 @@ export interface ThreadPanelVisibility {
 
 interface RightPanelStoreState {
   byThreadKey: Record<string, ThreadRightPanelState>;
+  /**
+   * A thread whose right panel should open maximized the next time it shows,
+   * such as one started for a link the OS opened. Its view consumes it once.
+   */
+  pendingMaximizeThreadKey: string | null;
+  requestMaximize: (ref: ScopedThreadRef) => void;
+  consumeMaximizeRequest: (ref: ScopedThreadRef) => boolean;
   threadPanelVisibilityByThreadKey: Record<string, ThreadPanelVisibility>;
   /** Session-only count of user panel choices per thread. Automatic updates do not advance it. */
   userActionRevisionByThreadKey: Record<string, number>;
@@ -215,11 +224,11 @@ interface RightPanelStoreState {
   activateTerminal: (ref: ScopedThreadRef, surfaceId: string, terminalId: string) => void;
   closeTerminal: (ref: ScopedThreadRef, surfaceId: string, terminalId: string) => void;
   activateSurface: (ref: ScopedThreadRef, surfaceId: string) => void;
-  moveSurface: (ref: ScopedThreadRef, surfaceId: string, targetSurfaceId: string) => void;
   closeSurface: (ref: ScopedThreadRef, surfaceId: string) => void;
   closeOtherSurfaces: (ref: ScopedThreadRef, surfaceId: string) => void;
   closeSurfacesToRight: (ref: ScopedThreadRef, surfaceId: string) => void;
   closeAllSurfaces: (ref: ScopedThreadRef) => void;
+  moveSurface: (ref: ScopedThreadRef, surfaceId: string, toIndex: number) => void;
   reconcileBrowserSurfaces: (
     ref: ScopedThreadRef,
     tabIds: readonly string[],
@@ -228,6 +237,7 @@ interface RightPanelStoreState {
   reconcileFileSurfaces: (ref: ScopedThreadRef, workspaceAvailable: boolean) => void;
   show: (ref: ScopedThreadRef) => void;
   close: (ref: ScopedThreadRef) => void;
+  setMaximized: (ref: ScopedThreadRef, maximized: boolean) => void;
   toggleVisibility: (ref: ScopedThreadRef) => void;
   toggle: (
     ref: ScopedThreadRef,
@@ -675,6 +685,7 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                           ),
                       }
                     : {}),
+                  ...(validThreadState?.maximized === true ? { maximized: true as const } : {}),
                 },
               ];
             }),
@@ -702,6 +713,13 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
   persist(
     (set, get) => ({
       byThreadKey: {},
+      pendingMaximizeThreadKey: null,
+      requestMaximize: (ref) => set({ pendingMaximizeThreadKey: scopedThreadKey(ref) }),
+      consumeMaximizeRequest: (ref) => {
+        if (get().pendingMaximizeThreadKey !== scopedThreadKey(ref)) return false;
+        set({ pendingMaximizeThreadKey: null });
+        return true;
+      },
       threadPanelVisibilityByThreadKey: {},
       userActionRevisionByThreadKey: {},
       closeRevisionByThreadKey: {},
@@ -1078,18 +1096,6 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
               : current,
           ),
         ),
-      moveSurface: (ref, surfaceId, targetSurfaceId) =>
-        set((state) =>
-          userAction(state, scopedThreadKey(ref), (current) => {
-            const from = current.surfaces.findIndex((surface) => surface.id === surfaceId);
-            const to = current.surfaces.findIndex((surface) => surface.id === targetSurfaceId);
-            if (from < 0 || to < 0 || from === to) return current;
-            const surfaces = [...current.surfaces];
-            const [moved] = surfaces.splice(from, 1);
-            surfaces.splice(to, 0, moved!);
-            return { ...current, surfaces };
-          }),
-        ),
       closeSurface: (ref, surfaceId) =>
         set((state) =>
           closeAction(state, scopedThreadKey(ref), (current) => {
@@ -1147,6 +1153,24 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
               ? current
               : { ...current, isOpen: false, surfaces: [], activeSurfaceId: null },
           ),
+        ),
+      // Reordering is not a choice about what the panel shows, so it leaves the
+      // user-action revision alone and proactive opens still apply.
+      moveSurface: (ref, surfaceId, toIndex) =>
+        set((state) =>
+          updateThread(state, scopedThreadKey(ref), (current) => {
+            const fromIndex = current.surfaces.findIndex((surface) => surface.id === surfaceId);
+            if (
+              fromIndex < 0 ||
+              toIndex < 0 ||
+              toIndex >= current.surfaces.length ||
+              fromIndex === toIndex
+            )
+              return current;
+            const surfaces = [...current.surfaces];
+            surfaces.splice(toIndex, 0, ...surfaces.splice(fromIndex, 1));
+            return { ...current, surfaces };
+          }),
         ),
       reconcileBrowserSurfaces: (ref, tabIds, hiddenTabIds) =>
         set((state) =>
@@ -1212,6 +1236,15 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
           userAction(state, scopedThreadKey(ref), (current) =>
             current.isOpen ? { ...current, isOpen: false } : current,
           ),
+        ),
+      // Layout only: it changes no surface, so proactive panels still apply.
+      setMaximized: (ref, maximized) =>
+        set((state) =>
+          automaticUpdate(state, scopedThreadKey(ref), (current) => {
+            if ((current.maximized ?? false) === maximized) return current;
+            const { maximized: _maximized, ...rest } = current;
+            return maximized ? { ...rest, maximized: true } : rest;
+          }),
         ),
       toggleVisibility: (ref) =>
         set((state) =>

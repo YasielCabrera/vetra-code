@@ -1,11 +1,5 @@
-import {
-  HostProcessArchitecture,
-  HostProcessEnvironment,
-  HostProcessInvokedAs,
-  HostProcessIsExecutable,
-  HostProcessPlatform,
-  HostProcessWorkingDirectory,
-} from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
+import { PRODUCT_CLI_NAME } from "@t3tools/shared/productIdentity";
 import {
   CLI_RELEASE_BASE_URL_ENV,
   CLI_RELEASE_CHANNELS,
@@ -107,7 +101,7 @@ export function launcherOwnsVersionsDir(
 
 /**
  * The launcher the install scripts leave behind: a symlink at `<bin>/vetra` on
- * POSIX, a `t3.cmd` shim on Windows. `vetra update` repoints it so the next `vetra`
+ * POSIX, a `vetra.cmd` shim on Windows. `vetra update` repoints it so the next `vetra`
  * invocation is the new version. Only a launcher that already points into
  * this home's `runtime/versions` tree is touched; a plain copy of the
  * executable, or a launcher for some other install, is left alone.
@@ -121,14 +115,14 @@ export const repointLauncher = Effect.fn("cli.update.repoint_launcher")(function
 }) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const platform = yield* HostProcessPlatform;
+  const platform = yield* HostProcess.Platform;
   if (input.launchedAs === undefined) return Option.none<string>();
   const ownsTarget = (candidate: string) =>
     launcherOwnsVersionsDir(path, input.versionsDir, candidate);
 
   if (platform === "win32") {
     // The shim runs the executable by absolute path, so the executable sees
-    // itself as argv0; the shim is the `t3.cmd` next to it only when launched
+    // itself as argv0; the shim is the `vetra.cmd` next to it only when launched
     // from an install script's bin directory. Find it by searching the
     // directories that would resolve `vetra` on this shell's PATH.
     const shimPath = yield* findWindowsShim(input.launchedAs);
@@ -173,10 +167,10 @@ export const repointLauncher = Effect.fn("cli.update.repoint_launcher")(function
 export const resolveLauncherPath = Effect.gen(function* () {
   const path = yield* Path.Path;
   const fs = yield* FileSystem.FileSystem;
-  const invokedAs = yield* HostProcessInvokedAs;
-  const cwd = yield* HostProcessWorkingDirectory;
-  const environment = yield* HostProcessEnvironment;
-  const platform = yield* HostProcessPlatform;
+  const invokedAs = yield* HostProcess.InvokedAs;
+  const cwd = yield* HostProcess.WorkingDirectory;
+  const environment = yield* HostProcess.Environment;
+  const platform = yield* HostProcess.Platform;
   if (invokedAs.includes("/") || invokedAs.includes("\\")) {
     return path.resolve(cwd, invokedAs);
   }
@@ -193,7 +187,7 @@ export const resolveLauncherPath = Effect.gen(function* () {
 
 /**
  * On Windows a `.cmd` shim is what PATH resolves, but the executable it runs
- * only ever sees its own path. Walk PATH for a `t3.cmd` whose target is the
+ * only ever sees its own path. Walk PATH for a `vetra.cmd` whose target is the
  * running executable; that is the launcher the install script wrote.
  */
 export const findWindowsShim = Effect.fn("cli.update.find_windows_shim")(function* (
@@ -201,13 +195,13 @@ export const findWindowsShim = Effect.fn("cli.update.find_windows_shim")(functio
 ) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const environment = yield* HostProcessEnvironment;
+  const environment = yield* HostProcess.Environment;
   const candidates = [
     ...(environment["VETRA_INSTALL_BIN_DIR"] ? [environment["VETRA_INSTALL_BIN_DIR"]] : []),
     ...(environment["PATH"] ?? environment["Path"] ?? "").split(";"),
   ].filter((entry) => entry.trim().length > 0);
   for (const directory of candidates) {
-    const shimPath = path.join(directory, "t3.cmd");
+    const shimPath = path.join(directory, `${PRODUCT_CLI_NAME}.cmd`);
     const contents = yield* fs.readFileString(shimPath).pipe(Effect.option);
     if (Option.isNone(contents)) continue;
     const target = /^"([^"]+)"/m.exec(contents.value)?.[1];
@@ -302,7 +296,7 @@ const findForegroundServer = Effect.fn("cli.update.find_foreground_server")(func
 const belongsToBootService = Effect.fn("cli.update.belongs_to_boot_service")(function* (
   pid: number,
 ) {
-  const platform = yield* HostProcessPlatform;
+  const platform = yield* HostProcess.Platform;
   const fs = yield* FileSystem.FileSystem;
   const runner = yield* ProcessRunner.ProcessRunner;
   if (platform === "linux") {
@@ -343,9 +337,9 @@ const runUpdate = Effect.fn("cli.update.run")(function* (input: {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const runner = yield* ProcessRunner.ProcessRunner;
-  const platform = yield* HostProcessPlatform;
-  const arch = yield* HostProcessArchitecture;
-  const environment = yield* HostProcessEnvironment;
+  const platform = yield* HostProcess.Platform;
+  const arch = yield* HostProcess.Architecture;
+  const environment = yield* HostProcess.Environment;
   const httpClient = yield* HttpClient.HttpClient;
   const service = yield* BootService.BootService;
 
@@ -397,7 +391,7 @@ const runUpdate = Effect.fn("cli.update.run")(function* (input: {
   // Work out everything that will be touched before touching anything, so the
   // user sees one plan and one question rather than a surprise restart.
   const status = yield* service.status;
-  // The unit name is per user, not per T3 home. Only touch the service when it
+  // The unit name is per user, not per Vetra home. Only touch the service when it
   // serves the home this update targets; otherwise it belongs to another
   // install on this machine and restarting it would take that server down.
   const servesThisHome =
@@ -466,7 +460,7 @@ const runUpdate = Effect.fn("cli.update.run")(function* (input: {
   let restartService = false;
   if (serviceInstalled && !serviceCurrent) {
     yield* Console.log(
-      "  A background service is installed for this T3 home. Restarting it interrupts anything running in it: agent turns, terminals, remote clients.",
+      "  A background service is installed for this Vetra home. Restarting it interrupts anything running in it: agent turns, terminals, remote clients.",
     );
     if (input.assumeYes) {
       restartService = true;
@@ -534,7 +528,7 @@ const runUpdate = Effect.fn("cli.update.run")(function* (input: {
     ),
   );
 
-  const launchedAs = (yield* HostProcessIsExecutable) ? yield* resolveLauncherPath : undefined;
+  const launchedAs = (yield* HostProcess.IsExecutable) ? yield* resolveLauncherPath : undefined;
   const repointed = yield* repointLauncher({
     launchedAs,
     versionsDir: path.dirname(runtime.versionDir),
@@ -591,7 +585,7 @@ const runUpdate = Effect.fn("cli.update.run")(function* (input: {
     );
   } else if (status.installed && !servesThisHome) {
     yield* Console.log(
-      `  The background service serves ${status.installedBaseDir ?? "another T3 home"} and was left unchanged.`,
+      `  The background service serves ${status.installedBaseDir ?? "another Vetra home"} and was left unchanged.`,
     );
   }
   if (foreground !== undefined) {

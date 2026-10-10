@@ -71,7 +71,7 @@ async function renderPanel(overrides: Partial<ComponentProps<typeof RightPanelTa
         desktopByTabId={{}}
         terminalLabelsById={new Map()}
         onActivate={noop}
-        onReorder={noop}
+        onMoveSurface={noop}
         onCloseSurface={noop}
         onCloseOtherSurfaces={noop}
         onCloseSurfacesToRight={noop}

@@ -31,11 +31,11 @@ import {
 import { fromProviders, IssueProviderRegistry } from "../issue/IssueProviderRegistry.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as ProjectService from "../project/ProjectService.ts";
-import * as GitHubApi from "../sourceControl/GitHubApi.ts";
-import * as GitHubQuota from "../sourceControl/githubQuota.ts";
-import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
+import * as GitHubApi from "@t3tools/source-control-github/server/GitHubApi";
+import * as GitHubQuota from "@t3tools/source-control-github/server/GitHubQuota";
+import * as SourceControlRateLimit from "@t3tools/source-control-core/server/SourceControlRateLimit";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
-import * as SourceControlProvider from "../sourceControl/SourceControlProvider.ts";
+import * as SourceControlProvider from "@t3tools/source-control-core/server/SourceControlProvider";
 import * as TicketGitHub from "./TicketGitHub.ts";
 import * as TicketGitHubSync from "./TicketGitHubSync.ts";
 import * as TicketService from "./TicketService.ts";
@@ -494,7 +494,7 @@ describe("TicketGitHubSync", () => {
           "x-ratelimit-reset": String(Date.parse("2026-09-01T01:00:00.000Z") / 1_000),
         });
         fake.beforeRead = Effect.gen(function* () {
-          const allowReserve = yield* GitHubApi.AllowGitHubReserve;
+          const allowReserve = yield* SourceControlRateLimit.Interactive;
           yield* quota.admit(SOURCE.host, "graphql", { allowReserve });
         }).pipe(
           Effect.mapError(

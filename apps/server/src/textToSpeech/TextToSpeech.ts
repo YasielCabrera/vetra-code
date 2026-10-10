@@ -24,7 +24,7 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http";
-import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as NodeCrypto from "node:crypto";
 import * as NodeFSP from "node:fs/promises";
 
@@ -237,7 +237,7 @@ export const makeTextToSpeech = Effect.fn("TextToSpeech.make")(function* (option
 }) {
   const sources = options.sources ?? MODEL_SOURCES;
   const supported = KOKORO_PLATFORMS.has(
-    `${yield* HostProcessPlatform}-${yield* HostProcessArchitecture}`,
+    `${yield* HostProcess.Platform}-${yield* HostProcess.Architecture}`,
   );
   const totalBytes = (model: TextToSpeechModelId) =>
     sources[model].files.reduce((sum, file) => sum + file.bytes, 0);

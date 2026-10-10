@@ -33,7 +33,6 @@ import {
   Plug2Icon,
   Maximize2Icon,
   Minimize2Icon,
-  SearchIcon,
   UserLockIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -2152,10 +2151,6 @@ function PullRequestsRouteView() {
     useRightPanelStore.getState().closeAllSurfaces(rightPanelRef);
     selectSurfaceInUrl(null);
   };
-  const moveSurface = (surfaceId: string, targetSurfaceId: string) => {
-    if (rightPanelRef === null) return;
-    useRightPanelStore.getState().moveSurface(rightPanelRef, surfaceId, targetSurfaceId);
-  };
 
   // This page has no ChatView, so it handles the shared panel shortcuts itself.
   const copyPullRequestFromShortcut = useEffectEvent((event: KeyboardEvent) => {
@@ -2232,7 +2227,7 @@ function PullRequestsRouteView() {
             onActivate={(surface) => {
               if (surface.kind === "pull-request") activateSurface(surface);
             }}
-            onReorder={moveSurface}
+
             onCloseSurface={(surface) => {
               if (surface.kind === "pull-request") closeSurface(surface);
             }}
@@ -2243,6 +2238,10 @@ function PullRequestsRouteView() {
               if (surface.kind === "pull-request") closeSurfacesToRight(surface);
             }}
             onCloseAllSurfaces={closeAllSurfaces}
+            onMoveSurface={(surfaceId, toIndex) => {
+              if (rightPanelRef !== null)
+                useRightPanelStore.getState().moveSurface(rightPanelRef, surfaceId, toIndex);
+            }}
             onCopyFilePath={() => undefined}
             onAddBrowser={() => undefined}
             onAddBrowserInProfile={() => undefined}

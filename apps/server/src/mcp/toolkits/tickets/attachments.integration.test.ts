@@ -35,7 +35,7 @@ import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementSer
 import * as SqlitePersistence from "../../../persistence/Sqlite.ts";
 import * as ProjectFaviconResolver from "../../../project/ProjectFaviconResolver.ts";
 import * as T3ProjectFileLoader from "../../../project/T3ProjectFileLoader.ts";
-import * as GitHubCredentials from "../../../sourceControl/GitHubCredentials.ts";
+import * as GitHubCredentials from "@t3tools/source-control-github/server/GitHubCredentials";
 import * as SourceControlAttachmentResolver from "../../../sourceControl/SourceControlAttachmentResolver.ts";
 import * as TicketGitHub from "../../../ticket/TicketGitHub.ts";
 import * as TicketService from "../../../ticket/TicketService.ts";

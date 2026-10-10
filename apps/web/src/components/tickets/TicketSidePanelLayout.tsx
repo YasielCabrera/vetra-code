@@ -1,8 +1,8 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import { isElectron } from "../../env";
 import { useResizableWidth } from "../../hooks/useResizableWidth";
-import { useElementWidth } from "../../hooks/useElementWidth";
+import { observeResize } from "../../lib/observeResize";
 import { useViewportWidth } from "../../hooks/useViewportWidth";
 import { cn } from "../../lib/utils";
 import { RightPanelResizeHandle } from "../preview/RightPanelResizeHandle";
@@ -12,7 +12,14 @@ const PANEL_VIEWPORT_RESERVE = 640;
 const SIDE_PANEL_MIN_VIEWPORT = 1024;
 
 export function useSidePanelFits(presentation: "page" | "panel" = "page") {
-  const [ref, measuredWidth] = useElementWidth<HTMLDivElement>();
+  const [element, ref] = useState<HTMLDivElement | null>(null);
+  const [measuredWidth, setMeasuredWidth] = useState(0);
+  useEffect(() => {
+    if (!element || presentation !== "panel") return;
+    return observeResize(element, ([entry]) => {
+      if (entry) setMeasuredWidth(entry.contentRect.width);
+    });
+  }, [element, presentation]);
   const viewportWidth = useViewportWidth();
   const width = presentation === "panel" ? (measuredWidth ?? 0) : viewportWidth;
   return { ref, width, sidePanel: width >= SIDE_PANEL_MIN_VIEWPORT };

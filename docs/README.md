@@ -24,6 +24,7 @@
 - [Visual replies](./user/html-renders.md)
 - [Import browser sessions](./user/browser-import.md)
 - [Devices and simulators](./user/devices.md)
+- [Use Vetra Code as your default browser](./user/default-browser.md)
 - [Remote access](./user/remote-access.md)
 - [Outside agents (MCP)](./user/outside-agents.md)
 - [Keeping app and server in sync](./user/updating.md)

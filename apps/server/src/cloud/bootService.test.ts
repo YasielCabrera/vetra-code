@@ -1,10 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
-import {
-  HostProcessExecutablePath,
-  HostProcessPlatform,
-  HostProcessUserId,
-} from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -40,7 +36,7 @@ it("runs the pinned runtime's own executable as the systemd launcher", () => {
   expect(unit).not.toContain("node");
 });
 
-it("reads the served T3 home back out of a rendered unit or plist", () => {
+it("reads the served Vetra home back out of a rendered unit or plist", () => {
   const plan = (baseDir: string) => ({
     program: [`${baseDir}/runtime/versions/1.2.3/vetra`, "__service-launcher"],
     baseDir,
@@ -137,7 +133,7 @@ const makeHarness = Effect.fn("test.make_boot_service_harness")(function* (
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const home = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-boot-service-test-" });
-  const baseDir = path.join(home, ".t3");
+  const baseDir = path.join(home, ".vetra-code");
   const statePath = path.join(baseDir, "runtime", "service-state.json");
   // A complete pinned runtime is already present, so install only validates
   // it and never downloads a release archive.
@@ -228,9 +224,9 @@ const makeHarness = Effect.fn("test.make_boot_service_harness")(function* (
       Effect.provideService(ProcessRunner.ProcessRunner, runner),
       Effect.provide(
         Layer.mergeAll(
-          Layer.succeed(HostProcessPlatform, platform),
-          Layer.succeed(HostProcessUserId, 501),
-          Layer.succeed(HostProcessExecutablePath, "/usr/bin/vetra"),
+          Layer.succeed(HostProcess.Platform, platform),
+          Layer.succeed(HostProcess.UserId, 501),
+          Layer.succeed(HostProcess.ExecutablePath, "/usr/bin/vetra"),
           Layer.succeed(
             HttpClient.HttpClient,
             HttpClient.make(() => Effect.die("no release download expected")),
@@ -590,7 +586,7 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
     }),
   );
 
-  it.effect("restart leaves a service that serves another T3 home alone", () =>
+  it.effect("restart leaves a service that serves another Vetra home alone", () =>
     Effect.gen(function* () {
       const { service, fs, commands, makeService } = yield* makeHarness();
       yield* service.install();
@@ -598,7 +594,7 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
       const path = yield* Path.Path;
       const otherHome = yield* fs.makeTempDirectoryScoped({ prefix: "vetra-other-home-" });
 
-      const other = yield* makeService(undefined, "1.2.3", path.join(otherHome, ".t3"));
+      const other = yield* makeService(undefined, "1.2.3", path.join(otherHome, ".vetra-code"));
       expect(yield* other.restart).toBe(false);
       expect(commands.filter((command) => command.startsWith("systemctl "))).toEqual([]);
     }),

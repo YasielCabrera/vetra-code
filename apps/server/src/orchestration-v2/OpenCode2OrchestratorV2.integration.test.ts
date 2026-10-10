@@ -72,7 +72,7 @@ const event = (type: string, data: Record<string, unknown>): ProviderReplayEntry
 const labelled = (entry: ProviderReplayEntry, label: string): ProviderReplayEntry =>
   entry.type === "runtime_exit" ? entry : { ...entry, label };
 /**
- * T3's own rules after a mode's: every thread's T3 MCP server is denied, and
+ * Vetra Code's own rules after a mode's: every thread's T3 MCP server is denied, and
  * then this thread's own is allowed again (last match wins).
  */
 const mcpRules = (name: string) => [
@@ -151,9 +151,10 @@ const planRules = (name: string) => [
   ...mcpRules(name),
 ];
 
-const sessionInfo = (directory: string, permissions: ReadonlyArray<unknown>) => ({
+const sessionInfo = (directory: string, permissions: ReadonlyArray<unknown>, title: string) => ({
   data: {
     id: SESSION,
+    title,
     projectID: "global",
     model: { id: "big-pickle", providerID: "opencode", variant: "default" },
     cost: 0,
@@ -163,7 +164,7 @@ const sessionInfo = (directory: string, permissions: ReadonlyArray<unknown>) => 
     permissions,
   },
 });
-/** T3's instructions entry, written before a thread's first prompt and whenever it changes. */
+/** Vetra Code's instructions entry, written before a thread's first prompt and whenever it changes. */
 const instructionsWritten: ReadonlyArray<ProviderReplayEntry> = [
   out("session.instructions.entry.put", { sessionID: SESSION, key: "vetra-code", value: "<any>" }),
   reply("session.instructions.entry.put", null),
@@ -235,8 +236,9 @@ const createdSession = (
     ],
   }),
   ...(narrows ? [out("agent.list", "<any>"), reply("agent.list", agentList(directory))] : []),
-  out("session.create", { location: { directory }, model: "<any>", permissions }),
-  reply("session.create", sessionInfo(directory, permissions)),
+  // The thread's title, which is its name here.
+  out("session.create", { location: { directory }, model: "<any>", permissions, title: name }),
+  reply("session.create", sessionInfo(directory, permissions, name)),
 ];
 
 /** A recording with its scrubbed `<work>` directory replaced by `directory`. */
@@ -348,7 +350,7 @@ describe("OpenCode 2 through the orchestrator", () => {
             ...answeredPrompt("FIRST"),
             // The next turn resumes the session at its new selection.
             out("session.get", { sessionID: SESSION }),
-            reply("session.get", sessionInfo(cwd, t3Rules(name))),
+            reply("session.get", sessionInfo(cwd, t3Rules(name), name)),
             out("session.switchModel", {
               sessionID: SESSION,
               model: { providerID: "opencode", id: "mimo-v2.6-flash-free" },
@@ -401,7 +403,7 @@ describe("OpenCode 2 through the orchestrator", () => {
           ...answeredPrompt("FIRST"),
           ...directoryModels(after),
           out("session.get", { sessionID: SESSION }),
-          reply("session.get", sessionInfo(before, t3Rules(name))),
+          reply("session.get", sessionInfo(before, t3Rules(name), name)),
           // The worktree change detached the thread, so its session is loaded afresh.
           ...noOpenRequests,
           out("session.move", { sessionID: SESSION, directory: after }),
@@ -430,7 +432,7 @@ describe("OpenCode 2 through the orchestrator", () => {
     }).pipe(Effect.scoped),
   );
 
-  it.effect("gives a session made with older rules T3's rules before its next prompt", () =>
+  it.effect("gives a session made with older rules Vetra Code's rules before its next prompt", () =>
     Effect.gen(function* () {
       const name = "opencode2-resume-rules";
       const before = yield* checkpointWorkspace(`${name}-before`);
@@ -450,10 +452,14 @@ describe("OpenCode 2 through the orchestrator", () => {
           out("session.get", { sessionID: SESSION }),
           reply(
             "session.get",
-            sessionInfo(before, [
-              { action: "*", resource: "*", effect: "allow" },
-              { action: "subagent", resource: "*", effect: "deny" },
-            ]),
+            sessionInfo(
+              before,
+              [
+                { action: "*", resource: "*", effect: "allow" },
+                { action: "subagent", resource: "*", effect: "deny" },
+              ],
+              name,
+            ),
           ),
           ...noOpenRequests,
           out("session.update", { sessionID: SESSION, permissions: t3Rules(name) }),
@@ -531,7 +537,7 @@ describe("OpenCode 2 through the orchestrator", () => {
           ...answeredPrompt("FIRST"),
           // A mode change detaches nothing: the same session is resumed with the new rules.
           out("session.get", { sessionID: SESSION }),
-          reply("session.get", sessionInfo(cwd, t3Rules(name))),
+          reply("session.get", sessionInfo(cwd, t3Rules(name), name)),
           out("agent.list", "<any>"),
           reply("agent.list", agentList(cwd)),
           out("session.update", { sessionID: SESSION, permissions: autoEditRules(name) }),
@@ -539,7 +545,7 @@ describe("OpenCode 2 through the orchestrator", () => {
           ...answeredPrompt("SECOND"),
           // Back to Full access: the narrowing rules go.
           out("session.get", { sessionID: SESSION }),
-          reply("session.get", sessionInfo(cwd, autoEditRules(name))),
+          reply("session.get", sessionInfo(cwd, autoEditRules(name), name)),
           out("session.update", { sessionID: SESSION, permissions: t3Rules(name) }),
           reply("session.update", null),
           ...answeredPrompt("THIRD"),
@@ -577,7 +583,7 @@ describe("OpenCode 2 through the orchestrator", () => {
           ...instructionsWritten,
           ...answeredPrompt("PLANNED"),
           out("session.get", { sessionID: SESSION }),
-          reply("session.get", sessionInfo(cwd, planRules(name))),
+          reply("session.get", sessionInfo(cwd, planRules(name), name)),
           out("session.update", { sessionID: SESSION, permissions: t3Rules(name) }),
           reply("session.update", null),
           out("session.switchAgent", { sessionID: SESSION, agent: "build" }),

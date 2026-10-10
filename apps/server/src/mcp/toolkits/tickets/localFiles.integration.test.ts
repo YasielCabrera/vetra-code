@@ -37,7 +37,7 @@ import {
   resolveAttachmentPathById,
 } from "../../../attachmentStore.ts";
 import * as ServerConfig from "../../../config.ts";
-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementService.ts";
 import * as SqlitePersistence from "../../../persistence/Sqlite.ts";
 import * as TicketGitHub from "../../../ticket/TicketGitHub.ts";
@@ -53,7 +53,7 @@ const encodeGitHubSnapshot = Schema.encodeEffect(Schema.fromJsonString(GitHubIss
 const callerId = ThreadId.make("caller-thread");
 const providerInstanceId = ProviderInstanceId.make("codex");
 const externalLayers = Layer.mergeAll(
-  Layer.succeed(HostProcessPlatform, HostProcessPlatform.defaultValue()),
+  Layer.succeed(HostProcess.Platform, HostProcess.Platform.defaultValue()),
   Layer.succeed(McpInvocationContext.McpInvocationContext, {
     environmentId: EnvironmentId.make("environment"),
     requestNamespace: "session",
@@ -318,7 +318,7 @@ describe("one-call local ticket and plan attachments", () => {
     }).pipe(Effect.provide(layerFor())),
   );
 
-  it.live.skipIf(HostProcessPlatform.defaultValue() === "win32")(
+  it.live.skipIf(HostProcess.Platform.defaultValue() === "win32")(
     "preserves exact spaced paths and basenames when adjacent filenames contain different bytes",
     () =>
       Effect.gen(function* () {
@@ -625,12 +625,12 @@ describe("one-call local ticket and plan attachments", () => {
           directory,
         ];
         let unreadable: string | undefined;
-        if ((yield* HostProcessPlatform) !== "win32" && process.getuid?.() !== 0) {
+        if ((yield* HostProcess.Platform) !== "win32" && process.getuid?.() !== 0) {
           unreadable = (yield* source("unreadable.txt", "private")).path;
           yield* fs.chmod(unreadable, 0o000);
           invalid.push(unreadable);
         }
-        if ((yield* HostProcessPlatform) !== "win32") {
+        if ((yield* HostProcess.Platform) !== "win32") {
           const fifo = path.join(directory, "fifo");
           const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
           const process = yield* spawner.spawn(ChildProcess.make("mkfifo", [fifo]));

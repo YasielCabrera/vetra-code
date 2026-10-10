@@ -12,7 +12,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { type ProviderReplayEntry } from "@t3tools/contracts";
 import { GrokSettings } from "@t3tools/provider-grok/settings";
-import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import { resolveSelfInvocation } from "@t3tools/shared/nodeRuntime";
 import * as Clock from "effect/Clock";
 import * as Console from "effect/Console";
@@ -21,10 +21,9 @@ import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import { ChildProcessSpawner } from "effect/process";
 import type * as EffectAcpProtocol from "effect-acp/protocol";
 
-import { layerTestProviderHost } from "@t3tools/provider-testing/host";
+import * as TestProviderHost from "@t3tools/provider-testing/TestProviderHost";
 import {
   GROK_DEFAULT_INSTANCE_ID,
   GROK_PROVIDER,
@@ -33,8 +32,8 @@ import {
 } from "@t3tools/provider-grok/testing";
 import { ACP_PROTOCOL } from "@t3tools/provider-acp/server/adapter";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
-import type { ProviderAdapterV2SessionRuntime } from "@t3tools/provider-core/server/ProviderAdapter";
-import * as ProviderContinuationRequests from "@t3tools/provider-core/server/continuationRequests";
+import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
+import * as ProviderContinuationRequests from "@t3tools/provider-core/server/ProviderContinuationRequests";
 import * as ProviderAdapterRegistry from "../src/orchestration-v2/ProviderAdapterRegistry.ts";
 import { provideDeterministicTestRuntime } from "../src/orchestration-v2/testkit/DeterministicRuntime.ts";
 import { ORCHESTRATOR_REPLAY_FIXTURES } from "../src/orchestration-v2/testkit/fixtures/index.ts";
@@ -116,7 +115,7 @@ function makeWireTee() {
     };
   };
   // Grok runs its own wake turns (`task-completed-*`, `notifications-*`,
-  // `subagent-completed-*`) after T3's run can already have settled, and its
+  // `subagent-completed-*`) after Vetra Code's run can already have settled, and its
   // session roster can report idle before them. Grok is done when no session
   // has a queued or running prompt (`x.ai/queue/changed` vs `turn_completed`),
   // no background task still runs (`background_tasks`), and every spawned
@@ -205,7 +204,7 @@ function wireToEntries(wire: ReadonlyArray<WireMessage>): {
     const method = pending.get(String(message.id));
     if (method === undefined) {
       // Grok answers its own internal requests (e.g. id "skills-reload") on the
-      // shared stream; T3's protocol drops those, so replay never sees them.
+      // shared stream; Vetra Code's protocol drops those, so replay never sees them.
       droppedFrames += 1;
       continue;
     }
@@ -443,13 +442,12 @@ const recordScenario = Effect.fn("recordGrokScenario")(function* (fixtureName: s
   const settings = { ...DEFAULT_GROK_SETTINGS, binaryPath: process.env.VETRA_GROK_BIN ?? "grok" };
   const layerRegistry = ProviderAdapterRegistry.layerFromAdaptersEffect(
     Effect.gen(function* () {
-      const childProcessSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-      const environment = yield* HostProcessEnvironment;
+      const environment = yield* HostProcess.Environment;
       const adapter = yield* makeGrokAdapterV2({
         instanceId: GROK_DEFAULT_INSTANCE_ID,
         settings,
         environment,
-        hostPlatform: yield* HostProcessPlatform,
+        hostPlatform: yield* HostProcess.Platform,
         selfInvocation: yield* resolveSelfInvocation(),
         continuationRequests: yield* ProviderContinuationRequests.ProviderContinuationRequests,
         // Production's runtime factory, with the protocol logger teeing raw lines.
@@ -460,7 +458,6 @@ const recordScenario = Effect.fn("recordGrokScenario")(function* (fixtureName: s
             interruptPromptOnCancel: input.interruptPromptOnCancel ?? false,
             grokSettings: settings,
             environment,
-            childProcessSpawner,
             runtimeMode: grokLaunchRuntimeMode(runtimePolicy),
           }),
       });
@@ -474,7 +471,7 @@ const recordScenario = Effect.fn("recordGrokScenario")(function* (fixtureName: s
           ...adapter,
           openSession: (input) =>
             adapter.openSession(input).pipe(
-              Effect.map((session): ProviderAdapterV2SessionRuntime => ({
+              Effect.map((session): ProviderAdapter.ProviderAdapterV2SessionRuntime => ({
                 ...session,
                 startTurn: (turnInput) => onWallClock(session.startTurn(turnInput)),
                 steerTurn: (turnInput) => onWallClock(session.steerTurn(turnInput)),
@@ -490,7 +487,7 @@ const recordScenario = Effect.fn("recordGrokScenario")(function* (fixtureName: s
   ).pipe(
     Layer.provide(
       Layer.mergeAll(
-        layerTestProviderHost().pipe(Layer.provide(NodeServices.layer)),
+        TestProviderHost.layer().pipe(Layer.provide(NodeServices.layer)),
         NodeServices.layer,
         IdAllocator.layer,
       ),
@@ -558,7 +555,7 @@ const recordScenario = Effect.fn("recordGrokScenario")(function* (fixtureName: s
       generatedBy: "live-grok-recorder",
       grokVersion: initializeMeta.agentVersion ?? "unknown",
       normalization:
-        "Session ids are fixed UUIDs, the workspace is <workspace>, HOME is /home/grok-replay and the recording user is grok-replay. Vetra-owned prompt text, MCP servers and initialize params other than clientCapabilities and _meta are <any>. Personal skills, machine identity, account settings and announcement broadcasts are removed, as are responses to Grok-internal request ids that T3's protocol drops. Timestamps are kept as recorded.",
+        "Session ids are fixed UUIDs, the workspace is <workspace>, HOME is /home/grok-replay and the recording user is grok-replay. Vetra-owned prompt text, MCP servers and initialize params other than clientCapabilities and _meta are <any>. Personal skills, machine identity, account settings and announcement broadcasts are removed, as are responses to Grok-internal request ids that Vetra Code's protocol drops. Timestamps are kept as recorded.",
       droppedFrames,
     },
     entries: [

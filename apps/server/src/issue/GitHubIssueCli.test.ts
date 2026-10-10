@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 
-import * as GitHubApi from "../sourceControl/GitHubApi.ts";
+import * as GitHubApi from "@t3tools/source-control-github/server/GitHubApi";
 import * as GitHubIssueCli from "./GitHubIssueCli.ts";
 
 const graphql = vi.fn<GitHubApi.GitHubApi["Service"]["graphql"]>();

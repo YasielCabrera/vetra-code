@@ -65,7 +65,7 @@ const readyAllocation: ManagedEndpointAllocations.ManagedEndpointAllocation = {
   environmentId,
   hostname: "env.example.test",
   tunnelId: "tunnel-id",
-  tunnelName: `t3coderelay-managedendpoint-dev-${endpointKey}`,
+  tunnelName: `vetracoderelay-managedendpoint-dev-${endpointKey}`,
   dnsRecordId: "dns-record-id",
   readyAt: "2026-05-25T00:00:00.000Z",
   tunnelReleasedAt: null,
@@ -600,7 +600,7 @@ describe("HookForwarder", () => {
       expect(serialized).not.toContain("also-secret");
       expect(serialized).not.toContain("header-secret");
       const server = spans.find((span) => span.kind === "server");
-      expect(server?.attributes.get("url.path")).toBe(`/v1/hooks/${endpointKey}/hook-1/<redacted>`);
+      expect(server?.attributes.get("url.path")).toBe(`/v1/hooks/${endpointKey}/hook-1/redacted`);
     }),
   );
 
@@ -639,7 +639,7 @@ describe("HookForwarder", () => {
       const servers = spans.filter((span) => span.kind === "server");
       expect(servers).toHaveLength(1);
       expect(servers[0]?.attributes.get("url.path")).toBe(
-        `/v1/hooks/${endpointKey}/hook-1/<redacted>`,
+        `/v1/hooks/${endpointKey}/hook-1/redacted`,
       );
       expect(spans.every((span) => span.traceId !== "11111111111111111111111111111111")).toBe(true);
     }),

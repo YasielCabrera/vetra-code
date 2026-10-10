@@ -122,7 +122,7 @@ function renderTabs(
       {...(previewRuntimeTabId ? { previewRuntimeTabId } : {})}
       terminalLabelsById={new Map()}
       onActivate={() => undefined}
-      onReorder={() => undefined}
+      onMoveSurface={() => undefined}
       onCloseSurface={() => undefined}
       onCloseOtherSurfaces={() => undefined}
       onCloseSurfacesToRight={() => undefined}
@@ -201,7 +201,7 @@ function renderLauncher(
       desktopByTabId={{}}
       terminalLabelsById={new Map()}
       onActivate={() => undefined}
-      onReorder={() => undefined}
+      onMoveSurface={() => undefined}
       onCloseSurface={() => undefined}
       onCloseOtherSurfaces={() => undefined}
       onCloseSurfacesToRight={() => undefined}

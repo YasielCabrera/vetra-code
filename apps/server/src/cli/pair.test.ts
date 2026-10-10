@@ -7,7 +7,7 @@ import * as NodePath from "node:path";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { AuthStandardClientScopes } from "@t3tools/contracts";
 import * as NetService from "@t3tools/shared/Net";
-import { HostProcessEnvironment } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import { assert, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -184,7 +184,7 @@ describe("vetra pair", () => {
       }),
     ).pipe(
       Effect.provide(NodeServices.layer),
-      Effect.provideService(HostProcessEnvironment, {
+      Effect.provideService(HostProcess.Environment, {
         ...process.env,
         [SERVICE_LAUNCHER_CONTEXT_ENV]: JSON.stringify({
           protocol: SERVICE_LAUNCHER_PROTOCOL,
@@ -390,7 +390,7 @@ describe("auth scope options", () => {
       if (!CliError.isCliError(error) || error._tag !== "ShowHelp") {
         assert.fail(`Expected ShowHelp, got ${String(error)}`);
       }
-      assert.deepEqual(error.commandPath, ["t3", ...command]);
+      assert.deepEqual(error.commandPath, ["vetra", ...command]);
       const scopeError = error.errors[0];
       if (scopeError?._tag !== "InvalidValue") {
         assert.fail(`Expected InvalidValue, got ${String(scopeError?._tag)}`);

@@ -1,3 +1,4 @@
+import * as ServerPreviewWallet from "../web3/ServerPreviewWallet.ts";
 import * as Orchestrator from "../orchestration-v2/Orchestrator.ts";
 import * as ProjectionStore from "../orchestration-v2/ProjectionStore.ts";
 import { expect, it } from "@effect/vitest";
@@ -17,8 +18,14 @@ import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
-import { McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai";
-import { HttpBody, HttpClient, HttpRouter, HttpServerResponse } from "effect/http";
+import { McpSchema, McpServer, Tool, Toolkit } from "effect/ai";
+import {
+  HttpBody,
+  HttpClient,
+  HttpClientRequest,
+  HttpRouter,
+  HttpServerResponse,
+} from "effect/http";
 
 import * as ProjectService from "../project/ProjectService.ts";
 import * as ServerConfig from "../config.ts";
@@ -62,6 +69,7 @@ const client = McpSchema.McpServerClient.of({
 const layerPreviewTest = (walletEnabled = false) =>
   McpHttpServer.layerPreviewToolkit.pipe(
     Layer.provideMerge(McpServer.McpServer.layer),
+    Layer.provideMerge(Layer.mock(ServerPreviewWallet.ServerPreviewWallet)({})),
     Layer.provideMerge(McpToolAccessTestkit.liveThreadsLayer),
     Layer.provideMerge(PreviewAutomationBroker.layer),
     Layer.provideMerge(
@@ -249,14 +257,14 @@ it.effect.each([
   ).pipe(Effect.provide(layerTest)),
 );
 
-it.effect("tells the agent how to fall back when no desktop app can run the snapshot", () =>
+it.effect("tells the agent how to recover when no preview host can run the snapshot", () =>
   Effect.gen(function* () {
     const snapshot = yield* callSnapshot({});
 
     expect(snapshot.isError).toBe(true);
     const [text] = snapshot.content;
     expect(text?.type === "text" ? text.text : "").toContain(
-      "use a headless browser from the shell",
+      "Retry preview_status, then call preview_open",
     );
     expect(snapshot.structuredContent).toMatchObject({
       error: { _tag: "PreviewAutomationNoAvailableHostError" },
@@ -767,17 +775,38 @@ it.effect("sheds log entries before locators when every list is full", () =>
 it.effect("terminates HTTP MCP sessions with DELETE", () =>
   Effect.scoped(
     Effect.gen(function* () {
-      const layerServer = McpServer.layerHttp({
-        name: "MCP termination test",
-        version: "1.0.0",
-        path: "/mcp",
-        protocols: [McpProtocol.v2025_06_18],
-      });
+      const token = "providerTokenWithoutDots";
+      const scope: McpInvocationContext.McpInvocationScope = {
+        environmentId,
+        requestNamespace: "provider-session",
+        thread: {
+          threadId: ThreadId.make("thread-provider"),
+          providerSessionId: "provider-session",
+          providerInstanceId: ProviderInstanceId.make("codex"),
+        },
+        client: undefined,
+        capabilities: new Set(["orchestration"]),
+        issuedAt: 1,
+      };
+      const layerServer = McpHttpServer.layerMcpTransport.pipe(
+        Layer.provide(
+          Layer.mock(McpSessionRegistry.McpSessionRegistry)({
+            resolve: (presented) =>
+              Effect.succeed(
+                presented === token
+                  ? (scope as McpInvocationContext.McpThreadInvocationScope)
+                  : undefined,
+              ),
+          }),
+        ),
+      );
       yield* HttpRouter.serve(layerServer, {
         disableListenLog: true,
         disableLogger: true,
       }).pipe(Layer.build);
-      const httpClient = yield* HttpClient.HttpClient;
+      const httpClient = (yield* HttpClient.HttpClient).pipe(
+        HttpClient.mapRequest(HttpClientRequest.bearerToken(token)),
+      );
 
       const initializeResponse = yield* httpClient.post("/mcp", {
         headers: { accept: "application/json, text/event-stream" },

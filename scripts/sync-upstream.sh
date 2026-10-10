@@ -126,6 +126,7 @@ PRUNE_GLOBS=(
 # names this fork shares with upstream, and rewriting them is what used to make
 # every merge a conflict.
 RENAMES=(
+  't3coderelay-managedendpoint=vetracoderelay-managedendpoint'
   # Upstream tells users to run the published CLI as `npx t3 <cmd>`. The fork's
   # server package is private, so there is no npx entry point; the command is
   # just `vetra <cmd>`. Keyed on the whole prefix, ahead of the pairs below,
@@ -149,6 +150,9 @@ RENAMES=(
 
   # Desktop application identity. Two installed apps cannot share an
   # application id, a D-Bus name, or a URL scheme.
+  # Guest renderer switch and annotation theme variables carry product identity.
+  '--t3code-preview-passkey-bridge=--vetra-code-preview-passkey-bridge'
+  '--t3-=--vetra-'
   'com.t3tools.t3code=com.vetra.code'
   # The same id in upstream's PascalCase spelling, used by the Linux
   # window-capture code as a D-Bus well-known name and a desktop-entry name.
@@ -183,6 +187,9 @@ RENAMES=(
   't3code://=vetra://'
   # The systemd unit the CLI installs. Two units cannot share a name.
   't3code.service=vetra-code.service'
+  't3.cmd=vetra.cmd'
+  'schemes: ["t3code", "t3code-dev"]=schemes: ["vetra", "vetra-dev"]'
+  'com\.t3tools\.t3code=com\.vetra\.code'
 
   # Environment variables. A machine can run both products, and an exported
   # T3CODE_HOME must not reach into this one's state. Note the leftover grep
@@ -253,6 +260,11 @@ RENAMES=(
   # leftover grep matches it.
   'T3 CODE=VETRA CODE'
   'T3 Code=Vetra Code'
+  "T3's=Vetra Code's"
+  'T3 home=Vetra home'
+  'T3 is still installing=Vetra Code is still installing'
+  'sudo t3 browser setup=sudo vetra browser setup'
+  '"user-agent": "t3code"="user-agent": "vetra-code"'
   'T3-Code=Vetra-Code'
   'T3 Connect=Vetra Connect'
   'T3 Chat=Vetra Chat'

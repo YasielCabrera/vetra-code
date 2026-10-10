@@ -19,6 +19,10 @@
       "types": "./src/server/acpSupport.ts",
       "import": "./src/server/acpSupport.ts"
     },
+    "./server/usage": {
+      "types": "./src/server/usage.ts",
+      "import": "./src/server/usage.ts"
+    },
     "./testing": {
       "types": "./src/testing.ts",
       "import": "./src/testing.ts"

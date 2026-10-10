@@ -6,7 +6,7 @@ import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
 import { FetchHttpClient, HttpClient } from "effect/http";
 
-import * as GitHubCredentials from "./GitHubCredentials.ts";
+import * as GitHubCredentials from "@t3tools/source-control-github/server/GitHubCredentials";
 
 const ATTACHMENT_REDIRECT_TIMEOUT = Duration.seconds(15);
 

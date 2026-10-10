@@ -1,3 +1,6 @@
+import * as ServerSourceControlHost from "./ServerSourceControlHost.ts";
+import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
+import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { afterEach, beforeEach, describe, expect, it, vi } from "@effect/vitest";
 import * as Effect from "effect/Effect";
@@ -7,7 +10,7 @@ import { FetchHttpClient } from "effect/http";
 
 import * as ServerSettings from "../serverSettings.ts";
 import * as VcsProcess from "../vcs/VcsProcess.ts";
-import * as GitHubCredentials from "./GitHubCredentials.ts";
+import * as GitHubCredentials from "@t3tools/source-control-github/server/GitHubCredentials";
 import * as SourceControlAttachmentResolver from "./SourceControlAttachmentResolver.ts";
 
 const ATTACHMENT_URL =
@@ -27,6 +30,9 @@ const mockFetch = vi.fn<(...args: Parameters<typeof globalThis.fetch>) => Promis
 
 const layer = SourceControlAttachmentResolver.layer.pipe(
   Layer.provide(GitHubCredentials.layer),
+  Layer.provide(ServerSourceControlHost.layer),
+  Layer.provide(Layer.mock(GitVcsDriver.GitVcsDriver)({})),
+  Layer.provide(Layer.mock(VcsDriverRegistry.VcsDriverRegistry)({})),
   Layer.provide(Layer.mock(VcsProcess.VcsProcess)({ run: mockRun })),
   Layer.provide(ServerSettings.layerTest()),
   Layer.provide(FetchHttpClient.layer),

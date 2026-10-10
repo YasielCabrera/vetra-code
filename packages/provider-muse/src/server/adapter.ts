@@ -22,6 +22,7 @@ import {
   type ServerProviderModel,
 } from "@t3tools/contracts";
 import type { MuseSettings } from "../settings.ts";
+import { AgentScope } from "@t3tools/shared/AgentScope";
 import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
@@ -37,6 +38,7 @@ import * as Stream from "effect/Stream";
 
 import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
 import * as McpProviderSession from "@t3tools/provider-core/server/mcpSession";
+import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import { buildRuntimeInstructions } from "@t3tools/provider-core/server/runtimeInstructions";
 import { museModelCapabilities, resolveMuseReasoningEffort } from "./modelCatalog.ts";
 import {
@@ -74,7 +76,7 @@ import {
   backgroundWorkNotification,
   type BackgroundWorkReport,
 } from "@t3tools/provider-core/server/notification";
-import type * as ProviderContinuationRequests from "@t3tools/provider-core/server/continuationRequests";
+import type * as ProviderContinuationRequests from "@t3tools/provider-core/server/ProviderContinuationRequests";
 import { makeProviderFailure } from "@t3tools/provider-core/server/failure";
 import { turnScopedSelectionTransition } from "@t3tools/provider-core/server/selectionTransition";
 import { museItemStatus, museToolPresentation } from "./itemPresentation.ts";
@@ -236,7 +238,7 @@ const INFORMATIONAL_NOTIFICATIONS = new Set([
   "session/todoListChanged",
   "turn/retryScheduled",
 ]);
-// Tools whose results already show as their own rows: T3's todo list and question
+// Tools whose results already show as their own rows: Vetra Code's todo list and question
 // rows, and the workflow item a `workflow` call launches.
 const TOOLS_WITH_NATIVE_ROWS = new Set(["write_todos", "request_user_input", "workflow"]);
 const responseAnswerSchema = Schema.Union([Schema.String, Schema.Array(Schema.String)]);
@@ -248,6 +250,8 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
   const idAllocator = yield* IdAllocator.IdAllocatorV2;
   const providerHost = yield* ProviderHost.ProviderHost;
   const fileSystem = yield* FileSystem.FileSystem;
+  const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
+  const agentScope = yield* AgentScope;
 
   const protocolError = (detail: string, payload?: unknown) =>
     new ProviderAdapter.ProviderAdapterProtocolError({
@@ -785,7 +789,7 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
       });
       const owns = (turn: ActiveTurn, turnId: string) =>
         turnId === turn.nativeId || turn.joined.has(turnId);
-      /** Sends T3's decision for a pending approval to Muse. */
+      /** Sends Vetra Code's decision for a pending approval to Muse. */
       const decideApproval = Effect.fnUntraced(function* (
         entry: PendingRequest,
         decision: ProviderApprovalDecision | undefined,
@@ -1364,16 +1368,25 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
       );
       const launchHost = Effect.fnUntraced(function* () {
         const epoch = ++hostEpoch;
-        const mcpSession = McpProviderSession.readMcpProviderSession(input.threadId);
+        const mcpSession = yield* mcpSessions.read(input.threadId);
+        const environment = McpProviderSession.withAgentDeviceEnvironment(
+          options.environment,
+          mcpSession,
+        );
+        const launch = yield* agentScope.wrap({
+          command: options.settings.binaryPath || "muse",
+          args: [],
+          name: "muse",
+          threadId: input.threadId,
+          env: environment,
+        });
         const created = yield* Effect.acquireRelease(
           createMuseSdkHostEffect(
             {
-              binaryPath: options.settings.binaryPath || "muse",
+              binaryPath: launch.command,
+              launchArgs: launch.args,
               cwd,
-              environment: McpProviderSession.withAgentDeviceEnvironment(
-                options.environment,
-                mcpSession,
-              ),
+              environment,
               runtimeMode: input.runtimePolicy.runtimeMode,
             },
             options.createHost,
@@ -1478,7 +1491,7 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
         let missingNativeSession = false;
         return yield* Effect.gen(function* () {
           nativeSessionId = requestedId ?? host.connection.mintCommandId();
-          const mcpSession = McpProviderSession.readMcpProviderSession(args.threadId);
+          const mcpSession = yield* mcpSessions.read(args.threadId);
           if (mcpSession && !host.initializeResult.grantedCapabilities.includes("sessionMcp"))
             return yield* protocolError(
               "Update Muse Code to a version that supports session MCP servers",
@@ -1486,7 +1499,7 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
           const config = mcpSession
             ? {
                 mcpServers: {
-                  // Muse defaults to "required", which fails the whole run when T3's
+                  // Muse defaults to "required", which fails the whole run when Vetra Code's
                   // tools cannot be reached. The agent should still work without them.
                   "vetra-code": {
                     transport: "streamableHttp",

@@ -11,11 +11,11 @@ export const PIERRE_TREE_UNSAFE_CSS = `
     --trees-hover-bg-override: color-mix(in srgb, currentColor 7%, transparent);
     --trees-border-color-override: color-mix(in srgb, currentColor 14%, transparent);
     --trees-font-family-override: var(--font-sans);
-    --trees-font-size-override: 12px;
+    --trees-font-size-override: 0.75rem;
     --trees-status-added-override: var(--success);
     --trees-status-deleted-override: var(--destructive);
   }
-  button[data-type='item'] { border-radius: 5px; }
+  button[data-type='item'], button[data-type='item']::before { border-radius: var(--radius-md); }
   [data-item-contains-git-change='true'] > [data-item-section='content'] {
     color: var(--trees-git-modified-color);
     font-weight: var(--trees-font-weight-semibold);

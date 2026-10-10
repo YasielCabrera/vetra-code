@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Effect from "effect/Effect";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
@@ -62,12 +62,13 @@ const diagnose = (input: {
     version: input.version ?? LOADER_ERROR,
   });
   return PreviewBrowserHost.diagnoseLaunchFailure({
-    executable: "/home/me/.t3/tools/chrome-headless-shell/linux64/154/chrome-headless-shell",
+    executable:
+      "/home/me/.vetra-code/tools/chrome-headless-shell/linux64/154/chrome-headless-shell",
     output: input.output,
-    setupCommand: "sudo t3 browser setup",
+    setupCommand: "sudo vetra browser setup",
   }).pipe(
     Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
-    Effect.provideService(HostProcessPlatform, input.platform),
+    Effect.provideService(HostProcess.Platform, input.platform),
     Effect.map((error) => ({ error, commands })),
   );
 };
@@ -81,7 +82,7 @@ describe("diagnoseLaunchFailure", () => {
         ldd: "",
       });
       expect(error?._tag).toBe("PreviewBrowserSandboxError");
-      expect(error?.message).toContain("Run `sudo t3 browser setup` on the host");
+      expect(error?.message).toContain("Run `sudo vetra browser setup` on the host");
       expect(commands).toEqual([]);
     }),
   );
@@ -97,7 +98,7 @@ describe("diagnoseLaunchFailure", () => {
         _tag: "PreviewBrowserLibrariesError",
         libraries: ["libglib-2.0.so.0", "libnss3.so", "libX11.so.6"],
       });
-      expect(error?.message).toContain("Run `sudo t3 browser setup` on the host");
+      expect(error?.message).toContain("Run `sudo vetra browser setup` on the host");
     }),
   );
 

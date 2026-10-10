@@ -297,6 +297,7 @@ export const makeCodexSubscriptionUsageCapability = (input: {
   readonly settings: CodexSettings;
   readonly environment: NodeJS.ProcessEnv;
   readonly cwd: string;
+  readonly homeDirectory: string;
   readonly spawner: ChildProcessSpawner.ChildProcessSpawner["Service"];
   readonly localCost?: Effect.Effect<ProviderSubscriptionUsageCost | undefined, never>;
 }): ProviderSubscriptionUsageCapability => {
@@ -307,7 +308,7 @@ export const makeCodexSubscriptionUsageCapability = (input: {
   };
   const launchArgs = resolveCodexLaunchArgs(input.settings.launchArgs, input.environment);
   const resolvedHomePath = input.settings.homePath
-    ? expandHomePath(input.settings.homePath)
+    ? expandHomePath(input.settings.homePath, input.homeDirectory)
     : undefined;
   const environment = {
     ...input.environment,

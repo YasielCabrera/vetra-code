@@ -18,7 +18,7 @@ import { ProviderHost } from "@t3tools/provider-core/server/ProviderHost";
 import { CursorDriver } from "@t3tools/provider-cursor/server";
 import { GrokDriver } from "@t3tools/provider-grok/server";
 import { OpenCodeDriver } from "@t3tools/provider-opencode/server";
-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Effect from "effect/Effect";
 import { HttpClient } from "effect/http";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
@@ -28,12 +28,12 @@ import { makeGrokSubscriptionUsageCapability } from "./GrokSubscriptionUsage.ts"
 import { makeOpenCodeSubscriptionUsageCapability } from "./OpenCodeSubscriptionUsage.ts";
 import { ProviderSubscriptionCredentialStore } from "./ProviderSubscriptionCredentialStore.ts";
 
-const withSubscriptionUsage = <Config, R, R2>(
-  driver: ProviderDriver<Config, R>,
+const withSubscriptionUsage = <Config, R, UsageR, R2>(
+  driver: ProviderDriver<Config, R, UsageR>,
   makeCapability: (
     input: ProviderDriverCreateInput<Config>,
   ) => Effect.Effect<ProviderSubscriptionUsageCapability, never, R2>,
-): ProviderDriver<Config, R | R2> => ({
+): ProviderDriver<Config, R | R2, UsageR> => ({
   ...driver,
   create: (input) =>
     Effect.gen(function* () {
@@ -48,8 +48,8 @@ export const CursorDriverWithSubscriptionUsage = withSubscriptionUsage(
     Effect.gen(function* () {
       return makeCursorSubscriptionUsageCapability({
         instance: { instanceId, driverKind: CursorDriver.driverKind, displayName },
-        environment: mergeProviderInstanceEnvironment(environment),
-        platform: yield* HostProcessPlatform,
+        environment: yield* mergeProviderInstanceEnvironment(environment),
+        platform: yield* HostProcess.Platform,
         httpClient: yield* HttpClient.HttpClient,
         credentials: yield* ProviderSubscriptionCredentialStore,
       });
@@ -64,7 +64,7 @@ export const GrokDriverWithSubscriptionUsage = withSubscriptionUsage(
       return makeGrokSubscriptionUsageCapability({
         instance: { instanceId, driverKind: GrokDriver.driverKind, displayName },
         settings: { ...config, enabled },
-        environment: mergeProviderInstanceEnvironment(environment),
+        environment: yield* mergeProviderInstanceEnvironment(environment),
         cwd: host.paths.cwd,
         spawner: yield* ChildProcessSpawner.ChildProcessSpawner,
       });

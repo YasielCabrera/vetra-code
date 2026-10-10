@@ -25,9 +25,9 @@ import * as SqlClient from "effect/sql/SqlClient";
 import { IssueProviderError, type IssueProviderApi } from "../issue/IssueProvider.ts";
 import { IssueProviderRegistry } from "../issue/IssueProviderRegistry.ts";
 import * as ProjectService from "../project/ProjectService.ts";
-import { AllowGitHubReserve } from "../sourceControl/GitHubApi.ts";
+import { Interactive } from "@t3tools/source-control-core/server/SourceControlRateLimit";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
-import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
+import * as SourceControlRateLimit from "@t3tools/source-control-core/server/SourceControlRateLimit";
 
 interface GitHubTarget {
   readonly host: string;
@@ -151,7 +151,7 @@ const make = Effect.gen(function* () {
       }
       const project = yield* workingProject(target);
       const key = { provider: "github", host: target.host } as const;
-      const allowReserve = yield* AllowGitHubReserve;
+      const allowReserve = yield* Interactive;
       const lease = yield* rateLimits
         .check(key, allowReserve ? { allowPaused: true } : undefined)
         .pipe(
@@ -191,7 +191,7 @@ const make = Effect.gen(function* () {
           state: "open",
           limit: 30,
         }),
-      ).pipe(Effect.provideService(AllowGitHubReserve, true)),
+      ).pipe(Effect.provideService(Interactive, true)),
     {
       capacity: 512,
       timeToLive: (exit) => (Exit.isSuccess(exit) ? Duration.seconds(30) : Duration.zero),

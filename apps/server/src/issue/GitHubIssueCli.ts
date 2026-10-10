@@ -10,7 +10,7 @@ import {
   type IssueAssigneeCandidateList,
 } from "@t3tools/contracts";
 
-import * as GitHubApi from "../sourceControl/GitHubApi.ts";
+import * as GitHubApi from "@t3tools/source-control-github/server/GitHubApi";
 import type { IssueStateChange, ProviderIssueListCursor } from "./IssueProvider.ts";
 import {
   decodeIssueAssigneeCandidatesJson,

@@ -8,7 +8,7 @@
  *
  * @module AnalyticsService
  */
-import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import type { ClientOs } from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
 import * as Config from "effect/Config";
@@ -68,7 +68,7 @@ export function retryDelayMs(failures: number, random: number): number {
 
 const TelemetryEnvConfig = Config.all({
   // No default project key. Vetra does not own a PostHog project yet, and the
-  // inherited upstream key pointed at T3's. Telemetry stays off until an
+  // inherited upstream key pointed at Vetra Code's. Telemetry stays off until an
   // operator supplies a destination we own.
   posthogKey: Config.String("VETRA_POSTHOG_KEY").pipe(Config.withDefault("")),
   posthogHost: Config.String("VETRA_POSTHOG_HOST").pipe(
@@ -140,8 +140,8 @@ export const make = Effect.gen(function* () {
   // The background flush and the shutdown flush must not send the same batch at once.
   const flushLock = yield* Semaphore.make(1);
   const clientType = serverConfig.mode === "desktop" ? "desktop-app" : "cli-web-client";
-  const hostPlatform = yield* HostProcessPlatform;
-  const hostArchitecture = yield* HostProcessArchitecture;
+  const hostPlatform = yield* HostProcess.Platform;
+  const hostArchitecture = yield* HostProcess.Architecture;
 
   const enqueueBufferedEvent = (
     uuid: string,

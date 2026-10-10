@@ -1,6 +1,7 @@
+import * as PreviewPasskeys from "./Passkeys.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import type { Web3ProviderEvent } from "@t3tools/web3/inpage";
 import type { Web3GuestReply, Web3PageState } from "@t3tools/web3/schema";
 import * as Deferred from "effect/Deferred";
@@ -351,6 +352,13 @@ const makeRegistrableGuest = (id: number, url: string) => {
 };
 
 const layerRealManager = PreviewManager.layer.pipe(
+  Layer.provideMerge(
+    Layer.mock(PreviewPasskeys.PreviewPasskeys)({
+      bridgeEnabled: false,
+      installSessionHandlers: () => {},
+      attachGuest: () => () => {},
+    }),
+  ),
   Layer.provideMerge(DesktopBrowserHost.layer),
   Layer.provideMerge(
     Layer.succeed(DesktopRendererHistory.DesktopRendererHistory, {
@@ -380,7 +388,7 @@ const layerRealManager = PreviewManager.layer.pipe(
     } as DesktopEnvironment.DesktopEnvironment["Service"]),
   ),
   Layer.provideMerge(FileSystem.layerNoop({})),
-  Layer.provideMerge(Layer.succeed(HostProcessPlatform, "darwin")),
+  Layer.provideMerge(Layer.succeed(HostProcess.Platform, "darwin")),
 );
 
 /** The bridge over the real preview manager and the real end of the server's channel. */

@@ -22,7 +22,6 @@
  *
  * @module provider/Drivers/CursorSkills
  */
-import * as NodeOS from "node:os";
 
 import type { ServerProviderSkill } from "@t3tools/contracts";
 import * as ByteSize from "effect/ByteSize";
@@ -33,6 +32,7 @@ import * as Path from "effect/Path";
 import * as PlatformError from "effect/PlatformError";
 import * as Schema from "effect/Schema";
 import { parse as parseYamlDocument } from "yaml";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 
 type CursorSkillScope = "builtin" | "plugin" | "user" | "project";
 
@@ -322,7 +322,10 @@ const inspectCursorSkills = Effect.fn("inspectCursorSkills")(function* (
   environment: NodeJS.ProcessEnv = process.env,
 ) {
   const path = yield* Path.Path;
-  const userHome = environment.HOME?.trim() || environment.USERPROFILE?.trim() || NodeOS.homedir();
+  const userHome =
+    environment.HOME?.trim() ||
+    environment.USERPROFILE?.trim() ||
+    (yield* HostProcess.HomeDirectory);
   const rootsBelow = (base: string, scope: CursorSkillScope) => [
     { directory: path.join(base, ".cursor", "skills"), scope },
     { directory: path.join(base, ".agents", "skills"), scope },

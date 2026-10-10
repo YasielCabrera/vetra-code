@@ -394,6 +394,7 @@ export const trackingThreadLaunchLayer = Layer.effect(
           ),
         );
       },
+      checkWorktreeBase: inner.checkWorktreeBase,
       retryPreparation: inner.retryPreparation,
     });
   }),

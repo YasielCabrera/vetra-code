@@ -86,7 +86,7 @@ describe("managed endpoint names", () => {
       "vetracoderelay-managedendpoint-dev-julius-abcdef0123456789",
     );
     expect(managedEndpointTunnelNamePrefix("dev_julius")).toBe(
-      "t3coderelay-managedendpoint-dev-julius-",
+      "vetracoderelay-managedendpoint-dev-julius-",
     );
   });
 

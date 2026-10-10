@@ -38,3 +38,7 @@ export type PreviewWalletBootstrap =
       readonly selectedAddress: string | null;
       readonly documentId: string;
     };
+export const PASSKEY_CREATE_CHANNEL = "preview:passkey-create";
+export const PASSKEY_GET_CHANNEL = "preview:passkey-get";
+/** Renderer argument that turns on the guest passkey bridge; see Passkeys.ts. */
+export const PASSKEY_BRIDGE_ARGUMENT = "--vetra-code-preview-passkey-bridge";
