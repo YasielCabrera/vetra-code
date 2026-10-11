@@ -6,6 +6,7 @@ import {
   formatContextWindowTokens,
   sumProviderTurnCostUsd,
   withThreadCost,
+  latestProviderTurnTokenUsage,
 } from "./contextWindow";
 
 describe("V2 context window presentation", () => {
@@ -134,5 +135,20 @@ describe("thread cost", () => {
     });
     expect(withThreadCost(snapshot, 0)?.costUsd).toBeNull();
     expect(withThreadCost(null, 1.75)).toBeNull();
+  });
+});
+
+describe("latestProviderTurnTokenUsage", () => {
+  it("picks the newest report, not the last turn in snapshot order", () => {
+    const usage = (usedTokens: number, updatedAt: string) => ({
+      tokenUsage: { usedTokens, updatedAt },
+    });
+    // Snapshots sort by provider thread id, so an older thread can come last.
+    const latest = latestProviderTurnTokenUsage([
+      usage(300_000, "2026-06-20T12:00:00.000Z"),
+      {},
+      usage(90_000, "2026-06-20T09:00:00.000Z"),
+    ]);
+    expect(latest?.usedTokens).toBe(300_000);
   });
 });

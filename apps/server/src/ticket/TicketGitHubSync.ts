@@ -1,4 +1,5 @@
 import {
+  SourceControlProviderKind,
   ProjectId,
   TicketError,
   TicketGitHubSource,
@@ -252,7 +253,11 @@ const make = Effect.gen(function* () {
   const upsertSource: TicketGitHubSync["Service"]["upsertSource"] = (input) =>
     Effect.gen(function* () {
       const host = input.host.toLowerCase();
-      if (registry.get("github")?.repositoryLinks({ host, repository: input.repository }) == null) {
+      if (
+        registry
+          .get(SourceControlProviderKind.make("github"))
+          ?.repositoryLinks({ host, repository: input.repository }) == null
+      ) {
         return yield* new TicketError({
           message: `${host}/${input.repository} is not a GitHub repository address.`,
         });

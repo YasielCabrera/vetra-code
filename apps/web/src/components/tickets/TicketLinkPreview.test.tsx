@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {
+  SourceControlProviderKind,
   EnvironmentId,
   ProjectId,
   TicketId,
@@ -77,7 +78,7 @@ const liveIssue = {
   assignees: [],
   comments: [],
   preview: {
-    provider: "github",
+    provider: SourceControlProviderKind.make("github"),
     host: "github.com",
     projectId: ProjectId.make("project-other"),
     projectTitle: liveProjectTitle,

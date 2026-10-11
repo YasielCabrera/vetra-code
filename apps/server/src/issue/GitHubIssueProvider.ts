@@ -1,5 +1,10 @@
 import * as Effect from "effect/Effect";
-import type { IssueActivity, IssueActor, IssueComment } from "@t3tools/contracts";
+import {
+  SourceControlProviderKind,
+  type IssueActivity,
+  type IssueActor,
+  type IssueComment,
+} from "@t3tools/contracts";
 
 import { gitHubLoginAvatarUrl } from "@t3tools/shared/githubActor";
 import * as GitHubIssueCli from "./GitHubIssueCli.ts";
@@ -61,7 +66,7 @@ function providerError(operation: string) {
               ? "The issue was not found."
               : "GitHub could not complete the issue request.";
     return new IssueProviderError({
-      provider: "github",
+      provider: SourceControlProviderKind.make("github"),
       operation,
       reason,
       detail,
@@ -106,7 +111,7 @@ function activityWithAvatars(activity: IssueActivity, host: string): IssueActivi
 }
 
 export const make = Effect.map(GitHubIssueCli.GitHubIssueCli, (github): IssueProviderApi => ({
-  kind: "github",
+  kind: SourceControlProviderKind.make("github"),
   repositoryLinks: ({ host, repository }) => {
     const origin = originOf(host);
     if (origin === null || !REPOSITORY_PATTERN.test(repository)) return null;

@@ -42,6 +42,7 @@ export * from "./ticketPlan.ts";
 export * from "./ticketRpc.ts";
 export * from "./powerhouseRpc.ts";
 export * from "./previewWallet.ts";
+export * from "./pullRequestReviewGuide.ts";
 export * from "./orchestrationDispatch.ts";
 export * from "./orchestrationProject.ts";
 export * from "./orchestrationV2.ts";

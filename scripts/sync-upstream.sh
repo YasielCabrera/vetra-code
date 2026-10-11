@@ -273,6 +273,7 @@ RENAMES=(
   'T3 thread=Vetra Code thread'
   'T3-owned=Vetra-owned'
   'T3 tool=Vetra Code tool'
+  'T3 delegated review=Vetra Code delegated review'
   'T3 orchestration=Vetra Code orchestration'
   'T3 transport=Vetra Code transport'
   'when T3 runs as=when Vetra Code runs as'
@@ -286,6 +287,7 @@ RENAMES=(
   # Fixture identity for the relay and the ACP test client.
   't3-relay=vetra-relay'
   't3-test=vetra-test'
+  't3code-pr-=vetra-code-pr-'
 )
 
 say() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }

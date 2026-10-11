@@ -1,4 +1,5 @@
 import type {
+  OrchestrationV2ProviderTurn,
   OrchestrationV2ProviderTurnTokenUsage,
   OrchestrationV2ProviderThread,
   OrchestrationV2TurnItem,
@@ -48,6 +49,22 @@ export function withThreadCost(
 ): ContextWindowSnapshot | null {
   if (snapshot === null || !(costUsd > 0) || snapshot.costUsd !== null) return snapshot;
   return { ...snapshot, costUsd, costSource: "modelPriced" };
+}
+
+/** Newest usage report across a thread's provider turns. Snapshots order turns
+    by provider thread, not time, so pick by timestamp. */
+export function latestProviderTurnTokenUsage(
+  turns: ReadonlyArray<Pick<OrchestrationV2ProviderTurn, "tokenUsage">>,
+): OrchestrationV2ProviderTurnTokenUsage | null {
+  let latest: OrchestrationV2ProviderTurnTokenUsage | null = null;
+  for (const { tokenUsage } of turns) {
+    if (tokenUsage === undefined) continue;
+    // Ties go to the later entry, since live upserts append.
+    if (latest === null || Date.parse(tokenUsage.updatedAt) >= Date.parse(latest.updatedAt)) {
+      latest = tokenUsage;
+    }
+  }
+  return latest;
 }
 
 /** Prefers the provider's live usage report (#8144); falls back to the last compaction item. */

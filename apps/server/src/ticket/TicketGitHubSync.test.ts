@@ -1,6 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import {
+  SourceControlProviderKind,
   type OrchestrationProjectShell,
   ProjectId,
   ThreadId,
@@ -176,7 +177,7 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     commentsTruncated: false,
   });
   const api: IssueProviderApi = {
-    kind: "github",
+    kind: SourceControlProviderKind.make("github"),
     repositoryLinks: ({ host, repository }) => ({
       repositoryUrl: `https://${host}/${repository}`,
       newIssueUrl: `https://${host}/${repository}/issues/new`,
@@ -339,7 +340,10 @@ const withSync = <A, E>(
                         ? null
                         : {
                             ...input.context,
-                            provider: { ...input.context.provider, kind: "github" },
+                            provider: {
+                              ...input.context.provider,
+                              kind: SourceControlProviderKind.make("github"),
+                            },
                           },
                   };
                 }),
@@ -350,7 +354,9 @@ const withSync = <A, E>(
           }),
         ).pipe(
           Layer.provide(
-            Layer.mock(SourceControlProvider.SourceControlProvider)({ kind: "github" }),
+            Layer.mock(SourceControlProvider.SourceControlProvider)({
+              kind: SourceControlProviderKind.make("github"),
+            }),
           ),
         ),
         Layer.mock(ProjectService.ProjectService)({
@@ -485,7 +491,10 @@ describe("TicketGitHubSync", () => {
   it.effect("interactive ticket reads spend the reserve and bypass a background budget pause", () =>
     withSync([issue(7)], ({ tickets, sync, fake, quota, rateLimits }) =>
       Effect.gen(function* () {
-        const key = { provider: "github", host: SOURCE.host } as const;
+        const key = {
+          provider: SourceControlProviderKind.make("github"),
+          host: SOURCE.host,
+        } as const;
         // Just under the tenth of the quota a background read leaves for interactive ones.
         yield* quota.observe(SOURCE.host, {
           "x-ratelimit-resource": "graphql",
@@ -500,7 +509,7 @@ describe("TicketGitHubSync", () => {
           Effect.mapError(
             (cause) =>
               new IssueProviderError({
-                provider: "github",
+                provider: SourceControlProviderKind.make("github"),
                 operation: "read",
                 reason: "rate-limited",
                 detail: cause.detail,
@@ -800,7 +809,7 @@ describe("TicketGitHubSync", () => {
             id: projectId,
             repositoryIdentity: {
               canonicalKey: `github.com/acme/${projectId}`,
-              provider: "github",
+              provider: SourceControlProviderKind.make("github"),
               displayName: `acme/${projectId}`,
               locator: {
                 source: "git-remote",
@@ -892,7 +901,7 @@ describe("TicketGitHubSync", () => {
             const failing = ProjectId.make("failing-project");
             const identity = {
               canonicalKey: "github.com/acme/web",
-              provider: "github",
+              provider: SourceControlProviderKind.make("github"),
               displayName: "acme/web",
               locator: {
                 source: "git-remote" as const,
@@ -923,7 +932,7 @@ describe("TicketGitHubSync", () => {
             fake.listFailures.set(
               "acme/private",
               new IssueProviderError({
-                provider: "github",
+                provider: SourceControlProviderKind.make("github"),
                 operation: "list",
                 reason: "unauthenticated",
                 detail: "sign in",
@@ -975,7 +984,7 @@ describe("TicketGitHubSync", () => {
             ...shell,
             repositoryIdentity: {
               canonicalKey: "github.acme.com/acme/web",
-              provider: "unknown",
+              provider: SourceControlProviderKind.make("unknown"),
               displayName: "acme/web",
               locator: {
                 source: "git-remote",
@@ -1129,7 +1138,7 @@ describe("TicketGitHubSync", () => {
           const current = yield* tickets.resolveRef("acme/web#7");
           fake.staleList = [fake.issues.get(7)!];
           fake.getFailure = new IssueProviderError({
-            provider: "github",
+            provider: SourceControlProviderKind.make("github"),
             operation: "detail",
             reason: "failed",
             detail: "Network unavailable",
@@ -1170,7 +1179,7 @@ describe("TicketGitHubSync", () => {
           USER,
         );
         fake.getFailure = new IssueProviderError({
-          provider: "github",
+          provider: SourceControlProviderKind.make("github"),
           operation: "detail",
           reason: "failed",
           detail: "Network unavailable",
@@ -1398,7 +1407,7 @@ describe("TicketGitHubSync", () => {
     withSync([issue(7)], ({ sync, fake }) =>
       Effect.gen(function* () {
         fake.listFailure = new IssueProviderError({
-          provider: "github",
+          provider: SourceControlProviderKind.make("github"),
           operation: "list",
           reason: "unauthenticated",
           detail: "GitHub CLI is not authenticated.",
@@ -1434,7 +1443,7 @@ describe("TicketGitHubSync", () => {
           );
           yield* sync.syncNow(SOURCE);
           fake.setStateFailure = new IssueProviderError({
-            provider: "github",
+            provider: SourceControlProviderKind.make("github"),
             operation: "setState",
             reason: "failed",
             detail: "GitHub could not complete the issue request.",
@@ -1523,7 +1532,7 @@ describe("TicketGitHubSync", () => {
             });
           const closed = yield* move("acme/web#7");
           fake.getFailure = new IssueProviderError({
-            provider: "github",
+            provider: SourceControlProviderKind.make("github"),
             operation: "detail",
             reason: "failed",
             detail: "GitHub could not complete the issue request.",
@@ -1676,7 +1685,7 @@ describe("TicketGitHubSync", () => {
         const afterFirst = fake.listCalls;
         yield* TestClock.adjust("10 minutes");
         fake.listFailure = new IssueProviderError({
-          provider: "github",
+          provider: SourceControlProviderKind.make("github"),
           operation: "list",
           reason: "rate-limited",
           detail: "GitHub's request limit has been reached.",
@@ -1740,7 +1749,7 @@ describe("TicketGitHubSync", () => {
         });
         fake.issues.delete(8);
         fake.getFailure = new IssueProviderError({
-          provider: "github",
+          provider: SourceControlProviderKind.make("github"),
           operation: "detail",
           reason: "failed",
           detail: "GitHub could not complete the issue request.",

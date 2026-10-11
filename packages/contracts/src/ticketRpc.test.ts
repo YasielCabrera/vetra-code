@@ -2,6 +2,7 @@ import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
 import { ProjectId, TicketId } from "./baseSchemas.ts";
+import { SourceControlProviderKind } from "./sourceControl.ts";
 import { IssueDetail } from "./issue.ts";
 import {
   TicketGitHubIssueDetail,
@@ -42,7 +43,7 @@ describe("ticket issue RPC contracts", () => {
     const issue: IssueDetail = {
       projectId: ProjectId.make("project"),
       projectTitle: "Web",
-      provider: "github",
+      provider: SourceControlProviderKind.make("github"),
       host: "github.acme.com",
       repository: "acme/web",
       number: 7,

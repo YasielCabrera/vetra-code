@@ -9,6 +9,7 @@ import {
   VETRA_MCP_BEARER_ENV,
   VETRA_MCP_URL_ENV,
   VETRA_PI_RUNTIME_MODE_ENV,
+  VETRA_PI_MCP_EXTENSION_PATH_ENV,
 } from "./mcpExtensionSource.ts";
 
 const RESERVED_PI_LAUNCH_ARGUMENTS = new Set([
@@ -291,11 +292,15 @@ export function buildPiRpcLaunch(input: {
   // credentials inherited from the server or a parent provider process.
   delete environment[VETRA_MCP_URL_ENV];
   delete environment[VETRA_MCP_BEARER_ENV];
+  delete environment[VETRA_PI_MCP_EXTENSION_PATH_ENV];
 
   return {
     args,
     env: {
       ...environment,
+      ...(hasT3Extension && input.extensionPath !== undefined
+        ? { [VETRA_PI_MCP_EXTENSION_PATH_ENV]: input.extensionPath }
+        : {}),
       ...(hasT3Extension && input.runtimeMode !== undefined
         ? {
             [VETRA_PI_RUNTIME_MODE_ENV]:

@@ -172,6 +172,10 @@ Default Grafana login:
 
 #### 2. Export OTLP env vars
 
+For endpoint settings and startup precedence, see the
+[user telemetry guide](../user/telemetry.md#export-diagnostics-to-your-own-receiver).
+In a worktree, use `vp run dev` instead of `npx t3` to keep state isolated.
+
 ```bash
 export VETRA_OTLP_TRACES_URL=http://localhost:4318/v1/traces
 export VETRA_OTLP_METRICS_URL=http://localhost:4318/v1/metrics

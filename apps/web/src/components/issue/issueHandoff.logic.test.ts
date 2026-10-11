@@ -1,10 +1,10 @@
-import type { IssueDetail } from "@t3tools/contracts";
+import { SourceControlProviderKind, type IssueDetail } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { buildAttachIssueHandoff, buildExplainIssueHandoff } from "./issueHandoff.logic";
 
 const ISSUE: IssueDetail = {
-  provider: "github",
+  provider: SourceControlProviderKind.make("github"),
   host: "github.com",
   projectId: "project-1" as IssueDetail["projectId"],
   projectTitle: "Web",

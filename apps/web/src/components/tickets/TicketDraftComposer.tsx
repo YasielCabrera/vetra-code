@@ -374,6 +374,7 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                 {props.modelSelection ? (
                   <>
                     <ProviderModelPicker
+                      environmentId={props.environmentId}
                       activeInstanceId={props.modelSelection.instanceId}
                       model={props.modelSelection.model}
                       lockedProvider={null}

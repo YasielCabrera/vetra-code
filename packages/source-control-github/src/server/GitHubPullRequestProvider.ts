@@ -1,3 +1,4 @@
+import { SourceControlProviderKind } from "@t3tools/contracts";
 import { removeAgentCredits } from "@t3tools/source-control-core/server/mergeMessage";
 import * as Effect from "effect/Effect";
 import type {
@@ -20,22 +21,12 @@ import {
   type ProviderRepositoryRef,
 } from "@t3tools/source-control-core/server/PullRequestProvider";
 import type { GitHubViewerAccess, GitHubWorkflowRunApproval } from "./gitHubPullRequestJson.ts";
+import { definition } from "../client/definition.ts";
 
 const CAPABILITIES: PullRequestCapabilities = {
   diff: true,
   comment: true,
-  actions: [
-    "merge",
-    "ready",
-    "draft",
-    "close",
-    "reopen",
-    "update-branch",
-    "enable-auto-merge",
-    "disable-auto-merge",
-    "revert",
-    "approve-workflows",
-  ],
+  actions: [...definition.changeRequestActions],
   mergeMethods: ["merge", "squash", "rebase"],
   updateMethods: ["merge", "rebase"],
   search: true,
@@ -203,7 +194,7 @@ export const make = Effect.gen(function* () {
 
   const fail = (operation: string) => (error: GitHubPullRequestApi.GitHubPullRequestApiError) =>
     new PullRequestProviderError({
-      provider: "github",
+      provider: SourceControlProviderKind.make("github"),
       operation,
       ...gitHubProviderFailure(error),
       detail: error.message,
@@ -262,7 +253,7 @@ export const make = Effect.gen(function* () {
     );
 
   const provider: PullRequestProviderApi = {
-    kind: "github",
+    kind: SourceControlProviderKind.make("github"),
     capabilities: CAPABILITIES,
     mergeMessageRewrite: removeAgentCredits,
     getRoutingIdentity: (input) =>

@@ -1,3 +1,4 @@
+import { SourceControlProviderKind } from "@t3tools/contracts";
 import { expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -102,7 +103,7 @@ it.effect("says why GitHub refused an issue request", () =>
       new GitHubApi.GitHubApiAuthenticationError({ host: "github.com", operation: "x" }),
       new GitHubApi.GitHubApiRateLimitError({ host: "github.com", operation: "x", retryAt: 1_000 }),
       new SourceControlRateLimit.SourceControlRateLimitPausedError({
-        provider: "github",
+        provider: SourceControlProviderKind.make("github"),
         host: "github.com",
         retryAt: 2_000,
       }),

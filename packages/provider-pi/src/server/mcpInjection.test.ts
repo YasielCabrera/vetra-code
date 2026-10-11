@@ -9,6 +9,7 @@ import {
   VETRA_MCP_BEARER_ENV,
   VETRA_MCP_URL_ENV,
   VETRA_PI_RUNTIME_MODE_ENV,
+  VETRA_PI_MCP_EXTENSION_PATH_ENV,
 } from "./mcpExtensionSource.ts";
 import {
   buildPiRpcLaunch,
@@ -65,12 +66,14 @@ describe("pi T3 MCP injection", () => {
     assert.equal(launch.env[VETRA_MCP_URL_ENV], "http://127.0.0.1:43123/mcp");
     assert.equal(launch.env[VETRA_MCP_BEARER_ENV], "secret-pi-token");
     assert.equal(launch.env[VETRA_PI_RUNTIME_MODE_ENV], "approval-required");
+    assert.equal(launch.env[VETRA_PI_MCP_EXTENSION_PATH_ENV], "/tmp/cache/pi-t3-mcp-extension.ts");
 
     const permissionOnly = buildPiRpcLaunch({
       launchArgs: [],
       environment: {
         [VETRA_MCP_URL_ENV]: "http://127.0.0.1:9999/stale",
         [VETRA_MCP_BEARER_ENV]: "stale-token",
+        [VETRA_PI_MCP_EXTENSION_PATH_ENV]: "/stale/extension.ts",
       },
       mcpSession: undefined,
       extensionPath: "/tmp/cache/pi-t3-mcp-extension.ts",
@@ -86,6 +89,10 @@ describe("pi T3 MCP injection", () => {
     assert.isUndefined(permissionOnly.env[VETRA_MCP_URL_ENV]);
     assert.isUndefined(permissionOnly.env[VETRA_MCP_BEARER_ENV]);
     assert.equal(permissionOnly.env[VETRA_PI_RUNTIME_MODE_ENV], "auto-accept-edits");
+    assert.equal(
+      permissionOnly.env[VETRA_PI_MCP_EXTENSION_PATH_ENV],
+      "/tmp/cache/pi-t3-mcp-extension.ts",
+    );
   });
 
   it("falls back to Pi's first supported mode for legacy auto threads", () => {

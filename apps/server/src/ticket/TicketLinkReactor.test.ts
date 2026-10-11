@@ -1,6 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import {
+  SourceControlProviderKind,
   ComposerContextId,
   DEFAULT_SERVER_SETTINGS,
   EnvironmentId,
@@ -281,7 +282,7 @@ const pullRequestSummary = (
   ref: PullRequestRef,
   state: PullRequestSummary["state"],
 ): PullRequestSummary => ({
-  provider: "github",
+  provider: SourceControlProviderKind.make("github"),
   projectId: ref.projectId,
   repository: ref.repository,
   number: ref.number,

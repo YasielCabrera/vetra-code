@@ -1,3 +1,4 @@
+import { SourceControlProviderKind } from "@t3tools/contracts";
 import { vi } from "vite-plus/test";
 import {
   EnvironmentId,
@@ -36,7 +37,7 @@ const TARGET = new PrimaryConnectionTarget({
 
 const PUBLISH_RESULT: SourceControlPublishRepositoryResult = {
   repository: {
-    provider: "github",
+    provider: SourceControlProviderKind.make("github"),
     nameWithOwner: "vetra-code/vetra-code",
     url: "https://github.com/vetra-code/vetra-code",
     sshUrl: "git@github.com:vetra-code/vetra-code.git",
@@ -140,7 +141,7 @@ describe("source control environment atoms", () => {
             environmentId: TARGET.environmentId,
             input: {
               cwd: "/repo",
-              provider: "github",
+              provider: SourceControlProviderKind.make("github"),
               repository: "vetra-code/vetra-code",
               visibility: "private",
             },
@@ -156,7 +157,7 @@ describe("source control environment atoms", () => {
             environmentId: TARGET.environmentId,
             input: {
               cwd: "/repo",
-              provider: "github",
+              provider: SourceControlProviderKind.make("github"),
               repository: "vetra-code/vetra-code",
               visibility: "private",
             },

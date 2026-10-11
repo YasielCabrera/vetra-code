@@ -82,7 +82,7 @@ const make = Effect.gen(function* () {
   const sourceControlProviders = yield* SourceControlProviderRegistry.SourceControlProviderRegistry;
   const recordedProvider = (project: OrchestrationProjectShell) =>
     decodeProvider(project.repositoryIdentity?.provider).pipe(
-      Option.getOrElse(() => "unknown" as const),
+      Option.getOrElse(() => SourceControlProviderKind.make("unknown")),
     );
 
   const projectFor: TicketGitHub["Service"]["projectFor"] = (target, excludeProjectId) =>
@@ -145,12 +145,15 @@ const make = Effect.gen(function* () {
 
   const run: TicketGitHub["Service"]["run"] = (target, call) =>
     Effect.gen(function* () {
-      const api = registry.get("github");
+      const api = registry.get(SourceControlProviderKind.make("github"));
       if (api === null) {
         return yield* new TicketError({ message: "GitHub issues are not available here." });
       }
       const project = yield* workingProject(target);
-      const key = { provider: "github", host: target.host } as const;
+      const key = {
+        provider: SourceControlProviderKind.make("github"),
+        host: target.host,
+      } as const;
       const allowReserve = yield* Interactive;
       const lease = yield* rateLimits
         .check(key, allowReserve ? { allowPaused: true } : undefined)
@@ -158,7 +161,7 @@ const make = Effect.gen(function* () {
           Effect.mapError(
             (cause) =>
               new IssueProviderError({
-                provider: "github",
+                provider: SourceControlProviderKind.make("github"),
                 operation: "rateLimit",
                 reason: "rate-limited",
                 detail: cause.detail,
@@ -264,7 +267,9 @@ const make = Effect.gen(function* () {
               candidates.map((target) => Cache.get(providerCache, target)),
             ).pipe(
               Effect.map((kind) => [host, kind] as const),
-              Effect.orElseSucceed(() => [host, "unknown"] as const),
+              Effect.orElseSucceed(
+                () => [host, SourceControlProviderKind.make("unknown")] as const,
+              ),
             ),
           { concurrency: 12 },
         ),
