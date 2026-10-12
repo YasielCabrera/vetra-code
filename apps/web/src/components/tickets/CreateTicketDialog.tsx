@@ -319,8 +319,13 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
   // A captured project that no longer exists falls through to the source thread's project.
   const project = chosenProject ?? sourceProject;
   const instanceEntries = useMemo(
-    () => applyProviderInstanceSettings(deriveProviderInstanceEntries(providers), settings),
-    [providers, settings],
+    () =>
+      applyProviderInstanceSettings(
+        deriveProviderInstanceEntries(providers),
+        settings,
+        project?.id ?? null,
+      ),
+    [providers, settings, project?.id],
   );
   const modelOptionsByInstance = useMemo(
     () => getCustomModelOptionsByInstance(settings, providers),

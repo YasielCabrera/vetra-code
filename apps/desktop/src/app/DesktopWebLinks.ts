@@ -18,7 +18,8 @@ export const isWebPageFile = (path: string) => /\.x?html?$/i.test(path);
 
 /**
  * Web links and HTML files macOS opens with Vetra Code once it is the default
- * browser. Files arrive as file:// URLs. They can
+ * browser, plus `vetra://` prompt and thread links on every platform. Files
+ * arrive as file:// URLs. They can
  * arrive before the app is ready (the link that launched it) or while the web
  * app reloads, so they wait until the renderer says it is listening.
  */

@@ -347,16 +347,6 @@ export function AutomationDetailPanel(props: {
     [],
   );
 
-  // The same provider surface the composer and project settings read, so an
-  // automation can be pointed at any instance and model the workspace has.
-  const instanceEntries = useMemo(
-    () => applyProviderInstanceSettings(deriveProviderInstanceEntries(serverProviders), settings),
-    [serverProviders, settings],
-  );
-  const modelOptionsByInstance = useMemo(
-    () => getCustomModelOptionsByInstance(settings, serverProviders),
-    [serverProviders, settings],
-  );
   const selectedProject = useMemo(
     () =>
       draft.projectKey === null
@@ -366,6 +356,22 @@ export function AutomationDetailPanel(props: {
           ) ?? null),
     [draft.projectKey, projects],
   );
+  // The same provider surface the composer and project settings read, so an
+  // automation can be pointed at any instance and model the workspace has.
+  const instanceEntries = useMemo(
+    () =>
+      applyProviderInstanceSettings(
+        deriveProviderInstanceEntries(serverProviders),
+        settings,
+        selectedProject?.id ?? null,
+      ),
+    [serverProviders, settings, selectedProject?.id],
+  );
+  const modelOptionsByInstance = useMemo(
+    () => getCustomModelOptionsByInstance(settings, serverProviders),
+    [serverProviders, settings],
+  );
+
   const targetEnvironmentId =
     automation?.environmentId ?? selectedProject?.environmentId ?? primaryEnvironmentId;
   const canOperate = useCanOperateAutomations(targetEnvironmentId);

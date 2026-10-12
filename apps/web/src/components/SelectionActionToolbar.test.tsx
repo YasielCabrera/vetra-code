@@ -76,6 +76,44 @@ function action() {
 }
 
 describe("SelectionActionToolbar", () => {
+  it.each([
+    [100, 80, "50px", "34px"],
+    [30, 25, "30px", "25px"],
+  ])(
+    "anchors a release at (%d, %d) to the selection when outside its text",
+    async (x, y, left, top) => {
+      const viewport = container.firstElementChild!;
+      vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue(
+        DOMRect.fromRect({ width: 400, height: 300 }),
+      );
+      const rect = DOMRect.fromRect({ x: 10, y: 20, width: 40, height: 10 });
+      Object.defineProperties(Range.prototype, {
+        getBoundingClientRect: { configurable: true, value: () => rect },
+        getClientRects: {
+          configurable: true,
+          value: () =>
+            Object.assign([rect], { item: (index: number) => (index === 0 ? rect : null) }),
+        },
+      });
+
+      await act(async () => {
+        container.querySelector("p")!.dispatchEvent(
+          Object.assign(new Event("pointerdown", { bubbles: true }), {
+            isPrimary: true,
+            button: 0,
+          }),
+        );
+        window.getSelection()!.selectAllChildren(container.querySelector("p")!);
+        window.dispatchEvent(Object.assign(new Event("pointerup"), { isPrimary: true, button: 0 }));
+        window.dispatchEvent(new MouseEvent("mouseup", { clientX: x, clientY: y, button: 0 }));
+        vi.runAllTimers();
+      });
+
+      expect(action()?.parentElement?.style.left).toBe(left);
+      expect(action()?.parentElement?.style.top).toBe(top);
+    },
+  );
+
   it("clears the selection and hides once an action takes it", async () => {
     run.mockReturnValue(true);
     await select();

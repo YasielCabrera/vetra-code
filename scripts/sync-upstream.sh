@@ -82,6 +82,8 @@ PRUNE_PATHS=(
   .github/workflows/mobile-eas-production.yml
   .github/workflows/mobile-fingerprint-check.yml
   .github/workflows/mobile-showcase-screenshots.yml
+  .github/workflows/mobile-android-apk.yml
+  .github/scripts/mirror-play-apk.cjs
   .github/workflows/deploy-relay.yml
   packaging/aur
   # Upstream's one-line installers. They default to downloading and executing

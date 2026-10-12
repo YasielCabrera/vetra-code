@@ -1,6 +1,8 @@
 import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import type { EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
+import { promptLinkAppPath } from "@t3tools/shared/promptLinks";
+import { configuredHostedAppUrl } from "~/hostedPairing";
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useEffectEvent, useRef } from "react";
 
@@ -45,9 +47,11 @@ function threadShowingBrowser(
 }
 
 /**
- * Opens each web link or HTML file the OS hands Vetra Code as the default browser
- * (macOS). With a browser panel on screen the page opens as a new tab there;
- * otherwise it starts a thread without a project, its browser panel maximized.
+ * Opens each link the OS hands Vetra Code. Prompt and thread links, by `vetra://`
+ * or as hosted-app pages, open in the app. Other web links and HTML files arrive
+ * because Vetra Code is the default browser (macOS): with a browser panel on screen
+ * the page opens as a new tab there; otherwise it starts a thread without a
+ * project, its browser panel maximized.
  */
 export function DesktopWebLinkCoordinator() {
   const router = useRouter();
@@ -93,6 +97,11 @@ export function DesktopWebLinkCoordinator() {
   };
 
   const openLink = useEffectEvent(async (url: string) => {
+    const appPath = promptLinkAppPath(url, configuredHostedAppUrl());
+    if (appPath !== null) {
+      await router.navigate({ href: appPath });
+      return;
+    }
     const isFile = url.startsWith("file:");
     const routeParams = router.state.matches.at(-1)?.params ?? {};
     const threadRef =

@@ -8,6 +8,7 @@ page, so you can ask an agent about it right away.
 Choose **Vetra Code** under **System Settings → Desktop & Dock → Default web browser**. To go back,
 choose another browser there.
 
-HTML files you open from Finder open the same way.
+HTML files you open from Finder open the same way. [Prompt links](prompt-links.md) using
+`vetra://` or a configured hosted app open in the app as a draft.
 
 A link that launches Vetra Code waits until the app has connected to its environment, then opens.

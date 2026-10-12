@@ -106,6 +106,7 @@ export function AutomationsPage(props?: {
     for (const entry of applyProviderInstanceSettings(
       deriveProviderInstanceEntries(serverProviders),
       settings,
+      null,
     )) {
       for (const model of entry.models) {
         labels.set(`${entry.instanceId}:${model.slug}`, getTriggerDisplayModelLabel(model));
@@ -252,7 +253,7 @@ export function AutomationsPage(props?: {
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Search automations"
                     aria-label="Search automations"
-                    className="h-9 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground/72 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/24 sm:h-8"
+                    className="h-9 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground/72 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/24 sm:h-8"
                   />
                 </div>
                 {/* Sheds its label before the search field starves. */}
@@ -421,7 +422,7 @@ const AutomationRow = memo(function AutomationRow({
       <button
         type="button"
         onClick={() => onOpen(row.automation)}
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-left outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-left outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
       >
         <CalendarClockIcon
           aria-hidden
@@ -546,7 +547,7 @@ function AutomationTemplateRow({
         type="button"
         disabled={disabled}
         onClick={() => onSelect(template)}
-        className="flex w-full min-w-0 items-start gap-3 rounded-lg p-2 text-left outline-none transition-colors hover:bg-accent/60 focus-visible:ring-1 focus-visible:ring-ring"
+        className="flex w-full min-w-0 items-start gap-3 rounded-lg p-2 text-left outline-none transition-colors hover:bg-accent/60 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
       >
         <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
           <Icon aria-hidden className="size-4 text-muted-foreground" />

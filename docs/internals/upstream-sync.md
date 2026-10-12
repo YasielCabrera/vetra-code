@@ -108,7 +108,7 @@ must not send users, tokens, or events to T3 until we configure Vetra-owned repl
 | Product analytics (PostHog) | Off until we own a PostHog project. Do not ship the inherited T3 project key. | `VETRA_TELEMETRY_ENABLED` defaults to false and `VETRA_POSTHOG_KEY` has no default; a blank key is treated as disabled, so opting in without your own project sends nothing. Upstream defaults the other way, so a merge touching `AnalyticsService` is a required review item every sync.    |
 | Model manifest refresh      | Off until we host a manifest. Upstream fetches its own repository on `main`.  | `ModelManifest` reads its bundled `model-manifest.json` and only fetches when `VETRA_MODEL_MANIFEST_URL` is set; a blank URL skips the network entirely. Upstream hardcodes `raw.githubusercontent.com/pingdotgg/t3code`, so a merge touching `ModelManifest.ts` is a review item every sync. |
 | OTLP / Grafana              | Optional, and only to endpoints we own.                                       | Unset by default. See [observability](../operations/observability.md).                                                                                                                                                                                                                        |
-| Release / relay-deploy CI   | Absent until we own every publish target.                                     | `.github/workflows/release.yml` and `deploy-relay.yml` were deleted. Upstream still has them. The script does **not** prune `.github/workflows`.                                                                                                                                              |
+| Release / relay-deploy CI   | Absent until we own every publish target.                                     | The script prunes the inherited release, relay-deploy, and mobile publishing workflows. Review newly added workflows before keeping them.                                                                                                                                                     |
 
 Canonical disable-list for publishing is [Release bootstrap status](../operations/release.md).
 Identity constants live in [`packages/shared/src/productIdentity.ts`](../../packages/shared/src/productIdentity.ts).
@@ -174,9 +174,9 @@ backends leak back in.
   upstream changes how the scheduler launches threads (another service, a `threadId` it picks
   itself), runs stop being tracked and flood the sidebar — re-point the wrapper rather than patch
   `ScheduledTaskService`.
-- Prune GitHub workflows. Upstream still has `release.yml`, `deploy-relay.yml`, and the
-  `mobile-*.yml` workflows. A merge can restore them or conflict on the deletion. Delete them again
-  if they return.
+- Review new GitHub workflows outside the prune list. The script drops known release,
+  relay-deploy, and mobile publishing workflows. Add new unwanted workflows and their helper
+  scripts to the list so later syncs drop them too.
 - Keep telemetry defaults off. This fork defaults `VETRA_TELEMETRY_ENABLED` to false and ships no
   PostHog project key; upstream defaults to enabled with its own key, so a merge that touches
   `AnalyticsService` will try to restore both. Revert those hunks rather than re-deriving the policy,
@@ -246,7 +246,7 @@ is not part of the sync and must not be left behind silently.
    Patterns that dominate a typical sync:
 
    - **Import-only.** The rest of the file already uses the new symbols. Take upstream's import
-     block (the script has already rewritten `@t3tools` → `@vetra-code` inside conflicted files).
+     block and retain any fork-only imports. Internal package imports stay `@t3tools/*`.
    - **Fork UI vs upstream UI.** Take the incoming behavior; keep Vetra copy and gates. Example:
      the draft hero. Upstream added a project picker that carries the typed prompt across a repo
      change (`carryComposerContent`). This fork also has a pending-project builder headline.
