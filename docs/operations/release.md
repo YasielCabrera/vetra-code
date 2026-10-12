@@ -33,11 +33,11 @@ upstream's Linux CLI archive), so WSL backends fall back to the server tree moun
 
 ## Versioning
 
-Every release bumps the minor version: the next version is one minor past the newest published
-`vX.Y.Z` release in this repository, so `v0.3.0` is followed by `0.4.0`. Before the first release, it
-starts one minor past the desktop package version (`0.0.45` becomes `0.1.0`). Drafts and other tags
-are ignored. The source is this repository's releases, not Git tags: a clone that fetched upstream
-carries T3's `v0.0.x` tags.
+Releases track upstream's desktop package version: `0.0.N` is our line `0.N`, and each release
+bumps the patch on that line (`v0.45.0`, then `v0.45.1`). A sync that moves upstream to `0.0.46`
+starts `v0.46.0`. Drafts, releases on other lines, and tags that are not `vX.Y.Z` are ignored. The
+source is this repository's releases, not Git tags: a clone that fetched upstream carries T3's
+`v0.0.x` tags.
 
 ## Unsigned installers
 

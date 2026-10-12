@@ -9,19 +9,26 @@ function parsePackageVersion(packageVersion) {
   return match.slice(1).map(Number);
 }
 
-// Every release bumps the minor. The newest published `vX.Y.Z` release in
-// this repository wins; before the first one, start from the desktop package
-// version. Drafts never created their tag, and other tags (the rolling
-// `desktop-preview`, prerelease suffixes) are not part of this line.
+// Releases follow the desktop package version: upstream `M.0.P` is our line
+// `M.P`, and each published release on that line bumps the patch. Drafts,
+// other lines, and tags that are not `vX.Y.Z` are ignored.
 function nextReleaseVersion({ releases, packageVersion }) {
-  const [latest] = releases
+  const [major, minor, patch] = parsePackageVersion(packageVersion);
+  if (minor !== 0) {
+    throw new Error(
+      `Upstream version '${packageVersion}' no longer fits the M.0.P -> M.P.X mapping; the scheme needs a decision.`,
+    );
+  }
+
+  const patches = releases
     .filter((release) => !release.isDraft)
     .map((release) => RELEASE_TAG.exec(release.tagName))
     .filter(Boolean)
     .map((match) => match.slice(1).map(Number))
-    .sort((a, b) => b[0] - a[0] || b[1] - a[1] || b[2] - a[2]);
-  const [major, minor] = latest ?? parsePackageVersion(packageVersion);
-  return `${major}.${minor + 1}.0`;
+    .filter(([releaseMajor, releaseMinor]) => releaseMajor === major && releaseMinor === patch)
+    .map(([, , releasePatch]) => releasePatch);
+  const nextPatch = patches.length === 0 ? 0 : Math.max(...patches) + 1;
+  return `${major}.${patch}.${nextPatch}`;
 }
 
 module.exports = { nextReleaseVersion };
