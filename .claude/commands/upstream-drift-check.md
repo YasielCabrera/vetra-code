@@ -133,9 +133,10 @@ incoming change that lands in one of those areas needs a human, regardless of si
 git diff --name-only "$MB"..upstream/main \
   | grep -E '^(apps/mobile|apps/marketing|t3\.json|scripts/mobile-|patches/.*(react-native|expo))'
 
-# CI we removed and do not want back
+# upstream's desktop packaging job. The sync drops all upstream Actions, so
+# .github/workflows/desktop-release.yml may need the same build change by hand.
 git diff --name-only "$MB"..upstream/main \
-  | grep -E '^\.github/workflows/(release|deploy-relay|mobile-)'
+  | grep -E '^\.github/workflows/release-desktop\.yml$'
 
 # identity / auth / analytics / updater surfaces
 git diff --name-only "$MB"..upstream/main \
@@ -184,7 +185,7 @@ to calendar intuition.
 | Verdict        | Any one of these fires                                                                                                                                                                                                                                                                                          |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **SYNC NOW**   | ≥ 5 predicted conflicts · a conflict in a file with ≥ 5 fork-side commits · oldest unmerged commit ≥ 10 days old · ≥ 75 commits · ≥ 150 files · an unhandled new `T3*` identifier · an incoming change to identity/telemetry/updater/Clerk/relay defaults · incoming `pnpm-workspace.yaml` or `patches/` change |
-| **SYNC SOON**  | 1–4 predicted conflicts · 21–74 commits · 40–149 files · oldest unmerged commit 4–9 days old · ≥ 10 overlapping files · incoming `pnpm-lock.yaml` / `package.json` change · upstream touched a pruned tree or a deleted workflow                                                                                |
+| **SYNC SOON**  | 1–4 predicted conflicts · 21–74 commits · 40–149 files · oldest unmerged commit 4–9 days old · ≥ 10 overlapping files · incoming `pnpm-lock.yaml` / `package.json` change · upstream touched a pruned tree or its desktop release job                                                                           |
 | **NO ACTION**  | ≤ 20 commits, zero predicted conflicts, no policy risk, oldest unmerged commit < 4 days                                                                                                                                                                                                                         |
 | **UP TO DATE** | `HEAD..upstream/main` is empty                                                                                                                                                                                                                                                                                  |
 
@@ -230,7 +231,7 @@ report so consecutive days can be compared.
 
 ### Policy risk
 
-- <one bullet per hit, or "None — no pruned trees, deleted workflows, identity,
+- <one bullet per hit, or "None — no pruned trees, desktop release job, identity,
   telemetry, or updater surfaces touched; no new T3 identifiers.">
 
 ### What's coming

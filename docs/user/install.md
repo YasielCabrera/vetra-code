@@ -10,8 +10,8 @@ launch Vetra Code and configure providers afterwards.
 
 ## Command line
 
-Vetra Code does not publish an installer or a `vetra` package yet. Build the
-server from a checkout of the Vetra Code repository with Node.js 24 and pnpm:
+Vetra Code does not publish a command-line installer or a `vetra` package yet.
+Build the server from a checkout of the Vetra Code repository with Node.js 24 and pnpm:
 
 ```bash
 pnpm install && pnpm build:desktop
@@ -34,8 +34,22 @@ update it with `git pull` and a rebuild.
 
 ## Desktop app
 
-Vetra Code does not publish desktop releases yet. After `pnpm build:desktop`,
-start it from the same checkout with `pnpm start:desktop`.
+Download the installer for your platform from the
+[latest release](https://github.com/YasielCabrera/vetra-code/releases/latest):
+the `.dmg` for macOS on Apple Silicon, the `.AppImage` for Linux x64, or the
+`.exe` for Windows x64. The app does not update itself; install a newer release
+to update.
+
+The installers are not signed yet, so the first launch needs one extra step:
+
+- macOS: before opening the downloaded DMG, run
+  `xattr -d com.apple.quarantine ~/Downloads/Vetra-Code-*-arm64.dmg`.
+- Windows: when SmartScreen shows **Windows protected your PC**, choose
+  **More info**, then **Run anyway**.
+- Linux: make the AppImage executable with `chmod +x Vetra-Code-*.AppImage`.
+
+To run the desktop app from a checkout instead, run `pnpm build:desktop`, then
+`pnpm start:desktop`.
 
 ### The `vetra` command
 

@@ -13,16 +13,17 @@ doc. The script is mechanical. The review is the rest of the job.
 
 ## Why a script exists
 
-The fork deleted whole trees (mobile, marketing, inherited release automation) and renames a small
-set of product identity strings. A plain `git merge` therefore:
+The fork deleted whole trees (mobile, marketing), owns its GitHub Actions outright, and renames a
+small set of product identity strings. A plain `git merge` therefore:
 
-- restores deleted apps and workflows;
+- restores deleted apps and upstream's workflows;
 - reintroduces `T3 Code`, `T3CODE_*`, `t3.json`, `com.t3tools.*` application ids, and the other
   identity spellings mapped below;
 - can re-enable Clerk, relay, PostHog, and desktop auto-update against Vetra-owned destinations.
 
-The script merges, prunes the trees we deleted on purpose, and re-applies that rename to files the
-merge actually changed. Anything it cannot decide is left as a real conflict.
+The script merges, prunes the trees we deleted on purpose, resets the Actions trees to ours, and
+re-applies that rename to files the merge actually changed. Anything it cannot decide is left as a
+real conflict.
 
 What the script deliberately does **not** rename is everything else. Workspace packages, import
 paths, internal symbols, file paths, and scratch directories all keep upstream's `t3*` names. That
@@ -38,7 +39,7 @@ all merge conflicts.
 | `upstream`      | `https://github.com/pingdotgg/t3code.git`. Fetch-only source of T3 Code.                            |
 | `upstream/main` | The T3 Code default branch we sync from. It is the only mirror of upstream; there is no local copy. |
 | `main`          | The Vetra product branch. Merge upstream _into this branch_; feature branches start and land here.  |
-| `origin`        | `YasielCabrera/vetra-code`, private. `main` pushes here and tracks `origin/main`, never `upstream`. |
+| `origin`        | `YasielCabrera/vetra-code`, public. `main` pushes here and tracks `origin/main`, never `upstream`.  |
 
 Confirm remotes before the first sync on a machine:
 
@@ -91,8 +92,15 @@ Surfaces this fork deleted and will not ship:
 
 The script's `PRUNE_PATHS` / `PRUNE_GLOBS` lists are the source of truth for the mechanical drop.
 If upstream adds a new file inside those trees, the prune pass deletes it again. If upstream adds a
-_new_ tree we also do not want (for example another mobile workflow outside those paths), extend the
-lists rather than deleting by hand every sync.
+_new_ tree we also do not want, extend the lists rather than deleting by hand every sync.
+
+### Own
+
+The fork owns `.github/workflows/`, `.github/actions/`, and `.github/scripts/` outright and does not
+track upstream's GitHub Actions, which run on paid runners and publish to services we do not own.
+After the merge, the script resets those paths to exactly what `main` has: upstream edits and new
+workflows never land, and conflicts there resolve to ours. To adopt an upstream workflow idea, port
+it by hand into our own workflow.
 
 ### Keep disabled until Vetra owns the destination
 
@@ -108,9 +116,9 @@ must not send users, tokens, or events to T3 until we configure Vetra-owned repl
 | Product analytics (PostHog) | Off until we own a PostHog project. Do not ship the inherited T3 project key. | `VETRA_TELEMETRY_ENABLED` defaults to false and `VETRA_POSTHOG_KEY` has no default; a blank key is treated as disabled, so opting in without your own project sends nothing. Upstream defaults the other way, so a merge touching `AnalyticsService` is a required review item every sync.    |
 | Model manifest refresh      | Off until we host a manifest. Upstream fetches its own repository on `main`.  | `ModelManifest` reads its bundled `model-manifest.json` and only fetches when `VETRA_MODEL_MANIFEST_URL` is set; a blank URL skips the network entirely. Upstream hardcodes `raw.githubusercontent.com/pingdotgg/t3code`, so a merge touching `ModelManifest.ts` is a review item every sync. |
 | OTLP / Grafana              | Optional, and only to endpoints we own.                                       | Unset by default. See [observability](../operations/observability.md).                                                                                                                                                                                                                        |
-| Release / relay-deploy CI   | Absent until we own every publish target.                                     | The script prunes the inherited release, relay-deploy, and mobile publishing workflows. Review newly added workflows before keeping them.                                                                                                                                                     |
+| Release / relay-deploy CI   | Unsigned desktop installers only, until we own every other publish target.    | Upstream's workflows never land (see [Own](#own)). The manual Desktop Release workflow publishes installers to this repository's releases and nothing else.                                                                                                                                   |
 
-Canonical disable-list for publishing is [Release bootstrap status](../operations/release.md).
+Canonical disable-list for publishing is [Desktop releases](../operations/release.md).
 Identity constants live in [`packages/shared/src/productIdentity.ts`](../../packages/shared/src/productIdentity.ts).
 Optional cloud/update env vars are documented in [`.env.example`](../../.env.example); that file
 must stay commented and must never contain T3 production identifiers.
@@ -129,13 +137,14 @@ It will:
 3. `git merge --no-commit --no-ff <ref>` into the current branch. Merge conflicts do not abort the
    rest of the script (`|| true` after merge).
 4. `git rm` the prune paths and globs above, including files upstream newly added inside them.
-5. Walk files this merge changed (`ACMR` vs `HEAD`). For text files that still contain `t3` / `T3`,
+5. Reset the fork-owned Actions paths to `HEAD`, then list the upstream Actions changes it dropped.
+6. Walk files this merge changed (`ACMR` vs `HEAD`). For text files that still contain `t3` / `T3`,
    apply the ordered `RENAMES` table in the script. The table holds product identity only:
    `t3.codes` domains are absent on purpose, and so are package names, import paths, and internal
    symbols.
-6. Stage rewritten files that merged cleanly. Leave conflicted files unstaged: staging one would
+7. Stage rewritten files that merged cleanly. Leave conflicted files unstaged: staging one would
    mark it resolved with conflict markers still inside.
-7. Print remaining unmerged paths, then two greps: T3 identity that should have been renamed, and
+8. Print remaining unmerged paths, then two greps: T3 identity that should have been renamed, and
    `@vetra-code/` names that escaped outside the published-package surface. Noisy hits in
    `.repos/`, lockfiles, and the script itself are excluded from both.
 
@@ -174,9 +183,9 @@ backends leak back in.
   upstream changes how the scheduler launches threads (another service, a `threadId` it picks
   itself), runs stop being tracked and flood the sidebar — re-point the wrapper rather than patch
   `ScheduledTaskService`.
-- Review new GitHub workflows outside the prune list. The script drops known release,
-  relay-deploy, and mobile publishing workflows. Add new unwanted workflows and their helper
-  scripts to the list so later syncs drop them too.
+- Port upstream desktop packaging changes. The script lists the Actions changes it dropped. When
+  upstream's `release-desktop.yml` gains a build step (a new native helper, cache, or system
+  package), our `desktop-release.yml` usually needs the same step, or the next release fails.
 - Keep telemetry defaults off. This fork defaults `VETRA_TELEMETRY_ENABLED` to false and ships no
   PostHog project key; upstream defaults to enabled with its own key, so a merge that touches
   `AnalyticsService` will try to restore both. Revert those hunks rather than re-deriving the policy,
@@ -221,9 +230,8 @@ is not part of the sync and must not be left behind silently.
    Vetra-only path plus incoming work (this fork's `re-making-plan/`, `packages/web3`,
    `sync-upstream.sh`, and so on look like upstream deletions). That is the wrong preview.
 
-   Skim for mobile/marketing, release/deploy workflows, Clerk/PostHog/updater, new public
-   identifiers, and new `T3*` filenames. That preview is how you know which review items will
-   matter.
+   Skim for mobile/marketing, Clerk/PostHog/updater, new public identifiers, and new `T3*`
+   filenames. That preview is how you know which review items will matter.
 
    The final ancestry command exits successfully when the product branch already contains the
    fetched upstream ref. If it succeeds and the incoming log/file list are empty, there is nothing
@@ -258,23 +266,8 @@ is not part of the sync and must not be left behind silently.
      framing and extract only new behaviors that exist in our tree, still described as gated.
      Same call as the last sync's `t3-connect.md` drop.
 
-4. **Re-apply prune if workflows or other dropped trees came back.** At minimum:
-
-   ```bash
-   git rm -rf --ignore-unmatch \
-     .agents/skills/test-t3-mobile \
-     .github/workflows/release.yml \
-     .github/workflows/deploy-relay.yml \
-     .github/workflows/mobile-eas-preview.yml \
-     .github/workflows/mobile-eas-production.yml \
-     .github/workflows/mobile-fingerprint-check.yml \
-     .github/workflows/mobile-showcase-screenshots.yml \
-     apps/mobile apps/marketing t3.json \
-     'patches/*react-navigation*'
-   ```
-
-   If upstream added a new workflow or app we also do not want, delete it and add the path to
-   `PRUNE_PATHS` in the script so the next sync is mechanical.
+4. **Prune new unwanted trees.** If upstream added an app or tree we also do not want, delete it
+   and add the path to `PRUNE_PATHS` in the script so the next sync is mechanical.
 
 5. **Rebrand leftovers.** Re-run the script's leftover grep, then search for destinations the grep
    does not cover:
@@ -325,7 +318,6 @@ is not part of the sync and must not be left behind silently.
      flips the flag back on, revert those hunks. The two "sends nothing" cases in
      [`AnalyticsService.test.ts`](../../apps/server/src/telemetry/AnalyticsService.test.ts) fail when
      either default regresses, so run them whenever a sync touches telemetry.
-   - `.github/workflows/release.yml` and `deploy-relay.yml` are still absent.
    - Cloud UI still requires explicit Vetra config; `.env.example` stays commented.
 
 7. **Install and verify the scope you changed.**
@@ -425,8 +417,8 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
 
 ## Conflict patterns that keep coming back
 
-- **Deleted by us, modified by them.** Common for `apps/mobile`, `apps/marketing`, and the inherited
-  GitHub workflows. Keep the deletion unless we have explicitly decided to restore that surface.
+- **Deleted by us, modified by them.** Common for `apps/mobile` and `apps/marketing`. Keep the
+  deletion unless we have explicitly decided to restore that surface.
 - **Both edited identity strings.** Take the incoming behavior, keep the Vetra names. If the
   incoming hunk is a new `T3_*` constant, add `VETRA_*` in our tree and a `RENAMES` pair.
 - **Lockfile vs deleted workspaces.** After prune, `pnpm install` must regenerate the lockfile so
@@ -466,7 +458,6 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
 
 - [Workspace layout](./workspace-layout.md)
 - [Scripts](./scripts.md)
-- [CI gates](./ci.md)
-- [Release bootstrap status](../operations/release.md)
+- [Desktop releases](../operations/release.md)
 - [Safe first run](../../re-making-plan/03-safe-first-run.md) (why identity isolation exists)
 - [Bootstrap progress](../../re-making-plan/08-bootstrap-progress.md)

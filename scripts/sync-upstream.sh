@@ -8,16 +8,17 @@
 # collide with an installed t3code -- and that lives in
 # packages/shared/src/productIdentity.ts. The table below re-applies exactly
 # that rename to whatever a merge brings in. The script also prunes the trees
-# this fork deleted on purpose. Anything it cannot decide is left as a real
+# this fork deleted on purpose and resets the GitHub Actions trees, which the
+# fork owns outright, to its own. Anything it cannot decide is left as a real
 # conflict.
 #
 # Do not add a pair for an internal name. Renaming one here drags it back out
 # of sync with upstream and undoes the reason these merges are cheap.
 #
 # This is only the mechanical pass. After it runs, follow
-# docs/internals/upstream-sync.md: resolve conflicts, drop restored T3 release
-# / mobile workflows, rebrand leftovers, and keep auth, analytics, and
-# auto-update from talking to T3 until Vetra owns those destinations.
+# docs/internals/upstream-sync.md: resolve conflicts, rebrand leftovers, and
+# keep auth, analytics, and auto-update from talking to T3 until Vetra owns
+# those destinations.
 #
 # Usage: scripts/sync-upstream.sh [upstream-ref]   (default: upstream/main)
 set -euo pipefail
@@ -68,23 +69,9 @@ PRUNE_PATHS=(
   # Upstream's Connect operator guide is written for T3's hosted Clerk and
   # relay. Restore it only once Vetra owns those destinations.
   docs/operations/connect-setup.md
-  # Upstream's relay-state test reads the deploy step out of release.yml, which
-  # this fork prunes, so it can only fail here. scripts/release-smoke.ts drops
-  # the matching invocation.
-  .github/scripts/relay-state-output.test.cjs
-  # Upstream's AUR publishing pipeline. The fork owns no AUR package, and
-  # publish-aur.yml is only reachable from the release.yml we deleted. The
-  # PKGBUILD directories also carry T3 identity in their *paths*, which the
-  # rename pass below never rewrites.
-  .github/workflows/publish-aur.yml
-  .github/workflows/release.yml
-  .github/workflows/mobile-eas-preview.yml
-  .github/workflows/mobile-eas-production.yml
-  .github/workflows/mobile-fingerprint-check.yml
-  .github/workflows/mobile-showcase-screenshots.yml
-  .github/workflows/mobile-android-apk.yml
-  .github/scripts/mirror-play-apk.cjs
-  .github/workflows/deploy-relay.yml
+  # Upstream's AUR packaging. The fork owns no AUR package, and the PKGBUILD
+  # directories carry T3 identity in their *paths*, which the rename pass below
+  # never rewrites.
   packaging/aur
   # Upstream's one-line installers. They default to downloading and executing
   # pingdotgg/t3code release binaries, and are only reachable from the t3.codes
@@ -92,12 +79,6 @@ PRUNE_PATHS=(
   scripts/install.sh
   scripts/install.ps1
   scripts/install.test.ts
-  # Upstream's desktop release job is `workflow_call`-only and reachable solely
-  # from the release.yml this fork deleted; its preview-publish half is built
-  # around Developer ID signing secrets we do not hold. This fork's
-  # self-contained .github/workflows/desktop-macos-preview.yml owns that surface.
-  .github/workflows/release-desktop.yml
-  .github/workflows/desktop-macos-preview-publish.yml
   # Upgrades upstream's V2 preview ledger, where OrchestrationV2 sat at 53 or
   # 54. This fork's ids run one past upstream's from 41 on, so no fork database
   # has that layout and the test's expected ledger can never match ours.
@@ -116,6 +97,18 @@ PRUNE_GLOBS=(
   'patches/*expo*'
   # Mobile-only styling library; the fork ships no mobile app.
   'patches/uniwind*'
+)
+
+# GitHub Actions trees the fork owns outright. Upstream's workflows run on paid
+# runners and publish to services this fork does not own, so none of them are
+# tracked: after the merge these paths are reset to exactly what HEAD has.
+# Upstream edits and additions never land, conflicts resolve to ours, and our
+# own files stay as they were. Port an upstream workflow idea by hand.
+FORK_OWNED_PATHS=(
+  .github/workflows
+  .github/actions
+  .github/scripts
+  .github/VOUCHED.td
 )
 
 # Ordered: most specific first, since later patterns are substrings of earlier
@@ -313,6 +306,17 @@ for glob in "${PRUNE_GLOBS[@]}"; do
   git rm -rf --quiet --ignore-unmatch -- $glob 2>/dev/null || true
 done
 
+say "Resetting fork-owned GitHub Actions to HEAD"
+for path in "${FORK_OWNED_PATHS[@]}"; do
+  git rm -rf --quiet --ignore-unmatch -- "$path"
+  if [[ -n "$(git ls-tree HEAD -- "$path")" ]]; then
+    git checkout HEAD -- "$path"
+  fi
+done
+echo "Upstream Actions changes dropped by this merge:"
+dropped=$(git diff --name-status HEAD..."$UPSTREAM_REF" -- "${FORK_OWNED_PATHS[@]}")
+echo "${dropped:-none}"
+
 say "Re-applying the vetra rename to merged files"
 # Only touch files this merge actually changed, and only text files.
 #
@@ -384,7 +388,8 @@ cat <<'EOF'
 
 Next: docs/internals/upstream-sync.md
   1. Resolve any conflicts listed above, then `git add` them.
-  2. Drop restored T3 release / relay-deploy / mobile workflows if they came back.
+  2. If the dropped upstream Actions changes include a desktop build change
+     (release-desktop.yml), port what desktop-release.yml needs by hand.
   3. Re-run both greps above. Extend RENAMES only for product identity; an
      internal name that came back as `t3*` is correct and should stay.
      Also search t3.codes / t3.gg.

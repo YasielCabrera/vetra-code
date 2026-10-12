@@ -106,9 +106,7 @@ scope is coherent, and the evidence is adequate. It inspects enough code to supp
 Passing triage does not approve correctness, security, performance, or merging. Those need deeper review.
 Updates to the PR can change its eligibility and require reassessment.
 
-PRs receive `vouch:*` contributor-status labels and `size:*` diff-size labels. These are context, not
-eligibility rules. Vouching through [.github/VOUCHED.td](.github/VOUCHED.td) is separate from permission
-to bypass triage. Only the GitHub logins explicitly listed in
+Only the GitHub logins explicitly listed in
 [.github/TRIAGE_EXEMPTIONS.td](.github/TRIAGE_EXEMPTIONS.td) bypass triage. Organization membership,
 vouching, collaborator or bot status, repository write access, and previous successful PRs do not
 establish an exemption. Other contributors, including vouched contributors, go through triage.

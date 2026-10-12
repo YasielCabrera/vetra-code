@@ -1,0 +1,230 @@
+name: Desktop Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Each run claims the next version, so a second run waits for the first to
+# publish instead of resolving the same number.
+concurrency:
+  group: desktop-release
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Resolve version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      # Every run publishes a real release, so only the default branch cuts one.
+      - name: Require the default branch
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/$DEFAULT_BRANCH" ]]; then
+            echo "::error::Desktop releases are cut from $DEFAULT_BRANCH; this run selected $GITHUB_REF_NAME."
+            exit 1
+          fi
+
+      # This repository is public, so Git needs no credentials. checkout's
+      # credential cleanup runs submodule foreach even with submodules disabled,
+      # which fails on the orphaned gitlinks in our vendored .repos tree.
+      - name: Checkout
+        env:
+          GIT_TERMINAL_PROMPT: "0"
+        run: |
+          set -euo pipefail
+          git init --quiet .
+          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          git sparse-checkout set --no-cone '/.github/scripts/' '/apps/desktop/package.json'
+          git checkout --detach FETCH_HEAD
+
+      - id: version
+        name: Resolve next version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          version="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName,isDraft \
+            | node .github/scripts/next-release-version.cjs)"
+          echo "Releasing v$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.label }}
+    needs: preflight
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS arm64
+            runner: macos-15
+            platform: mac
+            target: dmg
+            arch: arm64
+            rust_target: aarch64-apple-darwin
+            installer: "*.dmg"
+          - label: Linux x64
+            runner: ubuntu-24.04
+            platform: linux
+            target: AppImage
+            arch: x64
+            rust_target: x86_64-unknown-linux-gnu
+            installer: "*.AppImage"
+          - label: Windows x64
+            runner: windows-2025
+            platform: win
+            target: nsis
+            arch: x64
+            rust_target: x86_64-pc-windows-msvc
+            installer: "*.exe"
+    steps:
+      - name: Checkout
+        shell: bash
+        env:
+          GIT_TERMINAL_PROMPT: "0"
+        run: |
+          set -euo pipefail
+          git init --quiet .
+          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          git sparse-checkout set --no-cone '/*' '!/.repos/'
+          git -c checkout.workers=0 checkout --detach FETCH_HEAD
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: false
+
+      - name: Install desktop dependencies
+        run: vp install --filter=@t3tools/desktop... --filter=t3... --filter=@t3tools/scripts...
+
+      - name: Cache resource monitor
+        id: resource_monitor_cache
+        uses: actions/cache@v6
+        with:
+          path: native/resource-monitor/target/${{ matrix.rust_target }}/release/t3-resource-monitor${{ matrix.platform == 'win' && '.exe' || '' }}
+          key: resource-monitor-${{ matrix.rust_target }}-${{ hashFiles('native/resource-monitor/Cargo.lock', 'native/resource-monitor/Cargo.toml', 'native/resource-monitor/src/**') }}
+
+      - name: Cache Linux capture helpers
+        if: matrix.platform == 'linux'
+        id: capture_helper_cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            native/kde-snap-shot/target/${{ matrix.rust_target }}/release/t3-kde-snap-shot
+            native/hyprland-snap-shot/target/${{ matrix.rust_target }}/release/t3-hyprland-snap-shot
+          key: linux-capture-helpers-${{ matrix.rust_target }}-${{ hashFiles('native/kde-snap-shot/Cargo.lock', 'native/kde-snap-shot/Cargo.toml', 'native/kde-snap-shot/src/**', 'native/hyprland-snap-shot/Cargo.lock', 'native/hyprland-snap-shot/Cargo.toml', 'native/hyprland-snap-shot/src/**', 'native/hyprland-snap-shot/protocols/**') }}
+
+      - name: Setup Rust
+        if: steps.resource_monitor_cache.outputs.cache-hit != 'true' || (matrix.platform == 'linux' && steps.capture_helper_cache.outputs.cache-hit != 'true')
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      # Only the resource monitor build needs these libraries, so a cached
+      # monitor skips the install along with the desktop build's MSVC check.
+      - name: Install Spectre-mitigated MSVC libs
+        if: matrix.platform == 'win' && steps.resource_monitor_cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $installPath = & $vswhere -products * -latest -property installationPath
+          $setupExe = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
+          $proc = Start-Process -FilePath $setupExe `
+            -ArgumentList "modify", "--installPath", "`"$installPath`"", "--add", `
+            "Microsoft.VisualStudio.Component.VC.Runtimes.x86.x64.Spectre", "--quiet", "--norestart" `
+            -Wait -PassThru -NoNewWindow
+          if ($null -eq $proc -or $proc.ExitCode -ne 0) {
+            $code = if ($null -ne $proc) { $proc.ExitCode } else { 1 }
+            Write-Error "Visual Studio Installer failed with exit code $code"
+            exit $code
+          }
+
+      - name: Install Linux desktop build libraries
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-dev pkg-config imagemagick
+
+      # Unsigned: the build only signs with --signed, and this workflow holds
+      # no signing secrets.
+      - name: Build installer
+        shell: bash
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          VETRA_DESKTOP_REUSE_RESOURCE_MONITOR: ${{ steps.resource_monitor_cache.outputs.cache-hit == 'true' }}
+          VETRA_DESKTOP_REUSE_LINUX_CAPTURE_HELPERS: ${{ steps.capture_helper_cache.outputs.cache-hit == 'true' }}
+        run: |
+          set -euo pipefail
+
+          node scripts/update-release-package-versions.ts "$VERSION"
+          cp .env.example .env
+
+          vp run dist:desktop:artifact \
+            --platform ${{ matrix.platform }} \
+            --target ${{ matrix.target }} \
+            --arch ${{ matrix.arch }} \
+            --build-version "$VERSION" \
+            --verbose
+
+          # release/ also holds blockmaps, the zip/deb siblings, and builder
+          # logs. Only the one installer per platform is published.
+          shopt -s nullglob
+          installers=(release/${{ matrix.installer }})
+          if (( ${#installers[@]} != 1 )); then
+            printf 'Expected one %s installer, found %s.\n' "${{ matrix.installer }}" "${#installers[@]}" >&2
+            exit 1
+          fi
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-${{ matrix.platform }}
+          path: release/${{ matrix.installer }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  # The only job with a write token. It never checks out the repository; it
+  # only publishes what the build jobs produced, and runs only after every
+  # build succeeded, so a failed run claims no version.
+  publish:
+    name: Publish release
+    needs: [preflight, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download installers
+        uses: actions/download-artifact@v8
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: release
+
+      # The tag targets the commit that was built, not wherever the branch
+      # moved during the build.
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          gh release create "v$VERSION" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Vetra Code v$VERSION" \
+            --generate-notes
