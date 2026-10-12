@@ -54,6 +54,15 @@ const withTickets = <A, E, R>(
     return yield* body(yield* TicketService.TicketService);
   }).pipe(Effect.provide(testLayer));
 
+const createIn = (
+  tickets: TicketService.TicketService["Service"],
+  projectId: string,
+  title: string,
+) =>
+  tickets
+    .create({ title, links: [{ kind: "project", projectId: ProjectId.make(projectId) }] }, USER)
+    .pipe(Effect.map((created) => created.ticket));
+
 const countRows = (table: string) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
@@ -109,6 +118,127 @@ describe("TicketService", () => {
         assert.strictEqual((yield* tickets.resolveRef("T-3")).title, "Third");
         const missing = yield* tickets.resolveRef("T-2").pipe(Effect.flip);
         assert.strictEqual(missing._tag, "TicketNotFoundError");
+      }),
+    ),
+  );
+
+  it.effect("numbers each project's tickets from T-1 and never reuses a deleted number", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const busy = yield* Effect.forEach(Array.from({ length: 50 }), (_, index) =>
+          createIn(tickets, "busy", `Busy ${index + 1}`),
+        );
+        const fresh = yield* createIn(tickets, "fresh", "Fresh");
+        const loose = (yield* tickets.create({ title: "Loose" }, USER)).ticket;
+        const looser = (yield* tickets.create({ title: "Looser" }, USER)).ticket;
+        yield* tickets.delete({ ticketId: busy[49]!.id });
+        const next = yield* createIn(tickets, "busy", "After delete");
+
+        assert.deepStrictEqual(
+          [busy[0]!.number, busy[49]!.number, fresh.number, loose.number, looser.number],
+          [1, 50, 1, 1, 2],
+        );
+        assert.strictEqual(next.number, 51);
+      }),
+    ),
+  );
+
+  it.effect("resolves T-N in the given project and refuses one that names several tickets", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        yield* createIn(tickets, "alpha", "Alpha one");
+        yield* createIn(tickets, "beta", "Beta one");
+        yield* createIn(tickets, "alpha", "Alpha two");
+
+        const scoped = yield* Effect.forEach(["alpha", "beta"], (projectId) =>
+          tickets.resolveRef("T-1", ProjectId.make(projectId)),
+        );
+        const unique = yield* tickets.resolveRef("T-2");
+        const ambiguous = yield* tickets.resolveRef("T-1").pipe(Effect.flip);
+        const elsewhere = yield* tickets
+          .resolveRef("T-2", ProjectId.make("beta"))
+          .pipe(Effect.flip);
+        assert.deepStrictEqual(
+          [scoped.map((ticket) => ticket.title), unique.title, ambiguous.message, elsewhere._tag],
+          [
+            ["Alpha one", "Beta one"],
+            "Alpha two",
+            "T-1 names 2 tickets in different projects. Use the ticket id instead.",
+            "TicketNotFoundError",
+          ],
+        );
+      }),
+    ),
+  );
+
+  it.effect("renumbers a moved ticket and still finds it by its old number there", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const alpha = ProjectId.make("alpha");
+        const beta = ProjectId.make("beta");
+        yield* createIn(tickets, alpha, "Alpha one");
+        const moving = yield* createIn(tickets, alpha, "Flux capacitor");
+        yield* createIn(tickets, beta, "Beta one");
+        yield* createIn(tickets, beta, "Beta two");
+        const plan = (yield* tickets.createPlan({ ticketId: moving.id, title: "Plan" }, USER)).plan;
+
+        // The board moves a ticket by linking the new project, then unlinking the old one.
+        const linked = yield* tickets.link(
+          { ticketId: moving.id, target: { kind: "project", projectId: beta } },
+          USER,
+        );
+        const moved = yield* tickets.unlink(
+          { ticketId: moving.id, kind: "project", targetKey: alpha },
+          USER,
+        );
+        const oldRef = yield* tickets.resolveRef("T-2", alpha);
+        const oldPlanRef = yield* tickets.resolvePlanRef("T-2/P1", alpha);
+        const betaTwo = yield* tickets.resolveRef("T-2", beta);
+        const searched = yield* tickets.search({ query: "capac" });
+        const listed = yield* tickets.list({ query: "flux", projectId: beta, limit: 10 });
+
+        yield* tickets.link(
+          { ticketId: moving.id, target: { kind: "project", projectId: alpha } },
+          USER,
+        );
+        const back = yield* tickets.unlink(
+          { ticketId: moving.id, kind: "project", targetKey: beta },
+          USER,
+        );
+        const betaRef = yield* tickets.resolveRef("T-3", beta);
+
+        const loose = (yield* tickets.create({ title: "Loose" }, USER)).ticket;
+        const adopted = yield* tickets.link(
+          { ticketId: loose.id, target: { kind: "project", projectId: beta } },
+          USER,
+        );
+
+        assert.deepStrictEqual(
+          {
+            whileLinkedToBoth: linked.ticket.number,
+            moved: [moved.number, moved.plans.map((summary) => summary.ref)],
+            oldRef: oldRef.id,
+            oldPlanRef: oldPlanRef.planId,
+            betaTwo: betaTwo.title,
+            searched: searched.hits.map((hit) => [hit.ticketId, hit.number]),
+            listed: listed.tickets.map((ticket) => ticket.id),
+            back: back.number,
+            betaRef: betaRef.id,
+            adopted: [loose.number, adopted.ticket.number],
+          },
+          {
+            whileLinkedToBoth: 2,
+            moved: [3, ["T-3/P1"]],
+            oldRef: moving.id,
+            oldPlanRef: plan.planId,
+            betaTwo: "Beta two",
+            searched: [[moving.id, 3]],
+            listed: [moving.id],
+            back: 2,
+            betaRef: moving.id,
+            adopted: [1, 4],
+          },
+        );
       }),
     ),
   );
@@ -576,10 +706,10 @@ describe("TicketService", () => {
         yield* sql`
           WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 33000)
           INSERT INTO tickets (
-            ticket_id, number, kind, title, status_id, sort_key, created_by_json, created_at,
+            ticket_id, seq, number, kind, title, status_id, sort_key, created_by_json, created_at,
             updated_at
           )
-          SELECT 'bulk-' || i, i, 'local', 'Bulk', 'todo', 'a0', '{"type":"user"}',
+          SELECT 'bulk-' || i, i, i, 'local', 'Bulk', 'todo', 'a0', '{"type":"user"}',
             '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'
           FROM n
         `;
@@ -850,11 +980,11 @@ describe("TicketService", () => {
         });
         yield* sql`
           INSERT INTO tickets (
-            ticket_id, number, kind, title, body, labels_json, status_id, sort_key, revision,
+            ticket_id, seq, number, kind, title, body, labels_json, status_id, sort_key, revision,
             created_by_json, created_at, updated_at, github_host, github_repository,
             github_number, github_snapshot_json
           ) VALUES (
-            ${ticketId}, 1, 'github', 'Issue title', 'Issue body', '[]', 'todo', 'a0', 1,
+            ${ticketId}, 1, 1, 'github', 'Issue title', 'Issue body', '[]', 'todo', 'a0', 1,
             '{"type":"sync"}', '2026-10-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z',
             'github.com', 'acme/app', 7, ${snapshot}
           )
@@ -2143,11 +2273,11 @@ describe("TicketService plans", () => {
         });
         yield* sql`
           INSERT INTO tickets (
-            ticket_id, number, kind, title, body, labels_json, status_id, sort_key, revision,
+            ticket_id, seq, number, kind, title, body, labels_json, status_id, sort_key, revision,
             created_by_json, created_at, updated_at, github_host, github_repository,
             github_number, github_snapshot_json
           ) VALUES (
-            ${githubId}, 2, 'github', 'Issue title', 'Issue body', '[]', 'todo', 'a1', 1,
+            ${githubId}, 2, 2, 'github', 'Issue title', 'Issue body', '[]', 'todo', 'a1', 1,
             '{"type":"sync"}', '2026-10-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z',
             'github.com', 'acme/app', 123, ${snapshot}
           )

@@ -1,5 +1,6 @@
 import {
   OrchestratorMcpFailure,
+  type OrchestrationV2ThreadShell,
   type TicketActor,
   TicketError,
   type TicketGitHubRef,
@@ -99,17 +100,28 @@ const commentThreads = (
 
 const make = Effect.gen(function* () {
   const tickets = yield* TicketService.TicketService;
-  const ticketId = (reference: string) =>
-    tickets.resolveRef(reference).pipe(Effect.map((summary) => summary.id));
+  // `T-42` means the calling thread's project's ticket 42.
+  const ticketId = (reference: string, caller: OrchestrationV2ThreadShell | undefined) =>
+    tickets.resolveRef(reference, caller?.projectId).pipe(Effect.map((summary) => summary.id));
+  const planId = (reference: string, caller: OrchestrationV2ThreadShell | undefined) =>
+    tickets.resolvePlanRef(reference, caller?.projectId).pipe(Effect.map((plan) => plan.planId));
 
   return {
     t3_ticket_list: McpToolAccess.reads(({ limit, ...filter }) =>
-      reader().pipe(Effect.andThen(tickets.list({ ...filter, limit: limit ?? 50 }))),
+      Effect.gen(function* () {
+        const caller = yield* reader();
+        // Unfiltered, a thread sees its own project's tickets, the ones its `T-42` names.
+        const home =
+          caller === undefined || filter.projectId !== undefined || filter.threadId !== undefined
+            ? {}
+            : { homeProjectId: caller.projectId };
+        return yield* tickets.list({ ...filter, ...home, limit: limit ?? 50 });
+      }),
     ),
     t3_ticket_get: McpToolAccess.reads((input) =>
       Effect.gen(function* () {
-        yield* reader();
-        const detail = yield* tickets.get(yield* ticketId(input.ticket));
+        const caller = yield* reader();
+        const detail = yield* tickets.get(yield* ticketId(input.ticket, caller));
         return { ...detail, activity: detail.activity.slice(-RECENT_ACTIVITY) };
       }),
     ),
@@ -133,9 +145,9 @@ const make = Effect.gen(function* () {
     ),
     t3_ticket_update: McpToolAccess.writes(({ ticket, status, ...input }) =>
       Effect.gen(function* () {
-        const { actor } = yield* writer();
+        const { caller, actor } = yield* writer();
         const updated = yield* tickets.update(
-          { ...input, ticketId: yield* ticketId(ticket), statusId: status },
+          { ...input, ticketId: yield* ticketId(ticket, caller), statusId: status },
           actor,
         );
         return { ...updated.ticket, attachments: updated.storedAttachments };
@@ -143,9 +155,9 @@ const make = Effect.gen(function* () {
     ),
     t3_ticket_link: McpToolAccess.writes(({ ticket, target }) =>
       Effect.gen(function* () {
-        const { actor } = yield* writer();
+        const { caller, actor } = yield* writer();
         const linked = yield* tickets.link(
-          { ticketId: yield* ticketId(ticket), target: yield* toLinkTarget(target) },
+          { ticketId: yield* ticketId(ticket, caller), target: yield* toLinkTarget(target) },
           actor,
         );
         return linked.ticket;
@@ -153,27 +165,32 @@ const make = Effect.gen(function* () {
     ),
     t3_ticket_unlink: McpToolAccess.writes(({ ticket, kind, targetKey }) =>
       Effect.gen(function* () {
-        const { actor } = yield* writer();
-        return yield* tickets.unlink({ ticketId: yield* ticketId(ticket), kind, targetKey }, actor);
+        const { caller, actor } = yield* writer();
+        return yield* tickets.unlink(
+          { ticketId: yield* ticketId(ticket, caller), kind, targetKey },
+          actor,
+        );
       }),
     ),
     t3_ticket_note: McpToolAccess.writes(({ ticket, body }) =>
       Effect.gen(function* () {
-        const { actor } = yield* writer();
-        return yield* tickets.addComment({ ticketId: yield* ticketId(ticket), body }, actor);
+        const { caller, actor } = yield* writer();
+        return yield* tickets.addComment(
+          { ticketId: yield* ticketId(ticket, caller), body },
+          actor,
+        );
       }),
     ),
     t3_ticket_plan_list: McpToolAccess.reads(({ ticket }) =>
       Effect.gen(function* () {
-        yield* reader();
-        return { plans: yield* tickets.listPlans(yield* ticketId(ticket)) };
+        const caller = yield* reader();
+        return { plans: yield* tickets.listPlans(yield* ticketId(ticket, caller)) };
       }),
     ),
     t3_ticket_plan_get: McpToolAccess.reads(({ plan, includeResolved }) =>
       Effect.gen(function* () {
-        yield* reader();
-        const { planId } = yield* tickets.resolvePlanRef(plan);
-        const current = yield* tickets.getPlan(planId);
+        const caller = yield* reader();
+        const current = yield* tickets.getPlan(yield* planId(plan, caller));
         return {
           plan: current.summary,
           body: current.body,
@@ -183,9 +200,9 @@ const make = Effect.gen(function* () {
     ),
     t3_ticket_plan_create: McpToolAccess.writes(({ ticket, ...input }) =>
       Effect.gen(function* () {
-        const { actor } = yield* writer();
+        const { caller, actor } = yield* writer();
         const created = yield* tickets.createPlan(
-          { ...input, ticketId: yield* ticketId(ticket) },
+          { ...input, ticketId: yield* ticketId(ticket, caller) },
           actor,
         );
         return { ...created.plan, attachments: created.storedAttachments };
@@ -193,17 +210,21 @@ const make = Effect.gen(function* () {
     ),
     t3_ticket_plan_update: McpToolAccess.writes(({ plan, ...input }) =>
       Effect.gen(function* () {
-        const { actor } = yield* writer();
-        const { planId } = yield* tickets.resolvePlanRef(plan);
-        const updated = yield* tickets.updatePlan({ ...input, planId }, actor);
+        const { caller, actor } = yield* writer();
+        const updated = yield* tickets.updatePlan(
+          { ...input, planId: yield* planId(plan, caller) },
+          actor,
+        );
         return { ...updated.plan, attachments: updated.storedAttachments };
       }),
     ),
     t3_ticket_plan_comment: McpToolAccess.writes(({ plan, quote, ...input }) =>
       Effect.gen(function* () {
-        const { actor } = yield* writer();
-        const { planId } = yield* tickets.resolvePlanRef(plan);
-        return yield* tickets.addPlanComment({ ...input, planId, sourceQuote: quote }, actor);
+        const { caller, actor } = yield* writer();
+        return yield* tickets.addPlanComment(
+          { ...input, planId: yield* planId(plan, caller), sourceQuote: quote },
+          actor,
+        );
       }),
     ),
   } satisfies McpToolAccess.Handlers<typeof TicketsToolkit.tools>;

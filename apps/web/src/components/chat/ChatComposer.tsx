@@ -1634,6 +1634,8 @@ export interface ChatComposerProps {
   keybindings: ResolvedKeybindingsConfig;
   terminalOpen: boolean;
   gitCwd: string | null;
+  /** The thread's project, where a typed `#T-42` names its ticket. */
+  ticketProjectId: ProjectId | null;
   pullRequestProjectId: ProjectId | null;
   pullRequestRepository: string | null;
   restingControlsHost: HTMLDivElement | null;
@@ -1780,6 +1782,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     keybindings,
     terminalOpen,
     gitCwd,
+    ticketProjectId,
     pullRequestProjectId,
     pullRequestRepository,
     restingControlsHost,
@@ -2812,6 +2815,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         ? matchComposerTicketItems({
             tickets: pickerTickets,
             environmentId,
+            projectId: ticketProjectId,
             query: composerTrigger.query,
           })
         : [];
@@ -2888,6 +2892,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     selectedProviderSlashCommands,
     selectedProviderStatus,
     settings.showSkillsInSlashMenu,
+    ticketProjectId,
     workspaceEntries.entries,
   ]);
 

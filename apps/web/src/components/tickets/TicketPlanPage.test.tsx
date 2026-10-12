@@ -119,6 +119,7 @@ const detail: TicketDetail = {
   summary: {
     id: plan.summary.ticketId,
     number: 1,
+    homeProjectId: null,
     kind: "local",
     title: "Ticket",
     labels: [],

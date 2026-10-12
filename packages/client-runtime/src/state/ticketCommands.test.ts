@@ -7,6 +7,7 @@ const ticket = (id: string, title: string): TicketSummary => ({
   kind: "local",
   id: TicketId.make(id),
   number: 1,
+  homeProjectId: null,
   title,
   labels: [],
   statusId: TicketStatusId.make("todo"),

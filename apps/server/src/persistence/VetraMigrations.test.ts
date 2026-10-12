@@ -10,6 +10,8 @@ import Migration001 from "./VetraMigrations/001_Tickets.ts";
 import Migration002 from "./VetraMigrations/002_TicketGitHubSources.ts";
 import Migration003 from "./VetraMigrations/003_TicketDrafts.ts";
 import Migration004 from "./VetraMigrations/004_TicketPlans.ts";
+import Migration005 from "./VetraMigrations/005_TicketPlanReviewStatus.ts";
+import Migration006 from "./VetraMigrations/006_TicketLinkTombstones.ts";
 
 const layer = it.layer(Layer.mergeAll(NodeSqliteClient.layer({ filename: ":memory:" })));
 
@@ -17,6 +19,15 @@ const createTable = (name: string) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     yield* sql.unsafe(`CREATE TABLE ${name} (id TEXT PRIMARY KEY)`);
+  });
+
+const countRowsIn = (table: string) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    const [row] = yield* sql<{
+      readonly count: number;
+    }>`SELECT COUNT(*) AS count FROM ${sql(table)}`;
+    return row!.count;
   });
 
 const readLedgers = Effect.gen(function* () {
@@ -115,6 +126,7 @@ it.effect("defaults existing active and archived plans to Draft and preserves da
     assert.deepStrictEqual(yield* runVetraMigrations(), [
       "005_TicketPlanReviewStatus",
       "006_TicketLinkTombstones",
+      "007_ProjectTicketNumbers",
     ]);
     const migratedPlans = yield* sql`
       SELECT plan_id, ticket_id, number, title, body, status, revision,
@@ -144,8 +156,118 @@ it.effect("defaults existing active and archived plans to Draft and preserves da
         "004_TicketPlans",
         "005_TicketPlanReviewStatus",
         "006_TicketLinkTombstones",
+        "007_ProjectTicketNumbers",
       ],
       upstream: ["1_OrchestrationEvents"],
     });
+  }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
+);
+
+it.effect("numbers existing tickets in their earliest project and keeps every row", () =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* runVetraMigrations([
+      ["001_Tickets", Migration001],
+      ["002_TicketGitHubSources", Migration002],
+      ["003_TicketDrafts", Migration003],
+      ["004_TicketPlans", Migration004],
+      ["005_TicketPlanReviewStatus", Migration005],
+      ["006_TicketLinkTombstones", Migration006],
+    ]);
+    // T-4 and T-7 were deleted. T-7 sat above every surviving number, in a project now unknown.
+    yield* sql`UPDATE ticket_counter SET next_number = 8`;
+    yield* sql`
+      INSERT INTO tickets (
+        ticket_id, number, kind, title, status_id, sort_key, created_by_json, created_at, updated_at
+      ) VALUES
+        ('t1', 1, 'local', 'Alpha one', 'todo', 'a0', '{"type":"user"}', 'a', 'a'),
+        ('t2', 2, 'local', 'Beta one', 'todo', 'a1', '{"type":"user"}', 'b', 'b'),
+        ('t3', 3, 'local', 'Loose', 'todo', 'a2', '{"type":"user"}', 'c', 'c'),
+        ('t5', 5, 'local', 'Alpha two', 'todo', 'a3', '{"type":"user"}', 'd', 'd'),
+        ('t6', 6, 'local', 'Twins', 'todo', 'a4', '{"type":"user"}', 'e', 'e')
+    `;
+    yield* sql`
+      INSERT INTO ticket_links (ticket_id, kind, target_key, target_json, source, created_at)
+      VALUES
+        ('t1', 'project', 'alpha', '{}', 'user', 'a'),
+        ('t1', 'thread', 'thread-1', '{}', 'user', 'a'),
+        ('t2', 'project', 'alpha', '{}', 'user', 'z'),
+        ('t2', 'project', 'beta', '{}', 'user', 'b'),
+        ('t5', 'project', 'alpha', '{}', 'user', 'd'),
+        ('t6', 'project', 'gamma', '{}', 'user', 'e'),
+        ('t6', 'project', 'delta', '{}', 'user', 'e')
+    `;
+    yield* sql`
+      INSERT INTO tickets_fts (rowid, title, body, labels) VALUES
+        (1, 'Alpha one', '', ''), (2, 'Beta one', '', ''), (3, 'Loose', '', ''),
+        (5, 'Alpha two', '', ''), (6, 'Twins', '', '')
+    `;
+    yield* sql`
+      INSERT INTO ticket_attachments (
+        attachment_id, ticket_id, type, name, mime_type, size_bytes, created_at
+      ) VALUES ('a1', 't1', 'file', 'notes.txt', 'text/plain', 5, 'a')
+    `;
+    yield* sql`
+      INSERT INTO ticket_activity (ticket_id, actor_json, entry_json, created_at)
+      VALUES ('t2', '{"type":"user"}', '{"type":"created"}', 'b')
+    `;
+    yield* sql`
+      INSERT INTO ticket_plans (
+        plan_id, ticket_id, number, title, status, created_by_json, updated_by_json, created_at,
+        updated_at
+      ) VALUES ('p1', 't5', 1, 'Plan', 'active', '{"type":"user"}', '{"type":"user"}', 'd', 'd')
+    `;
+    yield* sql`
+      INSERT INTO ticket_link_tombstones (ticket_id, kind, target_key, target_json, removed_at)
+      VALUES ('t3', 'project', 'beta', '{}', 'c')
+    `;
+    const childTables = [
+      "ticket_links",
+      "ticket_attachments",
+      "ticket_activity",
+      "ticket_plans",
+      "ticket_link_tombstones",
+    ];
+    const readChildren = Effect.forEach(
+      childTables,
+      (table) => sql`SELECT * FROM ${sql(table)} ORDER BY rowid`,
+    );
+    const before = yield* readChildren;
+
+    assert.deepStrictEqual(yield* runVetraMigrations(), ["007_ProjectTicketNumbers"]);
+
+    assert.deepStrictEqual(
+      yield* sql`SELECT ticket_id, seq, number, number_scope FROM tickets ORDER BY seq`,
+      [
+        { ticket_id: "t1", seq: 1, number: 1, number_scope: "alpha" },
+        { ticket_id: "t2", seq: 2, number: 2, number_scope: "beta" },
+        { ticket_id: "t3", seq: 3, number: 3, number_scope: "" },
+        { ticket_id: "t5", seq: 5, number: 5, number_scope: "alpha" },
+        { ticket_id: "t6", seq: 6, number: 6, number_scope: "gamma" },
+      ],
+    );
+    assert.deepStrictEqual(
+      yield* sql`SELECT number_scope, next_number FROM ticket_number_counters ORDER BY number_scope`,
+      // Each scope's own maximum would have reissued the deleted 4 or 7.
+      [
+        { number_scope: "", next_number: 8 },
+        { number_scope: "alpha", next_number: 8 },
+        { number_scope: "beta", next_number: 8 },
+        { number_scope: "gamma", next_number: 8 },
+      ],
+    );
+    assert.deepStrictEqual(
+      yield* sql`
+        SELECT t.ticket_id FROM tickets_fts JOIN tickets t ON t.seq = tickets_fts.rowid
+        WHERE tickets_fts MATCH 'alpha' ORDER BY t.seq
+      `,
+      [{ ticket_id: "t1" }, { ticket_id: "t5" }],
+    );
+    assert.deepStrictEqual(yield* readChildren, before);
+    assert.deepStrictEqual(yield* countRowsIn("ticket_number_aliases"), 0);
+    const duplicate = yield* sql`
+      UPDATE tickets SET number = 1 WHERE ticket_id = 't5'
+    `.pipe(Effect.flip);
+    assert.strictEqual(duplicate._tag, "SqlError");
   }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
 );

@@ -193,7 +193,7 @@ export function buildTicketStatusGroups(
 
 function compareTicketsInStatus(left: EnvironmentTicket, right: EnvironmentTicket): number {
   if (left.sortKey !== right.sortKey) return left.sortKey < right.sortKey ? -1 : 1;
-  return left.number - right.number;
+  return left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id);
 }
 
 /**

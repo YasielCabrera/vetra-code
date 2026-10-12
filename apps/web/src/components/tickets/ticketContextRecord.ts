@@ -103,8 +103,8 @@ export function revisePlanPrefill(
 ): TicketThreadPrefill {
   const instruction =
     plan.openCommentCount === 0
-      ? `Revise the plan text of ${plan.ref} with t3_ticket_plan_update. Do not change code.`
-      : `Revise the plan text of ${plan.ref} to address its open comments: edit it with t3_ticket_plan_update and resolve each comment it addresses. Do not change code.`;
+      ? `Revise the plan text of ${plan.ref} with t3_ticket_plan_update(plan="${plan.planId}"). Do not change code.`
+      : `Revise the plan text of ${plan.ref} to address its open comments: edit it with t3_ticket_plan_update(plan="${plan.planId}") and resolve each comment it addresses. Do not change code.`;
   return {
     records: [ticketPlanContextRecord({ environmentId, plan })],
     instruction,
@@ -117,6 +117,6 @@ export function askForPlanPrefill(
 ): TicketThreadPrefill {
   return {
     records: [ticketContextRecord({ environmentId, ticket })],
-    instruction: `Write an implementation plan for ${formatTicketRef(ticket)} with t3_ticket_plan_create. Do not change code.`,
+    instruction: `Write an implementation plan for ${formatTicketRef(ticket)} with t3_ticket_plan_create(ticket="${ticket.id}"). Do not change code.`,
   };
 }

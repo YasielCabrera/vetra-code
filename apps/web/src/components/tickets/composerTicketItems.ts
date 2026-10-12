@@ -1,5 +1,5 @@
 import type { EnvironmentTicket } from "@t3tools/client-runtime/state/tickets";
-import type { EnvironmentId, TicketPlanSummary } from "@t3tools/contracts";
+import type { EnvironmentId, ProjectId, TicketPlanSummary } from "@t3tools/contracts";
 
 import { formatTicketRef } from "./ticketRefs";
 
@@ -30,9 +30,21 @@ function startsAnyWord(text: string, query: string): boolean {
     .some((word) => word.startsWith(query));
 }
 
-function matchRank(ticket: EnvironmentTicket, query: string): number | null {
+/**
+ * `T-42` counts per project, so a reference only names tickets numbered in the composer's
+ * project, not ones merely linked to it.
+ */
+function numberedIn(ticket: EnvironmentTicket, projectId: ProjectId | null): boolean {
+  return projectId === null || ticket.homeProjectId === projectId;
+}
+
+function matchRank(
+  ticket: EnvironmentTicket,
+  query: string,
+  projectId: ProjectId | null,
+): number | null {
   const reference = /^t-(\d*)$/.exec(query);
-  if (reference) {
+  if (reference && numberedIn(ticket, projectId)) {
     const digits = reference[1]!;
     const number = String(ticket.number);
     if (number === digits) return 0;
@@ -50,10 +62,11 @@ function planMatchRank(
   ticket: EnvironmentTicket,
   plan: TicketPlanSummary,
   query: string,
+  projectId: ProjectId | null,
 ): number | null {
   const reference = /^t-(\d+)\/(?:p(\d*))?$/.exec(query);
   if (reference) {
-    if (String(ticket.number) !== reference[1]) return null;
+    if (!numberedIn(ticket, projectId) || String(ticket.number) !== reference[1]) return null;
     const digits = reference[2] ?? "";
     const number = String(plan.number);
     if (digits.length > 0 && number === digits) return 0;
@@ -65,12 +78,14 @@ function planMatchRank(
 /**
  * Tickets the `#` picker offers above pull requests: `#T-42` by reference, or a word from the
  * title. Plans follow their own tickets: `#T-42/P1` by reference, or a word from the title. The
- * agent reaches tickets on its own server only, so candidates stay in the composer's environment.
- * Bare `#` and digits stay pull request lookups.
+ * agent reaches tickets on its own server only, so candidates stay in the composer's environment,
+ * and references stay in its project when it has one. Bare `#` and digits stay pull request
+ * lookups.
  */
 export function matchComposerTicketItems(input: {
   readonly tickets: ReadonlyArray<EnvironmentTicket>;
   readonly environmentId: EnvironmentId;
+  readonly projectId: ProjectId | null;
   readonly query: string;
 }): Array<ComposerTicketItem | ComposerTicketPlanItem> {
   const query = input.query.trim().toLowerCase();
@@ -82,7 +97,7 @@ export function matchComposerTicketItems(input: {
   );
   const ticketItems = tickets
     .flatMap((ticket) => {
-      const rank = matchRank(ticket, query);
+      const rank = matchRank(ticket, query, input.projectId);
       return rank === null ? [] : [{ ticket, rank }];
     })
     .sort(
@@ -100,7 +115,7 @@ export function matchComposerTicketItems(input: {
   const planItems = tickets
     .flatMap((ticket) =>
       ticket.plans.flatMap((plan) => {
-        const rank = planMatchRank(ticket, plan, query);
+        const rank = planMatchRank(ticket, plan, query, input.projectId);
         return rank === null ? [] : [{ ticket, plan, rank }];
       }),
     )

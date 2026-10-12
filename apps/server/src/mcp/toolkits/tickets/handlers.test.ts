@@ -109,13 +109,20 @@ const seedGitHubTicket = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   yield* sql`
     INSERT INTO tickets (
-      ticket_id, number, kind, title, body, labels_json, status_id, sort_key, revision,
-      created_by_json, created_at, updated_at, github_host, github_repository,
+      ticket_id, seq, number, number_scope, kind, title, body, labels_json, status_id, sort_key,
+      revision, created_by_json, created_at, updated_at, github_host, github_repository,
       github_number, github_snapshot_json
     ) VALUES (
-      ${TicketId.make("github-ticket")}, 100, 'github', 'Issue title', 'Issue body', '[]',
-      'todo', 'a0', 1, '{"type":"sync"}', '2026-10-01T00:00:00.000Z',
+      ${TicketId.make("github-ticket")}, 100, 100, ${projectId}, 'github', 'Issue title',
+      'Issue body', '[]', 'todo', 'a0', 1, '{"type":"sync"}', '2026-10-01T00:00:00.000Z',
       '2026-10-01T00:00:00.000Z', 'github.com', 'acme/app', 7, ${githubSnapshot}
+    )
+  `;
+  yield* sql`
+    INSERT INTO ticket_links (ticket_id, kind, target_key, target_json, source, created_at)
+    VALUES (
+      ${TicketId.make("github-ticket")}, 'project', ${projectId},
+      ${JSON.stringify({ kind: "project", projectId })}, 'auto', '2026-10-01T00:00:00.000Z'
     )
   `;
 });
@@ -123,7 +130,7 @@ const seedGitHubTicket = Effect.gen(function* () {
 describe("TicketsToolkit", () => {
   it.effect("returns authoritative review status across plan tools and rejects stale Ready", () =>
     Effect.gen(function* () {
-      const ticket = yield* call("t3_ticket_create", { title: "Review", linkCaller: false });
+      const ticket = yield* call("t3_ticket_create", { title: "Review" });
       const created = yield* call("t3_ticket_plan_create", {
         ticket: "T-1",
         title: "Plan",
@@ -430,7 +437,10 @@ describe("TicketsToolkit", () => {
   it.effect("reads without an active run but refuses to write", () =>
     Effect.gen(function* () {
       const tickets = yield* TicketService.TicketService;
-      yield* tickets.create({ title: "Seeded", labels: ["bug"] }, { type: "user" });
+      yield* tickets.create(
+        { title: "Seeded", labels: ["bug"], links: [{ kind: "project", projectId }] },
+        { type: "user" },
+      );
 
       const listed = yield* call("t3_ticket_list", { status: "open", label: "bug" });
       const detail = yield* call("t3_ticket_get", { ticket: "T-1" });
@@ -445,6 +455,40 @@ describe("TicketsToolkit", () => {
         ["OrchestratorMcpFailure", "The calling provider no longer owns an active thread run."],
       );
     }).pipe(Effect.provide(layerFor({ activeRunId: null }))),
+  );
+
+  it.effect("lists the tickets numbered in the caller's project unless told where to look", () =>
+    Effect.gen(function* () {
+      const tickets = yield* TicketService.TicketService;
+      const otherProject = ProjectId.make("other-project");
+      yield* tickets.create(
+        {
+          title: "Other's T-1",
+          links: [
+            { kind: "project", projectId: otherProject },
+            { kind: "project", projectId },
+          ],
+        },
+        { type: "user" },
+      );
+      yield* tickets.create(
+        { title: "Own T-1", links: [{ kind: "project", projectId }] },
+        { type: "user" },
+      );
+      yield* tickets.create({ title: "No project" }, { type: "user" });
+
+      const listed = (input: Tool.Parameters<Tools["t3_ticket_list"]>) =>
+        call("t3_ticket_list", input).pipe(
+          Effect.map((result) =>
+            result.tickets.map((ticket) => [ticket.title, ticket.number, ticket.homeProjectId]),
+          ),
+        );
+      assert.deepStrictEqual(yield* listed({}), [["Own T-1", 1, projectId]]);
+      assert.deepStrictEqual(yield* listed({ projectId }), [
+        ["Own T-1", 1, projectId],
+        ["Other's T-1", 1, otherProject],
+      ]);
+    }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
   );
 
   it.effect("lets a client outside a thread read but not write", () =>
@@ -497,9 +541,9 @@ describe("TicketsToolkit", () => {
       const tickets = yield* TicketService.TicketService;
       const ticket = yield* call("t3_ticket_create", { title: "Fix login", linkCaller: false });
       const target = { kind: "pull_request" as const, url: "https://github.com/acme/app/pull/12" };
-      yield* call("t3_ticket_link", { ticket: "T-1", target });
+      yield* call("t3_ticket_link", { ticket: ticket.id, target });
       yield* call("t3_ticket_unlink", {
-        ticket: "T-1",
+        ticket: ticket.id,
         kind: "pull_request",
         targetKey: "github.com/acme/app#12",
       });
@@ -514,7 +558,7 @@ describe("TicketsToolkit", () => {
         },
         { type: "automation" },
       );
-      const relinked = yield* call("t3_ticket_link", { ticket: "T-1", target });
+      const relinked = yield* call("t3_ticket_link", { ticket: ticket.id, target });
 
       assert.deepStrictEqual(
         [automated.suppressed, automated.ticket.linkRefs, relinked.linkRefs],
@@ -525,28 +569,28 @@ describe("TicketsToolkit", () => {
 
   it.effect("links what an agent names by ref or URL with a derived URL and placeholder", () =>
     Effect.gen(function* () {
-      yield* call("t3_ticket_create", { title: "Fix login", linkCaller: false });
+      const ticket = yield* call("t3_ticket_create", { title: "Fix login", linkCaller: false });
       yield* call("t3_ticket_link", {
-        ticket: "T-1",
+        ticket: ticket.id,
         target: { kind: "pull_request", url: "https://github.com/Acme/App/pull/12/files" },
       });
       const again = yield* call("t3_ticket_link", {
-        ticket: "T-1",
+        ticket: ticket.id,
         target: {
           kind: "pull_request",
           ref: { host: "GitHub.com", repository: "ACME/app", number: 12 },
         },
       });
       yield* call("t3_ticket_link", {
-        ticket: "T-1",
+        ticket: ticket.id,
         target: { kind: "issue", ref: { host: "github.com", repository: "Acme/App", number: 3 } },
       });
       const notPullRequest = yield* failure("t3_ticket_link", {
-        ticket: "T-1",
+        ticket: ticket.id,
         target: { kind: "pull_request", url: "https://evil.test/acme/app/pull/12" },
       });
 
-      const detail = yield* call("t3_ticket_get", { ticket: "T-1" });
+      const detail = yield* call("t3_ticket_get", { ticket: ticket.id });
       assert.deepStrictEqual(again.linkRefs, [
         { kind: "pull_request", targetKey: "github.com/acme/app#12" },
       ]);
@@ -584,7 +628,7 @@ describe("TicketsToolkit", () => {
     "writes a plan as the calling agent and applies edits only when each matches once",
     () =>
       Effect.gen(function* () {
-        const ticket = yield* call("t3_ticket_create", { title: "Login", linkCaller: false });
+        const ticket = yield* call("t3_ticket_create", { title: "Login" });
         const created = yield* call("t3_ticket_plan_create", {
           ticket: "T-1",
           title: "Fix login",
@@ -643,7 +687,7 @@ describe("TicketsToolkit", () => {
 
   it.effect("anchors quoted comments, orders them by passage, and resolves them in an update", () =>
     Effect.gen(function* () {
-      yield* call("t3_ticket_create", { title: "Login", linkCaller: false });
+      yield* call("t3_ticket_create", { title: "Login" });
       yield* call("t3_ticket_plan_create", {
         ticket: "T-1",
         title: "Fix login",

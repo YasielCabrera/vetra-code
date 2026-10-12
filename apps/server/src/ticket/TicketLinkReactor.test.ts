@@ -666,7 +666,9 @@ describe("TicketLinkReactor", () => {
         yield* publish(sentMessage([inReview, done, backlog]));
         yield* publish(sentMessage([inReview, done, backlog], "message-2"));
 
-        const after = yield* Effect.forEach(["T-1", "T-2", "T-3"], tickets.resolveRef);
+        const after = yield* Effect.forEach(["T-1", "T-2", "T-3"], (ref) =>
+          tickets.resolveRef(ref),
+        );
         assert.deepStrictEqual(
           after.map((ticket) => [ticket.statusId, ticket.revision, linksOf(ticket)]),
           [

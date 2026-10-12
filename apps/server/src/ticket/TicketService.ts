@@ -131,6 +131,8 @@ interface TicketListFilter {
   readonly status?: TicketStatusId | TicketStatusCategory | undefined;
   readonly kind?: TicketSummary["kind"] | undefined;
   readonly projectId?: ProjectId | undefined;
+  /** The project the ticket is numbered in, which `projectId` alone does not pin down. */
+  readonly homeProjectId?: ProjectId | undefined;
   readonly threadId?: ThreadId | undefined;
   readonly label?: string | undefined;
   /** Full-text match over title, body and labels. */
@@ -188,9 +190,14 @@ export class TicketService extends Context.Service<
     readonly get: (
       ticketId: TicketId,
     ) => Effect.Effect<TicketDetail, TicketNotFoundError | TicketError>;
-    /** Resolves `T-42`, a ticket id, or `owner/repo#123` for a GitHub ticket. */
+    /**
+     * Resolves `T-42`, a ticket id, or `owner/repo#123` for a GitHub ticket. `T-42` counts per
+     * project: within `projectId` it is the ticket numbered 42 there now, or the one that was
+     * before it moved. Without a project it must name exactly one ticket's current number.
+     */
     readonly resolveRef: (
       reference: string,
+      projectId?: ProjectId,
     ) => Effect.Effect<TicketSummary, TicketNotFoundError | TicketError>;
     readonly githubIssueDetail: (
       input: TicketGitHubIssueRef,
@@ -307,9 +314,10 @@ export class TicketService extends Context.Service<
       input: TicketStatusDeleteInput,
       actor: TicketActor,
     ) => Effect.Effect<TicketStatusSet, TicketError>;
-    /** Resolves `T-42/P1`, `owner/repo#123/P1`, or a plan id. */
+    /** Resolves `T-42/P1`, `owner/repo#123/P1`, or a plan id; `T-42` as `resolveRef` does. */
     readonly resolvePlanRef: (
       reference: string,
+      projectId?: ProjectId,
     ) => Effect.Effect<
       TicketPlanSummary,
       TicketPlanNotFoundError | TicketNotFoundError | TicketError
@@ -413,6 +421,7 @@ const EDIT_COALESCE_MS = 5 * 60 * 1000;
 interface TicketRow {
   readonly ticket_id: string;
   readonly number: number;
+  readonly home_project_id: string | null;
   readonly kind: string;
   readonly title: string;
   readonly labels_json: string;
@@ -683,6 +692,7 @@ const make = Effect.gen(function* () {
           const base = {
             id: row.ticket_id,
             number: row.number,
+            homeProjectId: row.home_project_id,
             title: row.title,
             labels: yield* decodeJson(row.labels_json),
             statusId: row.status_id,
@@ -711,13 +721,13 @@ const make = Effect.gen(function* () {
 
   const selectSummaries = (
     where: Statement.Fragment,
-    orderAndLimit: Statement.Fragment = sql`ORDER BY t.number`,
+    orderAndLimit: Statement.Fragment = sql`ORDER BY t.seq`,
   ) =>
     sql<TicketRow>`
       SELECT
-        t.ticket_id, t.number, t.kind, t.title, t.labels_json, t.status_id, t.sort_key,
-        t.revision, t.created_by_json, t.created_at, t.updated_at, t.github_snapshot_json,
-        t.hidden_at,
+        t.ticket_id, t.number, NULLIF(t.number_scope, '') AS home_project_id, t.kind, t.title,
+        t.labels_json, t.status_id, t.sort_key, t.revision, t.created_by_json, t.created_at,
+        t.updated_at, t.github_snapshot_json, t.hidden_at,
         (SELECT COUNT(*) FROM ticket_attachments a WHERE a.ticket_id = t.ticket_id)
           AS attachment_count
       FROM tickets t
@@ -805,21 +815,34 @@ const make = Effect.gen(function* () {
       }),
     );
 
-  const resolveRef: TicketService["Service"]["resolveRef"] = (reference) =>
+  const resolveRef: TicketService["Service"]["resolveRef"] = (reference, projectId) =>
     Effect.gen(function* () {
       const parsed = parseTicketReference(reference);
       if (parsed === null) {
         return yield* new TicketError({ message: `"${reference}" is not a ticket reference.` });
       }
-      const [summary] = yield* selectSummaries(
+      const matches = yield* selectSummaries(
         parsed.type === "number"
-          ? sql`t.number = ${parsed.number}`
+          ? projectId === undefined
+            ? sql`t.number = ${parsed.number}`
+            : sql`t.ticket_id = COALESCE(
+                (SELECT ticket_id FROM tickets
+                  WHERE number_scope = ${projectId} AND number = ${parsed.number}),
+                (SELECT ticket_id FROM ticket_number_aliases
+                  WHERE number_scope = ${projectId} AND number = ${parsed.number})
+              )`
           : parsed.type === "id"
             ? sql`t.ticket_id = ${parsed.ticketId}`
             : sql`t.kind = 'github'
                 AND t.github_repository = ${parsed.repository}
                 AND t.github_number = ${parsed.number}`,
       );
+      if (parsed.type === "number" && matches.length > 1) {
+        return yield* new TicketError({
+          message: `T-${parsed.number} names ${matches.length} tickets in different projects. Use the ticket id instead.`,
+        });
+      }
+      const [summary] = matches;
       if (summary === undefined) {
         return yield* new TicketNotFoundError({ ticketId: reference });
       }
@@ -838,7 +861,7 @@ const make = Effect.gen(function* () {
       }>`
         SELECT t.ticket_id, t.number, t.title,
           snippet(tickets_fts, -1, '[', ']', '…', 12) AS snippet
-        FROM tickets_fts JOIN tickets t ON t.number = tickets_fts.rowid
+        FROM tickets_fts JOIN tickets t ON t.seq = tickets_fts.rowid
         WHERE tickets_fts MATCH ${query}
         ORDER BY rank
         LIMIT ${(input.limit ?? 20) + 1}
@@ -904,16 +927,19 @@ const make = Effect.gen(function* () {
         ...(filter.projectId === undefined
           ? []
           : [linkedTo({ kind: "project", targetKey: filter.projectId })]),
+        ...(filter.homeProjectId === undefined
+          ? []
+          : [sql`t.number_scope = ${filter.homeProjectId}`]),
         ...(filter.threadId === undefined
           ? []
           : [linkedTo({ kind: "thread", targetKey: filter.threadId })]),
         ...(query === ""
           ? []
-          : [sql`t.number IN (SELECT rowid FROM tickets_fts WHERE tickets_fts MATCH ${query})`]),
+          : [sql`t.seq IN (SELECT rowid FROM tickets_fts WHERE tickets_fts MATCH ${query})`]),
       ];
       const tickets = yield* selectSummaries(
         sql.and(conditions),
-        sql`ORDER BY t.updated_at DESC, t.number DESC LIMIT ${filter.limit + 1}`,
+        sql`ORDER BY t.updated_at DESC, t.seq DESC LIMIT ${filter.limit + 1}`,
       );
       return {
         tickets: tickets.slice(0, filter.limit),
@@ -950,10 +976,64 @@ const make = Effect.gen(function* () {
       }),
     );
 
-  const takeNumber = sql<{ readonly number: number }>`
+  /** The environment-wide key behind each ticket, which also keys `tickets_fts`. */
+  const takeSeq = sql<{ readonly seq: number }>`
     UPDATE ticket_counter SET next_number = next_number + 1 WHERE id = 1
-    RETURNING next_number - 1 AS number
-  `.pipe(Effect.map(([counter]) => counter!.number));
+    RETURNING next_number - 1 AS seq
+  `.pipe(Effect.map(([counter]) => counter!.seq));
+
+  /** The next `T-` number in a home project, or in '' for tickets with no project. */
+  const takeNumber = (scope: string) =>
+    sql<{ readonly number: number }>`
+      INSERT INTO ticket_number_counters (number_scope, next_number) VALUES (${scope}, 2)
+      ON CONFLICT (number_scope) DO UPDATE SET next_number = next_number + 1
+      RETURNING next_number - 1 AS number
+    `.pipe(Effect.map(([counter]) => counter!.number));
+
+  /**
+   * Keeps a ticket numbered in its home project: the one it is numbered in while still linked,
+   * else its earliest project link, else ''. A new home gives it that project's next number, or
+   * the number it had there before, and remembers the one it leaves. Run after any project link
+   * or unlink, in the same transaction.
+   */
+  const rehome = (ticketId: TicketId) =>
+    Effect.gen(function* () {
+      const [row] = yield* sql<{
+        readonly number: number;
+        readonly number_scope: string;
+        readonly home: string;
+      }>`
+        SELECT t.number, t.number_scope, COALESCE(
+          (SELECT target_key FROM ticket_links
+            WHERE ticket_id = t.ticket_id AND kind = 'project' AND target_key = t.number_scope),
+          (SELECT target_key FROM ticket_links
+            WHERE ticket_id = t.ticket_id AND kind = 'project'
+            ORDER BY created_at, rowid LIMIT 1),
+          ''
+        ) AS home
+        FROM tickets t WHERE t.ticket_id = ${ticketId}
+      `;
+      if (row === undefined || row.home === row.number_scope) return;
+      yield* sql`
+        INSERT INTO ticket_number_aliases (number_scope, number, ticket_id)
+        VALUES (${row.number_scope}, ${row.number}, ${ticketId})
+      `;
+      const [previous] = yield* sql<{ readonly number: number }>`
+        DELETE FROM ticket_number_aliases
+        WHERE rowid = (
+          SELECT rowid FROM ticket_number_aliases
+          WHERE number_scope = ${row.home} AND ticket_id = ${ticketId}
+          ORDER BY number LIMIT 1
+        )
+        RETURNING number
+      `;
+      yield* sql`
+        UPDATE tickets SET
+          number = ${previous?.number ?? (yield* takeNumber(row.home))},
+          number_scope = ${row.home}
+        WHERE ticket_id = ${ticketId}
+      `;
+    });
 
   const crossesClosedLine = (current: TicketSummary, toStatusId: TicketStatusId) =>
     Effect.gen(function* () {
@@ -1091,19 +1171,19 @@ const make = Effect.gen(function* () {
   const refreshSearch = (ticketId: TicketId) =>
     Effect.gen(function* () {
       const [row] = yield* sql<{
-        readonly number: number;
+        readonly seq: number;
         readonly title: string;
         readonly body: string;
         readonly labels_json: string;
-      }>`SELECT number, title, body, labels_json FROM tickets WHERE ticket_id = ${ticketId}`;
+      }>`SELECT seq, title, body, labels_json FROM tickets WHERE ticket_id = ${ticketId}`;
       if (row === undefined) return;
       const labels = yield* decodeLabels(row.labels_json).pipe(
         Effect.mapError(ticketError("Could not read the ticket's labels.")),
       );
-      yield* sql`DELETE FROM tickets_fts WHERE rowid = ${row.number}`;
+      yield* sql`DELETE FROM tickets_fts WHERE rowid = ${row.seq}`;
       yield* sql`
         INSERT INTO tickets_fts (rowid, title, body, labels)
-        VALUES (${row.number}, ${row.title}, ${row.body}, ${labels.join(" ")})
+        VALUES (${row.seq}, ${row.title}, ${row.body}, ${labels.join(" ")})
       `;
     });
 
@@ -1295,27 +1375,30 @@ const make = Effect.gen(function* () {
           }
           yield* requireStatus(statusId);
           const at = yield* now;
-          const number = yield* takeNumber;
+          const automaticLinks = yield* draftLinks(actor);
+          const links = (input.links ?? []).filter(
+            (target) =>
+              automaticLinks === null ||
+              actor.type !== "agent" ||
+              target.kind !== "thread" ||
+              target.threadId !== actor.threadId,
+          );
+          // Numbered in its first project, the one `rehome` keeps it in.
+          const scope =
+            [...links, ...(automaticLinks ?? [])].flatMap((target) =>
+              target.kind === "project" ? [target.projectId] : [],
+            )[0] ?? "";
           yield* sql`
               INSERT INTO tickets (
-                ticket_id, number, kind, title, body, labels_json, status_id, sort_key,
-                revision, created_by_json, created_at, updated_at
+                ticket_id, seq, number, number_scope, kind, title, body, labels_json, status_id,
+                sort_key, revision, created_by_json, created_at, updated_at
               ) VALUES (
-                ${ticketId}, ${number}, 'local', ${input.title}, ${body ?? ""},
-                ${encodeJson(uniqueLabels(input.labels ?? []))}, ${statusId},
-                ${yield* appendKey(statusId)}, 1, ${encodeJson(actor)}, ${at}, ${at}
+                ${ticketId}, ${yield* takeSeq}, ${yield* takeNumber(scope)}, ${scope}, 'local',
+                ${input.title}, ${body ?? ""}, ${encodeJson(uniqueLabels(input.labels ?? []))},
+                ${statusId}, ${yield* appendKey(statusId)}, 1, ${encodeJson(actor)}, ${at}, ${at}
               )
             `;
-          const automaticLinks = yield* draftLinks(actor);
-          for (const target of input.links ?? []) {
-            if (
-              automaticLinks !== null &&
-              actor.type === "agent" &&
-              target.kind === "thread" &&
-              target.threadId === actor.threadId
-            ) {
-              continue;
-            }
+          for (const target of links) {
             yield* insertLink(ticketId, target, linkSourceFor(actor), at);
             if (target.kind === "thread") linkedThreads.push(target.threadId);
           }
@@ -1587,7 +1670,10 @@ const make = Effect.gen(function* () {
           const plans = yield* sql<{ readonly plan_id: string }>`
             SELECT plan_id FROM ticket_plans WHERE ticket_id = ${input.ticketId}
           `;
-          yield* sql`DELETE FROM tickets_fts WHERE rowid = ${current.number}`;
+          yield* sql`
+            DELETE FROM tickets_fts
+            WHERE rowid = (SELECT seq FROM tickets WHERE ticket_id = ${input.ticketId})
+          `;
           yield* sql`DELETE FROM tickets WHERE ticket_id = ${input.ticketId}`;
           return { attachments: rows, planIds: plans.map((row) => TicketPlanId.make(row.plan_id)) };
         }),
@@ -1636,6 +1722,7 @@ const make = Effect.gen(function* () {
                 ? yield* decodeLinkTarget(tombstone.target_json)
                 : target;
             yield* insertLink(input.ticketId, linked, linkSourceFor(actor), at);
+            if (linked.kind === "project") yield* rehome(input.ticketId);
             return { entries: [{ type: "linked" as const, target: linked }], revises: false };
           }
           previous = yield* decodeLinkTarget(stored.target_json);
@@ -1694,6 +1781,7 @@ const make = Effect.gen(function* () {
           WHERE ticket_id = ${input.ticketId} AND kind = ${input.kind} AND target_key = ${input.targetKey}
           RETURNING target_json
         `;
+        if (deleted !== undefined && input.kind === "project") yield* rehome(input.ticketId);
         if (deleted !== undefined && isExplicit(actor)) {
           yield* sql`
             INSERT INTO ticket_link_tombstones (ticket_id, kind, target_key, target_json, removed_at)
@@ -1890,11 +1978,12 @@ const make = Effect.gen(function* () {
             const ticketId = TicketId.make(yield* randomId);
             yield* sql`
               INSERT INTO tickets (
-                ticket_id, number, kind, title, body, labels_json, status_id, sort_key,
-                revision, created_by_json, created_at, updated_at,
+                ticket_id, seq, number, number_scope, kind, title, body, labels_json, status_id,
+                sort_key, revision, created_by_json, created_at, updated_at,
                 github_host, github_repository, github_number, github_snapshot_json
               ) VALUES (
-                ${ticketId}, ${yield* takeNumber}, 'github', ${issue.title}, ${issue.body ?? ""},
+                ${ticketId}, ${yield* takeSeq}, ${yield* takeNumber(input.projectId)},
+                ${input.projectId}, 'github', ${issue.title}, ${issue.body ?? ""},
                 ${encodeJson(labels)}, ${statusId}, ${yield* appendKey(statusId)}, 1,
                 ${encodeJson(actor)}, ${at}, ${at},
                 ${input.host}, ${input.repository}, ${issue.number}, ${encodeJson(snapshot)}
@@ -1950,7 +2039,10 @@ const make = Effect.gen(function* () {
               updated_at = ${at}
             WHERE ticket_id = ${ticketId}
           `;
-          if (linked === undefined) yield* insertLink(ticketId, projectLink, "auto", at);
+          if (linked === undefined) {
+            yield* insertLink(ticketId, projectLink, "auto", at);
+            yield* rehome(ticketId);
+          }
           yield* appendActivity(
             ticketId,
             actor,
@@ -2199,7 +2291,7 @@ const make = Effect.gen(function* () {
           `;
           yield* sql`
             DELETE FROM tickets_fts
-            WHERE rowid IN (SELECT t.number FROM tickets t WHERE ${inRepository(input)})
+            WHERE rowid IN (SELECT t.seq FROM tickets t WHERE ${inRepository(input)})
           `;
           const tickets = yield* sql<{ readonly ticket_id: string }>`
             DELETE FROM tickets AS t WHERE ${inRepository(input)}
@@ -2575,14 +2667,14 @@ const make = Effect.gen(function* () {
       return resolved.length > 0;
     });
 
-  const resolvePlanRef: TicketService["Service"]["resolvePlanRef"] = (reference) =>
+  const resolvePlanRef: TicketService["Service"]["resolvePlanRef"] = (reference, projectId) =>
     Effect.gen(function* () {
       const parsed = parseTicketPlanReference(reference);
       if (parsed === null) {
         return yield* new TicketError({ message: `"${reference}" is not a plan reference.` });
       }
       if (parsed.type === "id") return yield* requirePlanSummary(parsed.planId);
-      const ticket = yield* resolveRef(parsed.ticket);
+      const ticket = yield* resolveRef(parsed.ticket, projectId);
       const plan = ticket.plans.find((candidate) => candidate.number === parsed.number);
       if (plan === undefined) {
         return yield* new TicketPlanNotFoundError({ planId: reference.trim() });

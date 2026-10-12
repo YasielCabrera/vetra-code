@@ -24,6 +24,7 @@ const summary = (id: string, title: string, threadId?: ThreadId): TicketSummary 
   kind: "local",
   id: TicketId.make(id),
   number: 1,
+  homeProjectId: null,
   title,
   labels: [],
   statusId: TicketStatusId.make("todo"),

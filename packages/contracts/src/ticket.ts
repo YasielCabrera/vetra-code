@@ -189,8 +189,16 @@ export type TicketPlanSummary = typeof TicketPlanSummary.Type;
 
 const TicketSummaryBase = {
   id: TicketId,
-  /** The environment-wide sequence number behind the `T-42` reference. */
+  /**
+   * The `T-42` reference, counted per home project (the first project the ticket is linked to),
+   * so two projects can each have a T-42. Moving the ticket to another project renumbers it.
+   */
   number: PositiveInt,
+  /**
+   * The project whose `T-` sequence `number` belongs to, or null when the ticket has no project.
+   * Servers older than per-project numbers omit it.
+   */
+  homeProjectId: Schema.NullOr(ProjectId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   title: Schema.String,
   labels: Schema.Array(Schema.String),
   statusId: TicketStatusId,

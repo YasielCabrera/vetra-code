@@ -470,21 +470,21 @@ describe("ticket attachments through MCP and HTTP", () => {
     Effect.gen(function* () {
       const created = yield* call("t3_ticket_create", { title: "Plan", linkCaller: false });
       const image = yield* upload("image", "plan.png", "image/png", "plan image");
-      yield* call("t3_ticket_plan_create", {
+      const { planId } = yield* call("t3_ticket_plan_create", {
         ticket: created.id,
         title: "Steps",
         body: bodyFor([image]),
         attachments: [image],
       });
-      const before = yield* call("t3_ticket_plan_get", { plan: "T-1/P1" });
+      const before = yield* call("t3_ticket_plan_get", { plan: planId });
       const file = yield* upload("file", "plan.txt", "text/plain", "plan file");
       yield* call("t3_ticket_plan_update", {
-        plan: "T-1/P1",
+        plan: planId,
         expectedRevision: 1,
         edits: [{ find: before.body, replace: `${before.body}\n${bodyFor([file])}` }],
         attachments: [file],
       });
-      const after = yield* call("t3_ticket_plan_get", { plan: "T-1/P1" });
+      const after = yield* call("t3_ticket_plan_get", { plan: planId });
       const ticket = yield* call("t3_ticket_get", { ticket: created.id });
       expect(after.body).toBe(bodyFor(storedForUploads([image, file], ticket.attachments)));
       expect(after.plan.revision).toBe(2);
@@ -513,7 +513,8 @@ describe("ticket attachments through MCP and HTTP", () => {
         syncedAt: "2026-10-01T00:00:00.000Z",
         url: "https://github.com/acme/app/issues/7",
       });
-      yield* sql`INSERT INTO tickets (ticket_id, number, kind, title, body, labels_json, status_id, sort_key, revision, created_by_json, created_at, updated_at, github_host, github_repository, github_number, github_snapshot_json) VALUES ('github-ticket', 100, 'github', 'Issue', 'Issue body', '[]', 'todo', 'a0', 1, '{"type":"sync"}', '2026-10-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z', 'github.com', 'acme/app', 7, ${snapshot})`;
+      yield* sql`INSERT INTO tickets (ticket_id, seq, number, number_scope, kind, title, body, labels_json, status_id, sort_key, revision, created_by_json, created_at, updated_at, github_host, github_repository, github_number, github_snapshot_json) VALUES ('github-ticket', 100, 100, 'caller-project', 'github', 'Issue', 'Issue body', '[]', 'todo', 'a0', 1, '{"type":"sync"}', '2026-10-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z', 'github.com', 'acme/app', 7, ${snapshot})`;
+      yield* sql`INSERT INTO ticket_links (ticket_id, kind, target_key, target_json, source, created_at) VALUES ('github-ticket', 'project', 'caller-project', '{"kind":"project","projectId":"caller-project"}', 'auto', '2026-10-01T00:00:00.000Z')`;
       const file = yield* upload("file", "issue.txt", "text/plain", "issue file");
       yield* call("t3_ticket_update", {
         ticket: "T-100",

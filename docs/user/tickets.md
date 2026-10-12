@@ -3,7 +3,10 @@
 A ticket is a piece of work you have not finished: a bug, an idea, a follow-up. Select **Tickets**
 in the sidebar, under Automations, to open the board. It is also in the command palette as **Go to
 tickets**. Each environment keeps its own tickets, and the board shows every connected
-environment's tickets together. Every ticket has a short reference such as `T-42`.
+environment's tickets together. Every ticket has a short reference such as `T-42`, numbered within
+its project, so each project counts from `T-1`. Moving a ticket to another project gives it that
+project's next number; its old reference still finds it in the old project. In a thread, an agent
+reads `T-42` as that number in the thread's project.
 
 ## Create and edit a ticket
 
@@ -150,7 +153,8 @@ on a separate branch. The attached ticket gives the agent its reference, title, 
 links, and the agent can read the rest.
 
 You can also attach a ticket while writing any message: type `#` and then the ticket's reference,
-such as `#T-42`, or a word from its title, and pick it from the list above the pull requests.
+such as `#T-42`, or a word from its title, and pick it from the list above the pull requests. A
+reference finds the ticket in the thread's project; search by title for a ticket in another one.
 
 When you send a message with a ticket attached, the thread is linked to the ticket. Expand
 **Tickets** in the thread details panel to see them; select one to open it, or unlink it from the

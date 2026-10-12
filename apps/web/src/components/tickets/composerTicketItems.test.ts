@@ -1,6 +1,7 @@
 import type { EnvironmentTicket } from "@t3tools/client-runtime/state/tickets";
 import {
   EnvironmentId,
+  ProjectId,
   TicketId,
   TicketPlanId,
   TicketStatusId,
@@ -44,13 +45,21 @@ function ticket(input: {
   readonly title: string;
   readonly updatedAt?: string;
   readonly environmentId?: EnvironmentId;
+  /** The project the ticket is numbered in and linked to. */
+  readonly projectId?: string;
+  readonly alsoLinkedTo?: ReadonlyArray<string>;
   readonly plans?: ReadonlyArray<TicketPlanSummary>;
 }): EnvironmentTicket {
+  const projectIds = [
+    ...(input.projectId === undefined ? [] : [input.projectId]),
+    ...(input.alsoLinkedTo ?? []),
+  ];
   return {
     kind: "local",
     environmentId: input.environmentId ?? HERE,
     id: TicketId.make(input.id),
     number: input.number,
+    homeProjectId: input.projectId === undefined ? null : ProjectId.make(input.projectId),
     title: input.title,
     labels: [],
     statusId: TicketStatusId.make("todo"),
@@ -59,7 +68,7 @@ function ticket(input: {
     createdAt: "2026-10-01T00:00:00.000Z",
     updatedAt: input.updatedAt ?? "2026-10-01T00:00:00.000Z",
     createdBy: { type: "user" },
-    linkRefs: [],
+    linkRefs: projectIds.map((targetKey) => ({ kind: "project", targetKey })),
     attachmentCount: 0,
     plans: input.plans ?? [],
   };
@@ -137,7 +146,7 @@ const TICKETS = [
 ];
 
 const labels = (query: string) =>
-  matchComposerTicketItems({ tickets: TICKETS, environmentId: HERE, query }).map(
+  matchComposerTicketItems({ tickets: TICKETS, environmentId: HERE, projectId: null, query }).map(
     (item) => `${item.type} ${item.label} ${item.description}`,
   );
 
@@ -194,6 +203,38 @@ describe("matchComposerTicketItems", () => {
     expect(labels("catalog")).toEqual([
       "ticket T-420 Catalog blog posts",
       "ticket-plan T-420/P1 Sessionless catalog (Draft)",
+    ]);
+  });
+
+  it("finds a reference only among tickets numbered in the composer's project", () => {
+    const tickets = [
+      ticket({
+        id: "web-7",
+        number: 7,
+        title: "Web seven",
+        projectId: "web",
+        plans: [plan({ ticketId: "web-7", ticketNumber: 7, number: 1, title: "Web plan" })],
+      }),
+      ticket({
+        id: "api-7",
+        number: 7,
+        title: "API seven",
+        projectId: "api",
+        alsoLinkedTo: ["web"],
+        plans: [plan({ ticketId: "api-7", ticketNumber: 7, number: 1, title: "API plan" })],
+      }),
+    ];
+    const inWeb = (query: string) =>
+      matchComposerTicketItems({
+        tickets,
+        environmentId: HERE,
+        projectId: ProjectId.make("web"),
+        query,
+      }).map((item) => `${item.type} ${item.label} ${item.description}`);
+    expect([inWeb("T-7"), inWeb("T-7/"), inWeb("seven")]).toEqual([
+      ["ticket T-7 Web seven"],
+      ["ticket-plan T-7/P1 Web plan (Draft)"],
+      ["ticket T-7 Web seven", "ticket T-7 API seven"],
     ]);
   });
 });

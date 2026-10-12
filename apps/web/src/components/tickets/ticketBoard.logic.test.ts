@@ -92,6 +92,7 @@ function ticket(
     kind: "local",
     environmentId: LOCAL,
     number: 1,
+    homeProjectId: null,
     title: "Untitled",
     labels: [],
     sortKey: "a0",

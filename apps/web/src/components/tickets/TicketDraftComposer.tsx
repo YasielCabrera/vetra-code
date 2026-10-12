@@ -157,10 +157,19 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
       ? matchComposerTicketItems({
           tickets,
           environmentId: props.environmentId,
+          projectId: props.project?.id ?? null,
           query: trigger.query,
         }).filter((item) => item.type === "ticket")
       : [];
-  }, [trigger, shells, props.environmentId, props.sourceThreadId, paths.entries, tickets]);
+  }, [
+    trigger,
+    shells,
+    props.environmentId,
+    props.project?.id,
+    props.sourceThreadId,
+    paths.entries,
+    tickets,
+  ]);
   const activeItem = items.find((item) => item.id === highlightedId) ?? items[0] ?? null;
   const activeInstance = props.instanceEntries.find(
     (entry) => entry.instanceId === props.modelSelection?.instanceId,

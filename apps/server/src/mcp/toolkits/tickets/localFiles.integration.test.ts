@@ -313,7 +313,9 @@ describe("one-call local ticket and plan attachments", () => {
         expect(yield* call("t3_ticket_get", { ticket: ticket.id })).toEqual(beforeTicket);
         expect(yield* call("t3_ticket_plan_get", { plan: plan.planId })).toEqual(beforePlan);
       }
-      expect((yield* call("t3_ticket_list", {})).tickets).toHaveLength(1);
+      expect(
+        (yield* (yield* TicketService.TicketService).list({ limit: 10 })).tickets,
+      ).toHaveLength(1);
       expect(yield* fs.readFileString(secret)).toBe("synthetic secret");
     }).pipe(Effect.provide(layerFor())),
   );
@@ -455,7 +457,7 @@ describe("one-call local ticket and plan attachments", () => {
           "clip.mp4",
           "log](bad).txt",
         ]);
-        const detail = yield* call("t3_ticket_plan_get", { plan: plan.ref });
+        const detail = yield* call("t3_ticket_plan_get", { plan: plan.planId });
         expect(detail.body).toBe(
           `Here ![placed](vetra-attachment://${plan.attachments[1]!.id})\n\n![shot\\[1\\].png](vetra-attachment://${plan.attachments[0]!.id})\n\n[log\\]\\(bad\\).txt](vetra-attachment://${plan.attachments[2]!.id})`,
         );
@@ -465,23 +467,23 @@ describe("one-call local ticket and plan attachments", () => {
         );
         yield* expectPersisted(ticket.id, plan.attachments);
         const updated = yield* call("t3_ticket_plan_update", {
-          plan: plan.ref,
+          plan: plan.planId,
           expectedRevision: 1,
           attachments: [yield* source("next.mp4", "next")],
         });
         expect(updated.revision).toBe(2);
-        const after = yield* call("t3_ticket_plan_get", { plan: plan.ref });
+        const after = yield* call("t3_ticket_plan_get", { plan: plan.planId });
         expect(after.body).toBe(
           `${detail.body}\n\n![next.mp4](vetra-attachment://${updated.attachments[0]!.id})`,
         );
         const edits = yield* call("t3_ticket_plan_update", {
-          plan: plan.ref,
+          plan: plan.planId,
           expectedRevision: 2,
           edits: [{ find: "Here", replace: "Updated ![inline](vetra-attachment://last)" }],
           attachments: [{ ...image, ref: "last" }],
         });
         expect(edits.revision).toBe(3);
-        expect((yield* call("t3_ticket_plan_get", { plan: plan.ref })).body).toContain(
+        expect((yield* call("t3_ticket_plan_get", { plan: plan.planId })).body).toContain(
           `Updated ![inline](vetra-attachment://${edits.attachments[0]!.id})`,
         );
       }).pipe(Effect.provide(layerFor())),
@@ -556,14 +558,14 @@ describe("one-call local ticket and plan attachments", () => {
         ).toBe("TicketRevisionConflictError");
         expect(
           (yield* call("t3_ticket_plan_update", {
-            plan: plan.ref,
+            plan: plan.planId,
             expectedRevision: 99,
             attachments: [file],
           }).pipe(Effect.flip))._tag,
         ).toBe("TicketPlanRevisionConflictError");
         expect(
           (yield* call("t3_ticket_plan_update", {
-            plan: plan.ref,
+            plan: plan.planId,
             expectedRevision: 1,
             attachments: [file],
             resolveCommentIds: ["missing-comment"],
@@ -586,20 +588,20 @@ describe("one-call local ticket and plan attachments", () => {
           }).pipe(Effect.flip))._tag,
         ).toBe("TicketError");
         yield* call("t3_ticket_plan_update", {
-          plan: plan.ref,
+          plan: plan.planId,
           expectedRevision: 1,
           status: "archived",
         });
         expect(
           (yield* call("t3_ticket_plan_update", {
-            plan: plan.ref,
+            plan: plan.planId,
             expectedRevision: 1,
             attachments: [file],
           }).pipe(Effect.flip))._tag,
         ).toBe("TicketError");
         expect(yield* ownedFiles()).toEqual(before);
         expect((yield* call("t3_ticket_get", { ticket: ticket.id })).body).toBe("Original");
-        expect((yield* call("t3_ticket_plan_get", { plan: plan.ref })).body).toBe("Original");
+        expect((yield* call("t3_ticket_plan_get", { plan: plan.planId })).body).toBe("Original");
       }).pipe(Effect.provide(layerFor())),
   );
 

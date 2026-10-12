@@ -28,6 +28,7 @@ const TICKET: GitHubTicket = {
   environmentId: LOCAL,
   id: TicketId.make("ticket-1"),
   number: 4,
+  homeProjectId: null,
   title: "Crash on save",
   labels: [],
   statusId: TicketStatusId.make("todo"),

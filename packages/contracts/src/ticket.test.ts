@@ -104,7 +104,7 @@ describe("ticketLinkTargetKey", () => {
 });
 
 describe("TicketSummary", () => {
-  it("reads a summary from a server that predates plans as having none", () => {
+  it("reads a summary from a server that predates plans and per-project numbers", () => {
     const summary = decodeTicketSummary({
       kind: "local",
       id: "ticket-1",
@@ -120,6 +120,6 @@ describe("TicketSummary", () => {
       linkRefs: [],
       attachmentCount: 0,
     });
-    expect(summary.plans).toEqual([]);
+    expect([summary.plans, summary.homeProjectId]).toEqual([[], null]);
   });
 });

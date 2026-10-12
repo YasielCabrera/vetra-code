@@ -49,6 +49,7 @@ const plan: TicketPlan = {
 const ticket: TicketSummary = {
   id: plan.summary.ticketId,
   number: 1,
+  homeProjectId: null,
   kind: "local",
   title: "Parent ticket",
   labels: [],

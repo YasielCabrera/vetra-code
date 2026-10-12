@@ -104,6 +104,7 @@ const detail: TicketDetail = {
   summary: {
     id: TicketId.make("ticket-1"),
     number: 1,
+    homeProjectId: null,
     kind: "local",
     title: "Saved title",
     labels: [],

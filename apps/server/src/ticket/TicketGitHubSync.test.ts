@@ -1324,6 +1324,7 @@ describe("TicketGitHubSync", () => {
             [1, "Login fails", ["bug"], "todo", [{ kind: "project", targetKey: "project-web" }]],
           );
           assert.strictEqual((yield* tickets.get(ticket.id)).body, "Body 7");
+          assert.strictEqual((yield* tickets.resolveRef("T-1", PROJECT)).id, ticket.id);
           const missing = yield* tickets.resolveRef("acme/web#9").pipe(Effect.flip);
           assert.strictEqual(missing._tag, "TicketNotFoundError");
         }),
@@ -1659,12 +1660,13 @@ describe("TicketGitHubSync", () => {
           const stopped = yield* tickets.resolveRef("acme/web#8");
           yield* tickets.setHidden({ ticketId: stopped.id, hidden: true });
           yield* sync.removeSource({ ...SOURCE, deleteCache: false });
-          const whileRemoved = yield* Effect.forEach(
-            ["acme/web#7", "acme/web#8"],
-            tickets.resolveRef,
+          const whileRemoved = yield* Effect.forEach(["acme/web#7", "acme/web#8"], (ref) =>
+            tickets.resolveRef(ref),
           );
           yield* sync.upsertSource({ ...SOURCE, enabled: true });
-          const readded = yield* Effect.forEach(["acme/web#7", "acme/web#8"], tickets.resolveRef);
+          const readded = yield* Effect.forEach(["acme/web#7", "acme/web#8"], (ref) =>
+            tickets.resolveRef(ref),
+          );
 
           assert.deepStrictEqual(
             [whileRemoved, readded].map((list) => list.map((ticket) => githubOf(ticket)?.hiddenAt)),

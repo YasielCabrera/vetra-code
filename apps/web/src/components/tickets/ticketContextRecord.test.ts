@@ -58,23 +58,23 @@ describe("ticketContextRecord", () => {
 describe("plan thread prefills", () => {
   const ticket = ticketWithPlans(1);
 
-  it("asks for a plan by the ticket ref, and tells the agent not to change code", () => {
+  it("asks for a plan on the exact ticket, and tells the agent not to change code", () => {
     expect(askForPlanPrefill(environmentId, ticket).instruction).toBe(
-      "Write an implementation plan for T-42 with t3_ticket_plan_create. Do not change code.",
+      'Write an implementation plan for T-42 with t3_ticket_plan_create(ticket="ticket-1"). Do not change code.',
     );
   });
 
   it("tells the agent to revise the plan text and resolve open comments", () => {
     const plan = { ...ticket.plans[0]!, openCommentCount: 2 };
     expect(revisePlanPrefill(environmentId, plan).instruction).toBe(
-      "Revise the plan text of T-42/P1 to address its open comments: edit it with t3_ticket_plan_update and resolve each comment it addresses. Do not change code.",
+      'Revise the plan text of T-42/P1 to address its open comments: edit it with t3_ticket_plan_update(plan="plan-1") and resolve each comment it addresses. Do not change code.',
     );
   });
 
   it("omits open comments when the plan has none", () => {
     const plan = ticket.plans[0]!;
     expect(revisePlanPrefill(environmentId, plan).instruction).toBe(
-      "Revise the plan text of T-42/P1 with t3_ticket_plan_update. Do not change code.",
+      'Revise the plan text of T-42/P1 with t3_ticket_plan_update(plan="plan-1"). Do not change code.',
     );
   });
 });

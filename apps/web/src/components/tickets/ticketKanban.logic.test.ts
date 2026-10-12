@@ -77,6 +77,7 @@ describe("applyPendingMoves", () => {
     environmentId,
     id: TicketId.make("login"),
     number: 7,
+    homeProjectId: null,
     title: "Login button misaligned",
     labels: [],
     statusId: TicketStatusId.make("todo"),

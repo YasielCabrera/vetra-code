@@ -39,6 +39,7 @@ function ticket(index: number): EnvironmentTicket {
     environmentId: LOCAL,
     id: TicketId.make(`ticket-${index}`),
     number: index + 1,
+    homeProjectId: null,
     title: `Ticket ${index + 1}`,
     labels: [],
     statusId: TicketStatusId.make("local-todo"),

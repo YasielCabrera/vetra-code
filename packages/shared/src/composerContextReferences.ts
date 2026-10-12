@@ -278,6 +278,7 @@ function formatComposerContextProviderPayload(record: KnownComposerContextRecord
           "plans (context only; implement a plan only if it is attached or named):",
           ...plans.map((plan) => {
             const notes = [
+              `planId: ${singleLine(plan.planId)}`,
               ...(plan.status === "archived" ? ["archived"] : []),
               ...(plan.reviewStatus !== undefined ? [`review snapshot: ${plan.reviewStatus}`] : []),
               `rev ${plan.revision}`,
@@ -285,7 +286,7 @@ function formatComposerContextProviderPayload(record: KnownComposerContextRecord
             ];
             return `- ${singleLine(plan.ref)} ${quoteLine(plan.title)} (${notes.join(", ")})`;
           }),
-          `Read a plan with t3_ticket_plan_get(plan=${quoteLine(singleLine(plans[0]!.ref))}).`,
+          `Read a plan with t3_ticket_plan_get(plan=${quoteLine(singleLine(plans[0]!.planId))}).`,
         );
       }
       lines.push(
@@ -300,7 +301,7 @@ function formatComposerContextProviderPayload(record: KnownComposerContextRecord
       const ref = singleLine(record.ref);
       const parsed = parseTicketPlanReference(ref);
       const ticketRef = parsed?.type === "number" ? parsed.ticket : ref;
-      const tool = `t3_ticket_plan_get(plan=${quoteLine(ref)})`;
+      const tool = `t3_ticket_plan_get(plan=${quoteLine(singleLine(record.planId))})`;
       return [
         `plan: ${ref}`,
         `planId: ${singleLine(record.planId)}`,

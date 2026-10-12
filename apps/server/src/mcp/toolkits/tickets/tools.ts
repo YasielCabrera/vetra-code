@@ -60,11 +60,13 @@ const shared = {
 };
 
 const ticket = TrimmedNonEmptyString.annotate({
-  description: "The ticket as T-42, its ticket id, or owner/repo#123 for a GitHub ticket.",
+  description:
+    "The ticket as its ticket id, T-42, or owner/repo#123 for a GitHub ticket. T-42 counts per project and means this thread's project's ticket; use the ticket id for any other.",
 });
 
 const plan = TrimmedNonEmptyString.annotate({
-  description: "The plan as T-42/P1, owner/repo#123/P1 for a GitHub ticket's plan, or its plan id.",
+  description:
+    "The plan as its plan id, T-42/P1, or owner/repo#123/P1 for a GitHub ticket's plan. T-42 means this thread's project's ticket.",
 });
 
 const bodyAttachments = Schema.optional(
@@ -102,7 +104,7 @@ export type AgentTicketLinkTarget = typeof AgentTicketLinkTarget.Type;
 const TicketListTool = Tool.make("t3_ticket_list", {
   ...shared,
   description:
-    "List this environment's tickets, most recently updated first, with the status set they move through. Every filter given must match.",
+    "List tickets, most recently updated first, with the status set they move through. Every filter given must match. Without projectId or threadId, lists the tickets numbered in this thread's project; pass projectId to see tickets linked to another project. T-42 always means this project's ticket, so name a ticket whose homeProjectId is another project by its id.",
   parameters: Schema.Struct({
     status: Schema.optional(
       Schema.Union([TicketStatusCategory, TicketStatusId]).annotate({
@@ -209,7 +211,7 @@ const TicketUpdateTool = Tool.make("t3_ticket_update", {
 const TicketLinkTool = Tool.make("t3_ticket_link", {
   ...shared,
   description:
-    "Link a ticket to a project, thread, pull request or issue. Name a pull request or issue by host, repository and number, or a pull request by its URL. Linking an existing link succeeds and leaves it as it is.",
+    "Link a ticket to a project, thread, pull request or issue. Name a pull request or issue by host, repository and number, or a pull request by its URL. Linking an existing link succeeds and leaves it as it is. Linking a project to a ticket with no project renumbers the ticket into that project.",
   parameters: Schema.Struct({ ticket, target: AgentTicketLinkTarget }),
   success: TicketSummary,
 })
@@ -221,7 +223,8 @@ const TicketLinkTool = Tool.make("t3_ticket_link", {
 
 const TicketUnlinkTool = Tool.make("t3_ticket_unlink", {
   ...shared,
-  description: "Remove one of a ticket's links. Removing a missing link succeeds.",
+  description:
+    "Remove one of a ticket's links. Removing a missing link succeeds. Removing the project a ticket is numbered in renumbers it into its next linked project; its old T- number still finds it in the old project.",
   parameters: Schema.Struct({
     ticket,
     kind: TicketLinkKind,
