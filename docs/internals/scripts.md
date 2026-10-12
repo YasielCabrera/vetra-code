@@ -130,7 +130,7 @@ rustup target add aarch64-apple-darwin x86_64-apple-darwin
 ```
 
 Unsigned local builds need no Apple credentials. Builds using `--signed` additionally require the
-certificate, provisioning profile, team ID, and notarization configuration described below.
+Developer ID certificate and notarization credentials described below.
 
 ### Windows installer prerequisites
 
@@ -176,9 +176,13 @@ Azure Trusted Signing configuration described below.
   launch.
 - To keep staging files for debugging package contents, run: `vp run dist:desktop:dmg --keep-stage`
 - To allow code-signing/notarization when configured in CI/secrets, add: `--signed`.
-- Signed macOS builds also require `VETRA_APPLE_TEAM_ID` and
-  `VETRA_MACOS_PROVISIONING_PROFILE`. The passkey RP domain is derived from
-  `VETRA_CLERK_PUBLISHABLE_KEY` unless `VETRA_CLERK_PASSKEY_RP_DOMAINS` overrides it.
+- Signed macOS builds take the Developer ID certificate from `CSC_LINK` and `CSC_KEY_PASSWORD`,
+  and notarize with `APPLE_API_KEY` (the `.p8` file path), `APPLE_API_KEY_ID`, and
+  `APPLE_API_ISSUER`. Without those three, electron-builder skips notarization with only a warning.
+- Signed macOS builds add in-app browser passkey entitlements only when Clerk is configured
+  (`VETRA_CLERK_PUBLISHABLE_KEY` or `VETRA_CLERK_PASSKEY_RP_DOMAINS`). Those builds also require
+  `VETRA_APPLE_TEAM_ID` and an Associated Domains `VETRA_MACOS_PROVISIONING_PROFILE`; the RP domain
+  is derived from the publishable key unless `VETRA_CLERK_PASSKEY_RP_DOMAINS` overrides it.
 - Windows `--signed` uses Azure Trusted Signing and expects:
   `AZURE_TRUSTED_SIGNING_ENDPOINT`, `AZURE_TRUSTED_SIGNING_ACCOUNT_NAME`,
   `AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE_NAME`, and `AZURE_TRUSTED_SIGNING_PUBLISHER_NAME`.

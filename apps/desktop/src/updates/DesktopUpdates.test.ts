@@ -21,26 +21,6 @@ import * as DesktopUpdates from "./DesktopUpdates.ts";
 import { flushCallbacks, makeHarness } from "./updatesTestHarness.ts";
 
 describe("DesktopUpdates", () => {
-  it.effect("keeps updates disabled until a Vetra release feed is explicitly enabled", () => {
-    const harness = makeHarness({ env: { VETRA_ENABLE_AUTO_UPDATE: "false" } });
-
-    return Effect.scoped(
-      Effect.gen(function* () {
-        const updates = yield* DesktopUpdates.DesktopUpdates;
-        yield* updates.configure;
-
-        const state = yield* updates.getState;
-        assert.equal(state.enabled, false);
-        assert.equal(state.status, "disabled");
-        assert.deepEqual(harness.feedUrls(), [
-          { provider: "generic", url: "http://localhost:4141" },
-        ]);
-        assert.equal(harness.listenerCount(), 0);
-        assert.equal(harness.checkCount(), 0);
-      }),
-    ).pipe(Effect.provide(Layer.merge(TestClock.layer(), harness.layer)));
-  });
-
   it("preserves complete causes for update poller and event failures", () => {
     const cause = Cause.combine(
       Cause.fail(new Error("updater failed")),

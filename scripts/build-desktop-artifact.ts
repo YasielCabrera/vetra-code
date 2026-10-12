@@ -1216,15 +1216,6 @@ export class MissingMacPasskeyProvisioningProfileError extends Schema.TaggedErro
   }
 }
 
-export class MissingMacPasskeyDomainConfigurationError extends Schema.TaggedError<MissingMacPasskeyDomainConfigurationError>()(
-  "MissingMacPasskeyDomainConfigurationError",
-  {},
-) {
-  override get message(): string {
-    return "VETRA_CLERK_PUBLISHABLE_KEY or VETRA_CLERK_PASSKEY_RP_DOMAINS is required for signed macOS passkey builds.";
-  }
-}
-
 export class InvalidMacPasskeyPublishableKeyError extends Schema.TaggedError<InvalidMacPasskeyPublishableKeyError>()(
   "InvalidMacPasskeyPublishableKeyError",
   {
@@ -1249,7 +1240,6 @@ export const MacPasskeySigningConfigurationError = Schema.Union([
   InvalidMacPasskeyRpDomainError,
   InvalidAppleTeamIdError,
   MissingMacPasskeyProvisioningProfileError,
-  MissingMacPasskeyDomainConfigurationError,
   InvalidMacPasskeyPublishableKeyError,
   MissingMacPasskeyRpDomainError,
 ]);
@@ -1297,9 +1287,31 @@ function normalizePasskeyRpDomain(value: string): string {
   return parsed.hostname;
 }
 
+/**
+ * Passkeys sign in through Clerk, so a signed macOS build without Clerk
+ * configuration returns undefined and signs with electron-builder's default
+ * hardened-runtime entitlements, with no provisioning profile.
+ */
 export function resolveMacPasskeySigningConfiguration(
   env: Readonly<Record<string, string | undefined>>,
-): MacPasskeySigningConfiguration {
+): MacPasskeySigningConfiguration | undefined {
+  const configuredRpDomains = env.VETRA_CLERK_PASSKEY_RP_DOMAINS?.trim();
+  const publishableKey = env.VETRA_CLERK_PUBLISHABLE_KEY?.trim();
+  let rpDomains: readonly string[];
+  if (configuredRpDomains) {
+    rpDomains = configuredRpDomains.split(",").map(normalizePasskeyRpDomain);
+  } else if (publishableKey) {
+    let hostname: string;
+    try {
+      hostname = clerkFrontendApiHostnameFromPublishableKey(publishableKey);
+    } catch (cause) {
+      throw new InvalidMacPasskeyPublishableKeyError({ cause });
+    }
+    rpDomains = [normalizePasskeyRpDomain(hostname)];
+  } else {
+    return undefined;
+  }
+
   const teamId = env.VETRA_APPLE_TEAM_ID?.trim().toUpperCase() ?? "";
   if (!APPLE_TEAM_ID_PATTERN.test(teamId)) {
     throw new InvalidAppleTeamIdError({ teamId });
@@ -1308,24 +1320,6 @@ export function resolveMacPasskeySigningConfiguration(
   const provisioningProfilePath = env.VETRA_MACOS_PROVISIONING_PROFILE?.trim() ?? "";
   if (provisioningProfilePath.length === 0) {
     throw new MissingMacPasskeyProvisioningProfileError();
-  }
-
-  const configuredRpDomains = env.VETRA_CLERK_PASSKEY_RP_DOMAINS?.trim();
-  let rpDomains: readonly string[];
-  if (configuredRpDomains) {
-    rpDomains = configuredRpDomains.split(",").map(normalizePasskeyRpDomain);
-  } else {
-    const publishableKey = env.VETRA_CLERK_PUBLISHABLE_KEY?.trim();
-    if (!publishableKey) {
-      throw new MissingMacPasskeyDomainConfigurationError();
-    }
-    let hostname: string;
-    try {
-      hostname = clerkFrontendApiHostnameFromPublishableKey(publishableKey);
-    } catch (cause) {
-      throw new InvalidMacPasskeyPublishableKeyError({ cause });
-    }
-    rpDomains = [normalizePasskeyRpDomain(hostname)];
   }
 
   const uniqueRpDomains = [...new Set(rpDomains)];
@@ -2700,7 +2694,7 @@ export const resolveGitHubPublishConfig = Effect.fn("resolveGitHubPublishConfig"
 ) {
   // No GITHUB_REPOSITORY fallback: inferring the building repository as the
   // update feed is how a fork ends up serving someone else's releases. The
-  // feed is opt-in until Vetra owns a release repository.
+  // desktop release workflow names the repository it publishes to.
   const env = yield* Config.all({
     updateRepository: Config.String("VETRA_DESKTOP_UPDATE_REPOSITORY").pipe(Config.option),
   });
@@ -3841,6 +3835,11 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
         ),
       }
     : undefined;
+  if (options.platform === "mac" && options.signed && !macPasskeySigning) {
+    yield* Effect.log(
+      "[desktop-artifact] No Clerk configuration: signing macOS without passkey entitlements.",
+    );
+  }
   const macEntitlementsPath = macPasskeySigning
     ? path.join(stageAppDir, "entitlements.mac.plist")
     : undefined;

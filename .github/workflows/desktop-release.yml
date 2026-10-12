@@ -56,6 +56,28 @@ jobs:
           echo "Releasing v$version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      # Installed macOS apps only accept updates signed by the same Developer
+      # ID, so an unsigned build must never reach the update feed. This reads
+      # only whether each credential is set, never its value.
+      - name: Require macOS signing credentials
+        env:
+          HAS_CSC_LINK: ${{ secrets.CSC_LINK != '' }}
+          HAS_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD != '' }}
+          HAS_APPLE_API_KEY: ${{ secrets.APPLE_API_KEY != '' }}
+          HAS_APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID != '' }}
+          HAS_APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER != '' }}
+          HAS_APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID != '' }}
+        run: |
+          missing=()
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_API_KEY APPLE_API_KEY_ID APPLE_API_ISSUER APPLE_TEAM_ID; do
+            has="HAS_$name"
+            [[ "${!has}" == "true" ]] || missing+=("$name")
+          done
+          if (( ${#missing[@]} > 0 )); then
+            echo "::error::macOS releases are signed and notarized. Missing: ${missing[*]}. See docs/operations/release.md."
+            exit 1
+          fi
+
   build:
     name: Build ${{ matrix.label }}
     needs: preflight
@@ -71,21 +93,23 @@ jobs:
             target: dmg
             arch: arm64
             rust_target: aarch64-apple-darwin
-            installer: "*.dmg"
+            # Squirrel.Mac installs updates from the zip, not the DMG.
+            assets: "*.dmg *.zip *.zip.blockmap latest-mac.yml"
           - label: Linux x64
             runner: ubuntu-24.04
             platform: linux
             target: AppImage
             arch: x64
             rust_target: x86_64-unknown-linux-gnu
-            installer: "*.AppImage"
+            # latest-linux.yml lists both packages; the AppImage embeds its blockmap.
+            assets: "*.AppImage *.deb latest-linux.yml"
           - label: Windows x64
             runner: windows-2025
             platform: win
             target: nsis
             arch: x64
             rust_target: x86_64-pc-windows-msvc
-            installer: "*.exe"
+            assets: "*.exe *.exe.blockmap latest.yml"
     steps:
       - name: Checkout
         shell: bash
@@ -157,41 +181,89 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libsecret-1-dev pkg-config imagemagick
 
-      # Unsigned: the build only signs with --signed, and this workflow holds
-      # no signing secrets.
+      # Only macOS is signed (and notarized); Windows and Linux ship unsigned,
+      # and only the macOS job receives Apple credentials.
       - name: Build installer
         shell: bash
         env:
           VERSION: ${{ needs.preflight.outputs.version }}
+          VETRA_DESKTOP_UPDATE_REPOSITORY: ${{ github.repository }}
           VETRA_DESKTOP_REUSE_RESOURCE_MONITOR: ${{ steps.resource_monitor_cache.outputs.cache-hit == 'true' }}
           VETRA_DESKTOP_REUSE_LINUX_CAPTURE_HELPERS: ${{ steps.capture_helper_cache.outputs.cache-hit == 'true' }}
+          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.CSC_KEY_PASSWORD || '' }}
+          APPLE_API_KEY: ${{ matrix.platform == 'mac' && secrets.APPLE_API_KEY || '' }}
+          APPLE_API_KEY_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ matrix.platform == 'mac' && secrets.APPLE_API_ISSUER || '' }}
         run: |
           set -euo pipefail
 
           node scripts/update-release-package-versions.ts "$VERSION"
           cp .env.example .env
 
-          vp run dist:desktop:artifact \
-            --platform ${{ matrix.platform }} \
-            --target ${{ matrix.target }} \
-            --arch ${{ matrix.arch }} \
-            --build-version "$VERSION" \
+          args=(
+            --platform ${{ matrix.platform }}
+            --target ${{ matrix.target }}
+            --arch ${{ matrix.arch }}
+            --build-version "$VERSION"
             --verbose
+          )
+          if [[ "${{ matrix.platform }}" == "mac" ]]; then
+            # Notarization reads the App Store Connect key from a file.
+            key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+            printf '%s' "$APPLE_API_KEY" > "$key_path"
+            export APPLE_API_KEY="$key_path"
+            args+=(--signed)
+          fi
 
-          # release/ also holds blockmaps, the zip/deb siblings, and builder
-          # logs. Only the one installer per platform is published.
+          vp run dist:desktop:artifact "${args[@]}"
+
+      # release/ also holds the DMG blockmap and builder logs. Publish each
+      # installer and what electron-updater reads, and nothing else. Asset
+      # names differ by extension and manifest name across platforms.
+      - name: Collect release assets
+        shell: bash
+        run: |
+          set -euo pipefail
           shopt -s nullglob
-          installers=(release/${{ matrix.installer }})
-          if (( ${#installers[@]} != 1 )); then
-            printf 'Expected one %s installer, found %s.\n' "${{ matrix.installer }}" "${#installers[@]}" >&2
+          mkdir release-assets
+          read -ra patterns <<< "${{ matrix.assets }}"
+          for pattern in "${patterns[@]}"; do
+            # shellcheck disable=SC2206 # the pattern is meant to glob
+            matches=(release/$pattern)
+            # nullglob drops an unmatched glob but keeps a missing literal name.
+            [[ -e "${matches[0]:-}" ]] || matches=()
+            if (( ${#matches[@]} != 1 )); then
+              printf 'Expected one release/%s, found %s.\n' "$pattern" "${#matches[@]}" >&2
+              exit 1
+            fi
+            cp "${matches[0]}" release-assets/
+          done
+
+      # electron-builder only warns when it finds no signing identity or no
+      # notarization credentials. Check the app inside the zip, which is what
+      # updates install; the DMG is built from the same signed app.
+      - name: Verify macOS signature and notarization
+        if: matrix.platform == 'mac'
+        env:
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          ditto -x -k release-assets/*.zip "$RUNNER_TEMP/verify"
+          app=("$RUNNER_TEMP"/verify/*.app)
+          codesign --verify --deep --strict --verbose=2 "${app[0]}"
+          xcrun stapler validate "${app[0]}"
+          team="$(codesign --display --verbose=2 "${app[0]}" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+          if [[ "$team" != "$APPLE_TEAM_ID" ]]; then
+            echo "::error::The app is signed by team '$team', not APPLE_TEAM_ID '$APPLE_TEAM_ID'."
             exit 1
           fi
 
-      - name: Upload installer
+      - name: Upload release assets
         uses: actions/upload-artifact@v7
         with:
           name: desktop-${{ matrix.platform }}
-          path: release/${{ matrix.installer }}
+          path: release-assets/*
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
@@ -207,7 +279,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download installers
+      - name: Download release assets
         uses: actions/download-artifact@v8
         with:
           pattern: desktop-*

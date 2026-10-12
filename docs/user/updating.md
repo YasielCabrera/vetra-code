@@ -15,8 +15,8 @@ background service stays on its current release channel. A remote desktop app
 installs the latest release from its own channel. Hover the button to see what
 it will update.
 
-Vetra Code does not publish server releases yet, and desktop updates require an explicitly
-configured Vetra release source. Rebuild your checkout as described below.
+Vetra Code does not publish server releases yet. A desktop app installed from a release
+updates itself; rebuild a checkout as described below.
 
 Server updates appear only after that version is published to npm. Remote
 desktop apps do not wait for npm. Servers that need

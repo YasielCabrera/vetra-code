@@ -163,8 +163,6 @@ export function makeHarness(options: UpdatesHarnessOptions = {}) {
         NodeServices.layer,
         DesktopConfig.layerTest({
           VETRA_HOME: `/tmp/vetra-desktop-updates-test-${process.pid}`,
-          // The fork defaults auto-update off, so this suite must opt in.
-          VETRA_ENABLE_AUTO_UPDATE: "true",
           VETRA_DESKTOP_MOCK_UPDATES: "true",
           VETRA_DESKTOP_MOCK_UPDATE_SERVER_PORT: "4141",
           ...options.env,
@@ -246,7 +244,6 @@ export function makeHarness(options: UpdatesHarnessOptions = {}) {
     Layer.provideMerge(
       DesktopConfig.layerTest({
         VETRA_HOME: `/tmp/vetra-desktop-updates-test-${process.pid}`,
-        VETRA_ENABLE_AUTO_UPDATE: "true",
         VETRA_DESKTOP_MOCK_UPDATES: "true",
         VETRA_DESKTOP_MOCK_UPDATE_SERVER_PORT: "4141",
         ...options.env,

@@ -2020,6 +2020,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       VETRA_CLERK_PASSKEY_RP_DOMAINS:
         " Clerk.Example.com,example.clerk.accounts.dev,clerk.example.com ",
     });
+    assert.isDefined(configuration);
     const entitlements = renderMacPasskeyEntitlements(configuration, {
       touchIdKeychainAccessGroup: undefined,
       browserPasskeys: false,
@@ -2104,6 +2105,17 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     assert.match(
       entitlements,
       /<key>com\.apple\.developer\.web-browser\.public-key-credential<\/key>\s*<true\/>/u,
+    );
+  });
+
+  it("signs macOS builds without Clerk configuration without passkeys", () => {
+    assert.isUndefined(resolveMacPasskeySigningConfiguration({}));
+    assert.isUndefined(
+      resolveMacPasskeySigningConfiguration({
+        VETRA_APPLE_TEAM_ID: "ABC1234567",
+        VETRA_CLERK_PUBLISHABLE_KEY: " ",
+        VETRA_CLERK_PASSKEY_RP_DOMAINS: "",
+      }),
     );
   });
 
@@ -2204,6 +2216,26 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         { name: "Vetra Code", schemes: ["vetra", "vetra-dev"] },
         { name: "Web site URL", schemes: ["http", "https"], role: "Viewer" },
       ]);
+    }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
+  );
+
+  it.effect("signs macOS builds without passkeys using the default entitlements", () =>
+    Effect.gen(function* () {
+      const config = yield* createBuildConfig(
+        "mac",
+        "dmg",
+        "1.2.3",
+        true,
+        false,
+        undefined,
+        undefined,
+      );
+
+      const mac = config.mac as Record<string, unknown>;
+      assert.match(String(mac.sign), /[\\/]scripts[\\/]sign-macos\.ts$/);
+      assert.deepStrictEqual(mac.target, ["dmg", "zip"]);
+      assert.notProperty(mac, "entitlements");
+      assert.notProperty(mac, "provisioningProfile");
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
 

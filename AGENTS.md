@@ -145,7 +145,7 @@ Architecture and its constraints: `docs/internals/overview.md`. Glossary: `docs/
 
 ## Upstream sync
 
-Vetra Code is a fork of `pingdotgg/t3code`. Bring bugfixes and runtime features with `scripts/sync-upstream.sh`, then finish the review in [docs/internals/upstream-sync.md](docs/internals/upstream-sync.md). A raw `git merge` restores deleted mobile/marketing trees and T3 identity, and can point auth, analytics, and auto-update back at T3. Keep Vetra identity; keep Clerk, PostHog, relay, and the updater disabled until we own those destinations.
+Vetra Code is a fork of `pingdotgg/t3code`. Bring bugfixes and runtime features with `scripts/sync-upstream.sh`, then finish the review in [docs/internals/upstream-sync.md](docs/internals/upstream-sync.md). A raw `git merge` restores deleted mobile/marketing trees and T3 identity, and can point auth, analytics, and auto-update back at T3. Keep Vetra identity; keep Clerk, PostHog, and relay disabled until we own those destinations.
 
 Internal names stay upstream's on purpose: workspace packages (`@t3tools/*`, `t3`), import paths, symbols, and file paths are all `t3*`, and only product identity is renamed. Do not "fix" one to read `vetra`; that is what used to make every sync a conflict.
 

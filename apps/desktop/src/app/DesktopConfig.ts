@@ -56,10 +56,7 @@ export const DesktopConfig = Config.all({
     Config.withDefault("http/json"),
   ),
   appImagePath: trimmedString("APPIMAGE"),
-  disableAutoUpdate: Config.Boolean("VETRA_ENABLE_AUTO_UPDATE").pipe(
-    Config.withDefault(false),
-    Config.map((enabled) => !enabled),
-  ),
+  disableAutoUpdate: optionalBoolean("VETRA_DISABLE_AUTO_UPDATE"),
   mockUpdates: optionalBoolean("VETRA_DESKTOP_MOCK_UPDATES"),
   mockUpdateServerPort: Config.Port("VETRA_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(
     Config.withDefault(3000),

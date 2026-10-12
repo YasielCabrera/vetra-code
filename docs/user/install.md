@@ -36,14 +36,13 @@ update it with `git pull` and a rebuild.
 
 Download the installer for your platform from the
 [latest release](https://github.com/YasielCabrera/vetra-code/releases/latest):
-the `.dmg` for macOS on Apple Silicon, the `.AppImage` for Linux x64, or the
-`.exe` for Windows x64. The app does not update itself; install a newer release
-to update.
+the `.dmg` for macOS on Apple Silicon, the `.AppImage` or `.deb` for Linux x64,
+or the `.exe` for Windows x64. The app then updates itself from new releases.
+Versions 0.1.0 and 0.45.0 do not: replace them once with a newer release.
 
-The installers are not signed yet, so the first launch needs one extra step:
+The Windows and Linux installers are not signed yet, so the first launch needs
+one extra step:
 
-- macOS: before opening the downloaded DMG, run
-  `xattr -d com.apple.quarantine ~/Downloads/Vetra-Code-*-arm64.dmg`.
 - Windows: when SmartScreen shows **Windows protected your PC**, choose
   **More info**, then **Run anyway**.
 - Linux: make the AppImage executable with `chmod +x Vetra-Code-*.AppImage`.

@@ -1,6 +1,6 @@
 # Desktop releases
 
-> For maintainers. Vetra Code publishes unsigned desktop installers and nothing else.
+> For maintainers. Vetra Code publishes desktop installers and their update feed, and nothing else.
 
 The [Desktop Release](../../.github/workflows/desktop-release.yml) workflow is the only GitHub Actions
 workflow in this repository. It runs only when started by hand, on GitHub-hosted runners, which are
@@ -15,17 +15,17 @@ workflow**), or from a checkout:
 gh workflow run desktop-release.yml
 ```
 
-A run builds one installer per platform in parallel:
+A run builds each platform in parallel:
 
-| Platform              | Installer   |
-| --------------------- | ----------- |
-| macOS (Apple Silicon) | `.dmg`      |
-| Linux x64             | `.AppImage` |
-| Windows x64           | `.exe`      |
+| Platform              | Installers          | Update files                              |
+| --------------------- | ------------------- | ----------------------------------------- |
+| macOS (Apple Silicon) | `.dmg`              | `.zip`, `.zip.blockmap`, `latest-mac.yml` |
+| Linux x64             | `.AppImage`, `.deb` | `latest-linux.yml`                        |
+| Windows x64           | `.exe`              | `.exe.blockmap`, `latest.yml`             |
 
 When all three builds succeed, it creates GitHub release `vX.Y.Z`, tagged at the commit it built,
-with generated notes and the three installers attached. If any build fails, nothing is published and
-no version is used; fix the failure and start a new run. A run started while another is in progress
+with generated notes and those files attached. If any build fails, nothing is published and no
+version is used; fix the failure and start a new run. A run started while another is in progress
 waits for it.
 
 Unlike upstream, the Windows build embeds no WSL runtime archive (`--wsl-runtime`, built from
@@ -39,26 +39,46 @@ starts `v0.46.0`. Drafts, releases on other lines, and tags that are not `vX.Y.Z
 source is this repository's releases, not Git tags: a clone that fetched upstream carries T3's
 `v0.0.x` tags.
 
-## Unsigned installers
+## Updates
 
-We hold no Apple Developer ID or Windows signing certificate, so the installers are not signed or
-notarized, and each platform warns on first launch:
+Installed apps update in place from this repository's releases. The workflow sets
+`VETRA_DESKTOP_UPDATE_REPOSITORY` to this repository, so the build embeds that feed and writes the
+`latest*.yml` manifests; a build without it, such as a local one, has no feed. Releases `v0.1.0`
+and `v0.45.0` were built without a feed, so their installs never check for updates: users replace
+them once by hand with a newer release.
 
-- **macOS**: Gatekeeper refuses to open the app. Clear the quarantine flag on the downloaded DMG
-  before opening it: `xattr -d com.apple.quarantine ~/Downloads/Vetra-Code-*-arm64.dmg`.
+## Signing
+
+The macOS app is signed with our Developer ID and notarized. The run stops before building if any
+of these is missing from **Settings → Secrets and variables → Actions**, and the macOS job checks
+the signature, the stapled notarization ticket, and the team before uploading:
+
+| Name               | Kind     | Value                                                                                                                                                                       |
+| ------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CSC_LINK`         | Secret   | The **Developer ID Application** certificate and its private key, exported from Keychain Access as a `.p12`, base64-encoded (`base64 -i certificate.p12`).                  |
+| `CSC_KEY_PASSWORD` | Secret   | The password set when exporting the `.p12`.                                                                                                                                 |
+| `APPLE_API_KEY`    | Secret   | The contents of an App Store Connect Team API key (`AuthKey_<KEY_ID>.p8`), created under **Users and Access → Integrations → App Store Connect API** with Developer access. |
+| `APPLE_API_KEY_ID` | Secret   | That key's Key ID.                                                                                                                                                          |
+| `APPLE_API_ISSUER` | Secret   | The Issuer ID shown above the list of Team keys.                                                                                                                            |
+| `APPLE_TEAM_ID`    | Variable | The 10-character Team ID from the Apple Developer account's **Membership details**.                                                                                         |
+
+Create the certificate under **Certificates, Identifiers & Profiles → Certificates** in the Apple
+Developer account; only the Account Holder can create a Developer ID certificate. No provisioning
+profile is needed: the build adds in-app browser passkey entitlements, which need one, only when
+Clerk is configured.
+
+Windows and Linux installers are not signed, and warn on first launch:
+
 - **Windows**: SmartScreen shows **Windows protected your PC**. Choose **More info**, then **Run
-  anyway**.
+  anyway**. Updates install without a signature check because the build names no publisher; once
+  Windows builds are signed, updates must carry the same publisher.
 - **Linux**: mark the AppImage executable with `chmod +x Vetra-Code-*.AppImage`.
-
-Releases carry no `latest*.yml` update feeds or blockmaps, and the build names no update
-repository, so installed apps never check for updates. Users update by installing a newer release.
 
 ## What stays disabled
 
 - `@vetra-code/server` is private and cannot be installed through `npx`;
 - hosted web deployment has no production route or domain;
 - the inherited relay deployment is absent;
-- desktop auto-update does not start unless `VETRA_ENABLE_AUTO_UPDATE=true`;
 - cloud UI stays hidden when Vetra Clerk and relay public configuration is absent;
 - product analytics send nothing: `VETRA_TELEMETRY_ENABLED` defaults to false, no PostHog project
   key ships, and a blank key is treated as disabled even when the flag is on.
@@ -83,20 +103,19 @@ validates local packaging helpers only.
 
 ## Prerequisites for wider publishing
 
-Record and review all of these before publishing more than unsigned installers:
+Record and review all of these before publishing more than desktop installers:
 
 1. A final public package name and registry ownership for the server CLI.
 2. Vetra-owned web, latest, nightly, relay API, and tunnel domains.
 3. Separate development and production Clerk applications and OAuth callbacks.
-4. Desktop signing/notarization identities and the final platform application IDs.
+4. A Windows signing identity and the final platform application IDs.
 5. A Vetra telemetry destination, or an explicit decision to ship without remote telemetry.
-6. A tested updater repository configured through `VETRA_DESKTOP_UPDATE_REPOSITORY`.
-7. Vetra-owned Cloudflare/database infrastructure if the inherited relay is retained.
-8. Secret scopes and protected CI environments that prevent preview builds from reaching production.
+6. Vetra-owned Cloudflare/database infrastructure if the inherited relay is retained.
+7. Secret scopes and protected CI environments that prevent preview builds from reaching production.
 
 ## Required release invariants
 
-When publishing grows beyond unsigned installers:
+When publishing grows beyond desktop installers:
 
 - publish the exact server version before exposing a client that may request it;
 - publish updater metadata and installers from the same immutable version;
