@@ -1652,50 +1652,186 @@ describe("TicketService plans", () => {
       ),
   );
 
-  it.effect("refreshes every plan referencing an attachment removed from its ticket", () =>
-    withTickets((tickets) =>
-      Effect.gen(function* () {
-        const upload = yield* stageUpload("shared.txt", "shared");
-        const created = yield* tickets.create(
-          { title: "Shared file", attachments: [upload] },
-          USER,
-        );
-        const attachmentId = created.attachments[0]!.attachmentId;
-        const body = `See vetra-attachment://${attachmentId}`;
-        const first = (yield* tickets.createPlan(
-          { ticketId: created.ticket.id, title: "First", body },
-          USER,
-        )).plan;
-        const second = (yield* tickets.createPlan(
-          { ticketId: created.ticket.id, title: "Second", body },
-          USER,
-        )).plan;
-        const seen = yield* Queue.unbounded<[string, number, number]>();
-        yield* Effect.forEach([first, second], (plan) =>
-          tickets.subscribePlan(plan.planId).pipe(
-            Stream.runForEach((current) =>
-              Queue.offer(seen, [
-                current.summary.ref,
-                current.attachments.length,
-                current.summary.revision,
-              ]),
+  it.effect(
+    "refuses removal of attachments used by active and archived plans and rolls back the write",
+    () =>
+      withTickets((tickets) =>
+        Effect.gen(function* () {
+          const config = yield* ServerConfig.ServerConfig;
+          const upload = yield* stageUpload("shared.txt", "shared");
+          const unused = yield* stageUpload("unused.txt", "unused");
+          const created = yield* tickets.create(
+            {
+              title: "Shared file",
+              body: `See vetra-attachment://${upload.id}`,
+              attachments: [upload, unused],
+            },
+            USER,
+          );
+          const attachmentId = created.attachments[0]!.attachmentId;
+          const unusedId = created.attachments[1]!.attachmentId;
+          const body = `See vetra-attachment://${attachmentId}`;
+          const first = (yield* tickets.createPlan(
+            { ticketId: created.ticket.id, title: "First", body },
+            USER,
+          )).plan;
+          const second = (yield* tickets.createPlan(
+            { ticketId: created.ticket.id, title: "Second", body },
+            USER,
+          )).plan;
+          yield* tickets.updatePlan(
+            { planId: second.planId, expectedRevision: 1, status: "archived" },
+            USER,
+          );
+          const before = yield* tickets.get(created.ticket.id);
+          const error = yield* tickets
+            .update(
+              {
+                ticketId: created.ticket.id,
+                expectedRevision: 1,
+                title: "Lost change",
+                removeAttachmentIds: [unusedId, attachmentId],
+              },
+              USER,
+            )
+            .pipe(Effect.flip);
+          assert.strictEqual(error._tag, "TicketError");
+          assert.strictEqual(error.message, "Cannot remove attachments. Used by T-1/P1, T-1/P2.");
+          const detail = yield* tickets.get(created.ticket.id);
+          assert.deepStrictEqual(detail, before);
+          assert.deepStrictEqual(
+            detail.attachments
+              .map((attachment) => [attachment.name, attachment.usedByPlanRefs])
+              .sort(),
+            [
+              ["shared.txt", ["T-1/P1", "T-1/P2"]],
+              ["unused.txt", []],
+            ],
+          );
+          const plans = yield* Effect.forEach([first, second], (plan) =>
+            tickets.getPlan(plan.planId),
+          );
+          assert.deepStrictEqual(
+            plans.map((plan) => [plan.body, plan.attachments.length]),
+            [
+              [body, 1],
+              [body, 1],
+            ],
+          );
+          assert.deepStrictEqual(
+            [attachmentId, unusedId].map((id) =>
+              NodeFS.readFileSync(NodePath.join(config.attachmentsDir, `${id}.txt`), "utf8"),
+            ),
+            ["shared", "unused"],
+          );
+        }),
+      ),
+  );
+
+  it.effect(
+    "updates attachment usage for readers and permits explicit removal after the last reference",
+    () =>
+      withTickets((tickets) =>
+        Effect.gen(function* () {
+          const config = yield* ServerConfig.ServerConfig;
+          const upload = yield* stageUpload("diagram.txt", "diagram");
+          const created = yield* tickets.create({ title: "Diagram", attachments: [upload] }, USER);
+          const id = created.attachments[0]!.attachmentId;
+          const storedPath = NodePath.join(config.attachmentsDir, `${id}.txt`);
+          const seen = yield* Queue.unbounded<ReadonlyArray<ReadonlyArray<string>>>();
+          yield* tickets.subscribeDetail(created.ticket.id).pipe(
+            Stream.runForEach((detail) =>
+              Queue.offer(
+                seen,
+                detail.attachments.map((attachment) => attachment.usedByPlanRefs),
+              ),
             ),
             Effect.forkScoped,
-          ),
+          );
+          assert.deepStrictEqual(yield* Queue.take(seen), [[]]);
+          const first = (yield* tickets.createPlan(
+            {
+              ticketId: created.ticket.id,
+              title: "First",
+              body: `![diagram](vetra-attachment://${id})`,
+            },
+            USER,
+          )).plan;
+          assert.deepStrictEqual(yield* Queue.take(seen), [["T-1/P1"]]);
+          const second = (yield* tickets.createPlan(
+            { ticketId: created.ticket.id, title: "Second", body: `See vetra-attachment://${id}` },
+            USER,
+          )).plan;
+          assert.deepStrictEqual(yield* Queue.take(seen), [["T-1/P1", "T-1/P2"]]);
+          yield* tickets.updatePlan(
+            { planId: first.planId, expectedRevision: 1, body: "No diagram" },
+            USER,
+          );
+          assert.deepStrictEqual(yield* Queue.take(seen), [["T-1/P2"]]);
+          const blocked = yield* tickets
+            .update(
+              { ticketId: created.ticket.id, expectedRevision: 1, removeAttachmentIds: [id] },
+              USER,
+            )
+            .pipe(Effect.flip);
+          assert.strictEqual(blocked.message, "Cannot remove attachments. Used by T-1/P2.");
+          yield* tickets.deletePlan({ planId: second.planId }, USER);
+          assert.deepStrictEqual(yield* Queue.take(seen), [[]]);
+          assert.strictEqual(NodeFS.readFileSync(storedPath, "utf8"), "diagram");
+          yield* tickets.update(
+            { ticketId: created.ticket.id, expectedRevision: 1, removeAttachmentIds: [id] },
+            USER,
+          );
+          assert.deepStrictEqual(yield* Queue.take(seen), []);
+          assert.deepStrictEqual(
+            [
+              (yield* tickets.get(created.ticket.id)).summary.attachmentCount,
+              NodeFS.existsSync(storedPath),
+            ],
+            [0, false],
+          );
+        }).pipe(Effect.scoped),
+      ),
+  );
+
+  it.effect("matches whole attachment ids and ignores another ticket's attachment removal", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const config = yield* ServerConfig.ServerConfig;
+        const upload = yield* stageUpload("prefix.txt", "prefix");
+        const created = yield* tickets.create({ title: "Prefix", attachments: [upload] }, USER);
+        const id = created.attachments[0]!.attachmentId;
+        const plan = (yield* tickets.createPlan(
+          { ticketId: created.ticket.id, title: "Other id" },
+          USER,
+        )).plan;
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`UPDATE ticket_plans SET body = ${`See vetra-attachment://${id}-different`} WHERE plan_id = ${plan.planId}`;
+        assert.deepStrictEqual(
+          (yield* tickets.get(created.ticket.id)).attachments[0]!.usedByPlanRefs,
+          [],
         );
-        assert.deepStrictEqual((yield* Effect.all([Queue.take(seen), Queue.take(seen)])).sort(), [
-          ["T-1/P1", 1, 1],
-          ["T-1/P2", 1, 1],
-        ]);
+        const other = (yield* tickets.create({ title: "Other" }, USER)).ticket;
         yield* tickets.update(
-          { ticketId: created.ticket.id, expectedRevision: 1, removeAttachmentIds: [attachmentId] },
+          { ticketId: other.id, expectedRevision: 1, removeAttachmentIds: [id, "unknown"] },
           USER,
         );
-        assert.deepStrictEqual((yield* Effect.all([Queue.take(seen), Queue.take(seen)])).sort(), [
-          ["T-1/P1", 0, 1],
-          ["T-1/P2", 0, 1],
-        ]);
-      }).pipe(Effect.scoped),
+        assert.strictEqual(
+          NodeFS.readFileSync(NodePath.join(config.attachmentsDir, `${id}.txt`), "utf8"),
+          "prefix",
+        );
+        yield* tickets.update(
+          { ticketId: created.ticket.id, expectedRevision: 1, removeAttachmentIds: [id] },
+          USER,
+        );
+        assert.deepStrictEqual(
+          [
+            (yield* tickets.get(created.ticket.id)).summary.attachmentCount,
+            NodeFS.existsSync(NodePath.join(config.attachmentsDir, `${id}.txt`)),
+          ],
+          [0, false],
+        );
+      }),
     ),
   );
 

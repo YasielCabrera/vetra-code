@@ -5,6 +5,7 @@ import { ProjectId } from "./baseSchemas.ts";
 import {
   parseTicketReference,
   TicketCreateInput,
+  TicketDetail,
   ticketLinkTargetKey,
   TicketSummary,
   TicketUpdateInput,
@@ -103,8 +104,8 @@ describe("ticketLinkTargetKey", () => {
   });
 });
 
-describe("TicketSummary", () => {
-  it("reads a summary from a server that predates plans and per-project numbers", () => {
+describe("ticket read compatibility", () => {
+  it("reads summaries and details from a server that predates plans and attachment usage", () => {
     const summary = decodeTicketSummary({
       kind: "local",
       id: "ticket-1",
@@ -121,5 +122,22 @@ describe("TicketSummary", () => {
       attachmentCount: 0,
     });
     expect([summary.plans, summary.homeProjectId]).toEqual([[], null]);
+    const attachment = {
+      id: "ticket-1-file",
+      type: "file",
+      name: "notes.txt",
+      mimeType: "text/plain",
+      sizeBytes: 5,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const detail = { summary, body: "", links: [], attachments: [attachment], activity: [] };
+    const decodeDetail = Schema.decodeUnknownSync(TicketDetail);
+    expect(decodeDetail(detail).attachments[0]!.usedByPlanRefs).toEqual([]);
+    expect(
+      decodeDetail({
+        ...detail,
+        attachments: [{ ...attachment, usedByPlanRefs: ["T-1/P1", "T-1/P2"] }],
+      }).attachments[0]!.usedByPlanRefs,
+    ).toEqual(["T-1/P1", "T-1/P2"]);
   });
 });

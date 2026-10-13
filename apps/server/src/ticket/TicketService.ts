@@ -777,6 +777,10 @@ const make = Effect.gen(function* () {
         FROM ticket_attachments WHERE ticket_id = ${ticketId}
         ORDER BY created_at, attachment_id
       `;
+      const planRefs = yield* attachmentPlanRefs({
+        ticket: summary,
+        attachmentIds: attachments.map((attachment) => attachment.attachment_id),
+      });
       const activityRows = yield* sql<{
         readonly activity_id: number;
         readonly actor_json: string;
@@ -803,7 +807,10 @@ const make = Effect.gen(function* () {
         summary,
         body: bodyRow?.body ?? "",
         links,
-        attachments: attachments.map(toAttachment),
+        attachments: attachments.map((attachment) => ({
+          ...toAttachment(attachment),
+          usedByPlanRefs: planRefs.get(attachment.attachment_id) ?? [],
+        })),
         activity,
       } satisfies TicketDetail;
     }).pipe(
@@ -1311,13 +1318,30 @@ const make = Effect.gen(function* () {
       ),
     );
 
-  const plansReferencingAttachments = (ticketId: TicketId, attachmentIds: ReadonlyArray<string>) =>
-    attachmentIds.length === 0
-      ? Effect.succeed<ReadonlyArray<TicketPlanId>>([])
-      : sql<{ readonly plan_id: string }>`
-          SELECT plan_id FROM ticket_plans WHERE ticket_id = ${ticketId}
-            AND ${sql.or(attachmentIds.map((id) => sql`instr(body, ${`vetra-attachment://${id}`}) > 0`))}
-        `.pipe(Effect.map((rows) => rows.map((row) => TicketPlanId.make(row.plan_id))));
+  const attachmentPlanRefs = Effect.fnUntraced(function* ({
+    ticket,
+    attachmentIds,
+  }: {
+    readonly ticket: Pick<TicketSummary, "id" | "number">;
+    readonly attachmentIds: ReadonlyArray<string>;
+  }) {
+    const refs = new Map<string, string[]>();
+    if (attachmentIds.length === 0) return refs;
+    const requestedIds = new Set(attachmentIds);
+    const plans = yield* sql<{ readonly number: number; readonly body: string }>`
+      SELECT number, body FROM ticket_plans WHERE ticket_id = ${ticket.id} ORDER BY number
+    `;
+    for (const plan of plans) {
+      const ref = formatTicketPlanRef(ticket.number, plan.number);
+      for (const id of attachmentReferenceIds(plan.body)) {
+        if (!requestedIds.has(id)) continue;
+        const usedBy = refs.get(id) ?? [];
+        usedBy.push(ref);
+        refs.set(id, usedBy);
+      }
+    }
+    return refs;
+  });
 
   const insertLink = (
     ticketId: TicketId,
@@ -1508,7 +1532,6 @@ const make = Effect.gen(function* () {
         input.body === undefined ? undefined : yield* attachmentBody(input.body, claim, false);
       const storedAttachments: TicketAttachment[] = [];
       const removedFiles: Array<AttachmentRow> = [];
-      const changedPlans: Array<TicketPlanId> = [];
       yield* commitAttachmentWrite({
         claim,
         body: ticketWrite(input.ticketId, input.expectedRevision, actor, (current, at) =>
@@ -1564,13 +1587,19 @@ const make = Effect.gen(function* () {
               input.ticketId,
               input.removeAttachmentIds ?? [],
             );
-            removedFiles.push(...removed);
-            changedPlans.push(
-              ...(yield* plansReferencingAttachments(
-                input.ticketId,
-                removed.map((attachment) => attachment.attachment_id),
-              )),
+            const planRefs = yield* attachmentPlanRefs({
+              ticket: current,
+              attachmentIds: removed.map((attachment) => attachment.attachment_id),
+            });
+            const usedBy = Array.from(new Set(Array.from(planRefs.values()).flat())).toSorted(
+              (left, right) => left.localeCompare(right, undefined, { numeric: true }),
             );
+            if (usedBy.length > 0) {
+              return yield* new TicketError({
+                message: `Cannot remove attachments. Used by ${usedBy.join(", ")}.`,
+              });
+            }
+            removedFiles.push(...removed);
             return {
               entries: [
                 ...statusChanged,
@@ -1588,7 +1617,6 @@ const make = Effect.gen(function* () {
         complete: (changed) =>
           Effect.gen(function* () {
             if (changed) yield* publishTickets([input.ticketId]);
-            yield* publishPlans(changedPlans);
             yield* removeAttachmentFiles(removedFiles);
           }),
       });

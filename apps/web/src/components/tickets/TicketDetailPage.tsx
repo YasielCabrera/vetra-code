@@ -525,16 +525,25 @@ function TicketDocument(props: {
                 >
                   <PaperclipIcon aria-hidden className="size-3.5 text-muted-foreground" />
                   {detail.attachments.map((attachment) => (
-                    <TicketAttachmentChip
+                    <div
                       key={attachment.id}
-                      environmentId={ticketRef.environmentId}
-                      attachment={attachment}
-                      onRemove={
-                        readOnly
-                          ? undefined
-                          : () => void doc.saveFields({ removeAttachmentIds: [attachment.id] })
-                      }
-                    />
+                      className="flex max-w-full flex-wrap items-center gap-2"
+                    >
+                      <TicketAttachmentChip
+                        environmentId={ticketRef.environmentId}
+                        attachment={attachment}
+                        onRemove={
+                          readOnly || attachment.usedByPlanRefs.length > 0
+                            ? undefined
+                            : () => void doc.saveFields({ removeAttachmentIds: [attachment.id] })
+                        }
+                      />
+                      {attachment.usedByPlanRefs.length > 0 ? (
+                        <span className="text-xs text-muted-foreground">
+                          Used by {attachment.usedByPlanRefs.join(", ")}
+                        </span>
+                      ) : null}
+                    </div>
                   ))}
                 </div>
               ) : null

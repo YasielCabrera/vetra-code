@@ -6,6 +6,8 @@ import {
   GitHubIssueSnapshot,
   OrchestrationV2ThreadShell,
   ProviderInstanceId,
+  TicketsRpcGroup,
+  WS_METHODS,
   type ChatAttachment,
   type TicketAttachment,
 } from "@t3tools/contracts";
@@ -19,6 +21,7 @@ import * as Layer from "effect/Layer";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
+import * as RpcTest from "effect/rpc/RpcTest";
 import type * as Tool from "effect/ai/Tool";
 import { HttpClient, HttpClientRequest, HttpRouter, HttpServer } from "effect/http";
 import * as NetAddress from "effect/net/NetAddress";
@@ -39,6 +42,9 @@ import * as GitHubCredentials from "@t3tools/source-control-github/server/GitHub
 import * as SourceControlAttachmentResolver from "../../../sourceControl/SourceControlAttachmentResolver.ts";
 import * as TicketGitHub from "../../../ticket/TicketGitHub.ts";
 import * as TicketService from "../../../ticket/TicketService.ts";
+import * as TicketDrafting from "../../../ticket/TicketDrafting.ts";
+import * as TicketGitHubSync from "../../../ticket/TicketGitHubSync.ts";
+import { ticketRpcLayer } from "../../../ticket/ticketRpcLayer.ts";
 import * as WorkspacePaths from "../../../workspace/WorkspacePaths.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
@@ -496,6 +502,77 @@ describe("ticket attachments through MCP and HTTP", () => {
         "plan file",
       );
     }).pipe(Effect.provide(testLayer)),
+  );
+
+  it.live(
+    "refuses RPC and MCP removal of the same plan file and allows removal after its reference is cleared",
+    () =>
+      Effect.gen(function* () {
+        const created = yield* call("t3_ticket_create", {
+          title: "Protected diagram",
+          linkCaller: false,
+        });
+        const image = yield* upload("image", "diagram.png", "image/png", "diagram bytes");
+        const plan = yield* call("t3_ticket_plan_create", {
+          ticket: created.id,
+          title: "Diagram",
+          body: bodyFor([image]),
+          attachments: [image],
+        });
+        const detail = yield* call("t3_ticket_get", { ticket: created.id });
+        const attachment = detail.attachments[0]!;
+        expect(attachment.usedByPlanRefs).toEqual(["T-1/P1"]);
+        const tickets = yield* TicketService.TicketService;
+        const rpc = yield* RpcTest.makeClient(TicketsRpcGroup).pipe(
+          Effect.provide(
+            ticketRpcLayer([]).pipe(
+              Layer.provide(
+                Layer.mergeAll(
+                  Layer.succeed(TicketService.TicketService, tickets),
+                  Layer.mock(TicketDrafting.TicketDrafting)({}),
+                  Layer.mock(TicketGitHubSync.TicketGitHubSync)({}),
+                ),
+              ),
+            ),
+          ),
+        );
+        const rpcError = yield* rpc[WS_METHODS.ticketsUpdate]({
+          ticketId: detail.summary.id,
+          expectedRevision: detail.summary.revision,
+          removeAttachmentIds: [attachment.id],
+        }).pipe(Effect.flip);
+        const mcpError = yield* call("t3_ticket_update", {
+          ticket: created.id,
+          expectedRevision: detail.summary.revision,
+          removeAttachmentIds: [attachment.id],
+        }).pipe(Effect.flip);
+        expect([rpcError, mcpError].map((error) => [error._tag, error.message])).toEqual([
+          ["TicketError", "Cannot remove attachments. Used by T-1/P1."],
+          ["TicketError", "Cannot remove attachments. Used by T-1/P1."],
+        ]);
+        expect((yield* call("t3_ticket_get", { ticket: created.id })).attachments).toEqual(
+          detail.attachments,
+        );
+        expect(yield* readBytes(attachment.id)).toBe("diagram bytes");
+        yield* call("t3_ticket_plan_update", {
+          plan: plan.planId,
+          expectedRevision: plan.revision,
+          body: "No diagram",
+        });
+        expect(
+          (yield* call("t3_ticket_get", { ticket: created.id })).attachments[0]!.usedByPlanRefs,
+        ).toEqual([]);
+        expect(yield* readBytes(attachment.id)).toBe("diagram bytes");
+        yield* call("t3_ticket_update", {
+          ticket: created.id,
+          expectedRevision: detail.summary.revision,
+          removeAttachmentIds: [attachment.id],
+        });
+        expect([
+          (yield* call("t3_ticket_get", { ticket: created.id })).summary.attachmentCount,
+          yield* ownedFiles(),
+        ]).toEqual([0, []]);
+      }).pipe(Effect.scoped, Effect.provide(testLayer)),
   );
 
   it.live("allows local GitHub attachments and rolls back forbidden issue body edits", () =>

@@ -136,7 +136,8 @@ either a Draft or a Ready plan.
 
 - Edits save on their own. If an agent or another device changed the plan while you were editing,
   choose **Reload** or **Keep mine**. Earlier versions are not kept.
-- Deleting a plan leaves its images on the ticket.
+- Deleting a plan leaves its files on the ticket. You can remove a file after no active or archived
+  plan references it.
 - A comment whose passage an edit removed is marked **Outdated**, and keeps that passage as it was.
 - An agent reads a plan's current text, so edits made after you attach it still count.
 - Type `#` and a reference, such as `#T-42/P1`, to attach that plan to a message.

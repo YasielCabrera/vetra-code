@@ -307,7 +307,14 @@ export const TicketDetail = Schema.Struct({
   summary: TicketSummary,
   body: Schema.String,
   links: Schema.Array(TicketLink),
-  attachments: Schema.Array(TicketAttachment),
+  attachments: Schema.Array(
+    Schema.Struct({
+      ...TicketAttachment.fields,
+      usedByPlanRefs: Schema.Array(TrimmedNonEmptyString).pipe(
+        Schema.withDecodingDefault(Effect.succeed([])),
+      ),
+    }),
+  ),
   activity: Schema.Array(TicketActivity),
 });
 export type TicketDetail = typeof TicketDetail.Type;
