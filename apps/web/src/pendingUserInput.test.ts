@@ -1,4 +1,15 @@
+import {
+  ComposerContextId,
+  EnvironmentId,
+  ThreadId,
+  TicketId,
+  TicketPlanId,
+  type TicketContextRecord,
+  type TicketPlanContextRecord,
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
+import { formatInlineContextReference } from "./lib/composerContextReferences";
+import { threadContextRecord, threadContextReference } from "./lib/composerContextRecords";
 
 import {
   buildPendingUserInputAnswers,
@@ -6,10 +17,77 @@ import {
   countAnsweredPendingUserInputQuestions,
   derivePendingUserInputProgress,
   findFirstUnansweredPendingUserInputQuestionIndex,
+  projectPendingUserInputAnswer,
   resolvePendingUserInputAnswer,
   setPendingUserInputCustomAnswer,
   togglePendingUserInputOptionSelection,
 } from "./pendingUserInput";
+
+describe("projectPendingUserInputAnswer", () => {
+  const record = threadContextRecord(
+    {
+      environmentId: EnvironmentId.make("env-answer"),
+      threadId: ThreadId.make("reference-thread"),
+    },
+    "Reference work",
+  );
+
+  it("sends thread chips as readable links with the actual thread ID", () => {
+    const answer = `Compare ${formatInlineContextReference(threadContextReference(record))}`;
+    expect(projectPendingUserInputAnswer(answer, [record])).toBe(
+      "Compare [Reference work](vetra-thread://v1/reference-thread)",
+    );
+  });
+
+  it("leaves plain answers unchanged when the draft has unreferenced thread records", () => {
+    expect(projectPendingUserInputAnswer("Plain answer", [record])).toBe("Plain answer");
+  });
+
+  it("preserves option values and exact answer text", () => {
+    const options = [" first\t", "second"];
+    expect(projectPendingUserInputAnswer(options, [record])).toBe(options);
+    expect(projectPendingUserInputAnswer("  Edited answer\n", [record])).toBe("  Edited answer\n");
+  });
+
+  it("carries ticket and plan references alongside a thread link", () => {
+    const ticket = {
+      version: 1,
+      kind: "ticket",
+      contextId: ComposerContextId.make("ticket_answer"),
+      label: "T-42 Login loop",
+      environmentId: record.environmentId,
+      ticketId: TicketId.make("ticket-answer"),
+      ref: "T-42",
+      title: "Login loop",
+      links: [],
+    } satisfies TicketContextRecord;
+    const plan = {
+      version: 1,
+      kind: "ticket-plan",
+      contextId: ComposerContextId.make("plan_answer"),
+      label: "T-42/P1 Repair login",
+      environmentId: record.environmentId,
+      ticketId: ticket.ticketId,
+      planId: TicketPlanId.make("plan-answer"),
+      ref: "T-42/P1",
+      title: "Repair login",
+      revision: 1,
+      reviewStatus: "draft",
+      openCommentCount: 0,
+    } satisfies TicketPlanContextRecord;
+    const answer = [record, ticket, plan]
+      .map((context) => formatInlineContextReference(threadContextReference(context)))
+      .join(" ");
+    const projected = projectPendingUserInputAnswer(answer, [record, ticket, plan]);
+
+    expect(projected).toContain("[Reference work](vetra-thread://v1/reference-thread)");
+    expect(projected).toContain("ticket: T-42\nticketId: ticket-answer\ntitle: Login loop");
+    expect(projected).toContain('t3_ticket_get(ticket="ticket-answer")');
+    expect(projected).toContain("plan: T-42/P1\nplanId: plan-answer\nticket: T-42");
+    expect(projected).toContain('t3_ticket_plan_get(plan="plan-answer")');
+    expect(projected).not.toContain("vetra-context://");
+  });
+});
 
 const singleSelectQuestion = {
   id: "scope",

@@ -1,4 +1,26 @@
 import type { UserInputQuestion } from "@t3tools/contracts";
+import {
+  projectComposerContextForProvider,
+  replaceComposerContextReferences,
+} from "@t3tools/shared/composerContextReferences";
+import { formatThreadLink } from "@t3tools/shared/threadLinks";
+import type { AttachedContextRecord } from "./composerDraftStore";
+
+/** Question responses carry text: thread links and the payloads behind ticket references. */
+export function projectPendingUserInputAnswer(
+  answer: unknown,
+  threadContexts: ReadonlyArray<AttachedContextRecord>,
+) {
+  if (typeof answer !== "string" || threadContexts.length === 0) return answer;
+  const recordsById = new Map(threadContexts.map((record) => [record.contextId, record]));
+  const text = replaceComposerContextReferences(answer, (reference) => {
+    const record = reference.kind === "thread" ? recordsById.get(reference.contextId) : undefined;
+    return record?.kind === "thread"
+      ? formatThreadLink(record.threadId, reference.label)
+      : reference.source;
+  });
+  return projectComposerContextForProvider({ text, records: threadContexts });
+}
 
 export interface PendingUserInputDraftAnswer {
   selectedOptionValues?: string[];
