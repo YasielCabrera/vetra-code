@@ -147,6 +147,12 @@ export const ISSUE_SEARCH_GRAPHQL_QUERY = `query($query: String!, $first: Int!, 
   }
 }`;
 
+export const ISSUE_METADATA_GRAPHQL_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) { ${ISSUE_NODE_SELECTION} body }
+  }
+}`;
+
 export const ISSUE_DETAIL_GRAPHQL_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
     issue(number: $number) {
@@ -455,7 +461,7 @@ export function decodeIssueListJson(
   });
 }
 
-/** An `ISSUE_DETAIL_GRAPHQL_QUERY` answer; null when GitHub has no such issue there. */
+/** An issue metadata or detail query answer; null when GitHub has no such issue there. */
 export function decodeIssueDetailJson(
   raw: string,
 ): Result.Result<GitHubIssue | null, DecodeFailure | Error> {

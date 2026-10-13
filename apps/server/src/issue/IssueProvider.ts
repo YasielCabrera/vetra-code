@@ -47,7 +47,7 @@ export interface ProviderIssue {
   readonly assignees: ReadonlyArray<IssueActor>;
   readonly milestone: IssueMilestone | null;
   readonly commentCount?: number;
-  /** Present when `listIssues` was asked for bodies. */
+  /** Present on metadata reads and when `listIssues` was asked for bodies. */
   readonly body?: string;
 }
 
@@ -92,6 +92,12 @@ export interface IssueProviderApi {
     /** Also read each issue's body, as ticket sync does. Keep pages small when set. */
     readonly includeBody?: boolean;
   }) => Effect.Effect<ProviderIssueBatch, IssueProviderError>;
+  readonly getIssueMetadata: (input: {
+    readonly cwd: string;
+    readonly host: string;
+    readonly repository: string;
+    readonly number: number;
+  }) => Effect.Effect<ProviderIssue, IssueProviderError>;
   readonly getIssue: (input: {
     readonly cwd: string;
     readonly host: string;

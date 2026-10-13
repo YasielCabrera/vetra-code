@@ -16,12 +16,15 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as PubSub from "effect/PubSub";
+import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import * as SqlClient from "effect/sql/SqlClient";
 
 import type { IssueProviderError, ProviderIssueListCursor } from "../issue/IssueProvider.ts";
+import { GitHubApiResponseError } from "@t3tools/source-control-github/server/GitHubApi";
+import { GitHubIssueReadError } from "../issue/GitHubIssueCli.ts";
 import { IssueProviderRegistry } from "../issue/IssueProviderRegistry.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
@@ -80,9 +83,22 @@ const decodeSource = Schema.decodeUnknownEffect(TicketGitHubSource);
 
 const ticketError = (message: string) => (cause: unknown) => new TicketError({ message, cause });
 
-/** A deleted or transferred issue reads as not found; any other failure is a real one. */
 const isMissingIssue = (error: IssueProviderError | TicketError) =>
   error._tag === "IssueProviderError" && Predicate.isTagged(error.cause, "GitHubApiNotFoundError");
+
+const isIssueReadError = Schema.is(GitHubIssueReadError);
+const isApiResponseError = Schema.is(GitHubApiResponseError);
+
+const isUnreadableIssue = (error: IssueProviderError) => {
+  if (error.reason !== "failed") return false;
+  if (isIssueReadError(error.cause)) return true;
+  return (
+    isApiResponseError(error.cause) &&
+    error.cause.status >= 200 &&
+    error.cause.status < 300 &&
+    (error.cause.githubErrors?.length ?? 0) === 0
+  );
+};
 
 const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
@@ -178,7 +194,7 @@ const make = Effect.gen(function* () {
           };
         }
       }
-      if (!complete) return listed.size;
+      if (!complete) return { count: listed.size, lastError: null };
       const unlisted = (yield* tickets.openGitHubIssueNumbers(source)).filter(
         (number) => !listed.has(number),
       );
@@ -188,10 +204,22 @@ const make = Effect.gen(function* () {
         ...unlisted.filter((number) => number > after),
         ...unlisted.filter((number) => number <= after),
       ].slice(0, MAX_UNLISTED_REFRESHES);
+      let skipped = 0;
+      let firstError: string | null = null;
       for (const number of batch) {
         const issue = yield* github
-          .run(source, (api, cwd) => api.getIssue({ cwd, host, repository, number }))
-          .pipe(Effect.catchIf(isMissingIssue, () => Effect.succeed(null)));
+          .run(source, (api, cwd) => api.getIssueMetadata({ cwd, host, repository, number }))
+          .pipe(
+            Effect.catchTags({
+              IssueProviderError: (error) => {
+                if (isMissingIssue(error)) return Effect.succeed(null);
+                if (!isUnreadableIssue(error)) return Effect.fail(error);
+                skipped += 1;
+                firstError ??= `${repository}#${number}: ${TicketGitHub.describeGitHubFailure(error)}`;
+                return Effect.succeed(null);
+              },
+            }),
+          );
         if (issue !== null)
           yield* tickets.upsertGitHubIssue({
             projectId,
@@ -202,7 +230,11 @@ const make = Effect.gen(function* () {
           });
         unlistedCursors.set(key, number);
       }
-      return listed.size;
+      return {
+        count: listed.size,
+        lastError:
+          skipped > 1 ? `${firstError} (${skipped - 1} more issue reads failed.)` : firstError,
+      };
     });
 
   /** Re-reads the source inside the lock, so a source removed while this waited is skipped. */
@@ -210,29 +242,25 @@ const make = Effect.gen(function* () {
     Effect.gen(function* () {
       const source = yield* readSource(ref).pipe(Effect.option);
       if (Option.isNone(source)) return;
-      const outcome = yield* importIssues(source.value).pipe(
-        Effect.match({
-          onFailure: (error) => ({ error: TicketGitHub.describeGitHubFailure(error), count: 0 }),
-          onSuccess: (count) => ({ error: null, count }),
-        }),
-      );
+      const outcome = yield* importIssues(source.value).pipe(Effect.result);
       const at = yield* now;
       const where = sql`project_id = ${ref.projectId} AND host = ${ref.host}
         AND repository = ${ref.repository}`;
-      if (outcome.error === null) {
+      if (Result.isSuccess(outcome)) {
         yield* sql`
           UPDATE ticket_github_sources
-          SET last_synced_at = ${at}, last_attempt_at = ${at}, last_error = NULL,
-            issue_count = ${outcome.count}
+          SET last_synced_at = ${at}, last_attempt_at = ${at}, last_error = ${outcome.success.lastError},
+            issue_count = ${outcome.success.count}
           WHERE ${where}
         `;
       } else {
+        const error = TicketGitHub.describeGitHubFailure(outcome.failure);
         yield* Effect.logWarning("GitHub ticket sync failed", {
           repository: ref.repository,
-          error: outcome.error,
+          error,
         });
         yield* sql`
-          UPDATE ticket_github_sources SET last_attempt_at = ${at}, last_error = ${outcome.error}
+          UPDATE ticket_github_sources SET last_attempt_at = ${at}, last_error = ${error}
           WHERE ${where}
         `;
       }

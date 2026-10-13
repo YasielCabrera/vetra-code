@@ -245,7 +245,51 @@ layer("GitHubIssueCli.layer", (it) => {
         commentCount: 130,
         commentsTruncated: true,
       });
+      expect(graphqlCall(0).query).toContain("comments(first:");
       expect(detail.comments.map(({ id, body }) => [id, body])).toEqual([["IC_1", "Confirmed"]]);
+    }),
+  );
+
+  it.effect("reads closure metadata and body without requesting or fabricating comments", () =>
+    Effect.gen(function* () {
+      graphql.mockReturnValueOnce(
+        issueDetail({
+          ...issue(7),
+          state: "CLOSED",
+          stateReason: "NOT_PLANNED",
+          body: "Steps",
+          author: { login: "octocat", name: "The Octocat" },
+          labels: { nodes: [{ name: "bug", color: "D73A4A" }] },
+          assignees: { nodes: [{ login: "hubot", name: null }] },
+        }),
+      );
+      const cli = yield* GitHubIssueCli.GitHubIssueCli;
+      const metadata = yield* cli.getIssueMetadata({ ...repository, number: 7 });
+      expect(metadata).toEqual({
+        number: 7,
+        title: "Issue 7",
+        url: "https://github.com/acme/web/issues/7",
+        state: "closed",
+        stateReason: "not_planned",
+        body: "Steps",
+        author: { login: "octocat", name: "The Octocat", avatarUrl: null },
+        createdAt: "2026-08-01T00:00:00Z",
+        updatedAt: "2026-08-02T00:00:00Z",
+        closedAt: null,
+        labels: [{ name: "bug", color: "d73a4a", description: null }],
+        assignees: [{ login: "hubot", name: null, avatarUrl: null }],
+        milestone: null,
+      });
+      const request = graphqlCall(0);
+      expect(request).toMatchObject({
+        host: "github.com",
+        operation: "getIssueMetadata",
+        variables: { owner: "acme", name: "web", number: 7 },
+      });
+      expect(request.query).not.toContain("comments");
+      for (const field of ["body", "stateReason", "author", "labels", "assignees"])
+        expect(request.query).toContain(field);
+      expect(request.allowReserve).toBeUndefined();
     }),
   );
 

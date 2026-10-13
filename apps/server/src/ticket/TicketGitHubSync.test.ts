@@ -33,6 +33,7 @@ import { fromProviders, IssueProviderRegistry } from "../issue/IssueProviderRegi
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as GitHubApi from "@t3tools/source-control-github/server/GitHubApi";
+import * as GitHubCredentials from "@t3tools/source-control-github/server/GitHubCredentials";
 import * as GitHubQuota from "@t3tools/source-control-github/server/GitHubQuota";
 import * as SourceControlRateLimit from "@t3tools/source-control-core/server/SourceControlRateLimit";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
@@ -141,6 +142,7 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     listAllStarted: null as Queue.Queue<void> | null,
     listFailure: null as IssueProviderError | null,
     getFailure: null as IssueProviderError | null,
+    getFailures: new Map<number, IssueProviderError>(),
     setStateFailure: null as IssueProviderError | null,
     /** Runs inside a successful setState, as another writer racing the user's move. */
     duringSetState: Effect.void as Effect.Effect<void, TicketError>,
@@ -210,10 +212,33 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
           truncated: false,
         };
       }),
+    getIssueMetadata: (input) =>
+      Effect.suspend(() => {
+        fake.calls.push({ operation: "get", ...input });
+        if (fake.getFailure !== null) return Effect.fail(fake.getFailure);
+        const failure = fake.getFailures.get(input.number);
+        if (failure !== undefined) return Effect.fail(failure);
+        const issue = issues.get(input.number);
+        const read =
+          issue === undefined
+            ? missingIssueThroughClassifier(input)
+            : Effect.succeed({
+                ...listed(issue),
+                ...(issue.stateReason === null ? {} : { stateReason: issue.stateReason }),
+                body: issue.body,
+                url: `https://${input.host}/${input.repository}/issues/${issue.number}`,
+              });
+        return fake.beforeRead.pipe(
+          Effect.andThen(fake.duringGet.pipe(Effect.orDie)),
+          Effect.andThen(read),
+        );
+      }),
     getIssue: (input) =>
       Effect.suspend(() => {
         fake.calls.push({ operation: "get", ...input });
         if (fake.getFailure !== null) return Effect.fail(fake.getFailure);
+        const failure = fake.getFailures.get(input.number);
+        if (failure !== undefined) return Effect.fail(failure);
         const issue = issues.get(input.number);
         const read =
           issue === undefined
@@ -1736,6 +1761,229 @@ describe("TicketGitHubSync", () => {
           [remaining.sources, fake.listCalls, reimported._tag],
           [[], 1, "TicketNotFoundError"],
         );
+      }),
+    ),
+  );
+
+  it.effect("an unreadable unlisted issue does not block the next closure", () =>
+    withSync([issue(7), issue(8), issue(9)], ({ tickets, sync, fake }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        for (const number of [7, 8])
+          fake.edit(number, {
+            state: "closed",
+            stateReason: "completed",
+            updatedAt: "2026-08-05T00:00:00Z",
+          });
+        fake.edit(8, { title: "Closed issue", body: "Closure body", labels: ["fixed"] });
+        fake.assignees.set(8, ["hubot"]);
+        fake.getFailures.set(
+          7,
+          new IssueProviderError({
+            provider: SourceControlProviderKind.make("github"),
+            operation: "detail",
+            reason: "failed",
+            detail: "GitHub could not complete the issue request.",
+            cause: new GitHubIssueCli.GitHubIssueReadError({
+              cwd: shell.workspaceRoot,
+              operation: "getIssue",
+              detail: "GitHub returned an issue URL outside the selected repository.",
+            }),
+          }),
+        );
+        yield* TestClock.adjust("1 minute");
+        const partial = yield* sync.syncNow(SOURCE);
+        assert.deepStrictEqual(
+          [
+            (yield* tickets.resolveRef("acme/web#7")).statusId,
+            (yield* tickets.resolveRef("acme/web#8")).statusId,
+          ],
+          ["todo", "done"],
+        );
+        const closed = yield* tickets.get((yield* tickets.resolveRef("acme/web#8")).id);
+        assert.deepStrictEqual(
+          [
+            partial.issueCount,
+            closed.summary.title,
+            closed.body,
+            closed.summary.labels,
+            githubOf(closed.summary)?.github.assignees,
+          ],
+          [1, "Closed issue", "Closure body", ["fixed"], ["hubot"]],
+        );
+        assert.strictEqual(partial.lastSyncedAt, "2026-09-01T00:01:00.000Z");
+        assert.strictEqual(
+          partial.lastError,
+          "acme/web#7: GitHub could not complete the issue request.",
+        );
+        fake.getFailures.clear();
+        const recovered = yield* sync.syncNow(SOURCE);
+        assert.strictEqual((yield* tickets.resolveRef("acme/web#7")).statusId, "done");
+        assert.strictEqual(recovered.lastError, null);
+      }),
+    ),
+  );
+
+  it.effect("skipped reads advance the capped rotation to later closures", () =>
+    withSync(
+      Array.from({ length: 51 }, (_, index) => issue(index + 1)),
+      ({ tickets, sync, fake }) =>
+        Effect.gen(function* () {
+          yield* sync.syncNow(SOURCE);
+          for (const number of fake.issues.keys()) {
+            fake.edit(number, { state: "closed", stateReason: "completed" });
+            fake.getFailures.set(
+              number,
+              new IssueProviderError({
+                provider: SourceControlProviderKind.make("github"),
+                operation: "metadata",
+                reason: "failed",
+                detail: "GitHub could not complete the issue request.",
+                cause: new GitHubIssueCli.GitHubIssueReadError({
+                  cwd: shell.workspaceRoot,
+                  operation: "getIssueMetadata",
+                  detail: "GitHub returned unreadable issue details.",
+                }),
+              }),
+            );
+          }
+          fake.calls.length = 0;
+          const first = yield* sync.syncNow(SOURCE);
+          assert.deepStrictEqual(
+            fake.calls.map(({ number }) => number),
+            Array.from({ length: 50 }, (_, index) => index + 1),
+          );
+          assert.strictEqual(
+            first.lastError,
+            "acme/web#1: GitHub could not complete the issue request. (49 more issue reads failed.)",
+          );
+          assert.strictEqual((yield* tickets.resolveRef("acme/web#51")).statusId, "todo");
+          fake.getFailures.delete(51);
+          fake.calls.length = 0;
+          yield* sync.syncNow(SOURCE);
+          assert.deepStrictEqual(
+            fake.calls.map(({ number }) => number),
+            [51, ...Array.from({ length: 49 }, (_, index) => index + 1)],
+          );
+          assert.strictEqual((yield* tickets.resolveRef("acme/web#51")).statusId, "done");
+        }),
+    ),
+  );
+
+  it.effect("an oversized GraphQL issue response skips only that issue", () =>
+    withSync([issue(7), issue(8)], ({ tickets, sync, fake }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        for (const number of [7, 8])
+          fake.edit(number, { state: "closed", stateReason: "completed" });
+        fake.getFailures.set(
+          7,
+          new IssueProviderError({
+            provider: SourceControlProviderKind.make("github"),
+            operation: "metadata",
+            reason: "failed",
+            detail: "GitHub could not complete the issue request.",
+            cause: new GitHubApi.GitHubApiResponseError({
+              host: SOURCE.host,
+              operation: "getIssueMetadata",
+              status: 200,
+            }),
+          }),
+        );
+        const partial = yield* sync.syncNow(SOURCE);
+        assert.deepStrictEqual(
+          [
+            (yield* tickets.resolveRef("acme/web#7")).statusId,
+            (yield* tickets.resolveRef("acme/web#8")).statusId,
+            partial.issueCount,
+            partial.lastError,
+          ],
+          ["todo", "done", 0, "acme/web#7: GitHub could not complete the issue request."],
+        );
+      }),
+    ),
+  );
+
+  it.effect("source-wide failures stop closure reads and keep the previous sync timestamp", () =>
+    withSync([issue(7), issue(8)], ({ tickets, sync, fake }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        for (const number of [7, 8])
+          fake.edit(number, { state: "closed", stateReason: "completed" });
+        const failures = [
+          new IssueProviderError({
+            provider: SourceControlProviderKind.make("github"),
+            operation: "metadata",
+            reason: "unauthenticated",
+            detail: "Authentication failed.",
+            cause: new GitHubApi.GitHubApiAuthenticationError({
+              host: SOURCE.host,
+              operation: "getIssueMetadata",
+            }),
+          }),
+          new IssueProviderError({
+            provider: SourceControlProviderKind.make("github"),
+            operation: "metadata",
+            reason: "rate-limited",
+            detail: "Rate limit exceeded.",
+            cause: new GitHubApi.GitHubApiRateLimitError({
+              host: SOURCE.host,
+              operation: "getIssueMetadata",
+            }),
+          }),
+          ...[
+            new GitHubCredentials.GitHubCliFailedError({
+              host: SOURCE.host,
+              cause: new Error("credential unavailable"),
+            }),
+            new GitHubApi.GitHubApiRequestError({
+              host: SOURCE.host,
+              operation: "getIssueMetadata",
+              cause: new Error("offline"),
+            }),
+            new GitHubApi.GitHubApiResponseError({
+              host: SOURCE.host,
+              operation: "getIssueMetadata",
+              status: 503,
+            }),
+            new GitHubApi.GitHubApiResponseError({
+              host: SOURCE.host,
+              operation: "getIssueMetadata",
+              status: 200,
+              githubErrors: ["Unavailable"],
+            }),
+            new Error("Unknown provider failure"),
+          ].map(
+            (cause) =>
+              new IssueProviderError({
+                provider: SourceControlProviderKind.make("github"),
+                operation: "metadata",
+                reason: "failed",
+                detail: "GitHub could not complete the issue request.",
+                cause,
+              }),
+          ),
+        ];
+        for (const failure of failures) {
+          fake.getFailures.set(7, failure);
+          fake.calls.length = 0;
+          yield* TestClock.adjust("1 minute");
+          const failed = yield* sync.syncNow(SOURCE);
+          assert.deepStrictEqual(
+            fake.calls.map(({ number }) => number),
+            [7],
+          );
+          assert.deepStrictEqual(
+            [
+              failed.lastSyncedAt,
+              failed.issueCount,
+              (yield* tickets.resolveRef("acme/web#7")).statusId,
+              (yield* tickets.resolveRef("acme/web#8")).statusId,
+            ],
+            ["2026-09-01T00:00:00.000Z", 2, "todo", "todo"],
+          );
+          assert.strictEqual(failed.lastError, TicketGitHub.describeGitHubFailure(failure));
+        }
       }),
     ),
   );

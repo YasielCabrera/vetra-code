@@ -11,7 +11,7 @@ import {
 } from "@t3tools/contracts";
 
 import * as GitHubApi from "@t3tools/source-control-github/server/GitHubApi";
-import type { IssueStateChange, ProviderIssueListCursor } from "./IssueProvider.ts";
+import type { IssueStateChange, ProviderIssue, ProviderIssueListCursor } from "./IssueProvider.ts";
 import {
   decodeIssueAssigneeCandidatesJson,
   decodeIssueDetailJson,
@@ -19,6 +19,7 @@ import {
   decodeIssueTimelineJson,
   ISSUE_ASSIGNEE_CANDIDATES_GRAPHQL_QUERY,
   ISSUE_DETAIL_GRAPHQL_QUERY,
+  ISSUE_METADATA_GRAPHQL_QUERY,
   ISSUE_SEARCH_GRAPHQL_QUERY,
   type GitHubIssue,
 } from "./githubIssueJson.ts";
@@ -67,6 +68,12 @@ export class GitHubIssueCli extends Context.Service<
       readonly cursor?: ProviderIssueListCursor;
       readonly includeBody?: boolean;
     }) => Effect.Effect<GitHubIssueBatch, GitHubIssueCliError>;
+    readonly getIssueMetadata: (input: {
+      readonly cwd: string;
+      readonly host: string;
+      readonly repository: string;
+      readonly number: number;
+    }) => Effect.Effect<ProviderIssue, GitHubIssueCliError>;
     readonly getIssue: (input: {
       readonly cwd: string;
       readonly host: string;
@@ -191,10 +198,6 @@ export const make = Effect.gen(function* () {
   const issuePath = (input: { readonly repository: string; readonly number: number }) =>
     `repos/${input.repository}/issues/${input.number}`;
 
-  // The background sync and a user's view share `listIssues` and `getIssue`, so those, like the
-  // writes, follow the caller's `AllowGitHubReserve`. Activity and assignee candidates are only
-  // read for a user's open view, so they may always spend the reserve.
-
   const listIssues: GitHubIssueCli["Service"]["listIssues"] = Effect.fn(
     "GitHubIssueCli.listIssues",
   )(function* (input) {
@@ -244,46 +247,65 @@ export const make = Effect.gen(function* () {
     return { issues: valid.slice(0, usableRows), truncated: rawCount > usableRows };
   });
 
-  const getIssue: GitHubIssueCli["Service"]["getIssue"] = Effect.fn("GitHubIssueCli.getIssue")(
-    function* (input) {
-      if (!validRepository(input.repository)) {
-        return yield* unaddressable(input.cwd, "getIssue");
-      }
-      const [owner, name] = input.repository.split("/");
-      // A missing issue or repository is a NOT_FOUND answer, which the API fails as not found.
-      const raw = yield* api.graphql({
-        host: input.host,
-        operation: "getIssue",
-        query: ISSUE_DETAIL_GRAPHQL_QUERY,
-        variables: { owner, name, number: input.number },
-        maxResponseBytes: MAX_DETAIL_RESPONSE_BYTES,
+  const readIssue = Effect.fn("GitHubIssueCli.readIssue")(function* (input: {
+    readonly address: Parameters<GitHubIssueCli["Service"]["getIssue"]>[0];
+    readonly operation: "getIssue" | "getIssueMetadata";
+    readonly query: string;
+  }) {
+    const { address, operation, query } = input;
+    if (!validRepository(address.repository)) {
+      return yield* unaddressable(address.cwd, operation);
+    }
+    const [owner, name] = address.repository.split("/");
+    // A missing issue or repository is a NOT_FOUND answer, which the API fails as not found.
+    const raw = yield* api.graphql({
+      host: address.host,
+      operation,
+      query,
+      variables: { owner, name, number: address.number },
+      maxResponseBytes: MAX_DETAIL_RESPONSE_BYTES,
+    });
+    const decoded = decodeIssueDetailJson(raw);
+    if (!Result.isSuccess(decoded)) {
+      return yield* new GitHubIssueReadError({
+        cwd: address.cwd,
+        operation,
+        detail: "GitHub returned unreadable issue details.",
+        cause: decoded.failure,
       });
-      const decoded = decodeIssueDetailJson(raw);
-      if (!Result.isSuccess(decoded)) {
-        return yield* new GitHubIssueReadError({
-          cwd: input.cwd,
-          operation: "getIssue",
-          detail: "GitHub returned unreadable issue details.",
-          cause: decoded.failure,
-        });
-      }
-      if (decoded.success === null) {
-        return yield* new GitHubApi.GitHubApiNotFoundError({
-          host: input.host,
-          operation: "getIssue",
-        });
-      }
-      const url = expectedIssueUrl(decoded.success.url, input.host, input.repository, input.number);
-      if (url === null) {
-        return yield* new GitHubIssueReadError({
-          cwd: input.cwd,
-          operation: "getIssue",
-          detail: "GitHub returned an issue URL outside the selected repository.",
-        });
-      }
-      return { ...decoded.success, url };
-    },
-  );
+    }
+    if (decoded.success === null) {
+      return yield* new GitHubApi.GitHubApiNotFoundError({
+        host: address.host,
+        operation,
+      });
+    }
+    const url = expectedIssueUrl(
+      decoded.success.url,
+      address.host,
+      address.repository,
+      address.number,
+    );
+    if (url === null) {
+      return yield* new GitHubIssueReadError({
+        cwd: address.cwd,
+        operation,
+        detail: "GitHub returned an issue URL outside the selected repository.",
+      });
+    }
+    return { ...decoded.success, url };
+  });
+
+  const getIssue: GitHubIssueCli["Service"]["getIssue"] = (address) =>
+    readIssue({ address, operation: "getIssue", query: ISSUE_DETAIL_GRAPHQL_QUERY });
+
+  const getIssueMetadata: GitHubIssueCli["Service"]["getIssueMetadata"] = (address) =>
+    readIssue({ address, operation: "getIssueMetadata", query: ISSUE_METADATA_GRAPHQL_QUERY }).pipe(
+      Effect.map(
+        ({ comments: _comments, commentCount: _count, commentsTruncated: _truncated, ...issue }) =>
+          issue,
+      ),
+    );
 
   const getIssueActivity: GitHubIssueCli["Service"]["getIssueActivity"] = Effect.fn(
     "GitHubIssueCli.getIssueActivity",
@@ -402,6 +424,7 @@ export const make = Effect.gen(function* () {
   return GitHubIssueCli.of({
     listIssues,
     getIssue,
+    getIssueMetadata,
     getIssueActivity,
     listAssigneeCandidates,
     setAssignees,

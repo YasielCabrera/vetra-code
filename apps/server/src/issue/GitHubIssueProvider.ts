@@ -129,6 +129,15 @@ export const make = Effect.map(GitHubIssueCli.GitHubIssueCli, (github): IssuePro
       })),
       Effect.mapError(providerError("list")),
     ),
+  getIssueMetadata: (input) =>
+    github.getIssueMetadata(input).pipe(
+      Effect.map((issue) => ({
+        ...issue,
+        author: withAvatar(issue.author, input.host),
+        assignees: issue.assignees.map((assignee) => withAvatar(assignee, input.host) ?? assignee),
+      })),
+      Effect.mapError(providerError("metadata")),
+    ),
   getIssue: (input) =>
     github.getIssue(input).pipe(
       Effect.map((issue) => withAvatars(issue, input.host)),
