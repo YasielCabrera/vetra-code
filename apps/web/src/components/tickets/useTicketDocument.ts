@@ -1,4 +1,5 @@
-import type { ScopedTicketRef } from "@t3tools/client-runtime/state/tickets";
+import { useNavigate } from "@tanstack/react-router";
+import { type ScopedTicketRef, ticketKey } from "@t3tools/client-runtime/state/tickets";
 import type {
   EnvironmentId,
   TicketDetail,
@@ -58,6 +59,7 @@ function planOutcome(
 /** The detail page's writes to one ticket: its description, title, labels, attachments and status. */
 export function useTicketDocument(ref: ScopedTicketRef, detail: TicketDetail) {
   const { update, move } = useTicketActions();
+  const navigate = useNavigate();
   const doc = useAutosavedDocument({
     summary: detail.summary,
     body: detail.body,
@@ -67,6 +69,12 @@ export function useTicketDocument(ref: ScopedTicketRef, detail: TicketDetail) {
       [ref, update],
     ),
     fieldConflictTitle: "The ticket changed before your edit saved",
+    recovery: {
+      key: JSON.stringify([ref.environmentId, "ticket", ref.ticketId]),
+      title: "Your description draft was kept",
+      reopen: () =>
+        void navigate({ to: "/tickets/$ticketKey", params: { ticketKey: ticketKey(ref) } }),
+    },
   });
   const { writeFields, readLatest } = doc;
 
@@ -113,6 +121,7 @@ export function useTicketDocument(ref: ScopedTicketRef, detail: TicketDetail) {
 
 export function useTicketPlanDocument(environmentId: EnvironmentId, plan: TicketPlan) {
   const { updatePlan } = useTicketActions();
+  const navigate = useNavigate();
   const { planId } = plan.summary;
   const doc = useAutosavedDocument<TicketPlanSummary>({
     summary: plan.summary,
@@ -131,6 +140,19 @@ export function useTicketPlanDocument(environmentId: EnvironmentId, plan: Ticket
       [environmentId, planId, updatePlan],
     ),
     fieldConflictTitle: "The plan changed before your edit saved",
+    recovery: {
+      key: JSON.stringify([environmentId, "plan", planId]),
+      title: "Your plan draft was kept",
+      reopen: () =>
+        void navigate({
+          to: "/tickets/$ticketKey/plans/$planNumber",
+          params: {
+            ticketKey: ticketKey({ environmentId, ticketId: plan.summary.ticketId }),
+            planNumber: String(plan.summary.number),
+          },
+          search: {},
+        }),
+    },
   });
   const { writeFields } = doc;
 

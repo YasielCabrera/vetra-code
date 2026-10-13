@@ -1,20 +1,24 @@
 // @vitest-environment jsdom
 
-import { act, useLayoutEffect } from "react";
+import { act, StrictMode, useCallback, useLayoutEffect } from "react";
 import { ChatAttachmentId } from "@t3tools/contracts";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { releaseAttachmentUpload } from "../../lib/attachmentUploadQueue";
+import { createNavigationDrafts } from "../../lib/navigationDrafts";
+import { toastManager } from "../ui/toast";
+import { TicketTitleInput } from "./TicketTitleInput";
 import {
   useAutosavedDocument,
   type DocumentWrite,
   type DocumentWriteOutcome,
 } from "./useAutosavedDocument";
+import { useTitleDraft } from "./useTitleDraft";
 
 vi.mock("../ui/toast", () => ({
   stackedThreadToast: (input: unknown) => input,
-  toastManager: { add: vi.fn() },
+  toastManager: { add: vi.fn(), close: vi.fn() },
 }));
 vi.mock("../../lib/attachmentUploadQueue", () => ({ releaseAttachmentUpload: vi.fn() }));
 
@@ -39,6 +43,7 @@ beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.useFakeTimers();
   vi.mocked(releaseAttachmentUpload).mockClear();
+  vi.mocked(toastManager.add).mockClear();
   container = globalThis.document.createElement("div");
   globalThis.document.body.append(container);
   root = createRoot(container);
@@ -63,10 +68,18 @@ async function renderDocument(
   writeBody: DocumentOptions["writeBody"],
   summary: Summary = SAVED,
   body = "Saved body",
+  recovery?: DocumentOptions["recovery"],
 ) {
   await act(async () =>
     root.render(
-      <Harness summary={summary} body={body} writeBody={writeBody} fieldConflictTitle="Changed" />,
+      <Harness
+        key={recovery?.key}
+        summary={summary}
+        body={body}
+        writeBody={writeBody}
+        fieldConflictTitle="Changed"
+        recovery={recovery}
+      />,
     ),
   );
 }
@@ -108,6 +121,35 @@ describe("useAutosavedDocument unload protection", () => {
     expect(canUnload()).toBe(true);
   });
 
+  it("protects an inherited title save after returning to an unchanged description", async () => {
+    const titleReply = deferredWrite();
+    const writeBody = vi.fn<DocumentOptions["writeBody"]>();
+    const recovery = {
+      key: "environment-a/ticket/pending-title",
+      title: "Description draft kept",
+      reopen: vi.fn(),
+    };
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => {
+      void doc.writeFields(() => () => titleReply.promise);
+    });
+    await act(async () => root.render(null));
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    expect(container.textContent).toBe("Saved body");
+    expect(canUnload()).toBe(false);
+    await act(async () =>
+      titleReply.resolve({
+        summary: { revision: 2 },
+        acknowledgement: { kind: "legacy", revision: 2 },
+        claimed: [],
+      }),
+    );
+    expect(canUnload()).toBe(true);
+    expect(doc.readLatest().revision).toBe(2);
+    expect(doc.state.base).toEqual({ revision: 2, body: "Saved body" });
+    expect(writeBody).not.toHaveBeenCalled();
+  });
+
   it("stops protecting a dirty document once that page unmounts", async () => {
     await renderDocument(
       vi.fn<DocumentOptions["writeBody"]>().mockResolvedValue({
@@ -120,6 +162,477 @@ describe("useAutosavedDocument unload protection", () => {
     expect(canUnload()).toBe(false);
     await act(async () => root.unmount());
     expect(canUnload()).toBe(true);
+  });
+});
+
+describe("navigation draft handoff", () => {
+  it("keeps a returning editor's claim valid when its departing save settles first", async () => {
+    const drafts = createNavigationDrafts<{ readonly text: string }>();
+    const staged = drafts.stage("environment-a/ticket/render-effect-race", {
+      text: "Draft on leave",
+    });
+    const returning = drafts.get("environment-a/ticket/render-effect-race");
+    if (returning === undefined) throw new Error("Draft was lost before return");
+    drafts.settle(staged, { text: "Final text from the failed save" }, true);
+    expect(drafts.take(returning)).toBe(true);
+    expect(await returning.settled).toEqual({ text: "Final text from the failed save" });
+  });
+});
+
+describe("useAutosavedDocument navigation recovery", () => {
+  it("keeps a known description conflict after leaving and returning", async () => {
+    const writeBody = vi.fn<DocumentOptions["writeBody"]>().mockResolvedValue("conflict");
+    const recovery = {
+      key: "environment-a/ticket/known-conflict",
+      title: "Description draft kept",
+      reopen: vi.fn(),
+    };
+    recovery.reopen.mockImplementation(() => {
+      void renderDocument(writeBody, { revision: 2 }, "Agent description", recovery);
+    });
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => doc.edit("My description before navigation"));
+    await renderDocument(writeBody, { revision: 2 }, "Agent description", recovery);
+    await act(async () => expect(await doc.flush()).toBe(false));
+    expect(doc.state.conflict).toBe(true);
+
+    await act(async () => root.render(null));
+    expect(toastManager.add).toHaveBeenCalledWith(
+      expect.objectContaining({ actionProps: expect.objectContaining({ children: "Reopen" }) }),
+    );
+    const notification = vi.mocked(toastManager.add).mock.calls.at(-1)?.[0];
+    if (notification?.actionProps === undefined) throw new Error("Recovery action is missing");
+    await act(async () => root.render(<button {...notification.actionProps} />));
+    const reopenButton = container.querySelector("button");
+    if (reopenButton === null) throw new Error("Recovery action is missing");
+    await act(async () => reopenButton.click());
+    expect(container.textContent).toBe("My description before navigation");
+    expect(doc.state.conflict).toBe(true);
+    expect(doc.state.server).toEqual({ revision: 2, body: "Agent description" });
+  });
+
+  it("keeps a draft when the navigation flush discovers a concurrent save", async () => {
+    const reply = deferredWrite();
+    const writeBody = vi.fn<DocumentOptions["writeBody"]>(() => reply.promise);
+    const recovery = {
+      key: "environment-a/ticket/late-conflict",
+      title: "Description draft kept",
+      reopen: vi.fn(),
+    };
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => doc.edit("My edit inside the autosave window"));
+
+    await act(async () => root.render(null));
+    expect(writeBody).toHaveBeenCalledExactlyOnceWith(1, "My edit inside the autosave window", []);
+    await act(async () => reply.resolve("conflict"));
+    expect(toastManager.add).toHaveBeenCalledWith(
+      expect.objectContaining({ actionProps: expect.objectContaining({ children: "Reopen" }) }),
+    );
+    await renderDocument(writeBody, { revision: 2 }, "Other device description", recovery);
+    expect(container.textContent).toBe("My edit inside the autosave window");
+    expect(doc.state.conflict).toBe(true);
+    expect(doc.state.server).toEqual({ revision: 2, body: "Other device description" });
+  });
+
+  it("commits a focused title without blur while retaining the conflicted description", async () => {
+    type TitleSummary = Summary & { readonly title: string };
+    const writeTitle = vi
+      .fn<
+        (expectedRevision: number, title: string) => Promise<DocumentWriteOutcome<TitleSummary>>
+      >()
+      .mockResolvedValue({
+        summary: { revision: 3, title: "Title saved on navigation" },
+        acknowledgement: { kind: "legacy", revision: 3 },
+        claimed: [],
+      });
+    const writeBody = vi.fn<DocumentOptions["writeBody"]>();
+    const recovery = {
+      key: "environment-a/ticket/title-conflict",
+      title: "Description draft kept",
+      reopen: vi.fn(),
+    };
+    let editDescription = (_text: string) => {};
+    let flushDescription = async () => true;
+    function TitleHarness({ summary, body }: { summary: TitleSummary; body: string }) {
+      const current = useAutosavedDocument({
+        summary,
+        body,
+        writeBody: useCallback(async () => "conflict" as const, []),
+        fieldConflictTitle: "Changed",
+        recovery,
+      });
+      const { writeFields } = current;
+      const saveTitle = useCallback(
+        (title: string) => writeFields(() => (revision) => writeTitle(revision, title)),
+        [writeFields],
+      );
+      const title = useTitleDraft(summary.title, { readLatest: current.readLatest, saveTitle });
+      useLayoutEffect(() => {
+        editDescription = current.edit;
+        flushDescription = current.flush;
+      }, [current.edit, current.flush]);
+      return (
+        <>
+          <TicketTitleInput title={title} label="Title" readOnly={false} />
+          <p>{current.state.text}</p>
+        </>
+      );
+    }
+    await act(async () =>
+      root.render(
+        <TitleHarness summary={{ revision: 1, title: "Saved title" }} body="Saved body" />,
+      ),
+    );
+    const textarea = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Title"]');
+    if (textarea === null) throw new Error("Title input is missing");
+    await act(async () => {
+      textarea.focus();
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(
+        textarea,
+        "Title saved on navigation",
+      );
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      editDescription("Description retained with focused title");
+    });
+    await act(async () =>
+      root.render(
+        <TitleHarness summary={{ revision: 2, title: "Saved title" }} body="Agent description" />,
+      ),
+    );
+    expect(document.activeElement).toBe(textarea);
+    expect(writeTitle).not.toHaveBeenCalled();
+    await act(async () => expect(await flushDescription()).toBe(false));
+    await act(async () => root.render(null));
+    expect(writeTitle.mock.calls).toEqual([[2, "Title saved on navigation"]]);
+    await renderDocument(writeBody, { revision: 3 }, "Agent description", recovery);
+    expect(container.textContent).toBe("Description retained with focused title");
+    expect(doc.state.conflict).toBe(true);
+  });
+
+  it("keeps edits made after returning before the old navigation save conflicts", async () => {
+    const reply = deferredWrite();
+    const writeBody = vi
+      .fn<DocumentOptions["writeBody"]>()
+      .mockReturnValueOnce(reply.promise)
+      .mockResolvedValue({
+        summary: { revision: 3 },
+        acknowledgement: { kind: "legacy", revision: 3 },
+        claimed: [],
+      });
+    const recovery = {
+      key: "environment-a/ticket/quick-return",
+      title: "Description draft kept",
+      reopen: vi.fn(),
+    };
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => doc.edit("Draft before leaving"));
+    await act(async () => root.render(null));
+    await renderDocument(writeBody, { revision: 2 }, "Remote description", recovery);
+    expect(container.textContent).toBe("Draft before leaving");
+    await act(async () => doc.edit("More typing after returning"));
+    await act(async () => reply.resolve("conflict"));
+    expect(container.textContent).toBe("More typing after returning");
+    expect(doc.state.conflict).toBe(true);
+    await act(async () => doc.keepMine());
+    expect(writeBody).toHaveBeenLastCalledWith(2, "More typing after returning", []);
+    expect(doc.state.base.body).toBe("More typing after returning");
+    expect(doc.state.conflict).toBe(false);
+  });
+
+  it("accepts its outgoing successful save while keeping new typing after a quick return", async () => {
+    const reply = deferredWrite();
+    const writeBody = vi
+      .fn<DocumentOptions["writeBody"]>()
+      .mockReturnValueOnce(reply.promise)
+      .mockResolvedValue({
+        summary: { revision: 3 },
+        acknowledgement: { kind: "legacy", revision: 3 },
+        claimed: [],
+      });
+    const recovery = {
+      key: "environment-a/ticket/quick-success",
+      title: "Description draft kept",
+      reopen: vi.fn(),
+    };
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => {
+      doc.edit("First edit saved while away");
+      void doc.flush();
+    });
+    await act(async () => root.render(null));
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => doc.edit("Newest typing after return"));
+    await act(async () =>
+      reply.resolve({
+        summary: { revision: 2 },
+        acknowledgement: { kind: "legacy", revision: 2 },
+        claimed: [],
+      }),
+    );
+    expect(container.textContent).toBe("Newest typing after return");
+    expect(doc.state.base).toEqual({ revision: 2, body: "First edit saved while away" });
+    expect(doc.state.conflict).toBe(false);
+    await renderDocument(writeBody, { revision: 2 }, "First edit saved while away", recovery);
+    expect(doc.state.conflict).toBe(false);
+    await act(async () => expect(await doc.flush()).toBe(true));
+    expect(writeBody.mock.calls).toEqual([
+      [1, "First edit saved while away", []],
+      [2, "Newest typing after return", []],
+    ]);
+    expect(doc.state.base).toEqual({ revision: 3, body: "Newest typing after return" });
+  });
+
+  it("retains a pending revert across two quick departures before the first save lands", async () => {
+    const reply = deferredWrite();
+    const writeBody = vi
+      .fn<DocumentOptions["writeBody"]>()
+      .mockReturnValueOnce(reply.promise)
+      .mockResolvedValue(null);
+    const recovery = {
+      key: "environment-a/ticket/quick-revert-twice",
+      title: "Description draft kept",
+      reopen: vi.fn(),
+    };
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => {
+      doc.edit("First edit");
+      void doc.flush();
+    });
+    await act(async () => doc.edit("Saved body"));
+    await act(async () => root.render(null));
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    expect(container.textContent).toBe("Saved body");
+    expect(doc.state.base.body).toBe("Saved body");
+    expect(canUnload()).toBe(false);
+    await act(async () => root.render(null));
+    await act(async () =>
+      reply.resolve({
+        summary: { revision: 2 },
+        acknowledgement: { kind: "legacy", revision: 2 },
+        claimed: [],
+      }),
+    );
+    expect(toastManager.add).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Description draft kept",
+        actionProps: expect.objectContaining({ children: "Reopen" }),
+      }),
+    );
+    await renderDocument(writeBody, { revision: 2 }, "First edit", recovery);
+    expect(container.textContent).toBe("Saved body");
+    expect(doc.state.base).toEqual({ revision: 2, body: "First edit" });
+    expect(doc.state.failedText).toBe("Saved body");
+    expect(writeBody).toHaveBeenLastCalledWith(2, "Saved body", []);
+  });
+
+  it("isolates retained drafts by environment and document identity", async () => {
+    const writeBody = vi.fn<DocumentOptions["writeBody"]>().mockResolvedValue("conflict");
+    const recovery = {
+      key: "environment-a/ticket/isolated",
+      title: "Description draft kept",
+      reopen: vi.fn(),
+    };
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => {
+      doc.edit("Draft belonging to environment A");
+      expect(await doc.flush()).toBe(false);
+    });
+    await act(async () => root.render(null));
+    await renderDocument(writeBody, SAVED, "Environment B body", {
+      ...recovery,
+      key: "environment-b/ticket/isolated",
+    });
+    expect(container.textContent).toBe("Environment B body");
+    await renderDocument(writeBody, SAVED, "Different ticket body", {
+      ...recovery,
+      key: "environment-a/ticket/different",
+    });
+    expect(container.textContent).toBe("Different ticket body");
+    await renderDocument(writeBody, { revision: 2 }, "Agent body", recovery);
+    expect(container.textContent).toBe("Draft belonging to environment A");
+    expect(doc.state.conflict).toBe(true);
+  });
+
+  it("retains referenced uploads until a restored draft claims them", async () => {
+    const writeBody = vi
+      .fn<DocumentOptions["writeBody"]>()
+      .mockResolvedValueOnce("conflict")
+      .mockResolvedValue({
+        summary: { revision: 3 },
+        acknowledgement: { kind: "legacy", revision: 3 },
+        claimed: [{ pendingId: "retained-shot", attachmentId: "saved-shot" }],
+      });
+    const recovery = {
+      key: "environment-a/ticket/retained-upload",
+      title: "Description draft kept",
+      reopen: vi.fn(),
+    };
+    const attachment = {
+      type: "file" as const,
+      id: ChatAttachmentId.make("retained-shot"),
+      name: "shot.txt",
+      mimeType: "text/plain",
+      sizeBytes: 4,
+    };
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => {
+      doc.addPendingUpload({ localId: "retained-local", attachment });
+      doc.edit("Retain ![shot](vetra-attachment://retained-shot)");
+      expect(await doc.flush()).toBe(false);
+    });
+    await act(async () => root.render(null));
+    expect(releaseAttachmentUpload).not.toHaveBeenCalled();
+    await renderDocument(writeBody, { revision: 2 }, "Remote body", recovery);
+    expect(container.textContent).toBe("Retain ![shot](vetra-attachment://retained-shot)");
+    await act(async () => doc.keepMine());
+    expect(writeBody).toHaveBeenLastCalledWith(
+      2,
+      "Retain ![shot](vetra-attachment://retained-shot)",
+      [attachment],
+    );
+    expect(container.textContent).toBe("Retain ![shot](vetra-attachment://saved-shot)");
+    expect(releaseAttachmentUpload).toHaveBeenCalledExactlyOnceWith("retained-local");
+  });
+
+  it("retains an old-server plan save until its body is verified on return", async () => {
+    const writeBody = vi.fn<DocumentOptions["writeBody"]>().mockResolvedValue({
+      summary: { revision: 2 },
+      acknowledgement: { kind: "unverified" },
+      claimed: [],
+    });
+    const recovery = {
+      key: "environment-a/plan/unverified",
+      title: "Plan draft kept",
+      reopen: vi.fn(),
+    };
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => doc.edit("Plan waiting for full content"));
+    await act(async () => root.render(null));
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    expect(container.textContent).toBe("Plan waiting for full content");
+    expect(doc.state.failedText).toBe("Plan waiting for full content");
+    expect(doc.state.conflict).toBe(false);
+    await renderDocument(writeBody, { revision: 2 }, "Plan waiting for full content", recovery);
+    expect(doc.state.base).toEqual({ revision: 2, body: "Plan waiting for full content" });
+    expect(doc.state.conflict).toBe(false);
+    expect(writeBody).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores a failed transport save without claiming someone else edited it", async () => {
+    const writeBody = vi
+      .fn<DocumentOptions["writeBody"]>()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        summary: { revision: 2 },
+        acknowledgement: { kind: "legacy", revision: 2 },
+        claimed: [],
+      });
+    const recovery = {
+      key: "environment-a/ticket/transport-failure",
+      title: "Description draft kept",
+      reopen: vi.fn(),
+    };
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => doc.edit("Draft waiting for a retry"));
+    await act(async () => root.render(null));
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    expect(container.textContent).toBe("Draft waiting for a retry");
+    expect(doc.state.failedText).toBe("Draft waiting for a retry");
+    expect(doc.state.conflict).toBe(false);
+    await act(async () => vi.advanceTimersByTimeAsync(1600));
+    expect(writeBody).toHaveBeenCalledTimes(1);
+    await act(async () => expect(await doc.flush()).toBe(true));
+    expect(doc.state.base.body).toBe("Draft waiting for a retry");
+  });
+
+  it("reconciles streamed plan content when an old-server reply arrives after return", async () => {
+    const reply = deferredWrite();
+    const writeBody = vi.fn<DocumentOptions["writeBody"]>(() => reply.promise);
+    const recovery = {
+      key: "environment-a/plan/verified-after-return",
+      title: "Plan draft kept",
+      reopen: vi.fn(),
+    };
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => doc.edit("Plan text already streamed"));
+    await act(async () => root.render(null));
+    await renderDocument(writeBody, { revision: 2 }, "Plan text already streamed", recovery);
+    await act(async () =>
+      reply.resolve({
+        summary: { revision: 2 },
+        acknowledgement: { kind: "unverified" },
+        claimed: [],
+      }),
+    );
+    expect(container.textContent).toBe("Plan text already streamed");
+    expect(doc.state.base).toEqual({ revision: 2, body: "Plan text already streamed" });
+    expect(doc.state.conflict).toBe(false);
+    expect(canUnload()).toBe(true);
+    expect(writeBody).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores a retained description conflict through Strict Mode effect replay", async () => {
+    const writeBody = vi.fn<DocumentOptions["writeBody"]>().mockResolvedValue("conflict");
+    const recovery = {
+      key: "environment-a/ticket/strict-mode-conflict",
+      title: "Description draft kept",
+      reopen: vi.fn(),
+    };
+    await renderDocument(writeBody, SAVED, "Saved body", recovery);
+    await act(async () => {
+      doc.edit("Retained conflict in Strict Mode");
+      expect(await doc.flush()).toBe(false);
+    });
+    await act(async () => root.render(null));
+    await act(async () =>
+      root.render(
+        <StrictMode>
+          <Harness
+            summary={{ revision: 2 }}
+            body="Remote body"
+            writeBody={writeBody}
+            fieldConflictTitle="Changed"
+            recovery={recovery}
+          />
+        </StrictMode>,
+      ),
+    );
+    expect(container.textContent).toBe("Retained conflict in Strict Mode");
+    expect(doc.state.server).toEqual({ revision: 2, body: "Remote body" });
+    expect(doc.state.conflict).toBe(true);
+    expect(writeBody).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not create a recovery toast or save from Strict Mode's clean effect replay", async () => {
+    const writeBody = vi.fn<DocumentOptions["writeBody"]>().mockResolvedValue({
+      summary: { revision: 2 },
+      acknowledgement: { kind: "legacy", revision: 2 },
+      claimed: [],
+    });
+    const recovery = {
+      key: "environment-a/ticket/strict-mode",
+      title: "Description draft kept",
+      reopen: vi.fn(),
+    };
+    await act(async () =>
+      root.render(
+        <StrictMode>
+          <Harness
+            summary={SAVED}
+            body="Saved body"
+            writeBody={writeBody}
+            fieldConflictTitle="Changed"
+            recovery={recovery}
+          />
+        </StrictMode>,
+      ),
+    );
+    expect(container.textContent).toBe("Saved body");
+    expect(writeBody).not.toHaveBeenCalled();
+    expect(toastManager.add).not.toHaveBeenCalled();
+    await act(async () => doc.edit("Strict Mode draft saved"));
+    await act(async () => root.render(null));
+    expect(writeBody).toHaveBeenCalledExactlyOnceWith(1, "Strict Mode draft saved", []);
   });
 });
 

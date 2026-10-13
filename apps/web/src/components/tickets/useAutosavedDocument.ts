@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 
-import { attachmentReferenceIds } from "../../lib/attachmentReferences";
+import {
+  attachmentReferenceIds,
+  replaceClaimedAttachmentReferences,
+} from "../../lib/attachmentReferences";
 import { releaseAttachmentUpload } from "../../lib/attachmentUploadQueue";
+import { createNavigationDrafts } from "../../lib/navigationDrafts";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import type { PendingTicketUpload } from "./ticketAttachments";
 import {
@@ -16,6 +20,28 @@ import {
 } from "./ticketDocument.logic";
 
 const AUTOSAVE_DELAY_MS = 800;
+
+interface DocumentDraft {
+  readonly state: TicketDocumentState;
+  readonly latest: { readonly revision: number };
+  readonly uploads: ReadonlyArray<PendingTicketUpload>;
+}
+
+const navigationDrafts = createNavigationDrafts<DocumentDraft>();
+
+function restoreDocument(state: TicketDocumentState, server: TicketDocumentState["server"]) {
+  const next = reduceTicketDocument(
+    { ...state, writing: null },
+    { type: "serverChanged", ...server },
+  );
+  return {
+    ...next,
+    conflict:
+      hasUnsavedBody(next) &&
+      (next.conflict ||
+        (next.server.revision > next.base.revision && next.server.body !== next.base.body)),
+  };
+}
 
 export type { DocumentWriteOutcome } from "./ticketDocument.logic";
 
@@ -43,10 +69,24 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
   ) => Promise<DocumentWriteOutcome<Summary>>;
   /** The toast title when a write without a body loses to someone else's change. */
   readonly fieldConflictTitle: string;
+  readonly recovery?:
+    | {
+        readonly key: string;
+        readonly title: string;
+        readonly reopen: () => void;
+      }
+    | undefined;
 }) {
   const { summary, body, writeBody, fieldConflictTitle } = options;
   const { revision } = summary;
-  const [state, setState] = useState(() => initialTicketDocument({ revision, body }));
+  const [recovered] = useState(() =>
+    options.recovery === undefined ? undefined : navigationDrafts.get(options.recovery.key),
+  );
+  const [state, setState] = useState(() =>
+    recovered === undefined
+      ? initialTicketDocument({ revision, body })
+      : restoreDocument(recovered.value.state, { revision, body }),
+  );
   const stateRef = useRef(state);
   const dispatch = useCallback((event: TicketDocumentEvent) => {
     stateRef.current = reduceTicketDocument(stateRef.current, event);
@@ -60,6 +100,36 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
   const mountedRef = useRef(true);
   const queueRef = useRef<Promise<unknown>>(Promise.resolve());
   const reviewedRef = useRef<{ revision: number; failed: boolean } | null>(null);
+  const recoveryStartedRef = useRef(false);
+  const recoveryPendingRef = useRef(recovered !== undefined);
+  const recoveryEditedRef = useRef(false);
+
+  useEffect(() => {
+    if (recovered === undefined || recoveryStartedRef.current) return;
+    recoveryStartedRef.current = true;
+    if (!navigationDrafts.take(recovered)) {
+      recoveryPendingRef.current = false;
+      stateRef.current = initialTicketDocument({ revision, body });
+      setState(stateRef.current);
+      return;
+    }
+    queueRef.current = recovered.settled.then((snapshot) => {
+      const current = stateRef.current;
+      let next: TicketDocumentState = { ...snapshot.state, writing: null };
+      if (recoveryEditedRef.current) {
+        next = reduceTicketDocument(next, { type: "edited", text: current.text });
+      }
+      stateRef.current = restoreDocument(next, current.server);
+      if (snapshot.latest.revision >= latestRef.current.revision) {
+        latestRef.current = { ...latestRef.current, ...snapshot.latest };
+      }
+      for (const upload of snapshot.uploads) {
+        pendingUploadsRef.current.set(upload.attachment.id, upload);
+      }
+      recoveryPendingRef.current = false;
+      setState(stateRef.current);
+    });
+  }, [body, recovered, revision]);
 
   useEffect(() => keepNewestSummary(summary), [keepNewestSummary, summary]);
   useEffect(() => {
@@ -170,7 +240,11 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
             uploads.map((upload) => upload.attachment),
           ),
         );
-        if (landed) {
+        if (
+          landed &&
+          stateRef.current.base.body ===
+            replaceClaimedAttachmentReferences(sentBody, stateRef.current.claimed)
+        ) {
           for (const upload of uploads) {
             if (pendingUploadsRef.current.delete(upload.attachment.id)) {
               releaseAttachmentUpload(upload.localId);
@@ -206,7 +280,9 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
       const current = stateRef.current;
-      if (!hasUnsavedBody(current) && current.writing === null) return;
+      if (!hasUnsavedBody(current) && current.writing === null && !recoveryPendingRef.current) {
+        return;
+      }
       event.preventDefault();
       event.returnValue = "";
     };
@@ -214,20 +290,65 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
     return () => window.removeEventListener("beforeunload", beforeUnload);
   }, []);
 
-  const saveBodyRef = useRef(saveBody);
-  useEffect(() => {
-    saveBodyRef.current = saveBody;
-  }, [saveBody]);
+  const leavingRef = useRef<ReturnType<typeof navigationDrafts.stage> | null>(null);
+  const leave = useEffectEvent(() => {
+    const recovery = options.recovery;
+    const snapshot = (): DocumentDraft => ({
+      state: stateRef.current,
+      latest: latestRef.current,
+      uploads: [...pendingUploadsRef.current.values()],
+    });
+    const staged =
+      recovery !== undefined &&
+      (hasUnsavedBody(stateRef.current) ||
+        stateRef.current.writing !== null ||
+        recoveryPendingRef.current)
+        ? navigationDrafts.stage(recovery.key, snapshot())
+        : null;
+    leavingRef.current = staged;
+    void saveBody();
+    void (async () => {
+      let pending;
+      do {
+        pending = queueRef.current;
+        await pending;
+      } while (pending !== queueRef.current);
+      if (mountedRef.current) {
+        if (staged !== null) navigationDrafts.settle(staged, snapshot(), false);
+        return;
+      }
+      const retain = staged !== null && hasUnsavedBody(stateRef.current);
+      const referenced = new Set(retain ? attachmentReferenceIds(stateRef.current.text) : []);
+      for (const [id, upload] of pendingUploadsRef.current) {
+        if (referenced.has(id)) continue;
+        releaseAttachmentUpload(upload.localId);
+        pendingUploadsRef.current.delete(id);
+      }
+      if (staged === null) return;
+      const owned = navigationDrafts.settle(staged, snapshot(), retain);
+      if (!retain || !owned || recovery === undefined) return;
+      const toastId = toastManager.add(
+        stackedThreadToast({
+          type: "info",
+          title: recovery.title,
+          description: "Your unsaved changes are available when you return.",
+          actionProps: {
+            children: "Reopen",
+            onClick: () => {
+              toastManager.close(toastId);
+              recovery.reopen();
+            },
+          },
+        }),
+      );
+    })();
+  });
   useEffect(() => {
     mountedRef.current = true;
+    if (leavingRef.current !== null) navigationDrafts.take(leavingRef.current);
     return () => {
       mountedRef.current = false;
-      void saveBodyRef.current();
-      const pendingUploads = pendingUploadsRef.current;
-      void queueRef.current.then(() => {
-        for (const upload of pendingUploads.values()) releaseAttachmentUpload(upload.localId);
-        pendingUploads.clear();
-      });
+      leave();
     };
   }, []);
 
@@ -238,12 +359,26 @@ export function useAutosavedDocument<Summary extends { readonly revision: number
     /** The newest summary, without subscribing to it. */
     readLatest: useCallback(() => latestRef.current, []),
     readBase: useCallback(() => stateRef.current.base, []),
-    edit: useCallback((text: string) => dispatch({ type: "edited", text }), [dispatch]),
-    reload: useCallback(() => dispatch({ type: "reload" }), [dispatch]),
+    edit: useCallback(
+      (text: string) => {
+        recoveryEditedRef.current = true;
+        dispatch({ type: "edited", text });
+      },
+      [dispatch],
+    ),
+    reload: useCallback(() => {
+      void enqueue(async () => {
+        dispatch({ type: "reload" });
+        for (const upload of pendingUploadsRef.current.values()) {
+          releaseAttachmentUpload(upload.localId);
+        }
+        pendingUploadsRef.current.clear();
+      });
+    }, [dispatch, enqueue]),
     keepMine: useCallback(() => {
-      dispatch({ type: "keepMine" });
+      void enqueue(async () => dispatch({ type: "keepMine" }));
       void saveBody();
-    }, [dispatch, saveBody]),
+    }, [dispatch, enqueue, saveBody]),
     /** Waits for queued writes and saves the current body; false if the body cannot save. */
     flush: saveBody,
     flushReviewed: async (commitTitle: () => Promise<boolean>): Promise<number | null> => {
