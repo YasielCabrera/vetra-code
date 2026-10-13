@@ -18,6 +18,8 @@ import {
   reconcileTicketBoardSearch,
   resetTicketBoardFilters,
   resolveTicketBoardCatalogs,
+  resolveTicketBoardVisitSearch,
+  TICKET_BOARD_RETAINED_SEARCH,
   TICKET_NO_ASSIGNEE,
   ticketBoardQueryUrlUpdate,
   resolveTicketBoardEntrySearch,
@@ -783,6 +785,231 @@ describe("ticket board catalogs", () => {
         environments: [],
       }),
     ).toEqual({});
+  });
+});
+
+describe("ticket board visit search", () => {
+  const offline = resolveTicketBoardCatalogs({
+    environmentsReady: true,
+    ticketsLoaded: true,
+    ticketEnvironmentIds: ["env-local"],
+    environments: [
+      {
+        id: "env-local",
+        phase: "connected",
+        projectIds: ["web"],
+        ticketsSupported: true,
+        statusGroups: ["open:todo"],
+      },
+      { id: "env-remote", phase: "offline" },
+    ],
+  });
+  const connected = resolveTicketBoardCatalogs({
+    environmentsReady: true,
+    ticketsLoaded: true,
+    ticketEnvironmentIds: ["env-local", "env-remote"],
+    environments: [
+      {
+        id: "env-local",
+        phase: "connected",
+        projectIds: ["web"],
+        ticketsSupported: true,
+        statusGroups: ["open:todo"],
+      },
+      {
+        id: "env-remote",
+        phase: "connected",
+        projectIds: ["api"],
+        ticketsSupported: true,
+        statusGroups: ["open:remote"],
+      },
+    ],
+  });
+  const intent = { env: "env-remote", project: ["env-remote:api"], status: "open:remote" };
+
+  it("prunes the visit URL and restores its complete intent on reconnect", () => {
+    const disconnected = resolveTicketBoardVisitSearch({
+      search: intent,
+      historyState: {},
+      catalogs: offline,
+    });
+    expect(disconnected).toEqual({
+      intended: intent,
+      search: {},
+      retainedSearch: intent,
+      shouldReplace: true,
+    });
+    const state = {
+      ticketBoardSearchSettled: true,
+      [TICKET_BOARD_RETAINED_SEARCH]: disconnected.retainedSearch,
+    };
+    expect(
+      ticketBoardRestoreRedirect({
+        urlSearch: {},
+        historyState: state,
+        rememberedSearch: { kind: "github" },
+      }),
+    ).toBeNull();
+    expect(
+      resolveTicketBoardVisitSearch({ search: {}, historyState: state, catalogs: offline }),
+    ).toEqual({
+      intended: intent,
+      search: {},
+      retainedSearch: intent,
+      shouldReplace: false,
+    });
+    expect(
+      resolveTicketBoardVisitSearch({ search: {}, historyState: state, catalogs: connected }),
+    ).toEqual({
+      intended: intent,
+      search: intent,
+      retainedSearch: undefined,
+      shouldReplace: true,
+    });
+    expect(
+      resolveTicketBoardVisitSearch({ search: intent, historyState: {}, catalogs: connected }),
+    ).toEqual({
+      intended: intent,
+      search: intent,
+      retainedSearch: undefined,
+      shouldReplace: false,
+    });
+  });
+
+  it("keeps offline projects through unrelated edits without reviving removed selections", () => {
+    const disconnected = resolveTicketBoardVisitSearch({
+      search: {
+        view: "board",
+        project: ["env-local:web", "env-local:deleted", "env-remote:api", "env-removed:old"],
+      },
+      historyState: {},
+      catalogs: offline,
+    });
+    expect(disconnected.search).toEqual({ view: "board", project: ["env-local:web"] });
+    expect(disconnected.intended).toEqual({
+      view: "board",
+      project: ["env-local:web", "env-remote:api"],
+    });
+    const edited = resolveTicketBoardVisitSearch({
+      search: validateTicketBoardSearch({
+        ...disconnected.intended,
+        view: "list",
+        kind: "github",
+        project: [...(disconnected.intended.project ?? []), "env-local:web"],
+      }),
+      historyState: {},
+      catalogs: offline,
+    });
+    expect(edited.intended).toEqual({
+      view: "list",
+      kind: "github",
+      project: ["env-local:web", "env-remote:api"],
+    });
+    expect(
+      resolveTicketBoardVisitSearch({
+        search: edited.search,
+        historyState: { [TICKET_BOARD_RETAINED_SEARCH]: edited.retainedSearch },
+        catalogs: connected,
+      }).search,
+    ).toEqual({ view: "list", kind: "github", project: ["env-local:web", "env-remote:api"] });
+  });
+
+  it("clears latent filters and obeys an explicit new URL", () => {
+    const disconnected = resolveTicketBoardVisitSearch({
+      search: intent,
+      historyState: {},
+      catalogs: offline,
+    });
+    expect(isDefaultTicketBoardFilters(disconnected.intended)).toBe(false);
+    const cleared = resolveTicketBoardVisitSearch({
+      search: resetTicketBoardFilters(disconnected.intended),
+      historyState: {},
+      catalogs: offline,
+    });
+    expect(cleared.intended).toEqual({});
+    expect(cleared.retainedSearch).toBeUndefined();
+    expect(
+      resolveTicketBoardVisitSearch({
+        search: cleared.search,
+        historyState: {},
+        catalogs: connected,
+      }).search,
+    ).toEqual({});
+    expect(
+      resolveTicketBoardVisitSearch({
+        search: { view: "list" },
+        historyState: {},
+        catalogs: connected,
+      }).search,
+    ).toEqual({ view: "list" });
+    const replaced = resolveTicketBoardVisitSearch({
+      search: validateTicketBoardSearch({
+        ...disconnected.intended,
+        env: "env-local",
+        project: ["env-local:web"],
+        status: "open:todo",
+      }),
+      historyState: {},
+      catalogs: offline,
+    });
+    expect(replaced).toEqual({
+      intended: { env: "env-local", project: ["env-local:web"], status: "open:todo" },
+      search: { env: "env-local", project: ["env-local:web"], status: "open:todo" },
+      retainedSearch: undefined,
+      shouldReplace: false,
+    });
+  });
+
+  it("keeps the current URL query authoritative while filters are suspended", () => {
+    const state = { [TICKET_BOARD_RETAINED_SEARCH]: { ...intent, q: "old query" } };
+    const queried = resolveTicketBoardVisitSearch({
+      search: { q: "new query" },
+      historyState: state,
+      catalogs: offline,
+    });
+    expect(queried.intended).toEqual({ ...intent, q: "new query" });
+    expect(queried.search).toEqual({ q: "new query" });
+    expect(
+      resolveTicketBoardVisitSearch({ search: {}, historyState: state, catalogs: connected })
+        .search,
+    ).toEqual(intent);
+  });
+
+  it("drops retained filters when their target is removed or rejected by a live catalog", () => {
+    const state = { [TICKET_BOARD_RETAINED_SEARCH]: intent };
+    const removed = {
+      environments: ["env-local"],
+      projects: { keys: ["env-local:web"], pendingEnvironmentIds: [] },
+      statuses: ["open:todo"],
+    };
+    expect(
+      resolveTicketBoardVisitSearch({ search: {}, historyState: state, catalogs: removed }),
+    ).toEqual({
+      intended: {},
+      search: {},
+      retainedSearch: undefined,
+      shouldReplace: true,
+    });
+    const deleted = {
+      ...connected,
+      projects: { keys: ["env-local:web"], pendingEnvironmentIds: [] },
+      statuses: ["open:todo"],
+    };
+    expect(
+      resolveTicketBoardVisitSearch({ search: {}, historyState: state, catalogs: deleted }).search,
+    ).toEqual({ env: "env-remote" });
+  });
+
+  it("ignores malformed history without overriding the current URL", () => {
+    for (const historyState of [null, [], { [TICKET_BOARD_RETAINED_SEARCH]: "bad" }]) {
+      expect(
+        resolveTicketBoardVisitSearch({
+          search: { kind: "local" },
+          historyState,
+          catalogs: connected,
+        }).search,
+      ).toEqual({ kind: "local" });
+    }
   });
 });
 

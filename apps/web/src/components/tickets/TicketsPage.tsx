@@ -1,7 +1,7 @@
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { useAtomValue } from "@effect/atom-react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { useLocation, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { type EnvironmentTicket, ticketKey } from "@t3tools/client-runtime/state/tickets";
 import { type EnvironmentId, resolveEnvironmentMachineKind } from "@t3tools/contracts";
 import * as Option from "effect/Option";
@@ -73,11 +73,12 @@ import {
   groupTicketsByStatus,
   isDefaultTicketBoardFilters,
   isHiddenTicket,
-  reconcileTicketBoardSearch,
   resetTicketBoardFilters,
   resolveTicketBoardCatalogs,
+  resolveTicketBoardVisitSearch,
   ticketBoardQueryUrlUpdate,
   TICKET_BOARD_SEARCH_SETTLED,
+  TICKET_BOARD_RETAINED_SEARCH,
   ticketBoardEnvironmentPhase,
   ticketStatusGroupKey,
   TICKET_NO_ASSIGNEE,
@@ -104,6 +105,12 @@ import {
 import { useRunning } from "../../hooks/useRunning";
 import { summarizeGitHubSync } from "./ticketGitHub.logic";
 import { TicketRow, TICKET_LIST_ROW_HEIGHT } from "./TicketListRow";
+
+declare module "@tanstack/react-router" {
+  interface HistoryState {
+    [TICKET_BOARD_RETAINED_SEARCH]?: TicketBoardSearch | undefined;
+  }
+}
 
 const ROW_HEIGHT = TICKET_LIST_ROW_HEIGHT;
 
@@ -329,6 +336,7 @@ function useSearchQueryInUrl(query: string, setQuery: (query: string) => void, u
     void navigate({
       to: "/tickets",
       search: (current) => validateTicketBoardSearch({ ...current, q: next || undefined }),
+      state: (current) => current,
       replace: true,
     });
   }, [debouncedQuery, navigate, query]);
@@ -336,6 +344,7 @@ function useSearchQueryInUrl(query: string, setQuery: (query: string) => void, u
 
 export function TicketsPage() {
   const search = useSearch({ from: "/tickets/" });
+  const historyState = useLocation({ select: (location) => location.state });
   const navigate = useNavigate();
   const router = useRouter();
   const board = useTickets();
@@ -390,34 +399,42 @@ export function TicketsPage() {
       liveProjectIds,
     ],
   );
-  const boardSearch = useMemo(
-    () => reconcileTicketBoardSearch(search, catalogs),
-    [catalogs, search],
+  const visitSearch = useMemo(
+    () => resolveTicketBoardVisitSearch({ search, historyState, catalogs }),
+    [catalogs, historyState, search],
   );
+  const boardSearch = visitSearch.search;
   // A navigation updates the router's latest location before the route renders, so edits made in between stack.
   const changeSearch = useCallback(
     (build: (current: TicketBoardSearch) => TicketBoardSearch, settled: boolean) => {
-      const next = build(validateTicketBoardSearch(router.latestLocation.search));
-      rememberTicketBoardSearch(next);
+      const current = resolveTicketBoardVisitSearch({
+        search: validateTicketBoardSearch(router.latestLocation.search),
+        historyState: router.latestLocation.state,
+        catalogs,
+      });
+      const next = resolveTicketBoardVisitSearch({
+        search: build(current.intended),
+        historyState: {},
+        catalogs,
+      });
+      rememberTicketBoardSearch(next.intended);
       void navigate({
         to: "/tickets",
-        search: next,
-        ...(settled
-          ? { state: (current) => ({ ...current, [TICKET_BOARD_SEARCH_SETTLED]: true }) }
-          : {}),
+        search: next.search,
+        state: (current) => ({
+          ...current,
+          [TICKET_BOARD_RETAINED_SEARCH]: next.retainedSearch,
+          [TICKET_BOARD_SEARCH_SETTLED]: settled || Object.keys(next.search).length === 0,
+        }),
         replace: true,
       });
     },
-    [navigate, router],
+    [catalogs, navigate, router],
   );
   const setSearch = useCallback(
     (patch: { readonly [Key in keyof TicketBoardSearch]?: TicketBoardSearch[Key] | undefined }) =>
-      changeSearch(
-        (current) =>
-          reconcileTicketBoardSearch(validateTicketBoardSearch({ ...current, ...patch }), catalogs),
-        false,
-      ),
-    [catalogs, changeSearch],
+      changeSearch((current) => validateTicketBoardSearch({ ...current, ...patch }), false),
+    [changeSearch],
   );
 
   const bodyMatches = useTicketBodyMatches(query, board.environmentIds);
@@ -518,21 +535,21 @@ export function TicketsPage() {
   );
 
   useEffect(() => {
-    // Prune storage before replacing the URL. A replace that lands on no params
-    // would otherwise restore the stale selection and fight this visit.
     persistReconciledTicketBoardPreferences(catalogs);
-    if (boardSearch === search) return;
+    if (!visitSearch.shouldReplace) return;
     void navigate({
       to: "/tickets",
       search: boardSearch,
       replace: true,
-      ...(Object.keys(boardSearch).length === 0
-        ? { state: { [TICKET_BOARD_SEARCH_SETTLED]: true } }
-        : {}),
+      state: (current) => ({
+        ...current,
+        [TICKET_BOARD_RETAINED_SEARCH]: visitSearch.retainedSearch,
+        [TICKET_BOARD_SEARCH_SETTLED]: Object.keys(boardSearch).length === 0,
+      }),
     });
-  }, [boardSearch, catalogs, navigate, search]);
+  }, [boardSearch, catalogs, navigate, visitSearch]);
 
-  const hasFilters = !isDefaultTicketBoardFilters({ ...boardSearch, q: query });
+  const hasFilters = !isDefaultTicketBoardFilters({ ...visitSearch.intended, q: query });
   const clearFilters = () => {
     setQuery("");
     changeSearch(resetTicketBoardFilters, true);
@@ -619,10 +636,7 @@ export function TicketsPage() {
                     ? projects
                     : [...projects, value]
                   : projects.filter((key) => key !== value);
-                return reconcileTicketBoardSearch(
-                  validateTicketBoardSearch({ ...current, project }),
-                  catalogs,
-                );
+                return validateTicketBoardSearch({ ...current, project });
               }, false),
             onClear: () => setSearch({ project: undefined }),
           },
@@ -727,7 +741,6 @@ export function TicketsPage() {
     ],
     [
       boardSearch,
-      catalogs,
       changeSearch,
       creatorOptions,
       environmentFilter,

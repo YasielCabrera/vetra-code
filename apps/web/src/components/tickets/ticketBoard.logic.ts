@@ -371,6 +371,7 @@ export function hasTicketBoardSearchParams(search: object): boolean {
  * restore would put remembered filters back over the link the reader opened.
  */
 export const TICKET_BOARD_SEARCH_SETTLED = "ticketBoardSearchSettled";
+export const TICKET_BOARD_RETAINED_SEARCH = "ticketBoardRetainedSearch";
 
 export function ticketBoardHistoryMarksSettledSearch(state: unknown): boolean {
   return (
@@ -475,6 +476,8 @@ export interface TicketBoardCatalogEnvironment {
 }
 
 export interface TicketBoardCatalog {
+  /** Known environments whose catalogs cannot currently reject saved selections. */
+  readonly offlineEnvironmentIds?: ReadonlyArray<string> | undefined;
   /** Absent until every connected ticket environment has reported statuses. */
   readonly statuses?: ReadonlyArray<string> | undefined;
   /**
@@ -511,8 +514,12 @@ export function resolveTicketBoardCatalogs(input: {
   const environmentIds: string[] = [];
   const projectKeys: string[] = [];
   const pendingEnvironmentIds: string[] = [];
+  const offlineEnvironmentIds: string[] = [];
   for (const environment of input.environments) {
-    if (environment.phase === "offline") continue;
+    if (environment.phase === "offline") {
+      offlineEnvironmentIds.push(environment.id);
+      continue;
+    }
     environmentIds.push(environment.id);
     if (environment.phase === "starting" || environment.projectIds === undefined) {
       pendingEnvironmentIds.push(environment.id);
@@ -543,9 +550,74 @@ export function resolveTicketBoardCatalogs(input: {
   }
 
   return {
+    offlineEnvironmentIds,
     ...(statuses === undefined ? {} : { statuses }),
     projects: { keys: projectKeys, pendingEnvironmentIds },
     environments: environmentIds,
+  };
+}
+
+/** A disconnected catalog cannot prove that a saved selection was deleted. */
+export function ticketBoardPreferenceCatalogs(catalogs: TicketBoardCatalog): TicketBoardCatalog {
+  const offline = catalogs.offlineEnvironmentIds ?? [];
+  if (offline.length === 0) return catalogs;
+  return {
+    ...(catalogs.environments === undefined
+      ? {}
+      : { environments: [...catalogs.environments, ...offline] }),
+    ...(catalogs.projects === undefined
+      ? {}
+      : {
+          projects: {
+            keys: catalogs.projects.keys,
+            pendingEnvironmentIds: [...catalogs.projects.pendingEnvironmentIds, ...offline],
+          },
+        }),
+  };
+}
+
+function ticketBoardSearchesEqual(left: TicketBoardSearch, right: TicketBoardSearch): boolean {
+  return SEARCH_KEYS.every((key) => {
+    if (key !== "project") return left[key] === right[key];
+    return (
+      left.project === right.project ||
+      (left.project !== undefined &&
+        right.project !== undefined &&
+        left.project.length === right.project.length &&
+        left.project.every((project, index) => project === right.project?.[index]))
+    );
+  });
+}
+
+/** Keeps this history entry's intent while projecting only filters its live catalogs allow. */
+export function resolveTicketBoardVisitSearch(input: {
+  readonly search: TicketBoardSearch;
+  readonly historyState: unknown;
+  readonly catalogs: TicketBoardCatalog;
+}) {
+  const retained =
+    isSearchInput(input.historyState) &&
+    isSearchInput(input.historyState[TICKET_BOARD_RETAINED_SEARCH])
+      ? validateTicketBoardSearch(input.historyState[TICKET_BOARD_RETAINED_SEARCH])
+      : undefined;
+  const intended = reconcileTicketBoardSearch(
+    retained === undefined
+      ? input.search
+      : validateTicketBoardSearch({ ...retained, q: input.search.q }),
+    ticketBoardPreferenceCatalogs(input.catalogs),
+  );
+  const projected = reconcileTicketBoardSearch(intended, input.catalogs);
+  const search = ticketBoardSearchesEqual(projected, input.search) ? input.search : projected;
+  const retainedSearch = ticketBoardSearchesEqual(intended, search) ? undefined : intended;
+  return {
+    intended,
+    search,
+    retainedSearch,
+    shouldReplace:
+      search !== input.search ||
+      (retained === undefined || retainedSearch === undefined
+        ? retained !== retainedSearch
+        : !ticketBoardSearchesEqual(retained, retainedSearch)),
   };
 }
 

@@ -4,6 +4,7 @@ import { getLocalStorageItem, setLocalStorageItem } from "../../hooks/useLocalSt
 import {
   reconcileTicketBoardSearch,
   ticketBoardPreferencesFromSearch,
+  ticketBoardPreferenceCatalogs,
   type TicketBoardCatalog,
   type TicketBoardSearch,
 } from "./ticketBoard.logic";
@@ -34,6 +35,6 @@ export function rememberTicketBoardSearch(search: TicketBoardSearch): void {
  */
 export function persistReconciledTicketBoardPreferences(catalogs: TicketBoardCatalog): void {
   const remembered = readTicketBoardPreferences();
-  const pruned = reconcileTicketBoardSearch(remembered, catalogs);
+  const pruned = reconcileTicketBoardSearch(remembered, ticketBoardPreferenceCatalogs(catalogs));
   if (pruned !== remembered) rememberTicketBoardSearch(pruned);
 }

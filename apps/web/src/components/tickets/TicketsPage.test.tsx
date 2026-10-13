@@ -15,18 +15,42 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { TicketsPage } from "./TicketsPage";
 import {
   TICKET_BOARD_SEARCH_SETTLED,
+  TICKET_BOARD_RETAINED_SEARCH,
   ticketBoardRestoreRedirect,
   validateTicketBoardSearch,
 } from "./ticketBoard.logic";
 import { readTicketBoardPreferences, rememberTicketBoardSearch } from "./ticketBoardPreferences";
 import type { TicketFilterSection } from "./ticketPresentation";
 
-const { board, environments, projects, sources, searchBodies } = vi.hoisted(() => {
+const {
+  board,
+  environments,
+  environmentListeners,
+  primaryEnvironment,
+  projects,
+  sources,
+  searchBodies,
+} = vi.hoisted(() => {
   const projects: Array<{ environmentId: string; id: string; title: string }> = [];
   const environmentIds: string[] = [];
+  const environments: {
+    environments: Array<{
+      environmentId: string;
+      label: string;
+      entry: { enabled: boolean };
+      connection: { phase: "connected" | "offline" | "error" };
+      serverConfig: {
+        environment: { capabilities: { tickets: boolean }; platform: { machine: "server" } };
+      };
+    }>;
+    isReady: boolean;
+  } = { environments: [], isReady: true };
+  const primaryEnvironment: { id: string | null } = { id: null };
   return {
     board: { tickets: [], loaded: true, environmentIds, statusSets: new Map() },
-    environments: { environments: [], isReady: true },
+    environments,
+    environmentListeners: new Set<() => void>(),
+    primaryEnvironment,
     projects,
     sources: [],
     searchBodies: vi.fn(),
@@ -45,10 +69,22 @@ vi.mock("../../state/entities", () => ({
   useProjects: () => projects,
   useThreadShells: () => [],
 }));
-vi.mock("../../state/environments", () => ({
-  useEnvironments: () => environments,
-  usePrimaryEnvironmentId: () => null,
-}));
+vi.mock("../../state/environments", async () => {
+  const { useSyncExternalStore } = await import("react");
+  return {
+    useEnvironments: () => ({
+      environments: useSyncExternalStore(
+        (listener) => {
+          environmentListeners.add(listener);
+          return () => environmentListeners.delete(listener);
+        },
+        () => environments.environments,
+      ),
+      isReady: environments.isReady,
+    }),
+    usePrimaryEnvironmentId: () => primaryEnvironment.id,
+  };
+});
 vi.mock("../../state/use-atom-command", () => ({ useAtomCommand: () => searchBodies }));
 vi.mock("../../hooks/useTicketActions", () => ({ useTicketActions: () => ({}) }));
 vi.mock("../../env", () => ({ isElectron: false }));
@@ -108,6 +144,8 @@ beforeEach(() => {
   localStorage.clear();
   projects.length = 0;
   board.environmentIds.length = 0;
+  environments.environments = [];
+  primaryEnvironment.id = null;
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -154,6 +192,121 @@ function button(label: string) {
 }
 
 describe("Tickets board search navigation", () => {
+  function disconnectedEnvironments() {
+    primaryEnvironment.id = "env-local";
+    board.environmentIds.push("env-local");
+    environments.environments = [
+      {
+        environmentId: "env-local",
+        label: "Local",
+        entry: { enabled: true },
+        connection: { phase: "connected" },
+        serverConfig: {
+          environment: { capabilities: { tickets: true }, platform: { machine: "server" } },
+        },
+      },
+      {
+        environmentId: "env-remote",
+        label: "Remote",
+        entry: { enabled: true },
+        connection: { phase: "offline" },
+        serverConfig: {
+          environment: { capabilities: { tickets: true }, platform: { machine: "server" } },
+        },
+      },
+    ];
+  }
+
+  async function reconnectEnvironments(router: Awaited<ReturnType<typeof openBoard>>) {
+    await act(async () => {
+      environments.environments = environments.environments.map((environment) => ({
+        ...environment,
+        connection: { phase: "connected" },
+      }));
+      board.environmentIds.push("env-remote");
+      for (const listener of environmentListeners) listener();
+      await router.invalidate();
+    });
+  }
+
+  it("restores the saved environment and project in the same visit after pruning the URL", async () => {
+    disconnectedEnvironments();
+    rememberTicketBoardSearch({ env: "env-remote", project: ["env-remote:api"] });
+    const router = await openBoard("/tickets");
+    expect(router.state.location.search).toEqual({});
+    expect(readTicketBoardPreferences()).toEqual({
+      env: "env-remote",
+      project: ["env-remote:api"],
+    });
+    expect(router.state.location.state[TICKET_BOARD_SEARCH_SETTLED]).toBe(true);
+    expect(button("Clear").textContent).toBe("Clear");
+    await reconnectEnvironments(router);
+    expect(router.state.location.search).toEqual({
+      env: "env-remote",
+      project: ["env-remote:api"],
+    });
+    expect(router.state.location.state[TICKET_BOARD_RETAINED_SEARCH]).toBeUndefined();
+  });
+
+  it("keeps suspended projects through rapid unrelated edits", async () => {
+    disconnectedEnvironments();
+    rememberTicketBoardSearch({ project: ["env-remote:api"] });
+    const router = await openBoard("/tickets");
+    await act(async () => {
+      button("Board view").click();
+      button("Kind: GitHub").click();
+      await router.load();
+    });
+    expect(router.state.location.search).toEqual({ view: "board", kind: "github" });
+    expect(readTicketBoardPreferences()).toEqual({
+      view: "board",
+      kind: "github",
+      project: ["env-remote:api"],
+    });
+    await reconnectEnvironments(router);
+    expect(router.state.location.search).toEqual({
+      view: "board",
+      kind: "github",
+      project: ["env-remote:api"],
+    });
+  });
+
+  it("does not resurrect suspended filters after Clear and an immediate view change", async () => {
+    disconnectedEnvironments();
+    rememberTicketBoardSearch({ env: "env-remote", project: ["env-remote:api"] });
+    const router = await openBoard("/tickets");
+    await act(async () => {
+      button("Clear").click();
+      button("Board view").click();
+      await router.load();
+    });
+    expect(readTicketBoardPreferences()).toEqual({ view: "board" });
+    expect(router.state.location.state[TICKET_BOARD_RETAINED_SEARCH]).toBeUndefined();
+    await reconnectEnvironments(router);
+    expect(router.state.location.search).toEqual({ view: "board" });
+  });
+
+  it("obeys an explicit new URL while the previous entry still holds suspended filters", async () => {
+    disconnectedEnvironments();
+    rememberTicketBoardSearch({ env: "env-remote", project: ["env-remote:api"] });
+    const router = await openBoard("/tickets");
+    expect(router.state.location.state[TICKET_BOARD_RETAINED_SEARCH]).toEqual({
+      env: "env-remote",
+      project: ["env-remote:api"],
+    });
+    await act(async () => {
+      await router.navigate({ to: "/tickets", search: { view: "list" } });
+    });
+    expect(router.state.location.search).toEqual({ view: "list" });
+    expect(router.state.location.state[TICKET_BOARD_RETAINED_SEARCH]).toBeUndefined();
+    await reconnectEnvironments(router);
+    expect(router.state.location.search).toEqual({ view: "list" });
+    expect(readTicketBoardPreferences()).toEqual({
+      env: "env-remote",
+      project: ["env-remote:api"],
+    });
+  });
+
   it("keeps rapid project selections, removes individual projects and remembers the remaining filter", async () => {
     board.environmentIds.push("env-local", "env-remote");
     projects.push(
