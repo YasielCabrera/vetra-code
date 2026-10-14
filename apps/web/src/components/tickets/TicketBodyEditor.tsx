@@ -164,6 +164,7 @@ export default function TicketBodyEditor(props: {
   readonly value: string;
   readonly onChange: (value: string) => void;
   readonly onFiles: (files: ReadonlyArray<File>) => Promise<ReadonlyArray<string>>;
+  readonly onDetachedFiles?: (snippets: ReadonlyArray<string>) => void;
   readonly placeholder: string;
   readonly ariaLabel: string;
   readonly autoFocus?: boolean;
@@ -329,7 +330,11 @@ export default function TicketBodyEditor(props: {
     setUploading((count) => count + 1);
     try {
       const snippets = await latestRef.current.onFiles(files);
-      if (!mountedRef.current || snippets.length === 0) return;
+      if (!mountedRef.current) {
+        latestRef.current.onDetachedFiles?.(snippets);
+        return;
+      }
+      if (snippets.length === 0) return;
       const insert = snippets.join("\n\n");
       if (targetMode === "write" && sourceRef.current === null && !editor?.isDestroyed) {
         editor?.chain().focus().insertContent(insert, { contentType: "markdown" }).run();

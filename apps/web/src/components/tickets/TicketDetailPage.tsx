@@ -31,8 +31,10 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { useStore } from "zustand";
 
 import { useRightPanelStore } from "../../rightPanelStore";
+import { ticketDrafts } from "../../ticketDraftStore";
 import { useOpenTicketResource } from "./ThreadTicketWorkspace";
 import { useRunning } from "../../hooks/useRunning";
 import { confirmGitHubStateChange, useTicketActions } from "../../hooks/useTicketActions";
@@ -615,16 +617,36 @@ const TicketCommentComposer = memo(function TicketCommentComposer(props: {
   const actions = useTicketActions();
   const canWriteGitHub = useTicketGitHubWriteAllowed(props.ticketRef.environmentId);
   const canComment = !props.github || canWriteGitHub;
-  const [comment, setComment] = useState("");
-  const [commenting, setCommenting] = useState(false);
+  const draftKey = useMemo(
+    () =>
+      ticketDrafts.openComment({
+        environmentId: props.ticketRef.environmentId,
+        ticketId: props.ticketRef.ticketId,
+      }),
+    [props.ticketRef.environmentId, props.ticketRef.ticketId],
+  );
+  const entry = useStore(ticketDrafts.store, (state) => state.drafts[draftKey]);
+  const comment = entry?.value.kind === "comment" ? entry.value.text : "";
+  const commenting = useStore(ticketDrafts.store, (state) =>
+    entry ? (state.runtime[entry.id]?.submitting ?? false) : false,
+  );
+  const setComment = (text: string) => {
+    ticketDrafts.openComment(props.ticketRef);
+    const current = ticketDrafts.store.getState().drafts[draftKey];
+    if (current?.value.kind === "comment") ticketDrafts.edit(draftKey, { ...current.value, text });
+  };
   const submit = async () => {
     const body = comment.trim();
     if (!canComment || !body || commenting) return;
-    setCommenting(true);
-    const result = await actions.comment(props.ticketRef, body);
-    setCommenting(false);
+    const submitted = ticketDrafts.beginSubmission(draftKey);
+    if (submitted?.value.kind !== "comment") return;
+    let result;
+    try {
+      result = await actions.comment(props.ticketRef, submitted.value.text.trim());
+    } finally {
+      ticketDrafts.finishSubmission(draftKey, submitted, result != null);
+    }
     if (result === null) return;
-    setComment("");
     if (props.github) void props.onPosted();
   };
   return (
@@ -645,6 +667,15 @@ const TicketCommentComposer = memo(function TicketCommentComposer(props: {
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">⌘ / Ctrl + Enter to comment</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={commenting || !comment}
+          onClick={() => ticketDrafts.discard(draftKey)}
+        >
+          Discard comment
+        </Button>
         <Button
           size="sm"
           disabled={!canComment || !comment.trim() || commenting}

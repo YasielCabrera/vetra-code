@@ -18,6 +18,7 @@ import type { useTicketActions } from "../../hooks/useTicketActions";
 import { useSpeechPlayback } from "../../readAloud";
 import type TicketBodyEditor from "./TicketBodyEditor";
 import { TicketDetailPage } from "./TicketDetailPage";
+import { ticketDrafts } from "../../ticketDraftStore";
 
 vi.mock("../../hooks/useTicketActions", () => ({ useTicketActions: () => actions }));
 vi.mock("../../state/tickets", () => ({
@@ -35,7 +36,8 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("../../lib/utils", async () => {
   const { cx } = await import("class-variance-authority");
-  return { cn: cx };
+  const actual = await vi.importActual<typeof import("../../lib/utils")>("../../lib/utils");
+  return { ...actual, cn: cx };
 });
 vi.mock("../../env", () => ({ isElectron: false }));
 vi.mock("../../hooks/useViewportWidth", () => ({ useViewportWidth: () => viewportWidth }));
@@ -79,7 +81,10 @@ vi.mock("./TicketBodyEditor", () => ({
 }));
 
 const navigate = vi.fn();
-const actions = { update: vi.fn<ReturnType<typeof useTicketActions>["update"]>() };
+const actions = {
+  update: vi.fn<ReturnType<typeof useTicketActions>["update"]>(),
+  comment: vi.fn<ReturnType<typeof useTicketActions>["comment"]>(),
+};
 let viewportWidth = 800;
 const plan: TicketPlan = {
   summary: {
@@ -133,6 +138,13 @@ beforeEach(() => {
   setupSpeechTest();
   viewportWidth = 800;
   actions.update.mockReset();
+  actions.comment.mockReset().mockResolvedValue(null);
+  ticketDrafts.store.setState({
+    drafts: {},
+    activeManual: null,
+    activeManualByEnvironment: {},
+    runtime: {},
+  });
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -150,11 +162,11 @@ function Playback() {
   return <output>{playback === null ? "idle" : `${playback.key} ${playback.phase}`}</output>;
 }
 
-async function renderPage() {
+async function renderPage(ticketKey = "environment-1:ticket-1") {
   await act(async () =>
     root.render(
       <>
-        <TicketDetailPage ticketKey="environment-1:ticket-1" />
+        <TicketDetailPage key={ticketKey} ticketKey={ticketKey} />
         <Playback />
       </>,
     ),
@@ -184,6 +196,52 @@ async function edit(label: string, value: string, blur = false) {
 }
 
 describe("TicketDetailPage", () => {
+  it("restores a comment after leaving and keeps the same ticket ID isolated across environments", async () => {
+    await renderPage();
+    await edit("Comment", "Local comment draft");
+    await act(async () => root.render(null));
+    await renderPage("environment-2:ticket-1");
+    expect(
+      container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Comment"]')?.value,
+    ).toBe("");
+    await edit("Comment", "Remote comment draft");
+    await renderPage();
+    expect(
+      container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Comment"]')?.value,
+    ).toBe("Local comment draft");
+    await renderPage("environment-2:ticket-1");
+    expect(
+      container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Comment"]')?.value,
+    ).toBe("Remote comment draft");
+  });
+
+  it("retains a failed comment and clears it only after successful posting", async () => {
+    await renderPage();
+    await edit("Comment", "Please investigate this");
+    const post = () =>
+      [...container.querySelectorAll<HTMLButtonElement>("button")].find(
+        (button) => button.textContent === "Comment",
+      );
+    await act(async () => post()!.click());
+    expect(
+      container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Comment"]')?.value,
+    ).toBe("Please investigate this");
+    actions.comment.mockResolvedValueOnce(detail.summary);
+    await act(async () => post()!.click());
+    expect(
+      container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Comment"]')?.value,
+    ).toBe("");
+    await edit("Comment", "Next comment");
+    await act(async () => root.render(null));
+    await renderPage();
+    expect(
+      container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Comment"]')?.value,
+    ).toBe("Next comment");
+    expect(actions.comment).toHaveBeenCalledWith(
+      { environmentId: "environment-1", ticketId: "ticket-1" },
+      "Please investigate this",
+    );
+  });
   it("autosaves an edited description against the ticket's revision", async () => {
     actions.update.mockResolvedValue({
       ticket: { ...detail.summary, revision: 2 },

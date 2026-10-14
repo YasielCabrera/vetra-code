@@ -25,9 +25,10 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { create } from "zustand";
+import { create, useStore } from "zustand";
 
 import { useRightPanelStore } from "../../rightPanelStore";
+import { ticketDrafts, type DialogTicketDraft } from "../../ticketDraftStore";
 import { environmentCatalog } from "../../connection/catalog";
 import { connectionAtomRuntime } from "../../connection/runtime";
 import { useEnvironmentSettings } from "../../hooks/useSettings";
@@ -274,8 +275,19 @@ function captureChipRecords(
 }
 
 function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
-  const { capture } = props;
-  const [environmentId, setEnvironmentId] = useState(capture.environmentId);
+  const [{ key: draftKey, capture }, setDraft] = useState(() => ({
+    key: ticketDrafts.openDialog(props.capture),
+    capture: props.capture,
+  }));
+  const entry = useStore(ticketDrafts.store, (state) => state.drafts[draftKey]);
+  const value = entry?.value.kind === "dialog" ? entry.value : null;
+  const environmentId = value?.environmentId ?? capture.environmentId;
+  const edit = (patch: Partial<DialogTicketDraft>) => {
+    ticketDrafts.openDialog(capture);
+    const current = ticketDrafts.store.getState().drafts[draftKey];
+    if (current?.value.kind === "dialog")
+      ticketDrafts.edit(draftKey, { ...current.value, ...patch });
+  };
   const navigate = useNavigate();
   const projects = useProjects();
   const sourceThread = useThreadShell(
@@ -287,11 +299,18 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
     EMPTY_SERVER_PROVIDERS;
   const launchDraft = useAtomCommand(ticketEnvironment.launchDraft, { reportFailure: false });
 
-  const [instruction, setInstruction] = useState(() => ticketCaptureSelection(capture.items).text);
-  const [promptRecords, setPromptRecords] = useState<ReadonlyArray<TicketPromptRecord>>([]);
-  const [chosenProjectId, setChosenProjectId] = useState<ProjectId | null>(capture.projectId);
-  const [chosenModel, setChosenModel] = useState<ModelSelection | null>(null);
-  const [launching, setLaunching] = useState(false);
+  const instruction = value?.instruction ?? ticketCaptureSelection(capture.items).text;
+  const promptRecords = value?.promptRecords ?? [];
+  const chosenProjectId = value ? value.projectId : capture.projectId;
+  const chosenModel = value?.model ?? null;
+  const setInstruction = (instruction: string) => edit({ instruction });
+  const setPromptRecords = (promptRecords: ReadonlyArray<TicketPromptRecord>) =>
+    edit({ promptRecords });
+  const setChosenProjectId = (projectId: ProjectId | null) => edit({ projectId });
+  const setChosenModel = (model: ModelSelection) => edit({ model });
+  const launching = useStore(ticketDrafts.store, (state) =>
+    entry ? (state.runtime[entry.id]?.submitting ?? false) : false,
+  );
   const launchingRef = useRef(false);
   const [Composer, setComposer] = useState<typeof TicketDraftComposer | null>(null);
   useEffect(() => {
@@ -367,17 +386,25 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
 
   const launch = async () => {
     if (launchingRef.current || !canLaunch || project === null || modelSelection === null) return;
+    ticketDrafts.openDialog(capture);
+    const submitted = ticketDrafts.beginSubmission(draftKey);
+    if (submitted?.value.kind !== "dialog") return;
+    const submittedPayload = ticketDraftPayload(
+      submitted.value.instruction,
+      submitted.value.capture.items,
+      submitted.value.promptRecords,
+    );
     const launchedRequestId = useCreateTicketRequest.getState().requestId;
     launchingRef.current = true;
-    setLaunching(true);
+    let succeeded = false;
     try {
       const result = await launchDraft({
         environmentId,
         input: {
           projectId: project.id,
           ...(capture.sourceThreadId === null ? {} : { sourceThreadId: capture.sourceThreadId }),
-          instruction: draft.instruction,
-          selection: draft.selection,
+          instruction: submittedPayload.instruction,
+          selection: submittedPayload.selection,
           modelSelection,
         },
       });
@@ -394,6 +421,7 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
         return;
       }
       const { threadId } = result.value;
+      succeeded = true;
       const toastId = toastManager.add(
         stackedThreadToast({
           type: "info",
@@ -430,22 +458,26 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
       }
     } finally {
       launchingRef.current = false;
-      setLaunching(false);
+      ticketDrafts.finishSubmission(draftKey, submitted, succeeded);
     }
   };
 
   const writeItMyself = () => {
     const { title, body } = ticketManualPrefill(instruction, capture.items);
+    const search = {
+      env: environmentId,
+      ...(title ? { title } : {}),
+      ...(body ? { body } : {}),
+      ...(project === null ? {} : { project: project.id }),
+      ...(capture.sourceThreadId === null ? {} : { thread: capture.sourceThreadId }),
+    };
+    ticketDrafts.openManual(search, environmentId);
+    const submitted = ticketDrafts.beginSubmission(draftKey);
+    if (submitted) ticketDrafts.finishSubmission(draftKey, submitted, true);
     closeCreateTicketDialog();
     void navigate({
       to: "/tickets/new",
-      search: {
-        env: environmentId,
-        ...(title ? { title } : {}),
-        ...(body ? { body } : {}),
-        ...(project === null ? {} : { project: project.id }),
-        ...(capture.sourceThreadId === null ? {} : { thread: capture.sourceThreadId }),
-      },
+      search,
     });
   };
 
@@ -480,10 +512,11 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
                 collectInlineContextIds(instruction).length === 0
                   ? {
                       onEnvironmentChange: (next: EnvironmentId) => {
-                        setEnvironmentId(next);
-                        setChosenProjectId(null);
-                        setChosenModel(null);
-                        setPromptRecords([]);
+                        const nextCapture = { ...capture, environmentId: next, projectId: null };
+                        setDraft({
+                          key: ticketDrafts.openDialog(nextCapture),
+                          capture: nextCapture,
+                        });
                       },
                     }
                   : {})}
@@ -518,6 +551,17 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
             ) : null}
           </DialogPanel>
           <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={launching}
+              onClick={() => {
+                ticketDrafts.discard(draftKey);
+                closeCreateTicketDialog();
+              }}
+            >
+              Discard draft
+            </Button>
             <Button type="button" variant="outline" disabled={launching} onClick={writeItMyself}>
               Write it myself
             </Button>

@@ -3,17 +3,17 @@ import { ticketKey } from "@t3tools/client-runtime/state/tickets";
 import {
   EnvironmentId,
   ProjectId,
-  ThreadId,
   type TicketLinkTarget,
   type TicketStatusId,
 } from "@t3tools/contracts";
 import { FolderIcon, MessageSquareIcon, ServerIcon, TagIcon, XIcon } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useStore } from "zustand";
 
 import { isElectron } from "../../env";
 import { useTicketActions } from "../../hooks/useTicketActions";
 import { attachmentReferenceIds } from "../../lib/attachmentReferences";
-import { releaseAttachmentUpload } from "../../lib/attachmentUploadQueue";
+import { ticketDrafts, type ManualTicketDraft } from "../../ticketDraftStore";
 import { useProjects, useThreadShells } from "../../state/entities";
 import { useEnvironments, usePrimaryEnvironmentId } from "../../state/environments";
 import { useTickets } from "../../state/tickets";
@@ -29,7 +29,6 @@ import {
   WorkspaceBreadcrumbSeparator,
 } from "../WorkspaceBreadcrumb";
 import { WorkspacePageHeader } from "../WorkspacePageHeader";
-import { type PendingTicketUpload, uploadTicketFiles } from "./ticketAttachments";
 import { ticketDraftEnvironment, type NewTicketSearch } from "./ticketDraft.logic";
 import { TicketLabelsEditor } from "./TicketPropertiesPanel";
 import { TicketStatusIcon } from "./ticketPresentation";
@@ -46,32 +45,61 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const projects = useProjects();
   const threads = useThreadShells();
-  const [chosenEnvironmentId, setChosenEnvironmentId] = useState<EnvironmentId | null>(
+  const fallbackEnvironmentId = ticketDraftEnvironment(
     props.prefill.env === undefined ? null : EnvironmentId.make(props.prefill.env),
-  );
-  const environmentId = ticketDraftEnvironment(
-    chosenEnvironmentId,
     primaryEnvironmentId,
     board.environmentIds,
   );
+  const [chosenDraftKey, setDraftKey] = useState(() =>
+    ticketDrafts.openManual(props.prefill, fallbackEnvironmentId),
+  );
+  const draftKey = chosenDraftKey ?? ticketDrafts.openManual(props.prefill, fallbackEnvironmentId);
+  const entry = useStore(ticketDrafts.store, (state) =>
+    draftKey === null ? undefined : state.drafts[draftKey],
+  );
+  const draft = entry?.value.kind === "manual" ? entry.value : null;
+  const environmentId = draft?.environmentId ?? fallbackEnvironmentId;
+  const chosenEnvironmentId =
+    draft?.environmentId ?? (props.prefill.env === undefined ? null : environmentId);
   const environmentAvailable =
     environmentId !== null && board.environmentIds.includes(environmentId);
-
-  const [title, setTitle] = useState(props.prefill.title ?? "");
-  const [body, setBody] = useState(props.prefill.body ?? "");
-  const [labels, setLabels] = useState<ReadonlyArray<string>>([]);
-  const [chosenStatusId, setChosenStatusId] = useState<TicketStatusId | null>(null);
-  const [projectId, setProjectId] = useState<string>(
-    props.prefill.env === undefined ? NO_PROJECT : (props.prefill.project ?? NO_PROJECT),
+  const title = draft?.title ?? "";
+  const body = draft?.body ?? "";
+  const labels = draft?.labels ?? [];
+  const chosenStatusId = draft?.statusId ?? null;
+  const projectId = draft?.projectId ?? NO_PROJECT;
+  const threadId = draft?.threadId ?? null;
+  const runtime = useStore(ticketDrafts.store, (state) =>
+    entry ? state.runtime[entry.id] : undefined,
   );
-  const [threadId, setThreadId] = useState<string | null>(
-    props.prefill.env === undefined ? null : (props.prefill.thread ?? null),
-  );
-  const [creating, setCreating] = useState(false);
-  const [attaching, setAttaching] = useState(0);
-  // Uploads belong to the environment they went to, so the form stays there once one starts.
-  const [uploadStarted, setUploadStarted] = useState(false);
-  const pendingUploadsRef = useRef(new Map<string, PendingTicketUpload>());
+  const creating = runtime?.submitting ?? false;
+  const attaching = runtime?.uploading ?? 0;
+  const uploadStarted = attaching > 0 || (draft?.uploads.length ?? 0) > 0;
+  const attachmentProblems =
+    draft?.uploads.filter(
+      (pending) =>
+        attachmentReferenceIds(body).includes(pending.attachment.id) &&
+        runtime?.verification[pending.attachment.id] !== "verified",
+    ) ?? [];
+  const edit = (patch: Partial<ManualTicketDraft>) => {
+    const key =
+      entry || environmentId === null ? draftKey : ticketDrafts.openManual({}, environmentId);
+    const current = key === null ? undefined : ticketDrafts.store.getState().drafts[key];
+    if (key !== null && current?.value.kind === "manual") {
+      if (key !== chosenDraftKey) setDraftKey(key);
+      ticketDrafts.edit(key, { ...current.value, ...patch });
+    }
+  };
+  const setTitle = (value: string) => edit({ title: value });
+  const setBody = (value: string) => edit({ body: value });
+  const setLabels = (update: (labels: ReadonlyArray<string>) => ReadonlyArray<string>) => {
+    const current = draftKey === null ? undefined : ticketDrafts.store.getState().drafts[draftKey];
+    if (current?.value.kind === "manual") edit({ labels: update(current.value.labels) });
+  };
+  const setChosenStatusId = (value: TicketStatusId) => edit({ statusId: value });
+  const setProjectId = (value: string) =>
+    edit({ projectId: value === NO_PROJECT ? null : ProjectId.make(value) });
+  const setThreadId = (value: null) => edit({ threadId: value });
   const mountedRef = useRef(true);
 
   const statusSet = environmentId === null ? null : (board.statusSets.get(environmentId) ?? null);
@@ -89,30 +117,25 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
 
   useEffect(() => {
     mountedRef.current = true;
-    const pendingUploads = pendingUploadsRef.current;
     return () => {
       mountedRef.current = false;
-      for (const upload of pendingUploads.values()) releaseAttachmentUpload(upload.localId);
-      pendingUploads.clear();
     };
   }, []);
+  useEffect(() => {
+    if (draftKey !== null && environmentAvailable) void ticketDrafts.verify(draftKey);
+  }, [draftKey, environmentAvailable]);
 
   const onFiles = useCallback(
     async (files: ReadonlyArray<File>) => {
       if (environmentId === null || !environmentAvailable) return [];
-      setChosenEnvironmentId(environmentId);
-      setUploadStarted(true);
-      setAttaching((count) => count + 1);
-      try {
-        return await uploadTicketFiles(environmentId, files, (upload) => {
-          if (mountedRef.current) pendingUploadsRef.current.set(upload.attachment.id, upload);
-          return mountedRef.current;
-        });
-      } finally {
-        if (mountedRef.current) setAttaching((count) => count - 1);
-      }
+      const current =
+        draftKey === null ? undefined : ticketDrafts.store.getState().drafts[draftKey];
+      const key = current ? draftKey : ticketDrafts.openManual({}, environmentId);
+      if (key === null) return [];
+      setDraftKey(key);
+      return ticketDrafts.attach(key, files);
     },
-    [environmentAvailable, environmentId],
+    [environmentAvailable, environmentId, draftKey],
   );
 
   const create = async () => {
@@ -122,32 +145,47 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
       !environmentAvailable ||
       trimmedTitle.length === 0 ||
       creating ||
-      attaching > 0
+      attaching > 0 ||
+      draftKey === null
     )
       return;
-    const uploads = attachmentReferenceIds(body).flatMap((id) => {
-      const upload = pendingUploadsRef.current.get(id);
-      return upload === undefined ? [] : [upload];
-    });
+    const submitted = ticketDrafts.beginSubmission(draftKey);
+    if (submitted?.value.kind !== "manual") return;
+    setDraftKey(draftKey);
+    if (!(await ticketDrafts.verify(draftKey))) {
+      ticketDrafts.finishSubmission(draftKey, submitted, false);
+      return;
+    }
+    const value = submitted.value;
+    const submittedStatusId =
+      value.statusId ??
+      board.statusSets
+        .get(value.environmentId)
+        ?.statuses.find((status) => status.category === "open" && status.isDefault)?.id ??
+      null;
+    const uploads = value.uploads.filter((upload) =>
+      attachmentReferenceIds(value.body).includes(upload.attachment.id),
+    );
     const links: TicketLinkTarget[] = [
-      ...(projectId === NO_PROJECT
+      ...(value.projectId === null
         ? []
-        : [{ kind: "project" as const, projectId: ProjectId.make(projectId) }]),
-      ...(threadId === null
-        ? []
-        : [{ kind: "thread" as const, threadId: ThreadId.make(threadId) }]),
+        : [{ kind: "project" as const, projectId: value.projectId }]),
+      ...(value.threadId === null ? [] : [{ kind: "thread" as const, threadId: value.threadId }]),
     ];
-    setCreating(true);
-    const created = await actions.create(environmentId, {
-      title: trimmedTitle,
-      body,
-      labels,
-      ...(statusId === null ? {} : { statusId }),
-      ...(links.length > 0 ? { links } : {}),
-      ...(uploads.length > 0 ? { attachments: uploads.map((upload) => upload.attachment) } : {}),
-    });
-    setCreating(false);
-    if (created === null) return;
+    let created;
+    try {
+      created = await actions.create(value.environmentId, {
+        title: value.title.trim(),
+        body: value.body,
+        labels: value.labels,
+        ...(submittedStatusId === null ? {} : { statusId: submittedStatusId }),
+        ...(links.length > 0 ? { links } : {}),
+        ...(uploads.length > 0 ? { attachments: uploads.map((upload) => upload.attachment) } : {}),
+      });
+    } finally {
+      ticketDrafts.finishSubmission(draftKey, submitted, created != null);
+    }
+    if (created === null || !mountedRef.current) return;
     void navigate({
       to: "/tickets/$ticketKey",
       params: { ticketKey: ticketKey({ environmentId, ticketId: created.ticket.id }) },
@@ -199,6 +237,7 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
                 aria-label="Title"
                 placeholder="Ticket title"
                 maxLength={500}
+                readOnly={creating}
                 onChange={(event) => setTitle(event.target.value)}
                 className="w-full bg-transparent text-3xl leading-tight font-semibold text-foreground outline-none placeholder:text-muted-foreground/60"
               />
@@ -228,7 +267,12 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
                       if (status) setChosenStatusId(status.id);
                     }}
                   >
-                    <SelectTrigger variant="ghost" size="compact" aria-label="Status">
+                    <SelectTrigger
+                      variant="ghost"
+                      size="compact"
+                      aria-label="Status"
+                      disabled={creating}
+                    >
                       <span className="flex min-w-0 max-w-48 flex-1 items-center gap-2">
                         {selectedStatus ? (
                           <TicketStatusIcon
@@ -255,7 +299,15 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
                 ) : null}
                 <Popover>
                   <PopoverTrigger
-                    render={<Button type="button" size="xs" variant="ghost" aria-label="Labels" />}
+                    render={
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="ghost"
+                        aria-label="Labels"
+                        disabled={creating}
+                      />
+                    }
                   >
                     <TagIcon aria-hidden />
                     <span className="max-w-40 truncate">
@@ -267,7 +319,7 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
                     </span>
                   </PopoverTrigger>
                   <PopoverPopup width="sm" padding="compact" align="start">
-                    <TicketLabelsEditor labels={labels} readOnly={false} onChange={setLabels} />
+                    <TicketLabelsEditor labels={labels} readOnly={creating} onChange={setLabels} />
                   </PopoverPopup>
                 </Popover>
                 <Select
@@ -283,7 +335,12 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
                     if (typeof value === "string") setProjectId(value);
                   }}
                 >
-                  <SelectTrigger variant="ghost" size="compact" aria-label="Project">
+                  <SelectTrigger
+                    variant="ghost"
+                    size="compact"
+                    aria-label="Project"
+                    disabled={creating}
+                  >
                     <FolderIcon aria-hidden />
                     <SelectValue />
                   </SelectTrigger>
@@ -308,17 +365,16 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
                         (environment) => environment.environmentId === value,
                       );
                       if (next === undefined) return;
-                      setChosenEnvironmentId(next.environmentId);
-                      setChosenStatusId(null);
-                      setProjectId(NO_PROJECT);
-                      setThreadId(null);
+                      setDraftKey(
+                        ticketDrafts.openManual({ env: next.environmentId }, next.environmentId),
+                      );
                     }}
                   >
                     <SelectTrigger
                       variant="ghost"
                       size="compact"
                       aria-label="Environment"
-                      disabled={uploadStarted}
+                      disabled={uploadStarted || creating}
                     >
                       <ServerIcon aria-hidden />
                       <SelectValue />
@@ -342,6 +398,7 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
                     <button
                       type="button"
                       aria-label="Remove the thread link"
+                      disabled={creating}
                       className="rounded-sm text-muted-foreground hover:text-foreground"
                       onClick={() => setThreadId(null)}
                     >
@@ -362,12 +419,57 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
                     value={body}
                     onChange={setBody}
                     onFiles={onFiles}
+                    onDetachedFiles={(snippets) => {
+                      if (draftKey !== null && entry)
+                        ticketDrafts.appendAttachments(draftKey, entry.id, snippets);
+                    }}
+                    disabled={creating}
                     placeholder="Describe the work…"
                     ariaLabel="Description"
                     minHeight="16rem"
                   />
                 </Suspense>
               </div>
+
+              {attachmentProblems.length > 0 ? (
+                <div role="status" className="flex flex-col gap-2 text-sm text-muted-foreground">
+                  {attachmentProblems.map((pending) => (
+                    <div key={pending.attachment.id} className="flex items-center gap-2">
+                      <span>
+                        {pending.attachment.name}:{" "}
+                        {runtime?.verification[pending.attachment.id] === "missing"
+                          ? "This upload expired. Remove it and attach the file again."
+                          : runtime?.verification[pending.attachment.id] === "failed"
+                            ? "Could not check this upload. Reconnect or retry before creating the ticket."
+                            : "Checking this upload. Reconnect or retry before creating the ticket."}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={creating}
+                        onClick={() => {
+                          if (draftKey !== null)
+                            ticketDrafts.removeUpload(draftKey, pending.attachment.id);
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={creating}
+                    onClick={() => {
+                      if (draftKey !== null) void ticketDrafts.verify(draftKey);
+                    }}
+                  >
+                    Retry uploads
+                  </Button>
+                </div>
+              ) : null}
 
               <div className="mt-4 flex justify-end gap-2 border-t border-border/60 pt-4">
                 <Button
@@ -379,10 +481,25 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
                   Cancel
                 </Button>
                 <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={creating || attaching > 0}
+                  onClick={() => {
+                    if (draftKey !== null) ticketDrafts.discard(draftKey);
+                  }}
+                >
+                  Discard draft
+                </Button>
+                <Button
                   type="submit"
                   size="sm"
                   disabled={
-                    !environmentAvailable || title.trim().length === 0 || creating || attaching > 0
+                    !environmentAvailable ||
+                    title.trim().length === 0 ||
+                    creating ||
+                    attaching > 0 ||
+                    attachmentProblems.length > 0
                   }
                 >
                   Create ticket

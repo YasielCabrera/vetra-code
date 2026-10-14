@@ -15,7 +15,6 @@ export const Route = createFileRoute("/tickets/new")({
   validateSearch: validateNewTicketSearch,
   component: function NewTicketRoute() {
     const prefill = Route.useSearch();
-    // A new prefill (e.g. "Write it myself" while already here) starts a fresh form.
     return <NewTicketPage key={JSON.stringify(prefill)} prefill={prefill} />;
   },
 });

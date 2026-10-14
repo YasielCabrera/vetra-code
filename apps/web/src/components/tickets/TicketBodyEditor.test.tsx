@@ -20,6 +20,11 @@ let setBody: (body: string) => void;
 
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
+  Object.defineProperty(Range.prototype, "getBoundingClientRect", {
+    configurable: true,
+    value: () => new DOMRect(),
+  });
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -33,10 +38,19 @@ afterEach(async () => {
 });
 
 type HarnessProps = { initialBody: string } & Partial<
-  Pick<Parameters<typeof TicketBodyEditor>[0], "disabled" | "onFiles" | "onUploadingChange">
+  Pick<
+    Parameters<typeof TicketBodyEditor>[0],
+    "disabled" | "onFiles" | "onUploadingChange" | "onDetachedFiles"
+  >
 >;
 
-function Harness({ initialBody, disabled = false, onFiles, onUploadingChange }: HarnessProps) {
+function Harness({
+  initialBody,
+  disabled = false,
+  onFiles,
+  onUploadingChange,
+  onDetachedFiles,
+}: HarnessProps) {
   const [body, set] = useState(initialBody);
   useLayoutEffect(() => {
     currentBody = body;
@@ -49,6 +63,7 @@ function Harness({ initialBody, disabled = false, onFiles, onUploadingChange }: 
       onFiles={onFiles ?? (async () => ["![shot](vetra-attachment://pending-shot)"])}
       disabled={disabled}
       {...(onUploadingChange ? { onUploadingChange } : {})}
+      {...(onDetachedFiles ? { onDetachedFiles } : {})}
       placeholder="Description"
       ariaLabel="Description"
       minHeight="12rem"
@@ -92,6 +107,44 @@ async function editSource(body: string) {
 }
 
 describe("TicketBodyEditor", () => {
+  it.each([false, true])(
+    "retains an upload after its editor unmounts, with remount=%s",
+    async (remountBeforeCompletion) => {
+      let complete = (_snippets: ReadonlyArray<string>) => {};
+      const uploaded = new Promise<ReadonlyArray<string>>((resolve) => {
+        complete = resolve;
+      });
+      let retainedBody = "The latest retained draft";
+      let remounted = false;
+      const onFiles = () => uploaded;
+      const onDetachedFiles = (snippets: ReadonlyArray<string>) => {
+        retainedBody = [retainedBody, ...snippets].join("\n\n");
+        if (remounted) setBody(retainedBody);
+      };
+      await renderEditor("Initial body", { onFiles, onDetachedFiles });
+      await act(async () => {
+        const paste = new Event("paste", { bubbles: true, cancelable: true });
+        Object.defineProperty(paste, "clipboardData", {
+          value: {
+            files: [new File(["shot"], "shot.png", { type: "image/png" })],
+            getData: () => "",
+          },
+        });
+        richEditor().view.dom.dispatchEvent(paste);
+      });
+      await act(async () => root.render(null));
+      if (remountBeforeCompletion) {
+        await renderEditor(retainedBody);
+        remounted = true;
+      }
+      await act(async () => complete(["![shot](vetra-attachment://pending-shot)"]));
+      if (!remountBeforeCompletion) await renderEditor(retainedBody);
+      expect(currentBody).toBe(
+        "The latest retained draft\n\n![shot](vetra-attachment://pending-shot)",
+      );
+      expect(container.textContent).toContain("shot");
+    },
+  );
   it("keeps an upload pending through insertion and finishes it when editing is disabled", async () => {
     let completeUpload = (_snippets: ReadonlyArray<string>) => {};
     const upload = new Promise<ReadonlyArray<string>>((complete) => {
