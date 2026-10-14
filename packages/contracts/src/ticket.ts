@@ -148,6 +148,7 @@ export const GitHubIssueSnapshot = Schema.Struct({
   stateNeedsConfirmation: Schema.optional(Schema.Boolean),
   ...TicketGitHubRef.fields,
   state: IssueState,
+  /** GitHub's close reason, or `missing` when issue access is intact but the issue is absent. */
   stateReason: Schema.NullOr(Schema.String),
   author: Schema.NullOr(Schema.String),
   assignees: Schema.Array(Schema.String),

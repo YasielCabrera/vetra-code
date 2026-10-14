@@ -37,6 +37,7 @@ export function TicketSource(props: { readonly ticket: EnvironmentTicket }) {
     props.ticket.kind === "github"
       ? `${props.ticket.github.repository}#${props.ticket.github.number}`
       : "Local ticket";
+  const missing = props.ticket.kind === "github" && props.ticket.github.stateReason === "missing";
   return (
     <Tooltip>
       <TooltipTrigger
@@ -50,8 +51,12 @@ export function TicketSource(props: { readonly ticket: EnvironmentTicket }) {
           <TicketIcon aria-hidden className="size-3 shrink-0" />
         )}
         <span className="truncate">{source}</span>
+        {missing ? <span className="shrink-0">· Missing on GitHub</span> : null}
       </TooltipTrigger>
-      <TooltipPopup>{source}</TooltipPopup>
+      <TooltipPopup>
+        {source}
+        {missing ? " · Missing on GitHub" : ""}
+      </TooltipPopup>
     </Tooltip>
   );
 }

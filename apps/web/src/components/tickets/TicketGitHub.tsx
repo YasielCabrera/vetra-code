@@ -4,7 +4,7 @@ import type {
   IssueActor,
   TicketGitHubIssueRef,
 } from "@t3tools/contracts";
-import { CircleCheckIcon, CircleDotIcon } from "lucide-react";
+import { CircleCheckIcon, CircleDotIcon, CircleHelpIcon } from "lucide-react";
 import { memo, useCallback, useMemo } from "react";
 
 import { readLocalApi } from "../../localApi";
@@ -69,6 +69,8 @@ type TicketIssueReads = ReturnType<typeof useTicketIssueReads>;
 function describeIssueState(github: GitHubIssueSnapshot): string {
   if (github.state === "open") return "Open";
   switch (github.stateReason) {
+    case "missing":
+      return "Missing on GitHub";
     case "not_planned":
       return "Closed as not planned";
     case "duplicate":
@@ -80,9 +82,16 @@ function describeIssueState(github: GitHubIssueSnapshot): string {
 
 export function TicketGitHubStateBadge(props: { readonly github: GitHubIssueSnapshot }) {
   const open = props.github.state === "open";
+  const missing = props.github.stateReason === "missing";
   return (
     <Badge variant={open ? "success" : "secondary"} size="control">
-      {open ? <CircleDotIcon aria-hidden /> : <CircleCheckIcon aria-hidden />}
+      {missing ? (
+        <CircleHelpIcon aria-hidden />
+      ) : open ? (
+        <CircleDotIcon aria-hidden />
+      ) : (
+        <CircleCheckIcon aria-hidden />
+      )}
       {describeIssueState(props.github)}
     </Badge>
   );

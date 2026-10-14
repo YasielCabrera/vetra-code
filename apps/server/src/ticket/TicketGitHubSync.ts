@@ -15,7 +15,6 @@ import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
 import * as PubSub from "effect/PubSub";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
@@ -86,9 +85,6 @@ const repositoryKey = (ref: Pick<TicketGitHubSourceRef, "host" | "repository">) 
 const decodeSource = Schema.decodeUnknownEffect(TicketGitHubSource);
 
 const ticketError = (message: string) => (cause: unknown) => new TicketError({ message, cause });
-
-const isMissingIssue = (error: IssueProviderError | TicketError) =>
-  error._tag === "IssueProviderError" && Predicate.isTagged(error.cause, "GitHubApiNotFoundError");
 
 const isIssueReadError = Schema.is(GitHubIssueReadError);
 const isApiResponseError = Schema.is(GitHubApiResponseError);
@@ -303,12 +299,15 @@ const make = Effect.gen(function* () {
     let skipped = 0;
     let firstError: string | null = null;
     for (const { number } of pending) {
-      const issue = yield* github
-        .run(source, (api, cwd) => api.getIssueMetadata({ cwd, host, repository, number }))
+      const refreshed = yield* tickets
+        .refreshGitHubIssueMetadata({
+          ...source,
+          number,
+          projectIds: sources.map((target) => target.projectId),
+        })
         .pipe(
           Effect.catchTags({
             IssueProviderError: (error) => {
-              if (isMissingIssue(error)) return Effect.succeed(null);
               if (!isUnreadableIssue(error)) return Effect.fail(error);
               skipped += 1;
               firstError ??= `${repository}#${number}: ${TicketGitHub.describeGitHubFailure(error)}`;
@@ -316,21 +315,13 @@ const make = Effect.gen(function* () {
             },
           }),
         );
-      if (issue === null) {
+      if (refreshed !== "resolved") {
         yield* sql`
           UPDATE ticket_github_sync_pending SET last_attempt_at = ${DateTime.formatIso(DateTime.makeUnsafe(monotonicRetryAt))}
           WHERE host = ${host} AND repository = ${repository} AND number = ${number}
         `;
         monotonicRetryAt += 1;
       } else {
-        for (const target of sources)
-          yield* tickets.upsertGitHubIssue({
-            projectId: target.projectId,
-            host,
-            repository,
-            issue,
-            readKind: "direct",
-          });
         yield* sql`
           DELETE FROM ticket_github_sync_pending
           WHERE host = ${host} AND repository = ${repository} AND number = ${number}

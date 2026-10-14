@@ -288,6 +288,13 @@ export class TicketService extends Context.Service<
      * reads older than the stored snapshot are skipped.
      */
     readonly upsertGitHubIssue: (input: GitHubIssueImport) => Effect.Effect<void, TicketError>;
+    readonly refreshGitHubIssueMetadata: (
+      input: GitHubRepository & {
+        readonly projectId: ProjectId;
+        readonly projectIds: ReadonlyArray<ProjectId>;
+        readonly number: number;
+      },
+    ) => Effect.Effect<"resolved" | "superseded", TicketError | IssueProviderError>;
     readonly openGitHubIssueNumbers: (
       repository: GitHubRepository,
     ) => Effect.Effect<ReadonlyArray<number>, TicketError>;
@@ -1890,7 +1897,7 @@ const make = Effect.gen(function* () {
   const reconciledStatus = (
     statuses: TicketStatusSet["statuses"],
     statusId: TicketStatusId | null,
-    issue: ProviderIssue,
+    issue: Pick<ProviderIssue, "state" | "stateReason">,
   ) => {
     const current = statuses.find((status) => status.id === statusId);
     const isClosed = current?.category === "closed";
@@ -1901,7 +1908,9 @@ const make = Effect.gen(function* () {
     }
     if (isClosed) return undefined;
     const reason =
-      issue.stateReason === "not_planned" || issue.stateReason === "duplicate"
+      issue.stateReason === "not_planned" ||
+      issue.stateReason === "duplicate" ||
+      issue.stateReason === "missing"
         ? "not_planned"
         : "completed";
     const closed = statuses.filter((status) => status.category === "closed");
@@ -1921,7 +1930,13 @@ const make = Effect.gen(function* () {
     ...(stored.title === next.title ? [] : ["title"]),
     ...(stored.body === next.body ? [] : ["body"]),
     ...(stored.labels.join("\n") === next.labels.join("\n") ? [] : ["labels"]),
-    ...(storedSnapshot.state === nextSnapshot.state ? [] : ["state"]),
+    ...(storedSnapshot.stateReason === "missing" || nextSnapshot.stateReason === "missing"
+      ? storedSnapshot.stateReason === nextSnapshot.stateReason
+        ? []
+        : ["availability"]
+      : storedSnapshot.state === nextSnapshot.state
+        ? []
+        : ["state"]),
     ...(storedSnapshot.assignees.join("\n") === nextSnapshot.assignees.join("\n")
       ? []
       : ["assignees"]),
@@ -2025,6 +2040,17 @@ const make = Effect.gen(function* () {
           if (row.hidden_at !== null) return null;
           const ticketId = TicketId.make(row.ticket_id);
           const storedSnapshot = yield* decodeSnapshot(row.github_snapshot_json);
+          const nextSnapshot =
+            input.readKind === "direct"
+              ? {
+                  ...snapshot,
+                  syncedAt: DateTime.formatIso(
+                    DateTime.makeUnsafe(
+                      Math.max(Date.parse(at), Date.parse(storedSnapshot.syncedAt) + 1),
+                    ),
+                  ),
+                }
+              : snapshot;
           const [linked] = yield* sql<{ readonly found: number }>`
             SELECT 1 AS found FROM ticket_links
             WHERE ticket_id = ${ticketId} AND kind = 'project' AND target_key = ${input.projectId}
@@ -2035,7 +2061,11 @@ const make = Effect.gen(function* () {
             confirmedState !== issue.state
           )
             return null;
-          if (Date.parse(issue.updatedAt) < Date.parse(storedSnapshot.updatedAt)) {
+          // GitHub search can lag an issue read. Only a direct read restores a missing issue.
+          if (
+            Date.parse(issue.updatedAt) < Date.parse(storedSnapshot.updatedAt) ||
+            (storedSnapshot.stateReason === "missing" && input.readKind !== "direct")
+          ) {
             if (linked !== undefined) return null;
             yield* insertLink(ticketId, projectLink, "auto", at);
             yield* rehome(ticketId);
@@ -2049,16 +2079,23 @@ const make = Effect.gen(function* () {
             labels: yield* decodeLabels(row.labels_json),
           };
           const next = { title: issue.title, body: issue.body ?? row.body, labels };
-          const changes = issueChanges(stored, storedSnapshot, next, snapshot);
+          const changes = issueChanges(stored, storedSnapshot, next, nextSnapshot);
           const target = reconciledStatus(statuses, TicketStatusId.make(row.status_id), issue);
           const changed =
             changes.length > 0 ||
-            storedSnapshot.stateReason !== snapshot.stateReason ||
-            storedSnapshot.author !== snapshot.author ||
-            storedSnapshot.updatedAt !== snapshot.updatedAt ||
+            storedSnapshot.stateReason !== nextSnapshot.stateReason ||
+            storedSnapshot.author !== nextSnapshot.author ||
+            storedSnapshot.updatedAt !== nextSnapshot.updatedAt ||
             storedSnapshot.stateNeedsConfirmation === true ||
-            storedSnapshot.url !== snapshot.url;
-          if (target === undefined && linked !== undefined && !changed) return null;
+            storedSnapshot.url !== nextSnapshot.url;
+          if (target === undefined && linked !== undefined && !changed) {
+            if (input.readKind !== "direct") return null;
+            yield* sql`
+              UPDATE tickets SET github_snapshot_json = ${encodeJson(nextSnapshot)}
+              WHERE ticket_id = ${ticketId} AND github_snapshot_json = ${row.github_snapshot_json}
+            `;
+            return null;
+          }
           const revises =
             target !== undefined ||
             changes.some((change) => change !== "state" && change !== "assignees");
@@ -2067,7 +2104,7 @@ const make = Effect.gen(function* () {
               title = ${next.title},
               body = ${next.body},
               labels_json = ${encodeJson(next.labels)},
-              github_snapshot_json = ${encodeJson(snapshot)},
+              github_snapshot_json = ${encodeJson(nextSnapshot)},
               status_id = ${target?.id ?? row.status_id},
               sort_key = ${target === undefined ? sql`sort_key` : yield* appendKey(target.id)},
               revision = revision + ${revises ? 1 : 0},
@@ -2109,6 +2146,141 @@ const make = Effect.gen(function* () {
           Effect.fail(new TicketError({ message: "Could not read a synced ticket.", cause })),
       }),
     );
+
+  const captureGitHubIssue = (
+    target: GitHubRepository & {
+      readonly number: number;
+      readonly ticketId?: TicketId;
+    },
+  ) =>
+    sql<{
+      readonly ticket_id: string;
+      readonly revision: number;
+      readonly github_snapshot_json: string;
+    }>`
+    SELECT ticket_id, revision, github_snapshot_json FROM tickets
+    WHERE kind = 'github' AND github_host = ${target.host}
+      AND github_repository = ${target.repository} AND github_number = ${target.number}
+      AND hidden_at IS NULL
+      ${target.ticketId === undefined ? sql`` : sql`AND ticket_id = ${target.ticketId}`}
+  `.pipe(
+      Effect.map((rows) => rows[0]),
+      Effect.mapError(ticketError("Could not read the tracked issue.")),
+    );
+
+  const recordMissingGitHubIssue = (
+    target: GitHubRepository & { readonly number: number },
+    captured: Effect.Success<ReturnType<typeof captureGitHubIssue>>,
+  ) =>
+    Effect.gen(function* () {
+      if (captured === undefined) return "resolved" as const;
+      const at = yield* now;
+      const written = yield* sql.withTransaction(
+        Effect.gen(function* () {
+          const [row] = yield* sql<{
+            readonly ticket_id: string;
+            readonly revision: number;
+            readonly status_id: string;
+            readonly github_snapshot_json: string;
+          }>`
+        SELECT ticket_id, revision, status_id, github_snapshot_json FROM tickets
+        WHERE ticket_id = ${captured.ticket_id} AND kind = 'github'
+          AND github_host = ${target.host} AND github_repository = ${target.repository}
+          AND github_number = ${target.number} AND hidden_at IS NULL
+      `;
+          if (row === undefined) return { outcome: "resolved" as const, ticketId: null };
+          if (
+            row.revision !== captured.revision ||
+            row.github_snapshot_json !== captured.github_snapshot_json
+          )
+            return { outcome: "superseded" as const, ticketId: null };
+          const snapshot = yield* decodeSnapshot(row.github_snapshot_json);
+          if (snapshot.stateReason === "missing")
+            return { outcome: "resolved" as const, ticketId: null };
+          const next: GitHubIssueSnapshot = {
+            ...snapshot,
+            state: "closed",
+            stateReason: "missing",
+            stateNeedsConfirmation: false,
+            syncedAt: DateTime.formatIso(
+              DateTime.makeUnsafe(Math.max(Date.parse(at), Date.parse(snapshot.syncedAt) + 1)),
+            ),
+          };
+          const status = reconciledStatus(
+            (yield* readStatuses).statuses,
+            TicketStatusId.make(row.status_id),
+            {
+              state: "closed",
+              stateReason: "missing",
+            },
+          );
+          const ticketId = TicketId.make(row.ticket_id);
+          const [updated] = yield* sql<{ readonly ticket_id: string }>`
+        UPDATE tickets SET github_snapshot_json = ${encodeJson(next)},
+          status_id = ${status?.id ?? row.status_id},
+          sort_key = ${status === undefined ? sql`sort_key` : yield* appendKey(status.id)},
+          revision = revision + ${status === undefined ? 0 : 1}, updated_at = ${at}
+        WHERE ticket_id = ${ticketId} AND hidden_at IS NULL
+          AND revision = ${captured.revision}
+          AND github_snapshot_json = ${captured.github_snapshot_json}
+        RETURNING ticket_id
+      `;
+          if (updated === undefined) return { outcome: "superseded" as const, ticketId: null };
+          yield* appendActivity(
+            ticketId,
+            { type: "sync" },
+            [
+              { type: "synced", changes: ["availability"] },
+              ...(status === undefined
+                ? []
+                : [
+                    {
+                      type: "status_changed" as const,
+                      from: TicketStatusId.make(row.status_id),
+                      to: status.id,
+                    },
+                  ]),
+            ],
+            at,
+          );
+          if (status !== undefined) yield* refreshSearch(ticketId);
+          return { outcome: "resolved" as const, ticketId };
+        }),
+      );
+      if (written.ticketId !== null) yield* publishTickets([written.ticketId]);
+      return written.outcome;
+    }).pipe(
+      Effect.catchTags({
+        SqlError: sqlFailure("Could not record the missing issue."),
+        SchemaError: (cause) =>
+          Effect.fail(new TicketError({ message: "Could not read the tracked issue.", cause })),
+      }),
+    );
+
+  const refreshGitHubIssueMetadata: TicketService["Service"]["refreshGitHubIssueMetadata"] = (
+    input,
+  ) =>
+    Effect.gen(function* () {
+      const captured = yield* captureGitHubIssue(input);
+      const read = yield* github.readIssue(input, (api, cwd) =>
+        api.getIssueMetadata({
+          cwd,
+          host: input.host,
+          repository: input.repository,
+          number: input.number,
+        }),
+      );
+      if (read.kind === "missing") return yield* recordMissingGitHubIssue(input, captured);
+      for (const projectId of input.projectIds)
+        yield* upsertGitHubIssue({
+          projectId,
+          host: input.host,
+          repository: input.repository,
+          issue: read.issue,
+          readKind: "direct",
+        });
+      return "resolved";
+    });
 
   const githubTarget = (input: TicketGitHubIssueRef) =>
     Effect.gen(function* () {
@@ -2273,15 +2445,36 @@ const make = Effect.gen(function* () {
   const refreshGitHubIssue: TicketService["Service"]["refreshGitHubIssue"] = (input) =>
     Effect.gen(function* () {
       const target = yield* resolveIssueTarget(input);
-      const issue = yield* runResolvedIssue(target, (api, ref) => api.getIssue(ref));
-      yield* upsertGitHubIssue({
-        existingTicketId: input.ticketId,
-        readKind: "direct",
-        projectId: target.projectId,
-        host: target.host,
-        repository: target.repository,
-        issue,
-      });
+      const captured = yield* captureGitHubIssue(target);
+      const read = yield* github
+        .readIssue(target, (api, cwd) =>
+          api.getIssue({
+            cwd,
+            host: target.host,
+            repository: target.repository,
+            number: target.number,
+          }),
+        )
+        .pipe(
+          Effect.provideService(Interactive, true),
+          Effect.mapError(
+            (error) =>
+              new TicketError({
+                message: TicketGitHub.describeGitHubFailure(error),
+                cause: error,
+              }),
+          ),
+        );
+      if (read.kind === "missing") yield* recordMissingGitHubIssue(target, captured);
+      else
+        yield* upsertGitHubIssue({
+          existingTicketId: input.ticketId,
+          readKind: "direct",
+          projectId: target.projectId,
+          host: target.host,
+          repository: target.repository,
+          issue: read.issue,
+        });
       yield* invalidateLinkedReads(target);
       return yield* requireSummary(input.ticketId);
     });
@@ -3101,6 +3294,7 @@ const make = Effect.gen(function* () {
     invalidateGitHubIssue,
     issueLinkCandidates,
     refreshGitHubIssue,
+    refreshGitHubIssueMetadata,
     releaseGitHubRepository,
     restoreGitHubRepository,
     readStatuses,

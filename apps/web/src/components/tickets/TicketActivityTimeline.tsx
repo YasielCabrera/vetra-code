@@ -68,6 +68,7 @@ export const PLAN_ENTRY_VERBS = {
 const SYNC_CHANGE_LABELS: Readonly<Record<string, string>> = {
   ...FIELD_LABELS,
   state: "the issue state",
+  availability: "the issue's availability",
   assignees: "the assignees",
 };
 

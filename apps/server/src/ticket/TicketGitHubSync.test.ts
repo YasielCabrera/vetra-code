@@ -16,6 +16,7 @@ import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
+import * as Redacted from "effect/Redacted";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import * as SqlClient from "effect/sql/SqlClient";
@@ -101,6 +102,10 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
   const issues = new Map(initial.map((issue) => [issue.number, issue]));
   const fake = {
     issues,
+    selectedCredential: "initial",
+    deniedCredentials: new Set<string>(),
+    issueCredentialFingerprints: [] as string[],
+    probeCredentialFingerprints: [] as string[],
     setStateCalls: [] as Array<{ readonly number: number; readonly change: IssueStateChange }>,
     commentCalls: [] as Array<{ readonly number: number; readonly body: string }>,
     listCalls: 0,
@@ -144,6 +149,8 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     listAllGate: null as Deferred.Deferred<void> | null,
     listAllStarted: null as Queue.Queue<void> | null,
     listFailure: null as IssueProviderError | null,
+    probeFailure: null as IssueProviderError | null,
+    probeWithoutCount: false,
     closedListFailure: null as IssueProviderError | null,
     listTruncated: false,
     listSkippedCount: 0,
@@ -197,6 +204,25 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
         yield* fake.beforeRead;
         fake.listCalls += 1;
         fake.listInputs.push(input);
+        const probe =
+          input.limit === 1 && input.includeOpenCount === true && input.includeBody !== true;
+        if (probe) {
+          const pinned = yield* GitHubApi.PinnedGitHubCredential;
+          const fingerprint = pinned?.credentialFingerprint ?? fake.selectedCredential;
+          fake.probeCredentialFingerprints.push(fingerprint);
+          if (fake.deniedCredentials.has(fingerprint))
+            return yield* new IssueProviderError({
+              provider: SourceControlProviderKind.make("github"),
+              operation: "list",
+              reason: "failed",
+              detail: "The repository is not accessible.",
+              cause: new GitHubApi.GitHubApiNotFoundError({
+                host: input.host,
+                operation: "listIssues",
+              }),
+            });
+        }
+        if (probe && fake.probeFailure !== null) return yield* fake.probeFailure;
         if (fake.listAllGate !== null && fake.listAllStarted !== null) {
           yield* Queue.offer(fake.listAllStarted, undefined);
           yield* Deferred.await(fake.listAllGate);
@@ -241,7 +267,7 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
           }),
           truncated: fake.listTruncated || found.length > limit,
           skippedCount: fake.listSkippedCount,
-          ...(input.includeOpenCount
+          ...(input.includeOpenCount && !(probe && fake.probeWithoutCount)
             ? {
                 totalOpenCount: [...issues.values()].filter((issue) => issue.state === "open")
                   .length,
@@ -250,14 +276,17 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
         };
       }),
     getIssueMetadata: (input) =>
-      Effect.suspend(() => {
+      Effect.gen(function* () {
+        const pinned = yield* GitHubApi.PinnedGitHubCredential;
+        const fingerprint = pinned?.credentialFingerprint ?? fake.selectedCredential;
+        fake.issueCredentialFingerprints.push(fingerprint);
         fake.calls.push({ operation: "get", ...input });
-        if (fake.getFailure !== null) return Effect.fail(fake.getFailure);
+        if (fake.getFailure !== null) return yield* fake.getFailure;
         const failure = fake.getFailures.get(input.number);
-        if (failure !== undefined) return Effect.fail(failure);
+        if (failure !== undefined) return yield* failure;
         const issue = issues.get(input.number);
         const read =
-          issue === undefined
+          issue === undefined || fake.deniedCredentials.has(fingerprint)
             ? missingIssueThroughClassifier(input)
             : Effect.succeed({
                 ...listed(issue),
@@ -265,26 +294,29 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
                 body: issue.body,
                 url: `https://${input.host}/${input.repository}/issues/${issue.number}`,
               });
-        return fake.beforeRead.pipe(
+        return yield* fake.beforeRead.pipe(
           Effect.andThen(fake.duringGet.pipe(Effect.orDie)),
           Effect.andThen(read),
         );
       }),
     getIssue: (input) =>
-      Effect.suspend(() => {
+      Effect.gen(function* () {
+        const pinned = yield* GitHubApi.PinnedGitHubCredential;
+        const fingerprint = pinned?.credentialFingerprint ?? fake.selectedCredential;
+        fake.issueCredentialFingerprints.push(fingerprint);
         fake.calls.push({ operation: "get", ...input });
-        if (fake.getFailure !== null) return Effect.fail(fake.getFailure);
+        if (fake.getFailure !== null) return yield* fake.getFailure;
         const failure = fake.getFailures.get(input.number);
-        if (failure !== undefined) return Effect.fail(failure);
+        if (failure !== undefined) return yield* failure;
         const issue = issues.get(input.number);
         const read =
-          issue === undefined
+          issue === undefined || fake.deniedCredentials.has(fingerprint)
             ? missingIssueThroughClassifier(input)
             : Effect.succeed({
                 ...detail(issue),
                 url: `https://${input.host}/${input.repository}/issues/${issue.number}`,
               });
-        return fake.beforeRead.pipe(
+        return yield* fake.beforeRead.pipe(
           Effect.andThen(fake.duringGet.pipe(Effect.orDie)),
           Effect.andThen(read),
         );
@@ -440,6 +472,18 @@ const withSync = <A, E>(
         }),
         SourceControlRateLimit.layer,
         GitHubQuota.layer,
+        Layer.succeed(
+          GitHubApi.GitHubApi,
+          GitHubApi.GitHubApi.of({
+            credential: () =>
+              Effect.sync(() => ({
+                token: Redacted.make("fake-ticket-token"),
+                fingerprint: fake.selectedCredential,
+              })),
+            graphql: () => Effect.die("unused"),
+            rest: () => Effect.die("unused"),
+          }),
+        ),
       ),
     ),
     Layer.provideMerge(SqlitePersistence.layerMemory),
@@ -2388,8 +2432,8 @@ describe("TicketGitHubSync", () => {
     ),
   );
 
-  it.effect("a failed issue read lands on the source instead of reading as deleted", () =>
-    withSync([issue(7), issue(8)], ({ tickets, sync, fake, bootstrapAgain }) =>
+  it.effect("a failed issue read retries, while a confirmed missing issue stops being polled", () =>
+    withSync([issue(7), issue(8)], ({ tickets, sync, fake, sql, bootstrapAgain, restartSync }) =>
       Effect.gen(function* () {
         yield* sync.syncNow(SOURCE);
         yield* bootstrapAgain;
@@ -2406,6 +2450,7 @@ describe("TicketGitHubSync", () => {
           detail: "GitHub could not complete the issue request.",
         });
         const failed = yield* sync.syncNow(SOURCE);
+        assert.strictEqual(githubOf(yield* tickets.resolveRef("acme/web#8"))?.github.state, "open");
         fake.getFailure = null;
         const recovered = yield* sync.syncNow(SOURCE);
 
@@ -2413,14 +2458,375 @@ describe("TicketGitHubSync", () => {
           [failed.lastError, recovered.lastError],
           ["GitHub could not complete the issue request.", null],
         );
+        const missing = yield* tickets.resolveRef("acme/web#8");
+        assert.strictEqual(missing.statusId, "canceled");
         assert.deepStrictEqual(
           [
             (yield* tickets.resolveRef("acme/web#7")).statusId,
-            githubOf(yield* tickets.resolveRef("acme/web#8"))?.github.state,
+            githubOf(missing)?.github.state,
+            githubOf(missing)?.github.stateReason,
+            githubOf(missing)?.hiddenAt,
           ],
-          ["done", "open"],
+          ["done", "closed", "missing", null],
         );
+        assert.deepStrictEqual(yield* tickets.openGitHubIssueNumbers(SOURCE), []);
+        assert.deepStrictEqual(yield* sql`SELECT number FROM ticket_github_sync_pending`, []);
+        fake.calls.length = 0;
+        yield* sync.syncNow(SOURCE);
+        assert.deepStrictEqual(fake.calls, []);
+        const restarted = yield* restartSync;
+        yield* bootstrapAgain;
+        yield* restarted.syncNow(SOURCE);
+        assert.deepStrictEqual(fake.calls, []);
       }),
     ),
+  );
+
+  it.effect(
+    "manual refresh records missing without losing cached content and recovers at the same host timestamp",
+    () =>
+      withSync([issue(7)], ({ tickets, sync, fake }) =>
+        Effect.gen(function* () {
+          yield* sync.syncNow(SOURCE);
+          const before = yield* tickets.get((yield* tickets.resolveRef("acme/web#7")).id);
+          fake.issues.delete(7);
+          const missing = yield* tickets.refreshGitHubIssue({ ticketId: before.summary.id });
+          const stored = yield* tickets.get(missing.id);
+          assert.deepStrictEqual(
+            [
+              missing.statusId,
+              githubOf(missing)?.github.state,
+              githubOf(missing)?.github.stateReason,
+              githubOf(missing)?.hiddenAt,
+              missing.title,
+              stored.body,
+              missing.labels,
+              missing.linkRefs,
+              githubOf(missing)?.github.updatedAt,
+            ],
+            [
+              "canceled",
+              "closed",
+              "missing",
+              null,
+              before.summary.title,
+              before.body,
+              before.summary.labels,
+              before.summary.linkRefs,
+              githubOf(before.summary)?.github.updatedAt,
+            ],
+          );
+          assert.strictEqual(githubOf(missing)?.github.stateNeedsConfirmation, false);
+          assert.deepStrictEqual(fake.listInputs.at(-1), {
+            cwd: "/work/web",
+            host: "github.com",
+            repository: "acme/web",
+            state: "open",
+            limit: 1,
+            includeOpenCount: true,
+          });
+          fake.issues.set(7, issue(7));
+          const recovered = yield* tickets.refreshGitHubIssue({ ticketId: missing.id });
+          assert.deepStrictEqual(
+            [
+              recovered.statusId,
+              githubOf(recovered)?.github.state,
+              githubOf(recovered)?.github.stateReason,
+              githubOf(recovered)?.github.updatedAt,
+            ],
+            ["todo", "open", null, githubOf(before.summary)?.github.updatedAt],
+          );
+          assert.deepStrictEqual(yield* tickets.openGitHubIssueNumbers(SOURCE), [7]);
+        }),
+      ),
+  );
+
+  it.effect("stale search cannot reopen a missing issue but still links a new source project", () =>
+    withSync([{ ...issue(7), updatedAt: "2026-09-01T00:00:00Z" }], ({ tickets, sync, fake, sql }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        const before = yield* tickets.resolveRef("acme/web#7");
+        fake.staleList = [...fake.issues.values()];
+        fake.issues.delete(7);
+        yield* tickets.refreshGitHubIssue({ ticketId: before.id });
+        fake.calls.length = 0;
+        yield* sync.syncNow(SOURCE);
+        const afterStaleSearch = yield* tickets.resolveRef("acme/web#7");
+        assert.deepStrictEqual(
+          [afterStaleSearch.statusId, githubOf(afterStaleSearch)?.github.stateReason],
+          ["canceled", "missing"],
+        );
+        assert.deepStrictEqual(yield* tickets.openGitHubIssueNumbers(SOURCE), []);
+        assert.deepStrictEqual(yield* sql`SELECT number FROM ticket_github_sync_pending`, []);
+        assert.deepStrictEqual(fake.calls, []);
+        const projectId = ProjectId.make("second-project");
+        fake.projects.set(projectId, { ...shell, id: projectId });
+        yield* sync.upsertSource({ ...SOURCE, projectId, enabled: true });
+        yield* sync.syncNow({ ...SOURCE, projectId });
+        const missing = yield* tickets.resolveRef("acme/web#7");
+        assert.strictEqual(githubOf(missing)?.github.stateReason, "missing");
+        assert.deepStrictEqual(missing.linkRefs, [
+          { kind: "project", targetKey: "project-web" },
+          { kind: "project", targetKey: "second-project" },
+        ]);
+        fake.issues.set(7, { ...issue(7), updatedAt: "2026-09-01T00:00:00Z" });
+        const recovered = yield* tickets.refreshGitHubIssue({ ticketId: missing.id });
+        assert.deepStrictEqual(
+          [recovered.statusId, githubOf(recovered)?.github.stateReason],
+          ["todo", null],
+        );
+        assert.deepStrictEqual(recovered.linkRefs, missing.linkRefs);
+        assert.strictEqual(githubOf(recovered)?.github.updatedAt, "2026-09-01T00:00:00Z");
+      }),
+    ),
+  );
+
+  it.effect(
+    "an issue read and its access proof keep the same credential through an account change",
+    () =>
+      withSync([issue(7)], ({ tickets, sync, fake, sql, bootstrapAgain }) =>
+        Effect.gen(function* () {
+          yield* sync.syncNow(SOURCE);
+          yield* bootstrapAgain;
+          fake.listOmissions.add(7);
+          fake.deniedCredentials.add("initial");
+          fake.duringGet = Effect.sync(() => {
+            fake.selectedCredential = "replacement";
+          });
+          const failed = yield* sync.syncNow(SOURCE);
+          assert.isNotNull(failed.lastError);
+          assert.deepStrictEqual(fake.issueCredentialFingerprints, ["initial"]);
+          assert.deepStrictEqual(fake.probeCredentialFingerprints, ["initial"]);
+          const healthy = yield* tickets.resolveRef("acme/web#7");
+          assert.deepStrictEqual(
+            [healthy.statusId, githubOf(healthy)?.github.stateReason],
+            ["todo", null],
+          );
+          assert.deepStrictEqual(yield* tickets.openGitHubIssueNumbers(SOURCE), [7]);
+          assert.deepStrictEqual(yield* sql`SELECT number FROM ticket_github_sync_pending`, [
+            { number: 7 },
+          ]);
+          fake.duringGet = Effect.void;
+          const recovered = yield* sync.syncNow(SOURCE);
+          assert.strictEqual(recovered.lastError, null);
+          assert.deepStrictEqual(fake.issueCredentialFingerprints, ["initial", "replacement"]);
+          assert.deepStrictEqual(yield* sql`SELECT number FROM ticket_github_sync_pending`, []);
+        }),
+      ),
+  );
+
+  it.effect.each(["denied", "no-count"] as const)(
+    "a fresh issue-access proof that is %s keeps tickets open and pending",
+    (failure) =>
+      withSync([issue(7), issue(8)], ({ tickets, sync, fake, sql, bootstrapAgain }) =>
+        Effect.gen(function* () {
+          yield* sync.syncNow(SOURCE);
+          yield* bootstrapAgain;
+          fake.issues.clear();
+          if (failure === "denied")
+            fake.probeFailure = new IssueProviderError({
+              provider: SourceControlProviderKind.make("github"),
+              operation: "list",
+              reason: "unauthenticated",
+              detail: "GitHub issues access was lost.",
+            });
+          else fake.probeWithoutCount = true;
+          const failed = yield* sync.syncNow(SOURCE);
+          assert.isNotNull(failed.lastError);
+          assert.deepStrictEqual(yield* tickets.openGitHubIssueNumbers(SOURCE), [7, 8]);
+          assert.deepStrictEqual(
+            yield* sql`SELECT number FROM ticket_github_sync_pending ORDER BY number`,
+            [{ number: 7 }, { number: 8 }],
+          );
+          assert.deepStrictEqual(fake.listInputs.at(-1), {
+            cwd: "/work/web",
+            host: "github.com",
+            repository: "acme/web",
+            state: "open",
+            limit: 1,
+            includeOpenCount: true,
+          });
+          fake.probeFailure = null;
+          fake.probeWithoutCount = false;
+          const recovered = yield* sync.syncNow(SOURCE);
+          assert.strictEqual(recovered.lastError, null);
+          assert.deepStrictEqual(yield* tickets.openGitHubIssueNumbers(SOURCE), []);
+          assert.deepStrictEqual(yield* sql`SELECT number FROM ticket_github_sync_pending`, []);
+        }),
+      ),
+  );
+
+  it.effect("confirmed missing issues use at most fifty metadata reads per cycle", () =>
+    withSync(
+      Array.from({ length: 51 }, (_, index) => issue(index + 1)),
+      ({ tickets, sync, fake, sql, bootstrapAgain }) =>
+        Effect.gen(function* () {
+          yield* sync.syncNow(SOURCE);
+          yield* bootstrapAgain;
+          fake.issues.clear();
+          fake.calls.length = 0;
+          yield* sync.syncNow(SOURCE);
+          assert.strictEqual(fake.calls.length, 50);
+          assert.deepStrictEqual(yield* tickets.openGitHubIssueNumbers(SOURCE), [51]);
+          assert.deepStrictEqual(yield* sql`SELECT number FROM ticket_github_sync_pending`, [
+            { number: 51 },
+          ]);
+          fake.calls.length = 0;
+          yield* sync.syncNow(SOURCE);
+          assert.deepStrictEqual(
+            fake.calls.map(({ number }) => number),
+            [51],
+          );
+          assert.deepStrictEqual(yield* tickets.openGitHubIssueNumbers(SOURCE), []);
+        }),
+    ),
+  );
+
+  it.effect.each(["hidden", "deleted"] as const)(
+    "a missing read cannot overwrite a ticket that was %s during the request",
+    (change) =>
+      withSync([issue(7)], ({ tickets, sync, fake, sql, bootstrapAgain }) =>
+        Effect.gen(function* () {
+          yield* sync.syncNow(SOURCE);
+          const before = yield* tickets.resolveRef("acme/web#7");
+          yield* bootstrapAgain;
+          fake.issues.delete(7);
+          fake.duringGet =
+            change === "hidden"
+              ? tickets
+                  .setHidden({ ticketId: before.id, hidden: true })
+                  .pipe(Effect.asVoid, Effect.orDie)
+              : tickets.releaseGitHubRepository({ ...SOURCE, deleteCache: true });
+          yield* sync.syncNow(SOURCE);
+          if (change === "hidden") {
+            const hidden = yield* tickets.resolveRef("acme/web#7");
+            assert.isNotNull(githubOf(hidden)?.hiddenAt);
+            assert.deepStrictEqual(
+              [githubOf(hidden)?.github.state, githubOf(hidden)?.github.stateReason],
+              ["open", null],
+            );
+          } else
+            assert.strictEqual(
+              (yield* tickets.resolveRef("acme/web#7").pipe(Effect.flip))._tag,
+              "TicketNotFoundError",
+            );
+          assert.deepStrictEqual(yield* sql`SELECT number FROM ticket_github_sync_pending`, []);
+        }),
+      ),
+  );
+
+  it.effect("an identical successful refresh supersedes an in-flight missing read", () =>
+    withSync([issue(7)], ({ tickets, sync, fake, sql, bootstrapAgain }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        const before = yield* tickets.get((yield* tickets.resolveRef("acme/web#7")).id);
+        yield* bootstrapAgain;
+        fake.issues.delete(7);
+        fake.duringGet = Effect.suspend(() => {
+          fake.duringGet = Effect.void;
+          fake.issues.set(7, issue(7));
+          return tickets
+            .refreshGitHubIssue({ ticketId: before.summary.id })
+            .pipe(Effect.asVoid, Effect.orDie);
+        });
+        yield* sync.syncNow(SOURCE);
+        const fresh = yield* tickets.get(before.summary.id);
+        assert.deepStrictEqual(
+          [fresh.summary.statusId, githubOf(fresh.summary)?.github.stateReason],
+          ["todo", null],
+        );
+        assert.strictEqual(fresh.summary.revision, before.summary.revision);
+        assert.deepStrictEqual(fresh.activity, before.activity);
+        assert.deepStrictEqual(yield* sql`SELECT number FROM ticket_github_sync_pending`, [
+          { number: 7 },
+        ]);
+        yield* sync.syncNow(SOURCE);
+        assert.deepStrictEqual(yield* sql`SELECT number FROM ticket_github_sync_pending`, []);
+      }),
+    ),
+  );
+
+  it.effect("a user move supersedes a missing read and retries without discarding it", () =>
+    withSync([issue(7)], ({ tickets, sync, fake, sql, bootstrapAgain }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        const before = yield* tickets.resolveRef("acme/web#7");
+        yield* bootstrapAgain;
+        fake.issues.delete(7);
+        fake.duringGet = tickets
+          .move(
+            {
+              ticketId: before.id,
+              expectedRevision: before.revision,
+              statusId: status("in_progress"),
+              sortKey: "a0",
+            },
+            USER,
+          )
+          .pipe(Effect.asVoid, Effect.orDie);
+        yield* sync.syncNow(SOURCE);
+        const moved = yield* tickets.resolveRef("acme/web#7");
+        assert.deepStrictEqual(
+          [moved.statusId, githubOf(moved)?.github.stateReason],
+          ["in_progress", null],
+        );
+        assert.deepStrictEqual(yield* sql`SELECT number FROM ticket_github_sync_pending`, [
+          { number: 7 },
+        ]);
+        fake.duringGet = Effect.void;
+        yield* sync.syncNow(SOURCE);
+        const missing = yield* tickets.resolveRef("acme/web#7");
+        assert.deepStrictEqual(
+          [missing.statusId, githubOf(missing)?.github.stateReason],
+          ["canceled", "missing"],
+        );
+        assert.deepStrictEqual(yield* sql`SELECT number FROM ticket_github_sync_pending`, []);
+      }),
+    ),
+  );
+
+  it.effect("a manual missing refresh with lost issue access leaves the ticket unchanged", () =>
+    withSync([issue(7)], ({ tickets, sync, fake }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        const before = yield* tickets.get((yield* tickets.resolveRef("acme/web#7")).id);
+        fake.issues.delete(7);
+        fake.probeFailure = new IssueProviderError({
+          provider: SourceControlProviderKind.make("github"),
+          operation: "list",
+          reason: "unauthenticated",
+          detail: "Access lost",
+        });
+        const failed = yield* tickets
+          .refreshGitHubIssue({ ticketId: before.summary.id })
+          .pipe(Effect.flip);
+        assert.strictEqual(failed._tag, "TicketError");
+        assert.deepStrictEqual(yield* tickets.get(before.summary.id), before);
+      }),
+    ),
+  );
+
+  it.effect(
+    "a missing already-closed issue records availability without misleading state activity",
+    () =>
+      withSync([issue(7)], ({ tickets, sync, fake }) =>
+        Effect.gen(function* () {
+          yield* sync.syncNow(SOURCE);
+          const before = yield* tickets.resolveRef("acme/web#7");
+          fake.edit(7, { state: "closed", stateReason: "completed" });
+          yield* tickets.refreshGitHubIssue({ ticketId: before.id });
+          fake.issues.delete(7);
+          const missing = yield* tickets.refreshGitHubIssue({ ticketId: before.id });
+          const detail = yield* tickets.get(before.id);
+          assert.deepStrictEqual(
+            [missing.statusId, githubOf(missing)?.github.stateReason],
+            ["done", "missing"],
+          );
+          assert.deepStrictEqual(detail.activity.at(-1)?.entry, {
+            type: "synced",
+            changes: ["availability"],
+          });
+        }),
+      ),
   );
 });

@@ -111,6 +111,10 @@ Status and issue state follow each other:
   reason, such as **Done** or **Canceled**. When it reopens, the ticket moves to the open default,
   such as **Todo**.
 
+If GitHub cannot find an issue but its repository's issues remain accessible, Vetra keeps the
+ticket visible as **Missing on GitHub** in a closed status, such as **Canceled**. If the issue
+becomes accessible again, select **Refresh** to restore its current state.
+
 You can also close or reopen the issue from the ticket's **⋯** menu. To take an issue off the
 board, choose **Stop tracking** there; sync leaves it alone from then on. Set the **Visibility**
 filter on the board to **Hidden tickets** to find it again and select **Track again**. Removing a source hides its

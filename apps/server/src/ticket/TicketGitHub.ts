@@ -19,15 +19,21 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/sql/SqlClient";
 
-import { IssueProviderError, type IssueProviderApi } from "../issue/IssueProvider.ts";
+import {
+  IssueProviderError,
+  type IssueProviderApi,
+  type ProviderIssue,
+} from "../issue/IssueProvider.ts";
 import { IssueProviderRegistry } from "../issue/IssueProviderRegistry.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import { Interactive } from "@t3tools/source-control-core/server/SourceControlRateLimit";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
 import * as SourceControlRateLimit from "@t3tools/source-control-core/server/SourceControlRateLimit";
+import * as GitHubApi from "@t3tools/source-control-github/server/GitHubApi";
 
 interface GitHubTarget {
   readonly host: string;
@@ -54,6 +60,17 @@ export class TicketGitHub extends Context.Service<
         project: OrchestrationProjectShell,
       ) => Effect.Effect<A, IssueProviderError>,
     ) => Effect.Effect<A, IssueProviderError | TicketError>;
+    readonly readIssue: <A extends ProviderIssue>(
+      target: GitHubTarget & { readonly number: number },
+      call: (
+        api: IssueProviderApi,
+        cwd: string,
+        project: OrchestrationProjectShell,
+      ) => Effect.Effect<A, IssueProviderError>,
+    ) => Effect.Effect<
+      { readonly kind: "found"; readonly issue: A } | { readonly kind: "missing" },
+      IssueProviderError | TicketError
+    >;
     readonly issueLinkCandidates: (
       projectIds: ReadonlyArray<ProjectId>,
     ) => Effect.Effect<TicketIssueLinkCandidates, TicketError>;
@@ -77,6 +94,7 @@ export const describeGitHubFailure = (error: IssueProviderError | TicketError): 
 const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const registry = yield* IssueProviderRegistry;
+  const githubApi = yield* GitHubApi.GitHubApi;
   const projects = yield* ProjectService.ProjectService;
   const rateLimits = yield* SourceControlRateLimit.SourceControlRateLimit;
   const sourceControlProviders = yield* SourceControlProviderRegistry.SourceControlProviderRegistry;
@@ -176,6 +194,64 @@ const make = Effect.gen(function* () {
             ? rateLimits.recordRateLimit({ ...key, lease })
             : Effect.void,
         ),
+      );
+    });
+
+  const readIssue: TicketGitHub["Service"]["readIssue"] = (target, call) =>
+    Effect.gen(function* () {
+      const credential = yield* githubApi.credential(target.host).pipe(
+        Effect.mapError((cause) => {
+          const reason =
+            cause._tag === "GitHubCliMissingError"
+              ? "missing-tool"
+              : cause._tag === "GitHubNotSignedInError" ||
+                  cause._tag === "GitHubHostDisabledError" ||
+                  cause._tag === "GitHubApiAuthenticationError"
+                ? "unauthenticated"
+                : cause._tag === "GitHubApiRateLimitError" ||
+                    cause._tag === "SourceControlRateLimitPausedError"
+                  ? "rate-limited"
+                  : "failed";
+          return new IssueProviderError({
+            provider: SourceControlProviderKind.make("github"),
+            operation: "credential",
+            reason,
+            detail: "GitHub could not supply a credential.",
+            cause,
+          });
+        }),
+      );
+      return yield* run(target, call).pipe(
+        Effect.map((issue) => ({ kind: "found" as const, issue })),
+        Effect.catchTags({
+          IssueProviderError: (error) => {
+            if (!Predicate.isTagged(error.cause, "GitHubApiNotFoundError"))
+              return Effect.fail(error);
+            // Search alone can succeed after issue access is lost. The repository count also
+            // requires issue read permission, so prove that access after the failed read.
+            return run(target, (api, cwd) =>
+              api.listIssues({
+                cwd,
+                host: target.host,
+                repository: target.repository,
+                state: "open",
+                limit: 1,
+                includeOpenCount: true,
+              }),
+            ).pipe(
+              Effect.flatMap((batch) =>
+                batch.totalOpenCount === undefined
+                  ? Effect.fail(error)
+                  : Effect.succeed({ kind: "missing" as const }),
+              ),
+            );
+          },
+        }),
+        Effect.provideService(GitHubApi.PinnedGitHubCredential, {
+          host: target.host.trim().toLowerCase(),
+          token: credential.token,
+          credentialFingerprint: credential.fingerprint,
+        }),
       );
     });
 
@@ -356,7 +432,7 @@ const make = Effect.gen(function* () {
       return { entries: entries.flat(), errors };
     });
 
-  return TicketGitHub.of({ run, projectFor, issueLinkCandidates });
+  return TicketGitHub.of({ run, readIssue, projectFor, issueLinkCandidates });
 });
 
 export const layer = Layer.effect(TicketGitHub, make);
