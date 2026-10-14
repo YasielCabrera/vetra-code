@@ -159,7 +159,7 @@ const make = Effect.gen(function* () {
       const state = browserHost.walletState();
       if (state === null || !state.enabled) return DISABLED;
       const view = pageViewFor(state, originOf(contents.getURL()));
-      const documentId = yield* crypto.randomUUIDv4;
+      const documentId = yield* crypto.randomUUIDv4();
       track(contents, { contents, documentId, view });
       return {
         enabled: true,

@@ -624,7 +624,7 @@ const isOwnIssue = (ticket: TicketSummary, target: TicketLinkTarget) =>
 const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const crypto = yield* Crypto.Crypto;
-  const randomId = crypto.randomUUIDv4.pipe(Effect.orDie);
+  const randomId = crypto.randomUUIDv4().pipe(Effect.orDie);
   const config = yield* ServerConfig.ServerConfig;
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;

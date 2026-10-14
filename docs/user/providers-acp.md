@@ -37,13 +37,13 @@ without expanding shell expressions.
 ## Where agents run
 
 Registry agents always run on the machine that hosts your Vetra Code server. That stays true when you
-connect through `app.t3.codes`, Vetra Connect, or a relay.
+connect from another device or through a configured Vetra Connect relay.
 
-Agents install under `tools/<agent-id>/<version>/` inside T3 home. Vetra Code verifies SHA-256 when the Registry entry
+Agents install under `tools/<agent-id>/<version>/` inside Vetra home. Vetra Code verifies SHA-256 when the Registry entry
 provides one; entries without a checksum retain the Registry's HTTPS distribution guarantee.
 Registry `npx` and `uvx` packages use Vetra-owned npm prefixes and Python tool directories at the exact
 version published by the Registry. Their commands are available in a new server terminal for
-sign-in and direct use. Removing an agent's last provider instance removes T3-managed binary files
+sign-in and direct use. Removing an agent's last provider instance removes Vetra-managed binary files
 but keeps package installs. To use an existing local binary, set **Executable override** explicitly.
 
 ## Signing in

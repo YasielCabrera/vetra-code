@@ -22,7 +22,7 @@ export const writeAttachmentFile = Effect.fn("writeAttachmentFile")(function* <E
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const crypto = yield* Crypto.Crypto;
-  const partId = yield* crypto.randomUUIDv4.pipe(Effect.orDie);
+  const partId = yield* crypto.randomUUIDv4().pipe(Effect.orDie);
   const partPath = `${input.destinationPath}.${partId}.part`;
   let receivedBytes = 0;
   yield* Effect.gen(function* () {

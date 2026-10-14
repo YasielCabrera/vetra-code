@@ -117,7 +117,7 @@ const make = Effect.gen(function* () {
       ),
     );
     const { statuses } = yield* tickets.readStatuses;
-    const commandId = CommandId.make(yield* crypto.randomUUIDv4.pipe(Effect.orDie));
+    const commandId = CommandId.make(yield* crypto.randomUUIDv4().pipe(Effect.orDie));
     const threadId = ThreadId.make(commandId);
     yield* sql`
       INSERT INTO ticket_drafts (thread_id, source_thread_id, project_id, instruction, created_at)

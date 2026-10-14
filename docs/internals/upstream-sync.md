@@ -97,11 +97,13 @@ _new_ tree we also do not want, extend the lists rather than deleting by hand ev
 
 ### Own
 
-The fork owns `.github/workflows/`, `.github/actions/`, and `.github/scripts/` outright and does not
+The fork owns `CONTRIBUTING.md`, `.github/workflows/`, `.github/actions/`, and `.github/scripts/` outright and does not
 track upstream's GitHub Actions, which run on paid runners and publish to services we do not own.
 After the merge, the script resets those paths to exactly what `main` has: upstream edits and new
 workflows never land, and conflicts there resolve to ours. To adopt an upstream workflow idea, port
 it by hand into our own workflow.
+
+Contribution eligibility stays Vetra policy; upstream policy changes do not land automatically.
 
 ### Keep disabled until Vetra owns the destination
 

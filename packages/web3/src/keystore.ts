@@ -94,7 +94,7 @@ export const writeKeystore = Effect.fn("Web3Keystore.write")(function* (input: {
     warning: WEB3_KEYSTORE_WARNING,
   }).pipe(Effect.mapError(failure));
 
-  const suffix = yield* crypto.randomUUIDv4.pipe(
+  const suffix = yield* crypto.randomUUIDv4().pipe(
     Effect.map((uuid) => uuid.replace(/-/g, "")),
     Effect.mapError(failure),
   );

@@ -105,6 +105,8 @@ PRUNE_GLOBS=(
 # Upstream edits and additions never land, conflicts resolve to ours, and our
 # own files stay as they were. Port an upstream workflow idea by hand.
 FORK_OWNED_PATHS=(
+  # Contribution eligibility is Vetra policy, not inherited T3 product policy.
+  CONTRIBUTING.md
   .github/workflows
   .github/actions
   .github/scripts
@@ -215,6 +217,7 @@ RENAMES=(
   # Vetra Connect's HTTP routes. Keyed on the trailing slash so the
   # docs/internals/t3-connect.md filename, which tracks upstream, is untouched.
   't3-connect/=vetra-connect/'
+  '"t3-connect"="vetra-connect"'
   # The environment JWT's issuer and audience prefix.
   't3-env:=vetra-env:'
   # URL schemes that ride in prompts sent to providers and in persisted

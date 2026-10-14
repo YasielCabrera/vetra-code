@@ -32,6 +32,7 @@ import { DesktopWebLinkCoordinator } from "../components/desktop/DesktopWebLinkC
 import { RunningThreadKeepAlive } from "../components/desktop/RunningThreadKeepAlive";
 import { ProviderUpdateLaunchNotification } from "../components/ProviderUpdateLaunchNotification";
 import { ProviderSubscriptionUsageMonitor } from "../components/ProviderSubscriptionUsageMonitor";
+import { DesktopUpdateLaunchNotice } from "../components/sidebar/updateEverythingRun";
 import { LegacyThreadMigrationToast } from "../components/LegacyThreadMigrationToast";
 import { ThreadNotificationCoordinator } from "../components/ThreadNotificationCoordinator";
 import { ReopenClosedViewShortcut } from "../components/ReopenClosedViewShortcut";
@@ -269,6 +270,7 @@ function RootRouteView() {
             <EventRouter skipInitialBootstrapNavigation={returningFromWelcomeRef.current} />
           ) : null}
           {primaryEnvironmentAuthenticated ? <ProviderUpdateLaunchNotification /> : null}
+          {isElectron ? <DesktopUpdateLaunchNotice /> : null}
           {appShell}
           {/* Above the router: a theme draft is judged by walking the app, so the
               editor has to survive navigation away from settings. */}

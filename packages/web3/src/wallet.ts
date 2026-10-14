@@ -311,7 +311,7 @@ export const make = Effect.gen(function* () {
   const store = yield* WalletStore;
   const crypto = yield* Crypto.Crypto;
   const httpClient = yield* HttpClient.HttpClient;
-  const uuid = yield* crypto.randomUUIDv4;
+  const uuid = yield* crypto.randomUUIDv4();
 
   const stateRef = yield* SynchronizedRef.make<WalletState>({
     persisted: DEFAULT_SETTINGS,
@@ -775,7 +775,7 @@ export const make = Effect.gen(function* () {
   }) =>
     Effect.gen(function* () {
       const { guest } = input;
-      const requestId = yield* crypto.randomUUIDv4;
+      const requestId = yield* crypto.randomUUIDv4();
       const createdAt = DateTime.formatIso(yield* DateTime.now);
       const outcome = yield* Deferred.make<PendingOutcome>();
       const entry: PendingEntry = {

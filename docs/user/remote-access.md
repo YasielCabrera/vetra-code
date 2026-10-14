@@ -196,6 +196,12 @@ registered to the signed-in account. **Deregister** revokes that environment's C
 removes any managed tunnel, and frees its host space. This is an account action and does not
 need a live connection to the environment.
 
+When a configured host's link is revoked, it shows that it was removed from Vetra Connect.
+To link it again, turn on **Vetra Connect** in **Settings → Connections**, or run
+`vetra connect link` on a command-line host and restart it. A command-line host that
+released its tunnel when it last stopped may link itself again on startup; run
+`vetra connect unlink` there to keep it off.
+
 Until Vetra-owned Clerk and relay settings are present, that page stays hidden with the rest of
 Vetra Connect. Device-local connect and disconnect controls remain in **Settings** →
 **Connections**. Removing an environment there only forgets it on that device; it stays

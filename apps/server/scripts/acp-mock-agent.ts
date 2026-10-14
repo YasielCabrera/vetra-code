@@ -101,6 +101,7 @@ const failSetConfigOption = process.env.VETRA_ACP_FAIL_SET_CONFIG_OPTION === "1"
 const failSetModeConfigOption = process.env.VETRA_ACP_FAIL_SET_MODE_CONFIG_OPTION === "1";
 const exitOnSetConfigOption = process.env.VETRA_ACP_EXIT_ON_SET_CONFIG_OPTION === "1";
 const omitModelConfigOption = process.env.VETRA_ACP_OMIT_MODEL_CONFIG_OPTION === "1";
+const emitEmptyDefaultAgentOption = process.env.VETRA_ACP_EMIT_EMPTY_DEFAULT_AGENT_OPTION === "1";
 const promptResponseText = process.env.VETRA_ACP_PROMPT_RESPONSE_TEXT;
 const initialGrokReasoningEffort =
   process.env.VETRA_ACP_INITIAL_GROK_REASONING_EFFORT?.trim() || undefined;
@@ -134,6 +135,7 @@ let parameterizedModelPicker = false;
 let currentReasoning = "medium";
 let currentContext = "272k";
 let currentFast = false;
+let currentAgent = "";
 let authenticated = !requiresAuthentication;
 let promptCount = 0;
 let overlappingFirstPromptId: string | undefined;
@@ -319,6 +321,22 @@ function configOptions(): ReadonlyArray<AcpSchema.SessionConfigOption> {
   }
 
   return [
+    // Mirrors GitHub Copilot, whose default agent is the empty-valued choice.
+    ...(emitEmptyDefaultAgentOption
+      ? [
+          {
+            configId: "agent",
+            name: "Agent",
+            category: "_agent",
+            type: "select" as const,
+            currentValue: currentAgent,
+            options: [
+              { value: "", name: "Copilot" },
+              { value: "example", name: "example" },
+            ],
+          },
+        ]
+      : []),
     {
       configId: "mode",
       name: "Mode",
@@ -794,6 +812,9 @@ const program = Effect.gen(function* () {
       }
       if (request.configId === "model" && typeof request.value === "string") {
         currentModelId = request.value;
+      }
+      if (request.configId === "agent" && typeof request.value === "string") {
+        currentAgent = request.value;
       }
       if (request.configId === "reasoning" && typeof request.value === "string") {
         currentReasoning = request.value;
