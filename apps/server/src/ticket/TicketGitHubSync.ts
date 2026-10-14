@@ -10,6 +10,7 @@ import {
 } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
+import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -22,7 +23,7 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import * as SqlClient from "effect/sql/SqlClient";
 
-import type { IssueProviderError, ProviderIssueListCursor } from "../issue/IssueProvider.ts";
+import { IssueProviderError, type ProviderIssueListCursor } from "../issue/IssueProvider.ts";
 import { GitHubApiResponseError } from "@t3tools/source-control-github/server/GitHubApi";
 import { GitHubIssueReadError } from "../issue/GitHubIssueCli.ts";
 import { IssueProviderRegistry } from "../issue/IssueProviderRegistry.ts";
@@ -38,9 +39,8 @@ const MAX_PAGES = 200;
 export const MAX_UNLISTED_REFRESHES = 50;
 
 /**
- * The environment's GitHub sources and their sync. A sync imports every open issue as a
- * ticket, refreshes tracked ones, and asks GitHub about tracked open tickets that left the open
- * list to learn how they closed. A failure is kept on the source as `lastError`.
+ * The environment's GitHub sources and their shared, incremental repository sync.
+ * A failure is kept on the sources as `lastError`.
  */
 export class TicketGitHubSync extends Context.Service<
   TicketGitHubSync,
@@ -77,7 +77,11 @@ interface SourceRow {
   readonly last_synced_at: string | null;
   readonly last_error: string | null;
   readonly issue_count: number;
+  readonly sync_watermark_at: string | null;
 }
+
+const repositoryKey = (ref: Pick<TicketGitHubSourceRef, "host" | "repository">) =>
+  `${ref.host.toLowerCase()}\0${ref.repository.toLowerCase()}`;
 
 const decodeSource = Schema.decodeUnknownEffect(TicketGitHubSource);
 
@@ -88,6 +92,7 @@ const isMissingIssue = (error: IssueProviderError | TicketError) =>
 
 const isIssueReadError = Schema.is(GitHubIssueReadError);
 const isApiResponseError = Schema.is(GitHubApiResponseError);
+const isIssueProviderError = Schema.is(IssueProviderError);
 
 const isUnreadableIssue = (error: IssueProviderError) => {
   if (error.reason !== "failed") return false;
@@ -109,7 +114,14 @@ const make = Effect.gen(function* () {
 
   const changes = yield* PubSub.sliding<void>(1);
   const lock = yield* Semaphore.make(1);
-  const unlistedCursors = new Map<string, number>();
+  const flights = new Map<
+    string,
+    {
+      readonly done: Deferred.Deferred<void, TicketError>;
+      readonly manualProjects: Set<ProjectId>;
+      readonly coveredProjects: Set<ProjectId>;
+    }
+  >();
 
   const now = Effect.map(DateTime.now, DateTime.formatIso);
 
@@ -125,7 +137,8 @@ const make = Effect.gen(function* () {
     });
 
   const selectSources = sql<SourceRow>`
-    SELECT project_id, host, repository, enabled, last_synced_at, last_error, issue_count
+    SELECT project_id, host, repository, enabled, last_synced_at, last_error, issue_count,
+      sync_watermark_at
     FROM ticket_github_sources ORDER BY created_at, host, repository
   `;
 
@@ -138,7 +151,8 @@ const make = Effect.gen(function* () {
   const readSource = (ref: TicketGitHubSourceRef) =>
     Effect.gen(function* () {
       const [row] = yield* sql<SourceRow>`
-        SELECT project_id, host, repository, enabled, last_synced_at, last_error, issue_count
+        SELECT project_id, host, repository, enabled, last_synced_at, last_error, issue_count,
+          sync_watermark_at
         FROM ticket_github_sources
         WHERE project_id = ${ref.projectId} AND host = ${ref.host}
           AND repository = ${ref.repository}
@@ -158,30 +172,83 @@ const make = Effect.gen(function* () {
 
   const publish = PubSub.publish(changes, undefined);
 
-  const importIssues = (source: TicketGitHubSource) =>
-    Effect.gen(function* () {
-      const { host, repository, projectId } = source;
+  const importIssues = Effect.fn("TicketGitHubSync.importIssues")(function* (input: {
+    readonly source: TicketGitHubSource;
+    readonly sources: ReadonlyArray<TicketGitHubSource>;
+    readonly watermark: string | null;
+  }) {
+    const { source, sources, watermark } = input;
+    const { host, repository } = source;
+    const updatedSince =
+      watermark === null
+        ? undefined
+        : DateTime.makeUnsafe(watermark).pipe(
+            DateTime.subtractDuration(SYNC_INTERVAL),
+            DateTime.startOf("second"),
+            DateTime.formatIso,
+          );
+    const states: ReadonlyArray<"open" | "closed"> =
+      watermark === null ? ["open"] : ["open", "closed"];
+    const warnings: Array<string> = [];
+    let complete = true;
+    let count: number | null = null;
+    let malformed = 0;
+    const failedIssues = new Map<number, string>();
+
+    for (const state of states) {
       const listed = new Map<number, string>();
       let cursor: ProviderIssueListCursor | undefined;
-      let complete = false;
-      for (let page = 0; page < MAX_PAGES && !complete; page += 1) {
+      let scanned = false;
+      let stateMalformed = 0;
+      for (let page = 0; page < MAX_PAGES; page += 1) {
         const batch = yield* github.run(source, (api, cwd) =>
           api.listIssues({
             cwd,
             host,
             repository,
-            state: "open",
+            state,
             limit: PAGE_SIZE,
             includeBody: true,
+            ...(state === "open" && page === 0 ? { includeOpenCount: true } : {}),
+            ...(updatedSince === undefined ? {} : { updatedSince }),
             ...(cursor === undefined ? {} : { cursor }),
           }),
         );
+        if (state === "open" && page === 0) count = batch.totalOpenCount ?? null;
+        stateMalformed += batch.skippedCount ?? 0;
         const fresh = batch.issues.filter((issue) => !listed.has(issue.number));
+        const applied: Array<number> = [];
         for (const issue of fresh) {
           listed.set(issue.number, issue.updatedAt);
-          yield* tickets.upsertGitHubIssue({ projectId, host, repository, issue });
+          for (const target of sources) {
+            const written = yield* tickets
+              .upsertGitHubIssue({ projectId: target.projectId, host, repository, issue })
+              .pipe(Effect.result);
+            if (Result.isFailure(written)) {
+              const cause = written.failure.cause;
+              if (!isIssueProviderError(cause) || !isUnreadableIssue(cause))
+                return yield* written.failure;
+              failedIssues.set(
+                issue.number,
+                `${repository}#${issue.number}: ${TicketGitHub.describeGitHubFailure(cause)}`,
+              );
+            }
+          }
+          if (!failedIssues.has(issue.number)) applied.push(issue.number);
         }
-        complete = !batch.truncated || fresh.length === 0;
+        if (applied.length > 0)
+          yield* sql`
+            DELETE FROM ticket_github_sync_pending
+            WHERE host = ${host} AND repository = ${repository} AND number IN ${sql.in(applied)}
+          `;
+        if (!batch.truncated) {
+          scanned = true;
+          break;
+        }
+        if (fresh.length === 0) {
+          warnings.push(`The ${state} issue search stopped making progress. Sync will retry.`);
+          break;
+        }
         const oldest = fresh.reduce<string | null>(
           (min, issue) =>
             min === null || Date.parse(issue.updatedAt) < Date.parse(min) ? issue.updatedAt : min,
@@ -193,79 +260,203 @@ const make = Effect.gen(function* () {
             seenAt: [...listed].filter(([, at]) => at === oldest).map(([number]) => number),
           };
         }
+        if (page === MAX_PAGES - 1)
+          warnings.push(`The ${state} issue search reached the sync page limit. Sync will retry.`);
       }
-      if (!complete) return { count: listed.size, lastError: null };
-      const unlisted = (yield* tickets.openGitHubIssueNumbers(source)).filter(
-        (number) => !listed.has(number),
-      );
-      const key = `${host.toLowerCase()}/${repository.toLowerCase()}`;
-      const after = unlistedCursors.get(key) ?? 0;
-      const batch = [
-        ...unlisted.filter((number) => number > after),
-        ...unlisted.filter((number) => number <= after),
-      ].slice(0, MAX_UNLISTED_REFRESHES);
-      let skipped = 0;
-      let firstError: string | null = null;
-      for (const number of batch) {
-        const issue = yield* github
-          .run(source, (api, cwd) => api.getIssueMetadata({ cwd, host, repository, number }))
-          .pipe(
-            Effect.catchTags({
-              IssueProviderError: (error) => {
-                if (isMissingIssue(error)) return Effect.succeed(null);
-                if (!isUnreadableIssue(error)) return Effect.fail(error);
-                skipped += 1;
-                firstError ??= `${repository}#${number}: ${TicketGitHub.describeGitHubFailure(error)}`;
-                return Effect.succeed(null);
-              },
-            }),
-          );
-        if (issue !== null)
+      malformed += stateMalformed;
+      complete &&= scanned && stateMalformed === 0;
+      if (state === "open" && scanned && stateMalformed === 0 && watermark === null) {
+        count ??= listed.size;
+        const unlisted = (yield* tickets.openGitHubIssueNumbers(source)).filter(
+          (number) => !listed.has(number),
+        );
+        yield* sql.withTransaction(
+          Effect.forEach(
+            unlisted,
+            (number) => sql`
+              INSERT INTO ticket_github_sync_pending (host, repository, number)
+              VALUES (${host}, ${repository}, ${number})
+              ON CONFLICT (host, repository, number) DO NOTHING
+            `,
+            { discard: true },
+          ),
+        );
+      }
+    }
+    if (malformed > 0)
+      warnings.push(`${malformed} issue search results could not be read. Sync will retry.`);
+    complete &&= failedIssues.size === 0;
+
+    const pending = yield* sql<{ readonly number: number }>`
+      SELECT number FROM ticket_github_sync_pending
+      WHERE host = ${host} AND repository = ${repository}
+      ORDER BY last_attempt_at, number LIMIT ${MAX_UNLISTED_REFRESHES}
+    `;
+    const [latest] = yield* sql<{ readonly last_attempt_at: string | null }>`
+      SELECT MAX(last_attempt_at) AS last_attempt_at FROM ticket_github_sync_pending
+      WHERE host = ${host} AND repository = ${repository}
+    `;
+    let monotonicRetryAt = Math.max(
+      Date.parse(yield* now),
+      latest?.last_attempt_at == null ? 0 : Date.parse(latest.last_attempt_at) + 1,
+    );
+    let skipped = 0;
+    let firstError: string | null = null;
+    for (const { number } of pending) {
+      const issue = yield* github
+        .run(source, (api, cwd) => api.getIssueMetadata({ cwd, host, repository, number }))
+        .pipe(
+          Effect.catchTags({
+            IssueProviderError: (error) => {
+              if (isMissingIssue(error)) return Effect.succeed(null);
+              if (!isUnreadableIssue(error)) return Effect.fail(error);
+              skipped += 1;
+              firstError ??= `${repository}#${number}: ${TicketGitHub.describeGitHubFailure(error)}`;
+              return Effect.succeed(null);
+            },
+          }),
+        );
+      if (issue === null) {
+        yield* sql`
+          UPDATE ticket_github_sync_pending SET last_attempt_at = ${DateTime.formatIso(DateTime.makeUnsafe(monotonicRetryAt))}
+          WHERE host = ${host} AND repository = ${repository} AND number = ${number}
+        `;
+        monotonicRetryAt += 1;
+      } else {
+        for (const target of sources)
           yield* tickets.upsertGitHubIssue({
-            projectId,
+            projectId: target.projectId,
             host,
             repository,
             issue,
             readKind: "direct",
           });
-        unlistedCursors.set(key, number);
-      }
-      return {
-        count: listed.size,
-        lastError:
-          skipped > 1 ? `${firstError} (${skipped - 1} more issue reads failed.)` : firstError,
-      };
-    });
-
-  /** Re-reads the source inside the lock, so a source removed while this waited is skipped. */
-  const syncSource = (ref: TicketGitHubSourceRef) =>
-    Effect.gen(function* () {
-      const source = yield* readSource(ref).pipe(Effect.option);
-      if (Option.isNone(source)) return;
-      const outcome = yield* importIssues(source.value).pipe(Effect.result);
-      const at = yield* now;
-      const where = sql`project_id = ${ref.projectId} AND host = ${ref.host}
-        AND repository = ${ref.repository}`;
-      if (Result.isSuccess(outcome)) {
         yield* sql`
-          UPDATE ticket_github_sources
-          SET last_synced_at = ${at}, last_attempt_at = ${at}, last_error = ${outcome.success.lastError},
-            issue_count = ${outcome.success.count}
-          WHERE ${where}
+          DELETE FROM ticket_github_sync_pending
+          WHERE host = ${host} AND repository = ${repository} AND number = ${number}
         `;
-      } else {
-        const error = TicketGitHub.describeGitHubFailure(outcome.failure);
+      }
+    }
+    if (firstError !== null)
+      warnings.push(
+        skipped > 1 ? `${firstError} (${skipped - 1} more issue reads failed.)` : firstError,
+      );
+    const firstFailedIssue = failedIssues.values().next().value;
+    if (firstFailedIssue !== undefined)
+      warnings.push(
+        failedIssues.size > 1
+          ? `${firstFailedIssue} (${failedIssues.size - 1} more issue reads failed.)`
+          : firstFailedIssue,
+      );
+    return { count, complete, lastError: warnings.length === 0 ? null : warnings.join(" ") };
+  });
+
+  const syncRepository = Effect.fn("TicketGitHubSync.syncRepository")(
+    function* (ref: TicketGitHubSourceRef, flight: NonNullable<ReturnType<typeof flights.get>>) {
+      const rows = yield* sql<SourceRow>`
+      SELECT project_id, host, repository, enabled, last_synced_at, last_error, issue_count,
+        sync_watermark_at
+      FROM ticket_github_sources WHERE host = ${ref.host} AND repository = ${ref.repository}
+      ORDER BY created_at, project_id
+    `;
+      const participants = rows.filter(
+        (row) => row.enabled === 1 || flight.manualProjects.has(ProjectId.make(row.project_id)),
+      );
+      const sources = yield* Effect.forEach(participants, toSource);
+      const source =
+        sources.find((candidate) => candidate.projectId === ref.projectId) ?? sources[0];
+      if (source === undefined) return;
+      for (const target of sources) flight.coveredProjects.add(target.projectId);
+      const watermark = participants.reduce<string | null>(
+        (oldest, row) =>
+          oldest === null || row.sync_watermark_at === null
+            ? null
+            : Date.parse(row.sync_watermark_at) < Date.parse(oldest)
+              ? row.sync_watermark_at
+              : oldest,
+        participants[0]?.sync_watermark_at ?? null,
+      );
+      const startedAt = yield* now;
+      const outcome = yield* importIssues({ source, sources, watermark }).pipe(
+        Effect.catchTags({
+          SqlError: (cause) =>
+            Effect.fail(
+              new TicketError({ message: "Could not save pending GitHub issue reads.", cause }),
+            ),
+        }),
+        Effect.result,
+      );
+      const at = yield* now;
+      if (Result.isFailure(outcome))
         yield* Effect.logWarning("GitHub ticket sync failed", {
           repository: ref.repository,
-          error,
+          error: TicketGitHub.describeGitHubFailure(outcome.failure),
         });
-        yield* sql`
-          UPDATE ticket_github_sources SET last_attempt_at = ${at}, last_error = ${error}
-          WHERE ${where}
-        `;
-      }
+      yield* sql.withTransaction(
+        Effect.forEach(
+          sources,
+          (target) => {
+            const where = sql`project_id = ${target.projectId} AND host = ${target.host}
+            AND repository = ${target.repository}`;
+            if (Result.isSuccess(outcome))
+              return sql`
+              UPDATE ticket_github_sources
+              SET last_synced_at = ${at}, last_attempt_at = ${at},
+                last_error = ${outcome.success.lastError},
+                issue_count = COALESCE(${outcome.success.count}, issue_count),
+                sync_watermark_at = CASE WHEN ${outcome.success.complete ? 1 : 0} = 1
+                  THEN ${startedAt} ELSE sync_watermark_at END
+              WHERE ${where}
+            `;
+            return sql`
+            UPDATE ticket_github_sources
+            SET last_attempt_at = ${at}, last_error = ${TicketGitHub.describeGitHubFailure(outcome.failure)}
+            WHERE ${where}
+          `;
+          },
+          { discard: true },
+        ),
+      );
       yield* publish;
-    }).pipe(Effect.mapError(ticketError("Could not record the sync result.")), lock.withPermits(1));
+    },
+    Effect.provideService(Interactive, false),
+    lock.withPermits(1),
+    Effect.mapError(ticketError("Could not record the sync result.")),
+  );
+
+  const requestRepository = Effect.fn("TicketGitHubSync.requestRepository")(function* (
+    ref: TicketGitHubSourceRef,
+    manual: boolean,
+  ) {
+    const key = repositoryKey(ref);
+    yield* Effect.uninterruptibleMask((restore) =>
+      Effect.gen(function* () {
+        while (true) {
+          const existing = flights.get(key);
+          if (existing !== undefined) {
+            if (manual) existing.manualProjects.add(ref.projectId);
+            yield* restore(Deferred.await(existing.done));
+            if (!manual || existing.coveredProjects.has(ref.projectId)) return;
+            continue;
+          }
+          const flight = {
+            done: Deferred.makeUnsafe<void, TicketError>(),
+            manualProjects: new Set(manual ? [ref.projectId] : []),
+            coveredProjects: new Set<ProjectId>(),
+          };
+          flights.set(key, flight);
+          yield* restore(syncRepository(ref, flight)).pipe(
+            Effect.onExit((exit) =>
+              Effect.sync(() => flights.delete(key)).pipe(
+                Effect.andThen(Deferred.done(flight.done, exit)),
+              ),
+            ),
+          );
+          return;
+        }
+      }),
+    );
+  });
 
   const subscribeSources: TicketGitHubSync["Service"]["subscribeSources"] = () =>
     Stream.unwrap(
@@ -324,6 +515,10 @@ const make = Effect.gen(function* () {
         `;
         if (remaining?.count === 0) {
           yield* tickets.releaseGitHubRepository({ ...source, deleteCache: input.deleteCache });
+          yield* sql`
+            DELETE FROM ticket_github_sync_pending
+            WHERE host = ${source.host} AND repository = ${source.repository}
+          `;
         }
       }
       yield* publish;
@@ -339,7 +534,7 @@ const make = Effect.gen(function* () {
   const syncNow: TicketGitHubSync["Service"]["syncNow"] = (input) =>
     Effect.gen(function* () {
       yield* readSource(input);
-      yield* syncSource(input).pipe(Effect.provideService(Interactive, true));
+      yield* requestRepository(input, true);
       return yield* readSource(input);
     });
 
@@ -356,16 +551,24 @@ const make = Effect.gen(function* () {
       WHERE enabled = 1 AND (last_attempt_at IS NULL OR last_attempt_at <= ${dueBefore})
       ORDER BY created_at, host, repository
     `;
-    yield* Effect.forEach(
-      due,
-      (row) =>
-        syncSource({
-          projectId: ProjectId.make(row.project_id),
-          host: row.host,
-          repository: row.repository,
-        }),
-      { discard: true },
-    );
+    const repositories = new Map<string, TicketGitHubSourceRef>();
+    for (const row of due) {
+      const ref = {
+        projectId: ProjectId.make(row.project_id),
+        host: row.host,
+        repository: row.repository,
+      };
+      repositories.set(repositoryKey(ref), ref);
+    }
+    for (const ref of repositories.values())
+      yield* requestRepository(ref, false).pipe(
+        Effect.catchCause((cause) =>
+          Effect.logWarning("GitHub ticket sync stopped for a repository", {
+            repository: ref.repository,
+            cause,
+          }),
+        ),
+      );
   }).pipe(Effect.catchCause((cause) => Effect.logWarning("GitHub ticket sync stopped", { cause })));
 
   return TicketGitHubSync.of({

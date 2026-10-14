@@ -2025,13 +2025,24 @@ const make = Effect.gen(function* () {
           if (row.hidden_at !== null) return null;
           const ticketId = TicketId.make(row.ticket_id);
           const storedSnapshot = yield* decodeSnapshot(row.github_snapshot_json);
+          const [linked] = yield* sql<{ readonly found: number }>`
+            SELECT 1 AS found FROM ticket_links
+            WHERE ticket_id = ${ticketId} AND kind = 'project' AND target_key = ${input.projectId}
+          `;
           if (
             storedSnapshot.stateNeedsConfirmation &&
             storedSnapshot.state !== issue.state &&
             confirmedState !== issue.state
           )
             return null;
-          if (Date.parse(issue.updatedAt) < Date.parse(storedSnapshot.updatedAt)) return null;
+          if (Date.parse(issue.updatedAt) < Date.parse(storedSnapshot.updatedAt)) {
+            if (linked !== undefined) return null;
+            yield* insertLink(ticketId, projectLink, "auto", at);
+            yield* rehome(ticketId);
+            yield* sql`UPDATE tickets SET updated_at = ${at} WHERE ticket_id = ${ticketId}`;
+            yield* appendActivity(ticketId, actor, [{ type: "linked", target: projectLink }], at);
+            return ticketId;
+          }
           const stored = {
             title: row.title,
             body: row.body,
@@ -2040,10 +2051,6 @@ const make = Effect.gen(function* () {
           const next = { title: issue.title, body: issue.body ?? row.body, labels };
           const changes = issueChanges(stored, storedSnapshot, next, snapshot);
           const target = reconciledStatus(statuses, TicketStatusId.make(row.status_id), issue);
-          const [linked] = yield* sql<{ readonly found: number }>`
-            SELECT 1 AS found FROM ticket_links
-            WHERE ticket_id = ${ticketId} AND kind = 'project' AND target_key = ${input.projectId}
-          `;
           const changed =
             changes.length > 0 ||
             storedSnapshot.stateReason !== snapshot.stateReason ||

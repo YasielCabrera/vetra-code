@@ -29,10 +29,19 @@ function issues(from: number, count: number) {
 }
 
 /** One page of a GraphQL issue search, as GitHub answers it. */
-function searchPage(nodes: ReadonlyArray<unknown>, endCursor: string | null = null) {
+function searchPage(
+  nodes: ReadonlyArray<unknown>,
+  endCursor: string | null = null,
+  totalOpenCount?: number,
+) {
   return Effect.succeed(
     encodeJson({
-      data: { search: { pageInfo: { hasNextPage: endCursor !== null, endCursor }, nodes } },
+      data: {
+        search: { pageInfo: { hasNextPage: endCursor !== null, endCursor }, nodes },
+        ...(totalOpenCount === undefined
+          ? {}
+          : { openCount: { issues: { totalCount: totalOpenCount } } }),
+      },
     }),
   );
 }
@@ -158,16 +167,124 @@ layer("GitHubIssueCli.layer", (it) => {
     }),
   );
 
+  it.effect("keeps the incremental boundary on every page independently of its cursor", () =>
+    Effect.gen(function* () {
+      graphql
+        .mockReturnValueOnce(searchPage(issues(1, 100), "page-2", 973))
+        .mockReturnValueOnce(searchPage(issues(101, 20)));
+      const cli = yield* GitHubIssueCli.GitHubIssueCli;
+
+      const result = yield* cli.listIssues({
+        ...repository,
+        state: "closed",
+        limit: 120,
+        query: "updated:>=2026-01-01",
+        updatedSince: "2026-08-01T23:55:00Z",
+        cursor: { updatedBefore: "2026-08-02T00:00:00Z", seenAt: [] },
+        includeOpenCount: true,
+      });
+
+      expect(result.issues.map(({ number }) => number)).toEqual(
+        Array.from({ length: 120 }, (_, index) => index + 1),
+      );
+      expect(result).toMatchObject({ truncated: false, skippedCount: 0, totalOpenCount: 973 });
+      expect(graphql.mock.calls.map(([call]) => call.variables)).toEqual([
+        {
+          query:
+            'repo:acme/web is:issue is:closed "updated:>=2026-01-01" updated:>=2026-08-01T23:55:00Z updated:<=2026-08-02T00:00:00Z sort:updated-desc',
+          first: 100,
+          after: null,
+          withBody: false,
+          owner: "acme",
+          name: "web",
+          withOpenCount: true,
+        },
+        {
+          query:
+            'repo:acme/web is:issue is:closed "updated:>=2026-01-01" updated:>=2026-08-01T23:55:00Z updated:<=2026-08-02T00:00:00Z sort:updated-desc',
+          first: 21,
+          after: "page-2",
+          withBody: false,
+          owner: "acme",
+          name: "web",
+          withOpenCount: false,
+        },
+      ]);
+    }),
+  );
+
+  it.effect("returns the repository open count even when no issues changed", () =>
+    Effect.gen(function* () {
+      graphql.mockReturnValueOnce(searchPage([], null, 973));
+      const cli = yield* GitHubIssueCli.GitHubIssueCli;
+
+      const result = yield* cli.listIssues({
+        ...repository,
+        state: "open",
+        limit: 50,
+        updatedSince: "2026-08-02T00:00:00Z",
+        includeOpenCount: true,
+      });
+
+      expect(result).toEqual({
+        issues: [],
+        truncated: false,
+        skippedCount: 0,
+        totalOpenCount: 973,
+      });
+      expect(graphqlCall(0).variables).toMatchObject({
+        query: "repo:acme/web is:issue is:open updated:>=2026-08-02T00:00:00Z sort:updated-desc",
+        withOpenCount: true,
+        owner: "acme",
+        name: "web",
+      });
+    }),
+  );
+
+  it.effect("marks a capped search incomplete even when GitHub returns no next cursor", () =>
+    Effect.gen(function* () {
+      graphql.mockReturnValueOnce(
+        Effect.succeed(
+          encodeJson({
+            data: {
+              search: {
+                issueCount: 1_001,
+                pageInfo: { hasNextPage: false, endCursor: null },
+                nodes: [issue(1), issue(2)],
+              },
+            },
+          }),
+        ),
+      );
+      const cli = yield* GitHubIssueCli.GitHubIssueCli;
+
+      const result = yield* cli.listIssues({
+        ...repository,
+        state: "open",
+        limit: 2,
+        cursor: { updatedBefore: "2026-08-02T00:00:00Z", seenAt: [1, 2] },
+      });
+
+      expect(result.issues.map(({ number }) => number)).toEqual([1, 2]);
+      expect(result).toMatchObject({ truncated: true, skippedCount: 0 });
+    }),
+  );
+
   it.effect("drops list rows whose URL belongs to another repository", () =>
     Effect.gen(function* () {
       graphql.mockReturnValueOnce(
-        searchPage([issue(1), issue(2, "https://github.com/other/repo/issues/2")]),
+        searchPage([
+          issue(1),
+          { title: "missing number" },
+          issue(2, "https://github.com/other/repo/issues/2"),
+        ]),
       );
       const cli = yield* GitHubIssueCli.GitHubIssueCli;
 
       const result = yield* cli.listIssues({ ...repository, state: "all", limit: 10 });
 
       expect(result.issues.map(({ number }) => number)).toEqual([1]);
+      expect(result.skippedCount).toBe(2);
     }),
   );
 
@@ -507,7 +624,21 @@ layer("GitHubIssueCli.layer", (it) => {
         true,
         false,
       ]);
-      expect([withBody.issues[0]?.body, withoutBody.issues[0]?.body]).toEqual(["Why", ""]);
+      expect([withBody.issues[0]?.body, withoutBody.issues[0]?.body]).toEqual(["Why", undefined]);
+      expect(withBody.issues[0]).toEqual({
+        number: 1,
+        title: "Issue 1",
+        url: "https://github.com/acme/web/issues/1",
+        state: "open",
+        body: "Why",
+        author: null,
+        createdAt: "2026-08-01T00:00:00Z",
+        updatedAt: "2026-08-02T00:00:00Z",
+        closedAt: null,
+        labels: [],
+        assignees: [],
+        milestone: null,
+      });
     }),
   );
 });

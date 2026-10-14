@@ -32,11 +32,14 @@ function searchPage(nodes: ReadonlyArray<unknown>, endCursor: string | null = nu
 }
 
 it("skips malformed list rows while preserving the raw count", () => {
-  const decoded = decodeIssueListJson(searchPage([issue(1), { title: "missing number" }], "c2"));
+  const decoded = decodeIssueListJson(
+    searchPage([issue(1), { title: "missing number" }, issue(2, { title: " " })], "c2"),
+  );
 
   expect(Result.isSuccess(decoded)).toBe(true);
   if (!Result.isSuccess(decoded)) return;
-  expect(decoded.success.rawCount).toBe(2);
+  expect(decoded.success.rawCount).toBe(3);
+  expect(decoded.success.skippedCount).toBe(2);
   expect(decoded.success.endCursor).toBe("c2");
   expect(decoded.success.items).toHaveLength(1);
   expect(decoded.success.items[0]?.author?.login).toBe("octocat");
@@ -45,6 +48,34 @@ it("skips malformed list rows while preserving the raw count", () => {
     color: "ff0000",
     description: "A defect",
   });
+});
+
+it("preserves only fields fetched by a list read and its unfiltered open count", () => {
+  const decoded = decodeIssueListJson(
+    encodeJson({
+      data: {
+        search: {
+          pageInfo: { hasNextPage: false, endCursor: null },
+          nodes: [issue(1), issue(2, { body: "Body" })],
+        },
+        openCount: { issues: { totalCount: 973 } },
+      },
+    }),
+  );
+
+  expect(Result.isSuccess(decoded)).toBe(true);
+  if (!Result.isSuccess(decoded)) return;
+  expect(decoded.success).toMatchObject({ totalOpenCount: 973, rawCount: 2, skippedCount: 0 });
+  expect(decoded.success.items.map(({ number, body }) => [number, body])).toEqual([
+    [1, undefined],
+    [2, "Body"],
+  ]);
+  expect(decoded.success.items[0]).not.toHaveProperty("body");
+  for (const item of decoded.success.items) {
+    expect(item).not.toHaveProperty("comments");
+    expect(item).not.toHaveProperty("commentCount");
+    expect(item).not.toHaveProperty("commentsTruncated");
+  }
 });
 
 it("drops unsafe label colors rather than placing them in CSS", () => {

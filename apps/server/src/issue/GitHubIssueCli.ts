@@ -49,8 +49,10 @@ export class GitHubIssueReadError extends Schema.TaggedError<GitHubIssueReadErro
 export type GitHubIssueCliError = GitHubApi.GitHubApiError | GitHubIssueReadError;
 
 export interface GitHubIssueBatch {
-  readonly issues: ReadonlyArray<GitHubIssue>;
+  readonly issues: ReadonlyArray<ProviderIssue>;
   readonly truncated: boolean;
+  readonly skippedCount?: number;
+  readonly totalOpenCount?: number;
 }
 
 /** GitHub issue reads and writes, made through the GitHub API with the server's credential. */
@@ -66,7 +68,9 @@ export class GitHubIssueCli extends Context.Service<
       readonly query?: string;
       readonly assignee?: string;
       readonly cursor?: ProviderIssueListCursor;
+      readonly updatedSince?: string;
       readonly includeBody?: boolean;
+      readonly includeOpenCount?: boolean;
     }) => Effect.Effect<GitHubIssueBatch, GitHubIssueCliError>;
     readonly getIssueMetadata: (input: {
       readonly cwd: string;
@@ -149,6 +153,7 @@ function searchQuery(input: {
   readonly query?: string;
   readonly assignee?: string;
   readonly cursor?: ProviderIssueListCursor;
+  readonly updatedSince?: string;
 }): string {
   const query = input.query?.trim() ?? "";
   return [
@@ -157,6 +162,7 @@ function searchQuery(input: {
     ...(input.state === "all" ? [] : [`is:${input.state}`]),
     ...(query.length === 0 ? [] : [searchPhrase(query)]),
     ...(input.assignee === undefined ? [] : [assigneeQualifier(input.assignee)]),
+    ...(input.updatedSince === undefined ? [] : [`updated:>=${input.updatedSince}`]),
     // Inclusive so issues sharing the boundary instant remain reachable; the service drops the
     // numbers it has already delivered at that instant.
     ...(input.cursor === undefined ? [] : [`updated:<=${input.cursor.updatedBefore}`]),
@@ -210,8 +216,12 @@ export const make = Effect.gen(function* () {
     // That can pass GraphQL's 100-row page, so the search is read page by page.
     const wanted = usableRows + 1;
     const query = searchQuery(input);
-    const issues: GitHubIssue[] = [];
+    const [owner, name] = input.repository.split("/");
+    const issues: ProviderIssue[] = [];
     let rawCount = 0;
+    let skippedCount = 0;
+    let searchIssueCount: number | undefined;
+    let totalOpenCount: number | undefined;
     let after: string | null = null;
     do {
       const raw: string = yield* api.graphql({
@@ -223,6 +233,9 @@ export const make = Effect.gen(function* () {
           first: Math.min(SEARCH_PAGE_SIZE, wanted - rawCount),
           after,
           withBody: input.includeBody === true,
+          owner,
+          name,
+          withOpenCount: input.includeOpenCount === true && after === null,
         },
         maxResponseBytes:
           input.includeBody === true ? MAX_DETAIL_RESPONSE_BYTES : MAX_LIST_RESPONSE_BYTES,
@@ -238,13 +251,23 @@ export const make = Effect.gen(function* () {
       }
       issues.push(...decoded.success.items);
       rawCount += decoded.success.rawCount;
+      skippedCount += decoded.success.skippedCount;
+      searchIssueCount ??= decoded.success.searchIssueCount;
+      totalOpenCount ??= decoded.success.totalOpenCount;
       after = decoded.success.rawCount === 0 ? null : decoded.success.endCursor;
     } while (after !== null && rawCount < wanted);
     const valid = issues.flatMap((issue) => {
       const url = expectedIssueUrl(issue.url, input.host, input.repository, issue.number);
       return url === null ? [] : [{ ...issue, url }];
     });
-    return { issues: valid.slice(0, usableRows), truncated: rawCount > usableRows };
+    return {
+      issues: valid.slice(0, usableRows),
+      truncated:
+        rawCount > usableRows ||
+        (after === null && searchIssueCount !== undefined && rawCount < searchIssueCount),
+      skippedCount: skippedCount + issues.length - valid.length,
+      ...(totalOpenCount === undefined ? {} : { totalOpenCount }),
+    };
   });
 
   const readIssue = Effect.fn("GitHubIssueCli.readIssue")(function* (input: {

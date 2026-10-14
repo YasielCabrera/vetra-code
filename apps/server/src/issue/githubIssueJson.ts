@@ -15,6 +15,7 @@ import type {
   IssueTimelineSource,
 } from "@t3tools/contracts";
 import { decodeJsonResult } from "@t3tools/shared/schemaJson";
+import type { ProviderIssue } from "./IssueProvider.ts";
 
 const RawActor = Schema.Struct({
   login: Schema.optional(Schema.String),
@@ -114,7 +115,11 @@ const RawIssue = Schema.Struct({
 
 const RawIssueSearch = Schema.Struct({
   data: Schema.Struct({
+    openCount: Schema.optional(
+      Schema.NullOr(Schema.Struct({ issues: Schema.Struct({ totalCount: Schema.Int }) })),
+    ),
     search: Schema.Struct({
+      issueCount: Schema.optional(Schema.Int),
       pageInfo: Schema.Struct({
         hasNextPage: Schema.Boolean,
         endCursor: Schema.optional(Schema.NullOr(Schema.String)),
@@ -140,8 +145,12 @@ const ISSUE_NODE_SELECTION = `number title url state stateReason createdAt updat
  * One page of an issue search. `$query` carries the whole search string, user text included, so
  * it travels as a variable rather than in the traced document.
  */
-export const ISSUE_SEARCH_GRAPHQL_QUERY = `query($query: String!, $first: Int!, $after: String, $withBody: Boolean!) {
+export const ISSUE_SEARCH_GRAPHQL_QUERY = `query($query: String!, $first: Int!, $after: String, $withBody: Boolean!, $owner: String!, $name: String!, $withOpenCount: Boolean!) {
+  openCount: repository(owner: $owner, name: $name) @include(if: $withOpenCount) {
+    issues(states: OPEN) { totalCount }
+  }
   search(query: $query, type: ISSUE, first: $first, after: $after) {
+    issueCount
     pageInfo { hasNextPage endCursor }
     nodes { ... on Issue { ${ISSUE_NODE_SELECTION} body @include(if: $withBody) } }
   }
@@ -242,9 +251,12 @@ export interface GitHubIssue {
 }
 
 export interface GitHubIssueListBatch {
-  readonly items: ReadonlyArray<GitHubIssue>;
+  readonly items: ReadonlyArray<ProviderIssue>;
   /** Counted before malformed rows are skipped so one bad row cannot hide truncation. */
   readonly rawCount: number;
+  readonly skippedCount: number;
+  readonly searchIssueCount?: number;
+  readonly totalOpenCount?: number;
   /** Where the search's next page starts, or null on its last page. */
   readonly endCursor: string | null;
 }
@@ -446,17 +458,30 @@ export function decodeIssueListJson(
 ): Result.Result<GitHubIssueListBatch, DecodeFailure> {
   const decoded = decodeSearch(raw);
   if (!Result.isSuccess(decoded)) return Result.fail(decoded.failure);
-  const { nodes, pageInfo } = decoded.success.data.search;
-  const items: GitHubIssue[] = [];
+  const { nodes, pageInfo, issueCount } = decoded.success.data.search;
+  const items: ProviderIssue[] = [];
   for (const value of nodes) {
     const row = decodeListItem(value);
     if (!Exit.isSuccess(row)) continue;
     const issue = issueOf(row.value);
-    if (issue !== null) items.push(issue);
+    if (issue === null) continue;
+    const {
+      body,
+      comments: _comments,
+      commentCount: _count,
+      commentsTruncated: _truncated,
+      ...metadata
+    } = issue;
+    items.push({ ...metadata, ...(row.value.body === undefined ? {} : { body }) });
   }
   return Result.succeed({
     items,
     rawCount: nodes.length,
+    skippedCount: nodes.length - items.length,
+    ...(issueCount === undefined ? {} : { searchIssueCount: issueCount }),
+    ...(decoded.success.data.openCount == null
+      ? {}
+      : { totalOpenCount: decoded.success.data.openCount.issues.totalCount }),
     endCursor: pageInfo.hasNextPage ? (pageInfo.endCursor ?? null) : null,
   });
 }

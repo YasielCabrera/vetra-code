@@ -12,6 +12,7 @@ import Migration003 from "./VetraMigrations/003_TicketDrafts.ts";
 import Migration004 from "./VetraMigrations/004_TicketPlans.ts";
 import Migration005 from "./VetraMigrations/005_TicketPlanReviewStatus.ts";
 import Migration006 from "./VetraMigrations/006_TicketLinkTombstones.ts";
+import Migration008 from "./VetraMigrations/008_TicketGitHubSyncCursor.ts";
 
 const layer = it.layer(Layer.mergeAll(NodeSqliteClient.layer({ filename: ":memory:" })));
 
@@ -43,6 +44,47 @@ const readLedgers = Effect.gen(function* () {
     upstream: upstream.map((row) => `${row.migration_id}_${row.name}`),
   };
 });
+
+it.effect("gives upgraded GitHub sources a null cursor and preserves their existing outcomes", () =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* runVetraMigrations([["002_TicketGitHubSources", Migration002]]);
+    yield* sql`
+      INSERT INTO ticket_github_sources (
+        project_id, host, repository, last_synced_at, last_attempt_at, last_error, issue_count, created_at
+      ) VALUES ('project', 'github.com', 'acme/web', 'synced', 'attempted', 'warning', 7, 'created')
+    `;
+    assert.deepStrictEqual(
+      yield* runVetraMigrations([["008_TicketGitHubSyncCursor", Migration008]]),
+      ["008_TicketGitHubSyncCursor"],
+    );
+    assert.deepStrictEqual(
+      yield* sql`
+      SELECT sync_watermark_at, last_synced_at, last_attempt_at, last_error, issue_count FROM ticket_github_sources
+    `,
+      [
+        {
+          sync_watermark_at: null,
+          last_synced_at: "synced",
+          last_attempt_at: "attempted",
+          last_error: "warning",
+          issue_count: 7,
+        },
+      ],
+    );
+    yield* sql`UPDATE ticket_github_sources SET sync_watermark_at = 'new cursor'`;
+    yield* sql`INSERT INTO ticket_github_sync_pending (host, repository, number) VALUES ('GitHub.COM', 'ACME/WEB', 7)`;
+    yield* sql`INSERT INTO ticket_github_sync_pending (host, repository, number) VALUES ('github.com', 'acme/web', 7) ON CONFLICT DO NOTHING`;
+    assert.deepStrictEqual(
+      yield* runVetraMigrations([["008_TicketGitHubSyncCursor", Migration008]]),
+      [],
+    );
+    assert.deepStrictEqual(yield* sql`SELECT sync_watermark_at FROM ticket_github_sources`, [
+      { sync_watermark_at: "new cursor" },
+    ]);
+    assert.strictEqual(yield* countRowsIn("ticket_github_sync_pending"), 1);
+  }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
+);
 
 layer("runVetraMigrations", (it) => {
   it.effect("applies each migration once in its own ledger and never writes upstream's", () =>
@@ -127,6 +169,7 @@ it.effect("defaults existing active and archived plans to Draft and preserves da
       "005_TicketPlanReviewStatus",
       "006_TicketLinkTombstones",
       "007_ProjectTicketNumbers",
+      "008_TicketGitHubSyncCursor",
     ]);
     const migratedPlans = yield* sql`
       SELECT plan_id, ticket_id, number, title, body, status, revision,
@@ -157,6 +200,7 @@ it.effect("defaults existing active and archived plans to Draft and preserves da
         "005_TicketPlanReviewStatus",
         "006_TicketLinkTombstones",
         "007_ProjectTicketNumbers",
+        "008_TicketGitHubSyncCursor",
       ],
       upstream: ["1_OrchestrationEvents"],
     });
@@ -234,7 +278,10 @@ it.effect("numbers existing tickets in their earliest project and keeps every ro
     );
     const before = yield* readChildren;
 
-    assert.deepStrictEqual(yield* runVetraMigrations(), ["007_ProjectTicketNumbers"]);
+    assert.deepStrictEqual(yield* runVetraMigrations(), [
+      "007_ProjectTicketNumbers",
+      "008_TicketGitHubSyncCursor",
+    ]);
 
     assert.deepStrictEqual(
       yield* sql`SELECT ticket_id, seq, number, number_scope FROM tickets ORDER BY seq`,

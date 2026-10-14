@@ -13,6 +13,7 @@ import {
   IssueProviderError,
   type IssueProviderApi,
   type IssueProviderFailureReason,
+  type ProviderIssue,
 } from "./IssueProvider.ts";
 
 const REPOSITORY_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/u;
@@ -82,6 +83,13 @@ function withAvatar(actor: IssueActor | null, host: string): IssueActor | null {
 }
 
 /** Issue reads select actors' logins, not their avatars, so fill those at the adapter edge. */
+function issueAvatars(issue: ProviderIssue, host: string) {
+  return {
+    author: withAvatar(issue.author, host),
+    assignees: issue.assignees.map((assignee) => withAvatar(assignee, host) ?? assignee),
+  };
+}
+
 function withAvatars(issue: GitHubIssue, host: string): GitHubIssue {
   const commentWithAvatar = (comment: IssueComment): IssueComment => ({
     ...comment,
@@ -89,8 +97,7 @@ function withAvatars(issue: GitHubIssue, host: string): GitHubIssue {
   });
   return {
     ...issue,
-    author: withAvatar(issue.author, host),
-    assignees: issue.assignees.map((assignee) => withAvatar(assignee, host) ?? assignee),
+    ...issueAvatars(issue, host),
     comments: issue.comments.map(commentWithAvatar),
   };
 }
@@ -123,19 +130,15 @@ export const make = Effect.map(GitHubIssueCli.GitHubIssueCli, (github): IssuePro
   },
   listIssues: (input) =>
     github.listIssues(input).pipe(
-      Effect.map(({ issues, truncated }) => ({
-        issues: issues.map((issue) => withAvatars(issue, input.host)),
-        truncated,
+      Effect.map(({ issues, ...batch }) => ({
+        ...batch,
+        issues: issues.map((issue) => ({ ...issue, ...issueAvatars(issue, input.host) })),
       })),
       Effect.mapError(providerError("list")),
     ),
   getIssueMetadata: (input) =>
     github.getIssueMetadata(input).pipe(
-      Effect.map((issue) => ({
-        ...issue,
-        author: withAvatar(issue.author, input.host),
-        assignees: issue.assignees.map((assignee) => withAvatar(assignee, input.host) ?? assignee),
-      })),
+      Effect.map((issue) => ({ ...issue, ...issueAvatars(issue, input.host) })),
       Effect.mapError(providerError("metadata")),
     ),
   getIssue: (input) =>

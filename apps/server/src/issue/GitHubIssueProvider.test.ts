@@ -9,6 +9,7 @@ import * as SourceControlRateLimit from "@t3tools/source-control-core/server/Sou
 import * as GitHubIssueCli from "./GitHubIssueCli.ts";
 import { make } from "./GitHubIssueProvider.ts";
 import type { GitHubIssue } from "./githubIssueJson.ts";
+import type { ProviderIssue } from "./IssueProvider.ts";
 
 function issue(): GitHubIssue {
   return {
@@ -90,6 +91,66 @@ it.effect("adds GitHub avatar URLs to issue actors while retaining generic fallb
           }),
         listAssigneeCandidates: () => Effect.succeed({ candidates: [], truncated: false }),
         setAssignees: () => Effect.void,
+      }),
+    ),
+  ),
+);
+
+it.effect("preserves incremental batch metadata and fields omitted by lighter issue reads", () =>
+  Effect.gen(function* () {
+    const provider = yield* make;
+    const result = yield* provider.listIssues({
+      cwd: "/work/acme-web",
+      host: "github.com",
+      repository: "acme/web",
+      state: "open",
+      limit: 20,
+      updatedSince: "2026-08-01T00:00:00Z",
+      includeOpenCount: true,
+    });
+
+    expect(result).toEqual({
+      issues: [
+        {
+          number: 7,
+          title: "Login fails",
+          url: "https://github.com/acme/web/issues/7",
+          author: {
+            login: "octocat",
+            name: "The Octocat",
+            avatarUrl: "https://github.com/octocat.png?size=80",
+          },
+          state: "open",
+          createdAt: "2026-08-01T00:00:00Z",
+          updatedAt: "2026-08-02T00:00:00Z",
+          closedAt: null,
+          labels: [],
+          assignees: [{ login: "dependabot[bot]", name: null, avatarUrl: null }],
+          milestone: null,
+        },
+      ],
+      truncated: false,
+      totalOpenCount: 973,
+      skippedCount: 2,
+    });
+  }).pipe(
+    Effect.provide(
+      Layer.mock(GitHubIssueCli.GitHubIssueCli)({
+        listIssues: () => {
+          const {
+            body: _body,
+            comments: _comments,
+            commentCount: _count,
+            commentsTruncated: _truncated,
+            ...metadata
+          } = issue();
+          return Effect.succeed({
+            issues: [metadata satisfies ProviderIssue],
+            truncated: false,
+            totalOpenCount: 973,
+            skippedCount: 2,
+          });
+        },
       }),
     ),
   ),

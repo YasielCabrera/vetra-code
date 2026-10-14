@@ -61,6 +61,8 @@ export interface ProviderIssueDetail extends ProviderIssue {
 export interface ProviderIssueBatch {
   readonly issues: ReadonlyArray<ProviderIssue>;
   readonly truncated: boolean;
+  readonly skippedCount?: number;
+  readonly totalOpenCount?: number;
 }
 
 /** The inclusive update boundary and issue numbers already delivered at that exact instant. */
@@ -89,8 +91,12 @@ export interface IssueProviderApi {
     /** One `assignee:` narrowing, applied by the host. See `IssueAssigneeFilter`. */
     readonly assignee?: string;
     readonly cursor?: ProviderIssueListCursor;
+    /** Inclusive update boundary, kept independently of the pagination cursor. */
+    readonly updatedSince?: string;
     /** Also read each issue's body, as ticket sync does. Keep pages small when set. */
     readonly includeBody?: boolean;
+    /** Read the repository's unfiltered open count with the first search page. */
+    readonly includeOpenCount?: boolean;
   }) => Effect.Effect<ProviderIssueBatch, IssueProviderError>;
   readonly getIssueMetadata: (input: {
     readonly cwd: string;

@@ -18,6 +18,7 @@ import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
+import * as SqlClient from "effect/sql/SqlClient";
 
 import * as GitHubIssueCli from "../issue/GitHubIssueCli.ts";
 import * as GitHubIssueProvider from "../issue/GitHubIssueProvider.ts";
@@ -103,6 +104,8 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     setStateCalls: [] as Array<{ readonly number: number; readonly change: IssueStateChange }>,
     commentCalls: [] as Array<{ readonly number: number; readonly body: string }>,
     listCalls: 0,
+    listedNumbers: [] as number[],
+    listOmissions: new Set<number>(),
     beforeRead: Effect.void as Effect.Effect<void, IssueProviderError>,
     listInputs: [] as Array<Parameters<IssueProviderApi["listIssues"]>[0]>,
     listFailures: new Map<string, IssueProviderError>(),
@@ -141,6 +144,10 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     listAllGate: null as Deferred.Deferred<void> | null,
     listAllStarted: null as Queue.Queue<void> | null,
     listFailure: null as IssueProviderError | null,
+    closedListFailure: null as IssueProviderError | null,
+    listTruncated: false,
+    listSkippedCount: 0,
+    duringList: Effect.void as Effect.Effect<void, TicketError>,
     getFailure: null as IssueProviderError | null,
     getFailures: new Map<number, IssueProviderError>(),
     setStateFailure: null as IssueProviderError | null,
@@ -158,6 +165,7 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
     url: `https://github.com/acme/web/issues/${issue.number}`,
     author: { login: "octocat", name: null, avatarUrl: null },
     state: issue.state,
+    ...(issue.stateReason === null ? {} : { stateReason: issue.stateReason }),
     createdAt: "2026-08-01T00:00:00Z",
     updatedAt: issue.updatedAt,
     closedAt: null,
@@ -200,16 +208,45 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
           yield* Deferred.await(gate);
         }
         if (fake.listFailure !== null) return yield* fake.listFailure;
+        if (input.state === "closed" && fake.closedListFailure !== null)
+          return yield* fake.closedListFailure;
         const failure = fake.listFailures.get(input.repository);
         if (failure !== undefined) return yield* failure;
+        const found = (fake.staleList ?? [...issues.values()])
+          .filter((issue) => issue.state === input.state)
+          .filter(
+            (issue) =>
+              !fake.listOmissions.has(issue.number) &&
+              (input.updatedSince === undefined ||
+                Date.parse(issue.updatedAt) >= Date.parse(input.updatedSince)),
+          )
+          .filter(
+            (issue) =>
+              input.cursor === undefined ||
+              Date.parse(issue.updatedAt) <= Date.parse(input.cursor.updatedBefore),
+          )
+          .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt) || a.number - b.number);
+        const limit = input.limit + (input.cursor?.seenAt.length ?? 0);
+        const page = found.slice(0, limit);
+        fake.listedNumbers.push(...page.map((issue) => issue.number));
+        yield* fake.duringList.pipe(Effect.orDie);
         return {
-          issues: (
-            fake.staleList ?? [...issues.values()].filter((issue) => issue.state === input.state)
-          ).map((issue) => ({
-            ...listed(issue),
-            url: `https://${input.host}/${input.repository}/issues/${issue.number}`,
-          })),
-          truncated: false,
+          issues: page.map((issue) => {
+            const { body: _body, ...metadata } = listed(issue);
+            return {
+              ...metadata,
+              ...(input.includeBody ? { body: issue.body } : {}),
+              url: `https://${input.host}/${input.repository}/issues/${issue.number}`,
+            };
+          }),
+          truncated: fake.listTruncated || found.length > limit,
+          skippedCount: fake.listSkippedCount,
+          ...(input.includeOpenCount
+            ? {
+                totalOpenCount: [...issues.values()].filter((issue) => issue.state === "open")
+                  .length,
+              }
+            : {}),
         };
       }),
     getIssueMetadata: (input) =>
@@ -319,6 +356,9 @@ const withSync = <A, E>(
     readonly quota: GitHubQuota.GitHubQuota["Service"];
     readonly rateLimits: SourceControlRateLimit.SourceControlRateLimit["Service"];
     readonly fake: ReturnType<typeof makeFakeGitHub>["fake"];
+    readonly sql: SqlClient.SqlClient;
+    readonly bootstrapAgain: Effect.Effect<void>;
+    readonly restartSync: Effect.Effect<TicketGitHubSync.TicketGitHubSync["Service"]>;
   }) => Effect.Effect<A, E, never>,
 ) => {
   const { fake, api } = makeFakeGitHub(initial);
@@ -410,11 +450,29 @@ const withSync = <A, E>(
     yield* TestClock.setTime(Date.parse("2026-09-01T00:00:00Z"));
     const tickets = yield* TicketService.TicketService;
     const sync = yield* TicketGitHubSync.TicketGitHubSync;
+    const sql = yield* SqlClient.SqlClient;
+    const restartLayer = TicketGitHubSync.layer.pipe(
+      Layer.provide(
+        Layer.mergeAll(
+          Layer.succeed(SqlClient.SqlClient, sql),
+          Layer.succeed(TicketService.TicketService, tickets),
+          Layer.succeed(TicketGitHub.TicketGitHub, yield* TicketGitHub.TicketGitHub),
+          Layer.succeed(IssueProviderRegistry, yield* IssueProviderRegistry),
+          Layer.succeed(ProjectService.ProjectService, yield* ProjectService.ProjectService),
+        ),
+      ),
+    );
     yield* sync.upsertSource({ ...SOURCE, enabled: true });
     return yield* body({
       tickets,
       sync,
       fake,
+      sql,
+      bootstrapAgain: sql`UPDATE ticket_github_sources SET sync_watermark_at = NULL`.pipe(
+        Effect.asVoid,
+        Effect.orDie,
+      ),
+      restartSync: TicketGitHubSync.TicketGitHubSync.pipe(Effect.provide(restartLayer)),
       quota: yield* GitHubQuota.GitHubQuota,
       rateLimits: yield* SourceControlRateLimit.SourceControlRateLimit,
     });
@@ -424,6 +482,330 @@ const withSync = <A, E>(
 const githubOf = (ticket: TicketSummary) => (ticket.kind === "github" ? ticket : null);
 
 describe("TicketGitHubSync", () => {
+  it.effect("does not reread unchanged issues after the first repository sync", () =>
+    withSync([issue(7), issue(8)], ({ sync, fake, tickets }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        fake.listedNumbers.length = 0;
+        yield* TestClock.adjust("10 minutes");
+        const second = yield* sync.syncNow(SOURCE);
+        assert.deepStrictEqual(fake.listedNumbers, []);
+        assert.strictEqual(second.issueCount, 2);
+        assert.strictEqual((yield* tickets.resolveRef("acme/web#7")).revision, 1);
+      }),
+    ),
+  );
+
+  it.effect("an unchanged large repository uses two empty delta searches", () =>
+    withSync(
+      Array.from({ length: 120 }, (_, index) => issue(index + 1)),
+      ({ sync, fake }) =>
+        Effect.gen(function* () {
+          yield* sync.syncNow(SOURCE);
+          assert.strictEqual(fake.listCalls, 3);
+          fake.listInputs.length = 0;
+          fake.listedNumbers.length = 0;
+          const second = yield* sync.syncNow(SOURCE);
+          assert.deepStrictEqual(
+            fake.listInputs.map(({ state }) => state),
+            ["open", "closed"],
+          );
+          assert.deepStrictEqual(fake.listedNumbers, []);
+          assert.deepStrictEqual(fake.calls, []);
+          assert.strictEqual(second.issueCount, 120);
+        }),
+    ),
+  );
+
+  it.effect("shares a repository read cycle across projects", () =>
+    withSync([issue(7)], ({ sync, fake, tickets }) =>
+      Effect.gen(function* () {
+        const projectId = ProjectId.make("second-project");
+        fake.projects.set(projectId, { ...shell, id: projectId, workspaceRoot: "/work/second" });
+        yield* sync.upsertSource({ ...SOURCE, projectId, enabled: true });
+        yield* sync.syncDue;
+        assert.strictEqual(fake.listCalls, 1);
+        assert.deepStrictEqual((yield* tickets.resolveRef("acme/web#7")).linkRefs, [
+          { kind: "project", targetKey: "project-web" },
+          { kind: "project", targetKey: "second-project" },
+        ]);
+      }),
+    ),
+  );
+
+  it.effect("bootstraps a new source without replacing a newer cached issue", () =>
+    withSync([issue(7)], ({ sync, fake, tickets }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        const ticket = yield* tickets.resolveRef("acme/web#7");
+        fake.edit(7, { title: "New detail", body: "New body", updatedAt: "2026-09-01T00:00:00Z" });
+        yield* tickets.refreshGitHubIssue({ ticketId: ticket.id });
+        fake.edit(7, {
+          title: "Old search row",
+          body: "Old body",
+          updatedAt: "2026-08-02T00:00:00Z",
+        });
+        const projectId = ProjectId.make("second-project");
+        fake.projects.set(projectId, { ...shell, id: projectId });
+        yield* sync.upsertSource({ ...SOURCE, projectId, enabled: true });
+        yield* sync.syncNow({ ...SOURCE, projectId });
+        const linked = yield* tickets.get(ticket.id);
+        assert.deepStrictEqual(
+          [linked.summary.title, linked.body, linked.summary.linkRefs],
+          [
+            "New detail",
+            "New body",
+            [
+              { kind: "project", targetKey: "project-web" },
+              { kind: "project", targetKey: "second-project" },
+            ],
+          ],
+        );
+      }),
+    ),
+  );
+
+  it.effect("a valid incremental result clears a pending unreadable metadata retry", () =>
+    withSync([issue(7)], ({ sync, fake, tickets, bootstrapAgain }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        yield* bootstrapAgain;
+        fake.listOmissions.add(7);
+        fake.getFailures.set(
+          7,
+          new IssueProviderError({
+            provider: SourceControlProviderKind.make("github"),
+            operation: "metadata",
+            reason: "failed",
+            detail: "Unreadable issue",
+            cause: new GitHubIssueCli.GitHubIssueReadError({
+              cwd: shell.workspaceRoot,
+              operation: "getIssueMetadata",
+              detail: "Bad body",
+            }),
+          }),
+        );
+        const partial = yield* sync.syncNow(SOURCE);
+        assert.strictEqual(partial.lastError, "acme/web#7: Unreadable issue");
+        fake.listOmissions.clear();
+        fake.edit(7, {
+          state: "closed",
+          stateReason: "completed",
+          updatedAt: "2026-09-01T00:00:00Z",
+        });
+        fake.calls.length = 0;
+        const recovered = yield* sync.syncNow(SOURCE);
+        assert.strictEqual(recovered.lastError, null);
+        assert.deepStrictEqual(fake.calls, []);
+        assert.strictEqual((yield* tickets.resolveRef("acme/web#7")).statusId, "done");
+      }),
+    ),
+  );
+
+  it.effect("shares concurrent manual syncs and keeps repository hosts independent", () =>
+    withSync([issue(7)], ({ sync, fake }) =>
+      Effect.gen(function* () {
+        const projectId = ProjectId.make("second-project");
+        fake.projects.set(projectId, { ...shell, id: projectId });
+        yield* sync.upsertSource({ ...SOURCE, projectId, repository: "ACME/WEB", enabled: true });
+        fake.listGate = yield* Deferred.make<void>();
+        fake.listStarted = yield* Deferred.make<void>();
+        const gate = fake.listGate;
+        const first = yield* sync.syncNow(SOURCE).pipe(Effect.forkChild);
+        yield* Deferred.await(fake.listStarted);
+        const second = yield* sync
+          .syncNow({ ...SOURCE, projectId, repository: "ACME/WEB" })
+          .pipe(Effect.forkChild);
+        yield* Effect.yieldNow;
+        yield* Deferred.succeed(gate, undefined);
+        const sources = yield* Effect.all([Fiber.join(first), Fiber.join(second)]);
+        assert.strictEqual(fake.listCalls, 1);
+        assert.deepStrictEqual(
+          sources.map((source) => source.lastError),
+          [null, null],
+        );
+        yield* sync.upsertSource({ ...SOURCE, host: "github.acme.com", enabled: true });
+        yield* sync.syncDue;
+        assert.strictEqual(fake.listCalls, 2);
+      }),
+    ),
+  );
+
+  it.effect("a disabled source joining a running sync gets its bootstrap before returning", () =>
+    withSync([issue(7)], ({ sync, fake, tickets }) =>
+      Effect.gen(function* () {
+        const projectId = ProjectId.make("disabled-project");
+        fake.projects.set(projectId, { ...shell, id: projectId });
+        yield* sync.upsertSource({ ...SOURCE, projectId, enabled: false });
+        fake.listGate = yield* Deferred.make<void>();
+        fake.listStarted = yield* Deferred.make<void>();
+        const gate = fake.listGate;
+        const first = yield* sync.syncNow(SOURCE).pipe(Effect.forkChild);
+        yield* Deferred.await(fake.listStarted);
+        const joined = yield* sync.syncNow({ ...SOURCE, projectId }).pipe(Effect.forkChild);
+        yield* Effect.yieldNow;
+        yield* Deferred.succeed(gate, undefined);
+        yield* Fiber.join(first);
+        const disabled = yield* Fiber.join(joined);
+        assert.deepStrictEqual(
+          [disabled.enabled, disabled.lastError, fake.listCalls],
+          [false, null, 2],
+        );
+        assert.deepStrictEqual((yield* tickets.resolveRef("acme/web#7")).linkRefs, [
+          { kind: "project", targetKey: "disabled-project" },
+          { kind: "project", targetKey: "project-web" },
+        ]);
+      }),
+    ),
+  );
+
+  it.effect("a repository failure does not stop another repository's due sync", () =>
+    withSync([issue(7)], ({ sync, fake, tickets }) =>
+      Effect.gen(function* () {
+        yield* TestClock.adjust("1 minute");
+        yield* sync.upsertSource({ ...SOURCE, repository: "acme/other", enabled: true });
+        fake.listFailures.set(
+          SOURCE.repository,
+          new IssueProviderError({
+            provider: SourceControlProviderKind.make("github"),
+            operation: "list",
+            reason: "failed",
+            detail: "Repository unavailable",
+          }),
+        );
+        yield* sync.syncDue;
+        assert.strictEqual((yield* tickets.resolveRef("acme/other#7")).title, "Issue 7");
+        const sources = (yield* sync.subscribeSources().pipe(Stream.runHead)).pipe(
+          Option.getOrThrow,
+        );
+        assert.deepStrictEqual(
+          sources.sources.map(({ repository, lastError }) => [repository, lastError]),
+          [
+            ["acme/web", "Repository unavailable"],
+            ["acme/other", null],
+          ],
+        );
+      }),
+    ),
+  );
+
+  it.effect("uses the scan start watermark so an update during a long read is replayed", () =>
+    withSync([issue(7)], ({ sync, fake, tickets, sql }) =>
+      Effect.gen(function* () {
+        fake.duringList = Effect.sync(() =>
+          fake.edit(7, {
+            title: "Changed during scan",
+            updatedAt: "2026-09-01T00:02:00Z",
+          }),
+        ).pipe(Effect.andThen(TestClock.adjust("20 minutes")));
+        yield* sync.syncNow(SOURCE);
+        const [coverage] = yield* sql<{
+          readonly sync_watermark_at: string;
+        }>`SELECT sync_watermark_at FROM ticket_github_sources`;
+        assert.strictEqual(coverage?.sync_watermark_at, "2026-09-01T00:00:00.000Z");
+        fake.duringList = Effect.void;
+        yield* sync.syncNow(SOURCE);
+        assert.strictEqual((yield* tickets.resolveRef("acme/web#7")).title, "Changed during scan");
+      }),
+    ),
+  );
+
+  it.effect("replays a failed closed search after restarting the sync service", () =>
+    withSync([issue(7), issue(8)], ({ sync, fake, tickets, sql, restartSync }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        yield* TestClock.adjust("20 minutes");
+        fake.edit(7, { title: "Changed", updatedAt: "2026-09-01T00:15:00Z" });
+        fake.edit(8, {
+          state: "closed",
+          stateReason: "completed",
+          updatedAt: "2026-09-01T00:12:00Z",
+        });
+        fake.closedListFailure = new IssueProviderError({
+          provider: SourceControlProviderKind.make("github"),
+          operation: "list",
+          reason: "failed",
+          detail: "Offline",
+        });
+        const failed = yield* sync.syncNow(SOURCE);
+        assert.strictEqual(failed.lastError, "Offline");
+        const [coverage] = yield* sql<{
+          readonly sync_watermark_at: string;
+        }>`SELECT sync_watermark_at FROM ticket_github_sources`;
+        assert.strictEqual(coverage?.sync_watermark_at, "2026-09-01T00:00:00.000Z");
+        fake.closedListFailure = null;
+        yield* TestClock.adjust("20 minutes");
+        const restarted = yield* restartSync;
+        yield* restarted.syncNow(SOURCE);
+        assert.strictEqual((yield* tickets.resolveRef("acme/web#7")).title, "Changed");
+        assert.strictEqual((yield* tickets.resolveRef("acme/web#8")).statusId, "done");
+      }),
+    ),
+  );
+
+  it.effect("queries both states inclusively across the overlap and updates their bodies", () =>
+    withSync([issue(7), issue(8)], ({ sync, fake, tickets }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        yield* TestClock.adjust("20 minutes");
+        yield* sync.syncNow(SOURCE);
+        fake.listInputs.length = 0;
+        fake.edit(7, {
+          state: "closed",
+          stateReason: "not_planned",
+          body: "Closed body",
+          updatedAt: "2026-09-01T00:10:00Z",
+        });
+        fake.edit(8, { body: "Updated body", updatedAt: "2026-09-01T00:10:00Z" });
+        yield* TestClock.adjust("10 minutes");
+        const source = yield* sync.syncNow(SOURCE);
+        assert.deepStrictEqual(
+          fake.listInputs.map(({ state, updatedSince }) => [state, updatedSince]),
+          [
+            ["open", "2026-09-01T00:10:00.000Z"],
+            ["closed", "2026-09-01T00:10:00.000Z"],
+          ],
+        );
+        const closed = yield* tickets.get((yield* tickets.resolveRef("acme/web#7")).id);
+        const open = yield* tickets.get((yield* tickets.resolveRef("acme/web#8")).id);
+        assert.deepStrictEqual(
+          [closed.summary.statusId, closed.body, open.body, source.issueCount, fake.calls.length],
+          ["canceled", "Closed body", "Updated body", 1, 0],
+        );
+      }),
+    ),
+  );
+
+  it.effect("keeps incomplete and malformed searches retryable while applying valid updates", () =>
+    withSync([issue(7), issue(8)], ({ sync, fake, tickets, sql }) =>
+      Effect.gen(function* () {
+        yield* sync.syncNow(SOURCE);
+        yield* TestClock.adjust("20 minutes");
+        fake.edit(7, { title: "Valid change", updatedAt: "2026-09-01T00:15:00Z" });
+        fake.edit(8, {
+          state: "closed",
+          stateReason: "completed",
+          updatedAt: "2026-09-01T00:15:00Z",
+        });
+        for (const kind of ["truncated", "skipped"] as const) {
+          fake.listTruncated = kind === "truncated";
+          fake.listSkippedCount = kind === "skipped" ? 1 : 0;
+          const source = yield* sync.syncNow(SOURCE);
+          assert.isNotNull(source.lastError);
+          const [coverage] = yield* sql<{
+            readonly sync_watermark_at: string;
+          }>`SELECT sync_watermark_at FROM ticket_github_sources`;
+          assert.strictEqual(coverage?.sync_watermark_at, "2026-09-01T00:00:00.000Z");
+          assert.strictEqual((yield* tickets.resolveRef("acme/web#7")).title, "Valid change");
+          assert.strictEqual((yield* tickets.resolveRef("acme/web#8")).statusId, "done");
+        }
+        fake.listSkippedCount = 0;
+        const recovered = yield* sync.syncNow(SOURCE);
+        assert.strictEqual(recovered.lastError, null);
+      }),
+    ),
+  );
+
   it.effect("requires a source-control grant only when a ticket operation writes to GitHub", () =>
     withSync([issue(7)], ({ tickets, sync, fake }) =>
       Effect.gen(function* () {
@@ -513,75 +895,83 @@ describe("TicketGitHubSync", () => {
     ),
   );
 
-  it.effect("interactive ticket reads spend the reserve and bypass a background budget pause", () =>
-    withSync([issue(7)], ({ tickets, sync, fake, quota, rateLimits }) =>
-      Effect.gen(function* () {
-        const key = {
-          provider: SourceControlProviderKind.make("github"),
-          host: SOURCE.host,
-        } as const;
-        // Just under the tenth of the quota a background read leaves for interactive ones.
-        yield* quota.observe(SOURCE.host, {
-          "x-ratelimit-resource": "graphql",
-          "x-ratelimit-limit": "1000",
-          "x-ratelimit-remaining": "99",
-          "x-ratelimit-reset": String(Date.parse("2026-09-01T01:00:00.000Z") / 1_000),
-        });
-        fake.beforeRead = Effect.gen(function* () {
-          const allowReserve = yield* SourceControlRateLimit.Interactive;
-          yield* quota.admit(SOURCE.host, "graphql", { allowReserve });
-        }).pipe(
-          Effect.mapError(
-            (cause) =>
-              new IssueProviderError({
-                provider: SourceControlProviderKind.make("github"),
-                operation: "read",
-                reason: "rate-limited",
-                detail: cause.detail,
-                cause,
-              }),
-          ),
-        );
-        yield* sync.syncDue;
-        assert.strictEqual(fake.listCalls, 0);
-        assert.strictEqual(
-          (yield* rateLimits.check(key).pipe(Effect.flip))._tag,
-          "SourceControlRateLimitPausedError",
-        );
-        const synced = yield* sync.syncNow(SOURCE);
-        assert.strictEqual(synced.lastError, null);
-        const ticket = yield* tickets.resolveRef("acme/web#7");
-        yield* tickets.refreshGitHubIssue({ ticketId: ticket.id });
-        yield* tickets.githubIssueDetail({ ticketId: ticket.id });
-        const candidates = yield* tickets.issueLinkCandidates({ ticketId: ticket.id });
-        assert.strictEqual(candidates.entries[0]?.number, 7);
-        assert.deepStrictEqual(candidates.errors, []);
-        yield* tickets.githubIssueSetAssignees({
-          ticketId: ticket.id,
-          assignees: ["alice"],
-          assigned: true,
-        });
-        yield* tickets.postUserComment({ ticketId: ticket.id, body: "Interactive comment" });
-        yield* tickets.move(
-          {
+  it.effect(
+    "bulk sync preserves reserve while individual ticket reads bypass a background pause",
+    () =>
+      withSync([issue(7)], ({ tickets, sync, fake, quota, rateLimits }) =>
+        Effect.gen(function* () {
+          const key = {
+            provider: SourceControlProviderKind.make("github"),
+            host: SOURCE.host,
+          } as const;
+          yield* sync.syncNow(SOURCE);
+          fake.listCalls = 0;
+          yield* TestClock.adjust("10 minutes");
+          yield* quota.observe(SOURCE.host, {
+            "x-ratelimit-resource": "graphql",
+            "x-ratelimit-limit": "1000",
+            "x-ratelimit-remaining": "99",
+            "x-ratelimit-reset": String(Date.parse("2026-09-01T01:00:00.000Z") / 1_000),
+          });
+          fake.beforeRead = Effect.gen(function* () {
+            const allowReserve = yield* SourceControlRateLimit.Interactive;
+            yield* quota.admit(SOURCE.host, "graphql", { allowReserve });
+          }).pipe(
+            Effect.mapError(
+              (cause) =>
+                new IssueProviderError({
+                  provider: SourceControlProviderKind.make("github"),
+                  operation: "read",
+                  reason: "rate-limited",
+                  detail: cause.detail,
+                  cause,
+                }),
+            ),
+          );
+          yield* sync.syncDue;
+          assert.strictEqual(fake.listCalls, 0);
+          assert.strictEqual(
+            (yield* rateLimits.check(key).pipe(Effect.flip))._tag,
+            "SourceControlRateLimitPausedError",
+          );
+          const synced = yield* sync.syncNow(SOURCE);
+          assert.strictEqual(
+            synced.lastError,
+            "GitHub's request limit was reached. Try again after it resets.",
+          );
+          assert.strictEqual(fake.listCalls, 0);
+          const ticket = yield* tickets.resolveRef("acme/web#7");
+          yield* tickets.refreshGitHubIssue({ ticketId: ticket.id });
+          yield* tickets.githubIssueDetail({ ticketId: ticket.id });
+          const candidates = yield* tickets.issueLinkCandidates({ ticketId: ticket.id });
+          assert.strictEqual(candidates.entries[0]?.number, 7);
+          assert.deepStrictEqual(candidates.errors, []);
+          yield* tickets.githubIssueSetAssignees({
             ticketId: ticket.id,
-            expectedRevision: ticket.revision,
-            statusId: status("done"),
-            sortKey: "a0",
-          },
-          USER,
-        );
-        assert.deepStrictEqual(fake.commentCalls, [{ number: 7, body: "Interactive comment" }]);
-        assert.deepStrictEqual(fake.assignees.get(7), ["alice"]);
-        assert.deepStrictEqual(fake.setStateCalls, [
-          { number: 7, change: { state: "closed", reason: "completed" } },
-        ]);
-        assert.strictEqual(
-          (yield* rateLimits.check(key).pipe(Effect.flip))._tag,
-          "SourceControlRateLimitPausedError",
-        );
-      }),
-    ),
+            assignees: ["alice"],
+            assigned: true,
+          });
+          yield* tickets.postUserComment({ ticketId: ticket.id, body: "Interactive comment" });
+          yield* tickets.move(
+            {
+              ticketId: ticket.id,
+              expectedRevision: ticket.revision,
+              statusId: status("done"),
+              sortKey: "a0",
+            },
+            USER,
+          );
+          assert.deepStrictEqual(fake.commentCalls, [{ number: 7, body: "Interactive comment" }]);
+          assert.deepStrictEqual(fake.assignees.get(7), ["alice"]);
+          assert.deepStrictEqual(fake.setStateCalls, [
+            { number: 7, change: { state: "closed", reason: "completed" } },
+          ]);
+          assert.strictEqual(
+            (yield* rateLimits.check(key).pipe(Effect.flip))._tag,
+            "SourceControlRateLimitPausedError",
+          );
+        }),
+      ),
   );
   it.effect(
     "reads a local ticket's recorded Enterprise issue through a secondary source and refreshes without changing its owner",
@@ -1153,6 +1543,8 @@ describe("TicketGitHubSync", () => {
       withSync([issue(7)], ({ tickets, sync, fake }) =>
         Effect.gen(function* () {
           yield* sync.syncNow(SOURCE);
+          fake.edit(7, { updatedAt: "2026-09-01T00:00:00Z" });
+          fake.hostUpdatedAt = "2026-09-01T00:01:00Z";
           const ticket = yield* tickets.resolveRef("acme/web#7");
           if (action === "reopen") {
             yield* tickets.move(
@@ -1195,9 +1587,10 @@ describe("TicketGitHubSync", () => {
   );
 
   it.effect("uses an unlisted direct read as confirmation without fetching the issue twice", () =>
-    withSync([issue(7)], ({ tickets, sync, fake }) =>
+    withSync([issue(7)], ({ tickets, sync, fake, bootstrapAgain }) =>
       Effect.gen(function* () {
         yield* sync.syncNow(SOURCE);
+        yield* bootstrapAgain;
         const ticket = yield* tickets.resolveRef("acme/web#7");
         yield* tickets.move(
           { ticketId: ticket.id, expectedRevision: 1, statusId: status("done"), sortKey: "a0" },
@@ -1228,9 +1621,10 @@ describe("TicketGitHubSync", () => {
       Array.from({ length: TicketGitHubSync.MAX_UNLISTED_REFRESHES + 3 }, (_, index) =>
         issue(index + 1),
       ),
-      ({ tickets, sync, fake }) =>
+      ({ tickets, sync, fake, bootstrapAgain }) =>
         Effect.gen(function* () {
           yield* sync.syncNow(SOURCE);
+          yield* bootstrapAgain;
           for (const [number] of fake.issues)
             fake.edit(number, {
               state: "closed",
@@ -1363,7 +1757,7 @@ describe("TicketGitHubSync", () => {
         yield* TestClock.adjust("1 hour");
         yield* sync.syncNow(SOURCE);
         const unchanged = yield* tickets.resolveRef("acme/web#7");
-        fake.edit(7, { title: "Renamed", labels: ["p1"], updatedAt: "2026-08-03T00:00:00Z" });
+        fake.edit(7, { title: "Renamed", labels: ["p1"], updatedAt: "2026-09-01T01:00:00Z" });
         yield* sync.syncNow(SOURCE);
         const changed = yield* tickets.get(unchanged.id);
 
@@ -1389,7 +1783,7 @@ describe("TicketGitHubSync", () => {
       withSync([issue(7), issue(8)], ({ tickets, sync, fake }) =>
         Effect.gen(function* () {
           yield* sync.syncNow(SOURCE);
-          const later = "2026-08-05T00:00:00Z";
+          const later = "2026-09-01T00:00:00Z";
           fake.edit(7, { state: "closed", stateReason: "completed", updatedAt: later });
           fake.edit(8, { state: "closed", stateReason: "not_planned", updatedAt: later });
           yield* sync.syncNow(SOURCE);
@@ -1400,7 +1794,7 @@ describe("TicketGitHubSync", () => {
           fake.edit(7, {
             state: "open",
             stateReason: "reopened",
-            updatedAt: "2026-08-06T00:00:00Z",
+            updatedAt: "2026-09-01T00:01:00Z",
           });
           yield* sync.syncNow(SOURCE);
 
@@ -1416,7 +1810,7 @@ describe("TicketGitHubSync", () => {
         yield* sync.syncNow(SOURCE);
         const ticket = yield* tickets.resolveRef("acme/web#7");
         yield* tickets.setHidden({ ticketId: ticket.id, hidden: true });
-        fake.edit(7, { title: "Renamed", updatedAt: "2026-08-03T00:00:00Z" });
+        fake.edit(7, { title: "Renamed", updatedAt: "2026-09-01T00:00:00Z" });
         yield* sync.syncNow(SOURCE);
         const hidden = yield* tickets.resolveRef("acme/web#7");
         yield* tickets.setHidden({ ticketId: ticket.id, hidden: false });
@@ -1583,6 +1977,7 @@ describe("TicketGitHubSync", () => {
     withSync([issue(7)], ({ tickets, sync, fake }) =>
       Effect.gen(function* () {
         yield* sync.syncNow(SOURCE);
+        fake.hostUpdatedAt = "2026-09-01T00:01:00Z";
         const ticket = yield* tickets.resolveRef("acme/web#7");
         fake.duringSetState = tickets.upsertGitHubIssue({
           ...SOURCE,
@@ -1766,9 +2161,10 @@ describe("TicketGitHubSync", () => {
   );
 
   it.effect("an unreadable unlisted issue does not block the next closure", () =>
-    withSync([issue(7), issue(8), issue(9)], ({ tickets, sync, fake }) =>
+    withSync([issue(7), issue(8), issue(9)], ({ tickets, sync, fake, bootstrapAgain }) =>
       Effect.gen(function* () {
         yield* sync.syncNow(SOURCE);
+        yield* bootstrapAgain;
         for (const number of [7, 8])
           fake.edit(number, {
             state: "closed",
@@ -1827,9 +2223,10 @@ describe("TicketGitHubSync", () => {
   it.effect("skipped reads advance the capped rotation to later closures", () =>
     withSync(
       Array.from({ length: 51 }, (_, index) => issue(index + 1)),
-      ({ tickets, sync, fake }) =>
+      ({ tickets, sync, fake, bootstrapAgain, restartSync }) =>
         Effect.gen(function* () {
           yield* sync.syncNow(SOURCE);
+          yield* bootstrapAgain;
           for (const number of fake.issues.keys()) {
             fake.edit(number, { state: "closed", stateReason: "completed" });
             fake.getFailures.set(
@@ -1860,7 +2257,8 @@ describe("TicketGitHubSync", () => {
           assert.strictEqual((yield* tickets.resolveRef("acme/web#51")).statusId, "todo");
           fake.getFailures.delete(51);
           fake.calls.length = 0;
-          yield* sync.syncNow(SOURCE);
+          const restarted = yield* restartSync;
+          yield* restarted.syncNow(SOURCE);
           assert.deepStrictEqual(
             fake.calls.map(({ number }) => number),
             [51, ...Array.from({ length: 49 }, (_, index) => index + 1)],
@@ -1871,9 +2269,10 @@ describe("TicketGitHubSync", () => {
   );
 
   it.effect("an oversized GraphQL issue response skips only that issue", () =>
-    withSync([issue(7), issue(8)], ({ tickets, sync, fake }) =>
+    withSync([issue(7), issue(8)], ({ tickets, sync, fake, bootstrapAgain }) =>
       Effect.gen(function* () {
         yield* sync.syncNow(SOURCE);
+        yield* bootstrapAgain;
         for (const number of [7, 8])
           fake.edit(number, { state: "closed", stateReason: "completed" });
         fake.getFailures.set(
@@ -1905,9 +2304,10 @@ describe("TicketGitHubSync", () => {
   );
 
   it.effect("source-wide failures stop closure reads and keep the previous sync timestamp", () =>
-    withSync([issue(7), issue(8)], ({ tickets, sync, fake }) =>
+    withSync([issue(7), issue(8)], ({ tickets, sync, fake, bootstrapAgain }) =>
       Effect.gen(function* () {
         yield* sync.syncNow(SOURCE);
+        yield* bootstrapAgain;
         for (const number of [7, 8])
           fake.edit(number, { state: "closed", stateReason: "completed" });
         const failures = [
@@ -1989,9 +2389,10 @@ describe("TicketGitHubSync", () => {
   );
 
   it.effect("a failed issue read lands on the source instead of reading as deleted", () =>
-    withSync([issue(7), issue(8)], ({ tickets, sync, fake }) =>
+    withSync([issue(7), issue(8)], ({ tickets, sync, fake, bootstrapAgain }) =>
       Effect.gen(function* () {
         yield* sync.syncNow(SOURCE);
+        yield* bootstrapAgain;
         fake.edit(7, {
           state: "closed",
           stateReason: "completed",

@@ -86,6 +86,46 @@ describe("gitHubApiUrls", () => {
   });
 });
 
+it.effect("bulk issue reads preserve GraphQL reserve while individual reads can use it", () => {
+  const reset = NOW / 1000 + 3600;
+  let remaining = 99;
+  const { layer, requests } = harness(() =>
+    json(
+      { data: { viewer: { id: "1" } } },
+      {
+        headers: {
+          "x-ratelimit-resource": "graphql",
+          "x-ratelimit-limit": "1000",
+          "x-ratelimit-remaining": String(remaining),
+          "x-ratelimit-reset": String(reset),
+        },
+      },
+    ),
+  );
+  return Effect.gen(function* () {
+    yield* TestClock.setTime(NOW);
+    const api = yield* GitHubApi.GitHubApi;
+    const read = { host: "github.com", operation: "listIssues", query: "query { viewer { id } }" };
+    yield* api.graphql({ ...read, allowReserve: false });
+    for (const operation of ["listIssues", "getIssueMetadata", "getIssue"]) {
+      const paused = yield* api
+        .graphql({ ...read, operation, allowReserve: false })
+        .pipe(Effect.provideService(SourceControlRateLimit.Interactive, true), Effect.flip);
+      expect(paused._tag).toBe("SourceControlRateLimitPausedError");
+    }
+    expect(requests).toHaveLength(1);
+    remaining = 0;
+    yield* api
+      .graphql({ ...read, operation: "getIssue" })
+      .pipe(Effect.provideService(SourceControlRateLimit.Interactive, true));
+    const empty = yield* api
+      .graphql({ ...read, operation: "getIssue" })
+      .pipe(Effect.provideService(SourceControlRateLimit.Interactive, true), Effect.flip);
+    expect(empty._tag).toBe("SourceControlRateLimitPausedError");
+    expect(requests).toHaveLength(2);
+  }).pipe(Effect.provide(layer));
+});
+
 describe("environmentToken", () => {
   it("follows gh's precedence per kind of host", () => {
     const env = { GH_TOKEN: "gh", GITHUB_TOKEN: "github", GH_ENTERPRISE_TOKEN: "ghe" };
