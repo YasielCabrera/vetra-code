@@ -280,6 +280,7 @@ const TicketPlanGetTool = Tool.make("t3_ticket_plan_get", {
   success: Schema.Struct({
     plan: TicketPlanSummary,
     body: Schema.String,
+    attachments: Schema.Array(TicketAttachment),
     comments: Schema.Array(
       Schema.Struct({
         ...PlanCommentReply.fields,

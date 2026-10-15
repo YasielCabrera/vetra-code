@@ -1,6 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import {
+  ChatAttachmentId,
   EnvironmentId,
   GitHubIssueSnapshot,
   ProjectId,
@@ -11,12 +12,15 @@ import {
   type OrchestrationV2ThreadShell,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
+import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as SqlClient from "effect/sql/SqlClient";
 import type * as Tool from "effect/ai/Tool";
 
+import { createPendingAttachmentId } from "../../../attachmentStore.ts";
 import * as ServerConfig from "../../../config.ts";
 import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementService.ts";
 import * as SqlitePersistence from "../../../persistence/Sqlite.ts";
@@ -128,6 +132,51 @@ const seedGitHubTicket = Effect.gen(function* () {
 });
 
 describe("TicketsToolkit", () => {
+  it.effect("returns metadata only for attachments referenced in the plan body", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const config = yield* ServerConfig.ServerConfig;
+      const diagramId = ChatAttachmentId.make(createPendingAttachmentId(".png"));
+      const unusedId = ChatAttachmentId.make(createPendingAttachmentId(".txt"));
+      yield* fs.makeDirectory(config.attachmentsDir, { recursive: true });
+      yield* fs.writeFileString(path.join(config.attachmentsDir, `${diagramId}.png`), "image");
+      yield* fs.writeFileString(path.join(config.attachmentsDir, `${unusedId}.txt`), "unused");
+      const ticket = yield* call("t3_ticket_create", {
+        title: "Plan attachments",
+        attachments: [
+          {
+            id: diagramId,
+            type: "image",
+            name: "diagram.png",
+            mimeType: "image/png",
+            sizeBytes: 5,
+          },
+          { id: unusedId, type: "file", name: "unused.txt", mimeType: "text/plain", sizeBytes: 6 },
+        ],
+      });
+      const attachmentId = ticket.attachments[0]!.id;
+      const body = `![diagram](vetra-attachment://${attachmentId})`;
+      const plan = yield* call("t3_ticket_plan_create", {
+        ticket: ticket.id,
+        title: "Use the diagram",
+        body,
+      });
+      const read = yield* call("t3_ticket_plan_get", { plan: plan.ref });
+      assert.strictEqual(read.body, body);
+      assert.deepStrictEqual(
+        read.attachments.map(({ id, name, type, mimeType, sizeBytes }) => [
+          id,
+          name,
+          type,
+          mimeType,
+          sizeBytes,
+        ]),
+        [[attachmentId, "diagram.png", "image", "image/png", 5]],
+      );
+    }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
+  );
+
   it.effect("returns authoritative review status across plan tools and rejects stale Ready", () =>
     Effect.gen(function* () {
       const ticket = yield* call("t3_ticket_create", { title: "Review" });

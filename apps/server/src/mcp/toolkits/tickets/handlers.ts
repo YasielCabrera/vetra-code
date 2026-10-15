@@ -194,6 +194,7 @@ const make = Effect.gen(function* () {
         return {
           plan: current.summary,
           body: current.body,
+          attachments: current.attachments,
           comments: commentThreads(current.body, current.comments, includeResolved === true),
         };
       }),
