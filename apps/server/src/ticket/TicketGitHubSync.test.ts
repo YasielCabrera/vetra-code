@@ -646,6 +646,112 @@ describe("TicketGitHubSync", () => {
     ),
   );
 
+  it.effect("saves another repository's source while GitHub sync is in flight", () =>
+    withSync([issue(7)], ({ sync, fake }) =>
+      Effect.gen(function* () {
+        fake.listGate = yield* Deferred.make<void>();
+        fake.listStarted = yield* Deferred.make<void>();
+        const gate = fake.listGate;
+        const inFlight = yield* sync.syncNow(SOURCE).pipe(Effect.forkChild);
+        yield* Deferred.await(fake.listStarted);
+
+        const saved = yield* sync.upsertSource({
+          ...SOURCE,
+          repository: "acme/api",
+          enabled: true,
+        });
+        assert.deepStrictEqual(
+          saved.sources.map((source) => [source.repository, source.enabled, source.lastSyncedAt]),
+          [
+            ["acme/api", true, null],
+            ["acme/web", true, null],
+          ],
+        );
+
+        yield* Deferred.succeed(gate, undefined);
+        assert.strictEqual((yield* Fiber.join(inFlight)).issueCount, 1);
+      }),
+    ),
+  );
+
+  it.effect("removes another repository's source while GitHub sync is in flight", () =>
+    withSync([issue(7)], ({ sync, fake, tickets }) =>
+      Effect.gen(function* () {
+        const other = { ...SOURCE, repository: "acme/api" };
+        yield* sync.upsertSource({ ...other, enabled: true });
+        yield* sync.syncNow(other);
+        fake.listGate = yield* Deferred.make<void>();
+        fake.listStarted = yield* Deferred.make<void>();
+        const gate = fake.listGate;
+        const inFlight = yield* sync.syncNow(SOURCE).pipe(Effect.forkChild);
+        yield* Deferred.await(fake.listStarted);
+
+        const removed = yield* sync.removeSource({ ...other, deleteCache: true });
+        assert.deepStrictEqual(
+          removed.sources.map((source) => source.repository),
+          ["acme/web"],
+        );
+        assert.strictEqual(
+          (yield* tickets.resolveRef("acme/api#7").pipe(Effect.flip))._tag,
+          "TicketNotFoundError",
+        );
+
+        yield* Deferred.succeed(gate, undefined);
+        assert.strictEqual((yield* Fiber.join(inFlight)).issueCount, 1);
+        assert.strictEqual((yield* tickets.resolveRef("acme/web#7")).title, "Issue 7");
+      }),
+    ),
+  );
+
+  it.effect("syncs another repository while GitHub sync is in flight", () =>
+    withSync([issue(7)], ({ sync, fake, tickets }) =>
+      Effect.gen(function* () {
+        const other = { ...SOURCE, repository: "acme/api" };
+        yield* sync.upsertSource({ ...other, enabled: true });
+        fake.listGate = yield* Deferred.make<void>();
+        fake.listStarted = yield* Deferred.make<void>();
+        const gate = fake.listGate;
+        const inFlight = yield* sync.syncNow(SOURCE).pipe(Effect.forkChild);
+        yield* Deferred.await(fake.listStarted);
+
+        const synced = yield* sync.syncNow(other);
+        assert.deepStrictEqual(
+          [synced.repository, synced.issueCount, synced.lastError],
+          ["acme/api", 1, null],
+        );
+        assert.strictEqual((yield* tickets.resolveRef("acme/api#7")).title, "Issue 7");
+
+        yield* Deferred.succeed(gate, undefined);
+        assert.strictEqual((yield* Fiber.join(inFlight)).issueCount, 1);
+      }),
+    ),
+  );
+
+  it.effect("syncs the same repository on another host while GitHub sync is in flight", () =>
+    withSync([issue(7)], ({ sync, fake, tickets }) =>
+      Effect.gen(function* () {
+        const other = { ...SOURCE, host: "github.acme.com" };
+        yield* sync.upsertSource({ ...other, enabled: true });
+        fake.listGate = yield* Deferred.make<void>();
+        fake.listStarted = yield* Deferred.make<void>();
+        const gate = fake.listGate;
+        const inFlight = yield* sync.syncNow(SOURCE).pipe(Effect.forkChild);
+        yield* Deferred.await(fake.listStarted);
+
+        const synced = yield* sync.syncNow(other);
+        assert.deepStrictEqual(
+          [synced.host, synced.issueCount, synced.lastError],
+          ["github.acme.com", 1, null],
+        );
+        const imported = yield* tickets.resolveRef("acme/web#7");
+        assert.strictEqual(githubOf(imported)?.github.host, "github.acme.com");
+
+        yield* Deferred.succeed(gate, undefined);
+        assert.strictEqual((yield* Fiber.join(inFlight)).issueCount, 1);
+      }),
+    ),
+  );
+
   it.effect("shares concurrent manual syncs and keeps repository hosts independent", () =>
     withSync([issue(7)], ({ sync, fake }) =>
       Effect.gen(function* () {
@@ -1709,7 +1815,9 @@ describe("TicketGitHubSync", () => {
           .pipe(Effect.forkChild);
         yield* Deferred.await(fake.releaseStarted);
         const readsBefore = fake.projectReads;
-        const added = yield* sync.upsertSource({ ...SOURCE, enabled: true }).pipe(Effect.forkChild);
+        const added = yield* sync
+          .upsertSource({ ...SOURCE, host: "GITHUB.COM", repository: "ACME/WEB", enabled: true })
+          .pipe(Effect.forkChild);
         yield* Effect.yieldNow;
         assert.strictEqual(fake.projectReads, readsBefore);
         yield* Deferred.succeed(fake.releaseGate, undefined);

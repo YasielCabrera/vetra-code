@@ -8,6 +8,7 @@ import {
   type TicketGitHubSourceSet,
   type TicketGitHubSourceUpsertInput,
 } from "@t3tools/contracts";
+import * as KeyedLock from "@t3tools/shared/KeyedLock";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
@@ -18,7 +19,6 @@ import * as Option from "effect/Option";
 import * as PubSub from "effect/PubSub";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import * as SqlClient from "effect/sql/SqlClient";
 
@@ -109,7 +109,7 @@ const make = Effect.gen(function* () {
   const projects = yield* ProjectService.ProjectService;
 
   const changes = yield* PubSub.sliding<void>(1);
-  const lock = yield* Semaphore.make(1);
+  const repositoryLocks = yield* KeyedLock.make<string>();
   const flights = new Map<
     string,
     {
@@ -411,7 +411,7 @@ const make = Effect.gen(function* () {
       yield* publish;
     },
     Effect.provideService(Interactive, false),
-    lock.withPermits(1),
+    (effect, ref) => repositoryLocks.withLock(repositoryKey(ref), effect),
     Effect.mapError(ticketError("Could not record the sync result.")),
   );
 
@@ -488,7 +488,7 @@ const make = Effect.gen(function* () {
       yield* tickets.restoreGitHubRepository({ host, repository: input.repository });
       yield* publish;
       return yield* readSources;
-    }).pipe(lock.withPermits(1));
+    }).pipe((effect) => repositoryLocks.withLock(repositoryKey(input), effect));
 
   const removeSource: TicketGitHubSync["Service"]["removeSource"] = (input) =>
     Effect.gen(function* () {
@@ -519,7 +519,7 @@ const make = Effect.gen(function* () {
         SqlError: (cause) =>
           Effect.fail(new TicketError({ message: "Could not remove the GitHub source.", cause })),
       }),
-      lock.withPermits(1),
+      (effect) => repositoryLocks.withLock(repositoryKey(input), effect),
     );
 
   const syncNow: TicketGitHubSync["Service"]["syncNow"] = (input) =>
