@@ -8,6 +8,7 @@ import {
   ProviderInstanceId,
   ThreadId,
   TicketId,
+  TicketPlanCommentId,
   TicketStatusId,
   type OrchestrationV2ThreadShell,
 } from "@t3tools/contracts";
@@ -486,14 +487,30 @@ describe("TicketsToolkit", () => {
   it.effect("reads without an active run but refuses to write", () =>
     Effect.gen(function* () {
       const tickets = yield* TicketService.TicketService;
-      yield* tickets.create(
+      const ticket = (yield* tickets.create(
         { title: "Seeded", labels: ["bug"], links: [{ kind: "project", projectId }] },
+        { type: "user" },
+      )).ticket;
+      const plan = (yield* tickets.createPlan(
+        { ticketId: ticket.id, title: "Plan" },
+        { type: "user" },
+      )).plan;
+      const comment = yield* tickets.addPlanComment(
+        { planId: plan.planId, body: "Question" },
+        { type: "user" },
+      );
+      yield* tickets.updatePlan(
+        { planId: plan.planId, expectedRevision: 1, resolveCommentIds: [comment.id] },
         { type: "user" },
       );
 
       const listed = yield* call("t3_ticket_list", { status: "open", label: "bug" });
       const detail = yield* call("t3_ticket_get", { ticket: "T-1" });
       const write = yield* failure("t3_ticket_note", { ticket: "T-1", body: "Progress" });
+      const reopen = yield* failure("t3_ticket_plan_reopen_comment", {
+        plan: plan.ref,
+        commentId: comment.id,
+      });
 
       assert.deepStrictEqual(
         [listed.tickets.map((ticket) => ticket.title), listed.truncated, detail.summary.title],
@@ -503,6 +520,8 @@ describe("TicketsToolkit", () => {
         [write._tag, write.message],
         ["OrchestratorMcpFailure", "The calling provider no longer owns an active thread run."],
       );
+      assert.strictEqual(reopen.message, write.message);
+      assert.strictEqual((yield* tickets.getPlan(plan.planId)).summary.openCommentCount, 0);
     }).pipe(Effect.provide(layerFor({ activeRunId: null }))),
   );
 
@@ -548,6 +567,14 @@ describe("TicketsToolkit", () => {
         { ticketId: ticket.id, title: "Plan", body: "Steps" },
         { type: "user" },
       )).plan;
+      const comment = yield* tickets.addPlanComment(
+        { planId: plan.planId, body: "Question" },
+        { type: "user" },
+      );
+      yield* tickets.updatePlan(
+        { planId: plan.planId, expectedRevision: 1, resolveCommentIds: [comment.id] },
+        { type: "user" },
+      );
 
       const listed = yield* call("t3_ticket_list", {});
       const detail = yield* call("t3_ticket_get", { ticket: "T-1" });
@@ -566,10 +593,15 @@ describe("TicketsToolkit", () => {
         expectedRevision: plan.revision,
         body: "Outside",
       });
+      const reopen = yield* failure("t3_ticket_plan_reopen_comment", {
+        plan: plan.ref,
+        commentId: comment.id,
+      });
       assert.deepStrictEqual(
-        [note, edit].map((error) => error.message),
-        [write.message, write.message],
+        [note, edit, reopen].map((error) => error.message),
+        [write.message, write.message, write.message],
       );
+      assert.strictEqual((yield* tickets.getPlan(plan.planId)).summary.openCommentCount, 0);
 
       assert.deepStrictEqual(
         [listed.tickets.map((ticket) => ticket.title), detail.summary.title],
@@ -818,6 +850,83 @@ describe("TicketsToolkit", () => {
           ["Why log it?", "Log the failure.", true, false, [["To debug the retries.", AGENT]]],
           ["Looks right overall.", null, false, false, []],
         ],
+      );
+    }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
+  );
+
+  it.effect("reopens plan comments explicitly and preserves resolution when replying", () =>
+    Effect.gen(function* () {
+      yield* call("t3_ticket_create", { title: "Review" });
+      const plan = yield* call("t3_ticket_plan_create", { ticket: "T-1", title: "Plan" });
+      const other = yield* call("t3_ticket_plan_create", { ticket: "T-1", title: "Other" });
+      const comment = yield* call("t3_ticket_plan_comment", {
+        plan: plan.ref,
+        body: "Clarify the migration.",
+      });
+      yield* call("t3_ticket_plan_update", {
+        plan: plan.ref,
+        expectedRevision: plan.revision,
+        resolveCommentIds: [comment.id],
+      });
+      const reply = yield* call("t3_ticket_plan_comment", {
+        plan: plan.ref,
+        parentCommentId: comment.id,
+        body: "The change was reverted.",
+      });
+      const resolved = yield* call("t3_ticket_plan_get", {
+        plan: plan.ref,
+        includeResolved: true,
+      });
+      assert.deepStrictEqual(
+        [
+          resolved.plan.openCommentCount,
+          resolved.comments.map(({ resolved, replies }) => [
+            resolved,
+            replies.map(({ body }) => body),
+          ]),
+        ],
+        [0, [[true, ["The change was reverted."]]]],
+      );
+
+      const replyError = yield* failure("t3_ticket_plan_reopen_comment", {
+        plan: plan.ref,
+        commentId: reply.id,
+      });
+      const missing = TicketPlanCommentId.make("missing");
+      const missingError = yield* failure("t3_ticket_plan_reopen_comment", {
+        plan: plan.ref,
+        commentId: missing,
+      });
+      const wrongPlanError = yield* failure("t3_ticket_plan_reopen_comment", {
+        plan: other.ref,
+        commentId: comment.id,
+      });
+      assert.deepStrictEqual(
+        [replyError.message, missingError.message, wrongPlanError.message],
+        [
+          `Comment ${reply.id} is a reply; reopen the comment it replies to.`,
+          "Comment missing is not on this plan.",
+          `Comment ${comment.id} is not on this plan.`,
+        ],
+      );
+
+      const reopened = yield* call("t3_ticket_plan_reopen_comment", {
+        plan: plan.ref,
+        commentId: comment.id,
+      });
+      const repeated = yield* call("t3_ticket_plan_reopen_comment", {
+        plan: plan.ref,
+        commentId: comment.id,
+      });
+      const read = yield* call("t3_ticket_plan_get", { plan: plan.ref });
+      assert.deepStrictEqual(repeated, reopened);
+      assert.deepStrictEqual(
+        [
+          reopened.openCommentCount,
+          reopened.revision,
+          read.comments.map(({ id, resolved }) => [id, resolved]),
+        ],
+        [1, 1, [[comment.id, false]]],
       );
     }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
   );

@@ -3232,7 +3232,12 @@ const make = Effect.gen(function* () {
       const { ticketId, reopened } = yield* sql.withTransaction(
         Effect.gen(function* () {
           const { ticketId } = yield* requirePlan(input.planId);
-          yield* requireComment(input.planId, input.commentId);
+          const comment = yield* requireComment(input.planId, input.commentId);
+          if (comment.parent_comment_id !== null) {
+            return yield* new TicketError({
+              message: `Comment ${input.commentId} is a reply; reopen the comment it replies to.`,
+            });
+          }
           const reopened = yield* sql<{ readonly comment_id: string }>`
             UPDATE ticket_plan_comments SET resolved_at = NULL, resolved_by_json = NULL
             WHERE comment_id = ${input.commentId} AND resolved_at IS NOT NULL

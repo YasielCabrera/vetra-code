@@ -366,6 +366,10 @@ const VETRA_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     ["Comment on", "Commenting on", "Commented on", "a ticket plan"],
     "ticket-plan-comment",
   ),
+  t3_ticket_plan_reopen_comment: tool(
+    ["Reopen", "Reopening", "Reopened", "a ticket plan comment"],
+    "ticket-plan-update",
+  ),
   html_preview: tool(["Preview", "Previewing", "Previewed", "an HTML page"], "html-preview"),
   html_render: tool(["Render", "Rendering", "Rendered", "an HTML page"], "html-render"),
 };

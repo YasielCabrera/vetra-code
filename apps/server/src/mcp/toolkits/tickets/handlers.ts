@@ -228,6 +228,15 @@ const make = Effect.gen(function* () {
         );
       }),
     ),
+    t3_ticket_plan_reopen_comment: McpToolAccess.writes(({ plan, commentId }) =>
+      Effect.gen(function* () {
+        const { caller } = yield* writer();
+        return yield* tickets.reopenPlanComment({
+          planId: yield* planId(plan, caller),
+          commentId,
+        });
+      }),
+    ),
   } satisfies McpToolAccess.Handlers<typeof TicketsToolkit.tools>;
 });
 

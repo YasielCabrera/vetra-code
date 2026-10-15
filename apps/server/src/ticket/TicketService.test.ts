@@ -2331,6 +2331,65 @@ describe("TicketService plans", () => {
     ),
   );
 
+  it.effect("only reopens top-level comments and preserves resolution when replying", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const ticketId = (yield* tickets.create({ title: "Review" }, USER)).ticket.id;
+        const { planId } = (yield* tickets.createPlan({ ticketId, title: "Plan" }, USER)).plan;
+        const root = yield* tickets.addPlanComment(
+          { planId, body: "Clarify the migration." },
+          USER,
+        );
+        yield* tickets.updatePlan(
+          { planId, expectedRevision: 1, resolveCommentIds: [root.id] },
+          agent,
+        );
+        const resolved = (yield* tickets.getPlan(planId)).comments[0]!;
+        const reply = yield* tickets.addPlanComment(
+          { planId, parentCommentId: root.id, body: "The change was reverted." },
+          USER,
+        );
+        const afterReply = yield* tickets.getPlan(planId);
+        assert.deepStrictEqual(
+          [afterReply.summary.openCommentCount, afterReply.comments[0], resolved.resolvedBy],
+          [0, resolved, agent],
+        );
+
+        const replyError = yield* tickets
+          .reopenPlanComment({ planId, commentId: reply.id })
+          .pipe(Effect.flip);
+        assert.strictEqual(
+          replyError.message,
+          `Comment ${reply.id} is a reply; reopen the comment it replies to.`,
+        );
+        const reopened = yield* tickets.reopenPlanComment({ planId, commentId: root.id });
+        const repeated = yield* tickets.reopenPlanComment({ planId, commentId: root.id });
+        const plan = yield* tickets.getPlan(planId);
+        assert.deepStrictEqual(repeated, reopened);
+        assert.deepStrictEqual(
+          [
+            plan.summary.openCommentCount,
+            plan.summary.revision,
+            plan.comments.map(({ body, parentId, resolvedAt, resolvedBy }) => [
+              body,
+              parentId,
+              resolvedAt,
+              resolvedBy,
+            ]),
+          ],
+          [
+            1,
+            1,
+            [
+              ["Clarify the migration.", null, null, null],
+              ["The change was reverted.", root.id, null, null],
+            ],
+          ],
+        );
+      }),
+    ),
+  );
+
   it.effect(
     "records plan history and folds one actor's edits to one plan within five minutes",
     () =>

@@ -17,6 +17,7 @@ import {
   TicketNotFoundError,
   TicketPlanComment,
   TicketPlanCommentInput,
+  TicketPlanCommentRefInput,
   TicketPlanAnchor,
   TicketPlanCreateInput,
   TicketPlanNotFoundError,
@@ -360,7 +361,7 @@ const TicketPlanUpdateTool = Tool.make("t3_ticket_plan_update", {
 const TicketPlanCommentTool = Tool.make("t3_ticket_plan_comment", {
   ...shared,
   description:
-    "Comment on a plan, or reply to one of its comments with parentCommentId. To point at a passage, pass quote: text copied exactly from the Markdown body t3_ticket_plan_get returns, long enough to occur only once. Without a quote the comment is about the whole plan. Replies take no quote.",
+    "Comment on a plan, or reply to one of its comments with parentCommentId. To point at a passage, pass quote: text copied exactly from the Markdown body t3_ticket_plan_get returns, long enough to occur only once. Without a quote the comment is about the whole plan. Replies take no quote and keep resolved comments resolved; use t3_ticket_plan_reopen_comment to reopen one.",
   parameters: Schema.Struct({
     plan,
     body: TicketPlanCommentInput.fields.body.annotate({ description: "Markdown." }),
@@ -379,6 +380,24 @@ const TicketPlanCommentTool = Tool.make("t3_ticket_plan_comment", {
   .annotate(Tool.Idempotent, false)
   .annotate(Tool.OpenWorld, false);
 
+const TicketPlanReopenCommentTool = Tool.make("t3_ticket_plan_reopen_comment", {
+  ...shared,
+  description:
+    "Reopen a resolved top-level plan comment. Reopening an already open comment succeeds.",
+  parameters: Schema.Struct({
+    plan,
+    commentId: TicketPlanCommentRefInput.fields.commentId.annotate({
+      description: "A top-level comment id from t3_ticket_plan_get with includeResolved: true.",
+    }),
+  }),
+  success: TicketPlanSummary,
+})
+  .annotate(Tool.Title, "Reopen a ticket plan comment")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, false);
+
 export const TicketsToolkit = Toolkit.make(
   TicketListTool,
   TicketGetTool,
@@ -392,4 +411,5 @@ export const TicketsToolkit = Toolkit.make(
   TicketPlanCreateTool,
   TicketPlanUpdateTool,
   TicketPlanCommentTool,
+  TicketPlanReopenCommentTool,
 );

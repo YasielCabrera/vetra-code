@@ -45,6 +45,13 @@ describe("resolveT3McpToolPresentation", () => {
     });
   });
 
+  it("pretty prints explicit ticket plan comment reopening", () => {
+    expect(resolveT3McpToolPresentation("mcp__vetra-code__t3_ticket_plan_reopen_comment")).toEqual({
+      displayName: "Reopen a ticket plan comment",
+      logo: "vetra-code",
+    });
+  });
+
   it("pretty prints bare T3 MCP toolkit names", () => {
     expect(resolveT3McpToolPresentation("list_scheduled_tasks")).toEqual({
       displayName: "List scheduled tasks",
