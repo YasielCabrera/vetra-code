@@ -20,6 +20,7 @@ import { useProjects } from "../../state/entities";
 import {
   type EnvironmentTicketGitHubSource,
   useEnvironmentSupportsTickets,
+  useTicketEnvironmentState,
   useTicketGitHubSources,
   useTicketStatuses,
 } from "../../state/tickets";
@@ -71,6 +72,7 @@ export function TicketsSettingsPanel() {
   const environmentId =
     scope.environmentIds.length === 1 ? (environment?.environmentId ?? null) : null;
   const supported = useEnvironmentSupportsTickets(environmentId);
+  const environmentState = useTicketEnvironmentState(environmentId);
   const statusSet = useTicketStatuses(supported ? environmentId : null);
 
   return (
@@ -81,19 +83,24 @@ export function TicketsSettingsPanel() {
             title="Ticket statuses"
             description="Choose one environment. Each environment keeps its own statuses."
           />
-        ) : !supported ? (
-          <SettingsRow
-            title="Ticket statuses"
-            description="Update this environment's Vetra Code server to keep tickets."
-          />
-        ) : statusSet === null ? (
-          <SettingsRow title="Ticket statuses" description="Loading statuses…" />
-        ) : (
+        ) : statusSet !== null ? (
           <TicketStatusEditor
             key={environmentId}
             environmentId={environmentId}
             statusSet={statusSet}
           />
+        ) : environmentState === "unknown" || environmentState === "disconnected" ? (
+          <SettingsRow
+            title="Ticket statuses"
+            description="This environment is unknown or not connected."
+          />
+        ) : environmentState === "unsupported" ? (
+          <SettingsRow
+            title="Ticket statuses"
+            description="Update this environment's Vetra Code server to keep tickets."
+          />
+        ) : (
+          <SettingsRow title="Ticket statuses" description="Loading statuses…" />
         )}
       </SettingsSection>
       {environmentId !== null && supported ? (

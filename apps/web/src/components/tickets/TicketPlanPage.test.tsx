@@ -24,7 +24,9 @@ vi.mock("../../hooks/useTicketActions", () => ({ useTicketActions: () => actions
 vi.mock("../../state/tickets", () => ({
   useTicket: () => currentTicket,
   useTicketDetail: (ref: unknown) => (ref === null ? AsyncResult.initial() : currentDetail),
-  useTicketPlan: () => AsyncResult.success(currentPlan),
+  useTicketEnvironmentState: () => currentEnvironmentState,
+  useTicketPlan: () =>
+    planPending ? AsyncResult.initial(false) : AsyncResult.success(currentPlan),
 }));
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
@@ -140,6 +142,8 @@ const detail: TicketDetail = {
 };
 let currentTicket: TicketDetail["summary"] | null = detail.summary;
 let currentDetail: AsyncResult.AsyncResult<TicketDetail, unknown> = AsyncResult.success(detail);
+let currentEnvironmentState = "supported";
+let planPending = false;
 
 let root: Root;
 let container: HTMLDivElement;
@@ -156,6 +160,8 @@ beforeEach(() => {
   currentPlan = plan;
   currentTicket = detail.summary;
   currentDetail = AsyncResult.success(detail);
+  currentEnvironmentState = "supported";
+  planPending = false;
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -230,6 +236,61 @@ function reviewLabel() {
 }
 
 describe("TicketPlanPage loading", () => {
+  it("explains disconnection when the board has a ticket summary but its plan is uncached", async () => {
+    currentEnvironmentState = "disconnected";
+    planPending = true;
+    await renderPage();
+    expect(container.textContent).toContain("This environment is unknown or not connected.");
+    expect(container.textContent).not.toContain("Loading plan");
+  });
+
+  it("waits for config before recommending a server update", async () => {
+    currentEnvironmentState = "pending";
+    currentTicket = null;
+    currentDetail = AsyncResult.initial(false);
+    await renderPage();
+    expect(container.textContent).toContain("Loading plan…");
+    expect(container.textContent).not.toContain("Tickets need a newer server");
+  });
+
+  it.each(["unknown", "disconnected"])(
+    "explains the %s environment instead of loading forever",
+    async (state) => {
+      currentEnvironmentState = state;
+      currentTicket = null;
+      currentDetail = AsyncResult.initial(false);
+      await renderPage();
+      expect(container.textContent).toContain("This environment is unknown or not connected.");
+      expect(container.textContent).not.toContain("Loading plan");
+    },
+  );
+
+  it("recommends an update only for a confirmed unsupported server", async () => {
+    currentEnvironmentState = "unsupported";
+    currentTicket = null;
+    currentDetail = AsyncResult.initial(false);
+    await renderPage();
+    expect(container.textContent).toContain("Tickets need a newer server");
+  });
+
+  it("recovers after reconnecting without remounting the page", async () => {
+    currentEnvironmentState = "disconnected";
+    currentTicket = null;
+    currentDetail = AsyncResult.initial(false);
+    await renderPage();
+    expect(container.textContent).toContain("This environment is unknown or not connected.");
+    currentEnvironmentState = "supported";
+    currentDetail = AsyncResult.success(detail);
+    await renderPage();
+    expect(titleEditor().value).toBe("Saved title");
+  });
+
+  it("keeps a loaded plan visible while disconnected", async () => {
+    currentEnvironmentState = "disconnected";
+    await renderPage();
+    expect(titleEditor().value).toBe("Saved title");
+  });
+
   it("opens the plan from the board while the ticket's detail is still loading", async () => {
     currentDetail = AsyncResult.initial(true);
     await renderPage();

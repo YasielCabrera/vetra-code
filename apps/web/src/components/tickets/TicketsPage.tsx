@@ -2,7 +2,12 @@ import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { useAtomValue } from "@effect/atom-react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useLocation, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
-import { type EnvironmentTicket, ticketKey } from "@t3tools/client-runtime/state/tickets";
+import {
+  type EnvironmentTicket,
+  resolveTicketBoardAvailability,
+  ticketCapability,
+  ticketKey,
+} from "@t3tools/client-runtime/state/tickets";
 import { type EnvironmentId, resolveEnvironmentMachineKind } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { Atom } from "effect/reactivity";
@@ -364,6 +369,18 @@ export function TicketsPage() {
   // The persisted catalog can emit before platform discovery registers the primary
   // environment; pruning in that gap would drop its saved project and env filters.
   const catalogReady = environmentsReady && (primaryEnvironmentId !== null || isHostedStaticApp());
+  const availability = useMemo(
+    () =>
+      resolveTicketBoardAvailability({
+        catalogReady,
+        environments: environments.map((environment) => ({
+          enabled: environment.entry.enabled,
+          connectionPhase: environment.connection.phase,
+          capability: ticketCapability(environment.serverConfig?.environment.capabilities),
+        })),
+      }),
+    [catalogReady, environments],
+  );
   const catalogs = useMemo(
     () =>
       resolveTicketBoardCatalogs({
@@ -862,7 +879,19 @@ export function TicketsPage() {
               specific search.
             </p>
           ) : null}
-          {board.environmentIds.length === 0 ? (
+          {board.tickets.length === 0 && availability === "pending" ? (
+            <TicketsEmptyState
+              title="Waiting for ticket environments"
+              description="Waiting for an environment to connect and report ticket support."
+              action={null}
+            />
+          ) : board.tickets.length === 0 && availability === "disconnected" ? (
+            <TicketsEmptyState
+              title="Ticket environments are not connected"
+              description="Connect an environment to load its tickets."
+              action={null}
+            />
+          ) : board.tickets.length === 0 && availability === "unsupported" ? (
             <TicketsEmptyState
               title="Tickets need a newer server"
               description="Update the Vetra Code server in this environment to keep a ticket board."

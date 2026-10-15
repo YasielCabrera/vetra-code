@@ -1,5 +1,6 @@
 import {
   EnvironmentId,
+  type ServerConfig,
   type ScopedThreadRef,
   TicketId,
   type TicketStatusSet,
@@ -9,10 +10,72 @@ import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/reactivity";
 
 import { parseScopedThreadKey, scopedThreadKey } from "../environment/scoped.ts";
+import type { EnvironmentConnectionPresentation } from "../connection/presentation.ts";
 import type { EnvironmentCatalogState } from "./connections.ts";
 import { arrayElementsEqual } from "./entities.ts";
 
 export type EnvironmentTicket = TicketSummary & { readonly environmentId: EnvironmentId };
+
+export type TicketCapability = "unknown" | "unsupported" | "supported";
+export type TicketEnvironmentState =
+  | "unknown"
+  | "pending"
+  | "disconnected"
+  | "unsupported"
+  | "supported";
+export type TicketBoardAvailability = "pending" | "disconnected" | "unsupported" | "ready";
+
+export function ticketCapability(
+  capabilities: Pick<ServerConfig["environment"]["capabilities"], "tickets"> | null | undefined,
+): TicketCapability {
+  if (capabilities == null) return "unknown";
+  return capabilities.tickets === true ? "supported" : "unsupported";
+}
+
+export function resolveTicketEnvironmentState(input: {
+  readonly catalogReady: boolean;
+  readonly known: boolean;
+  readonly disconnected: boolean;
+  readonly capability: TicketCapability;
+}): TicketEnvironmentState {
+  if (!input.catalogReady) return "pending";
+  if (!input.known) return "unknown";
+  if (input.disconnected) return "disconnected";
+  return input.capability === "unknown" ? "pending" : input.capability;
+}
+
+export function resolveTicketBoardAvailability(input: {
+  readonly catalogReady: boolean;
+  readonly environments: ReadonlyArray<{
+    readonly enabled: boolean;
+    readonly connectionPhase: EnvironmentConnectionPresentation["phase"];
+    readonly capability: TicketCapability;
+  }>;
+}): TicketBoardAvailability {
+  if (!input.catalogReady) return "pending";
+  let pending = false;
+  let disconnected = input.environments.length === 0;
+  for (const environment of input.environments) {
+    if (
+      environment.enabled &&
+      (environment.connectionPhase === "connecting" ||
+        environment.connectionPhase === "reconnecting")
+    ) {
+      pending = true;
+      continue;
+    }
+    const state = resolveTicketEnvironmentState({
+      catalogReady: true,
+      known: true,
+      disconnected: !environment.enabled || environment.connectionPhase !== "connected",
+      capability: environment.capability,
+    });
+    if (state === "supported") return "ready";
+    if (state === "pending") pending = true;
+    if (state === "disconnected") disconnected = true;
+  }
+  return pending ? "pending" : disconnected ? "disconnected" : "unsupported";
+}
 
 export interface ScopedTicketRef {
   readonly environmentId: EnvironmentId;

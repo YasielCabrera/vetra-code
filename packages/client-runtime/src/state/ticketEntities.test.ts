@@ -12,7 +12,17 @@ import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 import { describe, expect, it } from "vite-plus/test";
 
 import { PrimaryConnectionTarget } from "../connection/model.ts";
-import { createEnvironmentTicketAtoms, parseTicketKey, ticketKey } from "./ticketEntities.ts";
+import {
+  createEnvironmentTicketAtoms,
+  parseTicketKey,
+  resolveTicketBoardAvailability,
+  resolveTicketEnvironmentState,
+  ticketCapability,
+  ticketKey,
+  type TicketBoardAvailability,
+  type TicketCapability,
+  type TicketEnvironmentState,
+} from "./ticketEntities.ts";
 
 const ENV_A = EnvironmentId.make("env-a");
 const ENV_B = EnvironmentId.make("env-b");
@@ -100,7 +110,202 @@ function makeHarness() {
   };
 }
 
+describe("ticket capability", () => {
+  it.each<{
+    capabilities: Parameters<typeof ticketCapability>[0];
+    expected: TicketCapability;
+  }>([
+    { capabilities: undefined, expected: "unknown" },
+    { capabilities: null, expected: "unknown" },
+    { capabilities: {}, expected: "unsupported" },
+    { capabilities: { tickets: false }, expected: "unsupported" },
+    { capabilities: { tickets: true }, expected: "supported" },
+  ])("classifies $capabilities as $expected", ({ capabilities, expected }) => {
+    expect(ticketCapability(capabilities)).toBe(expected);
+  });
+});
+
+describe("ticket environment state", () => {
+  it.each<{
+    name: string;
+    input: Parameters<typeof resolveTicketEnvironmentState>[0];
+    expected: TicketEnvironmentState;
+  }>([
+    {
+      name: "waits for the catalog before declaring an environment unknown",
+      input: { catalogReady: false, known: false, disconnected: false, capability: "unknown" },
+      expected: "pending",
+    },
+    {
+      name: "identifies an environment absent from a loaded catalog",
+      input: { catalogReady: true, known: false, disconnected: false, capability: "supported" },
+      expected: "unknown",
+    },
+    {
+      name: "waits for capabilities on a known connected environment",
+      input: { catalogReady: true, known: true, disconnected: false, capability: "unknown" },
+      expected: "pending",
+    },
+    {
+      name: "shows disconnection before uncached capabilities",
+      input: { catalogReady: true, known: true, disconnected: true, capability: "unknown" },
+      expected: "disconnected",
+    },
+    {
+      name: "shows disconnection before cached unsupported capabilities",
+      input: { catalogReady: true, known: true, disconnected: true, capability: "unsupported" },
+      expected: "disconnected",
+    },
+    {
+      name: "shows disconnection before cached supported capabilities",
+      input: { catalogReady: true, known: true, disconnected: true, capability: "supported" },
+      expected: "disconnected",
+    },
+    {
+      name: "identifies explicit unsupported capabilities while connected",
+      input: { catalogReady: true, known: true, disconnected: false, capability: "unsupported" },
+      expected: "unsupported",
+    },
+    {
+      name: "recovers a supported environment after reconnecting",
+      input: { catalogReady: true, known: true, disconnected: false, capability: "supported" },
+      expected: "supported",
+    },
+  ])("$name", ({ input, expected }) => {
+    expect(resolveTicketEnvironmentState(input)).toBe(expected);
+  });
+});
+
+describe("ticket board availability", () => {
+  it.each<{
+    name: string;
+    input: Parameters<typeof resolveTicketBoardAvailability>[0];
+    expected: TicketBoardAvailability;
+  }>([
+    {
+      name: "waits for catalog readiness",
+      input: { catalogReady: false, environments: [] },
+      expected: "pending",
+    },
+    {
+      name: "treats a ready empty catalog as disconnected",
+      input: { catalogReady: true, environments: [] },
+      expected: "disconnected",
+    },
+    {
+      name: "waits for an uncached config on a connected environment",
+      input: {
+        catalogReady: true,
+        environments: [{ enabled: true, connectionPhase: "connected", capability: "unknown" }],
+      },
+      expected: "pending",
+    },
+    {
+      name: "requires explicit unsupported capabilities on every connected environment",
+      input: {
+        catalogReady: true,
+        environments: [
+          { enabled: true, connectionPhase: "connected", capability: "unsupported" },
+          { enabled: true, connectionPhase: "connected", capability: "unsupported" },
+        ],
+      },
+      expected: "unsupported",
+    },
+    {
+      name: "keeps a pending config distinct from another environment's unsupported config",
+      input: {
+        catalogReady: true,
+        environments: [
+          { enabled: true, connectionPhase: "connected", capability: "unsupported" },
+          { enabled: true, connectionPhase: "connected", capability: "unknown" },
+        ],
+      },
+      expected: "pending",
+    },
+    {
+      name: "keeps uncached and cached offline environments disconnected",
+      input: {
+        catalogReady: true,
+        environments: [
+          { enabled: true, connectionPhase: "offline", capability: "unknown" },
+          { enabled: true, connectionPhase: "offline", capability: "supported" },
+          { enabled: true, connectionPhase: "error", capability: "unsupported" },
+        ],
+      },
+      expected: "disconnected",
+    },
+    {
+      name: "does not infer unsupported tickets while another environment is disconnected",
+      input: {
+        catalogReady: true,
+        environments: [
+          { enabled: true, connectionPhase: "connected", capability: "unsupported" },
+          { enabled: true, connectionPhase: "offline", capability: "unknown" },
+        ],
+      },
+      expected: "disconnected",
+    },
+    {
+      name: "waits during reconnection even with a cached unsupported config",
+      input: {
+        catalogReady: true,
+        environments: [
+          { enabled: true, connectionPhase: "reconnecting", capability: "unsupported" },
+        ],
+      },
+      expected: "pending",
+    },
+    {
+      name: "shows a disconnected state for an available environment that has not connected",
+      input: {
+        catalogReady: true,
+        environments: [{ enabled: true, connectionPhase: "available", capability: "unknown" }],
+      },
+      expected: "disconnected",
+    },
+    {
+      name: "does not treat a disabled environment's cached support as connected",
+      input: {
+        catalogReady: true,
+        environments: [{ enabled: false, connectionPhase: "connected", capability: "supported" }],
+      },
+      expected: "disconnected",
+    },
+    {
+      name: "allows a connected supported environment to serve tickets while others recover",
+      input: {
+        catalogReady: true,
+        environments: [
+          { enabled: true, connectionPhase: "connecting", capability: "unknown" },
+          { enabled: true, connectionPhase: "offline", capability: "supported" },
+          { enabled: true, connectionPhase: "connected", capability: "supported" },
+        ],
+      },
+      expected: "ready",
+    },
+  ])("$name", ({ input, expected }) => {
+    expect(resolveTicketBoardAvailability(input)).toBe(expected);
+  });
+});
+
 describe("createEnvironmentTicketAtoms", () => {
+  it("preserves confirmed support and cached tickets while an environment disconnects", () => {
+    const harness = makeHarness();
+    const unsubscribe = harness.registry.subscribe(harness.atoms.boardAtom, () => {});
+    harness.setList(ENV_A, loadedList(summary("a", "Cached ticket")));
+    harness.setList(ENV_B, null);
+    const before = harness.registry.get(harness.atoms.boardAtom);
+    harness.setDisconnected(ENV_A, true);
+    const offline = harness.registry.get(harness.atoms.boardAtom);
+
+    expect(offline.tickets.map((ticket) => ticket.title)).toEqual(["Cached ticket"]);
+    expect(offline.environmentIds).toEqual([ENV_A]);
+    expect(offline).toBe(before);
+
+    unsubscribe();
+    harness.registry.dispose();
+  });
+
   it("settles the board once each environment has sent its list, failed, or disconnected", () => {
     const harness = makeHarness();
     const loaded = () => harness.registry.get(harness.atoms.boardAtom).loaded;

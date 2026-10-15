@@ -44,6 +44,7 @@ import { useProjects } from "../../state/entities";
 import {
   useTicket,
   useTicketDetail,
+  useTicketEnvironmentState,
   useTicketGitHubSources,
   useTicketStatuses,
   useTicketGitHubWriteAllowed,
@@ -93,6 +94,7 @@ export function TicketDetailPage(props: {
 }) {
   const ref = useMemo(() => parseTicketKey(props.ticketKey), [props.ticketKey]);
   const detail = useTicketDetail(ref);
+  const environmentState = useTicketEnvironmentState(ref?.environmentId ?? null);
   const loaded = Option.getOrNull(AsyncResult.value(detail));
   const summary = useTicket(ref);
   const Shell = props.presentation === "panel" ? "div" : SidebarInset;
@@ -123,9 +125,15 @@ export function TicketDetailPage(props: {
           }
           title={summary?.title ?? null}
         >
-          {ref === null || AsyncResult.isFailure(detail)
+          {ref === null
             ? "This ticket does not exist, or its environment is not connected."
-            : "Loading ticket…"}
+            : environmentState === "unknown" || environmentState === "disconnected"
+              ? "This environment is unknown or not connected."
+              : environmentState === "unsupported"
+                ? "Tickets need a newer server. Update this environment's Vetra Code server to load tickets."
+                : AsyncResult.isFailure(detail)
+                  ? "This ticket does not exist, or its environment is not connected."
+                  : "Loading ticket…"}
         </TicketPagePlaceholder>
       )}
     </Shell>

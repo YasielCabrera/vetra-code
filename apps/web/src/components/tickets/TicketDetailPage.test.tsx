@@ -23,7 +23,8 @@ import { ticketDrafts } from "../../ticketDraftStore";
 vi.mock("../../hooks/useTicketActions", () => ({ useTicketActions: () => actions }));
 vi.mock("../../state/tickets", () => ({
   useTicket: () => detail.summary,
-  useTicketDetail: () => AsyncResult.success(detail),
+  useTicketDetail: () => currentDetail,
+  useTicketEnvironmentState: () => currentEnvironmentState,
   useTicketStatuses: () => null,
   useTicketGitHubWriteAllowed: () => true,
   useTicketGitHubSources: () => [],
@@ -86,6 +87,8 @@ const actions = {
   comment: vi.fn<ReturnType<typeof useTicketActions>["comment"]>(),
 };
 let viewportWidth = 800;
+let currentEnvironmentState = "supported";
+let currentDetail: AsyncResult.AsyncResult<TicketDetail, unknown>;
 const plan: TicketPlan = {
   summary: {
     planId: TicketPlanId.make("plan-1"),
@@ -137,6 +140,8 @@ beforeEach(() => {
   vi.useFakeTimers();
   setupSpeechTest();
   viewportWidth = 800;
+  currentEnvironmentState = "supported";
+  currentDetail = AsyncResult.success(detail);
   actions.update.mockReset();
   actions.comment.mockReset().mockResolvedValue(null);
   ticketDrafts.store.setState({
@@ -196,6 +201,49 @@ async function edit(label: string, value: string, blur = false) {
 }
 
 describe("TicketDetailPage", () => {
+  it.each(["unknown", "disconnected"])(
+    "explains the %s environment instead of loading forever",
+    async (state) => {
+      currentEnvironmentState = state;
+      currentDetail = AsyncResult.initial(false);
+      await renderPage();
+      expect(container.textContent).toContain("This environment is unknown or not connected.");
+      expect(container.textContent).not.toContain("Loading ticket");
+    },
+  );
+
+  it("waits for config before recommending a server update", async () => {
+    currentEnvironmentState = "pending";
+    currentDetail = AsyncResult.initial(false);
+    await renderPage();
+    expect(container.textContent).toContain("Loading ticket…");
+    expect(container.textContent).not.toContain("Tickets need a newer server");
+  });
+
+  it("recommends an update for a confirmed unsupported server", async () => {
+    currentEnvironmentState = "unsupported";
+    currentDetail = AsyncResult.initial(false);
+    await renderPage();
+    expect(container.textContent).toContain("Tickets need a newer server");
+  });
+
+  it("recovers after reconnecting without remounting the page", async () => {
+    currentEnvironmentState = "disconnected";
+    currentDetail = AsyncResult.initial(false);
+    await renderPage();
+    expect(container.textContent).toContain("This environment is unknown or not connected.");
+    currentEnvironmentState = "supported";
+    currentDetail = AsyncResult.success(detail);
+    await renderPage();
+    expect(container.textContent).toContain("Saved body");
+  });
+
+  it("keeps a loaded ticket visible while disconnected", async () => {
+    currentEnvironmentState = "disconnected";
+    await renderPage();
+    expect(container.textContent).toContain("Saved body");
+  });
+
   it("restores a comment after leaving and keeps the same ticket ID isolated across environments", async () => {
     await renderPage();
     await edit("Comment", "Local comment draft");

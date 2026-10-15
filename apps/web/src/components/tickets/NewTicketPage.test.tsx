@@ -20,6 +20,13 @@ import type { NewTicketSearch } from "./ticketDraft.logic";
 const primary = EnvironmentId.make("primary");
 const remote = EnvironmentId.make("remote");
 let board: TicketBoardState;
+let environmentsReady = true;
+let environments: Array<{
+  environmentId: EnvironmentId;
+  entry: { enabled: boolean };
+  connection: { phase: "connected" | "offline" };
+  serverConfig: { environment: { capabilities: { tickets: boolean } } } | null;
+}> = [];
 
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
 vi.mock("../../hooks/useTicketActions", () => ({ useTicketActions: () => ({ create }) }));
@@ -30,7 +37,7 @@ vi.mock("../../lib/attachmentUploadQueue", () => ({
 vi.mock("../../state/tickets", () => ({ useTickets: () => board }));
 vi.mock("../../state/entities", () => ({ useProjects: () => [], useThreadShells: () => [] }));
 vi.mock("../../state/environments", () => ({
-  useEnvironments: () => ({ environments: [] }),
+  useEnvironments: () => ({ environments, isReady: environmentsReady }),
   usePrimaryEnvironmentId: () => primary,
 }));
 vi.mock("../../env", () => ({ isElectron: false }));
@@ -84,6 +91,8 @@ let root: Root;
 let container: HTMLDivElement;
 
 beforeEach(() => {
+  environmentsReady = true;
+  environments = [];
   window.localStorage.clear();
   ticketDrafts.store.setState({
     drafts: {},
@@ -138,6 +147,29 @@ async function clickButton(label: string) {
 const UNAVAILABLE = "The selected environment is unavailable.";
 
 describe("NewTicketPage environment", () => {
+  it.each([
+    { support: null, phase: "connected", message: "Waiting for ticket environments" },
+    { support: null, phase: "offline", message: "Ticket environments are not connected" },
+    { support: false, phase: "connected", message: "Tickets need a newer server" },
+  ] satisfies ReadonlyArray<{
+    support: boolean | null;
+    phase: "connected" | "offline";
+    message: string;
+  }>)("shows $message when there is no ticket destination", async ({ support, phase, message }) => {
+    board = { tickets: [], loaded: true, environmentIds: [], statusSets: new Map() };
+    environments = [
+      {
+        environmentId: remote,
+        entry: { enabled: true },
+        connection: { phase },
+        serverConfig:
+          support === null ? null : { environment: { capabilities: { tickets: support } } },
+      },
+    ];
+    await renderPage({});
+    expect(container.textContent).toContain(message);
+  });
+
   it("waits for the board before calling a linked environment unavailable", async () => {
     board = { tickets: [], loaded: false, environmentIds: [primary], statusSets: new Map() };
     await renderPage({ env: remote });

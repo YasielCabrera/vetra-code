@@ -41,7 +41,7 @@ const {
       connection: { phase: "connected" | "offline" | "error" };
       serverConfig: {
         environment: { capabilities: { tickets: boolean }; platform: { machine: "server" } };
-      };
+      } | null;
     }>;
     isReady: boolean;
   } = { environments: [], isReady: true };
@@ -144,6 +144,8 @@ beforeEach(() => {
   localStorage.clear();
   projects.length = 0;
   board.environmentIds.length = 0;
+  board.loaded = true;
+  environments.isReady = true;
   environments.environments = [];
   primaryEnvironment.id = null;
   container = document.createElement("div");
@@ -190,6 +192,96 @@ function button(label: string) {
   if (control === undefined) throw new Error(`Missing control: ${label}`);
   return control;
 }
+
+describe("Tickets board environment placeholders", () => {
+  function connectedEnvironment(tickets: boolean | null) {
+    primaryEnvironment.id = "env-local";
+    environments.environments = [
+      {
+        environmentId: "env-local",
+        label: "Local",
+        entry: { enabled: true },
+        connection: { phase: "connected" },
+        serverConfig:
+          tickets === null
+            ? null
+            : {
+                environment: {
+                  capabilities: { tickets },
+                  platform: { machine: "server" },
+                },
+              },
+      },
+    ];
+  }
+
+  it("waits for environment discovery before recommending an update", async () => {
+    environments.isReady = false;
+    await openBoard("/tickets");
+    expect(container.textContent).toContain("Waiting for ticket environments");
+    expect(container.textContent).not.toContain("Tickets need a newer server");
+  });
+
+  it("waits for a connected environment's first config", async () => {
+    connectedEnvironment(null);
+    await openBoard("/tickets");
+    expect(container.textContent).toContain("Waiting for ticket environments");
+    expect(container.textContent).not.toContain("Tickets need a newer server");
+  });
+
+  it("recommends an update after a connected server explicitly reports no ticket support", async () => {
+    connectedEnvironment(false);
+    await openBoard("/tickets");
+    expect(container.textContent).toContain("Tickets need a newer server");
+  });
+
+  it.each([null, true, false])(
+    "shows a disconnected remote environment with cached support %s",
+    async (support) => {
+      primaryEnvironment.id = "env-remote";
+      environments.environments = [
+        {
+          environmentId: "env-remote",
+          label: "Remote",
+          entry: { enabled: true },
+          connection: { phase: "offline" },
+          serverConfig:
+            support === null
+              ? null
+              : {
+                  environment: {
+                    capabilities: { tickets: support },
+                    platform: { machine: "server" },
+                  },
+                },
+        },
+      ];
+      if (support === true) board.environmentIds.push("env-remote");
+      await openBoard("/tickets");
+      expect(container.textContent).toContain("Ticket environments are not connected");
+      expect(container.textContent).not.toContain("Tickets need a newer server");
+    },
+  );
+
+  it("recovers when a remote environment reconnects without leaving the board", async () => {
+    connectedEnvironment(null);
+    environments.environments = environments.environments.map((environment) => ({
+      ...environment,
+      connection: { phase: "offline" },
+    }));
+    const router = await openBoard("/tickets");
+    expect(container.textContent).toContain("Ticket environments are not connected");
+
+    await act(async () => {
+      connectedEnvironment(true);
+      board.environmentIds.push("env-local");
+      for (const listener of environmentListeners) listener();
+      await router.invalidate();
+    });
+    expect(container.textContent).toContain("No tickets yet");
+    expect(container.textContent).not.toContain("Ticket environments are not connected");
+  });
+});
 
 describe("Tickets board search navigation", () => {
   function disconnectedEnvironments() {

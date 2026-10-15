@@ -6,9 +6,13 @@ import {
 import {
   createEnvironmentTicketAtoms,
   createTicketEnvironmentAtoms,
+  resolveTicketEnvironmentState,
+  ticketCapability,
   type EnvironmentTicket,
   type ScopedTicketRef,
   type TicketBoardState,
+  type TicketCapability,
+  type TicketEnvironmentState,
 } from "@t3tools/client-runtime/state/tickets";
 import type {
   EnvironmentId,
@@ -52,17 +56,17 @@ export function useTicketIssueLinksSupported(environmentId: EnvironmentId): bool
   return useAtomValue(supportsTicketIssueLinksAtom(environmentId));
 }
 
-const supportsTicketsAtom = Atom.family((environmentId: EnvironmentId) =>
-  Atom.make(
-    (get) =>
-      get(environmentServerConfigsAtom).get(environmentId)?.environment.capabilities.tickets ===
-      true,
-  ).pipe(Atom.withLabel(`web-tickets:supported:${environmentId}`)),
+export const ticketCapabilityAtom = Atom.family((environmentId: EnvironmentId) =>
+  Atom.make((get) =>
+    ticketCapability(
+      get(environmentServerConfigsAtom).get(environmentId)?.environment.capabilities,
+    ),
+  ).pipe(Atom.withLabel(`web-tickets:capability:${environmentId}`)),
 );
 
 const ticketListAtom = Atom.family((environmentId: EnvironmentId) =>
   Atom.make((get): AsyncResult.AsyncResult<ReadonlyMap<string, TicketSummary>, unknown> | null =>
-    get(supportsTicketsAtom(environmentId))
+    get(ticketCapabilityAtom(environmentId)) === "supported"
       ? get(ticketEnvironment.listLive({ environmentId, input: {} }))
       : null,
   ).pipe(Atom.withLabel(`web-tickets:list:${environmentId}`)),
@@ -70,7 +74,7 @@ const ticketListAtom = Atom.family((environmentId: EnvironmentId) =>
 
 const ticketStatusesAtom = Atom.family((environmentId: EnvironmentId) =>
   Atom.make((get): AsyncResult.AsyncResult<TicketStatusSet, unknown> | null =>
-    get(supportsTicketsAtom(environmentId))
+    get(ticketCapabilityAtom(environmentId)) === "supported"
       ? get(ticketEnvironment.statusesLive({ environmentId, input: {} }))
       : null,
   ).pipe(Atom.withLabel(`web-tickets:statuses:${environmentId}`)),
@@ -78,7 +82,7 @@ const ticketStatusesAtom = Atom.family((environmentId: EnvironmentId) =>
 
 const ticketGitHubSourcesAtom = Atom.family((environmentId: EnvironmentId) =>
   Atom.make((get): ReadonlyArray<TicketGitHubSource> => {
-    if (!get(supportsTicketsAtom(environmentId))) return [];
+    if (get(ticketCapabilityAtom(environmentId)) !== "supported") return [];
     const result = get(ticketEnvironment.githubSourcesLive({ environmentId, input: {} }));
     return Option.getOrNull(AsyncResult.value(result))?.sources ?? [];
   }).pipe(Atom.withLabel(`web-tickets:github-sources:${environmentId}`)),
@@ -109,6 +113,19 @@ const environmentDisconnectedAtom = Atom.family((environmentId: EnvironmentId) =
   ).pipe(Atom.withLabel(`web-tickets:disconnected:${environmentId}`)),
 );
 
+export const ticketEnvironmentStateAtom = Atom.family((environmentId: EnvironmentId) =>
+  Atom.make((get) => {
+    const catalog = get(environmentCatalog.catalogValueAtom);
+    const known = catalog.entries.has(environmentId);
+    return resolveTicketEnvironmentState({
+      catalogReady: catalog.isReady,
+      known,
+      disconnected: known && get(environmentDisconnectedAtom(environmentId)),
+      capability: get(ticketCapabilityAtom(environmentId)),
+    });
+  }).pipe(Atom.withLabel(`web-tickets:environment-state:${environmentId}`)),
+);
+
 const environmentTickets = createEnvironmentTicketAtoms({
   catalogValueAtom: environmentCatalog.catalogValueAtom,
   listAtom: ticketListAtom,
@@ -116,7 +133,12 @@ const environmentTickets = createEnvironmentTicketAtoms({
   disconnectedAtom: environmentDisconnectedAtom,
 });
 
-const FALSE_ATOM = Atom.make(false).pipe(Atom.withLabel("web-tickets:false"));
+const UNKNOWN_CAPABILITY_ATOM = Atom.make<TicketCapability>("unknown").pipe(
+  Atom.withLabel("web-tickets:unknown-capability"),
+);
+const UNKNOWN_ENVIRONMENT_STATE_ATOM = Atom.make<TicketEnvironmentState>("unknown").pipe(
+  Atom.withLabel("web-tickets:unknown-environment"),
+);
 const NO_TICKETS: ReadonlyArray<EnvironmentTicket> = [];
 const NO_TICKETS_ATOM = Atom.make(NO_TICKETS).pipe(Atom.withLabel("web-tickets:none"));
 const NO_STATUSES_ATOM = Atom.make<TicketStatusSet | null>(null).pipe(
@@ -201,11 +223,25 @@ export function useTicketStatuses(environmentId: EnvironmentId | null): TicketSt
 }
 
 export function useEnvironmentSupportsTickets(environmentId: EnvironmentId | null): boolean {
-  return useAtomValue(environmentId === null ? FALSE_ATOM : supportsTicketsAtom(environmentId));
+  return (
+    useAtomValue(
+      environmentId === null ? UNKNOWN_CAPABILITY_ATOM : ticketCapabilityAtom(environmentId),
+    ) === "supported"
+  );
+}
+
+export function useTicketEnvironmentState(
+  environmentId: EnvironmentId | null,
+): TicketEnvironmentState {
+  return useAtomValue(
+    environmentId === null
+      ? UNKNOWN_ENVIRONMENT_STATE_ATOM
+      : ticketEnvironmentStateAtom(environmentId),
+  );
 }
 
 export function readEnvironmentSupportsTickets(environmentId: EnvironmentId): boolean {
-  return appAtomRegistry.get(supportsTicketsAtom(environmentId));
+  return appAtomRegistry.get(ticketCapabilityAtom(environmentId)) === "supported";
 }
 
 /** Every environment's GitHub sources, subscribed while a caller is mounted. */

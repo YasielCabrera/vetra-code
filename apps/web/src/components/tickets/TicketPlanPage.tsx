@@ -25,7 +25,12 @@ import {
 } from "./ThreadTicketWorkspace";
 import { documentSpeechKey, useStopSpeechOnLeave } from "../../readAloud";
 import { useTicketActions } from "../../hooks/useTicketActions";
-import { useTicket, useTicketDetail, useTicketPlan } from "../../state/tickets";
+import {
+  useTicket,
+  useTicketDetail,
+  useTicketEnvironmentState,
+  useTicketPlan,
+} from "../../state/tickets";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -65,6 +70,7 @@ export function TicketPlanPage(props: {
   readonly onEditStarted?: (() => void) | undefined;
 }) {
   const ticketRef = useMemo(() => parseTicketKey(props.ticketKey), [props.ticketKey]);
+  const environmentState = useTicketEnvironmentState(ticketRef?.environmentId ?? null);
   const boardTicket = useTicket(ticketRef);
   const offBoardDetail = useTicketDetail(boardTicket === null ? ticketRef : null);
   const ticket =
@@ -129,7 +135,13 @@ export function TicketPlanPage(props: {
         }
         title={summary?.title ?? null}
       >
-        {ticketRef === null || AsyncResult.isFailure(offBoardDetail) ? (
+        {ticketRef === null ? (
+          "This ticket does not exist, or its environment is not connected."
+        ) : environmentState === "unknown" || environmentState === "disconnected" ? (
+          "This environment is unknown or not connected."
+        ) : environmentState === "unsupported" ? (
+          "Tickets need a newer server. Update this environment's Vetra Code server to load plans."
+        ) : AsyncResult.isFailure(offBoardDetail) ? (
           "This ticket does not exist, or its environment is not connected."
         ) : ticket === null ? (
           "Loading plan…"

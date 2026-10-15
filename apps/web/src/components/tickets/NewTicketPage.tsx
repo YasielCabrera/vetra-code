@@ -1,5 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ticketKey } from "@t3tools/client-runtime/state/tickets";
+import {
+  resolveTicketBoardAvailability,
+  ticketCapability,
+  ticketKey,
+} from "@t3tools/client-runtime/state/tickets";
 import {
   EnvironmentId,
   ProjectId,
@@ -11,6 +15,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useStore } from "zustand";
 
 import { isElectron } from "../../env";
+import { isHostedStaticApp } from "../../hostedPairing";
 import { useTicketActions } from "../../hooks/useTicketActions";
 import { attachmentReferenceIds } from "../../lib/attachmentReferences";
 import { ticketDrafts, type ManualTicketDraft } from "../../ticketDraftStore";
@@ -41,8 +46,21 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
   const navigate = useNavigate();
   const actions = useTicketActions();
   const board = useTickets();
-  const { environments } = useEnvironments();
+  const { environments, isReady: environmentsReady } = useEnvironments();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const catalogReady = environmentsReady && (primaryEnvironmentId !== null || isHostedStaticApp());
+  const availability = useMemo(
+    () =>
+      resolveTicketBoardAvailability({
+        catalogReady,
+        environments: environments.map((environment) => ({
+          enabled: environment.entry.enabled,
+          connectionPhase: environment.connection.phase,
+          capability: ticketCapability(environment.serverConfig?.environment.capabilities),
+        })),
+      }),
+    [catalogReady, environments],
+  );
   const projects = useProjects();
   const threads = useThreadShells();
   const fallbackEnvironmentId = ticketDraftEnvironment(
@@ -221,7 +239,11 @@ export function NewTicketPage(props: { readonly prefill: NewTicketSearch }) {
         <ScrollArea className="min-h-0 flex-1">
           {environmentId === null ? (
             <p className="mx-auto w-full max-w-3xl px-6 py-10 text-sm text-muted-foreground">
-              No connected environment keeps tickets. Update its Vetra Code server to create one.
+              {availability === "unsupported"
+                ? "Tickets need a newer server. Update an environment's Vetra Code server to create a ticket."
+                : availability === "pending"
+                  ? "Waiting for ticket environments."
+                  : "Ticket environments are not connected. Connect an environment to create a ticket."}
             </p>
           ) : (
             <form
