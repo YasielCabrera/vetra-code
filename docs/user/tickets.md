@@ -48,9 +48,9 @@ project and model. **Create with agent** starts a new thread in that project, vi
 sidebar, where an agent investigates and files the ticket with a title, a description that cites
 the code it found, and a suggested status. You stay where you are; a notice says the ticket is
 being drafted, and another names it once it exists. The ticket links the project and the thread
-the selection came from. The agent is told not to change files, but it runs with the
-project's usual permissions, so review what it does as with any thread. If it ends without filing
-a ticket, a notice says so and links its thread, where you can follow up.
+the selection came from. Agent drafting uses Codex or Claude in approval-required mode, so file
+changes need your approval. If it ends without filing a ticket, a notice says so and links its
+thread, where you can follow up.
 
 Choose **Write it myself** to open a new ticket instead, with the selection as a quote or code
 block and the same links filled in.

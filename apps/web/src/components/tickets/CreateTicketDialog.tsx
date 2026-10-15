@@ -499,7 +499,8 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
           <DialogHeader>
             <DialogTitle>Create ticket</DialogTitle>
             <DialogDescription>
-              An agent investigates without editing files, then files the ticket.
+              An agent investigates and files the ticket. File changes require approval. Choose
+              Codex or Claude.
             </DialogDescription>
           </DialogHeader>
           <DialogPanel>
