@@ -435,13 +435,15 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
 - **Clean merge, wrong names.** If the script printed `rewrote N file(s)` but `git diff --cached`
   still shows `T3 Code`, the rewrite was not staged. That was a real bug once; the script now
   stages clean rewrites. If it happens again, stop and fix the script rather than committing.
-- **Fork RPCs inside upstream's RPC files.** Upstream edits `rpc.ts`, `ws.ts` and
-  `runtimeLayer.ts` constantly, so ticket RPCs and handlers live in files the fork owns:
-  [`ticketRpc.ts`](../../packages/contracts/src/ticketRpc.ts),
-  [`ticketRpcLayer.ts`](../../apps/server/src/ticket/ticketRpcLayer.ts), and
-  [`Tickets.ts`](../../apps/server/src/ticket/Tickets.ts). Upstream files carry small additive
-  hooks: `rpc.ts` spreads the method names and merges the ticket RPC group onto `WsCoreRpcGroup`,
-  `ws.ts` provides the ticket RPC layer, and `runtimeLayer.ts` provides the service layer.
+- **Fork RPCs inside upstream's RPC files.** Upstream edits `rpc.ts`, `ws.ts`, and
+  `runtimeLayer.ts` constantly, so keep ticket contracts in
+  [`ticketRpc.ts`](../../packages/contracts/src/ticketRpc.ts) and handlers in
+  [`ticketRpcLayer.ts`](../../apps/server/src/ticket/ticketRpcLayer.ts).
+  [`TicketService.ts`](../../apps/server/src/ticket/TicketService.ts) implements the service, and
+  [`Tickets.ts`](../../apps/server/src/ticket/Tickets.ts) assembles its layer. Upstream files carry
+  small additive hooks: `rpc.ts` spreads the method names and merges the ticket RPC group onto
+  `WsCoreRpcGroup`, `ws.ts` provides the ticket RPC layer, and `runtimeLayer.ts` provides
+  `Tickets.layer`.
   Incoming RPCs stay in `WsCoreRpcGroup`. Powerhouse follows the same pattern
   ([`powerhouseRpc.ts`](../../packages/contracts/src/powerhouseRpc.ts)). This is also a type-check
   limit, not only conflict hygiene: `WsCoreRpcGroup.toLayer` in `ws.ts` sits near TypeScript's

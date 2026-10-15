@@ -13,13 +13,15 @@ reads `T-42` as that number in the thread's project.
 Select **New ticket** on the board, choose **New ticket** in the command palette, or press
 `Cmd+Option+K` on macOS or `Ctrl+Alt+K` on Windows and Linux. Give it a title, a description in Markdown, a status, labels, and a project. Paste or
 drop files into the description to attach them; images and videos show inline and other files as
-links. The 50 MB attachment limit applies.
+links. Image attachments can be up to 10 MB each. Vetra compresses or resizes larger supported
+images to fit when possible. Other files, including videos, can be up to 50 MB each.
 
-Select a ticket to open it. Edit the title in place, and select **Edit** to change the
-description. Changes save on their own after a short pause. Check a task list item in the
-description to tick it off without opening the editor. If an agent or another device changed the
-description while you were editing it, a banner asks whether to **Reload** their version or **Keep
-mine**. Changes to the status, labels, or title elsewhere apply without interrupting you.
+Select a ticket to open it. Edit the title in place, and select **Edit description** in the
+ticket's options menu to change the description. Changes save on their own after a short pause.
+Check a task list item in the description to tick it off without opening the editor. If an agent
+or another device changed the description while you were editing it, a banner asks whether to
+**Reload** their version or **Keep mine**. Changes to the status, labels, or title elsewhere apply
+without interrupting you.
 
 The description editor has two modes. **Write** is a rich editor. **Markdown** edits the raw
 text. A description that contains a table or HTML opens in Markdown mode.
@@ -54,10 +56,17 @@ Choose **Write it myself** to open a new ticket instead, with the selection as a
 block and the same links filled in.
 
 Select a linked pull request to open it in the panel, with the same details, checks, and actions as
-the Pull Requests page. Select a linked issue to open it in the panel. Select a linked thread to
-see its status, model, and project, and open it from there. Select **Properties** to return to the
-ticket's properties. A pull request or issue opens in the panel only when one of the ticket's
-projects, or a GitHub source, uses its repository; otherwise the panel offers to open it on GitHub.
+the Pull Requests page. Its repository must match the main remote of a linked project or the
+project behind an enabled GitHub source for that repository. A source for a secondary remote alone
+is not enough.
+Without a matching project, the panel asks you to link one and offers **Open on GitHub**.
+
+Select a linked issue to open it in the panel. An enabled GitHub source for its repository or a
+linked project with a matching main remote must be able to read it. If the read fails, the panel
+shows **Issue unavailable**, with **Retry** and **Open on GitHub**.
+
+Select a linked thread to see its status, model, and project, and open it from there. Select
+**Properties** to return to the ticket's properties.
 
 ## Find tickets
 
