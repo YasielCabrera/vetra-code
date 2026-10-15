@@ -331,7 +331,7 @@ const TicketPlanCreateTool = Tool.make("t3_ticket_plan_create", {
 const TicketPlanUpdateTool = Tool.make("t3_ticket_plan_update", {
   ...shared,
   description:
-    "Change a plan's title, body, lifecycle or review status, and resolve the comments the change addresses, in one call. Omitted fields stay as they are. Plans start Draft; Ready is a manual review marker and stays Ready after title or body edits until explicitly returned to Draft. Marking Draft Ready requires the exact current expectedRevision and fails without changing anything if content changed: read it again and review before retrying. Returning to Draft may use a stale revision unless content also changes. Ready does not select a plan or start implementation. Prefer edits to a whole body: they cost fewer tokens and do not clobber concurrent edits. body and edits are mutually exclusive. A title, body or edits change fails without changing anything if the plan changed since expectedRevision: read it again and reapply. Attachments work as in t3_ticket_plan_create. Appending references for local files edits the body, advances its revision and requires the current expectedRevision. If the write outcome is uncertain, read the plan before retrying to avoid duplicate attachments.",
+    "Change a plan's title, body, lifecycle or review status, and resolve the comments the change addresses, in one call. Omitted fields stay as they are. Archived plans reject title, body, edits, and attachments unless status is active. Review-status changes remain allowed while archived. Plans start Draft; Ready is a manual review marker and stays Ready after title or body edits until explicitly returned to Draft. Marking Draft Ready requires the exact current expectedRevision and fails without changing anything if content changed: read it again and review before retrying. Returning to Draft may use a stale revision unless content also changes. Ready does not select a plan or start implementation. Prefer edits to a whole body: they cost fewer tokens and do not clobber concurrent edits. body and edits are mutually exclusive. A title, body or edits change fails without changing anything if the plan changed since expectedRevision: read it again and reapply. Attachments work as in t3_ticket_plan_create. Appending references for local files edits the body, advances its revision and requires the current expectedRevision. If the write outcome is uncertain, read the plan before retrying to avoid duplicate attachments.",
   parameters: Schema.Struct({
     plan,
     expectedRevision: PositiveInt.annotate({
@@ -347,7 +347,9 @@ const TicketPlanUpdateTool = Tool.make("t3_ticket_plan_update", {
         "Find-and-replace edits applied in order. Each find must match exactly once in the body the earlier edits left; otherwise the call fails and names the edit.",
     }),
     status: Schema.optional(
-      TicketPlanStatus.annotate({ description: "archived retires the plan; active restores it." }),
+      TicketPlanStatus.annotate({
+        description: "archived retires the plan and locks content edits; active restores it.",
+      }),
     ),
     reviewStatus: TicketPlanUpdateInput.fields.reviewStatus,
     resolveCommentIds: TicketPlanUpdateInput.fields.resolveCommentIds.annotate({

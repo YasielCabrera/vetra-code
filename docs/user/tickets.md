@@ -143,9 +143,12 @@ A new thread waits for you to send its first message.
 
 Plans start **Draft**. Select **Mark Ready** after reviewing a plan, or **Return to Draft** to change
 it back. Agents can change the review status too. Title and content edits retain **Ready** until
-you or an agent explicitly returns the plan to Draft. Archiving preserves its review status.
+you or an agent explicitly returns the plan to Draft.
 Marking a plan Ready does not start implementation. You can ask an agent to implement or revise
 either a Draft or a Ready plan.
+
+Use **Archive** or **Restore** in the plan's options menu. Archived plans keep their review status,
+which you can still change. Restore an archived plan before editing it.
 
 - Edits save on their own. If an agent or another device changed the plan while you were editing,
   choose **Reload** or **Keep mine**. Earlier versions are not kept.
