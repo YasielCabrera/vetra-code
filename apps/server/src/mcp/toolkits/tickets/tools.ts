@@ -8,6 +8,7 @@ import {
   ProjectId,
   ThreadId,
   TICKET_LINKS_MAX_COUNT,
+  TicketActivityReadInput,
   TicketCommentInput,
   TicketCreateInput,
   TicketDetail,
@@ -142,8 +143,14 @@ const TicketListTool = Tool.make("t3_ticket_list", {
 const TicketGetTool = Tool.make("t3_ticket_get", {
   ...shared,
   description:
-    "Read one ticket: body, links, attachments and recent activity. summary.revision is the expectedRevision t3_ticket_update needs.",
-  parameters: Schema.Struct({ ticket }),
+    "Read one ticket: body, links, attachments and recent activity, oldest first. When activityTruncated is true, pass activityNextBefore as before to read older rows. summary.revision is the expectedRevision t3_ticket_update needs.",
+  parameters: Schema.Struct({
+    ticket,
+    before: TicketActivityReadInput.fields.before,
+    limit: TicketActivityReadInput.fields.limit.annotate({
+      description: "Activity rows to read. Defaults to 20, maximum 200.",
+    }),
+  }),
   success: TicketDetail,
 })
   .annotate(Tool.Title, "Read a ticket")

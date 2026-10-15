@@ -73,6 +73,108 @@ const countRows = (table: string) =>
   });
 
 describe("TicketService", () => {
+  it.effect("pages older activity without gaps while newer notes arrive", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const ticket = (yield* tickets.create({ title: "Long-lived ticket" }, USER)).ticket;
+        const other = (yield* tickets.create({ title: "Other ticket" }, USER)).ticket;
+        for (let index = 1; index <= 205; index++) {
+          yield* tickets.addComment({ ticketId: ticket.id, body: `Note ${index}` }, USER);
+          if (index === 100) {
+            yield* tickets.addComment({ ticketId: other.id, body: "Unrelated note" }, USER);
+          }
+        }
+
+        const detail = yield* tickets.get(ticket.id);
+        assert.strictEqual(detail.activity.length, 200);
+        assert.strictEqual(detail.activityTruncated, true);
+        assert.strictEqual(detail.activityNextBefore, detail.activity[0]!.id);
+        assert.deepStrictEqual(detail.activity[0]!.entry, { type: "comment", body: "Note 6" });
+        const [streamed] = yield* tickets
+          .subscribeDetail(ticket.id)
+          .pipe(Stream.take(1), Stream.runCollect);
+        assert.deepStrictEqual(streamed, {
+          summary: detail.summary,
+          body: detail.body,
+          links: detail.links,
+          attachments: detail.attachments,
+          activity: detail.activity,
+        });
+        const options = { before: detail.activityNextBefore ?? 0 };
+        const older = yield* tickets.activity(ticket.id, options);
+        assert.deepStrictEqual(
+          older.activity.map(({ entry }) => entry),
+          [
+            { type: "created" },
+            ...Array.from({ length: 5 }, (_, index) => ({
+              type: "comment" as const,
+              body: `Note ${index + 1}`,
+            })),
+          ],
+        );
+        assert.strictEqual(older.activityTruncated, false);
+        assert.strictEqual(older.activityNextBefore, null);
+        assert.deepStrictEqual((yield* tickets.get(ticket.id, options)).activity, older.activity);
+
+        yield* tickets.addComment({ ticketId: ticket.id, body: "Newest note" }, USER);
+        assert.deepStrictEqual(yield* tickets.activity(ticket.id, options), older);
+        const all = [...older.activity, ...detail.activity];
+        const ids = all.map(({ id }) => id);
+        assert.strictEqual(ids.length, 206);
+        assert.strictEqual(new Set(ids).size, 206);
+        assert.deepStrictEqual(
+          ids,
+          ids.toSorted((left, right) => left - right),
+        );
+        assert.ok(all.every(({ ticketId }) => ticketId === ticket.id));
+        assert.deepStrictEqual(yield* tickets.activity(ticket.id, { before: 1 }), {
+          activity: [],
+          activityTruncated: false,
+          activityNextBefore: null,
+        });
+        const missing = yield* tickets.activity(TicketId.make("missing-ticket")).pipe(Effect.flip);
+        assert.strictEqual(missing._tag, "TicketNotFoundError");
+      }),
+    ),
+  );
+
+  it.effect("advances past a page containing only unknown activity entries", () =>
+    withTickets((tickets) =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        const ticket = (yield* tickets.create({ title: "Future activity" }, USER)).ticket;
+        yield* tickets.addComment({ ticketId: ticket.id, body: "Earlier instructions" }, USER);
+        for (let index = 0; index < 2; index++) {
+          yield* sql`
+            INSERT INTO ticket_activity (ticket_id, actor_json, entry_json, created_at)
+            VALUES (${ticket.id}, '{"type":"user"}', '{"type":"future_activity"}',
+              '2026-10-01T00:00:00.000Z')
+          `;
+        }
+        yield* tickets.addComment({ ticketId: ticket.id, body: "Latest note" }, USER);
+        const newest = yield* tickets.activity(ticket.id, { limit: 1 });
+        const unknown = yield* tickets.activity(ticket.id, {
+          before: newest.activityNextBefore ?? 0,
+          limit: 2,
+        });
+        assert.deepStrictEqual(unknown.activity, []);
+        assert.strictEqual(unknown.activityTruncated, true);
+        assert.ok((unknown.activityNextBefore ?? 0) > 0);
+        assert.ok((unknown.activityNextBefore ?? 0) < (newest.activityNextBefore ?? 0));
+        const oldest = yield* tickets.activity(ticket.id, {
+          before: unknown.activityNextBefore ?? 0,
+          limit: 2,
+        });
+        assert.deepStrictEqual(
+          oldest.activity.map(({ entry }) => entry),
+          [{ type: "created" }, { type: "comment", body: "Earlier instructions" }],
+        );
+        assert.strictEqual(oldest.activityTruncated, false);
+        assert.strictEqual(oldest.activityNextBefore, null);
+      }),
+    ),
+  );
+
   it.effect("streams only the thread links that later writes add", () =>
     withTickets((tickets) =>
       Effect.gen(function* () {

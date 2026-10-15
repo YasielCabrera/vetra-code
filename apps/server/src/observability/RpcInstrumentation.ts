@@ -29,6 +29,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.automationRunsSetHidden]: "automationRuns",
   [WS_METHODS.ticketsSubscribe]: "tickets",
   [WS_METHODS.ticketsSubscribeDetail]: "tickets",
+  [WS_METHODS.ticketsActivity]: "tickets",
   [WS_METHODS.ticketsSearch]: "tickets",
   [WS_METHODS.ticketsCreate]: "tickets",
   [WS_METHODS.ticketsUpdate]: "tickets",

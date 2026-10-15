@@ -7,6 +7,8 @@ import { IssueActivity, IssueActor, IssueAssigneeCandidateList, IssueDetail } fr
 import { ProjectId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { EnvironmentAuthorizationError } from "./auth.ts";
 import {
+  TicketActivityPage,
+  TicketActivityReadInput,
   TicketCommentInput,
   TicketCreateInput,
   TicketDeleteInput,
@@ -103,6 +105,7 @@ export type TicketIssueLinkCandidates = typeof TicketIssueLinkCandidates.Type;
 export const TICKET_WS_METHODS = {
   ticketsSubscribe: "tickets.subscribe",
   ticketsSubscribeDetail: "tickets.subscribeDetail",
+  ticketsActivity: "tickets.activity",
   ticketsSearch: "tickets.search",
   ticketsCreate: "tickets.create",
   ticketsUpdate: "tickets.update",
@@ -163,6 +166,12 @@ const WsTicketsSubscribeDetailRpc = Rpc.make(TICKET_WS_METHODS.ticketsSubscribeD
 const WsTicketsSearchRpc = Rpc.make(TICKET_WS_METHODS.ticketsSearch, {
   payload: TicketSearchInput,
   success: TicketSearchResult,
+  error: TicketRpcError,
+});
+
+const WsTicketsActivityRpc = Rpc.make(TICKET_WS_METHODS.ticketsActivity, {
+  payload: TicketActivityReadInput,
+  success: TicketActivityPage,
   error: TicketRpcError,
 });
 
@@ -351,6 +360,7 @@ const WsTicketsDeletePlanCommentRpc = Rpc.make(TICKET_WS_METHODS.ticketsDeletePl
 export const TicketsRpcGroup = RpcGroup.make(
   WsTicketsSubscribeRpc,
   WsTicketsSubscribeDetailRpc,
+  WsTicketsActivityRpc,
   WsTicketsSearchRpc,
   WsTicketsCreateRpc,
   WsTicketsUpdateRpc,

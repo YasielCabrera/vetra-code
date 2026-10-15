@@ -17,8 +17,6 @@ import * as McpToolAccess from "../../McpToolAccess.ts";
 import { readCaller } from "../../threadAccess.ts";
 import { type AgentTicketLinkTarget, TicketsToolkit } from "./tools.ts";
 
-const RECENT_ACTIVITY = 20;
-
 const reader = Effect.fn("TicketsToolkit.reader")(function* () {
   yield* McpInvocationContext.requireMcpCapability("tickets");
   return (yield* readCaller()).caller;
@@ -121,8 +119,10 @@ const make = Effect.gen(function* () {
     t3_ticket_get: McpToolAccess.reads((input) =>
       Effect.gen(function* () {
         const caller = yield* reader();
-        const detail = yield* tickets.get(yield* ticketId(input.ticket, caller));
-        return { ...detail, activity: detail.activity.slice(-RECENT_ACTIVITY) };
+        return yield* tickets.get(yield* ticketId(input.ticket, caller), {
+          before: input.before,
+          limit: input.limit ?? 20,
+        });
       }),
     ),
     t3_ticket_create: McpToolAccess.writes(({ linkCaller, links, status, ...input }) =>

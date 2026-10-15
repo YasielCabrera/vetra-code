@@ -29,6 +29,8 @@ export const ticketRpcLayer = (scopes: ReadonlyArray<AuthEnvironmentScope>) =>
       return TicketsRpcGroup.of({
         [WS_METHODS.ticketsSubscribe]: () => tickets.subscribeList(),
         [WS_METHODS.ticketsSubscribeDetail]: (input) => tickets.subscribeDetail(input.ticketId),
+        [WS_METHODS.ticketsActivity]: ({ ticketId, ...options }) =>
+          tickets.activity(ticketId, options),
         [WS_METHODS.ticketsSearch]: (input) => tickets.search(input),
         [WS_METHODS.ticketsCreate]: (input) => tickets.create(input, USER),
         [WS_METHODS.ticketsUpdate]: (input) => tickets.update(input, USER),

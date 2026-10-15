@@ -133,6 +133,45 @@ const seedGitHubTicket = Effect.gen(function* () {
 });
 
 describe("TicketsToolkit", () => {
+  it.effect("pages ticket activity past the default tail and the detail cap", () =>
+    Effect.gen(function* () {
+      const ticket = yield* call("t3_ticket_create", { title: "Keep earlier instructions" });
+      for (let index = 1; index <= 205; index++) {
+        yield* call("t3_ticket_note", { ticket: ticket.id, body: `Instructions ${index}` });
+      }
+      const recent = yield* call("t3_ticket_get", { ticket: ticket.id });
+      assert.strictEqual(recent.activity.length, 20);
+      assert.strictEqual(recent.activityTruncated, true);
+      assert.strictEqual(recent.activityNextBefore, recent.activity[0]!.id);
+      assert.deepStrictEqual(recent.activity[0]!.entry, {
+        type: "comment",
+        body: "Instructions 186",
+      });
+      const capped = yield* call("t3_ticket_get", { ticket: ticket.id, limit: 200 });
+      assert.strictEqual(capped.activity.length, 200);
+      assert.strictEqual(capped.activityTruncated, true);
+      const older = yield* call("t3_ticket_get", {
+        ticket: ticket.id,
+        before: recent.activityNextBefore ?? 0,
+        limit: 200,
+      });
+      assert.ok(
+        older.activity.some(
+          ({ entry }) => entry.type === "comment" && entry.body === "Instructions 1",
+        ),
+      );
+      assert.ok(older.activity.every(({ id }) => id < (recent.activityNextBefore ?? 0)));
+      assert.strictEqual(older.activityTruncated, false);
+      assert.strictEqual(older.activityNextBefore, null);
+      const ids = [...older.activity, ...recent.activity].map(({ id }) => id);
+      assert.strictEqual(new Set(ids).size, ids.length);
+      assert.deepStrictEqual(
+        ids,
+        ids.toSorted((left, right) => left - right),
+      );
+    }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
+  );
+
   it.effect("returns metadata only for attachments referenced in the plan body", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;

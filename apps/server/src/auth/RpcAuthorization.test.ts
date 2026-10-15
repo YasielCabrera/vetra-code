@@ -174,6 +174,13 @@ describe("RPC authorization scopes", () => {
     );
   });
 
+  it("reads older ticket activity with the same scope as ticket details", () => {
+    expect(requiredScopeForRpcMethod(WS_METHODS.ticketsActivity)).toBe(AuthOrchestrationReadScope);
+    expect(requiredScopeForRpcMethod(WS_METHODS.ticketsActivity)).toBe(
+      requiredScopeForRpcMethod(WS_METHODS.ticketsSubscribeDetail),
+    );
+  });
+
   it("reads linked ticket issues but requires source control writes to change assignments", () => {
     for (const method of [
       WS_METHODS.ticketsIssueLinkCandidates,

@@ -19,6 +19,7 @@ import {
   TICKET_DETAIL_ACTIVITY_LIMIT,
   TicketActivity,
   TicketActivityEntry,
+  type TicketActivityPage,
   type TicketActor,
   type TicketAttachment,
   type TicketCommentInput,
@@ -97,6 +98,7 @@ import * as Queue from "effect/Queue";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
+import * as Struct from "effect/Struct";
 import * as SqlClient from "effect/sql/SqlClient";
 import type { SqlError } from "effect/sql/SqlError";
 import type * as Statement from "effect/sql/Statement";
@@ -147,6 +149,11 @@ interface TicketListResult {
   readonly statuses: TicketStatusSet["statuses"];
 }
 
+interface TicketActivityReadOptions {
+  readonly before?: TicketActivity["id"] | undefined;
+  readonly limit?: number | undefined;
+}
+
 interface GitHubIssueImport {
   readonly existingTicketId?: TicketId;
   readonly readKind?: "direct";
@@ -189,7 +196,12 @@ export class TicketService extends Context.Service<
     >;
     readonly get: (
       ticketId: TicketId,
+      options?: TicketActivityReadOptions,
     ) => Effect.Effect<TicketDetail, TicketNotFoundError | TicketError>;
+    readonly activity: (
+      ticketId: TicketId,
+      options?: TicketActivityReadOptions,
+    ) => Effect.Effect<TicketActivityPage, TicketNotFoundError | TicketError>;
     /**
      * Resolves `T-42`, a ticket id, or `owner/repo#123` for a GitHub ticket. `T-42` counts per
      * project: within `projectId` it is the ticket numbered 42 there now, or the one that was
@@ -757,7 +769,47 @@ const make = Effect.gen(function* () {
       ),
     );
 
-  const get: TicketService["Service"]["get"] = (ticketId) =>
+  const readActivityPage = (ticketId: TicketId, options: TicketActivityReadOptions = {}) =>
+    Effect.gen(function* () {
+      const limit = options.limit ?? TICKET_DETAIL_ACTIVITY_LIMIT;
+      const rows = yield* sql<{
+        readonly activity_id: number;
+        readonly actor_json: string;
+        readonly entry_json: string;
+        readonly created_at: string;
+      }>`
+        SELECT activity_id, actor_json, entry_json, created_at FROM ticket_activity
+        WHERE ticket_id = ${ticketId}
+          ${options.before === undefined ? sql`` : sql`AND activity_id < ${options.before}`}
+        ORDER BY activity_id DESC
+        LIMIT ${limit + 1}
+      `;
+      const consumed = rows.slice(0, limit);
+      const activityTruncated = rows.length > limit;
+      return {
+        activity: consumed.toReversed().flatMap((row) =>
+          Option.toArray(
+            decodeActivity({
+              id: row.activity_id,
+              ticketId,
+              actor: Option.getOrNull(decodeJsonOption(row.actor_json)),
+              createdAt: row.created_at,
+              entry: Option.getOrNull(decodeJsonOption(row.entry_json)),
+            }),
+          ),
+        ),
+        activityTruncated,
+        activityNextBefore: activityTruncated ? (consumed.at(-1)?.activity_id ?? null) : null,
+      } satisfies TicketActivityPage;
+    }).pipe(Effect.mapError(ticketError("Could not read ticket activity.")));
+
+  const activity: TicketService["Service"]["activity"] = (ticketId, options) =>
+    Effect.gen(function* () {
+      yield* requireSummary(ticketId);
+      return yield* readActivityPage(ticketId, options);
+    });
+
+  const get: TicketService["Service"]["get"] = (ticketId, options) =>
     Effect.gen(function* () {
       const summary = yield* requireSummary(ticketId);
       const [bodyRow] = yield* sql<{ readonly body: string }>`
@@ -788,28 +840,7 @@ const make = Effect.gen(function* () {
         ticket: summary,
         attachmentIds: attachments.map((attachment) => attachment.attachment_id),
       });
-      const activityRows = yield* sql<{
-        readonly activity_id: number;
-        readonly actor_json: string;
-        readonly entry_json: string;
-        readonly created_at: string;
-      }>`
-        SELECT activity_id, actor_json, entry_json, created_at FROM ticket_activity
-        WHERE ticket_id = ${ticketId}
-        ORDER BY activity_id DESC
-        LIMIT ${TICKET_DETAIL_ACTIVITY_LIMIT}
-      `;
-      const activity = activityRows.toReversed().flatMap((row) =>
-        Option.toArray(
-          decodeActivity({
-            id: row.activity_id,
-            ticketId,
-            actor: Option.getOrNull(decodeJsonOption(row.actor_json)),
-            createdAt: row.created_at,
-            entry: Option.getOrNull(decodeJsonOption(row.entry_json)),
-          }),
-        ),
-      );
+      const page = yield* readActivityPage(ticketId, options);
       return {
         summary,
         body: bodyRow?.body ?? "",
@@ -818,7 +849,7 @@ const make = Effect.gen(function* () {
           ...toAttachment(attachment),
           usedByPlanRefs: planRefs.get(attachment.attachment_id) ?? [],
         })),
-        activity,
+        ...page,
       } satisfies TicketDetail;
     }).pipe(
       Effect.catchTags({
@@ -2750,7 +2781,7 @@ const make = Effect.gen(function* () {
         );
         return Stream.concat(Stream.fromEffect(get(ticketId)), Stream.fromEffectRepeat(nextDetail));
       }),
-    );
+    ).pipe(Stream.map(Struct.omit(["activityTruncated", "activityNextBefore"])));
 
   const subscribeThreadLinks: TicketService["Service"]["subscribeThreadLinks"] = subscribeChanges(
     threadLinkSubscribers,
@@ -3277,6 +3308,7 @@ const make = Effect.gen(function* () {
     subscribeDetail,
     subscribeThreadLinks,
     get,
+    activity,
     resolveRef,
     search,
     list,

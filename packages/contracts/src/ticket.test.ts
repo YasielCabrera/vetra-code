@@ -4,6 +4,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { ProjectId } from "./baseSchemas.ts";
 import {
   parseTicketReference,
+  TicketActivityReadInput,
   TicketCreateInput,
   TicketDetail,
   ticketLinkTargetKey,
@@ -105,6 +106,20 @@ describe("ticketLinkTargetKey", () => {
 });
 
 describe("ticket read compatibility", () => {
+  it("bounds activity pages and requires positive exclusive cursors", () => {
+    const isRead = Schema.is(TicketActivityReadInput);
+    expect(isRead({ ticketId: "ticket-1" })).toBe(true);
+    for (const limit of [1, 200]) {
+      expect(isRead({ ticketId: "ticket-1", before: 1, limit })).toBe(true);
+    }
+    for (const limit of [0, -1, 201, 1.5]) {
+      expect(isRead({ ticketId: "ticket-1", limit })).toBe(false);
+    }
+    for (const before of [0, -1, 1.5, "1"]) {
+      expect(isRead({ ticketId: "ticket-1", before })).toBe(false);
+    }
+  });
+
   it("reads summaries and details from a server that predates plans and attachment usage", () => {
     const summary = decodeTicketSummary({
       kind: "local",
@@ -132,6 +147,8 @@ describe("ticket read compatibility", () => {
     };
     const detail = { summary, body: "", links: [], attachments: [attachment], activity: [] };
     const decodeDetail = Schema.decodeUnknownSync(TicketDetail);
+    expect(decodeDetail(detail).activityTruncated).toBeUndefined();
+    expect(decodeDetail(detail).activityNextBefore).toBeUndefined();
     expect(decodeDetail(detail).attachments[0]!.usedByPlanRefs).toEqual([]);
     expect(
       decodeDetail({

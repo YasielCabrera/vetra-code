@@ -133,6 +133,7 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.automationRunsSetHidden]: AuthOrchestrationOperateScope,
   [WS_METHODS.ticketsSubscribe]: AuthOrchestrationReadScope,
   [WS_METHODS.ticketsSubscribeDetail]: AuthOrchestrationReadScope,
+  [WS_METHODS.ticketsActivity]: AuthOrchestrationReadScope,
   [WS_METHODS.ticketsSearch]: AuthOrchestrationReadScope,
   [WS_METHODS.ticketsCreate]: AuthOrchestrationOperateScope,
   [WS_METHODS.ticketsUpdate]: AuthOrchestrationOperateScope,

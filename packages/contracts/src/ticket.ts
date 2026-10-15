@@ -304,6 +304,25 @@ export type TicketActivity = typeof TicketActivity.Type;
 /** How much history a detail read carries, newest last. */
 export const TICKET_DETAIL_ACTIVITY_LIMIT = 200;
 
+export const TicketActivityReadInput = Schema.Struct({
+  ticketId: TicketId,
+  /** Exclusive activity id from the previous page's `activityNextBefore`. */
+  before: Schema.optional(PositiveInt),
+  limit: Schema.optional(
+    PositiveInt.check(Schema.isLessThanOrEqualTo(TICKET_DETAIL_ACTIVITY_LIMIT)),
+  ),
+});
+export type TicketActivityReadInput = typeof TicketActivityReadInput.Type;
+
+export const TicketActivityPage = Schema.Struct({
+  /** Oldest first within this page. */
+  activity: Schema.Array(TicketActivity),
+  activityTruncated: Schema.Boolean,
+  /** The oldest consumed raw id; may advance even when unknown entries leave the page empty. */
+  activityNextBefore: Schema.NullOr(PositiveInt),
+});
+export type TicketActivityPage = typeof TicketActivityPage.Type;
+
 export const TicketDetail = Schema.Struct({
   summary: TicketSummary,
   body: Schema.String,
@@ -316,7 +335,10 @@ export const TicketDetail = Schema.Struct({
       ),
     }),
   ),
-  activity: Schema.Array(TicketActivity),
+  activity: TicketActivityPage.fields.activity,
+  /** Detail streams and older servers omit paging metadata; absence leaves completeness unknown. */
+  activityTruncated: Schema.optional(TicketActivityPage.fields.activityTruncated),
+  activityNextBefore: Schema.optional(TicketActivityPage.fields.activityNextBefore),
 });
 export type TicketDetail = typeof TicketDetail.Type;
 
