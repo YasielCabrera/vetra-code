@@ -296,7 +296,8 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 say "Fetching upstream"
-git fetch upstream --prune --tags
+# Release tags belong to the fork and can share names with upstream releases.
+git fetch upstream --prune --no-tags
 
 say "Merging $UPSTREAM_REF ($(git rev-list --count HEAD.."$UPSTREAM_REF") new commits)"
 git merge --no-commit --no-ff "$UPSTREAM_REF" || true

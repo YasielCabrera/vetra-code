@@ -52,7 +52,7 @@ If `upstream` is missing:
 
 ```bash
 git remote add upstream https://github.com/pingdotgg/t3code.git
-git fetch upstream --prune --tags
+git fetch upstream --prune --no-tags
 ```
 
 Run the sync on `main`.
@@ -136,7 +136,7 @@ scripts/sync-upstream.sh upstream/main   # or another fetched ref
 It will:
 
 1. Exit if the working tree is dirty. Commit or stash first.
-2. `git fetch upstream --prune --tags`.
+2. `git fetch upstream --prune --no-tags`. Release tags belong to the fork and can share names with upstream releases.
 3. `git merge --no-commit --no-ff <ref>` into the current branch. Merge conflicts do not abort the
    rest of the script (`|| true` after merge).
 4. `git rm` the prune paths and globs above, including files upstream newly added inside them.
@@ -222,7 +222,7 @@ is not part of the sync and must not be left behind silently.
 1. **Read what is coming.**
 
    ```bash
-   git fetch upstream --prune --tags
+   git fetch upstream --prune --no-tags
    git log --oneline HEAD..upstream/main
    MB=$(git merge-base HEAD upstream/main)
    git diff --name-only "$MB"..upstream/main
