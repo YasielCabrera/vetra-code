@@ -12,7 +12,7 @@ Start the workflow on `main` from the repository's **Actions** tab (**Desktop Re
 workflow**), or from a checkout:
 
 ```bash
-gh workflow run desktop-release.yml
+gh workflow run desktop-release.yml --repo YasielCabrera/vetra-code
 ```
 
 A run builds each platform in parallel:
@@ -33,11 +33,11 @@ upstream's Linux CLI archive), so WSL backends fall back to the server tree moun
 
 ## Versioning
 
-Releases track upstream's desktop package version: `0.0.N` is our line `0.N`, and each release
-bumps the patch on that line (`v0.45.0`, then `v0.45.1`). A sync that moves upstream to `0.0.46`
-starts `v0.46.0`. Drafts, releases on other lines, and tags that are not `vX.Y.Z` are ignored. The
-source is this repository's releases, not Git tags: a clone that fetched upstream carries T3's
-`v0.0.x` tags.
+Vetra release versions are independent of upstream's package version. Each successful release
+bumps the patch of the highest published `vX.Y.Z` release (`v0.45.4`, then `v0.45.5`). Drafts and
+tags that are not `vX.Y.Z` are ignored. A repository without a published stable release starts
+at `v0.1.0`. The source is this repository's releases, not Git tags, so fetched upstream tags do
+not affect Vetra's version.
 
 ## Updates
 

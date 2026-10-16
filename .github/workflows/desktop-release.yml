@@ -41,8 +41,11 @@ jobs:
           git init --quiet .
           git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
           git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
-          git sparse-checkout set --no-cone '/.github/scripts/' '/apps/desktop/package.json'
+          git sparse-checkout set --no-cone '/.github/scripts/'
           git checkout --detach FETCH_HEAD
+
+      - name: Test release versioning
+        run: node --test .github/scripts/next-release-version.test.cjs
 
       - id: version
         name: Resolve next version
