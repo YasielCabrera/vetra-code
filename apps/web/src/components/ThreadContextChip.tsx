@@ -5,10 +5,6 @@ import { MessagesSquareIcon } from "lucide-react";
 import { useThreadShell } from "~/state/entities";
 import { LinkedContextChip } from "./ContextChip";
 
-/**
- * Inline chip for an attached thread, in the composer and in sent messages. Prefers the
- * live title so a renamed thread never shows a stale label, and opens the thread on click.
- */
 export function ThreadContextChip(props: {
   record: Pick<ThreadContextRecord, "environmentId" | "threadId" | "title">;
   copyMarkdown?: string;

@@ -79,7 +79,6 @@ export function usePrimaryCloudLinkState() {
         : null,
     [primary],
   );
-  // Builds without Vetra Connect have no link to read; skip the request.
   const atom =
     target && hasCloudPublicConfig() && canReadRelay
       ? primaryCloudLinkStateAtom(targetKey(target))

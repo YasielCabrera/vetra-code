@@ -11,7 +11,6 @@ export function getDesktopUpdateDownloadedVersion(state: DesktopUpdateState): st
   return state.downloadedVersion ?? state.availableVersion;
 }
 
-/** Release notes for an exact downloaded build; nightly suffixes are part of the tag. */
 export function getDesktopUpdateReleaseUrl(version: string | null): string | null {
   const normalizedVersion = version?.trim();
   const releaseTagUrl = import.meta.env.VITE_DESKTOP_RELEASE_TAG_URL?.trim().replace(/\/+$/, "");

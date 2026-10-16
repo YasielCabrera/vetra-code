@@ -5,7 +5,6 @@ import { ThreadEnvMode, WorktreeSubmodules } from "./environment.ts";
 import { ProjectScriptIcon } from "./project.ts";
 import type { ProjectScopedServerSettingKey, ServerSettings } from "./settings.ts";
 
-/** File name of the checked-in Vetra project file, resolved at the workspace root. */
 export const VETRA_PROJECT_FILE_NAME = "vetra.json";
 
 /** Public URL of the published JSON Schema for {@link T3ProjectFile}. */
@@ -115,13 +114,10 @@ export const T3ProjectFile = Schema.Struct({
 export type T3ProjectFile = typeof T3ProjectFile.Type;
 
 /**
- * Settings a repository can also declare in vetra.json. A key here must be
- * nullable on `ServerSettings` (null means inherit) so both the project
- * override and the environment value can defer to the file; `field` names
- * the vetra.json field carrying the same value and `builtIn` is what applies
- * when every tier is unset. `resolveProjectSettings` walks project override,
- * environment value, file, built-in, so listing a key here is the whole
- * change for a new file-backed setting.
+ * A key here must be nullable on `ServerSettings` (null means inherit) so both
+ * the project override and the environment value can defer to the file; `field`
+ * names the vetra.json field carrying the same value and `builtIn` is what applies
+ * when every tier is unset.
  */
 export const PROJECT_FILE_BACKED_SETTINGS = {
   defaultThreadEnvMode: { field: "defaultThreadEnvMode", builtIn: "local" },
@@ -143,11 +139,6 @@ export const PROJECT_FILE_BACKED_SETTINGS = {
 };
 export type ProjectFileBackedSettingKey = keyof typeof PROJECT_FILE_BACKED_SETTINGS;
 
-/**
- * `ServerSettings` with every file-backed key resolved to a concrete value.
- * What `resolveProjectSettings(...).settings` produces once a vetra.json (or
- * its absence) has been accounted for.
- */
 export type ResolvedServerSettings = Omit<ServerSettings, ProjectFileBackedSettingKey> & {
   readonly [K in ProjectFileBackedSettingKey]: Exclude<ServerSettings[K], null>;
 };

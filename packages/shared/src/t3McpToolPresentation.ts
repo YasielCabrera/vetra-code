@@ -96,7 +96,6 @@ function tool(
 
 const VETRA_MCP_SERVER_ALIASES = new Set(["vetra-code", "vetra_code", "vetracode"]);
 
-// Cards, activity rows, summaries, and provider identity recovery share this inventory.
 const VETRA_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   link_pull_request: tool(
     ["Link", "Linking", "Linked", "a pull request"],
@@ -374,10 +373,6 @@ const VETRA_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   html_render: tool(["Render", "Rendering", "Rendered", "an HTML page"], "html-render"),
 };
 
-/**
- * The Vetra Code orchestration tool inventory, used to gate loose name matching on
- * both the server (ACP MCP identity recovery) and the client (logo branding).
- */
 export const VETRA_MCP_TOOL_NAMES: ReadonlySet<string> = new Set(Object.keys(VETRA_MCP_TOOLS));
 
 function normalizeT3McpToolLabel(value: string): string {
@@ -423,7 +418,6 @@ function resolveT3McpToolName(value: string): string | null {
   return longest;
 }
 
-/** The bare Vetra Code tool name (`html_render`) for any provider's spelling of it. */
 export function resolveT3McpToolId(toolName: string | null | undefined): string | null {
   const name = toolName == null ? null : resolveT3McpToolName(toolName);
   return name !== null && Object.hasOwn(VETRA_MCP_TOOLS, name) ? name : null;

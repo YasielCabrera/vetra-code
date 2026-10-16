@@ -12,7 +12,7 @@ import type {
 import { sanitizeComposerContextLabel } from "@t3tools/shared/composerContextReferences";
 
 import type { AttachedContextRecord } from "../../composerDraftStore";
-import { toKindScopedComposerContextId } from "../../lib/composerContextReferences";
+import { toKindScopedComposerContextId } from "@t3tools/shared/composerContextReferences";
 import { formatTicketRef } from "./ticketRefs";
 
 /**

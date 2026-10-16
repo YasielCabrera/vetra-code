@@ -5,8 +5,6 @@ export interface CommandPaletteLinkedThreads {
   readonly threads: PullRequestLinkedThreadsResult["threads"];
 }
 
-// Tiny event bus allowing components to programmatically open the command palette
-// without owning its React state.
 const COMMAND_PALETTE_OPEN_EVENT = "vetra:open-command-palette";
 
 export interface CommandPaletteOpenDetail {

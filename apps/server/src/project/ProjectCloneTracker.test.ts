@@ -101,7 +101,6 @@ describe("ProjectCloneTracker", () => {
       expect(final).toMatchObject({ phase: "done", percent: 100 });
       expect(harness.cloned).toEqual([projectId]);
 
-      // Done clones drop out after the grace window so the toast can settle.
       yield* TestClock.adjust("31 seconds");
       expect(yield* tracker.get(projectId)).toBeNull();
     }).pipe(Effect.provide(harness.layer));
@@ -163,7 +162,6 @@ describe("ProjectCloneTracker", () => {
   it.effect("a cancel that lands after git finished keeps the checkout", () => {
     const gate = Deferred.makeUnsafe<void>();
     const harness = makeHarness();
-    // The clone itself completes instantly; the post-clone hook is what hangs.
     const hooks: ProjectCloneTracker.ProjectCloneHooks = {
       ...harness.hooks,
       onCloned: () => Deferred.await(gate),
@@ -240,7 +238,6 @@ describe("ProjectCloneTracker", () => {
       const error = yield* Effect.flip(tracker.start(startInput, hooks));
       expect(error.message).toContain("workspace root exists");
       expect(yield* tracker.get(projectId)).toBeNull();
-      // The destination is free again for a corrected attempt.
       yield* tracker.start(startInput, harness.hooks);
       yield* Effect.yieldNow;
       expect((yield* tracker.get(projectId))?.phase).toBe("done");

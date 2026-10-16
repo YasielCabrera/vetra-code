@@ -5,8 +5,10 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 
+import packageJson from "../../package.json" with { type: "json" };
 import {
   formatCliCommand,
+  resolveHostCliCommand,
   resolveRootCliCommand,
   resolveServerInstallation,
 } from "./invocation.ts";
@@ -38,11 +40,11 @@ it("formats package runner commands from their cache entry paths", () => {
       "bunx @vetra-code/server serve",
     ],
     [
-      "/tmp/bunx-1000-@vetra-code/server@latest/node_modules/@vetra-code/server/dist/bin.mjs",
+      "/tmp/bunx-1000-vetra@latest/node_modules/@vetra-code/server/dist/bin.mjs",
       "bunx @vetra-code/server serve",
     ],
     [
-      "C:\\Users\\theo\\AppData\\Local\\Temp\\bunx-0-@vetra-code/server@latest\\node_modules\\@vetra-code\\server\\dist\\bin.mjs",
+      "C:\\Users\\theo\\AppData\\Local\\Temp\\bunx-0-vetra@latest\\node_modules\\@vetra-code\\server\\dist\\bin.mjs",
       "bunx @vetra-code/server serve",
     ],
   ] as const) {
@@ -53,7 +55,7 @@ it("formats package runner commands from their cache entry paths", () => {
 it("treats stable installs as direct invocations", () => {
   for (const entryPath of [
     "/usr/local/lib/node_modules/@vetra-code/server/dist/bin.mjs",
-    "/home/theo/Code/work/vetra-code/apps/server/dist/bin.mjs",
+    "/home/theo/Code/work/t3code/apps/server/dist/bin.mjs",
     "/home/theo/.vetra-code/runtime/0.0.31/node_modules/@vetra-code/server/dist/bin.mjs",
     "",
   ]) {
@@ -94,8 +96,7 @@ it("formats serve suggestions to match the launching command", () => {
   assert.equal(
     formatCliCommand({
       subcommand: "serve",
-      entryPath:
-        "/tmp/bunx-1000-@vetra-code/server@latest/node_modules/@vetra-code/server/dist/bin.mjs",
+      entryPath: "/tmp/bunx-1000-vetra@latest/node_modules/@vetra-code/server/dist/bin.mjs",
       version: "0.0.31",
     }),
     "bunx @vetra-code/server serve",
@@ -111,7 +112,6 @@ it("formats serve suggestions to match the launching command", () => {
 });
 
 it.layer(NodeServices.layer)("root CLI commands", (it) => {
-  /** `sudo vetra browser setup` as this process would render it, with `vetra` on PATH or not. */
   const rootCommand = (input: {
     readonly node: string;
     readonly entry: string;
@@ -127,8 +127,7 @@ it.layer(NodeServices.layer)("root CLI commands", (it) => {
       Effect.provideService(HostProcess.Environment, { PATH: input.path ?? "", ...input.env }),
     );
 
-  /** A directory holding an executable `vetra`, to stand in for one on PATH. */
-  const pathWithVetra = Effect.gen(function* () {
+  const pathWithT3 = Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
     const bin = yield* fs.makeTempDirectoryScoped();
@@ -138,7 +137,7 @@ it.layer(NodeServices.layer)("root CLI commands", (it) => {
 
   it.effect("keeps a user-installed Node reachable when the command runs under sudo", () =>
     Effect.gen(function* () {
-      const npx = "/home/theo/.npm/_npx/abc/node_modules/t3/dist/bin.mjs";
+      const npx = "/home/theo/.npm/_npx/abc/node_modules/@vetra-code/server/dist/bin.mjs";
       // sudo's secure_path already has a system Node.
       expect(yield* rootCommand({ node: "/usr/bin/node", entry: npx })).toBe(
         "sudo npx @vetra-code/server browser setup",
@@ -150,8 +149,8 @@ it.layer(NodeServices.layer)("root CLI commands", (it) => {
       expect(
         yield* rootCommand({
           node: "/home/theo/.local/node/bin/node",
-          entry: "/home/theo/.local/lib/node_modules/t3/dist/bin.mjs",
-          path: yield* pathWithVetra,
+          entry: "/home/theo/.local/lib/node_modules/@vetra-code/server/dist/bin.mjs",
+          path: yield* pathWithT3,
         }),
       ).toBe('sudo env "PATH=$PATH" vetra browser setup');
     }).pipe(Effect.scoped),
@@ -170,21 +169,21 @@ it.layer(NodeServices.layer)("root CLI commands", (it) => {
         entry: "/tmp/.mount_T3abc/resources/app.asar/apps/server/dist/bin.mjs",
         env: { VETRA_CLI_PATH: shim },
       };
-      // The desktop app's shim, quoted for the shell and run as root as is.
+
       expect(yield* rootCommand(desktop)).toBe(`sudo '${shim}' browser setup`);
-      // A `vetra` the person put on PATH still wins.
-      expect(yield* rootCommand({ ...desktop, path: yield* pathWithVetra })).toBe(
+
+      expect(yield* rootCommand({ ...desktop, path: yield* pathWithT3 })).toBe(
         'sudo env "PATH=$PATH" vetra browser setup',
       );
-      // A standalone binary names itself.
+
       expect(
         yield* rootCommand({
-          node: "/opt/t3/t3",
-          entry: "/opt/t3/t3",
+          node: "/opt/vetra/vetra",
+          entry: "/opt/vetra/vetra",
           executable: true,
         }),
-      ).toBe("sudo /opt/t3/t3 browser setup");
-      // A stale shim path, then no launcher at all, fall back to plain `vetra`.
+      ).toBe("sudo /opt/vetra/vetra browser setup");
+
       expect(
         yield* rootCommand({ ...desktop, env: { VETRA_CLI_PATH: path.join(home, "gone") } }),
       ).toBe('sudo env "PATH=$PATH" vetra browser setup');
@@ -192,25 +191,87 @@ it.layer(NodeServices.layer)("root CLI commands", (it) => {
   );
 });
 
-it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
-  it.effect("recognizes runner caches for both script and executable packages", () =>
+it.layer(NodeServices.layer)("host CLI commands", (it) => {
+  it.effect("renders a PowerShell command line on Windows", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const root = yield* fs.makeTempDirectoryScoped();
+      const home = yield* fs.makeTempDirectoryScoped();
+      const shim = path.join(home, "vetra.cmd");
+      yield* fs.writeFileString(shim, "@echo off\r\n");
+      const hostCommand = (platform: NodeJS.Platform, env: Record<string, string>) =>
+        resolveHostCliCommand("doctor", ["--base-dir", "C:\\Users\\Jane Doe\\.vetra-code"]).pipe(
+          Effect.provideService(
+            HostProcess.ExecutablePath,
+            "C:\\Program Files\\Vetra Code\\vetra.exe",
+          ),
+          Effect.provideService(HostProcess.Arguments, [
+            "C:\\Program Files\\Vetra Code\\vetra.exe",
+            "C:\\Program Files\\Vetra Code\\resources\\app.asar\\apps\\server\\dist\\bin.mjs",
+          ]),
+          Effect.provideService(HostProcess.IsExecutable, false),
+          Effect.provideService(HostProcess.Platform, platform),
+          Effect.provideService(HostProcess.Environment, { PATH: "", ...env }),
+        );
+      // The desktop shim is called through `&`, and each argument is quoted
+      // the PowerShell way: no POSIX single quotes anywhere.
+      expect((yield* hostCommand("win32", { VETRA_CLI_PATH: shim })).command).toBe(
+        `& "${shim}" doctor "--base-dir" "C:\\Users\\Jane Doe\\.vetra-code"`,
+      );
+      // Without a launcher, plain `vetra` with PowerShell-quoted arguments.
+      expect((yield* hostCommand("win32", {})).command).toBe(
+        'vetra doctor "--base-dir" "C:\\Users\\Jane Doe\\.vetra-code"',
+      );
+      // Typographic quotes also delimit PowerShell strings; doubling keeps them.
+      expect(
+        (yield* resolveHostCliCommand("doctor", ["--base-dir", "C:\\T3\\\u201CArchive\u201D"]).pipe(
+          Effect.provideService(HostProcess.Platform, "win32"),
+          Effect.provideService(HostProcess.Environment, { PATH: "" }),
+          Effect.provideService(HostProcess.ExecutablePath, "C:\\vetra.exe"),
+          Effect.provideService(HostProcess.Arguments, ["C:\\vetra.exe", "C:\\bin.mjs"]),
+          Effect.provideService(HostProcess.IsExecutable, false),
+        )).command,
+      ).toBe('vetra doctor "--base-dir" "C:\\T3\\\u201C\u201CArchive\u201D\u201D"');
+      // POSIX hosts keep single quotes for the same input. The shim prefix is
+      // a host path, so only the arguments are asserted.
+      expect((yield* hostCommand("linux", { VETRA_CLI_PATH: shim })).command).toMatch(
+        / doctor --base-dir 'C:\\Users\\Jane Doe\\\.vetra-code'$/,
+      );
+    }).pipe(Effect.scoped),
+  );
+});
+
+it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
+  it.effect("recognizes runner caches for script packages and the npm launcher", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const root = yield* fs.makeTempDirectoryScoped().pipe(Effect.flatMap(fs.realPath));
+      const executable = path.join(root, ".vetra-code/runtime/versions/1.0.0/vetra");
+      yield* fs.makeDirectory(path.dirname(executable), { recursive: true });
+      yield* fs.writeFileString(executable, "");
       for (const [relative, kind] of [
         ["npm/_npx/hash/node_modules/@vetra-code/server/dist/bin.mjs", "npx"],
-        ["npm/_npx/hash/node_modules/@vetra-code/vetra-linux-x64/vetra", "npx"],
+        ["npm/_npx/hash/node_modules/@vetra-code/server/bin/vetra.mjs", "npx"],
         ["pnpm/dlx/hash/node_modules/@vetra-code/server/dist/bin.mjs", "pnpm-dlx"],
-        [".bun/install/cache/@vetra-code/server/dist/bin.mjs", "bunx"],
+        [".bun/install/cache/vetra/dist/bin.mjs", "bunx"],
       ] as const) {
         const entry = path.join(root, relative);
         yield* fs.makeDirectory(path.dirname(entry), { recursive: true });
         yield* fs.writeFileString(entry, "");
+        yield* fs.writeFileString(
+          path.join(path.dirname(entry), "../package.json"),
+          `{"name":"@vetra-code/server","version":"${packageJson.version}","bin":{"vetra":"./bin/vetra.mjs"}}`,
+        );
+        const launchedBy = entry.endsWith("vetra.mjs");
         const installation = yield* resolveServerInstallation.pipe(
-          Effect.provideService(HostProcess.Arguments, ["node", entry]),
-          Effect.provideService(HostProcess.ExecutablePath, entry),
-          Effect.provideService(HostProcess.IsExecutable, entry.endsWith("/vetra")),
+          Effect.provideService(HostProcess.Arguments, [launchedBy ? executable : "node", entry]),
+          Effect.provideService(HostProcess.ExecutablePath, executable),
+          Effect.provideService(HostProcess.IsExecutable, launchedBy),
+          Effect.provideService(
+            HostProcess.Environment,
+            launchedBy ? { VETRA_NPM_LAUNCHER_PATH: entry } : {},
+          ),
         );
         expect(installation).toEqual({ kind });
       }
@@ -221,7 +282,7 @@ it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const root = yield* fs.makeTempDirectoryScoped();
+      const root = yield* fs.makeTempDirectoryScoped().pipe(Effect.flatMap(fs.realPath));
       const prefix = path.join(root, "bunx-tools");
       const packageRoot = path.join(prefix, "lib/node_modules/@vetra-code/server");
       const entry = path.join(packageRoot, "dist/bin.mjs");
@@ -240,7 +301,7 @@ it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
       );
       expect(yield* resolve).toBeNull();
       yield* fs.symlink(entry, globalBin);
-      expect(yield* resolve).toEqual({ kind: "npm-global", prefix: yield* fs.realPath(prefix) });
+      expect(yield* resolve).toEqual({ kind: "npm-global", prefix });
       yield* fs.remove(globalBin);
       yield* fs.writeFileString(globalBin, "an unrelated vetra command");
       expect(yield* resolve).toBeNull();
@@ -248,38 +309,37 @@ it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
     }),
   );
 
-  it.effect("proves the native executable belongs to the npm launcher", () =>
+  it.effect("proves the downloaded executable was started by a global npm launcher", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const root = yield* fs.makeTempDirectoryScoped();
+      const root = yield* fs.makeTempDirectoryScoped().pipe(Effect.flatMap(fs.realPath));
       const prefix = path.join(root, "bunx-tools");
       const packageRoot = path.join(prefix, "lib/node_modules/@vetra-code/server");
-      const launcher = path.join(packageRoot, "bin/vetra.js");
-      const entry = path.join(packageRoot, "node_modules/@vetra-code/vetra-linux-x64/vetra");
+      const launcher = path.join(packageRoot, "bin/vetra.mjs");
+      const executable = path.join(root, ".vetra-code/runtime/versions/1.0.0/vetra");
       yield* fs.makeDirectory(path.dirname(launcher), { recursive: true });
-      yield* fs.makeDirectory(path.dirname(entry), { recursive: true });
+      yield* fs.makeDirectory(path.dirname(executable), { recursive: true });
       yield* fs.makeDirectory(path.join(prefix, "bin"));
       yield* fs.writeFileString(launcher, "");
-      yield* fs.writeFileString(entry, "");
-      yield* fs.writeFileString(
-        path.join(packageRoot, "package.json"),
-        '{"name":"@vetra-code/server","version":"0.0.45","bin":{"vetra":"./bin/vetra.js"},"optionalDependencies":{"@vetra-code/vetra-linux-x64":"0.0.45"}}',
-      );
+      yield* fs.writeFileString(executable, "");
       yield* fs.symlink(launcher, path.join(prefix, "bin/vetra"));
-      const canonicalPrefix = yield* fs.realPath(prefix);
       const resolve = resolveServerInstallation.pipe(
-        Effect.provideService(HostProcess.ExecutablePath, entry),
+        Effect.provideService(HostProcess.ExecutablePath, executable),
+        Effect.provideService(HostProcess.Arguments, [executable, executable]),
         Effect.provideService(HostProcess.IsExecutable, true),
         Effect.provideService(HostProcess.Platform, "linux"),
+        Effect.provideService(HostProcess.Environment, { VETRA_NPM_LAUNCHER_PATH: launcher }),
       );
+      // A launcher for another version is some other `vetra` the server spawned
+      // (the variable is inherited), not the install this executable runs from.
       for (const [version, expected] of [
-        ["0.0.44", null],
-        ["0.0.45", { kind: "npm-global", prefix: canonicalPrefix }],
-      ]) {
+        ["0.0.1", null],
+        [packageJson.version, { kind: "npm-global", prefix }],
+      ] as const) {
         yield* fs.writeFileString(
-          path.join(path.dirname(entry), "package.json"),
-          `{"name":"@vetra-code/vetra-linux-x64","version":"${version}"}`,
+          path.join(packageRoot, "package.json"),
+          `{"name":"@vetra-code/server","version":"${version}","bin":{"vetra":"./bin/vetra.mjs"}}`,
         );
         expect(yield* resolve).toEqual(expected);
       }
@@ -290,7 +350,7 @@ it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const root = yield* fs.makeTempDirectoryScoped();
+      const root = yield* fs.makeTempDirectoryScoped().pipe(Effect.flatMap(fs.realPath));
       for (const relative of [
         "project/node_modules/@vetra-code/server/dist/bin.mjs",
         "project/apps/server/dist/bin.mjs",

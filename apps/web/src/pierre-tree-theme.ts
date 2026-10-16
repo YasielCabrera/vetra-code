@@ -28,7 +28,6 @@ export const PIERRE_TREE_UNSAFE_CSS = `
   @keyframes t3-tree-spin { to { transform: rotate(360deg); } }
 `;
 
-/** Host styles that keep a Pierre tree on the active color scheme and foreground. */
 export function pierreTreeStyle(colorScheme: "light" | "dark"): CSSProperties {
   return {
     colorScheme,

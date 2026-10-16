@@ -3,10 +3,6 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "../../lib/utils";
 
-/**
- * Sections share header and content insets in both the sidebar and popover.
- * Passing `expanded` makes the heading a toggle that hides the content.
- */
 export function ThreadDetailsSection({
   headingId,
   title,

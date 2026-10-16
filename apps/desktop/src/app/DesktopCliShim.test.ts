@@ -26,7 +26,6 @@ const writeExecutable = (path: string, content: string) => {
   NodeFS.writeFileSync(path, content, { mode: 0o755 });
 };
 
-/** Writes the launcher for `target` at `<root>/bin/vetra`, with `<root>/home` as its Vetra home. */
 const writeShim = (root: string, target: CliShimTarget) => {
   const shim = NodePath.join(root, "bin", "vetra");
   writeExecutable(shim, renderCliShim({ target, shimPath: shim, t3Home: `${root}/home` }));
@@ -39,16 +38,9 @@ const run = (shim: string, args: ReadonlyArray<string>, env: NodeJS.ProcessEnv =
     env: { PATH: process.env.PATH, ...env },
   });
 
-/** An app executable that reports its environment and arguments. */
 const REPORTER =
   '#!/bin/sh\necho "node=$ELECTRON_RUN_AS_NODE cli=$VETRA_CLI_PATH home=$VETRA_HOME"\nprintf "%s\\n" "$@"\nexit 3\n';
 
-/**
- * A stand-in AppImage whose image holds the reporter. `--appimage-mount`
- * prints the mount and stays up until killed, recording that it was; with
- * `canMount` false it fails like a host without FUSE. `--appimage-extract`
- * unpacks into ./squashfs-root.
- */
 const fakeAppImage = (canMount = true) => {
   const root = tempRoot();
   const image = NodePath.join(root, "image");
@@ -84,7 +76,6 @@ describe("renderCliShim", () => {
       "a b",
       "",
     ]);
-    // The trap kills the mount helper as the launcher exits.
     NodeChildProcess.spawnSync("sh", [
       "-c",
       `i=0; while [ ! -e '${root}/unmounted' ] && [ $i -lt 40 ]; do sleep 0.05; i=$((i+1)); done`,
@@ -94,7 +85,6 @@ describe("renderCliShim", () => {
 
   it("extracts the AppImage where it cannot be mounted", () => {
     const { shim } = fakeAppImage(false);
-    // Extract-and-run is ignored too, so the runtime never starts the app.
     const result = run(shim, ["--version"], { APPIMAGE_EXTRACT_AND_RUN: "1" });
     expect(result.status).toBe(3);
     expect(result.stdout).toMatch(
@@ -125,10 +115,10 @@ describe("renderCliShim", () => {
     const shim = writeShim(root, {
       kind: "direct",
       executable,
-      entry: "/opt/T3's/app.asar/bin.mjs",
+      entry: "/opt/Vetra Code's/app.asar/bin.mjs",
     });
     expect(run(shim, ["browser", "setup"]).stdout.split("\n").slice(1)).toEqual([
-      "/opt/T3's/app.asar/bin.mjs",
+      "/opt/Vetra Code's/app.asar/bin.mjs",
       "browser",
       "setup",
       "",
@@ -160,7 +150,6 @@ describe("renderCliShim", () => {
     expect(lines).toContain(
       'if exist "C:\\Apps\\R&whoami&X 100%%\\!CHANNEL!\\Vetra Code.exe" goto run',
     );
-    // Paths only ever appear quoted or inside `set "..."`, never bare where `&` would split them.
     const bare = lines.filter(
       (line) => line.includes("whoami") && !/"[^"]*whoami[^"]*"/.test(line),
     );
@@ -174,7 +163,6 @@ describe("renderCliShim", () => {
       shimPath: "C:\\Users\\me\\.vetra-code\\bin\\vetra.cmd",
       t3Home: "C:\\Users\\me\\.vetra-code",
     });
-    // A Ctrl-C that ends the batch would leave the console switched.
     expect(ascii).not.toContain("chcp");
     expect(ascii.split("\r\n")).toContain("exit /b %t3_exit%");
   });

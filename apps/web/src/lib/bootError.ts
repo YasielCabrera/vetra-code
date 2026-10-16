@@ -1,4 +1,3 @@
-/** Shows startup failures before React can replace the boot splash. */
 export function showBootError(error: unknown) {
   console.error("Vetra Code failed to start.", error);
   const bootShell = document.getElementById("boot-shell");

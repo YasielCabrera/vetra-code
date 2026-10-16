@@ -23,7 +23,7 @@ import * as Stream from "effect/Stream";
 import * as SqlClient from "effect/sql/SqlClient";
 
 import { IssueProviderError, type ProviderIssueListCursor } from "../issue/IssueProvider.ts";
-import { GitHubApiResponseError } from "@t3tools/source-control-github/server/GitHubApi";
+import { GitHubApiResponseError } from "@t3tools/source-control-github/server/GitHubRequestPolicy";
 import { GitHubIssueReadError } from "../issue/GitHubIssueCli.ts";
 import { IssueProviderRegistry } from "../issue/IssueProviderRegistry.ts";
 import * as ProjectService from "../project/ProjectService.ts";

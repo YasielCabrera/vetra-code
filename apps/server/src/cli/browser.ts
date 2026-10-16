@@ -36,7 +36,6 @@ export class BrowserSetupStepError extends Schema.TaggedError<BrowserSetupStepEr
   }
 }
 
-/** Runs one setup command, streaming its output, and fails with its exit code. */
 const runStep = Effect.fn("browserSetup.runStep")(function* (
   step: string,
   command: string,
@@ -54,8 +53,8 @@ const runStep = Effect.fn("browserSetup.runStep")(function* (
 });
 
 /**
- * The Vetra home to check. Under `sudo` the process home is root's, so an
- * unspecified home falls back to the invoking user's `~/.vetra-code`.
+ * Under `sudo` the process home is root's, so an unspecified home falls back to
+ * the invoking user's `~/.t3`.
  */
 const setupBaseDir = Effect.fn("browserSetup.baseDir")(function* (explicit: Option.Option<string>) {
   const env = yield* HostProcess.Environment;
@@ -72,7 +71,6 @@ const setupBaseDir = Effect.fn("browserSetup.baseDir")(function* (explicit: Opti
   return home ? path.join(home, PRODUCT_HOME_DIRECTORY_NAME) : yield* resolveBaseDir(undefined);
 });
 
-/** Whether apt has an installable candidate for `name`. */
 const aptOffers = Effect.fn("browserSetup.aptOffers")(function* (name: string) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
   const policy = yield* spawner
@@ -82,7 +80,6 @@ const aptOffers = Effect.fn("browserSetup.aptOffers")(function* (name: string) {
   return candidate !== undefined && candidate !== "(none)";
 });
 
-/** The installed browser in this Vetra home, if any, to check its libraries. */
 const installedBrowser = Effect.fn("browserSetup.installedBrowser")(function* (baseDir: string) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;

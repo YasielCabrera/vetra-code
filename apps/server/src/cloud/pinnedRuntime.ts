@@ -21,16 +21,6 @@ import {
 import * as ProcessRunner from "../processRunner.ts";
 import { PRODUCT_CLI_NAME } from "@t3tools/shared/productIdentity";
 
-/**
- * A pinned runtime is an exact Vetra release archive unpacked into
- * <baseDir>/runtime/versions/<version>: the self-contained executable, the
- * web client, and the native packages beside it. The boot service points its
- * unit or launch agent at the executable, and server self-update installs the
- * target version here before switching over. The runtime never depends on a
- * Node or npm on the machine; the only npm involvement is the server package
- * for people who prefer to run it with a package runner, and even a CLI
- * installed that way pins an archive when it sets up the service.
- */
 const PINNED_RUNTIME_DIR = "runtime";
 const PINNED_RUNTIME_INSTALL_TIMEOUT = Duration.minutes(10);
 const PINNED_RUNTIME_ARCHIVE_FILE = "vetra-runtime-archive";
@@ -40,12 +30,10 @@ const pinnedRuntimeInstallLock = Semaphore.makeUnsafe(1);
 
 export interface PinnedRuntimePaths {
   readonly versionDir: string;
-  /** The executable. Its existence is what marks a runtime as present. */
   readonly entryPath: string;
   readonly sentinelPath: string;
 }
 
-/** The exact command that runs a pinned runtime. */
 export function pinnedRuntimeCommand(paths: PinnedRuntimePaths): {
   readonly command: string;
   readonly args: ReadonlyArray<string>;
@@ -108,12 +96,9 @@ export type PinnedRuntimeProgress =
   | { readonly stage: "verify" | "extract" | "validate" | "cached" };
 
 /**
- * Installs the Vetra release archive for `version` into the pinned runtime
- * directory unless a complete install is already there, and returns its
- * paths. The sentinel is written only after extraction and validation
- * succeed; checking the entry file alone is not enough, since tar writes the
- * executable before the last native package and a killed install leaves a
- * plausible-looking but broken tree behind.
+ * The sentinel is written only after extraction and validation succeed; checking the entry file
+ * alone is not enough, since tar writes the executable before the last native package and a
+ * killed install leaves a plausible-looking but broken tree behind.
  */
 
 interface PinnedRuntimeInstallInput {
@@ -158,7 +143,6 @@ const fetchReleaseAsset = Effect.fn("cloud.pinned_runtime.fetch_release_asset")(
           ),
           Stream.runCollect,
         );
-        // A completed chunked response finally gives us its total size.
         if (total === undefined && received > 0) {
           onProgress({ stage: "download", received, total: received });
         }
@@ -179,12 +163,6 @@ const fetchReleaseAsset = Effect.fn("cloud.pinned_runtime.fetch_release_asset")(
   );
 });
 
-/**
- * Downloads the release archive for this platform, verifies it against the
- * release's checksum file, and unpacks it so the executable sits directly in
- * the staging directory. Only `tar` is required on the host; every supported
- * OS ships one that reads gzip and zip.
- */
 const installFromArchive = Effect.fn("cloud.pinned_runtime.install_archive")(function* (
   input: PinnedRuntimeInstallInput,
   stagingDir: string,

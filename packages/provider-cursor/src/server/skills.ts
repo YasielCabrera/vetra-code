@@ -1,26 +1,8 @@
 /**
- * CursorSkills — workspace-aware discovery and native invocation for Cursor.
- *
  * Cursor discovers Agent Skills recursively from user and project roots but
  * its ACP command catalog only appears after opening a real session. Scanning
  * the same roots avoids starting an agent and its MCP servers just to populate
  * a composer menu.
- *
- * Beyond those writable roots, two read-only sources carry most of the skills
- * on a developed machine and are scanned too: `~/.cursor/skills-cursor`, which
- * the CLI syncs and Cursor tells authors never to write to, and the skill
- * folders declared by installed plugins under `~/.cursor/plugins`. A plugin is
- * any directory holding `.cursor-plugin/plugin.json` or Claude's
- * `.claude-plugin/plugin.json`; marketplace plugins are cached four levels down
- * (`plugins/cache/<marketplace>/<plugin>/<revision>/`) while local ones sit at
- * `plugins/local/<plugin>/`, so plugin roots are found by looking for a
- * manifest rather than by assuming a fixed depth.
- *
- * Roots are scanned most-specific first, so a name collision resolves as
- * project > personal > plugin > built-in. A plugin skill never shadows a skill
- * the user wrote themselves.
- *
- * @module provider/Drivers/CursorSkills
  */
 
 import type { ServerProviderSkill } from "@t3tools/contracts";
@@ -221,8 +203,6 @@ const discoverSkillsInRoot = Effect.fn("discoverCursorSkillsInRoot")(function* (
       const child = path.join(directory, entry);
       const info = yield* orUndefined(fileSystem.stat(child), input.budget);
       if (info?.type !== "Directory") continue;
-      // A tree deeper than the limit is skipped rather than fatal: the same tree would fail
-      // every refresh and hide every other skill with it.
       if (depth >= MAX_SKILL_DEPTH) continue;
       yield* visit(child, depth + 1);
     }

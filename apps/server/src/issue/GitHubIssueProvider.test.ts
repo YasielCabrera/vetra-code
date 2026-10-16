@@ -1,9 +1,9 @@
+import * as GitHubRequestPolicy from "@t3tools/source-control-github/server/GitHubRequestPolicy";
 import { SourceControlProviderKind } from "@t3tools/contracts";
 import { expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
-import * as GitHubApi from "@t3tools/source-control-github/server/GitHubApi";
 import * as GitHubCredentials from "@t3tools/source-control-github/server/GitHubCredentials";
 import * as SourceControlRateLimit from "@t3tools/source-control-core/server/SourceControlRateLimit";
 import * as GitHubIssueCli from "./GitHubIssueCli.ts";
@@ -161,15 +161,23 @@ it.effect("says why GitHub refused an issue request", () =>
     const refusals = [
       new GitHubCredentials.GitHubCliMissingError({ host: "github.com" }),
       new GitHubCredentials.GitHubNotSignedInError({ host: "github.com" }),
-      new GitHubApi.GitHubApiAuthenticationError({ host: "github.com", operation: "x" }),
-      new GitHubApi.GitHubApiRateLimitError({ host: "github.com", operation: "x", retryAt: 1_000 }),
+      new GitHubRequestPolicy.GitHubApiAuthenticationError({ host: "github.com", operation: "x" }),
+      new GitHubRequestPolicy.GitHubApiRateLimitError({
+        host: "github.com",
+        operation: "x",
+        retryAt: 1_000,
+      }),
       new SourceControlRateLimit.SourceControlRateLimitPausedError({
         provider: SourceControlProviderKind.make("github"),
         host: "github.com",
         retryAt: 2_000,
       }),
-      new GitHubApi.GitHubApiNotFoundError({ host: "github.com", operation: "x" }),
-      new GitHubApi.GitHubApiResponseError({ host: "github.com", operation: "x", status: 422 }),
+      new GitHubRequestPolicy.GitHubApiNotFoundError({ host: "github.com", operation: "x" }),
+      new GitHubRequestPolicy.GitHubApiResponseError({
+        host: "github.com",
+        operation: "x",
+        status: 422,
+      }),
     ];
     const failures = yield* Effect.forEach(refusals, (refusal) =>
       Effect.gen(function* () {

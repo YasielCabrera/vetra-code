@@ -197,7 +197,6 @@ describe("CursorAdapterV2", () => {
           Stream.takeUntil((event) => event.type === "turn.terminal"),
           Stream.runCollect,
         );
-        // Keep injected MCP at agent creation so sends preserve Cursor's ambient servers.
         assert.isFalse(sentWithMcpOverride);
         const rows = events.filter((event) => event.type === "subagent.updated");
         assert.equal(rows[0]?.subagent.status, "running");
@@ -1006,6 +1005,16 @@ describe("CursorAdapterV2", () => {
     assert.deepEqual(
       cursorRuntimeAgentPolicy({
         ...base,
+        runtimeMode: "auto",
+      }),
+      {
+        autoReview: true,
+        sandboxEnabled: true,
+      },
+    );
+    assert.deepEqual(
+      cursorRuntimeAgentPolicy({
+        ...base,
         runtimeMode: "approval-required",
       }),
       {
@@ -1040,8 +1049,6 @@ describe("CursorAdapterV2", () => {
   });
 
   it("loads the user's Cursor settings layers in every runtime mode", () => {
-    // The SDK loads no rules, skills, hooks, or MCP config from disk unless
-    // settingSources names them, so an omitted list silently drops AGENTS.md.
     for (const runtimeMode of ["full-access", "auto-accept-edits", "approval-required"] as const) {
       const options = makeCursorAgentOptions({
         modelSelection: {

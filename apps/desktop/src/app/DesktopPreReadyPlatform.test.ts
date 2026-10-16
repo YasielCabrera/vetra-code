@@ -175,7 +175,7 @@ describe("DesktopPreReadyPlatform", () => {
         const identity = yield* Effect.promise(() => portalIdentity);
         assert.equal(identity.desktopName, "com.vetra.code.desktop");
         assert.include(identity.desktopEntry ?? "", 'Exec="/Applications/current.AppImage" %U');
-        assert.include(identity.desktopEntry ?? "", "Name=Vetra Code (Alpha)");
+        assert.include(identity.desktopEntry ?? "", "Name=Vetra Code (Beta)");
         assert.include(identity.desktopEntry ?? "", "MimeType=x-scheme-handler/vetra;");
         assert.include(identity.desktopEntry ?? "", "Icon=/xdg/icons/com.vetra.code.desktop.png");
         assert.isTrue(identity.iconInstalled);

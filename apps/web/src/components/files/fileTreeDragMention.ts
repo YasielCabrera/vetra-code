@@ -13,18 +13,13 @@ export interface FileTreeDragStartEvent {
 }
 
 export interface FileTreeDragMentionHost {
-  /** Drop the tree's gesture-applied selection of the dragged row. */
   deselect(treePath: string): void;
+  /** The path a dragged row mentions; defaults to the tree path itself. */
+  mentionPath?(treePath: string): string;
 }
 
 export interface FileTreeDragMentionController {
-  /**
-   * True from the moment a row drag starts until it ends. The tree selects
-   * the dragged row as part of the gesture; selection changes made while
-   * this is set are gesture side effects, not requests to open a file.
-   */
   isDragInProgress(): boolean;
-  /** Mirror of the tree's current selection, needed for multi-row drags. */
   handleSelectionChange(selectedPaths: ReadonlyArray<string>): void;
   handleDragStart(event: FileTreeDragStartEvent): void;
   handleDragEnd(): void;
@@ -78,11 +73,14 @@ export function createFileTreeDragMentionController(
       if (itemPath === null) {
         return;
       }
-      // Same rule the tree applies to the drag itself: dragging a row that is
-      // part of the current selection drags the whole selection.
       const dragged = selection.includes(itemPath) ? selection : [itemPath];
       const mentions = dragged
-        .map((path) => composerMentionFromTreePath(path))
+        .map((path) => {
+          const treePath = path.replace(/\/+$/, "");
+          return composerMentionFromTreePath(
+            treePath && host.mentionPath ? host.mentionPath(treePath) : path,
+          );
+        })
         .filter((mention): mention is string => mention !== null);
       if (mentions.length === 0) {
         return;

@@ -1,3 +1,4 @@
+import * as GitHubRequestPolicy from "@t3tools/source-control-github/server/GitHubRequestPolicy";
 import {
   ProjectId,
   TicketError,
@@ -247,7 +248,7 @@ const make = Effect.gen(function* () {
             );
           },
         }),
-        Effect.provideService(GitHubApi.PinnedGitHubCredential, {
+        Effect.provideService(GitHubRequestPolicy.PinnedGitHubCredential, {
           host: target.host.trim().toLowerCase(),
           token: credential.token,
           credentialFingerprint: credential.fingerprint,

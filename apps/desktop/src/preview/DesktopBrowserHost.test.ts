@@ -34,7 +34,6 @@ const pageRequest = {
   params: [],
 };
 
-/** A tab's webContents and debugger, with the debugger's commands left pending until released. */
 const makeDebuggee = () => {
   const emitter = new NodeEvents.EventEmitter();
   const pending: Array<() => void> = [];
@@ -63,7 +62,6 @@ const makeDebuggee = () => {
   };
 };
 
-/** Reads `count` events from one backend's subscription. */
 const takeEvents = (host: DesktopBrowserHost.DesktopBrowserHost["Service"], count: number) =>
   host.events.pipe(
     Stream.take(count),

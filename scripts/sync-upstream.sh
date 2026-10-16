@@ -48,6 +48,7 @@ PRUNE_PATHS=(
   .github/SECURITY.md
   apps/mobile
   apps/marketing
+  scripts/export-android-icons.ts
   scripts/mobile-showcase.ts
   scripts/mobile-showcase.test.ts
   scripts/mobile-showcase.config.ts
@@ -225,6 +226,7 @@ RENAMES=(
   't3-assistant-citation=vetra-assistant-citation'
   't3-citation=vetra-citation'
   't3-context=vetra-context'
+  'application/x-t3code-=application/x-vetra-code-'
   # In-app thread links agents write into persisted messages
   # (`[title](t3-thread://v1/<env>/<thread>)`) and the protocol constant that
   # parses them. Keyed on `://` and the closing quote so `t3-thread-context-drop`
@@ -379,12 +381,12 @@ git grep -nIE 'T3 Code|T3 Connect|T3 Chat|T3CODE|T3_[A-Z]|t3_session|t3\.json|t3
 
 say "Vetra names outside the identity surface (these should carry upstream's name)"
 # The fork owns `@vetra-code/` only where a name is published or reserved: the
-# CLI's npm package and its platform binaries. Anywhere else it means a merge,
+# CLI's npm package. Anywhere else it means a merge,
 # or a new package, reintroduced the scope the fork deliberately gave up.
 git grep -nI '@vetra-code/' -- . \
   ':!.repos' ':!*lock*' ":!${BASH_SOURCE[0]#./}" ':!re-making-plan' \
-  ':!packages/shared/src/productIdentity.ts' ':!packages/shared/src/legacyCliLauncher*' \
-  ':!apps/server/scripts/cli.ts' ':!scripts/build-npm-platform-packages*' \
+  ':!packages/shared/src/productIdentity.ts' \
+  ':!apps/server/scripts/cli.ts' ':!scripts/build-npm-launcher*' \
   ':!apps/server/src/cli/invocation.test.ts' ':!apps/server/src/cli/service.test.ts' \
   ':!docs/internals/server-updates.md' ':!docs/operations/release.md' | head -20 || echo "none"
 

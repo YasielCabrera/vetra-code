@@ -5,11 +5,6 @@
 // it so the next stale deploy gets its own single reload.
 const CHUNK_RELOAD_GUARD_KEY = "vetra-code:chunk-load-reloaded";
 
-/**
- * Called from the `vite:preloadError` listener. Reloads at most once per
- * failure streak and returns whether it did, so the caller knows whether to
- * swallow the event or let the error surface through the normal paths.
- */
 export function reloadOnceForChunkLoadError(
   getStorage: () => Storage = () => window.sessionStorage,
   reload: () => void = () => window.location.reload(),
@@ -29,11 +24,8 @@ export function reloadOnceForChunkLoadError(
   return true;
 }
 
-/** Clears the guard after a successful boot so a later stale deploy can reload again. */
 export function clearChunkReloadGuard(getStorage: () => Storage = () => window.sessionStorage) {
   try {
     getStorage().removeItem(CHUNK_RELOAD_GUARD_KEY);
-  } catch {
-    // Blocked storage never held the flag.
-  }
+  } catch {}
 }

@@ -265,6 +265,7 @@ export const makeClaudeSubscriptionUsageCapability = (input: {
   readonly settings: ClaudeSettings;
   readonly environment: NodeJS.ProcessEnv;
   readonly cwd: string;
+  readonly managedMcpConfig: boolean;
   readonly path: Path.Path;
   readonly localCost?: Effect.Effect<ProviderSubscriptionUsageCost | undefined, never>;
 }): ProviderSubscriptionUsageCapability => {
@@ -302,6 +303,7 @@ export const makeClaudeSubscriptionUsageCapability = (input: {
           abortController: abort,
           environment: claudeEnvironment,
           cwd: input.cwd,
+          managedMcpConfig: input.managedMcpConfig,
         }),
       });
       try {

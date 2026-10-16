@@ -404,20 +404,20 @@ cheap:
 
 Runtime constants that must not drift, even if a merge conflict "resolves" them back:
 
-| Constant       | Value                                                       |
-| -------------- | ----------------------------------------------------------- |
-| Product name   | `Vetra Code`                                                |
-| npm identity   | `@vetra-code/server`, `@vetra-code/vetra-<platform>-<arch>` |
-| CLI            | `vetra`                                                     |
-| Home directory | `.vetra-code`                                               |
-| Project file   | `vetra.json`                                                |
-| Session cookie | `vetra_session`                                             |
-| Ports          | production `4873`; dev server `14873`, web `6733`           |
-| Desktop IDs    | `com.vetra.code`, `com.vetra.code.dev`                      |
-| Launch agent   | `com.vetra.code.service`                                    |
-| Protocols      | `vetra://`, `vetra-dev://`                                  |
-| Git refs       | `refs/vetra/**` (V1 and V2 checkpoints, pre-refresh)        |
-| Env prefix     | `VETRA_*` only. No `T3CODE_*` aliases.                      |
+| Constant       | Value                                                |
+| -------------- | ---------------------------------------------------- |
+| Product name   | `Vetra Code`                                         |
+| npm identity   | `@vetra-code/server`                                 |
+| CLI            | `vetra`                                              |
+| Home directory | `.vetra-code`                                        |
+| Project file   | `vetra.json`                                         |
+| Session cookie | `vetra_session`                                      |
+| Ports          | production `4873`; dev server `14873`, web `6733`    |
+| Desktop IDs    | `com.vetra.code`, `com.vetra.code.dev`               |
+| Launch agent   | `com.vetra.code.service`                             |
+| Protocols      | `vetra://`, `vetra-dev://`                           |
+| Git refs       | `refs/vetra/**` (V1 and V2 checkpoints, pre-refresh) |
+| Env prefix     | `VETRA_*` only. No `T3CODE_*` aliases.               |
 
 ## Conflict patterns that keep coming back
 

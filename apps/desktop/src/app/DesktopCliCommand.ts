@@ -13,19 +13,11 @@ import { PRODUCT_CLI_NAME } from "@t3tools/shared/productIdentity";
 import * as DesktopCliShim from "./DesktopCliShim.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 
-// Settings → Install `vetra` command, like VS Code's "Install 'code' command".
-// The app's launcher (see DesktopCliShim) lives in the T3 home and is off PATH
-// by default. Installing links it into a folder on the user's PATH, or on
-// Windows adds the launcher's folder to the user's PATH. Removing undoes only
-// what installing did: a link that points at one of the app's launchers, or a
-// PATH entry the app recorded adding.
-
 export class DesktopCliCommandError extends Schema.TaggedError<DesktopCliCommandError>()(
   "DesktopCliCommandError",
   { message: Schema.String },
 ) {}
 
-/** User-writable folders that login shells commonly put on PATH, in preference order. */
 const unixCandidates = (home: string, platform: NodeJS.Platform) =>
   platform === "darwin"
     ? ["/opt/homebrew/bin", "/usr/local/bin", `${home}/.local/bin`, `${home}/bin`]
@@ -34,7 +26,6 @@ const unixCandidates = (home: string, platform: NodeJS.Platform) =>
 const pathEntries = (value: string | undefined, separator: string) =>
   (value ?? "").split(separator).filter((entry) => entry.length > 0);
 
-/** Windows paths compare without case or a trailing separator. */
 const sameWindowsPath = (left: string, right: string) =>
   left.replace(/[\\/]+$/, "").toLowerCase() === right.replace(/[\\/]+$/, "").toLowerCase();
 
@@ -83,7 +74,6 @@ export const make = Effect.gen(function* () {
   const windows = environment.platform === "win32";
   const launcher = DesktopCliShim.launcherPath(environment);
   const binDirectory = path.dirname(launcher);
-  /** Records that Install added `binDirectory` to the Windows PATH, so Remove takes out only that. */
   const ownedPathMarker = path.join(environment.stateDir, "cli-command-path-entry");
 
   const fail = (message: string) => new DesktopCliCommandError({ message });
@@ -94,11 +84,6 @@ export const make = Effect.gen(function* () {
       Effect.orElseSucceed(() => false),
     );
 
-  /**
-   * A link to one of the app's launchers, by the marker the launcher carries.
-   * This also finds links made under a previous T3 home, so Remove can clean
-   * them up and Install does not add a second.
-   */
   const isOurLink = (link: string) =>
     Effect.gen(function* () {
       yield* fs.readLink(link);
@@ -138,7 +123,6 @@ export const make = Effect.gen(function* () {
       Effect.mapError(() => fail("Could not update your PATH.")),
     );
 
-  /** The `vetra` a new shell runs, by PATH order, or none. */
   const firstOnPath = Effect.gen(function* () {
     for (const directory of pathEntries(process.env.PATH, ":")) {
       const candidate = path.join(directory, PRODUCT_CLI_NAME);
@@ -147,7 +131,6 @@ export const make = Effect.gen(function* () {
     return Option.none<string>();
   });
 
-  /** The `vetra` a new shell runs when it is not this app's, on Unix. */
   const foreignFirstOnPath = Effect.gen(function* () {
     if (windows) return Option.none<string>();
     const first = yield* firstOnPath;
@@ -155,7 +138,6 @@ export const make = Effect.gen(function* () {
     return first;
   });
 
-  /** Where this app's command is installed now, if anywhere. */
   const installedAt = Effect.gen(function* () {
     if (windows) {
       if (!(yield* exists(ownedPathMarker))) return Option.none<string>();
@@ -181,14 +163,11 @@ export const make = Effect.gen(function* () {
     if (Option.isNone(installed)) {
       return { supported: true, installedPath: null, onPath: false, ...shadow };
     }
-    // On Windows only terminals opened after the change see it. On Unix the
-    // first `vetra` on PATH must be ours; a `vetra` earlier on PATH would shadow it.
     const first = yield* firstOnPath;
     const onPath = windows || (Option.isSome(first) && (yield* isOurLink(first.value)));
     return { supported: true, installedPath: installed.value, onPath, ...shadow };
   }).pipe(Effect.orElseSucceed(() => ({ supported: false, installedPath: null, onPath: false })));
 
-  /** Writes the launcher if the app has not yet, e.g. when no local backend runs. */
   const ensureLauncher = DesktopCliShim.install.pipe(
     Effect.provideService(DesktopEnvironment.DesktopEnvironment, environment),
     Effect.provideService(FileSystem.FileSystem, fs),
@@ -224,12 +203,10 @@ export const make = Effect.gen(function* () {
     if (Option.isSome(existing)) {
       const target = yield* fs.readLink(existing.value).pipe(Effect.option);
       if (Option.getOrUndefined(target) === launcher) return yield* state;
-      // A link to a previous T3 home's launcher: point it at this one instead.
       yield* fs
         .remove(existing.value)
         .pipe(Effect.mapError(() => fail(`Could not replace ${existing.value}.`)));
     }
-    // A link behind another `vetra` never runs, so installing one would only hide the problem.
     const shadowedBy = yield* foreignFirstOnPath;
     if (Option.isSome(shadowedBy)) {
       return yield* fail(
@@ -238,7 +215,6 @@ export const make = Effect.gen(function* () {
     }
     const onPath = pathEntries(process.env.PATH, ":");
     const candidates = unixCandidates(environment.homeDirectory, environment.platform);
-    // Prefer a folder already on PATH that the user can write to without admin rights.
     for (const directory of [
       ...candidates.filter((candidate) => onPath.includes(candidate)),
       ...candidates.filter((candidate) => !onPath.includes(candidate)),
@@ -251,7 +227,6 @@ export const make = Effect.gen(function* () {
             Effect.orElseSucceed(() => false),
           );
       if (!created) continue;
-      // symlink fails if anything, even a broken link, is already there.
       const linked = yield* fs.symlink(launcher, link).pipe(
         Effect.as(true),
         Effect.orElseSucceed(() => false),

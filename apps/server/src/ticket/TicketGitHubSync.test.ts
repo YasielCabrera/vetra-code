@@ -1,3 +1,4 @@
+import * as GitHubRequestPolicy from "@t3tools/source-control-github/server/GitHubRequestPolicy";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import {
@@ -85,7 +86,7 @@ const missingIssueThroughClassifier = (input: {
           // GitHub answers a missing issue with a NOT_FOUND error, which the API fails as such.
           graphql: (request) =>
             Effect.fail(
-              new GitHubApi.GitHubApiNotFoundError({
+              new GitHubRequestPolicy.GitHubApiNotFoundError({
                 host: request.host,
                 operation: request.operation,
               }),
@@ -207,7 +208,7 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
         const probe =
           input.limit === 1 && input.includeOpenCount === true && input.includeBody !== true;
         if (probe) {
-          const pinned = yield* GitHubApi.PinnedGitHubCredential;
+          const pinned = yield* GitHubRequestPolicy.PinnedGitHubCredential;
           const fingerprint = pinned?.credentialFingerprint ?? fake.selectedCredential;
           fake.probeCredentialFingerprints.push(fingerprint);
           if (fake.deniedCredentials.has(fingerprint))
@@ -216,7 +217,7 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
               operation: "list",
               reason: "failed",
               detail: "The repository is not accessible.",
-              cause: new GitHubApi.GitHubApiNotFoundError({
+              cause: new GitHubRequestPolicy.GitHubApiNotFoundError({
                 host: input.host,
                 operation: "listIssues",
               }),
@@ -277,7 +278,7 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
       }),
     getIssueMetadata: (input) =>
       Effect.gen(function* () {
-        const pinned = yield* GitHubApi.PinnedGitHubCredential;
+        const pinned = yield* GitHubRequestPolicy.PinnedGitHubCredential;
         const fingerprint = pinned?.credentialFingerprint ?? fake.selectedCredential;
         fake.issueCredentialFingerprints.push(fingerprint);
         fake.calls.push({ operation: "get", ...input });
@@ -301,7 +302,7 @@ function makeFakeGitHub(initial: ReadonlyArray<FakeIssue>) {
       }),
     getIssue: (input) =>
       Effect.gen(function* () {
-        const pinned = yield* GitHubApi.PinnedGitHubCredential;
+        const pinned = yield* GitHubRequestPolicy.PinnedGitHubCredential;
         const fingerprint = pinned?.credentialFingerprint ?? fake.selectedCredential;
         fake.issueCredentialFingerprints.push(fingerprint);
         fake.calls.push({ operation: "get", ...input });
@@ -2434,7 +2435,7 @@ describe("TicketGitHubSync", () => {
             operation: "metadata",
             reason: "failed",
             detail: "GitHub could not complete the issue request.",
-            cause: new GitHubApi.GitHubApiResponseError({
+            cause: new GitHubRequestPolicy.GitHubApiResponseError({
               host: SOURCE.host,
               operation: "getIssueMetadata",
               status: 200,
@@ -2468,7 +2469,7 @@ describe("TicketGitHubSync", () => {
             operation: "metadata",
             reason: "unauthenticated",
             detail: "Authentication failed.",
-            cause: new GitHubApi.GitHubApiAuthenticationError({
+            cause: new GitHubRequestPolicy.GitHubApiAuthenticationError({
               host: SOURCE.host,
               operation: "getIssueMetadata",
             }),
@@ -2478,7 +2479,7 @@ describe("TicketGitHubSync", () => {
             operation: "metadata",
             reason: "rate-limited",
             detail: "Rate limit exceeded.",
-            cause: new GitHubApi.GitHubApiRateLimitError({
+            cause: new GitHubRequestPolicy.GitHubApiRateLimitError({
               host: SOURCE.host,
               operation: "getIssueMetadata",
             }),
@@ -2488,17 +2489,17 @@ describe("TicketGitHubSync", () => {
               host: SOURCE.host,
               cause: new Error("credential unavailable"),
             }),
-            new GitHubApi.GitHubApiRequestError({
+            new GitHubRequestPolicy.GitHubApiRequestError({
               host: SOURCE.host,
               operation: "getIssueMetadata",
               cause: new Error("offline"),
             }),
-            new GitHubApi.GitHubApiResponseError({
+            new GitHubRequestPolicy.GitHubApiResponseError({
               host: SOURCE.host,
               operation: "getIssueMetadata",
               status: 503,
             }),
-            new GitHubApi.GitHubApiResponseError({
+            new GitHubRequestPolicy.GitHubApiResponseError({
               host: SOURCE.host,
               operation: "getIssueMetadata",
               status: 200,

@@ -408,7 +408,6 @@ it.effect("reports clone progress from git's stderr and keeps its error text on 
       { stage: "receiving", percent: 40, detail: "1.00 MiB | 2.00 MiB/s" },
       { stage: "receiving", percent: 100, detail: "2.50 MiB | 2.00 MiB/s" },
     ]);
-    // Git echoes the remote in some failures; the credentials must not follow.
     assert.strictEqual(
       error.detail,
       "fatal: early EOF fatal: unable to access 'https://github.com/octocat/vetra-code.git/': could not resolve host",
@@ -460,7 +459,6 @@ it.effect("discards only a directory git wrote to", () =>
     yield* fs.makeDirectory(foreign);
     yield* fs.writeFileString(path.join(foreign, "notes.txt"), "mine");
 
-    // A file where the directory should be must not be removed either.
     const replaced = path.join(parent, "replaced");
     yield* fs.writeFileString(replaced, "not a directory");
 
@@ -471,11 +469,9 @@ it.effect("discards only a directory git wrote to", () =>
       assert.include(error.detail, "not from the clone");
       const replacedError = yield* Effect.flip(service.discardClone(replaced));
       assert.include(replacedError.detail, "could not be inspected");
-      // A destination that never got created is nothing to discard.
       yield* service.discardClone(path.join(parent, "missing"));
     }).pipe(Effect.provide(layer({})));
 
-    // The partial clone is emptied but its directory (the workspace root) stays.
     assert.deepStrictEqual(yield* fs.readDirectory(partial), []);
     assert.deepStrictEqual(yield* fs.readDirectory(foreign), ["notes.txt"]);
     assert.strictEqual(yield* fs.readFileString(replaced), "not a directory");

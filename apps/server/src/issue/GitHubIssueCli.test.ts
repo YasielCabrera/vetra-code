@@ -1,3 +1,4 @@
+import * as GitHubRequestPolicy from "@t3tools/source-control-github/server/GitHubRequestPolicy";
 import { afterEach, assert, expect, it, vi } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -415,7 +416,9 @@ layer("GitHubIssueCli.layer", (it) => {
       const cli = yield* GitHubIssueCli.GitHubIssueCli;
       // GitHub answers a missing issue with a NOT_FOUND error, which the API fails as such.
       graphql.mockReturnValueOnce(
-        Effect.fail(new GitHubApi.GitHubApiNotFoundError({ host: "github.com", operation: "x" })),
+        Effect.fail(
+          new GitHubRequestPolicy.GitHubApiNotFoundError({ host: "github.com", operation: "x" }),
+        ),
       );
       const refused = yield* Effect.flip(cli.getIssue({ ...repository, number: 404 }));
       // An answer that simply carries no issue means the same.
@@ -580,7 +583,7 @@ layer("GitHubIssueCli.layer", (it) => {
       yield* cli.setState({ ...target, change: { state: "closed", reason: "completed" } });
       rest.mockReturnValueOnce(
         Effect.fail(
-          new GitHubApi.GitHubApiResponseError({
+          new GitHubRequestPolicy.GitHubApiResponseError({
             host: "github.acme.com",
             operation: "x",
             status: 422,

@@ -15,13 +15,6 @@ import * as Result from "effect/Result";
  * live on one hostname at once need separate names — otherwise the second
  * clobbers the first's session and both sides see "Invalid session token
  * signature" until someone clears cookies by hand.
- *
- * Remote web servers use their persisted environment identity and omit the
- * port, so the name survives state-directory moves and public port changes.
- *
- * - **Dev servers** (`devUrl` set), which run several at a time across worktrees.
- * - **Desktop**, which scans upward from the Vetra server port for a free port and binds
- *   127.0.0.1, so a second instance lands on a different port and the same host.
  */
 export function resolveSessionCookieName(input: {
   readonly mode: "web" | "desktop";

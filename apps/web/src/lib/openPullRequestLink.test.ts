@@ -229,6 +229,10 @@ describe("shouldOpenPullRequestExternally", () => {
   });
 });
 
+it("uses the browser for middle-click", () => {
+  expect(shouldOpenPullRequestExternally({ metaKey: false, ctrlKey: false, button: 1 })).toBe(true);
+});
+
 describe("parseChangeRequestUrl", () => {
   it("reads a GitHub pull request", () => {
     expect(parseChangeRequestUrl("https://github.com/VetraCode/VetraCode/pull/123")).toEqual({

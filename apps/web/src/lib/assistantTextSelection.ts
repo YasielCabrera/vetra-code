@@ -9,7 +9,6 @@ export type AssistantTextSelector = {
   readonly suffix: string;
 };
 
-/** Live DOM state for an open comment, never part of a saved citation. */
 export type AssistantCitationSourceAnchor = {
   source: HTMLElement;
   range: Range;
@@ -45,7 +44,6 @@ function splitsSurrogatePair(text: string, offset: number): boolean {
   return before >= 0xd800 && before <= 0xdbff && after >= 0xdc00 && after <= 0xdfff;
 }
 
-/** Keeps the exact captured text while storing normalized UTF-16 positions and context. */
 export function createAssistantTextSelector(
   text: string,
   rawStart: number,
@@ -56,7 +54,6 @@ export function createAssistantTextSelector(
 
   const normalized = normalizeWhitespace(text);
   let start = normalizeWhitespace(text.slice(0, rawStart)).length;
-  // A selection starting inside a whitespace run includes its normalized space.
   if (rawStart > 0 && /\s/.test(text[rawStart - 1]!) && /\s/.test(text[rawStart]!)) {
     start -= 1;
   }
@@ -77,13 +74,6 @@ export function createAssistantTextSelector(
 
 type TextChunk = { node: Text; start: number; end: number };
 
-/**
- * Uses DOM text order, with a line break between HTML blocks and at <br>.
- * Inline markup, including code and links, contributes its displayed text.
- * Controls and subtrees marked hidden/aria-hidden do not contribute. No layout
- * reads, CSS-generated content, or soft-wrap line breaks enter the stream, so
- * reflow cannot move it.
- */
 function readAssistantText(root: HTMLElement) {
   const parts: string[] = [];
   const chunks: TextChunk[] = [];
@@ -132,7 +122,6 @@ function isUsableRange(root: HTMLElement, range: Range): boolean {
   ) {
     return false;
   }
-  // Interior controls are allowed; readAssistantText omits them from the stream.
   return true;
 }
 
@@ -163,10 +152,6 @@ function selectedTextBoundary(range: Range, node: Node, last: boolean): Text | n
   return null;
 }
 
-/**
- * Captures the ordered native range, including selections dragged backwards. The selection must
- * sit inside one element matching `sourceSelector`, whose text the selector describes.
- */
 export function captureAssistantTextSelection(
   viewport: HTMLElement,
   selection: Selection | null,
@@ -213,7 +198,6 @@ function chunkFloor(chunks: ReadonlyArray<TextChunk>, after: (chunk: TextChunk) 
   return low;
 }
 
-/** Resolves against the current DOM without changing the user's selection. */
 export function resolveAssistantCitationRange(
   root: HTMLElement,
   selector: AssistantTextSelector,

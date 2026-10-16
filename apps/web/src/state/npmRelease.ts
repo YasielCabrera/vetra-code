@@ -4,11 +4,6 @@ import * as Effect from "effect/Effect";
 import { FetchHttpClient, HttpClient, HttpClientResponse } from "effect/http";
 import { AsyncResult, Atom } from "effect/reactivity";
 
-/**
- * Whether the Vetra server version is published on npm. A 404 is false; network and
- * registry errors stay unknown. Both re-check every few minutes, so a release
- * that lands later shows up without a reload.
- */
 export const npmReleasePublishedAtom = Atom.family((version: string) =>
   Atom.make(
     Effect.gen(function* () {
@@ -38,8 +33,6 @@ const NO_VERSION_ATOM = Atom.make(AsyncResult.success(false)).pipe(
   Atom.withLabel("npm-release-published:none"),
 );
 
-/** True only once npm confirms the version, so callers can hide work that
-    would download it until then. */
 export function useNpmReleasePublished(version: string | null): boolean {
   const result = useAtomValue(version ? npmReleasePublishedAtom(version) : NO_VERSION_ATOM);
   return AsyncResult.getOrElse(result, () => false);

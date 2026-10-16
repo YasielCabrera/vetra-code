@@ -1,3 +1,4 @@
+import * as GitHubRequestPolicy from "@t3tools/source-control-github/server/GitHubRequestPolicy";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -46,7 +47,7 @@ export class GitHubIssueReadError extends Schema.TaggedError<GitHubIssueReadErro
   },
 ) {}
 
-export type GitHubIssueCliError = GitHubApi.GitHubApiError | GitHubIssueReadError;
+export type GitHubIssueCliError = GitHubRequestPolicy.GitHubApiError | GitHubIssueReadError;
 
 export interface GitHubIssueBatch {
   readonly issues: ReadonlyArray<ProviderIssue>;
@@ -298,7 +299,7 @@ export const make = Effect.gen(function* () {
       });
     }
     if (decoded.success === null) {
-      return yield* new GitHubApi.GitHubApiNotFoundError({
+      return yield* new GitHubRequestPolicy.GitHubApiNotFoundError({
         host: address.host,
         operation,
       });

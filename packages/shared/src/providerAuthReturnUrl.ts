@@ -5,7 +5,6 @@ import {
   PRODUCT_DESKTOP_PROTOCOL,
 } from "./productIdentity.ts";
 
-/** Only return to a local client or the hosted client, never an arbitrary OAuth-supplied URL. */
 export function providerAuthReturnUrl(value: string | undefined): string | undefined {
   if (!value) return undefined;
   try {

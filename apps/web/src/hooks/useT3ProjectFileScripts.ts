@@ -12,23 +12,11 @@ import { useProjectFileQuery } from "~/components/files/projectFilesQueryState";
 const NO_SCRIPTS: ReadonlyArray<T3ProjectFileScript> = [];
 
 export interface T3ProjectFileState {
-  /**
-   * - `valid`: vetra.json exists and decoded.
-   * - `invalid`: vetra.json exists but fails to decode (the server then ignores
-   *   the whole file, including `iconPath` and every script).
-   * - `missing`: no readable vetra.json at the workspace root.
-   * - `loading`: the file query has not settled yet.
-   */
   status: "loading" | "missing" | "invalid" | "valid";
-  /** The decoded file when status is `valid`, null otherwise. */
   file: T3ProjectFile | null;
   scripts: ReadonlyArray<T3ProjectFileScript>;
 }
 
-/**
- * Decoded state of the project's checked-in `vetra.json`, including whether the
- * file exists but is broken — which the runtime otherwise swallows silently.
- */
 export function useT3ProjectFileState(
   environmentId: EnvironmentId,
   cwd: string | null,
@@ -57,11 +45,6 @@ export function useT3ProjectFileState(
   }, [contents, isPending]);
 }
 
-/**
- * Scripts declared in the project's checked-in `vetra.json`, offered in the
- * scripts menu for import. Missing, truncated, or invalid files resolve to
- * an empty list.
- */
 export function useT3ProjectFileScripts(
   environmentId: EnvironmentId,
   cwd: string | null,

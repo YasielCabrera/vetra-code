@@ -5,7 +5,6 @@ import * as EffectAcpErrors from "effect-acp/errors";
 import type * as EffectAcpSchema from "effect-acp/compat";
 
 /**
- * Workspace file access requested through the ACP client `fs` capability.
  * The agent gates each write behind `session/request_permission`, so only
  * path containment is checked here.
  */

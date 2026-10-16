@@ -72,11 +72,6 @@ export function PullRequestLabelChip({
   );
 }
 
-/**
- * The review verdict as one glyph beside the checks glyph, so a row answers both "does it
- * build" and "did someone say yes" in the same spot. "Awaiting review" is only drawn when the
- * host reports it, which on GitHub means the branch rules require a review nobody has given.
- */
 function reviewDecisionPresentation(decision: PullRequestReviewDecision) {
   switch (decision) {
     case "approved":
@@ -117,13 +112,6 @@ export function PullRequestReviewDecisionGlyph({
   );
 }
 
-/**
- * How a pull request's state reads anywhere it appears: the thread badge, the right-panel tab,
- * the list, and the detail header all resolve through here so one pull request cannot look like
- * two different things in two places.
- *
- * Closed and merged take precedence over a stale draft flag.
- */
 export function resolvePullRequestState(input: {
   readonly state: PullRequestState;
   readonly isDraft: boolean;
@@ -261,10 +249,6 @@ export function PullRequestCheckStatusIcon({ status }: { status: PullRequestChec
   );
 }
 
-/**
- * The rollup a listing row carries, which is one word rather than the checks behind it. The
- * headline is GitHub's own wording, so a reader who knows that page reads this one the same way.
- */
 const CHECKS_STATE_PRESENTATION = {
   passing: {
     label: "All checks have passed",
@@ -290,12 +274,6 @@ export function pullRequestChecksStatePresentation(state: PullRequestChecksState
   return CHECKS_STATE_PRESENTATION[state];
 }
 
-/**
- * The same rollup the server sends with a listing row, worked out here from the checks a detail
- * already holds — so the header shows the icon without a second field travelling with it.
- *
- * Null for a change request with no checks: nothing to show beats a tick nobody earned.
- */
 export function pullRequestChecksState(
   checks: ReadonlyArray<PullRequestCheck>,
 ): PullRequestChecksState | null {
@@ -306,14 +284,6 @@ export function pullRequestChecksState(
   return statuses.has("success") ? "passing" : null;
 }
 
-/**
- * How a verdict reads, in the one place every surface takes it from. The green is the green a
- * passing check already wears in the same panel, so "approved" and "all checks passed" cannot
- * look like two different kinds of good news.
- *
- * The ring runs a shade stronger than the text tones. At 16px across it is a thin arc, and the
- * muted pairing that reads well as a word was barely there as an outline.
- */
 const REVIEW_OUTCOME_PRESENTATION = {
   approved: {
     label: "Approved",
@@ -357,7 +327,6 @@ export function pullRequestReviewOutcomeToneClassName(outcome: PullRequestReview
   return REVIEW_OUTCOME_PRESENTATION[outcome].toneClassName;
 }
 
-/** Worn by whatever wraps a reviewer's avatar, so their verdict reads without a row of its own. */
 /**
  * A faded verdict is mixed into the background rather than made translucent. The ring is the only
  * separator an avatar carrying one has — the summary drops the opaque `ring-background` where a
@@ -372,15 +341,10 @@ export function pullRequestReviewOutcomeRingClassName(
   return stale ? presentation.staleRingClassName : presentation.ringClassName;
 }
 
-/**
- * What a superseded verdict says, which is the same word with when it applied added. Commits
- * landed after it, so it stands for code the branch no longer has.
- */
 export function pullRequestReviewOutcomeStaleLabel(outcome: PullRequestReviewOutcome): string {
   return `${REVIEW_OUTCOME_PRESENTATION[outcome].label} earlier changes`;
 }
 
-/** Decorative: every caller says which verdict this is in words beside it. */
 export function PullRequestReviewOutcomeIcon({
   outcome,
   className,
@@ -427,12 +391,6 @@ export function PullRequestActorAvatar({
   return <SourceControlActorAvatar actor={actor} className={className} />;
 }
 
-/**
- * GitHub attributes work from a deleted account to "ghost"; say the same word everywhere.
- *
- * An actor as a login beside its avatar, or as the avatar alone. With a profile URL the actor
- * is an inline link; `className` places it and never restyles it.
- */
 export function PullRequestActorLabel({
   actor,
   className,

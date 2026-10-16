@@ -39,7 +39,6 @@ const Z_INDEX_OVERLAY = 2147483646;
 const PRIMARY = "var(--vetra-primary)";
 const PRIMARY_FILL = "color-mix(in srgb, var(--vetra-primary) 10%, transparent)";
 const MAX_MARQUEE_ELEMENTS = 20;
-/** Upper bound on one element's React context lookup during submit. */
 const ELEMENT_CONTEXT_TIMEOUT_MS = 5_000;
 const CONTENT_LAYER_Z_INDEX = 1;
 const CHROME_LAYER_Z_INDEX = 10;
@@ -331,7 +330,6 @@ function positionBox(node: HTMLElement, rect: PreviewAnnotationRect): void {
   node.style.height = `${rect.height}px`;
 }
 
-/** Clamps a box to the viewport and clipping ancestors, so its border is never painted off-screen. */
 function visibleElementRect(element: Element): PreviewAnnotationRect {
   const rect = element.getBoundingClientRect();
   let left = Math.max(0, rect.left);
@@ -405,10 +403,9 @@ function toStackFrame(frame: {
 }
 
 /**
- * Resolves to `null` instead of hanging when `promise` outlives `millis`.
- * `getElementContext` walks the inspected page's React internals, and some
- * pages leave it pending forever. Without a bound, the whole submit chain
- * stalls and the overlay sits on "Capturing…".
+ * `getElementContext` walks the inspected page's React internals, and some pages leave it
+ * pending forever. Without a bound, the whole submit chain stalls and the overlay sits on
+ * "Capturing…".
  */
 function withCaptureTimeout<A>(promise: Promise<A>, millis: number): Promise<A | null> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -420,14 +417,12 @@ function withCaptureTimeout<A>(promise: Promise<A>, millis: number): Promise<A |
   ]).finally(() => clearTimeout(timer));
 }
 
-/** Truncation for the DOM-only preview used when React context is unavailable. */
 const HTML_PREVIEW_MAX_CHARS = 500;
 
 /**
- * Describes a picked element. The React context lookup can stall or throw on
- * some pages, so the element is never dropped: without context it still
- * carries its tag, a short HTML preview, and its rect so the crop stays on the
- * pick instead of falling back to the whole viewport.
+ * The React context lookup can stall or throw on some pages, so the element is never dropped:
+ * without context it still carries its tag, a short HTML preview, and its rect so the crop
+ * stays on the pick instead of falling back to the whole viewport.
  */
 async function captureElement(element: Element): Promise<PickedElementPayload> {
   const base = {
@@ -453,9 +448,7 @@ async function captureElement(element: Element): Promise<PickedElementPayload> {
         styles: context.styles ?? "",
       };
     }
-  } catch {
-    // Fall through to the DOM-only payload.
-  }
+  } catch {}
   return {
     ...base,
     selector: null,
@@ -1038,7 +1031,6 @@ function startAnnotation(sendEnabled: boolean): void {
   const getAnnotationBounds = (): PreviewAnnotationRect | null =>
     unionRects(
       [
-        // Follow the visible outline, so a clipped selection does not anchor the editor off-screen.
         ...Array.from(selected.values(), (target) => visibleElementRect(target.element)).filter(
           (rect) => rect.width > 0 && rect.height > 0,
         ),
@@ -1406,7 +1398,6 @@ function startAnnotation(sendEnabled: boolean): void {
     pendingCapture = true;
     submit.disabled = true;
     submit.textContent = "Capturing…";
-    // Snapshot everything the annotation will carry before the capture runs.
     // The element context lookup can take up to its timeout, and the user can
     // keep editing meanwhile; the annotation must describe what they submitted.
     const submittedComment = comment.value.trim();
@@ -1462,9 +1453,6 @@ function startAnnotation(sendEnabled: boolean): void {
         );
       })
       .catch(() => {
-        // Last resort. Main is waiting on this message, so hand it an empty
-        // pick rather than leaving the button stuck on "Capturing…" and the
-        // renderer's pick promise pending. teardown is a no-op once finished.
         teardown(true);
       });
   };
