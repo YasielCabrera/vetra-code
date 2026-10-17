@@ -28,9 +28,9 @@ allowBuilds:
   workerd: false
 
 catalog:
-  "@clerk/backend": 3.24.0
-  "@clerk/clerk-js": 6.39.0
-  "@clerk/electron": 0.1.0
+  "@clerk/backend": 3.25.0
+  "@clerk/clerk-js": 6.39.1
+  "@clerk/electron": 0.1.1
   "@clerk/electron-passkeys": 0.0.3
   "@clerk/react": 6.17.8
   "@clerk/shared": 4.40.0
@@ -86,9 +86,9 @@ catalog:
 minimumReleaseAgeExclude:
   - tsc-rs
   - "@tsc-rs/*"
-  - "@clerk/backend@3.24.0"
-  - "@clerk/clerk-js@6.39.0"
-  - "@clerk/electron@0.1.0"
+  - "@clerk/backend@3.25.0"
+  - "@clerk/clerk-js@6.39.1"
+  - "@clerk/electron@0.1.1"
   - "@clerk/react@6.17.8"
   - "@clerk/shared@4.40.0"
   - "@distilled.cloud/aws@1.0.0-rc.13"
@@ -135,8 +135,6 @@ minimumReleaseAgeExclude:
 overrides:
   # Keep jsdom's optional peer consistent so Vite+ has one test-runner instance.
   "@exodus/bytes>@noble/hashes": "1.8.0"
-  # Earlier React Navigation declarations create a circular type alias in TypeScript 7.
-  "@react-navigation/core": 7.21.13
   # The dbus-next patch drops usocket from the package, but pnpm resolves from the
   # registry manifest, so the edge has to be cut here as well.
   "dbus-next>usocket": "-"

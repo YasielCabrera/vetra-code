@@ -1586,7 +1586,7 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       yield* runGit(repoDir, ["push", "-u", "upstream", "main"]);
       yield* runGit(repoDir, ["checkout", "-b", "develop"]);
       yield* runGit(repoDir, ["push", "-u", "upstream", "develop"]);
-      yield* runGit(remoteDir, ["symbolic-ref", "HEAD", "refs/heads/develop"]);
+      yield* runGit(remoteDir, ["--git-dir=.", "symbolic-ref", "HEAD", "refs/heads/develop"]);
       yield* runGit(repoDir, ["remote", "set-head", "upstream", "develop"]);
 
       const { manager } = yield* makeManager({
@@ -4200,9 +4200,13 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
         ),
       ).toContain("?? .vercel/");
       expect(
-        yield* runGit(remoteDir, ["log", "-1", "--pretty=%s", "feature/push-dirty"]).pipe(
-          Effect.map((output) => output.stdout.trim()),
-        ),
+        yield* runGit(remoteDir, [
+          "--git-dir=.",
+          "log",
+          "-1",
+          "--pretty=%s",
+          "feature/push-dirty",
+        ]).pipe(Effect.map((output) => output.stdout.trim())),
       ).toBe("Push dirty branch");
     }),
   );
@@ -4251,7 +4255,11 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       expect(result.pr.number).toBe(303);
       expect((yield* runGit(repoDir, ["status", "--porcelain"])).stdout).toBe(statusBefore);
       expect(
-        (yield* runGit(remoteDir, ["rev-parse", "feature/create-pr-only"])).stdout.trim(),
+        (yield* runGit(remoteDir, [
+          "--git-dir=.",
+          "rev-parse",
+          "feature/create-pr-only",
+        ])).stdout.trim(),
       ).toBe(headBefore);
       expect(
         ghCalls.some((call) =>
@@ -5011,7 +5019,7 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       const remoteDir = yield* createBareRemote();
       yield* runGit(repoDir, ["remote", "add", "origin", remoteDir]);
       yield* runGit(repoDir, ["push", "-u", "origin", "main"]);
-      yield* runGit(remoteDir, ["symbolic-ref", "HEAD", "refs/heads/main"]);
+      yield* runGit(remoteDir, ["--git-dir=.", "symbolic-ref", "HEAD", "refs/heads/main"]);
 
       const peerDir = yield* makeTempDir("vetra-code-git-peer-");
       yield* runGit(peerDir, ["clone", remoteDir, "."]);

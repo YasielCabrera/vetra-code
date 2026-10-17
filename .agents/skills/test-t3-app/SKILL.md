@@ -64,7 +64,7 @@ Keep pairing URLs out of screenshots, committed files, and durable logs. When th
 
 Run `node apps/server/src/bin.ts pair` from the repository root. It discovers the running dev server (worktree `.vetra-code` first, same precedence as the dev runner) and prints a fresh `Pair URL` against the server's current web origin, including a `--share` tailnet origin. Pass `--base-dir <base-dir>` only when the server was started with `--home-dir`, using the identical path.
 
-Tokens from `pair` carry standard client scopes. The startup pairing URL carries admin scopes; if the user needs Settings → Connections management (`access:write`), restart the server and hand over the new startup URL instead.
+Tokens from `pair` and the startup pairing URL carry standard client scopes, including Settings → Connections management (`access:write`). Use explicit `--scope` options when a client needs narrower access.
 
 ## Inspect or seed SQLite state
 

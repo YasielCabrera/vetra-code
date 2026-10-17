@@ -40,7 +40,7 @@ import { mediaFileReference } from "@t3tools/client-runtime/media-reference";
 import { ArrowLeftRight, FolderTree, Globe2, SquareKanbanIcon, WrapTextIcon } from "lucide-react";
 import { Code2, Eye, Table2 } from "lucide";
 import * as Schema from "effect/Schema";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { isBrowserPreviewFile, openFileInPreview } from "~/browser/openFileInPreview";
 import { useAssetUrlRefresh, useAssetUrlState } from "~/assets/assetUrls";
@@ -182,17 +182,13 @@ function WorkspaceImagePreview(props: {
   readonly alt: string;
   readonly workspaceMutationId: string | null;
 }) {
-  const resource = useMemo(
-    () =>
-      workspaceAssetResource({
-        kind: "workspace-file",
-        threadRef: props.threadRef,
-        draft: props.draft,
-        workspaceRoot: props.workspaceRoot,
-        absolutePath: props.absolutePath,
-      }),
-    [props.threadRef, props.draft, props.workspaceRoot, props.absolutePath],
-  );
+  const resource = workspaceAssetResource({
+    kind: "workspace-file",
+    threadRef: props.threadRef,
+    draft: props.draft,
+    workspaceRoot: props.workspaceRoot,
+    absolutePath: props.absolutePath,
+  });
   const assetUrl = useAssetUrlState(props.environmentId, resource);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const revisionSuffix =
@@ -252,17 +248,13 @@ function WorkspaceBrowserPreview(props: {
 }) {
   const insideWorkspace =
     mediaFileReference(props.absolutePath, props.workspaceRoot).relativePath !== undefined;
-  const resource = useMemo(
-    () =>
-      workspaceAssetResource({
-        kind: insideWorkspace ? "workspace-file" : "media-file",
-        threadRef: props.threadRef,
-        draft: props.draft,
-        workspaceRoot: props.workspaceRoot,
-        absolutePath: props.absolutePath,
-      }),
-    [insideWorkspace, props.threadRef, props.draft, props.workspaceRoot, props.absolutePath],
-  );
+  const resource = workspaceAssetResource({
+    kind: insideWorkspace ? "workspace-file" : "media-file",
+    threadRef: props.threadRef,
+    draft: props.draft,
+    workspaceRoot: props.workspaceRoot,
+    absolutePath: props.absolutePath,
+  });
   const assetUrl = useAssetUrlState(props.environmentId, resource);
   const revisionSuffix =
     props.workspaceMutationId === null
@@ -301,17 +293,13 @@ function WorkspaceVideoPreview(props: {
   readonly name: string;
   readonly workspaceMutationId: string | null;
 }) {
-  const resource = useMemo(
-    () =>
-      workspaceAssetResource({
-        kind: "media-file",
-        threadRef: props.threadRef,
-        draft: props.draft,
-        workspaceRoot: props.workspaceRoot,
-        absolutePath: props.absolutePath,
-      }),
-    [props.threadRef, props.draft, props.workspaceRoot, props.absolutePath],
-  );
+  const resource = workspaceAssetResource({
+    kind: "media-file",
+    threadRef: props.threadRef,
+    draft: props.draft,
+    workspaceRoot: props.workspaceRoot,
+    absolutePath: props.absolutePath,
+  });
   const assetUrl = useAssetUrlState(props.environmentId, resource);
   const refreshAssetUrl = useAssetUrlRefresh(props.environmentId, resource);
   useWorkspaceMutationRefresh({
@@ -358,17 +346,13 @@ function WorkspaceAudioPreview(props: {
   readonly name: string;
   readonly workspaceMutationId: string | null;
 }) {
-  const resource = useMemo(
-    () =>
-      workspaceAssetResource({
-        kind: "media-file",
-        threadRef: props.threadRef,
-        draft: props.draft,
-        workspaceRoot: props.workspaceRoot,
-        absolutePath: props.absolutePath,
-      }),
-    [props.threadRef, props.draft, props.workspaceRoot, props.absolutePath],
-  );
+  const resource = workspaceAssetResource({
+    kind: "media-file",
+    threadRef: props.threadRef,
+    draft: props.draft,
+    workspaceRoot: props.workspaceRoot,
+    absolutePath: props.absolutePath,
+  });
   const assetUrl = useAssetUrlState(props.environmentId, resource);
   const refreshAssetUrl = useAssetUrlRefresh(props.environmentId, resource);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
@@ -451,164 +435,161 @@ function useFileLineReveal(
 ): FilePostRender {
   const [revealStatesByPath] = useState(() => new Map<string, FileRevealState>());
 
-  return useCallback<FilePostRender>(
-    (fileContainer, instance, phase) => {
-      if (relativePath === null) return;
+  return ((fileContainer, instance, phase) => {
+    if (relativePath === null) return;
 
-      const existingState = revealStatesByPath.get(relativePath);
-      const state: FileRevealState = existingState ?? {
-        frameId: null,
-        cancelGuard: null,
-        handledRequestId: null,
-        latestRequestId: null,
-      };
-      if (!existingState) revealStatesByPath.set(relativePath, state);
+    const existingState = revealStatesByPath.get(relativePath);
+    const state: FileRevealState = existingState ?? {
+      frameId: null,
+      cancelGuard: null,
+      handledRequestId: null,
+      latestRequestId: null,
+    };
+    if (!existingState) revealStatesByPath.set(relativePath, state);
 
-      const cancelPendingReveal = () => {
-        if (state.frameId !== null) {
-          cancelAnimationFrame(state.frameId);
-          state.frameId = null;
-        }
-        state.cancelGuard?.();
-      };
-
-      if (phase === "unmount") {
-        cancelPendingReveal();
-        return;
+    const cancelPendingReveal = () => {
+      if (state.frameId !== null) {
+        cancelAnimationFrame(state.frameId);
+        state.frameId = null;
       }
+      state.cancelGuard?.();
+    };
 
-      const contents = instance.file?.contents;
-      const targetLine =
-        revealLine === null || contents === undefined ? null : clampFileLine(contents, revealLine);
-      updateFileLinkReveal(fileContainer, targetLine);
+    if (phase === "unmount") {
+      cancelPendingReveal();
+      return;
+    }
 
-      if (!(instance instanceof VirtualizedFile)) return;
+    const contents = instance.file?.contents;
+    const targetLine =
+      revealLine === null || contents === undefined ? null : clampFileLine(contents, revealLine);
+    updateFileLinkReveal(fileContainer, targetLine);
 
-      if (state.latestRequestId !== revealRequestId) {
-        cancelPendingReveal();
-        state.latestRequestId = revealRequestId;
-        state.handledRequestId = null;
-      }
+    if (!(instance instanceof VirtualizedFile)) return;
 
-      if (revealLine === null) {
-        fileContainer.style.minHeight = "";
-        return;
-      }
+    if (state.latestRequestId !== revealRequestId) {
+      cancelPendingReveal();
+      state.latestRequestId = revealRequestId;
+      state.handledRequestId = null;
+    }
 
-      const scrollContainer = fileContainer.closest<HTMLElement>(".file-preview-virtualizer");
-      if (!scrollContainer) return;
-      fileContainer.style.minHeight = `${Math.ceil(
-        Math.max(instance.height, scrollContainer.clientHeight),
-      )}px`;
+    if (revealLine === null) {
+      fileContainer.style.minHeight = "";
+      return;
+    }
 
-      if (state.handledRequestId === revealRequestId || state.frameId !== null) {
-        return;
-      }
+    const scrollContainer = fileContainer.closest<HTMLElement>(".file-preview-virtualizer");
+    if (!scrollContainer) return;
+    fileContainer.style.minHeight = `${Math.ceil(
+      Math.max(instance.height, scrollContainer.clientHeight),
+    )}px`;
 
-      const resolveScrollTarget = (line: number): number | null => {
-        const linePosition = instance.getLinePosition(line);
-        if (!linePosition) return null;
+    if (state.handledRequestId === revealRequestId || state.frameId !== null) {
+      return;
+    }
 
-        const scrollContainerRect = scrollContainer.getBoundingClientRect();
-        const fileTop =
-          scrollContainer.scrollTop +
-          fileContainer.getBoundingClientRect().top -
-          scrollContainerRect.top;
-        const root = fileContainer.shadowRoot ?? fileContainer;
-        const renderedLineElement = root.querySelector<HTMLElement>(`[data-line="${line}"]`);
-        const renderedLineRect = renderedLineElement?.getBoundingClientRect();
+    const resolveScrollTarget = (line: number): number | null => {
+      const linePosition = instance.getLinePosition(line);
+      if (!linePosition) return null;
 
-        return resolveCenteredFileLineScrollTop({
-          scrollTop: scrollContainer.scrollTop,
-          scrollHeight: scrollContainer.scrollHeight,
-          viewportTop: scrollContainerRect.top,
-          viewportHeight: scrollContainer.clientHeight,
-          fileTop,
-          estimatedLine: linePosition,
-          ...(renderedLineRect && renderedLineRect.height > 0
-            ? {
-                renderedLine: {
-                  top: renderedLineRect.top,
-                  height: renderedLineRect.height,
-                },
-              }
-            : {}),
-        });
-      };
+      const scrollContainerRect = scrollContainer.getBoundingClientRect();
+      const fileTop =
+        scrollContainer.scrollTop +
+        fileContainer.getBoundingClientRect().top -
+        scrollContainerRect.top;
+      const root = fileContainer.shadowRoot ?? fileContainer;
+      const renderedLineElement = root.querySelector<HTMLElement>(`[data-line="${line}"]`);
+      const renderedLineRect = renderedLineElement?.getBoundingClientRect();
 
-      const guardScrollTarget = (line: number) => {
-        let framesLeft = REVEAL_GUARD_FRAMES;
-        let guardFrameId: number | null = null;
-        const cancelGuard = () => {
-          if (guardFrameId !== null) {
-            cancelAnimationFrame(guardFrameId);
-            guardFrameId = null;
-          }
-          scrollContainer.removeEventListener("wheel", cancelGuard);
-          scrollContainer.removeEventListener("touchstart", cancelGuard);
-          scrollContainer.removeEventListener("pointerdown", cancelGuard, true);
-          window.removeEventListener("keydown", cancelGuard, true);
-          if (state.cancelGuard === cancelGuard) state.cancelGuard = null;
-        };
-        scrollContainer.addEventListener("wheel", cancelGuard, { passive: true });
-        scrollContainer.addEventListener("touchstart", cancelGuard, { passive: true });
-        // Pierre stops gutter pointer events from bubbling. Listen in capture
-        // so starting a comment cancels the reveal guard before the row expands.
-        scrollContainer.addEventListener("pointerdown", cancelGuard, {
-          passive: true,
-          capture: true,
-        });
-        window.addEventListener("keydown", cancelGuard, true);
-        const holdTarget = () => {
+      return resolveCenteredFileLineScrollTop({
+        scrollTop: scrollContainer.scrollTop,
+        scrollHeight: scrollContainer.scrollHeight,
+        viewportTop: scrollContainerRect.top,
+        viewportHeight: scrollContainer.clientHeight,
+        fileTop,
+        estimatedLine: linePosition,
+        ...(renderedLineRect && renderedLineRect.height > 0
+          ? {
+              renderedLine: {
+                top: renderedLineRect.top,
+                height: renderedLineRect.height,
+              },
+            }
+          : {}),
+      });
+    };
+
+    const guardScrollTarget = (line: number) => {
+      let framesLeft = REVEAL_GUARD_FRAMES;
+      let guardFrameId: number | null = null;
+      const cancelGuard = () => {
+        if (guardFrameId !== null) {
+          cancelAnimationFrame(guardFrameId);
           guardFrameId = null;
-          framesLeft -= 1;
-          if (framesLeft <= 0 || !scrollContainer.isConnected) {
-            cancelGuard();
-            return;
-          }
-          const targetTop = resolveScrollTarget(line);
-          if (
-            targetTop !== null &&
-            Math.abs(scrollContainer.scrollTop - targetTop) > REVEAL_GUARD_TOLERANCE_PX
-          ) {
-            scrollContainer.scrollTop = targetTop;
-          }
-          guardFrameId = requestAnimationFrame(holdTarget);
-        };
-        guardFrameId = requestAnimationFrame(holdTarget);
-        state.cancelGuard = cancelGuard;
+        }
+        scrollContainer.removeEventListener("wheel", cancelGuard);
+        scrollContainer.removeEventListener("touchstart", cancelGuard);
+        scrollContainer.removeEventListener("pointerdown", cancelGuard, true);
+        window.removeEventListener("keydown", cancelGuard, true);
+        if (state.cancelGuard === cancelGuard) state.cancelGuard = null;
       };
-
-      const scheduleReveal = (attempt: number) => {
-        state.frameId = requestAnimationFrame(() => {
-          state.frameId = null;
-          if (state.latestRequestId !== revealRequestId || !fileContainer.isConnected) {
-            return;
-          }
-
-          // Contents and line metrics can lag the first post-render on fresh
-          // mounts; clamping against missing contents would scroll to line 1
-          // and wrongly mark the request handled.
-          const currentContents = instance.file?.contents;
-          const line =
-            currentContents === undefined ? null : clampFileLine(currentContents, revealLine);
-          const targetTop = line === null ? null : resolveScrollTarget(line);
-          if (line === null || targetTop === null) {
-            if (attempt < REVEAL_MAX_ATTEMPTS) scheduleReveal(attempt + 1);
-            return;
-          }
-          updateFileLinkReveal(fileContainer, line);
-
+      scrollContainer.addEventListener("wheel", cancelGuard, { passive: true });
+      scrollContainer.addEventListener("touchstart", cancelGuard, { passive: true });
+      // Pierre stops gutter pointer events from bubbling. Listen in capture
+      // so starting a comment cancels the reveal guard before the row expands.
+      scrollContainer.addEventListener("pointerdown", cancelGuard, {
+        passive: true,
+        capture: true,
+      });
+      window.addEventListener("keydown", cancelGuard, true);
+      const holdTarget = () => {
+        guardFrameId = null;
+        framesLeft -= 1;
+        if (framesLeft <= 0 || !scrollContainer.isConnected) {
+          cancelGuard();
+          return;
+        }
+        const targetTop = resolveScrollTarget(line);
+        if (
+          targetTop !== null &&
+          Math.abs(scrollContainer.scrollTop - targetTop) > REVEAL_GUARD_TOLERANCE_PX
+        ) {
           scrollContainer.scrollTop = targetTop;
-          state.handledRequestId = revealRequestId;
-          guardScrollTarget(line);
-        });
+        }
+        guardFrameId = requestAnimationFrame(holdTarget);
       };
+      guardFrameId = requestAnimationFrame(holdTarget);
+      state.cancelGuard = cancelGuard;
+    };
 
-      scheduleReveal(0);
-    },
-    [revealStatesByPath, relativePath, revealLine, revealRequestId],
-  );
+    const scheduleReveal = (attempt: number) => {
+      state.frameId = requestAnimationFrame(() => {
+        state.frameId = null;
+        if (state.latestRequestId !== revealRequestId || !fileContainer.isConnected) {
+          return;
+        }
+
+        // Contents and line metrics can lag the first post-render on fresh
+        // mounts; clamping against missing contents would scroll to line 1
+        // and wrongly mark the request handled.
+        const currentContents = instance.file?.contents;
+        const line =
+          currentContents === undefined ? null : clampFileLine(currentContents, revealLine);
+        const targetTop = line === null ? null : resolveScrollTarget(line);
+        if (line === null || targetTop === null) {
+          if (attempt < REVEAL_MAX_ATTEMPTS) scheduleReveal(attempt + 1);
+          return;
+        }
+        updateFileLinkReveal(fileContainer, line);
+
+        scrollContainer.scrollTop = targetTop;
+        state.handledRequestId = revealRequestId;
+        guardScrollTarget(line);
+      });
+    };
+
+    scheduleReveal(0);
+  }) satisfies FilePostRender;
 }
 
 const createFileEditor: EditorFactory<FileCommentAnnotationGroup, undefined> = (
@@ -652,7 +633,7 @@ function needsWorkerHighlight(workerPool: WorkerPoolManager | undefined, file: F
 function useEditableAfterHighlight(file: FileContents) {
   const workerPool = useWorkerPool();
   const [highlightedFile, setHighlightedFile] = useState<FileContents | null>(null);
-  const needsHighlight = useMemo(() => needsWorkerHighlight(workerPool, file), [file, workerPool]);
+  const needsHighlight = needsWorkerHighlight(workerPool, file);
   const ready = !needsHighlight || highlightedFile === file;
 
   useEffect(() => {
@@ -660,15 +641,12 @@ function useEditableAfterHighlight(file: FileContents) {
     workerPool.primeFileHighlightCache(file).catch(() => setHighlightedFile(file));
   }, [file, ready, workerPool]);
 
-  const onPostRender = useCallback(
-    (renderedFile: FileContents | undefined, phase: PostRenderPhase) => {
-      if (ready || phase === "unmount" || renderedFile?.cacheKey !== file.cacheKey) return;
-      // The pool caches a result just before the instance renders it, so a
-      // render that sees the cache has painted highlighted rows.
-      if (workerPool?.getFileResultCache(file) !== undefined) setHighlightedFile(file);
-    },
-    [file, ready, workerPool],
-  );
+  const onPostRender = (renderedFile: FileContents | undefined, phase: PostRenderPhase) => {
+    if (ready || phase === "unmount" || renderedFile?.cacheKey !== file.cacheKey) return;
+    // The pool caches a result just before the instance renders it, so a
+    // render that sees the cache has painted highlighted rows.
+    if (workerPool?.getFileResultCache(file) !== undefined) setHighlightedFile(file);
+  };
   return { ready, onPostRender };
 }
 
@@ -716,12 +694,9 @@ function EditableFileSurface({
   const [selectionOverride, setSelectionOverride] = useState<FileSelectionOverride | null>(null);
   const selectedRange =
     selectionOverride?.revealRequestId === revealRequestId ? selectionOverride.range : null;
-  const setSelectedRange = useCallback(
-    (range: SelectedLineRange | null) => {
-      setSelectionOverride({ revealRequestId, range });
-    },
-    [revealRequestId],
-  );
+  const setSelectedRange = (range: SelectedLineRange | null) => {
+    setSelectionOverride({ revealRequestId, range });
+  };
   const surfaceRef = useRef<HTMLDivElement>(null);
   const selectionFrameRef = useRef<number | null>(null);
   const caretFrameRef = useRef<number | null>(null);
@@ -742,7 +717,7 @@ function EditableFileSurface({
     headOid,
     fileLineBlameEnabled,
   });
-  const syncEditorCaretLine = useCallback(() => {
+  const syncEditorCaretLine = () => {
     if (!fileLineBlameEnabled || caretFrameRef.current !== null) return;
     caretFrameRef.current = requestAnimationFrame(() => {
       caretFrameRef.current = null;
@@ -751,18 +726,18 @@ function EditableFileSurface({
         content?.matches(":focus") ? fileEditorCaretLine(content) : null,
       );
     });
-  }, [fileLineBlameEnabled, fileLineDecorations.onCaretLineChange]);
-  const handleEditorFocus = useCallback(() => {
+  };
+  const handleEditorFocus = () => {
     fileLineDecorations.onEditorFocus();
     syncEditorCaretLine();
-  }, [fileLineDecorations.onEditorFocus, syncEditorCaretLine]);
-  const handleEditorBlur = useCallback(() => {
+  };
+  const handleEditorBlur = () => {
     if (caretFrameRef.current !== null) {
       cancelAnimationFrame(caretFrameRef.current);
       caretFrameRef.current = null;
     }
     fileLineDecorations.onEditorBlur();
-  }, [fileLineDecorations.onEditorBlur]);
+  };
   // The editor owns the draft, so its own edits echoing back through the file
   // query keep the file identity. Only a change from elsewhere replaces it.
   const [externalFile, setExternalFile] = useState(() =>
@@ -776,62 +751,49 @@ function EditableFileSurface({
   const { ready: editable, onPostRender: onEditablePostRender } =
     useEditableAfterHighlight(externalFile);
   const editorRef = useRef<Editor<"file", FileCommentAnnotationGroup, undefined> | null>(null);
-  const editorOptions = useMemo<EditorOptions<"file", FileCommentAnnotationGroup, undefined>>(
-    () => ({
+  const editorOptions = (
+    (() => ({
       onAttach: (editor) => {
         editorRef.current = editor;
       },
       onComplete: () => {
         editorRef.current = null;
       },
-    }),
-    [],
-  );
+    })) satisfies () => EditorOptions<"file", FileCommentAnnotationGroup, undefined>
+  )();
 
-  const handleEditChange = useCallback(
-    ({
-      file,
-      lineAnnotations: nextLineAnnotations,
-    }: EditorChangeEvent<"file", FileCommentAnnotationGroup, undefined>) => {
-      fileLineDecorations.onContentsChange(file.contents);
-      syncEditorCaretLine();
-      // Adopting an external change reports it as an edit; it is already on disk.
-      if (file.contents === getProjectFileContents(environmentId, cwd, relativePath)) return;
-      setEditedContents(file.contents);
-      setProjectFileQueryData(environmentId, cwd, relativePath, file.contents);
-      saveCoordinator.change(file.contents);
-      if (!nextLineAnnotations) return;
-      const remapped = remapFileCommentAnnotations(nextLineAnnotations);
-      // The editor hands back the array it was given until an edit moves an annotation.
-      setLineAnnotations((current) => (current === nextLineAnnotations ? current : remapped));
-      for (const annotation of remapped) {
-        for (const entry of annotation.metadata.entries) {
-          if (entry.kind !== "comment") continue;
-          addReviewComment(
-            composerDraftTarget,
-            buildFileReviewComment({
-              id: entry.id,
-              filePath: relativePath,
-              startLine: entry.startLine,
-              endLine: entry.endLine,
-              text: entry.text,
-              contents: file.contents,
-            }),
-          );
-        }
+  const handleEditChange = ({
+    file,
+    lineAnnotations: nextLineAnnotations,
+  }: EditorChangeEvent<"file", FileCommentAnnotationGroup, undefined>) => {
+    fileLineDecorations.onContentsChange(file.contents);
+    syncEditorCaretLine();
+    // Adopting an external change reports it as an edit; it is already on disk.
+    if (file.contents === getProjectFileContents(environmentId, cwd, relativePath)) return;
+    setEditedContents(file.contents);
+    setProjectFileQueryData(environmentId, cwd, relativePath, file.contents);
+    saveCoordinator.change(file.contents);
+    if (!nextLineAnnotations) return;
+    const remapped = remapFileCommentAnnotations(nextLineAnnotations);
+    // The editor hands back the array it was given until an edit moves an annotation.
+    setLineAnnotations((current) => (current === nextLineAnnotations ? current : remapped));
+    for (const annotation of remapped) {
+      for (const entry of annotation.metadata.entries) {
+        if (entry.kind !== "comment") continue;
+        addReviewComment(
+          composerDraftTarget,
+          buildFileReviewComment({
+            id: entry.id,
+            filePath: relativePath,
+            startLine: entry.startLine,
+            endLine: entry.endLine,
+            text: entry.text,
+            contents: file.contents,
+          }),
+        );
       }
-    },
-    [
-      addReviewComment,
-      composerDraftTarget,
-      cwd,
-      environmentId,
-      fileLineDecorations.onContentsChange,
-      relativePath,
-      saveCoordinator,
-      syncEditorCaretLine,
-    ],
-  );
+    }
+  };
   useEffect(
     () => () => {
       if (caretFrameRef.current !== null) cancelAnimationFrame(caretFrameRef.current);
@@ -846,61 +808,48 @@ function EditableFileSurface({
     caretListenersRef.current = null;
   }, [fileLineBlameEnabled]);
 
-  const removeAnnotationEntry = useCallback(
-    (entryId: string) => {
-      setSelectedRange(null);
-      removeReviewComment(composerDraftTarget, entryId);
-      setLineAnnotations((current) => {
-        return current.flatMap((annotation) => {
-          const entries = annotation.metadata.entries.filter((entry) => entry.id !== entryId);
-          return entries.length > 0 ? [{ ...annotation, metadata: { entries } }] : [];
-        });
+  const removeAnnotationEntry = (entryId: string) => {
+    setSelectedRange(null);
+    removeReviewComment(composerDraftTarget, entryId);
+    setLineAnnotations((current) => {
+      return current.flatMap((annotation) => {
+        const entries = annotation.metadata.entries.filter((entry) => entry.id !== entryId);
+        return entries.length > 0 ? [{ ...annotation, metadata: { entries } }] : [];
       });
-    },
-    [composerDraftTarget, removeReviewComment, setSelectedRange],
-  );
+    });
+  };
 
-  const submitAnnotationEntry = useCallback(
-    (entryId: string, text: string) => {
-      setSelectedRange(null);
-      const entry = lineAnnotations
-        .flatMap((annotation) => annotation.metadata.entries)
-        .find((candidate) => candidate.id === entryId);
-      if (entry) {
-        addReviewComment(
-          composerDraftTarget,
-          buildFileReviewComment({
-            id: entry.id,
-            filePath: relativePath,
-            startLine: entry.startLine,
-            endLine: entry.endLine,
-            text,
-            contents,
-          }),
-        );
-      }
-      setLineAnnotations((current) =>
-        current.map((annotation) => ({
-          ...annotation,
-          metadata: {
-            entries: annotation.metadata.entries.map((annotationEntry) =>
-              annotationEntry.id === entryId
-                ? { ...annotationEntry, kind: "comment", text }
-                : annotationEntry,
-            ),
-          },
-        })),
+  const submitAnnotationEntry = (entryId: string, text: string) => {
+    setSelectedRange(null);
+    const entry = lineAnnotations
+      .flatMap((annotation) => annotation.metadata.entries)
+      .find((candidate) => candidate.id === entryId);
+    if (entry) {
+      addReviewComment(
+        composerDraftTarget,
+        buildFileReviewComment({
+          id: entry.id,
+          filePath: relativePath,
+          startLine: entry.startLine,
+          endLine: entry.endLine,
+          text,
+          contents,
+        }),
       );
-    },
-    [
-      addReviewComment,
-      composerDraftTarget,
-      contents,
-      lineAnnotations,
-      relativePath,
-      setSelectedRange,
-    ],
-  );
+    }
+    setLineAnnotations((current) =>
+      current.map((annotation) => ({
+        ...annotation,
+        metadata: {
+          entries: annotation.metadata.entries.map((annotationEntry) =>
+            annotationEntry.id === entryId
+              ? { ...annotationEntry, kind: "comment", text }
+              : annotationEntry,
+          ),
+        },
+      })),
+    );
+  };
 
   const ticketCapture = useTicketCapture({
     environmentId,
@@ -908,7 +857,7 @@ function EditableFileSurface({
     projectId: null,
   });
 
-  const beginComment = useCallback((range: SelectedLineRange) => {
+  const beginComment = (range: SelectedLineRange) => {
     editorRef.current?.setSelections([]);
     editorRef.current?.blur();
     const { startLine, endLine } = normalizeFileCommentRange(range);
@@ -945,7 +894,7 @@ function EditableFileSurface({
           : annotation,
       );
     });
-  }, []);
+  };
   const hasOpenCommentForm = lineAnnotations.some((annotation) =>
     annotation.metadata.entries.some((entry) => entry.kind === "draft"),
   );
@@ -959,61 +908,46 @@ function EditableFileSurface({
       onDismiss: () => setSelectedRange(null),
     });
   }, [hasOpenCommentForm, setSelectedRange]);
-  const handleLineSelectionEnd = useCallback(
-    (range: SelectedLineRange | null) => {
-      setSelectedRange(range);
-      if (range) {
-        beginComment(range);
-      }
-    },
-    [beginComment, setSelectedRange],
-  );
+  const handleLineSelectionEnd = (range: SelectedLineRange | null) => {
+    setSelectedRange(range);
+    if (range) {
+      beginComment(range);
+    }
+  };
 
-  const handlePostRender = useCallback<FilePostRender>(
-    (fileContainer, instance, phase) => {
-      onPostRender(fileContainer, instance, phase);
-      onEditablePostRender(instance.file, phase);
-      fileLineDecorations.onPostRender(fileContainer, instance, phase);
+  const handlePostRender = ((fileContainer, instance, phase) => {
+    onPostRender(fileContainer, instance, phase);
+    onEditablePostRender(instance.file, phase);
+    fileLineDecorations.onPostRender(fileContainer, instance, phase);
 
-      if (phase === "unmount" || !fileLineBlameEnabled) {
+    if (phase === "unmount" || !fileLineBlameEnabled) {
+      caretListenersRef.current?.dispose();
+      caretListenersRef.current = null;
+    } else {
+      const root = fileContainer.shadowRoot ?? fileContainer;
+      const content = root.querySelector<HTMLElement>("[data-content]");
+      if (content && caretListenersRef.current?.content !== content) {
         caretListenersRef.current?.dispose();
-        caretListenersRef.current = null;
-      } else {
-        const root = fileContainer.shadowRoot ?? fileContainer;
-        const content = root.querySelector<HTMLElement>("[data-content]");
-        if (content && caretListenersRef.current?.content !== content) {
-          caretListenersRef.current?.dispose();
-          caretListenersRef.current = installFileEditorCaretListeners(fileContainer, {
-            onFocus: handleEditorFocus,
-            onBlur: handleEditorBlur,
-            onCaretMove: syncEditorCaretLine,
-          });
-        }
+        caretListenersRef.current = installFileEditorCaretListeners(fileContainer, {
+          onFocus: handleEditorFocus,
+          onBlur: handleEditorBlur,
+          onCaretMove: syncEditorCaretLine,
+        });
       }
+    }
 
-      if (selectionFrameRef.current !== null) {
-        cancelAnimationFrame(selectionFrameRef.current);
-        selectionFrameRef.current = null;
-      }
-      if (phase === "unmount") return;
+    if (selectionFrameRef.current !== null) {
+      cancelAnimationFrame(selectionFrameRef.current);
+      selectionFrameRef.current = null;
+    }
+    if (phase === "unmount") return;
 
-      selectionFrameRef.current = requestAnimationFrame(() => {
-        selectionFrameRef.current = null;
-        if (!fileContainer.isConnected) return;
-        instance.setSelectedLines(selectedRange, { notify: false });
-      });
-    },
-    [
-      fileLineDecorations.onPostRender,
-      fileLineBlameEnabled,
-      handleEditorBlur,
-      handleEditorFocus,
-      onEditablePostRender,
-      onPostRender,
-      selectedRange,
-      syncEditorCaretLine,
-    ],
-  );
+    selectionFrameRef.current = requestAnimationFrame(() => {
+      selectionFrameRef.current = null;
+      if (!fileContainer.isConnected) return;
+      instance.setSelectedLines(selectedRange, { notify: false });
+    });
+  }) satisfies FilePostRender;
   const find = usePierreFileFindSource<FileCommentAnnotationGroup>(contents, handlePostRender);
 
   return (
@@ -1357,6 +1291,7 @@ export default function FilePreviewPanel({
     breadcrumbRef.current
       ?.querySelector<HTMLElement>("[data-current-file-crumb='true']")
       ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Changing the path or folder trail reveals the current crumb.
   }, [breadcrumbPath, breadcrumbTrail]);
 
   const toggleExplorer = () => {
@@ -1371,7 +1306,7 @@ export default function FilePreviewPanel({
     });
   };
 
-  const handleOpenInBrowser = useCallback(() => {
+  const handleOpenInBrowser = () => {
     if (!canReadFiles || !canOperatePreview || !absolutePath || !environmentHttpBaseUrl) return;
     void (async () => {
       const result = await openFileInPreview({
@@ -1394,16 +1329,7 @@ export default function FilePreviewPanel({
         }),
       );
     })();
-  }, [
-    absolutePath,
-    canReadFiles,
-    canOperatePreview,
-    createAssetUrl,
-    cwd,
-    environmentHttpBaseUrl,
-    openPreview,
-    threadRef,
-  ]);
+  };
 
   if (attachment === undefined && !canReadFiles) {
     if (fileAccess.isPending) {

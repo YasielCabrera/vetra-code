@@ -427,6 +427,10 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
   incoming hunk is a new `T3_*` constant, add `VETRA_*` in our tree and a `RENAMES` pair.
 - **Lockfile vs deleted workspaces.** After prune, `pnpm install` must regenerate the lockfile so
   it does not reference `@t3tools/mobile` / marketing packages.
+- **React Compiler lint rollout.** Upstream's all-web compiler lint override assumes every web
+  file has completed its manual-memoization migration. Vetra-only features still use those hooks.
+  Keep the existing lint policy until those features migrate separately; take the runtime
+  refactors and lint rule implementation without expanding the sync into a fork-wide UI rewrite.
 - **`@types/hast` split.** `@pierre/diffs` ships its own `@types/hast@3.0.4` inside `dist`, and the
   MDX packages augment whichever `@types/hast` they resolve. A regenerated lockfile can move the
   `hast-util-*` / `mdast-util-*` / `rehype-*` packages onto another version, and `apps/web` then

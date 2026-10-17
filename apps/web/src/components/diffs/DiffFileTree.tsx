@@ -1,7 +1,7 @@
 import type { GitStatusEntry } from "@pierre/trees";
 import { FileTree, useFileTree, useFileTreeSelector } from "@pierre/trees/react";
 import { ChevronsDownUp, ChevronsUpDown } from "lucide";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useTheme } from "~/hooks/useTheme";
 import { cn } from "~/lib/utils";
@@ -45,9 +45,9 @@ export function DiffFileTree({
   className,
 }: DiffFileTreeProps) {
   const { resolvedTheme } = useTheme();
-  const paths = useMemo(() => entries.map((entry) => entry.path), [entries]);
-  const directoryPaths = useMemo(() => collectDirectoryPaths(paths), [paths]);
-  const positions = useMemo(() => diffFileTreePositions(paths), [paths]);
+  const paths = entries.map((entry) => entry.path);
+  const directoryPaths = collectDirectoryPaths(paths);
+  const positions = diffFileTreePositions(paths);
   const [ordering] = useState(() => {
     let currentPositions: ReadonlyMap<string, number> = new Map();
     return {
@@ -57,12 +57,10 @@ export function DiffFileTree({
       },
     };
   });
-  const gitStatus = useMemo<ReadonlyArray<GitStatusEntry>>(
-    () => entries.map((entry) => ({ path: entry.path, status: entry.status })),
-    [entries],
-  );
-  const filePathsRef = useRef<ReadonlySet<string>>(new Set(paths));
-  const onSelectFileRef = useRef(onSelectFile);
+  const gitStatus: ReadonlyArray<GitStatusEntry> = entries.map((entry) => ({
+    path: entry.path,
+    status: entry.status,
+  }));
   const syncingSelectionRef = useRef(false);
   const handledRevealRef = useRef<{ path: string; revealRequestId: number } | null>(null);
   const mountedPathsRef = useRef<ReadonlyArray<string> | null>(null);
@@ -71,23 +69,10 @@ export function DiffFileTree({
   const selectedPathRef = useRef(selectedPath);
 
   useEffect(() => {
-    filePathsRef.current = new Set(paths);
-    onSelectFileRef.current = onSelectFile;
     selectedPathRef.current = selectedPath;
   }, [onSelectFile, paths, selectedPath]);
 
-  const dragMention = useMemo(
-    () =>
-      createFileTreeDragMentionController({
-        // The file the diff is showing stays selected: its highlight tracks the
-        // view, not whichever row was last picked up.
-        deselect: (path) => {
-          if (path === selectedPathRef.current) return;
-          treeModelRef.current?.getItem(path)?.deselect();
-        },
-      }),
-    [],
-  );
+  const dragMention = createFileTreeDragMentionController({});
 
   const { model } = useFileTree({
     density: "compact",
@@ -106,7 +91,7 @@ export function DiffFileTree({
       // gesture, not a request to show that file.
       if (dragMention.isDragInProgress()) return;
       const path = selectedPaths.at(-1)?.replace(/\/$/, "");
-      if (path && filePathsRef.current.has(path)) onSelectFileRef.current(path);
+      if (path && paths.includes(path)) onSelectFile(path);
     },
     paths: [],
     search: false,
@@ -152,7 +137,9 @@ export function DiffFileTree({
     if (panel === null) return;
     const handleDragStart = (event: DragEvent) => dragMention.handleDragStart(event);
     const handleDragEnd = () => {
-      dragMention.handleDragEnd();
+      dragMention.handleDragEnd((path) => {
+        if (path !== selectedPathRef.current) treeModelRef.current?.getItem(path)?.deselect();
+      });
       // The tree hands selection to the row it picked up, so put it back on the
       // file the diff is showing instead of leaving nothing highlighted.
       const viewedPath = selectedPathRef.current;
@@ -205,8 +192,13 @@ export function DiffFileTree({
     queueMicrotask(() => {
       syncingSelectionRef.current = false;
     });
-    // `paths` is a dependency so a file that arrives after it was asked for is still revealed.
-  }, [model, paths, revealRequestId, selectedPath]);
+  }, [
+    model,
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- A file that arrives after it was asked for is still revealed.
+    paths,
+    revealRequestId,
+    selectedPath,
+  ]);
 
   return (
     <div ref={panelRef} className={cn("flex min-h-0 flex-1 flex-col bg-background", className)}>
@@ -263,13 +255,13 @@ export function DiffFileTree({
           // Read selection before the row handles the click so new selections reveal only once.
           const selected = model.getSelectedPaths();
           const path = selected.length === 1 ? selected[0] : undefined;
-          if (!path || !filePathsRef.current.has(path)) return;
+          if (!path || !paths.includes(path)) return;
           const clickedSelectedRow = event.nativeEvent
             .composedPath()
             .some(
               (node) => node instanceof HTMLElement && node.getAttribute("data-item-path") === path,
             );
-          if (clickedSelectedRow) onSelectFileRef.current(path);
+          if (clickedSelectedRow) onSelectFile(path);
         }}
         className="min-h-0 flex-1 overflow-hidden"
         style={pierreTreeStyle(resolvedTheme)}

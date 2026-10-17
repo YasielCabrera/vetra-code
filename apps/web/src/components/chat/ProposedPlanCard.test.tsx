@@ -33,7 +33,7 @@ vi.mock("../../hooks/useTicketActions", () => ({
   useTicketActions: () => ({ createPlan: state.createPlan }),
 }));
 vi.mock("../../state/tickets", () => ({ useTicketsForThread: () => [ticket] }));
-vi.mock("./markdownFindContext", () => ({ useFindRevealRef: () => undefined }));
+vi.mock("./markdownFindContext", () => ({ findRevealRef: () => undefined }));
 vi.mock("../ui/menu", () => ({
   Menu: ({ children }: { children: ReactNode }) => children,
   MenuTrigger: () => null,

@@ -1,4 +1,9 @@
-import { findRecordedWorktreeSetup, resolveVisibleWorktreeSetup } from "./ChatView.logic";
+import {
+  findRecordedWorktreeSetup,
+  isThreadWokeUnseen,
+  mergeDirectPreviewAnnotation,
+  resolveVisibleWorktreeSetup,
+} from "./ChatView.logic";
 import {
   recallCheckoutIsRepo,
   rememberCheckoutIsRepo,
@@ -14,9 +19,9 @@ import type { RightPanelSurface } from "../rightPanelStore";
 import {
   CommandId,
   EnvironmentId,
-  EventId,
   MessageId,
   ProjectId,
+  PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   ProviderInstanceId,
   ThreadId,
   RunId,
@@ -28,7 +33,7 @@ import type { CodexArtifactTemplate } from "@t3tools/shared/codexArtifactTemplat
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { Atom, AsyncResult } from "effect/reactivity";
+import { Atom } from "effect/reactivity";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { environmentThreadDetails } from "../state/threads";
 
@@ -40,7 +45,6 @@ import {
   getAntigravitySendBlockReason,
   resolveBackgroundDraftWorkspaceOptions,
   resolveComposerInteractionMode,
-  restorePlanFollowUpComposer,
   resolveComposerProviderSelection,
   resolveProactiveTurnDiffAction,
   resolveDraftHeroState,
@@ -84,7 +88,6 @@ import {
   shouldShowPlanFollowUpPrompt,
   shouldWriteThreadErrorToCurrentServerThread,
   waitForRevertedMessage,
-  prepareRevertedMessageAttachments,
 } from "./ChatView.logic";
 
 const environmentId = EnvironmentId.make("environment-local");
@@ -2171,5 +2174,87 @@ describe("waitForRevertedMessage", () => {
     await vi.advanceTimersByTimeAsync(50);
     await settled;
     vi.useRealTimers();
+  });
+});
+
+describe("mergeDirectPreviewAnnotation", () => {
+  const annotation = (id: string) =>
+    ({
+      id,
+      pageUrl: "http://localhost:5173/",
+      pageTitle: null,
+      comment: "tighten this",
+      elements: [],
+      regions: [],
+      strokes: [],
+      styleChanges: [],
+      screenshot: {
+        dataUrl: "data:image/png;base64,AAAA",
+        width: 10,
+        height: 10,
+        cropRect: { x: 0, y: 0, width: 10, height: 10 },
+      },
+      createdAt: "2026-10-16T00:00:00.000Z",
+    }) as const;
+  const image = (id: string) =>
+    ({ id, type: "image", name: `${id}.png`, mimeType: "image/png", sizeBytes: 1 }) as never;
+
+  it("appends the screenshot and claims the crop when the turn has room", () => {
+    const result = mergeDirectPreviewAnnotation({
+      images: [],
+      fileCount: 0,
+      previewAnnotations: [],
+      direct: { annotation: annotation("a"), image: image("crop") },
+    });
+    expect(result.images.map((entry) => entry.id)).toEqual(["crop"]);
+    expect(result.previewAnnotations[0]?.screenshot?.dataUrl).toBe("");
+  });
+
+  it("drops the screenshot claim when the attachment cap is full", () => {
+    const result = mergeDirectPreviewAnnotation({
+      images: [],
+      fileCount: PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
+      previewAnnotations: [],
+      direct: { annotation: annotation("a"), image: image("crop") },
+    });
+    expect(result.images).toEqual([]);
+    expect(result.previewAnnotations[0]?.screenshot).toBeNull();
+  });
+
+  it("keeps an annotation already in the draft as it is", () => {
+    const existing = [annotation("a")];
+    const result = mergeDirectPreviewAnnotation({
+      images: [],
+      fileCount: 0,
+      previewAnnotations: existing,
+      direct: { annotation: annotation("a"), image: null },
+    });
+    expect(result.previewAnnotations).toBe(existing);
+  });
+});
+
+describe("isThreadWokeUnseen", () => {
+  const base = {
+    wokeAt: "2026-10-16T10:00:00.000Z",
+    settled: false,
+    lastVisitedAt: null,
+    latestRunCompletedAt: null,
+  };
+
+  it("shows a wake the user has not seen", () => {
+    expect(isThreadWokeUnseen({ ...base, lastVisitedAt: "2026-10-16T09:00:00.000Z" })).toBe(true);
+    expect(isThreadWokeUnseen(base)).toBe(true);
+  });
+
+  it("hides a wake seen by a later visit or a later completed run", () => {
+    expect(isThreadWokeUnseen({ ...base, lastVisitedAt: "2026-10-16T11:00:00.000Z" })).toBe(false);
+    expect(isThreadWokeUnseen({ ...base, latestRunCompletedAt: "2026-10-16T11:00:00.000Z" })).toBe(
+      false,
+    );
+  });
+
+  it("hides settled threads and unparseable wake times", () => {
+    expect(isThreadWokeUnseen({ ...base, settled: true })).toBe(false);
+    expect(isThreadWokeUnseen({ ...base, wokeAt: "not a date" })).toBe(false);
   });
 });

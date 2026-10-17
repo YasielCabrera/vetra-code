@@ -5,9 +5,12 @@ import type {
 } from "@pierre/trees";
 import type { EnvironmentId, ProjectEntry, ThreadId, VcsStatusResult } from "@t3tools/contracts";
 import { FileTree, useFileTree, useFileTreeSearch, useFileTreeSelector } from "@pierre/trees/react";
+import { settlePromise } from "@t3tools/client-runtime/state/runtime";
 import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
+import * as AsyncResult from "effect/reactivity/AsyncResult";
+import * as Cause from "effect/Cause";
 import { ChevronsDownUp, ChevronsUpDown } from "lucide";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { InputGroup, InputGroupInput } from "~/components/ui/input-group";
@@ -16,6 +19,7 @@ import { toastManager } from "~/components/ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useComposerHandleContext } from "~/composerHandleContext";
 import { writeTextToClipboard } from "~/hooks/useCopyToClipboard";
+import { useStableCallback } from "~/hooks/useStableCallback";
 import { useTheme } from "~/hooks/useTheme";
 import { useWorkspaceMutationRefresh } from "~/hooks/useWorkspaceMutationRefresh";
 import { useFileContextMenu, type FileContextMenuAction } from "~/fileContextMenu";
@@ -119,6 +123,34 @@ function FileSearchField(props: {
   );
 }
 
+// The tree diffs `treePaths` by identity, so the panel must keep this result cached
+// across the hooks that read it.
+function buildTreeEntries(
+  directoryEntries: readonly ProjectEntry[],
+  searchEntries: readonly ProjectEntry[],
+  searchPending: boolean,
+  query: string,
+) {
+  const result = new Map(directoryEntries.map((entry) => [entry.path, entry]));
+  if (query.trim() && !searchPending) {
+    for (const entry of searchEntries) {
+      if (!result.has(entry.path)) result.set(entry.path, entry);
+      const segments = entry.path.split("/");
+      for (let index = 1; index < segments.length; index++) {
+        const path = segments.slice(0, index).join("/");
+        if (!result.has(path)) result.set(path, { path, kind: "directory" });
+      }
+    }
+  }
+  const entries = [...result.values()];
+  const entryKinds: ReadonlyMap<string, ProjectEntry["kind"]> = new Map(
+    entries.map((entry) => [entry.path, entry.kind] as const),
+  );
+  const treePaths = entries.map(treePath);
+  const directoryPaths = entries.filter((entry) => entry.kind === "directory").map(treePath);
+  return { entries, entryKinds, treePaths, directoryPaths };
+}
+
 export default function FileBrowserPanel({
   environmentId,
   cwd,
@@ -152,45 +184,25 @@ export default function FileBrowserPanel({
     { environmentId, cwd: hostFolder ? null : cwd, query: query.slice(0, 256) },
     200,
   );
-  const entries = useMemo(() => {
-    const result = new Map(directoryEntries.map((entry) => [entry.path, entry]));
-    if (query.trim() && !pathSearch.isPending) {
-      for (const entry of pathSearch.entries) {
-        if (!result.has(entry.path)) result.set(entry.path, entry);
-        const segments = entry.path.split("/");
-        for (let index = 1; index < segments.length; index++) {
-          const path = segments.slice(0, index).join("/");
-          if (!result.has(path)) result.set(path, { path, kind: "directory" });
-        }
-      }
-    }
-    return [...result.values()];
-  }, [directoryEntries, pathSearch.entries, pathSearch.isPending, query]);
+  const { entries, entryKinds, treePaths, directoryPaths } = buildTreeEntries(
+    directoryEntries,
+    pathSearch.entries,
+    pathSearch.isPending,
+    query,
+  );
+  const entryKindsRef = useRef(entryKinds);
   const vcsStatusQuery = useEnvironmentQuery(
     vcsEnvironment.status({ environmentId, input: { cwd } }),
   );
   const changedFiles = vcsStatusQuery.data?.workingTree.files ?? EMPTY_WORKING_TREE_FILES;
-  const entryKinds = useMemo(
-    () => new Map(entries.map((entry) => [entry.path, entry.kind] as const)),
-    [entries],
-  );
-  const entryKindsRef = useRef<ReadonlyMap<string, ProjectEntry["kind"]>>(entryKinds);
-  const treePaths = useMemo(() => entries.map(treePath), [entries]);
-  const directoryPaths = useMemo(
-    () => entries.filter((entry) => entry.kind === "directory").map(treePath),
-    [entries],
-  );
   // One owner for `setGitStatus`: the fork's working-tree decoration plus the
   // ignored entries upstream marks, so neither can overwrite the other.
-  const gitStatus = useMemo(
-    () => [
-      ...buildFileTreeGitStatus(entries, changedFiles),
-      ...entries
-        .filter((entry) => entry.ignored)
-        .map((entry) => ({ path: treePath(entry), status: "ignored" as const })),
-    ],
-    [changedFiles, entries],
-  );
+  const gitStatus = [
+    ...buildFileTreeGitStatus(entries, changedFiles),
+    ...entries
+      .filter((entry) => entry.ignored)
+      .map((entry) => ({ path: treePath(entry), status: "ignored" as const })),
+  ];
   const previousTreePathsRef = useRef<readonly string[] | null>(null);
   const syncingSelectionRef = useRef(false);
   const treeSelectionPathRef = useRef<string | null>(null);
@@ -208,102 +220,97 @@ export default function FileBrowserPanel({
     return () => document.removeEventListener("contextmenu", capturePointer, true);
   }, []);
 
-  const showEntryContextMenu = async (
-    item: TreeContextMenuItem,
-    context: TreeContextMenuOpenContext,
-  ) => {
-    const api = readLocalApi();
-    if (!api) {
-      context.close();
-      return;
-    }
-    const relativePath = item.path.replace(/\/$/, "");
-    const mention = serializeComposerFileLink(panelPath(relativePath));
-    const pointer = contextMenuPointerRef.current;
-    const pointerIsFresh = pointer !== null && performance.now() - pointer.at < 1000;
-    const anchorRect = context.anchorElement.getBoundingClientRect();
-    const position = pointerIsFresh
-      ? { x: pointer.x, y: pointer.y }
-      : { x: anchorRect.left, y: anchorRect.bottom };
-    const fileTarget = { environmentId, filePath: relativePath, workspaceRoot: cwd };
-    const fileMenuItems = fileContextMenu.buildItems(fileTarget);
-    try {
-      const clicked = await api.contextMenu.show(
-        [
-          ...fileMenuItems,
-          { id: "copy-mention", label: "Copy mention" },
-          { id: "add-to-chat", label: "Add to chat" },
-          ...(ticketCapture?.fileMenuItems ?? []),
-        ],
-        position,
-      );
-      if (clicked === null) return;
-      // "Open with" submenu selections report the child id ("editor:<id>"),
-      // which is not present in the top-level item list.
-      const isFileMenuAction =
-        fileMenuItems.some((entry) => entry.id === clicked) || clicked.startsWith("editor:");
-      if (isFileMenuAction) {
-        await fileContextMenu.activate(clicked as FileContextMenuAction, fileTarget);
+  const showEntryContextMenu = useStableCallback(
+    (item: TreeContextMenuItem, context: TreeContextMenuOpenContext) => {
+      const api = readLocalApi();
+      if (!api) {
+        context.close();
         return;
       }
-      if (ticketCapture?.activateFileMenuItem(clicked, relativePath)) return;
-      if (clicked === "copy-mention") {
-        try {
-          await writeTextToClipboard(mention);
-          toastManager.add({ type: "success", title: "Mention copied", description: relativePath });
-        } catch (error) {
-          toastManager.add({
-            type: "error",
-            title: "Failed to copy mention",
-            description: error instanceof Error ? error.message : "An error occurred.",
-          });
-        }
-        return;
-      }
-      if (clicked === "add-to-chat") {
-        const composer = composerRef?.current;
-        if (!composer) {
-          toastManager.add({
-            type: "error",
-            title: "Unable to add to chat",
-            description: "Open a chat for this project and try again.",
-          });
+      const relativePath = item.path.replace(/\/$/, "");
+      const mention = serializeComposerFileLink(panelPath(relativePath));
+      const pointer = contextMenuPointerRef.current;
+      const pointerIsFresh = pointer !== null && performance.now() - pointer.at < 1000;
+      const anchorRect = context.anchorElement.getBoundingClientRect();
+      const position = pointerIsFresh
+        ? { x: pointer.x, y: pointer.y }
+        : { x: anchorRect.left, y: anchorRect.bottom };
+      const fileTarget = { environmentId, filePath: relativePath, workspaceRoot: cwd };
+      const fileMenuItems = fileContextMenu.buildItems(fileTarget);
+      void settlePromise(async () => {
+        const clicked = await api.contextMenu.show(
+          [
+            ...fileMenuItems,
+            ...(ticketCapture?.fileMenuItems ?? []),
+            { id: "copy-mention", label: "Copy mention" },
+            { id: "add-to-chat", label: "Add to chat" },
+          ],
+          position,
+        );
+        if (clicked === null) return;
+        // "Open with" submenu selections report the child id ("editor:<id>"),
+        // which is not present in the top-level item list.
+        const isFileMenuAction =
+          fileMenuItems.some((entry) => entry.id === clicked) || clicked.startsWith("editor:");
+        if (isFileMenuAction) {
+          await fileContextMenu.activate(clicked as FileContextMenuAction, fileTarget);
           return;
         }
-        const inserted = composer.insertTextAtEnd(`${mention} `, { ensureLeadingBoundary: true });
-        if (!inserted) {
-          toastManager.add({
-            type: "error",
-            title: "Unable to add to chat",
-            description: "The chat isn't ready to accept input right now.",
-          });
+        if (ticketCapture?.activateFileMenuItem(clicked, relativePath)) return;
+        if (clicked === "copy-mention") {
+          try {
+            await writeTextToClipboard(mention);
+            toastManager.add({
+              type: "success",
+              title: "Mention copied",
+              description: relativePath,
+            });
+          } catch (error) {
+            toastManager.add({
+              type: "error",
+              title: "Failed to copy mention",
+              description: error instanceof Error ? error.message : "An error occurred.",
+            });
+          }
+          return;
         }
-      }
-    } finally {
-      context.close();
-    }
-  };
-  const showEntryContextMenuRef = useRef(showEntryContextMenu);
-  useEffect(() => {
-    showEntryContextMenuRef.current = showEntryContextMenu;
-  });
+        if (clicked === "add-to-chat") {
+          const composer = composerRef?.current;
+          if (!composer) {
+            toastManager.add({
+              type: "error",
+              title: "Unable to add to chat",
+              description: "Open a chat for this project and try again.",
+            });
+            return;
+          }
+          const inserted = composer.insertTextAtEnd(`${mention} `, { ensureLeadingBoundary: true });
+          if (!inserted) {
+            toastManager.add({
+              type: "error",
+              title: "Unable to add to chat",
+              description: "The chat isn't ready to accept input right now.",
+            });
+          }
+        }
+      }).then((result) => {
+        context.close();
+        // Keep surfacing unexpected failures as unhandled rejections.
+        if (!AsyncResult.isSuccess(result)) throw Cause.squash(result.cause);
+      });
+    },
+  );
 
   const loadingDirectoriesRef = useRef(loadingDirectories);
-  const treeModelRef = useRef<ReturnType<typeof useFileTree>["model"] | null>(null);
-  const dragMention = useMemo(
-    () =>
-      createFileTreeDragMentionController({
-        deselect: (path) => treeModelRef.current?.getItem(path)?.deselect(),
-        ...(hostFolder ? { mentionPath: (path: string) => joinHostPath(cwd, path) } : {}),
-      }),
-    [cwd, hostFolder],
+  const dragMention = createFileTreeDragMentionController(
+    hostFolder ? { mentionPath: (path: string) => joinHostPath(cwd, path) } : {},
   );
   const { model } = useFileTree({
     composition: {
       contextMenu: {
         triggerMode: "right-click",
         onOpen: (item, context) => {
-          void showEntryContextMenuRef.current(item, context);
+          showEntryContextMenu(item, context);
         },
       },
     },
@@ -435,7 +442,7 @@ export default function FileBrowserPanel({
     }
     const updates = buildFileTreePathUpdates(previousTreePaths, treePaths);
     if (updates.length > 0) model.batch(updates);
-  }, [ready, entryKinds, model, treePaths]);
+  }, [ready, entryKinds, model, treePaths, selectedPath]);
 
   useEffect(() => {
     if (expandAll && !query.trim()) setAllDirectoriesExpanded(model, directoryPaths, true);
@@ -521,15 +528,13 @@ export default function FileBrowserPanel({
     onOpenFileRef.current = onOpenFile;
   });
   useEffect(() => {
-    treeModelRef.current = model;
-  }, [model]);
-  useEffect(() => {
     const panel = panelRef.current;
     if (panel === null) {
       return;
     }
     const handleDragStart = (event: DragEvent) => dragMention.handleDragStart(event);
-    const handleDragEnd = () => dragMention.handleDragEnd();
+    const handleDragEnd = () =>
+      dragMention.handleDragEnd((path) => model.getItem(path)?.deselect());
     // The tree exposes no double-click callback, so the gesture is read from
     // the composed event like drags are. The first click already opened the
     // file as a preview tab; the double click promotes it to a dedicated tab.
@@ -548,7 +553,7 @@ export default function FileBrowserPanel({
       panel.removeEventListener("dragend", handleDragEnd);
       panel.removeEventListener("dblclick", handleDoubleClick, true);
     };
-  }, [dragMention]);
+  }, [dragMention, model, onOpenFileRef]);
 
   return (
     <div

@@ -90,6 +90,7 @@ PRUNE_PATHS=(
   # Nightly toast and settings row promoting T3's beta mobile app through T3's
   # TestFlight and Google Play links. The fork ships no mobile app.
   apps/web/src/components/NightlyMobileBeta.tsx
+  apps/web/src/components/settings/MobileAppSettingsRow.tsx
 )
 PRUNE_GLOBS=(
   'apps/server/src/cli/triage*'
@@ -199,6 +200,8 @@ RENAMES=(
   # stored preference or points a remote client at a path this server does not
   # serve.
   't3_session=vetra_session'
+  'persist:t3-preview-=persist:vetra-code-preview-'
+  'Reconnected on t3@=Reconnected on vetra@'
   # Persisted client keys and CSS highlight registry names. Keyed on the
   # opening quote so the `pingdotgg/t3code.git` remote is untouched.
   '"t3code.="vetra.'
