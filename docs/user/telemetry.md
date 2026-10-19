@@ -1,8 +1,12 @@
 # Product usage data
 
-The Vetra Code server sends product usage events to PostHog, associated with a hashed account or
-installation identifier. Events include the provider, model, reasoning effort, permission mode,
-turn result, duration, and main-agent token totals when available.
+Product usage collection is off by default. To enable it, set `VETRA_TELEMETRY_ENABLED=true`
+and `VETRA_POSTHOG_KEY` for your own PostHog project before starting the server. Use
+`VETRA_POSTHOG_HOST` to configure a different PostHog host.
+
+When enabled, the Vetra Code server sends events associated with a hashed account or installation
+identifier. Events include the provider, model, reasoning effort, permission mode, turn result,
+duration, release channel, and main-agent token totals when available.
 
 Events do not include prompts, responses, file contents, authentication tokens, conversation IDs,
 raw provider events, or child-agent output. Child-agent token use is excluded from the totals.

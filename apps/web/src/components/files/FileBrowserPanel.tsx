@@ -34,6 +34,7 @@ import { createFileTreeDragMentionController, fileTreeEventItemPath } from "./fi
 import { areAllDirectoriesExpanded, setAllDirectoriesExpanded } from "./fileTreeExpansion";
 import { buildFileTreeGitStatus } from "./fileTreeGitStatus";
 import { buildFileTreePathUpdates } from "./fileTreePathReconciliation";
+import { loadFileAncestors } from "./loadFileAncestors";
 import { useDirectoryEntries } from "./useDirectoryEntries";
 import { useProjectPathSearch } from "~/state/queries";
 import { useTicketCapture } from "../tickets/useTicketCapture";
@@ -352,6 +353,8 @@ export default function FileBrowserPanel({
     model.setComposition(model.getComposition());
   }, [loadingDirectories, model]);
   const search = useFileTreeSearch(model);
+  // Pierre restores the unfiltered tree when a search has no matches.
+  const hasNoSearchMatches = search.value.trim().length > 0 && search.matchingPaths.length === 0;
   const allDirectoriesExpanded = useFileTreeSelector(model, (currentModel) =>
     areAllDirectoriesExpanded(currentModel, directoryPaths),
   );
@@ -391,12 +394,7 @@ export default function FileBrowserPanel({
   useEffect(() => {
     if (!selectedPath) return;
     const controller = new AbortController();
-    void (async () => {
-      const segments = selectedPath.split("/");
-      for (let index = 0; index < segments.length && !controller.signal.aborted; index++) {
-        await load(segments.slice(0, index).join("/"));
-      }
-    })();
+    void loadFileAncestors(selectedPath, load, { signal: controller.signal });
     return () => {
       controller.abort();
     };
@@ -620,12 +618,20 @@ export default function FileBrowserPanel({
           Loading files…
         </div>
       )}
-      <FileTree
-        model={model}
-        aria-label={`${projectName} files`}
-        className="min-h-0 flex-1 overflow-hidden"
-        style={pierreTreeStyle(resolvedTheme)}
-      />
+      {hasNoSearchMatches ? (
+        ready && !isPending && !pathSearch.isPending && !error && !pathSearch.error ? (
+          <div role="status" className="px-3 py-4 text-xs text-muted-foreground">
+            No matching files.
+          </div>
+        ) : null
+      ) : (
+        <FileTree
+          model={model}
+          aria-label={`${projectName} files`}
+          className="min-h-0 flex-1 overflow-hidden"
+          style={pierreTreeStyle(resolvedTheme)}
+        />
+      )}
     </div>
   );
 }

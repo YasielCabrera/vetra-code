@@ -1,5 +1,7 @@
 {
   "id": "/",
+  "name": "Vetra Code",
+  "short_name": "Vetra Code",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -56,6 +56,7 @@ PRUNE_PATHS=(
   scripts/mobile-native-static-check.ts
   scripts/mobile-native-static-check.test.ts
   scripts/mobile-native-client.ts
+  scripts/mobile-native-client.test.ts
   't3.json'
   # Mobile-only internals docs. The fork ships no mobile client, so these
   # describe trees the prune pass deletes.
@@ -99,6 +100,7 @@ PRUNE_GLOBS=(
   'patches/*expo*'
   # Mobile-only styling library; the fork ships no mobile app.
   'patches/uniwind*'
+  'oxlint-plugin-t3code/rules/no-mobile-*'
 )
 
 # GitHub Actions trees the fork owns outright. Upstream's workflows run on paid

@@ -364,8 +364,8 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         undefined,
       );
 
-      assert.notProperty(preview, "publish");
-      assert.notProperty(previewChannel, "publish");
+      assert.isNull(preview.publish);
+      assert.isNull(previewChannel.publish);
       assert.deepStrictEqual(release.publish, [
         {
           provider: "github",
@@ -387,7 +387,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
   // The updater feed comes only from an explicitly configured Vetra repository.
   // Upstream infers it from GITHUB_REPOSITORY, which would point desktop builds
-  // at Vetra Code's releases; this fork must never do that.
+  // at T3's releases; this fork must never do that.
   it.effect("never infers an update feed from the ambient GitHub repository", () =>
     Effect.gen(function* () {
       const release = yield* createBuildConfig(
@@ -400,7 +400,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         undefined,
       );
 
-      assert.notProperty(release, "publish");
+      assert.isNull(release.publish);
     }).pipe(
       Effect.provide(
         ConfigProvider.layer(
@@ -408,6 +408,22 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         ),
       ),
     ),
+  );
+
+  it.effect("disables electron-builder publish detection for local builds", () =>
+    Effect.gen(function* () {
+      const local = yield* createBuildConfig(
+        "mac",
+        "dmg",
+        "0.0.33",
+        false,
+        false,
+        undefined,
+        undefined,
+      );
+
+      assert.isNull(local.publish);
+    }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
 
   it("stages only the desktop main-process externals", () => {

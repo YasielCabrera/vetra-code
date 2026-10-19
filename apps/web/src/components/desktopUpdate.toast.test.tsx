@@ -1,5 +1,5 @@
 import { isValidElement, type ReactElement, type ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { DesktopUpdateState } from "@t3tools/contracts";
 
 const testState = vi.hoisted(() => ({
@@ -66,6 +66,27 @@ describe("showDesktopUpdateDownloadedToast", () => {
       "VITE_DESKTOP_RELEASE_TAG_URL",
       "https://github.com/vetra-code/releases/releases/tag",
     );
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("opens release notes from the configured repository", async () => {
+    vi.stubEnv(
+      "VITE_DESKTOP_RELEASE_TAG_URL",
+      "https://github.com/example/vetra-code/releases/tag",
+    );
+    const openExternal = vi.fn().mockResolvedValue(true);
+
+    showDesktopUpdateDownloadedToast({ openExternal }, downloadedState());
+    findReleaseNotesLink(getDescription())?.props.onClick?.();
+
+    await vi.waitFor(() => {
+      expect(openExternal).toHaveBeenCalledWith(
+        "https://github.com/example/vetra-code/releases/tag/v0.0.30",
+      );
+    });
   });
 
   it("opens the downloaded version's release notes", async () => {

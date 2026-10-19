@@ -61,3 +61,68 @@ yourself.
 Vetra Connect remains unavailable until Vetra-owned cloud configuration is present. Once enabled,
 its setup may offer to install the background service so the environment stays reachable. The two
 features remain independently managed: signing out of Vetra Connect does not uninstall the service.
+Start with `vetra service status` on the host. It prints the log path and, on Linux,
+checks whether the installed service is running, enabled, and allowed to survive
+logout.
+
+If it stops when your SSH session closes, check for `linger-disabled`. An
+administrator can enable lingering with:
+
+```sh
+sudo loginctl enable-linger "$(id -un)"
+```
+
+Over SSH, allow sudo to prompt:
+
+```sh
+ssh -t your-server 'sudo loginctl enable-linger "$(id -un)"'
+```
+
+Then retry service setup as your normal user. Run only the `loginctl` command
+with sudo; running Vetra Code as root creates a separate installation and Connect
+identity. Without administrator access, run `vetra serve` in a terminal and keep
+that session open.
+
+| Status problem                          | Next step                                                                                                                      |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `linger-unavailable`                    | Run `loginctl show-user "$(id -un)" --property=Linger` and check that systemd-logind is available.                             |
+| `user-manager-unavailable`              | Run `systemctl --user status` in a login session for the service user; check your distribution's systemd user-session support. |
+| `service-disabled` or `service-stopped` | Read the log and `systemctl --user status vetra-code.service`, then use the repair command printed by Vetra Code.              |
+| `restart-pending`                       | A newer version is installed but the service still runs the previous one. Run `vetra service restart`.                         |
+
+On macOS, check **System Settings → General → Login Items** if the service no
+longer starts at login. If agent work cannot access Desktop, Documents, or
+Downloads, it may need Full Disk Access for the `t3` executable listed in
+`ProgramArguments` in
+`~/Library/LaunchAgents/com.vetra.code.service.plist`.
+
+For failures after signing in to Vetra Connect, see
+[connection troubleshooting](./remote-access.md#t3-connect-troubleshooting).
+
+## Reclaim database space
+
+Vetra Code removes superseded internal history on its own while it runs; your
+conversations are kept. Databases created before this shrank automatically
+still hold the freed space on disk until a one-time offline repair returns it
+and turns on automatic shrinking. Settings > Storage suggests the repair when at least 1 GiB can be
+reclaimed.
+
+Run `vetra doctor` on the machine that hosts the environment. It reports the
+database size and the space it can reclaim, then asks which repairs to run;
+pass `--fix` to run the recommended ones without a prompt (for scripts), or
+`--dry-run` to only report. An installed background service for the same data
+directory is stopped for the repair and started again afterwards, also when
+the repair fails. Quit a server you started by hand, or the desktop app, first:
+the repair refuses to touch a database that is in use. Use `--base-dir` for a
+different data directory.
+
+The repair can take several minutes on a large database. It rebuilds the
+database through a temporary copy, so it needs free space of about the
+database's size twice over: once in the system temporary directory (`TMPDIR`
+or `/tmp` on Linux and macOS) and once next to the database for its
+write-ahead log.
+
+If you upgraded from a version before 0.1.0, its database (`state.sqlite`) is
+still kept next to the current one so you can roll back. `vetra doctor` offers to
+delete it, but never selects that repair for you and `--fix` skips it: once it
+is gone, a version before 0.1.0 starts with no threads or settings.

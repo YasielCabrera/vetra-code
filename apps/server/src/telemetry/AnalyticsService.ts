@@ -1,6 +1,7 @@
 /**
- * Each event carries a uuid, so PostHog can tell a retried copy from a new
- * event.
+ * Events go to the Vetra Code ingest endpoint, which keeps a copy and forwards
+ * them to PostHog. Each event carries a uuid, so PostHog can tell a retried
+ * copy from a new event.
  */
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import type { ClientOs } from "@t3tools/contracts";
@@ -39,12 +40,26 @@ interface DeliveryState {
   readonly retryAt: number;
 }
 
-const FLUSH_INTERVAL_MS = 1_000;
+// The background flush checks for work at this interval, so a retry delay
+// shorter than it waits for the next check.
+const FLUSH_INTERVAL_MS = 10_000;
 // A hung send would hold the flush lock, and with it the shutdown flush.
 const SEND_TIMEOUT = "10 seconds";
 const MAX_BATCH_ATTEMPTS = 5;
 const RETRY_BASE_DELAY_MS = 2_000;
 const RETRY_MAX_DELAY_MS = 300_000;
+// The endpoint answers these when the batch itself is wrong (bad body, wrong
+// api_key, too large), so sending it again cannot help. 408 and 429 are not
+// here because a later send can succeed.
+const REJECTED_BATCH_STATUSES = new Set([400, 401, 413]);
+
+/**
+ * Release channel of this build. Release workflows set it for
+ * pingdotgg/t3code builds (see apps/server/vite.config.ts); every other build
+ * reports "dev". It is separate from `__VETRA_BUILD_CHANNEL__`, which names
+ * stable "latest" and preview "nightly" for the sign-in page.
+ */
+declare const __VETRA_TELEMETRY_CHANNEL__: "stable" | "nightly" | "preview" | "dev" | undefined;
 
 /** `random` is in [0, 1). */
 export function retryDelayMs(failures: number, random: number): number {
@@ -54,7 +69,7 @@ export function retryDelayMs(failures: number, random: number): number {
 
 const TelemetryEnvConfig = Config.all({
   // No default project key. Vetra does not own a PostHog project yet, and the
-  // inherited upstream key pointed at Vetra Code's. Telemetry stays off until an
+  // inherited upstream key pointed at T3's. Telemetry stays off until an
   // operator supplies a destination we own.
   posthogKey: Config.String("VETRA_POSTHOG_KEY").pipe(Config.withDefault("")),
   posthogHost: Config.String("VETRA_POSTHOG_HOST").pipe(
@@ -124,6 +139,8 @@ export const make = Effect.gen(function* () {
   // The background flush and the shutdown flush must not send the same batch at once.
   const flushLock = yield* Semaphore.make(1);
   const clientType = serverConfig.mode === "desktop" ? "desktop-app" : "cli-web-client";
+  const telemetryChannel =
+    typeof __VETRA_TELEMETRY_CHANNEL__ === "undefined" ? "dev" : __VETRA_TELEMETRY_CHANNEL__;
   const hostPlatform = yield* HostProcess.Platform;
   const hostArchitecture = yield* HostProcess.Architecture;
 
@@ -177,6 +194,7 @@ export const make = Effect.gen(function* () {
           wsl: Option.getOrUndefined(telemetryConfig.wslDistroName),
           arch: hostArchitecture,
           t3CodeVersion: packageJson.version,
+          telemetryChannel,
           clientType,
           serverOs: serverOsFromNodePlatform(hostPlatform),
           serverArch: hostArchitecture,
@@ -201,6 +219,8 @@ export const make = Effect.gen(function* () {
     return [nextBatch, current.slice(nextBatch.length)] as const;
   });
 
+  // A rejected batch is dropped at once, but the next batch still waits for the
+  // backoff, so a wrong api_key does not send every batch as fast as it can.
   const flush: AnalyticsService["Service"]["flush"] = Effect.gen(function* () {
     while (true) {
       const delivery = yield* Ref.get(deliveryRef);
@@ -218,20 +238,26 @@ export const make = Effect.gen(function* () {
       const failures = delivery.failures + 1;
       const batchAttempts = delivery.batchAttempts + 1;
       const retryAt = (yield* Clock.currentTimeMillis) + retryDelayMs(failures, yield* Random.next);
-      if (batchAttempts < MAX_BATCH_ATTEMPTS) {
+      const error = sent.failure;
+      const rejected =
+        error._tag === "HttpClientError" &&
+        error.reason._tag === "StatusCodeError" &&
+        REJECTED_BATCH_STATUSES.has(error.reason.response.status);
+      if (!rejected && batchAttempts < MAX_BATCH_ATTEMPTS) {
         yield* Ref.set(deliveryRef, { failedBatch: batch, batchAttempts, failures, retryAt });
         yield* Effect.logDebug("Failed to send telemetry batch; will retry", {
           attempt: batchAttempts,
-          cause: sent.failure,
+          cause: error,
         });
         return;
       }
       yield* Ref.set(deliveryRef, { failedBatch: [], batchAttempts: 0, failures, retryAt });
-      yield* Effect.logWarning("Dropped telemetry batch after repeated send failures", {
-        events: batch.length,
-        attempts: batchAttempts,
-        cause: sent.failure,
-      });
+      yield* Effect.logWarning(
+        rejected
+          ? "Dropped telemetry batch the endpoint rejected"
+          : "Dropped telemetry batch after repeated send failures",
+        { events: batch.length, attempts: batchAttempts, cause: error },
+      );
       return;
     }
   }).pipe(flushLock.withPermit);

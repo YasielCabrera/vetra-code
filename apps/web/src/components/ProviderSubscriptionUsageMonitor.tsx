@@ -5,7 +5,7 @@ import { useEffect, useEffectEvent, useRef } from "react";
 import {
   useClientSettings,
   useClientSettingsHydrated,
-  useUpdateClientSettings,
+  updateClientSettings,
 } from "../hooks/useSettings";
 import { useProviderSubscriptionUsage } from "../state/providerSubscriptionUsage";
 import { serverEnvironment } from "../state/server";
@@ -56,7 +56,6 @@ function HydratedProviderSubscriptionUsageMonitor() {
   );
   const alertsEnabled = useClientSettings((settings) => settings.providerUsageAlertsEnabled);
   const alertMarkers = useClientSettings((settings) => settings.providerUsageAlertTransitions);
-  const updateClientSettings = useUpdateClientSettings();
   const previousConnectedRef = useRef<ReadonlySet<EnvironmentId>>(new Set());
   const previousProviderInstancesKeyRef = useRef<ReadonlyMap<EnvironmentId, string | null>>(
     new Map(),
@@ -210,7 +209,7 @@ function HydratedProviderSubscriptionUsageMonitor() {
     if (changed) {
       updateClientSettings({ providerUsageAlertTransitions: markers });
     }
-  }, [alertMarkers, alertsEnabled, environments, navigate, updateClientSettings]);
+  }, [alertMarkers, alertsEnabled, environments, navigate]);
 
   return null;
 }

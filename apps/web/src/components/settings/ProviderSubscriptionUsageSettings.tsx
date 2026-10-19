@@ -1,7 +1,7 @@
 import type { ProviderUsageRefreshIntervalMinutes } from "@t3tools/contracts";
 import { DEFAULT_UNIFIED_SETTINGS } from "@t3tools/contracts/settings";
 
-import { useClientSettings, useUpdateClientSettings } from "../../hooks/useSettings";
+import { useClientSettings, updateClientSettings } from "../../hooks/useSettings";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
 import { searchableSetting } from "./settingsSearch";
@@ -34,7 +34,6 @@ export function ProviderSubscriptionUsageSettings() {
     (settings) => settings.providerUsageRefreshIntervalMinutes,
   );
   const alertsEnabled = useClientSettings((settings) => settings.providerUsageAlertsEnabled);
-  const updateSettings = useUpdateClientSettings();
   const selectedInterval =
     REFRESH_INTERVAL_OPTIONS.find((option) => option.minutes === refreshIntervalMinutes) ??
     REFRESH_INTERVAL_OPTIONS[0];
@@ -49,7 +48,7 @@ export function ProviderSubscriptionUsageSettings() {
             <SettingResetButton
               label="subscription usage refresh interval"
               onClick={() =>
-                updateSettings({
+                updateClientSettings({
                   providerUsageRefreshIntervalMinutes: DEFAULT_REFRESH_INTERVAL_MINUTES,
                 })
               }
@@ -64,7 +63,7 @@ export function ProviderSubscriptionUsageSettings() {
                 (candidate) => candidate.value === value,
               );
               if (option) {
-                updateSettings({ providerUsageRefreshIntervalMinutes: option.minutes });
+                updateClientSettings({ providerUsageRefreshIntervalMinutes: option.minutes });
               }
             }}
           >
@@ -89,7 +88,9 @@ export function ProviderSubscriptionUsageSettings() {
           alertsEnabled !== DEFAULT_ALERTS_ENABLED ? (
             <SettingResetButton
               label="subscription limit alerts"
-              onClick={() => updateSettings({ providerUsageAlertsEnabled: DEFAULT_ALERTS_ENABLED })}
+              onClick={() =>
+                updateClientSettings({ providerUsageAlertsEnabled: DEFAULT_ALERTS_ENABLED })
+              }
             />
           ) : null
         }
@@ -97,7 +98,7 @@ export function ProviderSubscriptionUsageSettings() {
           <Switch
             checked={alertsEnabled}
             onCheckedChange={(checked) =>
-              updateSettings({ providerUsageAlertsEnabled: Boolean(checked) })
+              updateClientSettings({ providerUsageAlertsEnabled: Boolean(checked) })
             }
             aria-label="Enable subscription limit alerts"
           />

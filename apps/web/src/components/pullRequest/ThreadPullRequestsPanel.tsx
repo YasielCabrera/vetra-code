@@ -4,6 +4,8 @@ import {
   UNKNOWN_SOURCE_CONTROL_CLIENT,
 } from "@t3tools/client-runtime/source-control-clients";
 import {
+  type PullRequestListLine,
+  pullRequestListLines,
   resolveThreadPullRequestChains,
   visibleThreadPullRequests,
 } from "@t3tools/shared/threadPullRequests";
@@ -30,13 +32,12 @@ import { useProjects, useServerConfigs, useThreadShell } from "~/state/entities"
 import { PullRequestsUnavailableState } from "./PullRequestsUnavailableState";
 import { threadEnvironment } from "~/state/threads";
 import { useAtomCommand } from "~/state/use-atom-command";
-import { formatRelativeTimeLabel } from "~/timestampFormat";
+import { RelativeTime } from "~/components/RelativeTime";
 import { Button } from "../ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
 import { MiddleTruncate } from "../ui/middle-truncate";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { openLinkPullRequestDialog } from "./LinkPullRequestDialog";
-import { pullRequestListLines, type PullRequestListLine } from "./pullRequestListLines";
 import {
   PULL_REQUEST_ROW_CLASS,
   PULL_REQUEST_ROW_NUMBER_CLASS,
@@ -181,7 +182,7 @@ function LinkRowImpl({
                 #{link.number}
               </TooltipTrigger>
               <TooltipPopup>
-                {SOURCE_LABELS[link.source]} · {formatRelativeTimeLabel(link.linkedAt)}
+                {SOURCE_LABELS[link.source]} · <RelativeTime timestamp={link.linkedAt} />
               </TooltipPopup>
             </Tooltip>
           }
@@ -376,7 +377,6 @@ function EnabledThreadPullRequestsPanel({ threadRef }: { threadRef: ScopedThread
     (link) => link.snapshot === null || link.snapshot.state === "open",
   ).length;
   const lastSynced = latestSyncedAt(links);
-  const syncedLabel = lastSynced ? ` · synced ${formatRelativeTimeLabel(lastSynced)}` : "";
   const linkCount = links.length;
   const modifiers = useShortcutModifierState(true);
   const speedMode =
@@ -462,7 +462,12 @@ function EnabledThreadPullRequestsPanel({ threadRef }: { threadRef: ScopedThread
       <footer className="flex items-center justify-between border-t border-border/60 px-2 py-1.5 text-2xs text-muted-foreground">
         <span>
           {openCount} open · {linkCount} linked
-          {syncedLabel}
+          {lastSynced ? (
+            <>
+              {" · synced "}
+              <RelativeTime timestamp={lastSynced} />
+            </>
+          ) : null}
         </span>
         <Button size="xs" variant="ghost" onClick={openLinkDialog}>
           <PlusIcon className="size-3.5" />

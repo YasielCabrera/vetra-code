@@ -8,7 +8,7 @@ import {
   ThreadId,
 } from "@t3tools/contracts";
 import type { LegendListRef } from "@legendapp/list/react";
-import { act, createRef, useState, type ComponentProps, type ReactElement } from "react";
+import { act, createRef, Profiler, useState, type ComponentProps, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
@@ -795,6 +795,62 @@ describe("MessagesTimeline attachments", () => {
 });
 
 describe("MessagesTimeline history and thread links", () => {
+  it.each([
+    ["imported runless", null],
+    ["standard", RunId.make("citation-run")],
+  ] as const)("reveals a cited response inside a folded %s turn", async (_label, runId) => {
+    const quote = "The imported response contains this cited detail.";
+    const props = {
+      ...baseProps(),
+      timelineEntries: [
+        message("Investigate the issue.", { runId }, "citation-prompt"),
+        message(quote, { role: "assistant", runId }, "citation-source"),
+        message("Investigation complete.", { role: "assistant", runId }, "citation-answer"),
+      ],
+    };
+    await renderElement(<MessagesTimeline {...props} />);
+    const source = () =>
+      container.querySelector<HTMLElement>('[data-assistant-citation-source="citation-source"]');
+    await vi.waitFor(() => expect(text()).toContain("Investigation complete."));
+    expect(buttons(/^Worked/)).toHaveLength(1);
+    expect(source()).toBeNull();
+
+    await act(async () =>
+      roots.at(-1)!.render(
+        <MessagesTimeline
+          {...props}
+          citationRequest={{
+            key: "open-citation",
+            citation: {
+              version: 1,
+              environmentId: ENVIRONMENT_ID,
+              threadId: ThreadId.make(`thread-${threadCount}`),
+              messageId: MessageId.make("citation-source"),
+              text: quote,
+              start: 0,
+              end: quote.length,
+              prefix: "",
+              suffix: "",
+            },
+          }}
+        />,
+      ),
+    );
+
+    await vi.waitFor(() => {
+      expect(source()?.textContent ?? "").toContain(quote);
+      const highlight = CSS.highlights.get("vetra-assistant-citation");
+      expect(highlight).toBeDefined();
+      const range = [...highlight!][0] as Range;
+      expect(range.toString()).toBe(quote);
+      const viewport = container.querySelector<HTMLElement>("[data-assistant-citation-viewport]")!;
+      const bounds = range.getBoundingClientRect();
+      expect(bounds.height).toBeGreaterThan(0);
+      expect(bounds.top).toBeGreaterThanOrEqual(viewport.getBoundingClientRect().top);
+      expect(bounds.bottom).toBeLessThanOrEqual(viewport.getBoundingClientRect().bottom);
+    });
+  });
+
   it("loads earlier turns from a control ahead of the bounded timeline", async () => {
     const onLoadEarlier = vi.fn();
     await renderTimeline([message("Recent activity")], {
@@ -1164,6 +1220,48 @@ describe("MessagesTimeline scroll position", () => {
     });
     return props.listRef.current!.getScrollableNode()!;
   }
+
+  it("settles when earlier short replies load above long ones", async () => {
+    const props = baseProps();
+    const short = Array.from({ length: 80 }, (_, index) =>
+      message(`Short reply ${index}`, { role: "assistant" }, `short-${index}`),
+    );
+    const long = Array.from({ length: 4 }, (_, index) =>
+      message(
+        `${"Long handbook paragraph. ".repeat(40)}\n\n`.repeat(60),
+        { role: "assistant" },
+        `long-${index}`,
+      ),
+    );
+    let nestedCommits = 0;
+    let maxNestedCommits = 0;
+    const onRender = (_id: string, phase: string) => {
+      nestedCommits = phase === "nested-update" ? nestedCommits + 1 : 0;
+      maxNestedCommits = Math.max(maxNestedCommits, nestedCommits);
+    };
+    const timeline = (entries: Entry[]) => (
+      <Profiler id="timeline" onRender={onRender}>
+        <MessagesTimeline {...props} timelineEntries={entries} />
+      </Profiler>
+    );
+    await renderElement(timeline(long));
+    const viewport = await waitForList(props);
+    await act(async () => {
+      viewport.scrollTop = 0;
+      viewport.dispatchEvent(new Event("scroll"));
+    });
+
+    maxNestedCommits = 0;
+    await act(async () => roots.at(-1)!.render(timeline([...short, ...long])));
+    await vi.waitFor(async () => {
+      await act(async () => {
+        viewport.scrollTop = 0;
+        viewport.dispatchEvent(new Event("scroll"));
+      });
+      expect(text()).toContain("Short reply 0");
+    });
+    expect(maxNestedCommits).toBeLessThan(8);
+  });
 
   it("remembers a manual reading position when the chat closes", async () => {
     const props = baseProps();

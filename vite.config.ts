@@ -328,6 +328,12 @@ export default defineConfig({
         excludeFiles: ["**/*.test.ts", "**/*.test.tsx"],
         rules: { "t3code/no-hermes-unsupported-apis": "error" },
       },
+      {
+        // The compiler caches a use* function only when it calls a hook.
+        files: ["apps/web/src/**/*.{ts,tsx}"],
+        excludeFiles: ["**/*.test.ts", "**/*.test.tsx"],
+        rules: { "t3code/no-hookless-use-function": "error" },
+      },
     ],
     options: {
       reportUnusedDisableDirectives: "error",

@@ -39,10 +39,17 @@ const layerSetup = Layer.effectDiscard(
     yield* sql.unsafe(`PRAGMA journal_size_limit = ${WAL_SIZE_LIMIT_BYTES};`);
     yield* runMigrations();
     yield* runVetraMigrations();
-    // Without sqlite_stat1 the planner guesses at index selectivity. 0x10012
-    // analyzes tables whose indexes lack stats or whose row count changed 10x,
-    // under a temporary analysis_limit. Otherwise it only checks table sizes.
-    yield* sql`PRAGMA optimize = 0x10012;`;
+    // No planner statistics. Collecting them reads every page of the large
+    // tables, and stats taken while a table was small make the planner scan it
+    // once it grows. Without them SQLite assumes large tables and uses indexes;
+    // the few queries that still pick a worse index name theirs with INDEXED BY.
+    // Older builds collected stats, so clear them. A connection loads stats
+    // when it opens, so this one must reload them after the delete.
+    const statTables = yield* sql`SELECT 1 FROM sqlite_schema WHERE name = 'sqlite_stat1'`;
+    if (statTables.length > 0) {
+      yield* sql`DELETE FROM sqlite_stat1;`;
+      yield* sql`ANALYZE sqlite_schema;`;
+    }
   }),
 );
 
