@@ -181,6 +181,7 @@ export const TicketRow = memo(function TicketRow(props: {
           <TicketStatusMark status={props.status} />
           <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
             {formatTicketRef(ticket)}
+            {ticket.kind === "github" ? ` (#${ticket.github.number})` : null}
           </span>
           <span className="min-w-0 truncate font-medium text-foreground">{ticket.title}</span>
         </span>

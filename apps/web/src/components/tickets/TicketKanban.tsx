@@ -432,7 +432,10 @@ const TicketCard = memo(function TicketCard(props: {
     >
       <span className="flex h-4 w-full shrink-0 items-center gap-2 text-xs text-muted-foreground">
         <TicketStatusMark status={props.status} />
-        <span className="font-mono tabular-nums">{formatTicketRef(ticket)}</span>
+        <span className="font-mono tabular-nums">
+          {formatTicketRef(ticket)}
+          {ticket.kind === "github" ? ` (#${ticket.github.number})` : null}
+        </span>
         <span className="ml-auto flex items-center gap-2">
           <TicketLinkCounts ticket={ticket} />
           <TicketAssignees ticket={ticket} />
