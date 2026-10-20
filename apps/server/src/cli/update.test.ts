@@ -17,6 +17,7 @@ import packageJson from "../../package.json" with { type: "json" };
 import * as BootService from "../cloud/bootService.ts";
 import { pinnedRuntimePaths } from "../cloud/pinnedRuntime.ts";
 import {
+  releaseIndexAuthorization,
   repointLauncher,
   resolveLauncherPath,
   resolveNewestVersion,
@@ -25,31 +26,30 @@ import {
 
 afterEach(() => vi.restoreAllMocks());
 
-it.effect.each([
+const GITHUB_RELEASES = "https://api.github.com/repos/YasielCabrera/vetra-code/releases?page=1";
+
+it.each([
   { environment: { GH_TOKEN: " gh-token ", GITHUB_TOKEN: "github-token" }, token: "gh-token" },
   { environment: { GH_TOKEN: "  ", GITHUB_TOKEN: " github-token " }, token: "github-token" },
   { environment: { GITHUB_TOKEN: "github-token" }, token: "github-token" },
   { environment: { GH_TOKEN: "  ", GITHUB_TOKEN: "  " }, token: undefined },
   { environment: {}, token: undefined },
-])("selects release authentication from $environment", ({ environment, token }) =>
-  Effect.gen(function* () {
-    const authorizations: Array<string | undefined> = [];
-    const httpClient = HttpClient.make((request) => {
-      authorizations.push(request.headers.authorization);
-      return Effect.succeed(
-        HttpClientResponse.fromWeb(request, Response.json([{ tag_name: "v1.2.3" }])),
-      );
-    });
-    const version = yield* resolveNewestVersion("stable").pipe(
-      Effect.provideService(HostProcess.Environment, environment),
-      Effect.provideService(HttpClient.HttpClient, httpClient),
-    );
-    assert.equal(version, "1.2.3");
-    assert.deepStrictEqual(authorizations, [token === undefined ? undefined : `Bearer ${token}`]);
-  }),
-);
+])("selects GitHub release authentication from $environment", ({ environment, token }) => {
+  assert.equal(
+    releaseIndexAuthorization(GITHUB_RELEASES, environment),
+    token === undefined ? undefined : `Bearer ${token}`,
+  );
+});
 
-it.effect("authenticates each release page until the requested channel is found", () =>
+it.each([
+  "https://releases.vetra.invalid/releases?page=1",
+  "https://api.github.com.example.test/releases",
+  "https://github.com/YasielCabrera/vetra-code/releases",
+])("never sends a GitHub token to %s", (url) => {
+  assert.equal(releaseIndexAuthorization(url, { GH_TOKEN: "gh-token" }), undefined);
+});
+
+it.effect("reads each release page until the requested channel is found", () =>
   Effect.gen(function* () {
     const pages: string[] = [];
     const httpClient = HttpClient.make((request) => {
@@ -57,7 +57,7 @@ it.effect("authenticates each release page until the requested channel is found"
       assert.equal(url.origin, "https://releases.vetra.invalid");
       assert.equal(url.pathname, "/releases");
       assert.equal(request.headers.accept, "application/vnd.github+json");
-      assert.equal(request.headers.authorization, "Bearer gh-token");
+      assert.equal(request.headers.authorization, undefined);
       const page = url.searchParams.get("page") ?? "";
       pages.push(page);
       const tag_name = page === "1" ? "v1.2.4-preview.20260101.1" : "v1.2.3";

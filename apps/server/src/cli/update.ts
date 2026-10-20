@@ -53,20 +53,31 @@ const decodeReleaseIndex = Schema.decodeUnknownEffect(Schema.fromJsonString(Rele
 const RELEASE_INDEX_TIMEOUT = Duration.seconds(30);
 const RELEASE_INDEX_MAX_PAGES = 10;
 
+// GitHub tokens are credentials for GitHub's API only; another release host must never see one.
+export function releaseIndexAuthorization(
+  url: string,
+  environment: Readonly<Record<string, string | undefined>>,
+): string | undefined {
+  if (new URL(url).hostname !== "api.github.com") return undefined;
+  const token = environment.GH_TOKEN?.trim() || environment.GITHUB_TOKEN?.trim() || undefined;
+  return token === undefined ? undefined : `Bearer ${token}`;
+}
+
 export const resolveNewestVersion = Effect.fn("cli.update.resolve_newest")(function* (
   channel: CliReleaseChannel,
 ) {
   const httpClient = yield* HttpClient.HttpClient;
   const environment = yield* HostProcess.Environment;
-  const githubToken = environment.GH_TOKEN?.trim() || environment.GITHUB_TOKEN?.trim() || undefined;
   for (let page = 1; page <= RELEASE_INDEX_MAX_PAGES; page += 1) {
-    const request = HttpClientRequest.get(cliReleaseIndexPageUrl(page)).pipe(
+    const url = cliReleaseIndexPageUrl(page);
+    const request = HttpClientRequest.get(url).pipe(
       HttpClientRequest.setHeader("Accept", "application/vnd.github+json"),
     );
+    const authorization = releaseIndexAuthorization(url, environment);
     const authenticatedRequest =
-      githubToken === undefined
+      authorization === undefined
         ? request
-        : HttpClientRequest.setHeader(request, "Authorization", `Bearer ${githubToken}`);
+        : HttpClientRequest.setHeader(request, "Authorization", authorization);
     const body = yield* httpClient.execute(authenticatedRequest).pipe(
       Effect.flatMap(HttpClientResponse.filterStatusOk),
       Effect.flatMap((response) => response.text),
