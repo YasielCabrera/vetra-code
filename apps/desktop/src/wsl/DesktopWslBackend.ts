@@ -136,7 +136,7 @@ export const layer = Layer.effect(
                 Ref.set(
                   preflightErrorRef,
                   Option.some(
-                    "Another Vetra Code server is using this distro's Vetra home. Stop it, or pair with it instead.",
+                    "Another Vetra Code server is using this distro's Vetra home, or an older background service is set up for it. Stop that server or pair with it, or try `vetra update` in the distro. If the older launcher cannot update, run `vetra service uninstall` and optionally reinstall with `vetra service install` from a current CLI in the distro. Use `npx @vetra-code/server@latest` if `vetra` is missing or outdated, and pass `--base-dir` with the service's Vetra home to each command.",
                   ),
                 ),
               ),

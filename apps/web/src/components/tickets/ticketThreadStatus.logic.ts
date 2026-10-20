@@ -3,7 +3,10 @@ import { resolveSidebarThreadStatus, resolveThreadStatusPill } from "../Sidebar.
 export function resolveTicketThreadStatus(
   thread: Parameters<typeof resolveThreadStatusPill>[0]["thread"],
 ) {
-  const sidebarStatus = resolveSidebarThreadStatus(thread);
+  const sidebarStatus = resolveSidebarThreadStatus({
+    ...thread,
+    blockedOnThreadWait: thread.blockedOnThreadWait ?? false,
+  });
   if (sidebarStatus === "failed" || sidebarStatus === "limited") {
     return {
       kind: "error" as const,

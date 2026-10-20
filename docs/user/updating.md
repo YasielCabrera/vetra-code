@@ -91,3 +91,13 @@ directory and pair with the running server.
 **Update all** updates every outdated provider on every connected environment
 at once. Hover it to see which providers it will update. Providers that only
 offer a manual update command are not included.
+
+After a successful provider CLI update, Vetra Code refreshes model discovery for
+every enabled instance of that provider using its own configuration. Connected
+clients receive the refreshed catalogs automatically. Vetra Code downloads model
+catalog updates only when `VETRA_MODEL_MANIFEST_URL` is set and provider update
+checks are enabled.
+
+Provider updates do not restart running chats. An existing session can keep
+using the previous CLI until it ends. If discovery fails, check the provider
+status and refresh it again.

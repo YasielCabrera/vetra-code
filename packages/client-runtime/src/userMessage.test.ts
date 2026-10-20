@@ -56,7 +56,7 @@ describe("resolveUserMessagePresentation", () => {
   });
 
   it("attributes older server-sent restart continuations to Vetra Code, not another agent", () => {
-    const text = "Note: the T3 server restarted.";
+    const text = "Note: the Vetra Code server restarted.";
     expect(
       resolveUserMessagePresentation({
         role: "user",

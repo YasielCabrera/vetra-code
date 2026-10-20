@@ -133,6 +133,9 @@ RENAMES=(
   # just `vetra <cmd>`. Keyed on the whole prefix, ahead of the pairs below,
   # because none of them match a bare `t3` followed by a space.
   'npx t3 =vetra '
+  # The versioned form (`npx t3@latest`). Neighboring copy already names the
+  # reserved package spec, PRODUCT_SERVER_PACKAGE, as the fallback.
+  'npx t3@=npx @vetra-code/server@'
   # Upstream's user-facing command references (`t3 service install`, `t3 update`,
   # `t3 theme set`, ...). The fork's CLI is PRODUCT_CLI_NAME, so leaving these
   # tells users to run a binary that does not exist. Keyed on the opening
@@ -141,6 +144,12 @@ RENAMES=(
   '`t3 =`vetra '
   # The same references inside JSX, as `<code>t3 auth pairing create</code>`.
   '<code>t3 =<code>vetra '
+  # The CLI named alone ("if `t3` is missing", "the CLI as `t3`"), including the
+  # escaped backticks of a template literal. Fork prose names the private `t3`
+  # workspace package the same way, and that name stays upstream's, so skip the
+  # package spellings in AGENTS.md, README, and docs. No `=` before the
+  # separator, so `\K` and a double negative stand in for lookarounds.
+  're:`\Kt3(?!(?!\\?`))(?!\\?`(?: package| npm| is private| remains private|[),]| \())=vetra'
   # The name upstream tells users to register this server under in outside
   # agents (`claude mcp add --transport http t3 <url>`). Agents see it as the
   # tool prefix, so it must match the `vetra-code` name every adapter uses.
@@ -224,6 +233,10 @@ RENAMES=(
   # docs/internals/t3-connect.md filename, which tracks upstream, is untouched.
   't3-connect/=vetra-connect/'
   '"t3-connect"="vetra-connect"'
+  # Heading anchors in the troubleshooting guide (`this-device-cant-reach-t3-connect`),
+  # whose `T3 Connect` headings are renamed below. Keyed off word and path
+  # characters so the guide's own filename, which tracks upstream, is untouched.
+  're:(?<![\w/])t3-connect(?!-troubleshooting|[\w/.])=vetra-connect'
   # The environment JWT's issuer and audience prefix.
   't3-env:=vetra-env:'
   # URL schemes that ride in prompts sent to providers and in persisted
@@ -285,6 +298,19 @@ RENAMES=(
   'T3 server host=Vetra Code server host'
   'T3 could not=Vetra Code could not'
   'T3 conversations=Vetra Code conversations'
+  'T3 model options=Vetra Code model options'
+  'T3 preview tools=Vetra Code preview tools'
+  # The bare product word in agent instructions and user-facing errors. The
+  # leftover grep's `T3[A-Z][a-z]` cannot see a space-separated word.
+  'T3 server=Vetra Code server'
+  'T3 Server=Vetra Code server'
+  'T3 runtime=Vetra Code runtime'
+  'T3 turn=Vetra Code turn'
+  'T3 process group=Vetra Code process group'
+  'T3 provides=Vetra Code provides'
+  'T3 is installing=Vetra Code is installing'
+  'T3 injects=Vetra Code injects'
+  'T3 fits=Vetra Code fits'
   # Upstream's GitHub org / winget publisher, never a TypeScript identifier.
   'T3Tools=Vetra-Code'
   # The project file this fork reads. Upstream's own t3.json is pruned above.
@@ -293,6 +319,8 @@ RENAMES=(
   't3-relay=vetra-relay'
   't3-test=vetra-test'
   't3code-pr-=vetra-code-pr-'
+  # Local branches for pull request checkouts, from PRODUCT_WORKTREE_BRANCH_PREFIX.
+  't3code/pr-=vetra/pr-'
 )
 
 say() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }

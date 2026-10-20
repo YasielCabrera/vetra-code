@@ -465,21 +465,13 @@ vetra_runtime_ready() {
 }
 if ! vetra_runtime_ready; then
   mkdir -p "$HOME/${PRODUCT_HOME_DIRECTORY_NAME}/runtime/versions"
-  # Concurrent launches (two clients, a retry racing a slow first run) must
-  # not both install: mkdir is the atomic lock and the ready check repeats
-  # under it.
   VETRA_LOCK="$HOME/${PRODUCT_HOME_DIRECTORY_NAME}/runtime/versions/.$VETRA_ARCHIVE_VERSION.install.lock"
-  # mkdir is the only portable atomic exclusive create (mv would silently
-  # nest a candidate inside an existing lock). The owner publishes its pid
-  # right after, so a lock with a live owner is never reclaimed however
-  # slow its download is, and a lock whose owner is dead is reclaimed at
-  # once. A lock with no pid at all is a crash between mkdir and the pid
-  # write; it is reclaimed after a short grace so a live owner has time to
-  # publish.
+  # uutils mkdir can report success on EEXIST, so use shell noclobber.
+  # An empty lock gets a short grace period for its owner to publish a PID.
   VETRA_LOCK_WAITED=0
   VETRA_LOCK_UNOWNED=0
-  while ! mkdir "$VETRA_LOCK" 2>/dev/null; do
-    VETRA_LOCK_OWNER="$(cat "$VETRA_LOCK/pid" 2>/dev/null || true)"
+  while ! (set -C; printf '%s\\n' "$$" > "$VETRA_LOCK") 2>/dev/null; do
+    VETRA_LOCK_OWNER="$(cat "$VETRA_LOCK" 2>/dev/null || true)"
     if [ -n "$VETRA_LOCK_OWNER" ]; then
       VETRA_LOCK_UNOWNED=0
       if ! kill -0 "$VETRA_LOCK_OWNER" 2>/dev/null; then
@@ -500,7 +492,6 @@ if ! vetra_runtime_ready; then
     sleep 1
     VETRA_LOCK_WAITED=$((VETRA_LOCK_WAITED + 1))
   done
-  printf '%s\\n' "$$" > "$VETRA_LOCK/pid.tmp" && mv "$VETRA_LOCK/pid.tmp" "$VETRA_LOCK/pid"
   trap 'rm -rf "$VETRA_LOCK"' EXIT
 fi
 if ! vetra_runtime_ready; then
@@ -1442,7 +1433,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
       attempt,
       destination: target.alias.trim() || target.hostname.trim(),
       username: target.username,
-      prompt: `Enter the SSH password for ${hostSpec}.`,
+      prompt: `Enter the SSH password or verification code for ${hostSpec}.`,
     });
     if (password === null) {
       yield* Effect.logWarning("ssh.auth.passwordPrompt.cancelled", {

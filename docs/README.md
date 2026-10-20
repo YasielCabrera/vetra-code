@@ -26,6 +26,7 @@
 - [Devices and simulators](./user/devices.md)
 - [Use Vetra Code as your default browser](./user/default-browser.md)
 - [Remote access](./user/remote-access.md)
+- [Vetra Connect troubleshooting](./user/t3-connect-troubleshooting.md)
 - [Outside agents (MCP)](./user/outside-agents.md)
 - [Keeping app and server in sync](./user/updating.md)
 - [Preview wallet (Web3)](./user/preview-wallet.md)

@@ -31,7 +31,15 @@ macOS with Xcode. Android needs the SDK Platform-Tools, Android Emulator,
 and Command-line Tools (latest), plus a virtual device created in Android
 Studio's Device Manager. Vetra Code detects standard SDK locations; set
 `ANDROID_HOME` for a custom location. The panel explains missing dependencies.
-After installing them, restart the environment server and refresh devices.
+After installing SDK tools, restart the environment server and refresh devices.
+
+Android emulator video also needs `ffmpeg` with the libx264 encoder on the device
+host's PATH, or an executable selected by `SERVE_EMU_FFMPEG` on that host. If
+opening an emulator reports an ffmpeg problem, install or fix the executable
+and retry opening it. After changing PATH or `SERVE_EMU_FFMPEG`, restart the
+environment server for local devices, or turn device support off and on for SSH
+devices, so the running tools inherit the new environment. Physical Android
+devices and iOS do not need ffmpeg.
 
 The screen is interactive: click and drag to touch, type while the screen is
 focused, and use the toolbar for Home, Back, and Recents on Android, rotate on
@@ -100,19 +108,21 @@ the environment’s own machine are skipped, since its devices are already local
 The first device listing installs pinned device tools on the host.
 Node 22 or newer and npm must be available to non-interactive SSH commands.
 T3 checks common Homebrew and Android SDK locations; custom installations need
-the appropriate PATH and ANDROID_HOME on the host.
+the appropriate PATH and ANDROID_HOME on the host. Android emulator video needs
+`ffmpeg` with libx264 on that host; physical Android devices use scrcpy and do
+not need ffmpeg.
 
 The picker identifies devices by host when several hosts are configured.
 Connections recover after interruptions. Removing a host closes its device
 sessions and stops its T3 helpers when reachable; simulators keep running.
 
-T3 provides discovery, streaming, and control. Arrange app builds,
+Vetra Code provides discovery, streaming, and control. Arrange app builds,
 installation, and connectivity to development servers such as Metro separately.
 A simulator on another machine cannot reach Metro through your environment's
 localhost without forwarding or another reachable address.
 
 ## Device tool updates
 
-The connected T3 server manages the device hub and agent tools on its own machine and configured SSH hosts. Required versions install automatically the next time those tools are used. Settings → Integrations → Check device tool versions reads installed versions without installing tools or starting devices.
+The connected Vetra Code server manages the device hub and agent tools on its own machine and configured SSH hosts. Required versions install automatically the next time those tools are used. Settings → Integrations → Check device tool versions reads installed versions without installing tools or starting devices.
 
-To receive newer tool versions on a remote environment, update that environment's T3 server. Updating only the browser or mobile app does not update the remote server. An offline host keeps its installed files, but an update needs network access before device support can start; T3 does not fall back to an older version. Reconnect the host and use Retry if installation fails. Existing device and agent-access settings are preserved.
+To receive newer tool versions on a remote environment, update that environment's Vetra Code server. Updating only the browser or mobile app does not update the remote server. An offline host keeps its installed files, but an update needs network access before device support can start; T3 does not fall back to an older version. Reconnect the host and use Retry if installation fails. Existing device and agent-access settings are preserved.

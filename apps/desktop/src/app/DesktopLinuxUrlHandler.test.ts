@@ -179,6 +179,25 @@ describe("DesktopLinuxUrlHandler", () => {
     assert.include(entry, "Icon=/home/al ice/icons/Vetra\\\\x.png");
   });
 
+  it.each([
+    {
+      execTarget: "/opt/T3(beta)/t3code.AppImage",
+      execLine: 'Exec="/opt/T3(beta)/t3code.AppImage" %U',
+    },
+    {
+      execTarget: "/opt/t3%20code/t3code.AppImage",
+      execLine: "Exec=/opt/t3%%20code/t3code.AppImage %U",
+    },
+  ])("renders the handler Exec line for $execTarget", ({ execTarget, execLine }) => {
+    const entry = DesktopLinuxUrlHandler.renderUrlHandlerDesktopEntry({
+      displayName: "Vetra Code",
+      execTarget,
+      scheme: "t3code",
+    });
+
+    assert.include(entry.split("\n"), execLine);
+  });
+
   it("carries structured context on registration errors", () => {
     const writeError = new DesktopLinuxUrlHandler.DesktopLinuxUrlHandlerRegistrationError({
       step: "write-desktop-entry",
@@ -222,7 +241,7 @@ describe("DesktopLinuxUrlHandler", () => {
         );
         assert.include(
           recorded.files[0]?.content,
-          'Exec="/home/alice/Applications/Vetra-Code.AppImage" %U',
+          "Exec=/home/alice/Applications/Vetra-Code.AppImage %U",
         );
         assert.include(recorded.files[0]?.content, "MimeType=x-scheme-handler/vetra;");
         assert.deepEqual(recorded.commands, [
@@ -247,7 +266,12 @@ describe("DesktopLinuxUrlHandler", () => {
 
       assert.include(
         recorded.files[0]?.content,
-        `Exec=${DesktopLinuxUrlHandler.escapeDesktopEntryExecArgument(process.execPath)} %U`,
+        DesktopLinuxUrlHandler.renderUrlHandlerDesktopEntry({
+          displayName: "Vetra Code (Alpha)",
+          execTarget: process.execPath,
+          scheme: "vetra",
+          iconPath: "/home/alice/.local/share/icons/com.vetra.code.desktop.png",
+        }),
       );
     });
   });
@@ -519,48 +543,41 @@ const iconCacheRuns = (run: ThemeIconRun) =>
   run.commands.filter(({ command }) => command === "gtk-update-icon-cache").length;
 
 it.layer(NodeServices.layer)("DesktopLinuxUrlHandler theme icons", (it) => {
-  it.effect("installs both app id spellings without creating an icon cache", () =>
+  // The Vetra app id is all lowercase, so its two theme spellings are one file.
+  it.effect("installs the app id icon once without creating an icon cache", () =>
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const icon = new Uint8Array([137, 80, 78, 71, 1, 2, 3]);
       const fixture = yield* themeIconFixture(icon);
       const run: ThemeIconRun = { root: fixture.root, commands: [] };
+      const target = path.join(fixture.appsDir, "com.vetra.code.png");
 
       yield* registerWithRealFileSystem(run);
-      assert.deepEqual([...(yield* fileSystem.readDirectory(fixture.appsDir))].sort(), [
-        "com.vetra.code.png",
-        "com.vetra.code.png",
-      ]);
-      for (const name of ["com.vetra.code", "com.vetra.code"]) {
-        const target = path.join(fixture.appsDir, `${name}.png`);
-        assert.deepEqual([...(yield* fileSystem.readFile(target))], [...icon]);
-        yield* fileSystem.utimes(target, fixture.pastSeconds, fixture.pastSeconds);
-      }
+      assert.deepEqual(
+        [...(yield* fileSystem.readDirectory(fixture.appsDir))],
+        ["com.vetra.code.png"],
+      );
+      assert.deepEqual([...(yield* fileSystem.readFile(target))], [...icon]);
+      yield* fileSystem.utimes(target, fixture.pastSeconds, fixture.pastSeconds);
 
       yield* registerWithRealFileSystem(run);
-      for (const name of ["com.vetra.code", "com.vetra.code"]) {
-        const info = yield* fileSystem.stat(path.join(fixture.appsDir, `${name}.png`));
-        assert.equal(Option.getOrThrow(info.mtime).getTime(), fixture.pastSeconds * 1000);
-      }
+      const info = yield* fileSystem.stat(target);
+      assert.equal(Option.getOrThrow(info.mtime).getTime(), fixture.pastSeconds * 1000);
       assert.isFalse(yield* fileSystem.exists(fixture.cachePath));
       assert.equal(iconCacheRuns(run), 0);
     }).pipe(Effect.scoped),
   );
 
-  it.effect("replaces same-length stale icons and refreshes an existing cache once", () =>
+  it.effect("replaces a same-length stale icon and refreshes an existing cache once", () =>
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const fixture = yield* themeIconFixture(new Uint8Array([1, 2, 3]));
       yield* fixture.seedCache;
-      const lower = path.join(fixture.appsDir, "com.vetra.code.png");
-      const upper = path.join(fixture.appsDir, "com.vetra.code.png");
-      yield* fileSystem.writeFile(lower, new Uint8Array([3, 2, 1]));
-      yield* fileSystem.writeFile(upper, new Uint8Array([1, 2, 3]));
-      for (const target of [lower, upper]) {
-        yield* fileSystem.utimes(target, fixture.pastSeconds, fixture.pastSeconds);
-      }
+      const target = path.join(fixture.appsDir, "com.vetra.code.png");
+      yield* fileSystem.writeFile(target, new Uint8Array([3, 2, 1]));
+      yield* fileSystem.utimes(target, fixture.pastSeconds, fixture.pastSeconds);
       const run: ThemeIconRun = {
         root: fixture.root,
         commands: [],
@@ -570,9 +587,7 @@ it.layer(NodeServices.layer)("DesktopLinuxUrlHandler theme icons", (it) => {
       yield* registerWithRealFileSystem(run);
       yield* registerWithRealFileSystem(run);
 
-      assert.deepEqual([...(yield* fileSystem.readFile(lower))], [1, 2, 3]);
-      const upperInfo = yield* fileSystem.stat(upper);
-      assert.equal(Option.getOrThrow(upperInfo.mtime).getTime(), fixture.pastSeconds * 1000);
+      assert.deepEqual([...(yield* fileSystem.readFile(target))], [1, 2, 3]);
       assert.deepEqual(
         run.commands.filter(({ command }) => command === "gtk-update-icon-cache"),
         [{ command: "gtk-update-icon-cache", args: ["-f", "-t", fixture.hicolorDir] }],

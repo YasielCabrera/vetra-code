@@ -12,7 +12,7 @@ import { SquareKanbanIcon } from "lucide-react";
 import { useState, type ReactNode, type Ref } from "react";
 
 import { type DraftId, useComposerDraftStore } from "~/composerDraftStore";
-import { fnv1a32, resolveFileDiffPath } from "~/lib/diffRendering";
+import { fnv1a32, resolveFileDiffPath, resolveFileDiffPreviousPath } from "~/lib/diffRendering";
 import {
   buildDiffReviewComment,
   restoreDiffReviewCommentRange,
@@ -81,6 +81,7 @@ interface AnnotatableCodeViewProps {
     fileVersion: number;
     collapsed: boolean;
   }>;
+  pendingFiles: ReadonlyArray<FileDiffMetadata>;
   sectionId: string;
   sectionTitle: string;
   composerDraftTarget: ScopedThreadRef | DraftId;
@@ -108,6 +109,7 @@ interface DiffSelectionContext {
 export function AnnotatableCodeView({
   codeViewKey,
   files,
+  pendingFiles,
   sectionId,
   sectionTitle,
   composerDraftTarget,
@@ -133,11 +135,27 @@ export function AnnotatableCodeView({
   } | null>(null);
   const [draft, setDraft] = useState<{
     fileKey: string;
+    filePath: string;
+    previousFilePath: string;
     annotation: DiffCommentLineAnnotation;
   } | null>(null);
   const [draftText, setDraftText] = useState("");
 
   const filesByKey = new Map(files.map((file) => [file.fileKey, file]));
+  if (
+    draft !== null &&
+    !filesByKey.has(draft.fileKey) &&
+    // Lazy placeholders have provisional change types, so match both paths instead.
+    !pendingFiles.some(
+      (file) =>
+        resolveFileDiffPath(file) === draft.filePath &&
+        resolveFileDiffPreviousPath(file) === draft.previousFilePath,
+    )
+  ) {
+    setDraft(null);
+    setDraftText("");
+    setSelectedLines(null);
+  }
   const items: CodeViewDiffItem<DiffCommentAnnotationGroup>[] = files.map(
     ({ fileDiff, filePath, fileKey, fileVersion, collapsed }) => {
       const persisted = reviewComments
@@ -224,11 +242,12 @@ export function AnnotatableCodeView({
     // Read from the item, not the file list, so the compiled callback keeps its identity
     // as patches arrive; the viewer re-applies its options whenever it changes.
     const id = nextFileCommentId();
+    const filePath = resolveFileDiffPath(item.fileDiff);
     const comment = buildDiffReviewComment({
       id,
       sectionId,
       sectionTitle,
-      filePath: resolveFileDiffPath(item.fileDiff),
+      filePath,
       fileDiff: item.fileDiff,
       range,
       text: "",
@@ -237,6 +256,8 @@ export function AnnotatableCodeView({
     setDraftText("");
     setDraft({
       fileKey: item.id,
+      filePath,
+      previousFilePath: resolveFileDiffPreviousPath(item.fileDiff),
       annotation: {
         side: annotationSide(range),
         lineNumber: range.end,
@@ -247,7 +268,6 @@ export function AnnotatableCodeView({
     });
   };
 
-  const hasOpenComment = draft !== null;
   return (
     <StyledDiffCodeView<DiffCommentAnnotationGroup>
       key={codeViewKey}
@@ -267,8 +287,8 @@ export function AnnotatableCodeView({
       onRevealSearchMatch={(item) => onRevealSearchMatch(item.id)}
       options={{
         ...options,
-        enableGutterUtility: !hasOpenComment,
-        enableLineSelection: !hasOpenComment,
+        enableGutterUtility: draft === null,
+        enableLineSelection: draft === null,
         onGutterUtilityClick: beginComment,
       }}
       renderHeaderFilenameSuffix={(item) =>

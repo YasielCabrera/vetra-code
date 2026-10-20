@@ -12,12 +12,11 @@ against your base branch. Restore still returns the complete saved workspace.
 
 ## Connect an account
 
-Vetra Code works with the platforms your team already uses:
+Install Git and configure authentication on the machine running your Vetra Code server. For a remote
+environment, do this on the remote machine. After signing in, open **Settings → Source Control**
+and choose **Rescan**.
 
-- **GitHub** – Pull requests, issues, repository creation, and clone integration
-- **GitLab** – Merge requests, repository publishing, and hosted clones
-- **Bitbucket** – Pull request workflows (via API token authentication)
-- **Azure DevOps** – Pull request support for Microsoft-hosted repositories
+### GitHub
 
 Vetra Code talks to GitHub's API directly and only needs a token. Any of these works, in this
 order of precedence:
@@ -65,116 +64,7 @@ glab auth login
 
 ### Bitbucket
 
-### Manage Code Reviews Without Context Switching
-
-**Create pull requests while you work**
-
-- Push a branch and create a pull request from the Git actions controls in the toolbar
-- Vetra Code can suggest titles and descriptions based on your commits
-- With **Repository conventions** selected, generated source control text follows the project's
-  `AGENTS.md` along with recent commit subjects. Claude writers also follow `CLAUDE.md`
-- Supports GitHub Pull Requests, GitLab Merge Requests, Bitbucket Pull Requests, and Azure DevOps Pull Requests
-
-**Stay on top of open reviews**
-
-- See if your current branch already has an open PR/MR
-- When an agent finishes a turn on your thread's branch, Vetra Code checks for a newly opened
-  PR/MR if background activity is enabled for that repository. Known reviews keep their normal
-  refresh schedule.
-- Open several reviews from the **Pull requests** page as tabs in the right panel
-- Your authored reviews stay at the top and use the selected sort within their group. By default,
-  see passing and approved reviews first, passing reviews awaiting approval next, and conflicting
-  reviews last. Smaller changes come first within each readiness group, and finished reviews follow
-  open work when all states are visible.
-- Filter the list by author or labels, rank authors by merges in the loaded results, see label and
-  change-size context on each row, and sort the results currently shown by readiness, update time,
-  creation time, or change size. Your filters, search, scope, and sort are restored when you return.
-- Merge now, or on GitHub, GitLab, and Azure DevOps, leave an auto-merge instruction with a chosen
-  strategy while checks are outstanding; see the completed state in the same control after the
-  pull request merges
-- On GitHub, approve fork workflows that are waiting to run and open a revert pull request for a
-  merged change
-- Timeline line counts stay hidden on merge commits, where GitHub's totals include upstream changes
-  brought in from the base branch
-- While working in a thread, open linked reviews in the same compact right-panel tabs without
-  leaving the conversation
-- Show a file tree next to a review's **Code** tab, or a thread's **Diff** panel, to browse the
-  changed files as folders and jump straight to any of them. The toolbar toggle remembers your
-  choice.
-- Enable **Settings → General → Proactive panels** to open a newly linked review automatically and
-  switch to the completed turn's diff when agent work finishes
-- Open the review directly in your browser with one click
-- If Vetra Code cannot load a GitHub pull request, including when GitHub rate limits requests, use
-  **Open on GitHub** in the error view
-- Command-click (Control-click on Windows and Linux) a pull request number in the sidebar to open it in your browser instead of in Vetra Code
-- Check out a teammate's branch to review code locally
-- The **Pull requests** page opens on the filters you last picked — state, involvement, draft,
-  review, checks, host, server, and project — so a page you narrowed to your own reviews is
-  still that when you come back. A link that names its own filters is still opened as written.
-
-**Fix what you wrote, in place**
-
-- Comment while closing an open pull request or reopening a closed one when the host offers that
-  action
-- Rewrite a pull request's title and description from the review itself, in Markdown, with a
-  preview before you save
-- Rewrite your own comments the same way, wherever they are shown
-- Works on GitHub, GitLab, and Bitbucket. Azure DevOps takes a new title and description; its
-  comments stay read-only here, as they already were
-- On GitHub, put a label on a pull request or take one off from the **Labels** row of the review.
-  Changing labels needs triage access or better on the repository
-
-### Know Your Setup at a Glance
-
-The **Source Control settings** page shows you exactly what's connected:
-
-- ✅ Which providers are authenticated and ready
-- ⚠️ What's missing and how to fix it
-- 👤 Which account is signed in (when available)
-
-Run a quick **Rescan** after setting up a new machine or changing credentials.
-
-### GitHub issues
-
-GitHub issues are tracked on the Tickets board. Sync a repository from **Settings → Tickets**, or
-link an issue from a ticket. See [Track work with tickets](tickets.md#github-sync).
-
-Screenshots pasted into an issue or a pull request show up inline, including in private
-repositories. GitHub serves those uploads only to a signed-in viewer, so the environment that owns
-the project fetches them with its own GitHub login. An image the environment cannot fetch is
-labelled as unavailable rather than left as a broken tile.
-
-## Getting Started
-
-### For GitHub (Recommended for most users)
-
-1. Install the GitHub CLI (version 2.81.0 or newer) on the machine running Vetra Code:
-   ```bash
-   brew install gh
-   ```
-2. Sign in:
-   ```bash
-   gh auth login
-   ```
-3. Open **Settings → Source Control** in Vetra Code and verify GitHub shows as authenticated
-
-You can now clone, publish, and create pull requests.
-
-### For GitLab
-
-1. Install the GitLab CLI:
-   ```bash
-   brew install glab
-   ```
-2. Authenticate:
-   ```bash
-   glab auth login
-   ```
-3. Check **Settings → Source Control** to confirm the connection
-
-### For Bitbucket
-
-Open **Settings → Source Control**, expand **Bitbucket**, and choose how to sign in:
+Open **Settings → Source Control**, expand **Bitbucket**, and enter one of:
 
 - **Access token**: a token created for one repository, project, or workspace. It can only reach
   what it was created for.
@@ -196,6 +86,11 @@ export VETRA_BITBUCKET_ACCESS_TOKEN="your-access-token"
 export VETRA_BITBUCKET_EMAIL="you@example.com"
 export VETRA_BITBUCKET_API_TOKEN="your-token"
 ```
+
+For a background service, put these `KEY=VALUE` entries in
+[`service.env`](./background-service.md#configure-the-service-environment)
+under Vetra home, then run `vetra service restart`. Service installation and updates
+preserve that file.
 
 ### Azure DevOps
 
@@ -231,11 +126,9 @@ To start from nothing, choose **New project** in the command palette (`Cmd/Ctrl+
 repository in `~/.vetra-code/projects` (the `projects` folder of your Vetra Code data directory) with a README,
 an icon, and a first commit, then opens a new thread in it. Until the project has a thread, new
 threads work in its folder, even when your default is a new worktree. The folder is named after the project,
-like `pinball-stats` for "Pinball Stats". Choose an authenticated host and turn on **Create private
-repository** to also publish it. If Git has no name or email on that machine, the project is created without the
+like `pinball-stats` for "Pinball Stats". Turn on **Create private repository on GitHub** to also
+publish it. If Git has no name or email on that machine, the project is created without the
 first commit.
-
-**Git is required** – Vetra Code uses Git for all local operations. Ensure `git` is installed on your server.
 
 Use **Add Project** in the command palette (`Cmd/Ctrl+K`) to clone a repository. Choose a hosting
 provider or paste a Git URL, then choose where to save it. The project opens right away while the
@@ -243,14 +136,15 @@ clone runs in the background: you can write your first prompt, and sending waits
 are in place. A toast tracks progress and lets you cancel; if the clone fails, retry it from the
 toast or from the banner above the composer.
 
-**Server-side setup** – Authentication happens on the machine running Vetra Code (the server), not your local browser. If you're using a hosted or team instance, your administrator may have already configured providers.
+For a local Git repository without a remote, **Publish Repository** creates a hosted repository,
+adds it as `origin`, and pushes your commits. If there are no commits yet, it creates the remote;
+make your first commit before pushing.
 
 ## Create a pull request
 
-- **Provider shows "Not authenticated"** – Run the login command for that provider (e.g., `gh auth login`) in a terminal on the server, then rescan in Settings
-- **GitHub says it could not verify sign-in status** – Vetra Code needs GitHub CLI 2.81.0 or newer to check sign-in status. Update `gh` (e.g., `brew upgrade gh`), then rescan
-- **Bitbucket not connecting** – Check the credentials saved in **Settings → Source Control**, or, if you use environment variables, confirm they are set in the server's shell profile and the server was restarted
-- **Can't push to a remote** – Verify your Git remote URL matches the provider you've authenticated with (SSH vs HTTPS remotes may need different credentials)
+Use a thread's Git actions to commit, push, and create a pull request. Vetra Code can generate commit
+messages, review titles, and descriptions from your changes. Descriptions also draw on the work in
+the thread, including the checks it ran.
 
 An existing fork PR can appear beside the branch even if you pushed without setting an upstream.
 If its badge is missing because several remotes hold that branch, set the branch's upstream to
@@ -264,6 +158,10 @@ uses the project's instructions and recent commit subjects.
 Open **Pull requests** to review changes and comments, request reviewers, check out a branch,
 or merge. You can edit review titles and descriptions and your own comments where the host allows it.
 GitLab calls these merge requests.
+
+The **Pull requests** page opens on the filters you last picked — state, involvement, draft,
+review, checks, host, server, and project — so a page you narrowed to your own reviews is
+still that when you come back. A link that names its own filters is still opened as written.
 
 Enable **Remove agent credits when merging** in Settings → Source Control to remove recognized
 agent co-author and generated-by lines from GitHub merge and squash commit messages. Human
@@ -316,7 +214,7 @@ the app and you are told when the guide is ready. Claude and Codex can write gui
 kept for everyone using this server. To write it again, for example after a push or after changing
 the model or instructions, choose **Rewrite guide** from the pull request's **⋯** menu.
 
-While reading a stop, select lines in an excerpt to add a comment to your review or ask an agent
+On web, while reading a stop, select lines in an excerpt to add a comment to your review or ask an agent
 about them; comments wait with the ones from the **Code** tab until you send the review. Choose a
 suggested question, or **Ask about this stop**, to open a thread that already knows which stop you
 are on. **Finish review** on the last stop opens the review with everything you collected.
@@ -338,9 +236,6 @@ On GitHub these are GitHub's own viewed marks, so a review carries between Vetra
 in either direction. Forgejo, GitLab, Bitbucket, and Azure DevOps expose no record Vetra Code can read, so the
 server you are connected to keeps them instead: they follow you across the apps connected to that
 server, but the host's own site will not show them, and the count reads **viewed in Vetra Code**.
-
-The **Code** tab is a web and desktop surface. The mobile app reports a pull request's status but
-does not show its diff, so marks are made and read on web and desktop.
 
 ## Troubleshooting
 
@@ -365,7 +260,7 @@ on the Pull Requests page, **Link to thread** lets you search for an active thre
 also lists the threads that link to it, including archived threads, so you can return to their context.
 
 Thread badges show a stack's layer count or the current review number with a count of additional
-links. Clicking a badge with more than one review opens the **Linked pull requests** panel. On mobile, the Git overview lists linked reviews and their stacks; tap a review to open it.
+links. Clicking a badge with more than one review opens the **Linked pull requests** panel.
 Linking and unlinking are available in the web and desktop clients.
 
 The **Linked pull requests** panel lists every review and groups stacks. Unlink a review from its
@@ -406,3 +301,13 @@ the scope and merge strategy. GitHub rebases the remaining stack after merging.
 It can rewrite history and restart checks. If a layer fails, earlier updates remain; resolve that
 layer before retrying. GitHub may require manual conflict resolution after a lower layer is amended,
 even when its changes look independent. Stack actions require an environment that supports them.
+
+## GitHub issues
+
+GitHub issues are tracked on the Tickets board. Sync a repository from **Settings → Tickets**, or
+link an issue from a ticket. See [Track work with tickets](tickets.md#github-sync).
+
+Screenshots pasted into an issue or a pull request show up inline, including in private
+repositories. GitHub serves those uploads only to a signed-in viewer, so the environment that owns
+the project fetches them with its own GitHub login. An image the environment cannot fetch is
+labelled as unavailable rather than left as a broken tile.

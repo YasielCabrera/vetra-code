@@ -210,3 +210,7 @@ Until Vetra-owned Clerk and relay settings are present, that page stays hidden w
 Vetra Connect. Device-local connect and disconnect controls remain in **Settings** →
 **Connections**. Removing an environment there only forgets it on that device; it stays
 registered to your account.
+
+When Vetra Connect is configured and a connection fails, see
+[Vetra Connect troubleshooting](./t3-connect-troubleshooting.md). It explains each
+error, where the problem is, and how to fix it.

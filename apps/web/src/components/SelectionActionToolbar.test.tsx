@@ -38,13 +38,14 @@ let container: HTMLDivElement;
 beforeEach(async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "requestAnimationFrame"] });
-  // jsdom lays nothing out; a selection needs a visible box to show its actions.
+  // jsdom lays nothing out; a selection needs a visible line to show its actions.
+  const line = DOMRect.fromRect({ x: 0, y: 0, width: 40, height: 10 });
   Object.defineProperties(Range.prototype, {
-    getBoundingClientRect: {
+    getBoundingClientRect: { configurable: true, value: () => line },
+    getClientRects: {
       configurable: true,
-      value: () => DOMRect.fromRect({ x: 0, y: 0, width: 40, height: 10 }),
+      value: () => Object.assign([line], { item: (index: number) => (index === 0 ? line : null) }),
     },
-    getClientRects: { configurable: true, value: () => ({ length: 0, item: () => null }) },
   });
   run.mockReset();
   container = document.createElement("div");
@@ -64,6 +65,9 @@ afterEach(async () => {
 });
 
 async function select() {
+  vi.spyOn(container.firstElementChild!, "getBoundingClientRect").mockReturnValue(
+    DOMRect.fromRect({ width: 400, height: 300 }),
+  );
   await act(async () => {
     window.getSelection()!.selectAllChildren(container.querySelector("p")!);
     document.dispatchEvent(new Event("selectionchange"));

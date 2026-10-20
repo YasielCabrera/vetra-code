@@ -45,7 +45,7 @@ const run = Effect.fn("test.run")(function* (
   return { stdout, stderr, exitCode };
 }, Effect.scoped);
 
-/** A release archive for this host with a stub `t3` that echoes its args and launcher. */
+/** A release archive for this host with a stub `vetra` that echoes its args and launcher. */
 const serveFakeRelease = Effect.fn("test.serveFakeRelease")(function* (root: string) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;

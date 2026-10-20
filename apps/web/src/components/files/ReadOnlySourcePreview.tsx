@@ -5,7 +5,7 @@ import { FindSourceHost } from "~/components/find/FindScope";
 import { FIND_HIGHLIGHT_UNSAFE_CSS } from "~/components/find/findSource";
 import { usePierreFileFindSource } from "~/components/find/pierreFindSources";
 import { useClientSettings } from "~/hooks/useSettings";
-import { useTheme } from "~/hooks/useTheme";
+import { useRenderedAppearance } from "~/hooks/useTheme";
 import { resolveDiffThemeName } from "~/lib/diffRendering";
 import { PREFERRED_HIGHLIGHTER } from "~/lib/syntaxHighlighting";
 
@@ -17,7 +17,7 @@ export default function ReadOnlySourcePreview(props: {
   readonly cacheKey?: string;
   readonly onPostRender?: FileOptions<unknown, undefined>["onPostRender"];
 }) {
-  const { resolvedTheme } = useTheme();
+  const resolvedTheme = useRenderedAppearance();
   const wordWrap = useClientSettings((settings) => settings.wordWrap);
   const find = usePierreFileFindSource(props.text, props.onPostRender);
   return (

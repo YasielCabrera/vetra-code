@@ -5,16 +5,23 @@ and `VETRA_POSTHOG_KEY` for your own PostHog project before starting the server.
 `VETRA_POSTHOG_HOST` to configure a different PostHog host.
 
 When enabled, the Vetra Code server sends events associated with a hashed account or installation
-identifier. Events include the provider, model, reasoning effort, permission mode, turn result,
-duration, release channel, and main-agent token totals when available.
+identifier. To count how many installations one person uses, the server also sends hashed account
+identifiers: your Vetra Connect account, your OpenAI and Claude accounts when you are signed in,
+and a random identifier for each device that connects. Events include the provider, model,
+reasoning effort, permission mode, turn result, duration, release channel, and main-agent token
+totals when available.
 
 Events do not include prompts, responses, file contents, authentication tokens, conversation IDs,
 raw provider events, or child-agent output. Child-agent token use is excluded from the totals.
 
-To disable collection, set `VETRA_TELEMETRY_ENABLED=false` in the server's environment before
-starting it. This stops product events from being recorded or sent.
+Vetra Code sends relay connection traces only when relay tracing is configured for Vetra Connect.
 
-The desktop app reads the variable from your shell profile (for example `~/.zshrc`) on macOS and
+To disable product events and relay tracing, set `VETRA_TELEMETRY_ENABLED=false` in the server's
+environment before starting it. Relay tracing also stops when `VETRA_OTEL_SDK_DISABLED` or
+`OTEL_SDK_DISABLED` turns OpenTelemetry export off. The web app in a browser, including one the
+`vetra` CLI opens, does not read these variables.
+
+The desktop app reads `VETRA_TELEMETRY_ENABLED` from your shell profile (for example `~/.zshrc`) on macOS and
 Linux, so export it there and restart the app. On Windows, set it as a user environment variable.
 
 ## Export diagnostics to your own receiver

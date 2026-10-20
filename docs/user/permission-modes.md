@@ -35,30 +35,10 @@ session-wide choice, because Grok would remember that command for the whole proj
 ACP Registry agents run their own tools in their own mode; Vetra Code answers their approval requests
 by the permission mode. See [ACP Registry permissions](./providers-acp.md#permissions-and-terminals).
 
-Antigravity uses its own permission policy for each mode. Vetra Code still shows any approval or
-question the official agent sends in **Full access**. A remembered approval is available only
-when the agent offers it for that action. Fixed-choice questions require one of the offered
-answers and do not accept custom text.
+Claude can still ask in **Full access** when its settings disable bypass permissions or require
+approval for an action.
 
-## Choosing a Mode
+Antigravity can still send native approval requests in **Full access**. It only offers remembered
+approvals for actions that support them.
 
-Use **Full access** for work in a worktree or a sandbox you can throw away.
-
-Use **Supervised** on a repository where an unwanted command is expensive, or the first time you
-run an unfamiliar task.
-
-**Auto-accept edits** suits refactors where the edits are the point and you only care about the
-shell commands.
-
-## Provider Behavior
-
-Each provider maps these modes onto its own approval and sandbox settings. Codex, for example,
-translates the mode into its approval policy and sandbox level, so **Supervised** runs the CLI
-with prompting enabled and a restricted workspace while **Full access** disables both. Grok
-threads do the same: **Supervised** starts Grok in ask mode even if your Grok CLI config is
-set to always-approve, and **Full access** starts Grok with always-approve. The labels above
-describe what you get; the exact per-provider translation is internal and may change.
-
-Antigravity's native `/plan` command requests a plan. It does not change the permission mode.
-Vetra Code's separate Plan mode control is not available for Antigravity. See
-[Antigravity](./providers-antigravity.md) for setup and thread limits.
+See the [provider guides](./install.md#providers) for setup and provider-specific limits.

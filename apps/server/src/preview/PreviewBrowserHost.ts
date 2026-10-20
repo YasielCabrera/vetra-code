@@ -79,7 +79,7 @@ export class PreviewBrowserRootError extends Schema.TaggedError<PreviewBrowserRo
   {},
 ) {
   override get message(): string {
-    return "Chrome will not start its sandbox as root, so Vetra Code's browser cannot run while the T3 server runs as root. Run the server as a nonroot user (for example `User=` in its systemd service), or set `VETRA_SERVER_BROWSER_SANDBOX=0` to run the browser unsandboxed as root.";
+    return "Chrome will not start its sandbox as root, so Vetra Code's browser cannot run while the Vetra Code server runs as root. Run the server as a nonroot user (for example `User=` in its systemd service), or set `VETRA_SERVER_BROWSER_SANDBOX=0` to run the browser unsandboxed as root.";
   }
 }
 

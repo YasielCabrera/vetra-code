@@ -308,7 +308,7 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
     const extensionPath = env(EXTENSION_PATH_ENV);
     if (extensionPath === undefined || !readOnlyMcpTools.has(name) || typeof pi.getAllTools !== "function") return false;
     // A user extension may own the same name. Only our registered HTTP bridge
-    // may inherit the canonical T3 server's read-only annotation.
+    // may inherit the canonical Vetra Code server's read-only annotation.
     return pi.getAllTools().some((tool) => tool.name === name &&
       typeof tool.sourceInfo?.path === "string" &&
       NodePath.resolve(tool.sourceInfo.path) === NodePath.resolve(extensionPath));
@@ -448,11 +448,15 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
     }
   });
 
-  // Deliver orchestration guidance through pi's real system-prompt channel.
-  // Wrapping the first user message instead would stop it from starting
-  // with "/" and silently break slash-command expansion.
+  // Keep guidance in the system prompt so leading slash commands still expand.
   pi.on("before_agent_start", (event, ctx) => {
     reconcileDiscovery(ctx);
+    const sections = event.systemPromptOptions?.sections;
+    if (sections && typeof sections === "object" && event.systemPromptOptions?.forceSystemPrompt === undefined) {
+      // A full prompt override bypasses Pi's later section rendering.
+      sections.vetra_code_orchestration = ORCHESTRATION_INSTRUCTIONS;
+      return undefined;
+    }
     return { systemPrompt: event.systemPrompt + "\\n\\n" + ORCHESTRATION_INSTRUCTIONS };
   });
 }

@@ -15,6 +15,8 @@ export const PIERRE_TREE_UNSAFE_CSS = `
     --trees-status-added-override: var(--success);
     --trees-status-deleted-override: var(--destructive);
   }
+  [data-truncate-content='visible'] { overflow: hidden; text-overflow: ellipsis; }
+  [data-truncate-marker] { display: none; }
   button[data-type='item'], button[data-type='item']::before { border-radius: var(--radius-md); }
   [data-item-contains-git-change='true'] > [data-item-section='content'] {
     color: var(--trees-git-modified-color);

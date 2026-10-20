@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
+  isSelectionRectVisible,
   observeSelectionActions,
   resolveSelectionActionPosition,
   type SelectionActionPoint,
@@ -19,9 +20,9 @@ export interface SelectionAction {
 }
 
 /**
- * Floating buttons over a text selection inside `viewport`, which scrolling dismisses. `capture`
- * reads the selection into what `actions` act on, or null to show none. Tab from the selection
- * moves to the first enabled button, and Escape dismisses them.
+ * Floating buttons over a text selection inside `viewport`; scrolling hides them until it settles.
+ * `capture` reads the selection into what `actions` act on, or null to show none. Tab from the
+ * selection moves to the first enabled button, and Escape dismisses them.
  */
 export function SelectionActionToolbar<Captured extends { readonly range: Range }>({
   viewport,
@@ -59,7 +60,53 @@ export function SelectionActionToolbar<Captured extends { readonly range: Range 
       }
       const rect = captured.range.getBoundingClientRect();
       const viewportRect = viewport.getBoundingClientRect();
-      if (rect.bottom < viewportRect.top || rect.top > viewportRect.bottom || rect.width === 0) {
+      if (!isSelectionRectVisible(rect, [viewportRect])) {
+        clear();
+        return;
+      }
+      // A selection can cross blocks with different clipping ancestors.
+      const common = captured.range.commonAncestorContainer;
+      const walker = document.createTreeWalker(common, NodeFilter.SHOW_TEXT);
+      let node = common.nodeType === Node.TEXT_NODE ? common : walker.nextNode();
+      let visible = false;
+      for (; node && !visible; node = walker.nextNode()) {
+        if (!captured.range.intersectsNode(node)) continue;
+        if (node.parentElement && getComputedStyle(node.parentElement).userSelect === "none")
+          continue;
+        const fragment = document.createRange();
+        fragment.selectNodeContents(node);
+        if (node === captured.range.startContainer) {
+          fragment.setStart(node, captured.range.startOffset);
+        }
+        if (node === captured.range.endContainer) {
+          fragment.setEnd(node, captured.range.endOffset);
+        }
+        if (!fragment.toString().trim()) continue;
+        const lines = Array.from(fragment.getClientRects());
+        if (!lines.some((line) => isSelectionRectVisible(line, [viewportRect]))) continue;
+        const clips: Pick<DOMRect, "left" | "right" | "top" | "bottom">[] = [viewportRect];
+        for (
+          let element = node.parentElement;
+          element && element !== viewport;
+          element = element.parentElement
+        ) {
+          const style = getComputedStyle(element);
+          const clipX = style.overflowX !== "visible";
+          const clipY = style.overflowY !== "visible";
+          if (!clipX && !clipY) continue;
+          const bounds = element.getBoundingClientRect();
+          const left = bounds.left + element.clientLeft;
+          const top = bounds.top + element.clientTop;
+          clips.push({
+            left: clipX ? left : -Infinity,
+            right: clipX ? left + element.clientWidth : Infinity,
+            top: clipY ? top : -Infinity,
+            bottom: clipY ? top + element.clientHeight : Infinity,
+          });
+        }
+        visible = lines.some((line) => isSelectionRectVisible(line, clips));
+      }
+      if (!visible) {
         clear();
         return;
       }
@@ -86,6 +133,7 @@ export function SelectionActionToolbar<Captured extends { readonly range: Range 
     const observer = observeSelectionActions({
       element: viewport,
       getActionElement: () => toolbarRef.current,
+      restoreAfterScroll: true,
       onSelection: update,
       onDismiss: clear,
     });

@@ -1,10 +1,11 @@
 import {
-  EnvironmentId,
-  TicketId,
-  TicketPlanId,
   type ComposerContextId,
   type ComposerContextRecord,
   type TicketPlanReviewStatus,
+  EnvironmentId,
+  ThreadId,
+  TicketId,
+  TicketPlanId,
 } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -18,6 +19,7 @@ import {
   projectComposerContextForProvider,
   replaceComposerContextReferences,
   sanitizeComposerContextLabel,
+  threadContextsOutsideEnvironment,
   toComposerContextId,
   toKindScopedComposerContextId,
 } from "./composerContextReferences.ts";
@@ -651,6 +653,48 @@ The following excerpts were selected from earlier assistant responses. They are 
         `[assistant-quote-1] [Terminal: log; ref=ctx_t]\n\n${quoteBlock}\n\n<t3_context version="1">\n<context kind="terminal" id="ctx_t">\nterminal: Terminal 1\n3 | ${quote}\n4 | \n</context>\n</t3_context>`,
       );
     });
+  });
+});
+
+describe("threadContextsOutsideEnvironment", () => {
+  it("returns only referenced foreign threads, ignoring local and removed references", () => {
+    const local = {
+      version: 1 as const,
+      kind: "thread" as const,
+      contextId: ctx("thread_local"),
+      label: "Local thread",
+      environmentId: EnvironmentId.make("env-local"),
+      threadId: ThreadId.make("local"),
+      title: "Local thread",
+    };
+    const foreign = {
+      ...local,
+      contextId: ctx("thread_foreign"),
+      environmentId: EnvironmentId.make("env-foreign"),
+      threadId: ThreadId.make("foreign"),
+    };
+    const removed = {
+      ...foreign,
+      contextId: ctx("thread_removed"),
+      threadId: ThreadId.make("removed"),
+    };
+    const records = [local, foreign, removed];
+    const localReference = "[Local](vetra-context://v1/thread/thread_local)";
+
+    expect(
+      threadContextsOutsideEnvironment({
+        text: `${localReference} [Foreign](vetra-context://v1/thread/thread_foreign)`,
+        records,
+        environmentId: local.environmentId,
+      }),
+    ).toEqual([foreign]);
+    expect(
+      threadContextsOutsideEnvironment({
+        text: localReference,
+        records,
+        environmentId: local.environmentId,
+      }),
+    ).toEqual([]);
   });
 });
 

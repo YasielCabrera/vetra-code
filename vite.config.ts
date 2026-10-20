@@ -2,6 +2,32 @@ import "vite-plus/test/config";
 import { defineConfig } from "vite-plus";
 import * as NodeURL from "node:url";
 
+// Fork tests written before upstream rejected DOM-emulation pragmas. Move each to a
+// *.browser.test.tsx and drop it here; new files must not be added.
+const DOM_TEST_ENVIRONMENT_ALLOWLIST: Array<string> = [
+  "apps/web/src/components/SelectionActionToolbar.test.tsx",
+  "apps/web/src/components/chat/MermaidDiagram.security.test.ts",
+  "apps/web/src/components/chat/ProposedPlanCard.test.tsx",
+  "apps/web/src/components/promptLinks/copyPromptLink.test.ts",
+  "apps/web/src/components/tickets/CreateTicketDialog.test.tsx",
+  "apps/web/src/components/tickets/NewTicketPage.test.tsx",
+  "apps/web/src/components/tickets/ThreadTicketWorkspace.test.tsx",
+  "apps/web/src/components/tickets/TicketActivityTimeline.test.tsx",
+  "apps/web/src/components/tickets/TicketBodyEditor.test.tsx",
+  "apps/web/src/components/tickets/TicketDetailPage.test.tsx",
+  "apps/web/src/components/tickets/TicketKanban.test.tsx",
+  "apps/web/src/components/tickets/TicketLinkPicker.test.tsx",
+  "apps/web/src/components/tickets/TicketLinkPreview.test.tsx",
+  "apps/web/src/components/tickets/TicketPlanCommentSurface.test.tsx",
+  "apps/web/src/components/tickets/TicketPlanPage.test.tsx",
+  "apps/web/src/components/tickets/TicketPlans.test.tsx",
+  "apps/web/src/components/tickets/TicketsPage.test.tsx",
+  "apps/web/src/components/tickets/useAutosavedDocument.test.tsx",
+  "apps/web/src/components/tickets/useTitleDraft.test.tsx",
+  "apps/web/src/readAloud.test.tsx",
+  "apps/web/src/ticketDraftStore.test.ts",
+];
+
 const RESTRICTED_IMPORT_PATHS = [
   {
     name: "@t3tools/client-runtime",
@@ -89,6 +115,7 @@ export default defineConfig({
       "apps/web/src/lib/vendor/qrcodegen.ts",
       "**/*.graphql.ts",
       "packages/source-control-github/schema/**",
+      "apps/server/schema/**",
       "*.icon/**",
     ],
     sortPackageJson: {},
@@ -113,6 +140,7 @@ export default defineConfig({
       "**/routeTree.gen.ts",
       "**/*.graphql.ts",
       "packages/source-control-github/schema/**",
+      "apps/server/schema/**",
     ],
     plugins: ["eslint", "oxc", "react", "unicorn", "typescript"],
     jsPlugins: ["./oxlint-plugin-t3code/index.ts", "@shadcn/lint"],
@@ -165,10 +193,24 @@ export default defineConfig({
       "t3code/no-unscoped-has": "error",
       "t3code/namespace-node-imports": "error",
       "t3code/prefer-catch-tags": "error",
+      "t3code/prefer-effect-fn": "error",
       "t3code/require-centered-scroll-gutter": "error",
       "t3code/require-suppression-reason": "error",
     },
     overrides: [
+      {
+        files: [
+          "**/*.{test,spec,testkit}.{ts,tsx}",
+          "**/{test,tests,testkit,testing,fixtures,integration}/**",
+          "packages/provider-testing/**",
+        ],
+        rules: { "t3code/prefer-effect-fn": "off" },
+      },
+      {
+        files: ["apps/**/src/**", "packages/**/src/**"],
+        excludeFiles: DOM_TEST_ENVIRONMENT_ALLOWLIST,
+        rules: { "t3code/no-dom-test-environment": "error" },
+      },
       {
         files: ["packages/client-runtime/src/state/**", "apps/{web,mobile,desktop}/src/**"],
         rules: { "t3code/no-rpc-permission-bypass": ["error", { allowRawClientAccess: false }] },

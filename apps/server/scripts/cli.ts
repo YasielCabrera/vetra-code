@@ -198,7 +198,7 @@ const publishCmd = Command.make(
 ).pipe(Command.withDescription("Publish the @vetra-code/server launcher to npm."));
 
 const cli = Command.make("cli").pipe(
-  Command.withDescription("T3 server build & publish CLI."),
+  Command.withDescription("Vetra Code server build & publish CLI."),
   Command.withSubcommands([buildCmd, buildExeCmd, publishCmd]),
 );
 

@@ -902,7 +902,8 @@ export function DiagnosticsSettingsPanel() {
         toastManager.add({
           type: "info",
           title: "Process already exited",
-          description: "The process is not a child of the T3 Server. It might already have exited.",
+          description:
+            "The process is not a child of the Vetra Code server. It might already have exited.",
         });
         return;
       }
@@ -979,13 +980,13 @@ export function DiagnosticsSettingsPanel() {
           <div className="space-y-2 border-t border-border/60 px-4 py-3 text-xs text-muted-foreground sm:px-5">
             {processDiagnosticsError ? (
               <div className="flex items-start gap-2 text-destructive">
-                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                <AlertTriangleIcon className="size-3.5 h-lh shrink-0" />
                 <span>{processDiagnosticsError.message}</span>
               </div>
             ) : null}
             {processError ? (
               <div className="flex items-start gap-2 text-destructive">
-                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                <AlertTriangleIcon className="size-3.5 h-lh shrink-0" />
                 <span>{processError}</span>
               </div>
             ) : null}
@@ -1051,13 +1052,13 @@ export function DiagnosticsSettingsPanel() {
           <div className="space-y-2 border-t border-border/60 px-4 py-3 text-xs text-muted-foreground sm:px-5">
             {processResourceError ? (
               <div className="flex items-start gap-2 text-destructive">
-                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                <AlertTriangleIcon className="size-3.5 h-lh shrink-0" />
                 <span>{processResourceError.message}</span>
               </div>
             ) : null}
             {resourceError ? (
               <div className="flex items-start gap-2 text-destructive">
-                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                <AlertTriangleIcon className="size-3.5 h-lh shrink-0" />
                 <span>{resourceError}</span>
               </div>
             ) : null}
@@ -1134,7 +1135,7 @@ export function DiagnosticsSettingsPanel() {
           <div className="space-y-2 border-t border-border/60 px-4 py-3 text-xs text-muted-foreground sm:px-5">
             {openLogsDirectoryError ? (
               <div className="flex items-start gap-2 text-destructive">
-                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                <AlertTriangleIcon className="size-3.5 h-lh shrink-0" />
                 <span>{openLogsDirectoryError}</span>
               </div>
             ) : null}
@@ -1145,7 +1146,7 @@ export function DiagnosticsSettingsPanel() {
                   traceDiagnosticsPartialFailure ? "text-warning-foreground" : "text-destructive",
                 )}
               >
-                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                <AlertTriangleIcon className="size-3.5 h-lh shrink-0" />
                 <span>
                   {traceDiagnosticsPartialFailure
                     ? `Some trace files could not be read, so diagnostics may be incomplete. ${traceDiagnosticsError.message}`
@@ -1155,7 +1156,7 @@ export function DiagnosticsSettingsPanel() {
             ) : null}
             {error ? (
               <div className="flex items-start gap-2 text-destructive">
-                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                <AlertTriangleIcon className="size-3.5 h-lh shrink-0" />
                 <span>{error}</span>
               </div>
             ) : null}

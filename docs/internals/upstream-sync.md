@@ -371,6 +371,7 @@ list):
 | `T3 Chat` / `t3-chat`                                  | `Vetra Chat` / `vetra-chat`                                     |
 | `T3Tools`                                              | `Vetra-Code`                                                    |
 | `npx t3 ` / `` `t3 `` / `<code>t3 `                    | `vetra ` / `` `vetra `` / `<code>vetra `                        |
+| `npx t3@` / `` `t3` `` (the CLI, not the `t3` package) | `npx @vetra-code/server@` / `` `vetra` ``                       |
 | `T3CODE_` / `T3_`                                      | `VETRA_`                                                        |
 | `com.t3tools.*` / `/com/t3tools/`                      | `com.vetra.*` / `/com/vetra/`                                   |
 | `T3SnapShot` / `snap-shot@t3.codes`                    | `VetraSnapShot` / `snap-shot@vetra.code`                        |
@@ -381,6 +382,7 @@ list):
 | `t3-code` (MCP server name, not `t3-codex`)            | `vetra-code`                                                    |
 | `mcp add … t3 ` / `mcp login t3` (outside-agent setup) | `mcp add … vetra-code ` / `mcp login vetra-code`                |
 | `T3 thread` / `T3-owned` / `T3 tool`                   | `Vetra Code thread` / `Vetra-owned` / `Vetra Code tool`         |
+| `T3 server` / `T3 runtime` / `T3 turn`                 | `Vetra Code server` / `Vetra Code runtime` / `Vetra Code turn`  |
 | `"t3code.` / `"t3code:` / `` `t3code: ``               | `"vetra.` / `"vetra:` / `` `vetra: ``                           |
 | `t3.pullRequests.`                                     | `vetra.pullRequests.`                                           |
 | `.well-known/t3/` / `t3-env:`                          | `.well-known/vetra/` / `vetra-env:`                             |
@@ -388,6 +390,7 @@ list):
 | `t3-thread://` / `"t3-thread"`                         | `vetra-thread://` / `"vetra-thread"`                            |
 | `.t3-capture-` / `t3-snap-shot-` / `t3-kde-bus-`       | `.vetra-capture-` / `vetra-snap-shot-` / `vetra-kde-bus-`       |
 | `t3-relay` / `t3-test`                                 | `vetra-relay` / `vetra-test`                                    |
+| `t3code/pr-` (pull request branches)                   | `vetra/pr-`                                                     |
 
 Names that stay upstream's. Adding any of these to the table would undo the reason merges are
 cheap:
@@ -431,11 +434,12 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
   file has completed its manual-memoization migration. Vetra-only features still use those hooks.
   Keep the existing lint policy until those features migrate separately; take the runtime
   refactors and lint rule implementation without expanding the sync into a fork-wide UI rewrite.
-- **`@types/hast` split.** `@pierre/diffs` ships its own `@types/hast@3.0.4` inside `dist`, and the
-  MDX packages augment whichever `@types/hast` they resolve. A regenerated lockfile can move the
-  `hast-util-*` / `mdast-util-*` / `rehype-*` packages onto another version, and `apps/web` then
-  fails with `Root is not assignable to Nodes`. Keep their `@types/hast` entries on the version
-  `main`'s lockfile used.
+- **`@types/hast` split.** The MDX packages augment whichever `@types/hast` they resolve, so every
+  `hast-util-*` / `mdast-util-*` / `rehype-*` / `react-markdown` package must resolve the same
+  version as shiki, which `@pierre/diffs` highlights with. A regenerated lockfile can leave some on
+  an older version, and `apps/web` then fails with `Root is not assignable to Nodes`. Point their
+  `@types/hast` entries at the one version upstream's lockfile uses, drop the orphaned entry, and
+  delete `apps/web/tsconfig.tsbuildinfo` before re-checking: a stale one keeps reporting the split.
 - **Clean merge, wrong names.** If the script printed `rewrote N file(s)` but `git diff --cached`
   still shows `T3 Code`, the rewrite was not staged. That was a real bug once; the script now
   stages clean rewrites. If it happens again, stop and fix the script rather than committing.

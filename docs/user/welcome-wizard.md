@@ -1,7 +1,11 @@
 # Welcome wizard
 
-Vetra Code shows a setup flow the first time you open a new installation.
-Existing workspaces skip this flow.
+Vetra Code shows a setup flow when you open a new installation. Existing
+workspaces skip this flow.
+
+Close setup while no import is running to go straight to the app. You can connect
+computers and agents later from Settings, or open `/welcome` to run setup again.
+Direct links, such as Settings, open normally before setup is done.
 
 ## Connect your computers
 
@@ -15,9 +19,12 @@ You can add more computers before continuing:
 - **Vetra Connect** connects computers that are signed in to your account. This
   option appears only once Vetra Connect is configured for your installation.
 - **Add a computer** connects directly to a server on your network or tailnet.
-  Start the server with `vetra serve`, then run `vetra pair --tailscale` and
-  paste the pairing link. You can also run `vetra serve --host <address>` and
-  use `vetra pair` when the server is already reachable on your network.
+  Start the server with `vetra serve`, then run `vetra pair --tailscale` and paste
+  the pairing link. You can also run `vetra serve --host <address>` and use
+  `vetra pair` when the server is already reachable on your network.
+
+A computer marked **Client not supported** runs a Vetra Code version that cannot
+talk to this app. The message under its name says which side to update.
 
 Saved computers and computers discovered through Vetra Connect are selected by
 default. Uncheck any you do not want to set up; this does not disconnect them.
@@ -52,7 +59,8 @@ one group. Directories that are not git repositories sit under "Other folders".
 
 The default selection includes git repositories active within the last 30 days
 with at least three conversations. Use the checkboxes, or "Select all" and
-"Select none", to change the selection. Linked git worktrees, Codex scratch
+"Select none", to change the selection. Linked worktrees of bare repositories
+can be offered as separate projects. Other linked git worktrees, Codex scratch
 directories under `Documents/Codex`, and anything under `Downloads` are not
 offered.
 

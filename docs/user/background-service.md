@@ -36,6 +36,30 @@ The install and update paths refuse to replace a newer service with an older ver
 Vetra Connect setup leaves a newer service unchanged. Downgrading is deliberate: it requires the
 exact older version and `--allow-downgrade`.
 
+## Configure the service environment
+
+Put custom environment variables in `service.env` under the service's Vetra home
+directory, normally `~/.vetra-code/service.env`. This file survives service installation
+and updates. For example:
+
+```dotenv
+VETRA_PORT=3773
+VETRA_HOST=127.0.0.1
+```
+
+Use `KEY=VALUE` entries, quoting values that contain spaces or `#`. Values are
+literal: shell commands and variable expansion are not evaluated. Entries
+override the inherited service environment, except for `PATH`, `VETRA_HOME`,
+`VETRA_BOOT_SERVICE_UNIT`, and `VETRA_SERVICE_LAUNCHER_CONTEXT` (including case variants).
+
+Run `vetra service restart` after changing the file. Changes apply when the service
+starts again; switching the server version alone keeps the current values.
+For a service installed before env-file support, run `vetra service install` once
+with an up-to-date CLI.
+A missing file is ignored; other read failures stop service startup.
+If the file contains credentials, restrict access to that file with `chmod 600`
+(for the default Vetra home, `chmod 600 ~/.vetra-code/service.env`).
+
 ## Service status problems
 
 `vetra service status` reports what is installed and, on Linux, whether the service is running,
@@ -92,12 +116,12 @@ that session open.
 
 On macOS, check **System Settings → General → Login Items** if the service no
 longer starts at login. If agent work cannot access Desktop, Documents, or
-Downloads, it may need Full Disk Access for the `t3` executable listed in
+Downloads, it may need Full Disk Access for the `vetra` executable listed in
 `ProgramArguments` in
 `~/Library/LaunchAgents/com.vetra.code.service.plist`.
 
 For failures after signing in to Vetra Connect, see
-[connection troubleshooting](./remote-access.md#t3-connect-troubleshooting).
+[connection troubleshooting](./t3-connect-troubleshooting.md).
 
 ## Reclaim database space
 

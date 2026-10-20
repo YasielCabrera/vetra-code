@@ -52,7 +52,7 @@ export function attachConsoleStdin(): number | undefined {
     stdoutIsConsole: NodeTty.isatty(1),
   });
   // The marker describes this process's own start; a server started here
-  // must not pass it on to the shells and `t3` runs it spawns.
+  // must not pass it on to the shells and `vetra` runs it spawns.
   delete process.env.VETRA_DESKTOP_CLI_LAUNCHER;
   if (!needed) return undefined;
   let fd: number;

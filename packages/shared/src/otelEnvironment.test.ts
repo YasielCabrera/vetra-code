@@ -508,3 +508,45 @@ describe("OtelEnvironment", () => {
     );
   });
 });
+
+describe("isRelayTracingEnabled", () => {
+  it("defaults on and respects the T3CODE SDK override of the standard kill switch", () => {
+    assert.isTrue(OtelEnvironment.isRelayTracingEnabled({}));
+    assert.isFalse(OtelEnvironment.isRelayTracingEnabled({ OTEL_SDK_DISABLED: "true" }));
+    assert.isTrue(
+      OtelEnvironment.isRelayTracingEnabled({
+        OTEL_SDK_DISABLED: "true",
+        VETRA_OTEL_SDK_DISABLED: "false",
+      }),
+    );
+    assert.isFalse(
+      OtelEnvironment.isRelayTracingEnabled({
+        OTEL_SDK_DISABLED: "false",
+        VETRA_OTEL_SDK_DISABLED: "true",
+      }),
+    );
+  });
+
+  it.effect("product opt-out beats SDK enable without disabling user-configured tracing", () =>
+    Effect.gen(function* () {
+      const env = {
+        VETRA_TELEMETRY_ENABLED: "false",
+        VETRA_OTEL_SDK_DISABLED: "false",
+        OTEL_SDK_DISABLED: "true",
+        OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "https://user.example.test/v1/traces",
+      };
+      assert.isFalse(OtelEnvironment.isRelayTracingEnabled(env));
+
+      const otel = yield* load(env);
+      assert.isFalse(otel.disabled);
+      assert.deepStrictEqual(
+        otel.traces,
+        OtelEnvironment.OtelSignal.Export({
+          url: env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+          protocol: "http/protobuf",
+          headers: undefined,
+        }),
+      );
+    }),
+  );
+});

@@ -46,6 +46,15 @@ describe("fileBreadcrumbs", () => {
       fileBreadcrumbs("vetra-code", "\\\\server\\share\\report.md").map((c) => c.path),
     ).toEqual(["\\\\server", "\\\\server\\share", "\\\\server\\share\\report.md"]);
   });
+
+  it("builds home-relative breadcrumbs with navigable child folders", () => {
+    expect(fileBreadcrumbs("t3code", "~/.claude/CLAUDE.md")).toEqual([
+      { label: "~", path: "~", kind: "directory" },
+      { label: ".claude", path: "~/.claude", kind: "directory" },
+      { label: "CLAUDE.md", path: "~/.claude/CLAUDE.md", kind: "file" },
+    ]);
+    expect(isListableHostFolder("~/.claude")).toBe(true);
+  });
 });
 
 describe("breadcrumbPathOf", () => {

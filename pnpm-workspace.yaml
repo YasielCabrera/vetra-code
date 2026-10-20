@@ -34,6 +34,9 @@ catalog:
   "@clerk/electron-passkeys": 0.0.3
   "@clerk/react": 6.17.8
   "@clerk/shared": 4.40.0
+  # Must match the version alchemy depends on: the relay overrides its
+  # Cloudflare retry policy through this package's Retry service.
+  "@distilled.cloud/cloudflare": 1.0.0-rc.13
   "@effect/atom-react": 4.0.5
   "@effect/graphql-generator": 4.0.5
   "@effect/openapi-generator": 4.0.5
@@ -184,6 +187,9 @@ overrides:
   "@effect/vitest": "catalog:"
   "@effect/vitest>vitest": "-"
   "@pierre/diffs>@shikijs/transformers": ^4.2.0
+  # Resolve below remark-math so Vite, Metro and Node use the same tokenizer.
+  "remark-math>micromark-extension-math": npm:micromark-extension-llm-math@3.1.0
+  micromark-extension-gfm-table: 2.1.1
   # Keep one copy of these native-binary packages. lightningcss ships 11 platform binaries per
   # version, and the workspaces' tailwindcss ^4 ranges drift into two 4.3.x copies of the family.
   "@tailwindcss/node": "catalog:"
@@ -221,6 +227,9 @@ packageExtensions:
       vite-plus: "catalog:"
 
 patchedDependencies:
+  mdast-util-math@3.0.0: patches/mdast-util-math@3.0.0.patch
+  micromark-extension-llm-math@3.1.0: patches/micromark-extension-llm-math@3.1.0.patch
+  micromark-extension-gfm-table@2.1.1: patches/micromark-extension-gfm-table@2.1.1.patch
   alchemy@2.0.0-beta.80: patches/alchemy@2.0.0-beta.80.patch
   "@effect/vitest@4.0.5": patches/@effect__vitest@4.0.5.patch
   "@ff-labs/fff-node@0.11.0": patches/@ff-labs__fff-node@0.11.0.patch

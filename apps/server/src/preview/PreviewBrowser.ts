@@ -110,7 +110,7 @@ export class PreviewBrowserInstallingError extends Schema.TaggedError<PreviewBro
     const progress = this.unpacking
       ? "unpacking"
       : `${megabytes(this.downloadedBytes)} of ${megabytes(this.totalBytes)} MB downloaded`;
-    return `T3 is installing its headless browser (${progress}). Try again in a minute.`;
+    return `Vetra Code is installing its headless browser (${progress}). Try again in a minute.`;
   }
 }
 

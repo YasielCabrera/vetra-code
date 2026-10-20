@@ -178,3 +178,29 @@ it("resolves relay client tracing from runtime config with build-time fallback",
     null,
   );
 });
+
+it("product opt-out disables relay tracing with either built-in or runtime credentials", () => {
+  const fallback = {
+    tracesUrl: "https://embedded.example.test/v1/traces",
+    tracesDataset: "embedded-dataset",
+    tracesToken: "embedded-token",
+  };
+  const env = {
+    VETRA_TELEMETRY_ENABLED: "false",
+    VETRA_OTEL_SDK_DISABLED: "false",
+  };
+
+  assert.equal(resolveRelayClientTracingConfig(env, fallback), null);
+  assert.equal(
+    resolveRelayClientTracingConfig(
+      {
+        ...env,
+        VETRA_RELAY_CLIENT_OTLP_TRACES_URL: "https://runtime.example.test/v1/traces",
+        VETRA_RELAY_CLIENT_OTLP_TRACES_DATASET: "runtime-dataset",
+        VETRA_RELAY_CLIENT_OTLP_TRACES_TOKEN: "runtime-token",
+      },
+      fallback,
+    ),
+    null,
+  );
+});

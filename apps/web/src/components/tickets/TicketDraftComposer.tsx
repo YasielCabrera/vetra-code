@@ -19,14 +19,15 @@ import {
   collapseExpandedComposerCursor,
   composerSubmissionIntentForKey,
   detectComposerTrigger,
+  isPathSuggestionCurrent,
   replaceTextRange,
 } from "../../composer-logic";
 import { useEnvironmentSettings } from "../../hooks/useSettings";
 import { useTheme } from "../../hooks/useTheme";
-import { useViewportWidth } from "../../hooks/useViewportWidth";
+import { useSoftwareKeyboardOpen } from "../../hooks/useSoftwareKeyboardOpen";
 import { reviewCommentFromRecord, threadContextRecord } from "../../lib/composerContextRecords";
-import { useComposerPathSearch } from "../../lib/composerPathSearchState";
 import { useThreadShells } from "../../state/entities";
+import { useComposerPathSearch } from "../../state/queries";
 import { useEnvironments } from "../../state/environments";
 import { primaryServerKeybindingsAtom } from "../../state/server";
 import { useEnvironmentTickets } from "../../state/tickets";
@@ -84,7 +85,7 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
   const settings = useEnvironmentSettings(props.environmentId);
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const { resolvedTheme } = useTheme();
-  const viewportWidth = useViewportWidth();
+  const isSoftwareKeyboardOpen = useSoftwareKeyboardOpen();
   const { environments } = useEnvironments();
   const environment = environments.find((entry) => entry.environmentId === props.environmentId);
   const shells = useThreadShells();
@@ -99,9 +100,10 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
   const { trigger, setTrigger, dismissTrigger } = useComposerTriggerState(() => null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const listId = useId();
+  const pathCwd = props.project?.workspaceRoot ?? null;
   const paths = useComposerPathSearch({
     environmentId: props.environmentId,
-    cwd: trigger?.kind === "path" ? (props.project?.workspaceRoot ?? null) : null,
+    cwd: trigger?.kind === "path" ? pathCwd : null,
     query: trigger?.kind === "path" ? trigger.query : null,
   });
   const tickets = useEnvironmentTickets(
@@ -146,6 +148,7 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
           type: "path" as const,
           path: entry.path,
           pathKind: entry.kind,
+          searchTarget: paths.searchedTarget,
           label: entry.path.split("/").at(-1) ?? entry.path,
           description: entry.path.slice(0, Math.max(0, entry.path.lastIndexOf("/"))),
         })),
@@ -168,6 +171,7 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
     props.project?.id,
     props.sourceThreadId,
     paths.entries,
+    paths.searchedTarget,
     tickets,
   ]);
   const activeItem = items.find((item) => item.id === highlightedId) ?? items[0] ?? null;
@@ -185,8 +189,11 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
     if (!snapshot || !trigger) return;
     let record: TicketPromptRecord | null = null;
     let replacement: string;
-    if (item.type === "path") replacement = serializeComposerFileLink(item.path);
-    else if (item.type === "thread") {
+    if (item.type === "path") {
+      if (!isPathSuggestionCurrent(item.searchTarget, trigger, props.environmentId, pathCwd))
+        return;
+      replacement = serializeComposerFileLink(item.path);
+    } else if (item.type === "thread") {
       record = threadContextRecord(item.thread, item.label);
       replacement = formatComposerContextReference(record);
     } else if (item.type === "ticket") {
@@ -312,7 +319,7 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                     composerSubmissionIntentForKey({
                       event,
                       keybindings,
-                      isMobileViewport: viewportWidth < 640,
+                      isSoftwareKeyboardOpen,
                       isDraftThread: false,
                       sendShortcut: settings.sendShortcut,
                       prompt: props.prompt,

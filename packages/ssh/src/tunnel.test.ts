@@ -126,14 +126,12 @@ describe("ssh tunnel scripts", () => {
     assert.notInclude(script, "npm exec");
     assert.notInclude(script, "@latest");
     assert.notInclude(script, 'exec vetra "$@"');
-    // Concurrent launches serialize on a per-version mkdir lock and recheck
+    // Concurrent launches serialize on a per-version lock file and recheck
     // the completion marker after acquiring it.
     assert.include(
       script,
       'VETRA_LOCK="$HOME/.vetra-code/runtime/versions/.$VETRA_ARCHIVE_VERSION.install.lock"',
     );
-    assert.include(script, 'while ! mkdir "$VETRA_LOCK" 2>/dev/null; do');
-    assert.include(script, 'mv "$VETRA_LOCK/pid.tmp" "$VETRA_LOCK/pid"');
     assert.include(script, 'if ! kill -0 "$VETRA_LOCK_OWNER" 2>/dev/null; then');
     assert.include(script, 'if [ "$VETRA_LOCK_UNOWNED" -ge 5 ]; then');
     assert.include(script, 'if [ "$VETRA_LOCK_WAITED" -ge 360 ]; then');
@@ -241,7 +239,6 @@ describe("ssh tunnel scripts", () => {
 
   it("embeds the runner in the launch script byte for byte", () => {
     const runner = SshTunnel.buildRemoteT3RunnerScript(ARCHIVE);
-    assert.include(runner, 'printf \'%s\\n\' "$$" > "$VETRA_LOCK/pid.tmp"');
     assert.include(SshTunnel.buildRemoteLaunchScript(ARCHIVE), runner);
   });
 
@@ -579,7 +576,9 @@ describe("ssh tunnel scripts", () => {
                 ...makeSuccessfulProcess(""),
                 exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(1)),
                 stderr: Stream.make(
-                  new TextEncoder().encode("Remote T3 server did not stop within 2 seconds.\n"),
+                  new TextEncoder().encode(
+                    "Remote Vetra Code server did not stop within 2 seconds.\n",
+                  ),
                 ),
               };
             }
@@ -622,7 +621,7 @@ describe("ssh tunnel scripts", () => {
             assert.instanceOf(disconnected.failure, SshCommandError);
             assert.equal(
               disconnected.failure.message,
-              "Remote T3 server did not stop within 2 seconds.",
+              "Remote Vetra Code server did not stop within 2 seconds.",
             );
           }
         } else {
@@ -1061,13 +1060,22 @@ describe("remote port picker", () => {
   );
 });
 
-const runScript = (home: string, args: ReadonlyArray<string>) =>
+const runScript = (
+  home: string,
+  args: ReadonlyArray<string>,
+  options?: {
+    path?: string;
+    stdin?: Stream.Stream<Uint8Array>;
+    onStderrLine?: (line: string) => Effect.Effect<void>;
+  },
+) =>
   Effect.gen(function* () {
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
     const child = yield* spawner.spawn(
       ChildProcess.make("sh", args, {
-        env: { PATH: process.env.PATH ?? "", HOME: home },
+        env: { PATH: options?.path ?? process.env.PATH ?? "", HOME: home },
         extendEnv: false,
+        ...(options?.stdin ? { stdin: { stream: options.stdin } } : {}),
       }),
     );
     const [stdout, stderr, exitCode] = yield* Effect.all(
@@ -1081,9 +1089,11 @@ const runScript = (home: string, args: ReadonlyArray<string>) =>
         ),
         child.stderr.pipe(
           Stream.decodeText(),
+          Stream.splitLines,
+          Stream.tap((line) => options?.onStderrLine?.(line) ?? Effect.void),
           Stream.runFold(
             () => "",
-            (acc, chunk) => acc + chunk,
+            (acc, line) => `${acc}${line}\n`,
           ),
         ),
         child.exitCode.pipe(Effect.map(Number)),
@@ -1099,7 +1109,8 @@ describe("archive runner script", () => {
   const windowsHost = hostPlatform === "win32";
   const archiveVersion = "1.2.3-preview.20260911.4";
 
-  const runRunner = (home: string, runner: string) => runScript(home, [runner, "--version"]);
+  const runRunner = (home: string, runner: string, options?: Parameters<typeof runScript>[2]) =>
+    runScript(home, [runner, "--version"], options);
 
   const makeMirror = Effect.fn("makeMirror")(function* (root: string) {
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
@@ -1135,11 +1146,45 @@ describe("archive runner script", () => {
         );
         const home = `${root}/home`;
         yield* fs.makeDirectory(home, { recursive: true });
-
-        const results = yield* Effect.all(
-          [runRunner(home, runner), runRunner(home, runner), runRunner(home, runner)],
-          { concurrency: "unbounded" },
-        );
+        // Reproduce mkdir succeeding on EEXIST, even on hosts without the uutils bug.
+        const bin = `${root}/bin`;
+        yield* fs.makeDirectory(bin);
+        for (const [name, script] of Object.entries({
+          mkdir: 'PATH=${PATH#*:}\nexec mkdir -p "$@"',
+          tar: 'echo >> "${0%/*}/installs"\necho installing >&2\nread -r release\nPATH=${PATH#*:}\nexec tar "$@"',
+          sleep: 'echo waiting >&2\nPATH=${PATH#*:}\nexec sleep "$@"',
+        })) {
+          yield* fs.writeFileString(`${bin}/${name}`, `#!/bin/sh\n${script}\n`);
+          yield* fs.chmod(`${bin}/${name}`, 0o755);
+        }
+        const path = `${bin}:${process.env.PATH ?? ""}`;
+        const installing = yield* Deferred.make<void>();
+        const contended = yield* Deferred.make<void>();
+        // Hold the first extraction until another runner either waits for the lock
+        // or incorrectly begins installing. This forces contention without timing assumptions.
+        const first = yield* runRunner(home, runner, {
+          path,
+          stdin: Stream.fromEffect(
+            Deferred.await(contended).pipe(Effect.as(new TextEncoder().encode("release\n"))),
+          ),
+          onStderrLine: (line) =>
+            line === "installing"
+              ? Deferred.succeed(installing, undefined).pipe(Effect.asVoid)
+              : Effect.void,
+        }).pipe(Effect.forkChild);
+        yield* Deferred.await(installing);
+        const contender = runRunner(home, runner, {
+          path,
+          stdin: Stream.make(new TextEncoder().encode("release\n")),
+          onStderrLine: (line) =>
+            line === "installing" || line === "waiting"
+              ? Deferred.succeed(contended, undefined).pipe(Effect.asVoid)
+              : Effect.void,
+        });
+        const results = yield* Effect.all([Fiber.join(first), contender, contender], {
+          concurrency: "unbounded",
+        });
+        assert.equal(yield* fs.readFileString(`${bin}/installs`), "\n");
         for (const result of results) {
           assert.equal(result.exitCode, 0, result.stderr);
           assert.include(result.stdout, `vetra v${archiveVersion}`);
@@ -1153,13 +1198,12 @@ describe("archive runner script", () => {
 
         const lock = `${versionsDir}/.${archiveVersion}.install.lock`;
         yield* fs.remove(`${versionsDir}/${archiveVersion}`, { recursive: true });
-        yield* fs.makeDirectory(lock);
-        yield* fs.writeFileString(`${lock}/pid`, "999999\n");
+        yield* fs.writeFileString(lock, "999999\n");
         const afterDead = yield* runRunner(home, runner);
         assert.equal(afterDead.exitCode, 0, afterDead.stderr);
 
         yield* fs.remove(`${versionsDir}/${archiveVersion}`, { recursive: true });
-        yield* fs.makeDirectory(lock);
+        yield* fs.writeFileString(lock, "");
         const afterUnowned = yield* runRunner(home, runner);
         assert.equal(afterUnowned.exitCode, 0, afterUnowned.stderr);
         assert.isFalse(yield* fs.exists(lock));
@@ -1275,12 +1319,7 @@ server.listen(Number(flag("--port")), "127.0.0.1", () => {
       assert.equal(launched.serverKind, "managed");
       return { launched, pid };
     });
-    // An unreaped server runs under a parent that never waits on it, so once it
-    // exits it lingers as a zombie.
-    const startDefaultHomeServer = (
-      flags: ReadonlyArray<string>,
-      options?: { readonly unreaped?: boolean },
-    ) =>
+    const startDefaultHomeServer = (flags: ReadonlyArray<string>) =>
       Effect.gen(function* () {
         const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
         const args = [
@@ -1292,17 +1331,13 @@ server.listen(Number(flag("--port")), "127.0.0.1", () => {
           `${home}/.vetra-code`,
           ...flags,
         ];
-        const server = yield* spawner.spawn(
-          options?.unreaped
-            ? ChildProcess.make("sh", ["-c", 'node "$@" & exec sleep 600', "sh", ...args])
-            : ChildProcess.make("node", args),
-        );
+        const server = yield* spawner.spawn(ChildProcess.make("node", args));
         const port = yield* server.stdout.pipe(
           Stream.decodeText(),
           Stream.splitLines,
           Stream.runHead,
         );
-        return Number(Option.getOrThrow(port));
+        return { port: Number(Option.getOrThrow(port)), exitCode: server.exitCode };
       });
     return {
       home,
@@ -1337,7 +1372,7 @@ server.listen(Number(flag("--port")), "127.0.0.1", () => {
           `${launched.remotePort}`,
         );
 
-        const servicePort = yield* startDefaultHomeServer([]);
+        const { port: servicePort } = yield* startDefaultHomeServer([]);
         assert.deepEqual(yield* runLaunch, {
           remotePort: servicePort,
           serverKind: "external",
@@ -1435,7 +1470,17 @@ server.listen(Number(flag("--port")), "127.0.0.1", () => {
           ),
         );
         process.kill(zombie, "SIGKILL");
-        assert.include((yield* runScript(home, ["-c", `ps -o stat= -p ${zombie}`])).stdout, "Z");
+        // SIGKILL delivery is asynchronous; establish the zombie fixture before launching.
+        const zombieState = yield* runScript(home, [
+          "-c",
+          `attempt=0; while [ "$attempt" -lt 100 ]; do
+            state=$(ps -o stat= -p ${zombie}) || exit 1
+            case "$state" in *Z*) printf '%s\\n' "$state"; exit 0;; esac
+            attempt=$((attempt + 1))
+          done; printf '%s\\n' "$state"; exit 1`,
+        ]);
+        assert.equal(zombieState.exitCode, 0, zombieState.stdout);
+        assert.include(zombieState.stdout, "Z");
         yield* fs.writeFileString(`${stateDir}/pid`, `${zombie}\n`);
         yield* fs.writeFileString(
           `${home}/.vetra-code/userdata/server-runtime.json`,
@@ -1481,7 +1526,7 @@ server.listen(Number(flag("--port")), "127.0.0.1", () => {
         const fs = yield* FileSystem.FileSystem;
         const { stateDir, runLaunch, startDefaultHomeServer } = yield* prepareLaunch;
         yield* fs.writeFileString(`${stateDir}/managed`, "managed\n");
-        const servicePort = yield* startDefaultHomeServer(["--answer-once"]);
+        const { port: servicePort } = yield* startDefaultHomeServer(["--answer-once"]);
 
         assert.deepEqual(yield* runLaunch, { remotePort: servicePort, serverKind: "external" });
         assert.isFalse(yield* fs.exists(`${stateDir}/pid`));
@@ -1493,13 +1538,36 @@ server.listen(Number(flag("--port")), "127.0.0.1", () => {
     "launches a replacement when the adopted server exits during the handover",
     () =>
       Effect.gen(function* () {
-        const { readManagedPid, runLaunch, launchManaged, startDefaultHomeServer } =
+        const fs = yield* FileSystem.FileSystem;
+        const { home, launch, readManagedPid, launchManaged, startDefaultHomeServer } =
           yield* prepareLaunch;
         const { pid: previousPid } = yield* launchManaged;
-        yield* startDefaultHomeServer(["--exit-after-answer"], { unreaped: true });
+        const server = yield* startDefaultHomeServer(["--exit-after-answer"]);
+        const adopted = yield* Deferred.make<void>();
+        const script = yield* fs.readFileString(launch);
+        const adoption = 'ADOPTED_PID="$DEFAULT_RUNTIME_PID"';
+        assert.include(script, adoption);
+        // A flushed response can arrive before process exit. Hold the launcher at
+        // adoption until the fixture has exited, then test its handover check.
+        yield* fs.writeFileString(
+          launch,
+          script.replace(adoption, `${adoption}\n    echo adopted >&2\n    read -r release`),
+        );
 
-        const result = yield* runLaunch;
-        assert.equal(result.serverKind, "managed");
+        const result = yield* runScript(home, [launch, "test-state"], {
+          stdin: Stream.fromEffect(
+            Deferred.await(adopted).pipe(
+              Effect.andThen(server.exitCode.pipe(Effect.orDie)),
+              Effect.as(new TextEncoder().encode("release\n")),
+            ),
+          ),
+          onStderrLine: (line) =>
+            line === "adopted"
+              ? Deferred.succeed(adopted, undefined).pipe(Effect.asVoid)
+              : Effect.void,
+        });
+        assert.equal(result.exitCode, 0, result.stderr);
+        assert.equal(launchResult(result.stdout).serverKind, "managed");
         const replacementPid = yield* readManagedPid;
         assert.notEqual(replacementPid, previousPid);
         assert.isTrue(isAlive(replacementPid));
