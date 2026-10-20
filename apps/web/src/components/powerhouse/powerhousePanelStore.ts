@@ -8,7 +8,11 @@
  * document selection across a reload would re-fetch data from a reactor that
  * may no longer be running, so selection resets instead.
  */
-import type { PowerhouseDatabaseRowLimit, PowerhouseDatabaseTargetId } from "@t3tools/contracts";
+import type {
+  PowerhouseGraphqlHeaders,
+  PowerhouseDatabaseRowLimit,
+  PowerhouseDatabaseTargetId,
+} from "@t3tools/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import * as Predicate from "effect/Predicate";
@@ -75,6 +79,11 @@ export const EMPTY_DATABASE_SESSION: PowerhouseDatabaseSession = {
 interface PowerhousePanelStoreState {
   /** Persisted, keyed by `powerhouseProjectKey`. */
   byProjectKey: Record<string, PowerhouseProjectPreferences>;
+  /** Credentials live in memory and are cleared when the endpoint changes. */
+  reactorSessionByProjectKey: Record<
+    string,
+    { readonly headers: PowerhouseGraphqlHeaders | undefined; readonly revision: number }
+  >;
   /** Legacy/default project choice, keyed by `powerhouseWorkspaceKey`. */
   selectedProjectByWorkspaceKey: Record<string, string>;
   /** Persisted, keyed by `powerhousePanelWorkspaceKey`. */
@@ -84,7 +93,11 @@ interface PowerhousePanelStoreState {
   explorerSelectionByPanelProjectKey: Record<string, PowerhouseExplorerSelection>;
   databaseSessionByPanelProjectKey: Record<string, PowerhouseDatabaseSession>;
   selectProject: (panelWorkspaceKey: string, projectPath: string) => void;
-  setReactorUrlOverride: (projectKey: string, url: string | null) => void;
+  setReactorUrlOverride: (
+    projectKey: string,
+    url: string | null,
+    headers?: PowerhouseGraphqlHeaders,
+  ) => void;
   selectModel: (panelProjectKey: string, directoryName: string | null) => void;
   selectSpec: (panelProjectKey: string, specIndex: number | null) => void;
   selectDrive: (panelProjectKey: string, drive: PowerhouseExplorerCrumb | null) => void;
@@ -241,6 +254,7 @@ export const usePowerhousePanelStore = create<PowerhousePanelStoreState>()(
   persist(
     (set) => ({
       byProjectKey: {},
+      reactorSessionByProjectKey: {},
       selectedProjectByWorkspaceKey: {},
       selectedProjectByPanelKey: {},
       modelSelectionByPanelProjectKey: {},
@@ -253,14 +267,26 @@ export const usePowerhousePanelStore = create<PowerhousePanelStoreState>()(
             [panelWorkspaceKey]: projectPath,
           },
         })),
-      setReactorUrlOverride: (projectKey, url) =>
+      setReactorUrlOverride: (projectKey, url, headers) =>
         set((state) => {
           const normalized = url === null ? null : normalizeReactorUrl(url);
           if (url !== null && normalized === null) return state;
           const previous = selectPowerhousePreferences(state.byProjectKey, projectKey);
-          if (previous.reactorUrlOverride === normalized) return state;
+          const nextHeaders = normalized === null ? undefined : headers;
+          if (
+            previous.reactorUrlOverride === normalized &&
+            state.reactorSessionByProjectKey[projectKey]?.headers === nextHeaders
+          )
+            return state;
           return {
             ...updatePreferences(state, projectKey, { reactorUrlOverride: normalized }),
+            reactorSessionByProjectKey: {
+              ...state.reactorSessionByProjectKey,
+              [projectKey]: {
+                headers: nextHeaders,
+                revision: (state.reactorSessionByProjectKey[projectKey]?.revision ?? 0) + 1,
+              },
+            },
             // A path belongs to one reactor. Carrying it to another address can
             // silently open an unrelated document with the same identifier.
             explorerSelectionByPanelProjectKey: Object.fromEntries(

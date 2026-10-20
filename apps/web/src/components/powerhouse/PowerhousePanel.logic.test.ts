@@ -13,6 +13,7 @@ import {
   isUsableReactorUrl,
   latestSpecificationIndex,
   normalizeReactorUrl,
+  parseReactorHeaders,
   resolveSpecificationIndex,
   specificationLabel,
 } from "./PowerhousePanel.logic";
@@ -200,5 +201,43 @@ describe("list presentation", () => {
     expect(documentDisplayName({ name: "Invoices", slug: "inv", id: "d1" })).toBe("Invoices");
     expect(documentDisplayName({ name: "  ", slug: "inv", id: "d1" })).toBe("inv");
     expect(documentDisplayName({ name: null, slug: null, id: "d1" })).toBe("d1");
+  });
+});
+
+describe("reactor authentication", () => {
+  it("accepts bearer tokens and custom headers", () => {
+    expect(parseReactorHeaders('{"Authorization":"Bearer token","X-Api-Key":"key"}')).toEqual({
+      authorization: "Bearer token",
+      "x-api-key": "key",
+    });
+    expect(parseReactorHeaders("")).toBeUndefined();
+    expect(parseReactorHeaders("{}")).toBeUndefined();
+  });
+
+  it.each([
+    "{broken",
+    "[]",
+    "null",
+    '{"Authorization":42}',
+    '{"bad header":"x"}',
+    '{"Authorization":"token\\r\\nInjected: yes"}',
+  ])("rejects malformed headers: %s", (input) => {
+    expect(parseReactorHeaders(input)).toBeNull();
+  });
+
+  it("gives an actionable authentication error instead of suggesting the address is wrong", () => {
+    const copy = describeReactorFailure({
+      failure: "authentication_required",
+      url: "https://reactor.example",
+    });
+    expect(copy.title).toBe("Authentication required");
+    expect(copy.detail).toContain("Custom headers");
+    expect(copy.detail).toContain("Bearer");
+    const forbidden = describeReactorFailure({
+      failure: "forbidden",
+      url: "https://reactor.example",
+    });
+    expect(forbidden.title).toBe("Access denied");
+    expect(forbidden.detail).toContain("permission");
   });
 });

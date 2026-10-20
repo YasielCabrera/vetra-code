@@ -22,6 +22,10 @@ import {
   type PowerhouseReactorExecuteGraphqlInput,
   type PowerhouseReactorGetOperationsInput,
   type PowerhouseReactorListDocumentsInput,
+  type PowerhouseReactorListDrivesInput,
+  type PowerhouseReactorProbeInput,
+  type PowerhouseGraphqlHeaders,
+  PowerhouseReactorError,
   PowerhouseRpcGroup,
   WS_METHODS,
 } from "@t3tools/contracts";
@@ -41,9 +45,10 @@ const loopbackUrl = (port: number) => `http://127.0.0.1:${port}`;
 export function reactorCandidates(input: {
   readonly overrideUrl?: string | undefined;
   readonly configuredPort?: number | undefined;
+  readonly headers?: PowerhouseGraphqlHeaders | undefined;
 }): ReadonlyArray<PowerhouseReactorClient.PowerhouseReactorCandidate> {
   if (input.overrideUrl !== undefined) {
-    return [{ url: input.overrideUrl, source: "override" }];
+    return [{ url: input.overrideUrl, source: "override", headers: input.headers }];
   }
   const candidates: Array<PowerhouseReactorClient.PowerhouseReactorCandidate> = [];
   const seen = new Set<number>();
@@ -78,27 +83,28 @@ const makePowerhouseWsHandlers = Effect.gen(function* () {
       readonly projectPath?: string | undefined;
       readonly directoryName: string;
     }) => project.getDocumentModel(input),
-    [WS_METHODS.powerhouseReactorProbe]: (input: {
-      readonly cwd: string;
-      readonly projectPath?: string | undefined;
-      readonly overrideUrl?: string | undefined;
-    }) =>
-      Effect.gen(function* () {
-        // An override needs no config, so a project whose config went
-        // missing can still be pointed at a running reactor.
-        const configuredPort =
-          input.overrideUrl === undefined
-            ? (yield* project.readConfig(input)).reactorPort
-            : undefined;
-        return yield* reactor.probe(
-          reactorCandidates({
-            ...(input.overrideUrl === undefined ? {} : { overrideUrl: input.overrideUrl }),
-            ...(configuredPort === undefined ? {} : { configuredPort }),
-          }),
-        );
-      }),
-    [WS_METHODS.powerhouseReactorListDrives]: (input: { readonly url: string }) =>
-      reactor.listDrives(input.url),
+    [WS_METHODS.powerhouseReactorProbe]: Effect.fn("PowerhouseHandlers.reactorProbe")(function* (
+      input: PowerhouseReactorProbeInput,
+    ) {
+      if (input.headers !== undefined && input.overrideUrl === undefined) {
+        return yield* new PowerhouseReactorError({ failure: "invalid_request" });
+      }
+      // An override needs no config, so a project whose config went
+      // missing can still be pointed at a running reactor.
+      const configuredPort =
+        input.overrideUrl === undefined
+          ? (yield* project.readConfig(input)).reactorPort
+          : undefined;
+      return yield* reactor.probe(
+        reactorCandidates({
+          ...(input.overrideUrl === undefined ? {} : { overrideUrl: input.overrideUrl }),
+          ...(configuredPort === undefined ? {} : { configuredPort }),
+          ...(input.headers === undefined ? {} : { headers: input.headers }),
+        }),
+      );
+    }),
+    [WS_METHODS.powerhouseReactorListDrives]: (input: PowerhouseReactorListDrivesInput) =>
+      reactor.listDrives(input.url, input.headers),
     [WS_METHODS.powerhouseReactorListDocuments]: (input: PowerhouseReactorListDocumentsInput) =>
       reactor.listDocuments(input),
     [WS_METHODS.powerhouseReactorGetDocument]: (input: PowerhouseReactorGetDocumentInput) =>

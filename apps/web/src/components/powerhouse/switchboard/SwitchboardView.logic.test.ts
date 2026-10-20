@@ -101,3 +101,24 @@ describe("Switchboard GraphiQL bridge", () => {
     ).toBe(false);
   });
 });
+
+describe("Switchboard connection authentication", () => {
+  it("authenticates introspection and operations before any per-operation headers exist", () => {
+    expect(normalizeGraphqlHeaders(undefined, { authorization: "Bearer renown-token" })).toEqual({
+      authorization: "Bearer renown-token",
+    });
+  });
+
+  it("lets per-operation headers override connection headers case-insensitively", () => {
+    expect(
+      normalizeGraphqlHeaders(
+        { Authorization: "Bearer operation-token", "x-request-id": "test" },
+        { authorization: "Bearer connection-token", "x-api-key": "key" },
+      ),
+    ).toEqual({
+      Authorization: "Bearer operation-token",
+      "x-api-key": "key",
+      "x-request-id": "test",
+    });
+  });
+});

@@ -1,5 +1,6 @@
 import type {
   EnvironmentId,
+  PowerhouseGraphqlHeaders,
   PowerhouseReactorDocumentViewFilter,
   PowerhouseReactorOperation,
 } from "@t3tools/contracts";
@@ -28,6 +29,7 @@ const PAGE_LIMIT = 50;
 interface OperationPageFetcherProps {
   environmentId: EnvironmentId;
   url: string;
+  headers?: PowerhouseGraphqlHeaders | undefined;
   documentId: string;
   view: PowerhouseReactorDocumentViewFilter | undefined;
   cursor: string | null;
@@ -45,6 +47,7 @@ interface OperationPageFetcherProps {
 function OperationPageFetcher({
   environmentId,
   url,
+  headers,
   documentId,
   view,
   cursor,
@@ -57,6 +60,7 @@ function OperationPageFetcher({
       environmentId,
       input: {
         url,
+        ...(headers === undefined ? {} : { headers }),
         documentId,
         ...(view === undefined ? {} : { view }),
         limit: PAGE_LIMIT,
@@ -160,12 +164,19 @@ function OperationRow({ operation }: { operation: PowerhouseReactorOperation }) 
 interface OperationsListProps {
   environmentId: EnvironmentId;
   url: string;
+  headers?: PowerhouseGraphqlHeaders | undefined;
   documentId: string;
   view: PowerhouseReactorDocumentViewFilter | undefined;
 }
 
 /** The document's operation log — the event-sourced history behind its state. */
-export function OperationsList({ environmentId, url, documentId, view }: OperationsListProps) {
+export function OperationsList({
+  environmentId,
+  url,
+  headers,
+  documentId,
+  view,
+}: OperationsListProps) {
   const [refreshGeneration, setRefreshGeneration] = useState(0);
   const identify = useCallback(
     (item: PowerhouseReactorOperation) => `${item.index}:${item.hash ?? ""}`,
@@ -196,6 +207,7 @@ export function OperationsList({ environmentId, url, documentId, view }: Operati
           key={`${refreshGeneration}:${cursorPageKey(cursor)}`}
           environmentId={environmentId}
           url={url}
+          headers={headers}
           documentId={documentId}
           view={view}
           cursor={cursor}

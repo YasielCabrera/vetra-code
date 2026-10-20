@@ -181,6 +181,101 @@ describe("PowerhouseReactorClient.probe", () => {
     }),
   );
 
+  it.effect("preserves HTTP authentication and permission failures from middleware", () =>
+    Effect.gen(function* () {
+      for (const status of [401, 403]) {
+        const error = yield* withClient(
+          reactorLayer(() => new Response('{"error":"Authentication required"}', { status })),
+          (client) =>
+            client.probe([{ url: "https://reactor.example/graphql", source: "override" }]),
+        ).pipe(Effect.flip);
+        expect(error.failure).toBe(status === 401 ? "authentication_required" : "forbidden");
+        expect(error.status).toBe(status);
+        expect(error.url).toBe("https://reactor.example/graphql");
+        expect(error.attempted).toEqual(["https://reactor.example/graphql"]);
+      }
+    }),
+  );
+
+  it.effect("recognizes GraphQL authentication errors before decoding partial system data", () =>
+    Effect.gen(function* () {
+      for (const graphqlError of [
+        { message: "Sign in", extensions: { code: "UNAUTHENTICATED" } },
+        { message: "Authentication required" },
+        { message: "Unauthorized" },
+        { message: "Expired", extensions: { http: { status: 401 } } },
+        { message: "Access denied", extensions: { code: "FORBIDDEN" } },
+      ]) {
+        const error = yield* withClient(
+          reactorLayer(() => json({ data: { system: null }, errors: [graphqlError] })),
+          (client) => client.probe([{ url: "https://reactor.example", source: "override" }]),
+        ).pipe(Effect.flip);
+        expect(error.failure).toBe(
+          graphqlError.extensions?.code === "FORBIDDEN" ? "forbidden" : "authentication_required",
+        );
+      }
+    }),
+  );
+
+  it.effect("authenticates the probe without retaining credentials in the connection", () =>
+    Effect.gen(function* () {
+      const recorded: Array<RecordedRequest> = [];
+      const connection = yield* withClient(
+        reactorLayer(
+          (request) =>
+            request.headers.authorization === "Bearer renown-token"
+              ? json(SYSTEM_OK)
+              : new Response("Authentication required", { status: 401 }),
+          recorded,
+        ),
+        (client) =>
+          client.probe([
+            {
+              url: "https://reactor.example",
+              source: "override",
+              headers: { Authorization: "Bearer renown-token" },
+            },
+          ]),
+      );
+      expect(recorded[0]?.headers.authorization).toBe("Bearer renown-token");
+      expect(connection).toEqual({
+        url: "https://reactor.example",
+        source: "override",
+        system: SYSTEM_OK.data.system,
+      });
+    }),
+  );
+
+  it.effect("keeps authentication errors when later autodetected candidates fail", () =>
+    Effect.gen(function* () {
+      const error = yield* withClient(
+        reactorLayer((request) =>
+          request.url.includes(":4001/")
+            ? new Response("Authentication required", { status: 401 })
+            : json({ data: {} }),
+        ),
+        (client) =>
+          client.probe([
+            { url: "http://127.0.0.1:4001", source: "config" },
+            { url: "http://127.0.0.1:4000", source: "default" },
+          ]),
+      ).pipe(Effect.flip);
+      expect(error.failure).toBe("authentication_required");
+      expect(error.url).toBe("http://127.0.0.1:4001");
+    }),
+  );
+
+  it.effect("preserves other HTTP failures instead of claiming the endpoint is not a reactor", () =>
+    Effect.gen(function* () {
+      const error = yield* withClient(
+        reactorLayer(() => new Response("Service unavailable", { status: 503 })),
+        (client) => client.probe([{ url: "https://reactor.example", source: "override" }]),
+      ).pipe(Effect.flip);
+      expect(error.failure).toBe("http_error");
+      expect(error.status).toBe(503);
+    }),
+  );
+
   it.effect("reports an unparseable override URL as invalid_url", () =>
     Effect.gen(function* () {
       const error = yield* withClient(
@@ -877,6 +972,75 @@ describe("PowerhouseReactorClient.executeGraphql", () => {
   );
 });
 
+describe("authenticated reactor reads", () => {
+  it.effect("authenticates every explorer query and operation", () =>
+    Effect.gen(function* () {
+      const recorded: Array<RecordedRequest> = [];
+      const url = "https://reactor.example";
+      const headers = { Authorization: "Bearer renown-token" };
+      yield* withClient(
+        reactorLayer((request) => {
+          if (request.headers.authorization !== "Bearer renown-token")
+            return new Response("Authentication required", { status: 401 });
+          if (request.body.includes("documentOperations"))
+            return json({ data: { documentOperations: { items: [], cursor: null } } });
+          if (request.body.includes("findDocuments"))
+            return json({
+              data: { findDocuments: { items: [document("drive-1")], cursor: null } },
+            });
+          return json({ data: { document: { document: document("drive-1"), childIds: [] } } });
+        }, recorded),
+        (client) =>
+          Effect.gen(function* () {
+            const drives = yield* client.listDrives(url, headers);
+            expect(drives.drives.map((drive) => drive.id)).toEqual(["drive-1"]);
+            for (const search of [
+              { type: "powerhouse/document-drive" },
+              { identifiers: ["drive-1"] },
+              { parentId: "root", identifiers: ["drive-1"] },
+            ]) {
+              const docs = yield* client.listDocuments({ url, headers, search });
+              expect(docs.documents.map((doc) => doc.id)).toEqual(["drive-1"]);
+            }
+            expect((yield* client.getDocument({ url, headers, documentId: "drive-1" })).id).toBe(
+              "drive-1",
+            );
+            expect(
+              (yield* client.getOperations({ url, headers, documentId: "drive-1" })).operations,
+            ).toEqual([]);
+            expect(
+              (yield* client.executeGraphql({ url, headers, query: "{ document { id } }" })).status,
+            ).toBe(200);
+          }),
+      );
+      expect(recorded).toHaveLength(8);
+      expect(
+        recorded.every((request) => request.headers.authorization === "Bearer renown-token"),
+      ).toBe(true);
+    }),
+  );
+
+  it.effect("reports expired credentials in executed operations", () =>
+    Effect.gen(function* () {
+      for (const response of [
+        () => new Response("Authentication required", { status: 401 }),
+        () =>
+          json({ errors: [{ message: "Expired token", extensions: { code: "UNAUTHENTICATED" } }] }),
+      ]) {
+        const error = yield* withClient(reactorLayer(response), (client) =>
+          client.executeGraphql({
+            url: "https://reactor.example",
+            query: "{ system { version } }",
+            headers: { Authorization: "Bearer expired" },
+          }),
+        ).pipe(Effect.flip);
+        expect(error.failure).toBe("authentication_required");
+        expect(error.message).toContain("Add or update");
+      }
+    }),
+  );
+});
+
 describe("PowerhouseReactorClient failures", () => {
   it.effect("classifies a non-2xx response as http_error with its status", () =>
     Effect.gen(function* () {
@@ -903,11 +1067,11 @@ describe("PowerhouseReactorClient failures", () => {
   it.effect("surfaces GraphQL error messages", () =>
     Effect.gen(function* () {
       const error = yield* withClient(
-        reactorLayer(() => json({ errors: [{ message: "Unauthorized" }] })),
+        reactorLayer(() => json({ errors: [{ message: "Unknown document type" }] })),
         (client) => client.listDrives("http://127.0.0.1:4001"),
       ).pipe(Effect.flip);
       expect(error.failure).toBe("graphql_error");
-      expect(error.graphqlMessages).toEqual(["Unauthorized"]);
+      expect(error.graphqlMessages).toEqual(["Unknown document type"]);
     }),
   );
 

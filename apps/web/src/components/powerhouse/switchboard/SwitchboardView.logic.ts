@@ -220,13 +220,17 @@ export function shouldShowSwitchboardResponsePlaceholder(input: {
 
 export function normalizeGraphqlHeaders(
   headers: Readonly<Record<string, unknown>> | undefined,
+  connectionHeaders?: Readonly<Record<string, string>>,
 ): Record<string, string> | undefined {
-  const normalized: Record<string, string> = {};
+  const normalized: Record<string, string> = { ...connectionHeaders };
   for (const [name, value] of Object.entries(headers ?? {})) {
-    if (typeof value === "string") normalized[name] = value;
-    else if (typeof value === "number" || typeof value === "boolean") {
-      normalized[name] = String(value);
-    }
+    if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean")
+      continue;
+    const existingName = Object.keys(normalized).find(
+      (key) => key.toLowerCase() === name.toLowerCase(),
+    );
+    if (existingName !== undefined) delete normalized[existingName];
+    normalized[name] = String(value);
   }
   return Object.keys(normalized).length === 0 ? undefined : normalized;
 }

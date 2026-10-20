@@ -1,4 +1,4 @@
-import type { PowerhouseReactorError } from "@t3tools/contracts";
+import type { PowerhouseReactorError, PowerhouseGraphqlHeaders } from "@t3tools/contracts";
 import { RadioTower } from "lucide-react";
 
 import { describeReactorFailure } from "../PowerhousePanel.logic";
@@ -8,7 +8,8 @@ interface ReactorConnectionCardProps {
   error: PowerhouseReactorError | null;
   otherError: string | null;
   overrideUrl: string | null;
-  onSetOverride: (url: string | null) => void;
+  headers?: PowerhouseGraphqlHeaders | undefined;
+  onSetOverride: (url: string | null, headers?: PowerhouseGraphqlHeaders) => void;
   onRetry: () => void;
 }
 
@@ -22,6 +23,7 @@ export function ReactorConnectionCard({
   error,
   otherError,
   overrideUrl,
+  headers,
   onSetOverride,
   onRetry,
 }: ReactorConnectionCardProps) {
@@ -34,7 +36,7 @@ export function ReactorConnectionCard({
       : describeReactorFailure(error);
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto scrollbar-gutter-both">
       <div className="mx-auto flex min-h-full w-full max-w-lg items-center px-4 py-8">
         <div className="w-full rounded-2xl border border-border/70 bg-card/70 p-4 shadow-xs/5 @[32rem]:p-5">
           <div className="flex items-start gap-3">
@@ -52,6 +54,11 @@ export function ReactorConnectionCard({
           <div className="mt-5">
             <ReactorUrlForm
               overrideUrl={overrideUrl}
+              headers={headers}
+              detectedUrl={error?.url}
+              authenticationRequired={
+                error?.failure === "authentication_required" || error?.failure === "forbidden"
+              }
               onSetOverride={onSetOverride}
               onRetry={onRetry}
             />

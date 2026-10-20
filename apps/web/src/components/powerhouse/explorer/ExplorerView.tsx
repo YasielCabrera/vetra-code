@@ -1,7 +1,8 @@
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId, PowerhouseGraphqlHeaders } from "@t3tools/contracts";
 import { ChevronRight } from "lucide-react";
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useId, useMemo, useState } from "react";
 
+import { Field, FieldDescription, FieldLabel } from "~/components/ui/field";
 import { powerhouseEnvironment } from "~/state/powerhouse";
 import { useEnvironmentQuery } from "~/state/query";
 
@@ -18,6 +19,7 @@ import {
   type PowerhouseDocumentTypeOption,
 } from "./documentTypeOptions";
 import { DriveList } from "./DriveList";
+import { DocumentTypePicker } from "./DocumentTypePicker";
 import { ReactorConnectionCard } from "./ReactorConnectionCard";
 import {
   documentFilterCount,
@@ -33,8 +35,9 @@ interface ExplorerViewProps {
   cwd: string;
   projectPath: string;
   overrideUrl: string | null;
+  headers?: PowerhouseGraphqlHeaders | undefined;
   selection: PowerhouseExplorerSelection;
-  onSetOverride: (url: string | null) => void;
+  onSetOverride: (url: string | null, headers?: PowerhouseGraphqlHeaders) => void;
   onSelectDrive: (drive: PowerhouseExplorerCrumb) => void;
   onEnterFolder: (folder: PowerhouseExplorerCrumb) => void;
   onPopToDepth: (depth: number) => void;
@@ -51,6 +54,7 @@ export function ExplorerView({
   cwd,
   projectPath,
   overrideUrl,
+  headers,
   selection,
   onSetOverride,
   onSelectDrive,
@@ -65,6 +69,7 @@ export function ExplorerView({
         cwd,
         ...(projectPath.length === 0 ? {} : { projectPath }),
         ...(overrideUrl === null ? {} : { overrideUrl }),
+        ...(headers === undefined ? {} : { headers }),
       },
     }),
   );
@@ -106,6 +111,7 @@ export function ExplorerView({
         error={probe.error}
         otherError={probe.otherError}
         overrideUrl={overrideUrl}
+        headers={headers}
         onSetOverride={onSetOverride}
         onRetry={probe.refresh}
       />
@@ -118,6 +124,7 @@ export function ExplorerView({
       key={url}
       environmentId={environmentId}
       url={url}
+      headers={headers}
       selection={selection}
       documentTypeOptions={knownDocumentTypeOptions}
       documentTypeCatalogStatus={documentTypeCatalogStatus}
@@ -132,6 +139,7 @@ export function ExplorerView({
 interface ConnectedExplorerProps {
   environmentId: EnvironmentId;
   url: string;
+  headers?: PowerhouseGraphqlHeaders | undefined;
   selection: PowerhouseExplorerSelection;
   documentTypeOptions: ReadonlyArray<PowerhouseDocumentTypeOption>;
   documentTypeCatalogStatus: PowerhouseDocumentTypeCatalogStatus;
@@ -145,6 +153,7 @@ interface ConnectedExplorerProps {
 function ConnectedExplorer({
   environmentId,
   url,
+  headers,
   selection,
   documentTypeOptions,
   documentTypeCatalogStatus,
@@ -153,6 +162,7 @@ function ConnectedExplorer({
   onPopToDepth,
   onSelectDocument,
 }: ConnectedExplorerProps) {
+  const documentTypePickerId = useId();
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<PowerhouseDocumentFilters>(
     EMPTY_POWERHOUSE_DOCUMENT_FILTERS,
@@ -182,7 +192,7 @@ function ConnectedExplorer({
           <button
             type="button"
             onClick={() => onPopToDepth(0)}
-            className="rounded-md px-1.5 py-1 text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded-md px-1.5 py-1 text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
             Drives
           </button>
@@ -200,7 +210,7 @@ function ConnectedExplorer({
                 <button
                   type="button"
                   onClick={() => onPopToDepth(index + 1)}
-                  className="min-w-0 max-w-48 truncate rounded-md px-1.5 py-1 text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                  className="min-w-0 max-w-48 truncate rounded-md px-1.5 py-1 text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 >
                   {crumb.name}
                 </button>
@@ -228,24 +238,50 @@ function ConnectedExplorer({
             key={`${url}:${selection.documentId}:${viewKey}`}
             environmentId={environmentId}
             url={url}
+            headers={headers}
             documentId={selection.documentId}
             view={view}
             onBack={() => onSelectDocument(null)}
             onOpenChild={(childId) => onSelectDocument(childId)}
           />
         ) : !showDocumentResults ? (
-          <DriveList
-            key={url}
-            environmentId={environmentId}
-            url={url}
-            query={deferredQuery}
-            onSelectDrive={onSelectDrive}
-          />
+          <div className="flex h-full flex-col">
+            <div className="mx-auto w-full max-w-5xl shrink-0 px-3 pt-4 @[32rem]:px-5">
+              <Field>
+                <FieldLabel htmlFor={documentTypePickerId}>Browse documents by type</FieldLabel>
+                <DocumentTypePicker
+                  id={documentTypePickerId}
+                  value=""
+                  options={documentTypeOptions}
+                  catalogStatus={documentTypeCatalogStatus}
+                  invalid={false}
+                  onChange={(type) => {
+                    setQuery("");
+                    setFilters((previous) => ({ ...previous, type }));
+                  }}
+                />
+                <FieldDescription>
+                  Find documents across the reactor without opening a drive.
+                </FieldDescription>
+              </Field>
+            </div>
+            <div className="min-h-0 flex-1">
+              <DriveList
+                key={url}
+                environmentId={environmentId}
+                url={url}
+                headers={headers}
+                query={deferredQuery}
+                onSelectDrive={onSelectDrive}
+              />
+            </div>
+          </div>
         ) : (
           <DocumentList
             key={`${url}:${resultKey}`}
             environmentId={environmentId}
             url={url}
+            headers={headers}
             search={search}
             view={view}
             query={deferredQuery}

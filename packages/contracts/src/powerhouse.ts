@@ -118,9 +118,7 @@ export function parsePowerhouseConfig(text: string): PowerhouseConfigParseResult
   };
 }
 
-// ---------------------------------------------------------------------------
 // Project discovery
-// ---------------------------------------------------------------------------
 
 const PowerhouseCwd = TrimmedNonEmptyString.check(Schema.isMaxLength(POWERHOUSE_PATH_MAX_LENGTH));
 
@@ -161,9 +159,7 @@ export const PowerhouseListProjectsResult = Schema.Struct({
 });
 export type PowerhouseListProjectsResult = typeof PowerhouseListProjectsResult.Type;
 
-// ---------------------------------------------------------------------------
 // Document models (from disk)
-// ---------------------------------------------------------------------------
 
 const PowerhouseDirectoryName = TrimmedNonEmptyString.check(
   Schema.isMaxLength(POWERHOUSE_DIRECTORY_NAME_MAX_LENGTH),
@@ -326,9 +322,7 @@ export class PowerhouseProjectError extends Schema.TaggedError<PowerhouseProject
   }
 }
 
-// ---------------------------------------------------------------------------
 // Database inspector (server-side PGlite snapshots or live local Postgres)
-// ---------------------------------------------------------------------------
 
 export const PowerhouseDatabaseTargetId = Schema.Literals(["read_models", "reactor"]);
 export type PowerhouseDatabaseTargetId = typeof PowerhouseDatabaseTargetId.Type;
@@ -590,9 +584,7 @@ export class PowerhouseDatabaseError extends Schema.TaggedError<PowerhouseDataba
   }
 }
 
-// ---------------------------------------------------------------------------
 // Reactor (over GraphQL, proxied by the server)
-// ---------------------------------------------------------------------------
 
 /**
  * Base URL of a reactor, without a path. The server appends `/graphql` itself.
@@ -603,7 +595,22 @@ export const PowerhouseReactorUrl = TrimmedNonEmptyString.check(
   Schema.isMaxLength(POWERHOUSE_URL_MAX_LENGTH),
 );
 
+const PowerhouseGraphqlHeaderName = TrimmedNonEmptyString.check(Schema.isMaxLength(256)).check(
+  Schema.isPattern(/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/),
+);
+
+const PowerhouseGraphqlHeaderValue = Schema.String.check(
+  Schema.isMaxLength(POWERHOUSE_GRAPHQL_HEADER_VALUE_MAX_LENGTH),
+).check(Schema.isPattern(/^[^\r\n]*$/));
+
+export const PowerhouseGraphqlHeaders = Schema.Record(
+  PowerhouseGraphqlHeaderName,
+  PowerhouseGraphqlHeaderValue,
+).check(Schema.isMaxProperties(POWERHOUSE_GRAPHQL_HEADER_MAX_COUNT));
+export type PowerhouseGraphqlHeaders = typeof PowerhouseGraphqlHeaders.Type;
+
 export const PowerhouseReactorProbeInput = Schema.Struct({
+  headers: Schema.optional(PowerhouseGraphqlHeaders),
   cwd: PowerhouseCwd,
   projectPath: Schema.optional(PowerhouseProjectPath),
   /** When set, the only candidate tried: an explicit override never silently falls back. */
@@ -657,6 +664,7 @@ export const PowerhouseReactorDocumentSummary = Schema.Struct({
 export type PowerhouseReactorDocumentSummary = typeof PowerhouseReactorDocumentSummary.Type;
 
 export const PowerhouseReactorListDrivesInput = Schema.Struct({
+  headers: Schema.optional(PowerhouseGraphqlHeaders),
   url: PowerhouseReactorUrl,
 });
 export type PowerhouseReactorListDrivesInput = typeof PowerhouseReactorListDrivesInput.Type;
@@ -697,6 +705,7 @@ export const PowerhouseReactorDocumentViewFilter = Schema.Struct({
 export type PowerhouseReactorDocumentViewFilter = typeof PowerhouseReactorDocumentViewFilter.Type;
 
 export const PowerhouseReactorListDocumentsInput = Schema.Struct({
+  headers: Schema.optional(PowerhouseGraphqlHeaders),
   url: PowerhouseReactorUrl,
   search: PowerhouseReactorDocumentSearchFilter,
   view: Schema.optional(PowerhouseReactorDocumentViewFilter),
@@ -722,6 +731,7 @@ export const PowerhouseReactorListDocumentsResult = Schema.Struct({
 export type PowerhouseReactorListDocumentsResult = typeof PowerhouseReactorListDocumentsResult.Type;
 
 export const PowerhouseReactorGetDocumentInput = Schema.Struct({
+  headers: Schema.optional(PowerhouseGraphqlHeaders),
   url: PowerhouseReactorUrl,
   documentId: PowerhouseReactorIdentifier,
   view: Schema.optional(PowerhouseReactorDocumentViewFilter),
@@ -751,6 +761,7 @@ export const PowerhouseReactorDocument = Schema.Struct({
 export type PowerhouseReactorDocument = typeof PowerhouseReactorDocument.Type;
 
 export const PowerhouseReactorGetOperationsInput = Schema.Struct({
+  headers: Schema.optional(PowerhouseGraphqlHeaders),
   url: PowerhouseReactorUrl,
   documentId: PowerhouseReactorIdentifier,
   /** Branch and scopes follow the document view selected in Explorer. */
@@ -797,20 +808,6 @@ export const PowerhouseReactorGetOperationsResult = Schema.Struct({
 });
 export type PowerhouseReactorGetOperationsResult = typeof PowerhouseReactorGetOperationsResult.Type;
 
-const PowerhouseGraphqlHeaderName = TrimmedNonEmptyString.check(Schema.isMaxLength(256)).check(
-  Schema.isPattern(/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/),
-);
-
-const PowerhouseGraphqlHeaderValue = Schema.String.check(
-  Schema.isMaxLength(POWERHOUSE_GRAPHQL_HEADER_VALUE_MAX_LENGTH),
-).check(Schema.isPattern(/^[^\r\n]*$/));
-
-export const PowerhouseGraphqlHeaders = Schema.Record(
-  PowerhouseGraphqlHeaderName,
-  PowerhouseGraphqlHeaderValue,
-).check(Schema.isMaxProperties(POWERHOUSE_GRAPHQL_HEADER_MAX_COUNT));
-export type PowerhouseGraphqlHeaders = typeof PowerhouseGraphqlHeaders.Type;
-
 /**
  * One GraphiQL operation. Variables travel as JSON text so the websocket has a
  * concrete size bound before the server decodes them for the reactor request.
@@ -850,6 +847,8 @@ export const PowerhouseReactorFailure = Schema.Literals([
   "unreachable",
   /** Something answered, but not with a reactor's system fingerprint. */
   "not_a_reactor",
+  "authentication_required",
+  "forbidden",
   "http_error",
   "graphql_error",
   "decode_failed",
@@ -862,6 +861,10 @@ const POWERHOUSE_REACTOR_FAILURE_MESSAGES: Record<PowerhouseReactorFailure, stri
   invalid_request: "The GraphQL request could not be encoded.",
   unreachable: "No reactor is listening.",
   not_a_reactor: "Something is listening, but it is not a Powerhouse reactor.",
+  authentication_required:
+    "Authentication required. Add or update the reactor request headers in Reactor connection, then reconnect.",
+  forbidden:
+    "Access denied. Check that your reactor credentials have permission to access this endpoint.",
   http_error: "The reactor rejected the request.",
   graphql_error: "The reactor returned an error.",
   decode_failed: "The reactor returned data this build cannot read.",

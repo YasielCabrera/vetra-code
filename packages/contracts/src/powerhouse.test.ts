@@ -19,6 +19,9 @@ import {
   PowerhouseReactorGetDocumentInput,
   PowerhouseReactorListDocumentsInput,
   PowerhouseReactorOperation,
+  PowerhouseReactorProbeInput,
+  PowerhouseReactorListDrivesInput,
+  PowerhouseReactorGetOperationsInput,
 } from "./powerhouse.ts";
 
 const encodeProjectError = Schema.encodeUnknownSync(PowerhouseProjectError);
@@ -39,6 +42,10 @@ const decodeDatabaseQueryResult = Schema.decodeUnknownSync(PowerhouseDatabaseQue
 const decodeDatabaseTarget = Schema.decodeUnknownSync(PowerhouseDatabaseTarget);
 const decodeExecuteGraphqlInput = Schema.decodeUnknownSync(PowerhouseReactorExecuteGraphqlInput);
 const decodeExecuteGraphqlResult = Schema.decodeUnknownSync(PowerhouseReactorExecuteGraphqlResult);
+
+const decodeReactorProbeInput = Schema.decodeSync(PowerhouseReactorProbeInput);
+const decodeReactorListDrivesInput = Schema.decodeSync(PowerhouseReactorListDrivesInput);
+const decodeReactorGetOperationsInput = Schema.decodeSync(PowerhouseReactorGetOperationsInput);
 
 describe("parsePowerhouseConfig", () => {
   it("reads the fields the panel needs", () => {
@@ -389,5 +396,38 @@ describe("payload schemas", () => {
     };
     const encoded = encodeOperation(operation);
     expect(decodeOperation(encoded)).toEqual(operation);
+  });
+});
+
+describe("reactor authentication contracts", () => {
+  it.each(["authentication_required", "forbidden"] as const)(
+    "round-trips %s with actionable copy",
+    (failure) => {
+      const error = new PowerhouseReactorError({
+        failure,
+        url: "https://reactor.example",
+        status: failure === "forbidden" ? 403 : 401,
+      });
+      const decoded = decodeReactorError(encodeReactorError(error));
+      expect(decoded.failure).toBe(failure);
+      expect(decoded.message).toBe(error.message);
+      expect(decoded.status).toBe(error.status);
+    },
+  );
+
+  it("accepts the same authentication headers across probes and inspector queries", () => {
+    const headers = { Authorization: "Bearer renown-token", "X-API-Key": "key" };
+    const url = "https://reactor.example";
+    expect(decodeReactorProbeInput({ cwd: "/work", overrideUrl: url, headers }).headers).toEqual(
+      headers,
+    );
+    expect(decodeReactorListDrivesInput({ url, headers }).headers).toEqual(headers);
+    expect(
+      decodeListDocumentsInput({ url, search: { parentId: "root" }, headers }).headers,
+    ).toEqual(headers);
+    expect(decodeGetDocumentInput({ url, documentId: "doc-1", headers }).headers).toEqual(headers);
+    expect(decodeReactorGetOperationsInput({ url, documentId: "doc-1", headers }).headers).toEqual(
+      headers,
+    );
   });
 });

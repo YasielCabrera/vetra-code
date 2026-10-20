@@ -28,6 +28,7 @@ const panelKeyB = powerhousePanelProjectKey(surfaceA, "env-1", "/work/mono", "ap
 beforeEach(() => {
   usePowerhousePanelStore.setState({
     byProjectKey: {},
+    reactorSessionByProjectKey: {},
     selectedProjectByWorkspaceKey: {},
     selectedProjectByPanelKey: {},
     modelSelectionByPanelProjectKey: {},
@@ -330,5 +331,60 @@ describe("selection", () => {
     expect(state.selectedProjectByPanelKey[panelWorkspaceA]).toBeUndefined();
     expect(state.modelSelectionByPanelProjectKey[panelKeyA]).toBeUndefined();
     expect(state.modelSelectionByPanelProjectKey[panelKeyASecond]?.directoryName).toBe("todo");
+  });
+});
+
+describe("reactor credentials", () => {
+  it("keeps credentials separate by project and excludes them from persisted preferences", () => {
+    const store = usePowerhousePanelStore.getState();
+    store.setReactorUrlOverride(keyA, "https://reactor.example", {
+      authorization: "Bearer token-a",
+    });
+    store.setReactorUrlOverride(keyB, "https://other.example", { "x-api-key": "key-b" });
+    const state = usePowerhousePanelStore.getState();
+    expect(state.reactorSessionByProjectKey[keyA]?.headers).toEqual({
+      authorization: "Bearer token-a",
+    });
+    expect(state.reactorSessionByProjectKey[keyB]?.headers).toEqual({ "x-api-key": "key-b" });
+    const persisted = usePowerhousePanelStore.persist.getOptions().partialize?.(state);
+    expect(JSON.stringify(persisted)).not.toContain("token-a");
+    expect(JSON.stringify(persisted)).not.toContain("key-b");
+  });
+
+  it("clears credentials when switching endpoints or returning to autodetection", () => {
+    const store = usePowerhousePanelStore.getState();
+    store.setReactorUrlOverride(keyA, "https://reactor.example", {
+      authorization: "Bearer token-a",
+    });
+    store.setReactorUrlOverride(keyA, "https://other.example");
+    expect(
+      usePowerhousePanelStore.getState().reactorSessionByProjectKey[keyA]?.headers,
+    ).toBeUndefined();
+    store.setReactorUrlOverride(keyA, "https://other.example", { authorization: "Bearer token-b" });
+    store.setReactorUrlOverride(keyA, null);
+    expect(
+      usePowerhousePanelStore.getState().reactorSessionByProjectKey[keyA]?.headers,
+    ).toBeUndefined();
+  });
+
+  it("can replace or remove credentials without changing the endpoint", () => {
+    const store = usePowerhousePanelStore.getState();
+    store.setReactorUrlOverride(keyA, "https://reactor.example", {
+      authorization: "Bearer expired",
+    });
+    store.setReactorUrlOverride(keyA, "https://reactor.example", {
+      authorization: "Bearer renewed",
+    });
+    expect(usePowerhousePanelStore.getState().reactorSessionByProjectKey[keyA]?.revision).toBe(2);
+    expect(usePowerhousePanelStore.getState().reactorSessionByProjectKey[keyA]?.headers).toEqual({
+      authorization: "Bearer renewed",
+    });
+    store.setReactorUrlOverride(keyA, "https://reactor.example");
+    expect(
+      usePowerhousePanelStore.getState().reactorSessionByProjectKey[keyA]?.headers,
+    ).toBeUndefined();
+    expect(usePowerhousePanelStore.getState().byProjectKey[keyA]?.reactorUrlOverride).toBe(
+      "https://reactor.example",
+    );
   });
 });

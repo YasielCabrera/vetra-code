@@ -12,7 +12,7 @@
  * Powerhouse ships an unrelated package of its own called Vetra; nothing here
  * borrows that name.
  */
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId, PowerhouseGraphqlHeaders } from "@t3tools/contracts";
 import { FolderCog, Settings2 } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 
@@ -63,13 +63,15 @@ function ConnectionChip({
   cwd,
   projectPath,
   overrideUrl,
+  headers,
   onSetOverride,
 }: {
   environmentId: EnvironmentId;
   cwd: string;
   projectPath: string;
   overrideUrl: string | null;
-  onSetOverride: (url: string | null) => void;
+  headers?: PowerhouseGraphqlHeaders | undefined;
+  onSetOverride: (url: string | null, headers?: PowerhouseGraphqlHeaders) => void;
 }) {
   const [open, setOpen] = useState(false);
   const probe = useReactorQuery(
@@ -79,6 +81,7 @@ function ConnectionChip({
         cwd,
         ...(projectPath.length === 0 ? {} : { projectPath }),
         ...(overrideUrl === null ? {} : { overrideUrl }),
+        ...(headers === undefined ? {} : { headers }),
       },
     }),
   );
@@ -87,7 +90,11 @@ function ConnectionChip({
     ? describeConnection(probe.data)
     : probe.isPending
       ? "Connecting…"
-      : "Offline";
+      : probe.error?.failure === "authentication_required"
+        ? "Authentication required"
+        : probe.error?.failure === "forbidden"
+          ? "Access denied"
+          : "Offline";
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -95,7 +102,7 @@ function ConnectionChip({
           <button
             type="button"
             aria-label={`Configure reactor connection. ${label}`}
-            className="group flex min-w-0 max-w-48 items-center gap-1.5 rounded-md px-1.5 py-1 outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
+            className="group flex min-w-0 max-w-48 items-center gap-1.5 rounded-md px-1.5 py-1 outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           />
         }
       >
@@ -126,6 +133,12 @@ function ConnectionChip({
         </p>
         <ReactorUrlForm
           overrideUrl={overrideUrl}
+          headers={headers}
+          detectedUrl={probe.data?.url ?? probe.error?.url}
+          authenticationRequired={
+            probe.error?.failure === "authentication_required" ||
+            probe.error?.failure === "forbidden"
+          }
           onSetOverride={onSetOverride}
           onRetry={probe.refresh}
           onApplied={() => setOpen(false)}
@@ -169,6 +182,9 @@ export default function PowerhousePanel({
     kind === "powerhouse-explorer" || kind === "powerhouse-switchboard"
       ? selectPowerhousePreferences(state.byProjectKey, projectKey)
       : DEFAULT_PREFERENCES,
+  );
+  const reactorSession = usePowerhousePanelStore(
+    (state) => state.reactorSessionByProjectKey[projectKey],
   );
   const modelSelection = usePowerhousePanelStore((state) =>
     kind === "powerhouse-models"
@@ -226,7 +242,7 @@ export default function PowerhousePanel({
                 <select
                   value={projectPath}
                   onChange={(event) => selectProject(panelWorkspaceKey, event.target.value)}
-                  className="h-7 max-w-60 min-w-0 rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/24 dark:bg-input/32"
+                  className="h-7 max-w-60 min-w-0 rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/24 dark:bg-input/32"
                 >
                   {projects.map((entry) => (
                     <option key={entry.path} value={entry.path}>
@@ -244,11 +260,13 @@ export default function PowerhousePanel({
 
           {kind === "powerhouse-explorer" || kind === "powerhouse-switchboard" ? (
             <ConnectionChip
+              key={`${projectKey}:${reactorSession?.revision ?? 0}`}
               environmentId={environmentId}
               cwd={cwd}
               projectPath={projectPath}
               overrideUrl={preferences.reactorUrlOverride}
-              onSetOverride={(url) => setReactorUrlOverride(projectKey, url)}
+              headers={reactorSession?.headers}
+              onSetOverride={(url, headers) => setReactorUrlOverride(projectKey, url, headers)}
             />
           ) : null}
         </div>
@@ -285,13 +303,14 @@ export default function PowerhousePanel({
         ) : kind === "powerhouse-explorer" ? (
           <FindScope key={kind} className="h-full">
             <ExplorerView
-              key={panelProjectKey}
+              key={`${panelProjectKey}:${reactorSession?.revision ?? 0}`}
               environmentId={environmentId}
               cwd={cwd}
               projectPath={projectPath}
               overrideUrl={preferences.reactorUrlOverride}
+              headers={reactorSession?.headers}
               selection={explorerSelection}
-              onSetOverride={(url) => setReactorUrlOverride(projectKey, url)}
+              onSetOverride={(url, headers) => setReactorUrlOverride(projectKey, url, headers)}
               onSelectDrive={(drive) => selectDrive(panelProjectKey, drive)}
               onEnterFolder={(folder) => enterFolder(panelProjectKey, folder)}
               onPopToDepth={(depth) => popToDepth(panelProjectKey, depth)}
@@ -309,14 +328,15 @@ export default function PowerhousePanel({
         ) : (
           <Suspense fallback={<PowerhousePanelLoading label="Loading Switchboard…" />}>
             <SwitchboardView
-              key={panelProjectKey}
+              key={`${panelProjectKey}:${reactorSession?.revision ?? 0}`}
               environmentId={environmentId}
               cwd={cwd}
               projectPath={projectPath}
               surfaceId={surfaceId}
               panelProjectKey={panelProjectKey}
               overrideUrl={preferences.reactorUrlOverride}
-              onSetOverride={(url) => setReactorUrlOverride(projectKey, url)}
+              headers={reactorSession?.headers}
+              onSetOverride={(url, headers) => setReactorUrlOverride(projectKey, url, headers)}
             />
           </Suspense>
         )}

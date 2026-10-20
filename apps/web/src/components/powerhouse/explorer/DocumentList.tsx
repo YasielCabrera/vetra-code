@@ -1,5 +1,6 @@
 import type {
   EnvironmentId,
+  PowerhouseGraphqlHeaders,
   PowerhouseReactorDocumentSearchFilter,
   PowerhouseReactorDocumentSummary,
   PowerhouseReactorDocumentViewFilter,
@@ -39,6 +40,7 @@ const CONTAINER_TYPES = new Set([
 interface DocumentPageFetcherProps {
   environmentId: EnvironmentId;
   url: string;
+  headers?: PowerhouseGraphqlHeaders | undefined;
   search: PowerhouseReactorDocumentSearchFilter;
   view: PowerhouseReactorDocumentViewFilter | undefined;
   cursor: string | null;
@@ -61,6 +63,7 @@ interface DocumentPageFetcherProps {
 function DocumentPageFetcher({
   environmentId,
   url,
+  headers,
   search,
   view,
   cursor,
@@ -77,6 +80,7 @@ function DocumentPageFetcher({
       environmentId,
       input: {
         url,
+        ...(headers === undefined ? {} : { headers }),
         search,
         ...(view === undefined ? {} : { view }),
         ...(cursor === null ? {} : { cursor }),
@@ -110,6 +114,7 @@ function DocumentPageFetcher({
 interface DocumentListProps {
   environmentId: EnvironmentId;
   url: string;
+  headers?: PowerhouseGraphqlHeaders | undefined;
   search: PowerhouseReactorDocumentSearchFilter;
   view: PowerhouseReactorDocumentViewFilter | undefined;
   query: string;
@@ -123,6 +128,7 @@ interface DocumentListProps {
 export function DocumentList({
   environmentId,
   url,
+  headers,
   search,
   view,
   query,
@@ -162,6 +168,7 @@ export function DocumentList({
           key={`${refreshGeneration}:${cursorPageKey(cursor)}`}
           environmentId={environmentId}
           url={url}
+          headers={headers}
           search={search}
           view={view}
           cursor={cursor}

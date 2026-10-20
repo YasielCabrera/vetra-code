@@ -1,7 +1,7 @@
 import { useGraphiQL, useMonaco } from "@graphiql/react";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId, PowerhouseGraphqlHeaders } from "@t3tools/contracts";
 import { getOperationAST, type ExecutionResult } from "graphql";
 import { GraphiQL, type GraphiQLProps } from "graphiql";
 import "graphiql/setup-workers/vite";
@@ -161,7 +161,8 @@ interface SwitchboardViewProps {
   surfaceId: string;
   panelProjectKey: string;
   overrideUrl: string | null;
-  onSetOverride: (url: string | null) => void;
+  headers?: PowerhouseGraphqlHeaders | undefined;
+  onSetOverride: (url: string | null, headers?: PowerhouseGraphqlHeaders) => void;
 }
 
 export default function SwitchboardView({
@@ -171,6 +172,7 @@ export default function SwitchboardView({
   surfaceId,
   panelProjectKey,
   overrideUrl,
+  headers,
   onSetOverride,
 }: SwitchboardViewProps) {
   const probe = useReactorQuery(
@@ -180,6 +182,7 @@ export default function SwitchboardView({
         cwd,
         ...(projectPath.length === 0 ? {} : { projectPath }),
         ...(overrideUrl === null ? {} : { overrideUrl }),
+        ...(headers === undefined ? {} : { headers }),
       },
     }),
   );
@@ -203,6 +206,7 @@ export default function SwitchboardView({
         error={probe.error}
         otherError={probe.otherError}
         overrideUrl={overrideUrl}
+        headers={headers}
         onSetOverride={onSetOverride}
         onRetry={probe.refresh}
       />
@@ -214,6 +218,7 @@ export default function SwitchboardView({
       key={connection.url}
       environmentId={environmentId}
       url={connection.url}
+      headers={headers}
       surfaceId={surfaceId}
       panelProjectKey={panelProjectKey}
     />
@@ -223,11 +228,13 @@ export default function SwitchboardView({
 function ConnectedSwitchboard({
   environmentId,
   url,
+  headers: connectionHeaders,
   surfaceId,
   panelProjectKey,
 }: {
   environmentId: EnvironmentId;
   url: string;
+  headers?: PowerhouseGraphqlHeaders | undefined;
   surfaceId: string;
   panelProjectKey: string;
 }) {
@@ -273,7 +280,7 @@ function ConnectedSwitchboard({
         throw new Error("Switchboard subscriptions require a streaming transport.");
       }
       const variablesJson = serializeGraphqlVariables(params.variables);
-      const headers = normalizeGraphqlHeaders(options?.headers);
+      const headers = normalizeGraphqlHeaders(options?.headers, connectionHeaders);
       const result = await execute({
         environmentId,
         input: {
@@ -290,7 +297,7 @@ function ConnectedSwitchboard({
       }
       return result.value.response as ExecutionResult;
     },
-    [environmentId, execute, url],
+    [connectionHeaders, environmentId, execute, url],
   );
 
   return (

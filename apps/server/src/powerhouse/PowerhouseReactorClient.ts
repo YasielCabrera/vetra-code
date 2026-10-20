@@ -67,6 +67,7 @@ const UTF8_ENCODER = new TextEncoder();
 
 export interface PowerhouseReactorCandidate {
   readonly url: string;
+  readonly headers?: PowerhouseGraphqlHeaders | undefined;
   readonly source: PowerhouseReactorConnection["source"];
 }
 
@@ -76,17 +77,19 @@ export class PowerhouseReactorClient extends Context.Service<
   {
     /**
      * Try each candidate in order and return the first that answers with a
-     * reactor's system fingerprint. Fails with `not_a_reactor` when something
-     * answered but did not identify, and `unreachable` when nothing answered.
+     * reactor's system fingerprint. Preserves authentication failures when an
+     * endpoint requires credentials before it can identify itself.
      */
     readonly probe: (
       candidates: ReadonlyArray<PowerhouseReactorCandidate>,
     ) => Effect.Effect<PowerhouseReactorConnection, PowerhouseReactorError>;
     readonly listDrives: (
       url: string,
+      headers?: PowerhouseGraphqlHeaders | undefined,
     ) => Effect.Effect<PowerhouseReactorListDrivesResult, PowerhouseReactorError>;
     readonly listDocuments: (input: {
       readonly url: string;
+      readonly headers?: PowerhouseGraphqlHeaders | undefined;
       readonly search: PowerhouseReactorDocumentSearchFilter;
       readonly view?: PowerhouseReactorDocumentViewFilter | undefined;
       readonly cursor?: string | undefined;
@@ -94,11 +97,13 @@ export class PowerhouseReactorClient extends Context.Service<
     }) => Effect.Effect<PowerhouseReactorListDocumentsResult, PowerhouseReactorError>;
     readonly getDocument: (input: {
       readonly url: string;
+      readonly headers?: PowerhouseGraphqlHeaders | undefined;
       readonly documentId: string;
       readonly view?: PowerhouseReactorDocumentViewFilter | undefined;
     }) => Effect.Effect<PowerhouseReactorDocument, PowerhouseReactorError>;
     readonly getOperations: (input: {
       readonly url: string;
+      readonly headers?: PowerhouseGraphqlHeaders | undefined;
       readonly documentId: string;
       readonly view?: PowerhouseReactorDocumentViewFilter | undefined;
       readonly cursor?: string | undefined;
@@ -106,10 +111,10 @@ export class PowerhouseReactorClient extends Context.Service<
     }) => Effect.Effect<PowerhouseReactorGetOperationsResult, PowerhouseReactorError>;
     readonly executeGraphql: (input: {
       readonly url: string;
+      readonly headers?: PowerhouseGraphqlHeaders | undefined;
       readonly query: string;
       readonly operationName?: string | undefined;
       readonly variablesJson?: string | undefined;
-      readonly headers?: PowerhouseGraphqlHeaders | undefined;
     }) => Effect.Effect<PowerhouseReactorExecuteGraphqlResult, PowerhouseReactorError>;
   }
 >()("t3/powerhouse/PowerhouseReactorClient") {}
@@ -154,7 +159,38 @@ export function resolveGraphqlEndpoint(url: string): string | null {
 // independently of Vetra Code, so unread fields must not break decoding.
 const GraphqlError = Schema.Struct({
   message: Schema.optional(PowerhouseReactorOperation.fields.error),
+  extensions: Schema.optional(
+    Schema.Struct({
+      code: Schema.optional(Schema.String),
+      http: Schema.optional(Schema.Struct({ status: Schema.optional(Schema.Int) })),
+    }),
+  ),
 });
+
+function graphqlAuthenticationFailure(errors: ReadonlyArray<typeof GraphqlError.Type>) {
+  for (const error of errors) {
+    const code = error.extensions?.code?.toUpperCase();
+    const status = error.extensions?.http?.status;
+    const message = error.message?.trim().replace(/[.!]$/, "").toLowerCase();
+    if (
+      code === "UNAUTHENTICATED" ||
+      code === "UNAUTHORIZED" ||
+      status === 401 ||
+      message === "authentication required" ||
+      message === "unauthorized" ||
+      message === "not authenticated"
+    )
+      return "authentication_required";
+    if (
+      code === "FORBIDDEN" ||
+      status === 403 ||
+      message === "forbidden" ||
+      message === "access denied"
+    )
+      return "forbidden";
+  }
+  return null;
+}
 
 const graphqlEnvelope = <A extends Schema.Top>(data: A) =>
   Schema.Struct({
@@ -363,6 +399,15 @@ const GraphqlResponseJson = Schema.fromJsonString(
 const decodeGraphqlVariablesJson = Schema.decodeEffect(GraphqlVariablesJson);
 const decodeGraphqlResponseJson = Schema.decodeEffect(GraphqlResponseJson);
 
+const GraphqlEnvelope = graphqlEnvelope(Schema.Unknown);
+const decodeGraphqlEnvelopeJson = Schema.decodeEffect(Schema.fromJsonString(GraphqlEnvelope));
+const decodeGraphqlEnvelope = Schema.decodeUnknownOption(GraphqlEnvelope);
+const decodeSystemQuery = Schema.decodeUnknownEffect(RawSystemQuery);
+const decodeFindDocumentsQuery = Schema.decodeUnknownEffect(RawFindDocumentsQuery);
+const decodeDocumentSummaryQuery = Schema.decodeUnknownEffect(RawDocumentSummaryQuery);
+const decodeDocumentQuery = Schema.decodeUnknownEffect(RawDocumentQuery);
+const decodeOperationsQuery = Schema.decodeUnknownEffect(RawOperationsQuery);
+
 export const make = Effect.gen(function* () {
   const httpClient = yield* HttpClient.HttpClient;
 
@@ -371,18 +416,18 @@ export const make = Effect.gen(function* () {
    * `timeout` covers the body as well as the connection: a reactor can send
    * headers and then stall on a large document.
    */
-  const postGraphql = (input: {
-    readonly url: string;
-    readonly query: string;
-    readonly operationName?: string | undefined;
-    readonly variables?: unknown;
-    readonly headers?: PowerhouseGraphqlHeaders | undefined;
-    readonly timeout: Duration.Duration;
-  }): Effect.Effect<
-    { readonly safeUrl: string; readonly status: number; readonly text: string },
-    PowerhouseReactorError
-  > =>
-    Effect.gen(function* () {
+  const postGraphql = Effect.fn("PowerhouseReactorClient.postGraphql")(
+    function* (input: {
+      readonly url: string;
+      readonly headers?: PowerhouseGraphqlHeaders | undefined;
+      readonly query: string;
+      readonly operationName?: string | undefined;
+      readonly variables?: unknown;
+      readonly timeout: Duration.Duration;
+    }): Effect.fn.Return<
+      { readonly safeUrl: string; readonly status: number; readonly text: string },
+      PowerhouseReactorError
+    > {
       const safeUrl = normalizeReactorBaseUrl(input.url);
       const endpoint = resolveGraphqlEndpoint(input.url);
       if (endpoint === null || safeUrl === null) {
@@ -407,9 +452,15 @@ export const make = Effect.gen(function* () {
             (cause) => new PowerhouseReactorError({ failure: "unreachable", url: safeUrl, cause }),
           ),
         );
-      // Read the body before branching on status: an error response carries the
-      // reason, and a reactor answering a huge document must not be buffered
-      // without a ceiling.
+      if (response.status === 401 || response.status === 403) {
+        return yield* new PowerhouseReactorError({
+          failure: response.status === 401 ? "authentication_required" : "forbidden",
+          url: safeUrl,
+          status: response.status,
+        });
+      }
+      // Switchboard shows error envelopes too, but even error responses must
+      // stay within the same transfer bound as successful queries.
       const collected = yield* collectUint8StreamText({
         stream: response.stream,
         maxBytes: MAX_RESPONSE_BYTES,
@@ -422,75 +473,84 @@ export const make = Effect.gen(function* () {
         return yield* new PowerhouseReactorError({ failure: "decode_failed", url: safeUrl });
       }
       return { safeUrl, status: response.status, text: collected.text };
-    }).pipe(
-      Effect.timeoutOrElse({
-        duration: input.timeout,
-        orElse: () => {
-          const timeoutUrl = normalizeReactorBaseUrl(input.url);
-          return Effect.fail(
-            new PowerhouseReactorError({
-              failure: "timeout",
-              ...(timeoutUrl === null ? {} : { url: timeoutUrl }),
-            }),
-          );
-        },
-      }),
-    );
+    },
+    (effect, input) =>
+      effect.pipe(
+        Effect.timeoutOrElse({
+          duration: input.timeout,
+          orElse: () => {
+            const timeoutUrl = normalizeReactorBaseUrl(input.url);
+            return Effect.fail(
+              new PowerhouseReactorError({
+                failure: "timeout",
+                ...(timeoutUrl === null ? {} : { url: timeoutUrl }),
+              }),
+            );
+          },
+        }),
+      ),
+  );
 
   /** Run a fixed inspector query and decode its successful data payload. */
-  const gql = <A extends Schema.Codec<unknown, unknown, never, never>>(input: {
+  const gql = Effect.fn("PowerhouseReactorClient.gql")(function* <A>(input: {
     readonly url: string;
+    readonly headers?: PowerhouseGraphqlHeaders | undefined;
     readonly query: string;
     readonly variables: Record<string, unknown>;
-    readonly schema: A;
+    readonly decode: (value: unknown) => Effect.Effect<A, Schema.SchemaError>;
     readonly timeout: Duration.Duration;
-  }): Effect.Effect<A["Type"], PowerhouseReactorError> =>
-    Effect.gen(function* () {
-      const result = yield* postGraphql(input);
-      if (result.status < 200 || result.status >= 300) {
-        return yield* new PowerhouseReactorError({
-          failure: "http_error",
-          url: result.safeUrl,
-          status: result.status,
-        });
-      }
-      const envelope = yield* Schema.decodeEffect(
-        Schema.fromJsonString(graphqlEnvelope(input.schema)),
-      )(result.text).pipe(
+  }): Effect.fn.Return<A, PowerhouseReactorError> {
+    const result = yield* postGraphql(input);
+    if (result.status < 200 || result.status >= 300) {
+      return yield* new PowerhouseReactorError({
+        failure: "http_error",
+        url: result.safeUrl,
+        status: result.status,
+      });
+    }
+    const envelope = yield* decodeGraphqlEnvelopeJson(result.text).pipe(
+      Effect.mapError(
+        (cause) =>
+          new PowerhouseReactorError({ failure: "decode_failed", url: result.safeUrl, cause }),
+      ),
+    );
+    const authFailure = graphqlAuthenticationFailure(envelope.errors ?? []);
+    if (authFailure !== null) {
+      return yield* new PowerhouseReactorError({ failure: authFailure, url: result.safeUrl });
+    }
+    const errors = envelope.errors ?? [];
+    if (errors.length > 0) {
+      return yield* new PowerhouseReactorError({
+        failure: "graphql_error",
+        url: result.safeUrl,
+        graphqlMessages: errors.slice(0, 10).map((error) => error.message ?? "Unknown error"),
+      });
+    }
+    if (envelope.data === undefined || envelope.data === null) {
+      return yield* new PowerhouseReactorError({
+        failure: "decode_failed",
+        url: result.safeUrl,
+      });
+    }
+    return yield* input
+      .decode(envelope.data)
+      .pipe(
         Effect.mapError(
           (cause) =>
-            new PowerhouseReactorError({
-              failure: "decode_failed",
-              url: result.safeUrl,
-              cause,
-            }),
+            new PowerhouseReactorError({ failure: "decode_failed", url: result.safeUrl, cause }),
         ),
       );
-      const errors = envelope.errors ?? [];
-      if (errors.length > 0) {
-        return yield* new PowerhouseReactorError({
-          failure: "graphql_error",
-          url: result.safeUrl,
-          graphqlMessages: errors.slice(0, 10).map((error) => error.message ?? "Unknown error"),
-        });
-      }
-      if (envelope.data === undefined || envelope.data === null) {
-        return yield* new PowerhouseReactorError({
-          failure: "decode_failed",
-          url: result.safeUrl,
-        });
-      }
-      return envelope.data;
-    });
+  });
 
   const probeCandidate = (
     candidate: PowerhouseReactorCandidate,
   ): Effect.Effect<PowerhouseReactorSystemInfo, PowerhouseReactorError> =>
     gql({
       url: candidate.url,
+      headers: candidate.headers,
       query: SYSTEM_QUERY,
       variables: {},
-      schema: RawSystemQuery,
+      decode: decodeSystemQuery,
       timeout: PROBE_TIMEOUT,
     }).pipe(
       Effect.map((data) => ({
@@ -504,9 +564,8 @@ export const make = Effect.gen(function* () {
     "PowerhouseReactorClient.probe",
   )(function* (candidates) {
     const attempted: Array<string> = [];
-    // Anything that answered at all, even wrongly, changes "nothing is running"
-    // into "that is not a reactor" — a different thing to tell the user.
-    let listenerUrl: string | undefined;
+    let listenerError: PowerhouseReactorError | undefined;
+    let authError: PowerhouseReactorError | undefined;
     let timeoutUrl: string | undefined;
     let invalidUrlOnly = candidates.length > 0;
     for (const candidate of candidates) {
@@ -525,7 +584,10 @@ export const make = Effect.gen(function* () {
         invalidUrlOnly = false;
       }
       if (failure === "http_error" || failure === "graphql_error" || failure === "decode_failed") {
-        listenerUrl ??= attemptedUrl;
+        listenerError ??= result.failure;
+      }
+      if (failure === "authentication_required" || failure === "forbidden") {
+        authError ??= result.failure;
       }
       if (failure === "timeout") {
         timeoutUrl ??= attemptedUrl;
@@ -538,10 +600,19 @@ export const make = Effect.gen(function* () {
         attempted,
       });
     }
-    if (listenerUrl !== undefined) {
+    if (authError !== undefined) {
       return yield* new PowerhouseReactorError({
-        failure: "not_a_reactor",
-        url: listenerUrl,
+        failure: authError.failure,
+        url: authError.url,
+        status: authError.status,
+        attempted,
+      });
+    }
+    if (listenerError !== undefined) {
+      return yield* new PowerhouseReactorError({
+        failure: listenerError.failure === "http_error" ? "http_error" : "not_a_reactor",
+        url: listenerError.url,
+        status: listenerError.status,
         attempted,
       });
     }
@@ -561,6 +632,7 @@ export const make = Effect.gen(function* () {
 
   const findDocuments = (input: {
     readonly url: string;
+    readonly headers?: PowerhouseGraphqlHeaders | undefined;
     readonly search: PowerhouseReactorDocumentSearchFilter;
     readonly view?: PowerhouseReactorDocumentViewFilter | undefined;
     readonly cursor?: string | undefined;
@@ -568,6 +640,7 @@ export const make = Effect.gen(function* () {
   }) =>
     gql({
       url: input.url,
+      headers: input.headers,
       query: FIND_DOCUMENTS_QUERY,
       variables: {
         search: input.search,
@@ -577,7 +650,7 @@ export const make = Effect.gen(function* () {
           ...(input.cursor === undefined ? {} : { cursor: input.cursor }),
         },
       },
-      schema: RawFindDocumentsQuery,
+      decode: decodeFindDocumentsQuery,
       timeout: REQUEST_TIMEOUT,
     }).pipe(
       Effect.flatMap((data) => {
@@ -609,17 +682,19 @@ export const make = Effect.gen(function* () {
   const findDocumentSummary = Effect.fn("PowerhouseReactorClient.findDocumentSummary")(
     function* (input: {
       readonly url: string;
+      readonly headers?: PowerhouseGraphqlHeaders | undefined;
       readonly identifier: string;
       readonly view?: PowerhouseReactorDocumentViewFilter | undefined;
     }) {
       const data = yield* gql({
         url: input.url,
+        headers: input.headers,
         query: DOCUMENT_SUMMARY_QUERY,
         variables: {
           identifier: input.identifier,
           ...(input.view === undefined ? {} : { view: input.view }),
         },
-        schema: RawDocumentSummaryQuery,
+        decode: decodeDocumentSummaryQuery,
         timeout: REQUEST_TIMEOUT,
       });
       return data.document === null ? null : toSummary(data.document.document);
@@ -629,12 +704,14 @@ export const make = Effect.gen(function* () {
   const findDrivesByType = Effect.fn("PowerhouseReactorClient.findDrivesByType")(function* (
     url: string,
     documentType: (typeof DRIVE_DOCUMENT_TYPES)[number],
+    headers: PowerhouseGraphqlHeaders | undefined,
   ) {
     const drives: Array<PowerhouseReactorDocumentSummary> = [];
     let cursor: string | undefined;
     for (let page = 0; page < MAX_DRIVE_PAGES; page += 1) {
       const result = yield* findDocuments({
         url,
+        headers,
         search: { type: documentType },
         ...(cursor === undefined ? {} : { cursor }),
         limit: MAX_PAGE_LIMIT,
@@ -657,12 +734,12 @@ export const make = Effect.gen(function* () {
 
   const listDrives: PowerhouseReactorClient["Service"]["listDrives"] = Effect.fn(
     "PowerhouseReactorClient.listDrives",
-  )(function* (url) {
+  )(function* (url, headers) {
     // The reactor has no drives query. Each drive type paginates independently,
     // so fetch the two chains in parallel and then merge them deterministically.
     const byType = yield* Effect.forEach(
       DRIVE_DOCUMENT_TYPES,
-      (documentType) => findDrivesByType(url, documentType),
+      (documentType) => findDrivesByType(url, documentType, headers),
       { concurrency: "unbounded" },
     );
     const seen = new Set<string>();
@@ -698,6 +775,7 @@ export const make = Effect.gen(function* () {
         // is not lost merely because the caller asked for a small page.
         const page = yield* findDocuments({
           url: input.url,
+          headers: input.headers,
           search: {
             ...(type === undefined ? {} : { type }),
             parentId,
@@ -727,6 +805,7 @@ export const make = Effect.gen(function* () {
         (identifier) =>
           findDocumentSummary({
             url: input.url,
+            headers: input.headers,
             identifier,
             ...(input.view === undefined ? {} : { view: input.view }),
           }),
@@ -757,6 +836,7 @@ export const make = Effect.gen(function* () {
 
     const page = yield* findDocuments({
       url: input.url,
+      headers: input.headers,
       search: {
         ...(type === undefined ? {} : { type }),
         ...(parentId === undefined ? {} : { parentId }),
@@ -780,12 +860,13 @@ export const make = Effect.gen(function* () {
   )(function* (input) {
     const data = yield* gql({
       url: input.url,
+      headers: input.headers,
       query: DOCUMENT_QUERY,
       variables: {
         identifier: input.documentId,
         ...(input.view === undefined ? {} : { view: input.view }),
       },
-      schema: RawDocumentQuery,
+      decode: decodeDocumentQuery,
       timeout: REQUEST_TIMEOUT,
     });
     if (data.document === null) {
@@ -822,6 +903,7 @@ export const make = Effect.gen(function* () {
     const limit = clampLimit(input.limit);
     const data = yield* gql({
       url: input.url,
+      headers: input.headers,
       query: OPERATIONS_QUERY,
       variables: {
         filter: {
@@ -834,7 +916,7 @@ export const make = Effect.gen(function* () {
           ...(input.cursor === undefined ? {} : { cursor: input.cursor }),
         },
       },
-      schema: RawOperationsQuery,
+      decode: decodeOperationsQuery,
       timeout: REQUEST_TIMEOUT,
     });
     if (data.documentOperations.items.length > limit) {
@@ -908,6 +990,13 @@ export const make = Effect.gen(function* () {
         ...(result.status < 200 || result.status >= 300 ? { status: result.status } : {}),
         cause: decoded.failure,
       });
+    }
+    const envelope = decodeGraphqlEnvelope(decoded.success);
+    if (envelope._tag === "Some") {
+      const authFailure = graphqlAuthenticationFailure(envelope.value.errors ?? []);
+      if (authFailure !== null) {
+        return yield* new PowerhouseReactorError({ failure: authFailure, url: result.safeUrl });
+      }
     }
     return { status: result.status, response: decoded.success };
   });

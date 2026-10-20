@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId, PowerhouseGraphqlHeaders } from "@t3tools/contracts";
 import { ChevronRight, HardDrive, RefreshCw } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
@@ -20,13 +20,17 @@ import { filterDocumentsByTextSearch } from "./documentFilters";
 interface DriveListProps {
   environmentId: EnvironmentId;
   url: string;
+  headers?: PowerhouseGraphqlHeaders | undefined;
   query: string;
   onSelectDrive: (drive: PowerhouseExplorerCrumb) => void;
 }
 
-export function DriveList({ environmentId, url, query, onSelectDrive }: DriveListProps) {
+export function DriveList({ environmentId, url, headers, query, onSelectDrive }: DriveListProps) {
   const request = useReactorQuery(
-    powerhouseEnvironment.reactorDrives({ environmentId, input: { url } }),
+    powerhouseEnvironment.reactorDrives({
+      environmentId,
+      input: { url, ...(headers === undefined ? {} : { headers }) },
+    }),
   );
 
   if (request.data === null && request.isPending) {
@@ -85,8 +89,8 @@ export function DriveList({ environmentId, url, query, onSelectDrive }: DriveLis
         {drives.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-center">
             <p className="text-xs leading-relaxed text-muted-foreground">
-              No drives are visible. The reactor may be empty or require authentication this panel
-              does not send.
+              No drives are visible to this connection. You may still have access to individual
+              documents. Choose a document type above to browse them.
             </p>
           </div>
         ) : visibleDrives.length === 0 ? (

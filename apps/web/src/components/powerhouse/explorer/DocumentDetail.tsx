@@ -1,4 +1,8 @@
-import type { EnvironmentId, PowerhouseReactorDocumentViewFilter } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  PowerhouseGraphqlHeaders,
+  PowerhouseReactorDocumentViewFilter,
+} from "@t3tools/contracts";
 import { ArrowLeft, ChevronRight, FileText, RefreshCw } from "lucide-react";
 import { lazy, Suspense } from "react";
 
@@ -25,6 +29,7 @@ const LazyJsonStateView = lazy(() =>
 interface DocumentDetailProps {
   environmentId: EnvironmentId;
   url: string;
+  headers?: PowerhouseGraphqlHeaders | undefined;
   documentId: string;
   view: PowerhouseReactorDocumentViewFilter | undefined;
   onBack: () => void;
@@ -34,6 +39,7 @@ interface DocumentDetailProps {
 export function DocumentDetail({
   environmentId,
   url,
+  headers,
   documentId,
   view,
   onBack,
@@ -42,7 +48,12 @@ export function DocumentDetail({
   const query = useReactorQuery(
     powerhouseEnvironment.reactorDocument({
       environmentId,
-      input: { url, documentId, ...(view === undefined ? {} : { view }) },
+      input: {
+        url,
+        ...(headers === undefined ? {} : { headers }),
+        documentId,
+        ...(view === undefined ? {} : { view }),
+      },
     }),
   );
 
@@ -154,6 +165,7 @@ export function DocumentDetail({
         <OperationsList
           environmentId={environmentId}
           url={url}
+          headers={headers}
           documentId={document.id}
           view={view}
         />

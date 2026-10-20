@@ -3,6 +3,8 @@
  * parts worth testing — version selection, failure wording, cursor paging —
  * can be tested without rendering anything.
  */
+import { PowerhouseGraphqlHeaders } from "@t3tools/contracts";
+import * as Schema from "effect/Schema";
 import type {
   PowerhouseDocumentModel,
   PowerhouseDocumentModelFailure,
@@ -10,6 +12,19 @@ import type {
   PowerhouseReactorConnection,
   PowerhouseReactorFailure,
 } from "@t3tools/contracts";
+
+const decodeReactorHeaders = Schema.decodeOption(Schema.fromJsonString(PowerhouseGraphqlHeaders));
+
+/** Empty input removes authentication; null means the headers need correcting. */
+export function parseReactorHeaders(value: string): PowerhouseGraphqlHeaders | null | undefined {
+  if (value.trim().length === 0) return undefined;
+  const decoded = decodeReactorHeaders(value);
+  if (decoded._tag === "None") return null;
+  if (Object.keys(decoded.value).length === 0) return undefined;
+  return Object.fromEntries(
+    Object.entries(decoded.value).map(([name, header]) => [name.toLowerCase(), header]),
+  );
+}
 
 /** Index of the newest specification: highest version, last entry breaking ties. */
 export function latestSpecificationIndex(
@@ -111,6 +126,16 @@ export function describeReactorFailure(error: {
       return {
         title: "That request cannot be sent",
         detail: "Check the operation, variables, and request headers, then try again.",
+      };
+    case "authentication_required":
+      return {
+        title: "Authentication required",
+        detail: `${primaryWhere} requires valid credentials. Choose Bearer token for Renown, or Custom headers for other authentication, then connect.`,
+      };
+    case "forbidden":
+      return {
+        title: "Access denied",
+        detail: `${primaryWhere} refused access. Check that your credentials have permission to use this reactor, or connect with a different account.`,
       };
     case "http_error":
       return {

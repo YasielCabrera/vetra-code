@@ -60,6 +60,10 @@ Start from the drive list, open a drive to see its contents, and open a document
 - **Operations** — the document's history. Expand a row for the full input, the
   operation hash, and any error recorded against it.
 
+You can also browse directly by document type at the reactor root. Document access is independent
+of drive access: an account may be able to read documents even when their containing drive is
+hidden. Choose a project model or enter a custom type ID to find those documents.
+
 The search field narrows the rows already loaded by name, slug, identifier, or document type. At
 the reactor root it searches the drive rows; after you open a drive or apply a document filter it
 searches document rows. Multiple words all have to match, but they can match different fields.
@@ -131,10 +135,19 @@ so Switchboard works in local, desktop, remote, relay, and tunnel connections. T
 targets that reactor's `/graphql` endpoint; the browser does not need direct access to its loopback
 port.
 
-Use the **Headers** editor for reactor authentication, including an `Authorization` header when
-needed. Header values remain in the current panel session and are not persisted to browser
-storage. Transport-owned headers such as `Host`, `Content-Length`, and `Content-Type` cannot be
-overridden. Queries, variables, headers, and responses have explicit transfer-size limits so an
+If a reactor requires authentication, open **Reactor connection** from the connection status or
+use the connection form shown after a failed connection. Enter the endpoint, choose **Bearer token**
+for Renown, and paste the token. Vetra adds the Authorization header for you. Choose **Custom headers**
+to enter JSON such as `{"X-API-Key":"<key>"}`, or **None** for a public endpoint, then connect.
+These credentials authenticate the connection check, Document Explorer,
+and Switchboard operations. A 401 asks you to add or update credentials; a 403 means you need
+permission to access the reactor.
+
+Connection headers remain in memory for this session, shared by panels for the same project.
+Reloading or changing the endpoint clears them. Use **Clear authentication** to remove them
+without changing the endpoint. Switchboard's **Headers** editor can override connection headers
+for an individual operation; those values are also excluded from browser storage. Transport-owned
+headers such as `Host`, `Content-Length`, and `Content-Type` cannot be overridden. Queries, variables, headers, and responses have explicit transfer-size limits so an
 accidental large operation does not stall the environment connection.
 
 Each Switchboard panel has an independent GraphiQL workspace. You can keep different operations,
