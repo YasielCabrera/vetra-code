@@ -234,6 +234,7 @@ patchedDependencies:
   micromark-extension-llm-math@3.1.0: patches/micromark-extension-llm-math@3.1.0.patch
   micromark-extension-gfm-table@2.1.1: patches/micromark-extension-gfm-table@2.1.1.patch
   alchemy@2.0.0-beta.80: patches/alchemy@2.0.0-beta.80.patch
+  "@clerk/electron@0.1.1": patches/@clerk__electron@0.1.1.patch
   "@effect/vitest@4.0.5": patches/@effect__vitest@4.0.5.patch
   "@ff-labs/fff-node@0.11.0": patches/@ff-labs__fff-node@0.11.0.patch
   "@legendapp/list@3.3.5": patches/@legendapp__list@3.3.5.patch
