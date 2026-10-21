@@ -24,7 +24,8 @@ import {
 import { attachmentReferenceMarkdown } from "../../lib/attachmentReferences";
 import { prepareImageForAttachment } from "../../lib/imageCompression";
 import { randomUUID } from "../../lib/utils";
-import { ChatMarkdownAssetImage, type ChatMarkdownAttachmentReference } from "../ChatMarkdown";
+import type { ChatMarkdownAttachmentReference } from "../ChatMarkdown";
+import { ChatMarkdownAssetImage } from "../chat/ChatMarkdownMedia";
 import { Button } from "../ui/button";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 

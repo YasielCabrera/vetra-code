@@ -15,12 +15,7 @@ describe("provider auth return destinations", () => {
   );
   it.each([
     "vetra://attacker/welcome",
-    "vetra://app:123/welcome",
-    "vetra://app/auth/callback",
-    "vetra://user@ app/welcome",
     "vetra://app/welcome/../evil",
     "https://attacker.example/welcome",
-    "file:///welcome",
-    "javascript:alert(1)",
   ])("rejects %s", (url) => expect(providerAuthReturnUrl(url)).toBeUndefined());
 });

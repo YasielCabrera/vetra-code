@@ -15,7 +15,7 @@ layer("056_OrchestrationV2", (it) => {
     Effect.sync(() => {
       assert.deepStrictEqual(
         migrationEntries.map(([id]) => id),
-        Array.from({ length: 67 }, (_, index) => index + 1),
+        Array.from({ length: 68 }, (_, index) => index + 1),
       );
     }),
   );
@@ -40,6 +40,7 @@ layer("056_OrchestrationV2", (it) => {
         [65, "CanonicalizeThreadPullRequestLinks"],
         [66, "CodexUsageNativeTurnIndex"],
         [67, "RepairClientSettlementTimestamps"],
+        [68, "WebhookDedupe"],
       ]);
       assert.deepStrictEqual(yield* runMigrations(), []);
 
@@ -72,6 +73,7 @@ layer("056_OrchestrationV2", (it) => {
         { migration_id: 65, name: "CanonicalizeThreadPullRequestLinks" },
         { migration_id: 66, name: "CodexUsageNativeTurnIndex" },
         { migration_id: 67, name: "RepairClientSettlementTimestamps" },
+        { migration_id: 68, name: "WebhookDedupe" },
       ]);
 
       const tables = yield* sql<{ readonly name: string }>`

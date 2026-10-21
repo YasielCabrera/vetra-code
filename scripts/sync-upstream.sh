@@ -315,6 +315,8 @@ RENAMES=(
   'T3Tools=Vetra-Code'
   # The project file this fork reads. Upstream's own t3.json is pruned above.
   't3.json=vetra.json'
+  'NodePath.join(worktree, ".t3")=NodePath.join(worktree, ".vetra-code")'
+  'path.join(yield* HostProcess.HomeDirectory, ".t3", "userdata"=path.join(yield* HostProcess.HomeDirectory, ".vetra-code", "userdata"'
   # Fixture identity for the relay and the ACP test client.
   't3-relay=vetra-relay'
   't3-test=vetra-test'

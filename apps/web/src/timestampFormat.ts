@@ -20,9 +20,7 @@ function getTimestampFormatOptions(
   };
 }
 
-export function resolveTimestampLocale(
-  systemLocale: string | null | undefined,
-): string | undefined {
+function resolveTimestampLocale(systemLocale: string | null | undefined): string | undefined {
   const tag = systemLocale?.trim();
   if (!tag) return undefined;
 
@@ -58,7 +56,7 @@ type LocaleWithWeekInfo = Intl.Locale & {
  * `undefined` when the runtime has no week data, so callers keep their own
  * default.
  */
-export function resolveWeekStartsOn(locale: string | undefined): WeekdayIndex | undefined {
+function resolveWeekStartsOn(locale: string | undefined): WeekdayIndex | undefined {
   try {
     const resolved: LocaleWithWeekInfo = new Intl.Locale(
       locale ?? Intl.DateTimeFormat().resolvedOptions().locale,
@@ -289,7 +287,7 @@ export function formatElapsedDurationLabel(isoDate: string, nowMs: number = Date
   return `${days}d`;
 }
 
-export function formatRelativeTimeUntil(isoDate: string): RelativeTimeParts | null {
+function formatRelativeTimeUntil(isoDate: string): RelativeTimeParts | null {
   const date = parseTimestampDate(isoDate);
   if (!date) return null;
   const diffMs = date.getTime() - Date.now();

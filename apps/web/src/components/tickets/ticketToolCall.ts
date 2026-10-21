@@ -1,6 +1,6 @@
 import { readT3ToolResult } from "@t3tools/client-runtime/t3ToolSummary";
 import { PositiveInt, TicketId, TicketPlanSummary } from "@t3tools/contracts";
-import { resolveT3McpToolSummaryAction } from "@t3tools/shared/t3McpToolPresentation";
+import { resolveT3McpToolDefinition } from "@t3tools/shared/t3McpToolPresentation";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Struct from "effect/Struct";
@@ -29,7 +29,7 @@ export function ticketToolCallTarget(
     | undefined,
 ): TicketToolCallTarget | null {
   if (item?.type !== "dynamic_tool" || item.status !== "completed") return null;
-  switch (resolveT3McpToolSummaryAction(item.toolName)) {
+  switch (resolveT3McpToolDefinition(item.toolName)?.summaryAction) {
     case "ticket-create":
       return Option.getOrNull(
         Option.map(decodeCreatedTicket(readT3ToolResult(item.output)), (ticket) => ({

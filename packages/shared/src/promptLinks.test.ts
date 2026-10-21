@@ -5,7 +5,6 @@ import {
   parseNewThreadLink,
   parseThreadLinkPrompt,
   promptLinkAppPath,
-  promptLinkDeepLink,
   sanitizeLinkedPrompt,
   withoutPromptLinkParams,
 } from "./promptLinks.ts";
@@ -114,19 +113,12 @@ describe("link round trips", () => {
     );
     expect(promptLinkAppPath("https://app.vetra.invalid/settings/general")).toBeNull();
     expect(promptLinkAppPath("https://app.t3.codes/new?prompt=hi")).toBeNull();
-    expect(promptLinkAppPath("t3code://new?prompt=hi")).toBeNull();
-    expect(promptLinkAppPath("t3code-dev://new?prompt=hi")).toBeNull();
+    expect(promptLinkAppPath("vetra://new?prompt=hi")).toBeNull();
+    expect(promptLinkAppPath("vetra-dev://new?prompt=hi")).toBeNull();
     expect(promptLinkAppPath("https://vetra.example/new?prompt=hi", "https://vetra.example")).toBe(
       "/new?prompt=hi",
     );
     expect(promptLinkAppPath("https://evil.test/new?prompt=hi")).toBeNull();
     expect(promptLinkAppPath("vetra://app/index.html")).toBeNull();
-  });
-
-  it("hands an in-app path to the installed app", () => {
-    expect(promptLinkDeepLink("/new?prompt=hi")).toBe("vetra://new?prompt=hi");
-    expect(promptLinkDeepLink("/env-1/thread-1?prompt=hi")).toBe(
-      "vetra://threads/env-1/thread-1?prompt=hi",
-    );
   });
 });

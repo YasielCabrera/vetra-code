@@ -131,9 +131,9 @@ describe("DesktopBrowserHost", () => {
       Effect.gen(function* () {
         const debuggee = makeDebuggee();
         host.attach(key, debuggee.tab);
-        const reader = yield* takeEvents(host, 3).pipe(Effect.forkScoped);
-        // Wait until the reader has received the announcement.
-        yield* Effect.yieldNow;
+        const reader = yield* takeEvents(host, 3).pipe(
+          Effect.forkChild({ startImmediately: true }),
+        );
         const command = (id: number, method: string) =>
           host.handleCommandLine(
             encodeJson({
@@ -146,7 +146,6 @@ describe("DesktopBrowserHost", () => {
         yield* host.handleCommandLine(encodeJson({ type: "release", ...key }));
         yield* command(2, "DOM.enable");
         debuggee.release();
-        yield* Effect.promise(() => new Promise((resolve) => setImmediate(resolve)));
         const [, , reply] = yield* Fiber.join(reader);
         // Only the new connection's reply arrives; the old one's id could collide.
         expect(reply).toMatchObject({ type: "cdp" });

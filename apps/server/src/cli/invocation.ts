@@ -114,7 +114,7 @@ function suggestedPackageSpec(version: string): string {
   return channel === undefined ? PRODUCT_SERVER_PACKAGE : `${PRODUCT_SERVER_PACKAGE}@${channel}`;
 }
 
-export function formatCliCommand(input: {
+function formatCliCommand(input: {
   readonly subcommand: string;
   readonly entryPath: string;
   readonly version: string;

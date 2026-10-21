@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import {
-  HIDDEN_BROWSER_WEBVIEW_OFFSET,
-  resolveHostedBrowserWebviewWrapperStyle,
-} from "./hostedBrowserWebviewStyle";
+import { resolveHostedBrowserWebviewWrapperStyle } from "./hostedBrowserWebviewStyle";
 
 describe("resolveHostedBrowserWebviewWrapperStyle", () => {
   it("places an active webview on its presented surface", () => {
@@ -68,8 +65,8 @@ describe("resolveHostedBrowserWebviewWrapperStyle", () => {
     });
 
     expect(style).toEqual({
-      left: HIDDEN_BROWSER_WEBVIEW_OFFSET,
-      top: HIDDEN_BROWSER_WEBVIEW_OFFSET,
+      left: -100_000,
+      top: -100_000,
       width: 393,
       height: 852,
       zIndex: -1,
@@ -107,8 +104,8 @@ describe("resolveHostedBrowserWebviewWrapperStyle", () => {
     });
 
     expect(style).toEqual({
-      left: HIDDEN_BROWSER_WEBVIEW_OFFSET,
-      top: HIDDEN_BROWSER_WEBVIEW_OFFSET,
+      left: -100_000,
+      top: -100_000,
       width: 1280,
       height: 800,
       zIndex: -1,

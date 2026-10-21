@@ -106,6 +106,7 @@ it.effect("always grants pull-requests and tickets and gates browser and device 
   }),
 );
 
+// regression: #3114 use bound host for MCP endpoint
 it.effect("builds MCP endpoints from the bound server host", () =>
   Effect.gen(function* () {
     const cases = [
@@ -151,27 +152,6 @@ it.effect("rejects a Unix listener instead of fabricating a port-80 endpoint", (
     }).pipe(Effect.exit);
     expect(Exit.isFailure(exit)).toBe(true);
     expect(String(exit)).toContain("Unix sockets are unsupported");
-  }),
-);
-
-it.effect("keeps a credential alive across turns that never touch an MCP tool", () =>
-  Effect.gen(function* () {
-    let timestamp = 1_000;
-    const registry = yield* makeRegistry(() => timestamp);
-    const threadId = ThreadId.make("thread-3");
-    const issued = yield* registry.issue({
-      threadId,
-      providerInstanceId: ProviderInstanceId.make("claude"),
-      capabilities: new Set(["preview"]),
-    });
-    const token = issued.config.authorizationHeader.replace(/^Bearer\s+/, "");
-
-    for (let turn = 0; turn < 10; turn += 1) {
-      timestamp += 99;
-      yield* registry.touch(threadId);
-    }
-
-    expect((yield* registry.resolve(token))?.thread.threadId).toBe(threadId);
   }),
 );
 

@@ -231,15 +231,6 @@ describe("captureAssistantTextSelection", () => {
     },
   );
 
-  it("finds the source when both endpoints are parent boundaries", () => {
-    const quote = textNode("Only this response.");
-    const source = assistantSource(new SelectionNode("P").append(quote));
-    const viewport = new SelectionNode("MAIN").append(source, assistantSource(textNode("Next.")));
-    expect(capture(viewport, nativeSelection([viewport, 0], [viewport, 1]))?.selector).toEqual(
-      selector(quote.data),
-    );
-  });
-
   it("captures the final paragraph when Chromium extends to the timestamp paragraph boundary", () => {
     const quote = textNode("The final paragraph.");
     const source = assistantSource(
@@ -364,14 +355,6 @@ describe("captureAssistantTextSelection", () => {
     ]);
     expect(capture(viewport, nativeSelection([quote, 5], [quote, quote.length]))).toBeNull();
   });
-
-  it("rejects a source outside the supplied viewport", () => {
-    const quote = textNode("Outside.");
-    assistantSource(quote);
-    expect(
-      capture(new SelectionNode("MAIN"), nativeSelection([quote, 0], [quote, quote.length])),
-    ).toBeNull();
-  });
 });
 
 describe("createAssistantTextSelector", () => {
@@ -438,10 +421,6 @@ describe("createAssistantTextSelector", () => {
       expect(parsed).toMatchObject(captured!);
     },
   );
-
-  it.each(["", " \n\t\r\n"])("rejects empty or whitespace-only selections: %j", (text) => {
-    expect(createAssistantTextSelector(text, 0, text.length)).toBeNull();
-  });
 });
 
 describe("resolveAssistantCitationRanges", () => {

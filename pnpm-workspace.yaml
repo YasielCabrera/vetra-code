@@ -5,14 +5,16 @@ packages:
   - packages/*
   - scripts
 
-# Successor to onlyBuiltDependencies/ignoredBuiltDependencies (pnpm 11).
+# Successor to onlyBuiltDependencies/ignoredBuiltDependencies (pnpm 11+).
 # true = allowed to run build scripts; false mirrors the pnpm 10 behavior
 # where anything outside onlyBuiltDependencies was silently not built.
 allowBuilds:
   browser-tabs-lock: false
   bufferutil: false
   core-js: false
-  electron: true
+  # No install script since Electron 44; ensure:electron runs install.js.
+  # Keep the key: pnpm fails installs that still record a removed `true`.
+  electron: false
   electron-winstaller: false
   esbuild: true
   msgpackr-extract: true
@@ -72,8 +74,8 @@ catalog:
   typescript: 7.0.2
   undici: 8.11.2
   viem: 2.55.11
-  vite: npm:@voidzero-dev/vite-plus-core@1.0.0
-  vite-plus: 1.0.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.3.0
+  vite-plus: 1.3.0
   ws: 8.22.0
   yaml: ^2.9.0
   # Markdown pipeline: the server counts find matches with the same parser the
@@ -115,7 +117,7 @@ minimumReleaseAgeExclude:
   - alchemy@2.0.0-beta.80
   - effect@4.0.5
   - "@legendapp/list@3.3.5"
-  - electron@44.4.5
+  - electron@44.9.3
   - "@anthropic-ai/claude-agent-sdk@0.3.276"
   - "@alchemy.run/cloudflare-runtime@2.0.0-beta.80"
   - "@alchemy.run/floci@2.0.0-beta.80"
@@ -138,6 +140,7 @@ minimumReleaseAgeExclude:
   - "@opencode/protocol@2.0.28"
   - "@opencode/schema@2.0.28"
   - "@muse-code/sdk@1.4.6"
+  - pele@1.8.0
 
 overrides:
   # Keep jsdom's optional peer consistent so Vite+ has one test-runner instance.
@@ -200,7 +203,7 @@ overrides:
   # OpenCode 2's protocol and schema packages hard-pin an exact Effect version as a
   # dependency, and their schemas fail to decode under a second Effect copy.
   # The `effect` override above already collapses them; these name the edge so it
-  # stays pinned on its own. OpenCode2Client.live.test.ts re-proves it on bumps.
+  # stays pinned on its own.
   "@opencode/protocol>effect": "catalog:"
   "@opencode/schema>effect": "catalog:"
   node-abi: 4.33.0
@@ -241,6 +244,7 @@ patchedDependencies:
   "@pierre/trees@1.0.0-beta.6": patches/@pierre%2Ftrees@1.0.0-beta.6.patch
   dbus-next@0.10.2: patches/dbus-next@0.10.2.patch
   node-pty@1.2.0-beta.15: patches/node-pty@1.2.0-beta.15.patch
+  app-builder-lib@26.16.1: patches/app-builder-lib@26.16.1.patch
 
 peerDependencyRules:
   allowAny:
@@ -253,13 +257,16 @@ peerDependencyRules:
     "graphiql-explorer>react": "19"
     "graphiql-explorer>react-dom": "19"
 
+# pnpm 12 links agent skills that dependencies ship into .claude/skills once
+# approved. We curate our own skills, so deny these to keep installs quiet.
+permissions:
+  "@tanstack/router-plugin":
+    skills: false
+  drizzle-kit:
+    skills: false
+
 # @cursor/sdk finds its platform package (sandbox helper, rg, tree-sitter) by
 # walking up from the entry script for node_modules/@cursor/sdk-<platform>-<arch>.
 # pnpm keeps optional deps inside the virtual store, so hoist it to the root.
 publicHoistPattern:
   - "@cursor/sdk-*"
-
-supportedArchitectures:
-  cpu: [current, x64]
-  libc: [current, glibc]
-  os: [current, linux]

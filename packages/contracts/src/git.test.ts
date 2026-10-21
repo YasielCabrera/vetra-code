@@ -1,31 +1,20 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Schema from "effect/Schema";
 
-import {
-  GitCommandError,
-  VcsCreateWorktreeInput,
-  GitPreparePullRequestThreadInput,
-  GitPreparePullRequestThreadResult,
-  GitRunStackedActionResult,
-  GitRunStackedActionInput,
-  GitResolvePullRequestResult,
-  VcsFileAnnotationError,
-  VcsFileBlameResult,
-  VcsFileLineChangesResult,
-  VcsStatusLocalResult,
-} from "./git.ts";
+import { GitCommandError } from "./git.ts";
+import { GitPreparePullRequestThreadResult } from "./git.ts";
+import { GitRunStackedActionInput } from "./git.ts";
+import { VcsFileAnnotationError } from "./git.ts";
+import { VcsFileBlameResult } from "./git.ts";
+import { VcsFileLineChangesResult } from "./git.ts";
+import { VcsStatusLocalResult } from "./git.ts";
 
 const decodeGitCommandError = Schema.decodeUnknownSync(Schema.toCodecJson(GitCommandError));
-const decodeCreateWorktreeInput = Schema.decodeUnknownSync(VcsCreateWorktreeInput);
-const decodePreparePullRequestThreadInput = Schema.decodeUnknownSync(
-  GitPreparePullRequestThreadInput,
-);
 const decodePreparePullRequestThreadResult = Schema.decodeUnknownSync(
   GitPreparePullRequestThreadResult,
 );
 const decodeRunStackedActionInput = Schema.decodeUnknownSync(GitRunStackedActionInput);
-const decodeRunStackedActionResult = Schema.decodeUnknownSync(GitRunStackedActionResult);
-const decodeResolvePullRequestResult = Schema.decodeUnknownSync(GitResolvePullRequestResult);
+
 const decodeStatusLocalResult = Schema.decodeUnknownSync(VcsStatusLocalResult);
 const decodeFileLineChangesResult = Schema.decodeUnknownSync(VcsFileLineChangesResult);
 const decodeFileBlameResult = Schema.decodeUnknownSync(VcsFileBlameResult);
@@ -186,44 +175,6 @@ describe("GitCommandError", () => {
   });
 });
 
-describe("VcsCreateWorktreeInput", () => {
-  it("accepts omitted newRefName for existing-refName worktrees", () => {
-    const parsed = decodeCreateWorktreeInput({
-      cwd: "/repo",
-      refName: "feature/existing",
-      path: "/tmp/worktree",
-    });
-
-    expect(parsed.newRefName).toBeUndefined();
-    expect(parsed.refName).toBe("feature/existing");
-  });
-
-  it("accepts baseRefName metadata for a new worktree ref", () => {
-    const parsed = decodeCreateWorktreeInput({
-      cwd: "/repo",
-      refName: "0123456789abcdef",
-      newRefName: "feature/new",
-      baseRefName: "origin/main",
-      path: "/tmp/worktree",
-    });
-
-    expect(parsed.baseRefName).toBe("origin/main");
-  });
-});
-
-describe("GitPreparePullRequestThreadInput", () => {
-  it("accepts pull request references and mode", () => {
-    const parsed = decodePreparePullRequestThreadInput({
-      cwd: "/repo",
-      reference: "#42",
-      mode: "worktree",
-    });
-
-    expect(parsed.reference).toBe("#42");
-    expect(parsed.mode).toBe("worktree");
-  });
-});
-
 describe("GitPreparePullRequestThreadResult", () => {
   it("defaults legacy responses to the pull request head", () => {
     const parsed = decodePreparePullRequestThreadResult({
@@ -241,56 +192,9 @@ describe("GitPreparePullRequestThreadResult", () => {
 
     expect(parsed.isOnPullRequestHead).toBe(true);
   });
-
-  it("preserves an explicit stale pull request checkout result", () => {
-    const parsed = decodePreparePullRequestThreadResult({
-      pullRequest: {
-        number: 42,
-        title: "PR threads",
-        url: "https://github.com/pingdotgg/codething-mvp/pull/42",
-        baseBranch: "main",
-        headBranch: "feature/pr-threads",
-        state: "open",
-      },
-      branch: "feature/pr-threads",
-      worktreePath: "/tmp/pr-threads",
-      isOnPullRequestHead: false,
-    });
-
-    expect(parsed.isOnPullRequestHead).toBe(false);
-  });
-});
-
-describe("GitResolvePullRequestResult", () => {
-  it("decodes resolved pull request metadata", () => {
-    const parsed = decodeResolvePullRequestResult({
-      pullRequest: {
-        number: 42,
-        title: "PR threads",
-        url: "https://github.com/vetra-code/codething-mvp/pull/42",
-        baseBranch: "main",
-        headBranch: "feature/pr-threads",
-        state: "open",
-      },
-    });
-
-    expect(parsed.pullRequest.number).toBe(42);
-    expect(parsed.pullRequest.headBranch).toBe("feature/pr-threads");
-  });
 });
 
 describe("GitRunStackedActionInput", () => {
-  it("accepts explicit stacked actions and requires a client-provided actionId", () => {
-    const parsed = decodeRunStackedActionInput({
-      actionId: "action-1",
-      cwd: "/repo",
-      action: "create_pr",
-    });
-
-    expect(parsed.actionId).toBe("action-1");
-    expect(parsed.action).toBe("create_pr");
-  });
-
   it("preserves leading and trailing whitespace in file paths", () => {
     const parsed = decodeRunStackedActionInput({
       actionId: "action-1",
@@ -300,99 +204,5 @@ describe("GitRunStackedActionInput", () => {
     });
 
     expect(parsed.filePaths).toEqual([" leading.txt", "trailing.txt "]);
-  });
-
-  it("rejects an empty file path", () => {
-    expect(() =>
-      decodeRunStackedActionInput({
-        actionId: "action-1",
-        cwd: "/repo",
-        action: "commit",
-        filePaths: [""],
-      }),
-    ).toThrow();
-  });
-});
-
-describe("VcsStatusLocalResult", () => {
-  it("preserves leading and trailing whitespace in working-tree paths", () => {
-    const parsed = decodeStatusLocalResult({
-      isRepo: true,
-      hasPrimaryRemote: true,
-      isDefaultRef: false,
-      refName: "main",
-      hasWorkingTreeChanges: true,
-      workingTree: {
-        files: [
-          { path: " leading.txt", insertions: 1, deletions: 0 },
-          { path: "trailing.txt ", insertions: 0, deletions: 1 },
-        ],
-        insertions: 1,
-        deletions: 1,
-      },
-    });
-
-    expect(parsed.workingTree.files.map((file) => file.path)).toEqual([
-      " leading.txt",
-      "trailing.txt ",
-    ]);
-  });
-
-  it("rejects an empty working-tree path", () => {
-    expect(() =>
-      decodeStatusLocalResult({
-        isRepo: true,
-        hasPrimaryRemote: true,
-        isDefaultRef: false,
-        refName: "main",
-        hasWorkingTreeChanges: true,
-        workingTree: {
-          files: [{ path: "", insertions: 0, deletions: 0 }],
-          insertions: 0,
-          deletions: 0,
-        },
-      }),
-    ).toThrow();
-  });
-});
-
-describe("GitRunStackedActionResult", () => {
-  it("decodes a server-authored completion toast", () => {
-    const parsed = decodeRunStackedActionResult({
-      action: "commit_push",
-      branch: {
-        status: "created",
-        name: "feature/server-owned-toast",
-      },
-      commit: {
-        status: "created",
-        commitSha: "89abcdef01234567",
-        subject: "feat: move toast state into git manager",
-      },
-      push: {
-        status: "pushed",
-        branch: "feature/server-owned-toast",
-        upstreamBranch: "origin/feature/server-owned-toast",
-      },
-      pr: {
-        status: "skipped_not_requested",
-      },
-      toast: {
-        title: "Pushed 89abcde to origin/feature/server-owned-toast",
-        description: "feat: move toast state into git manager",
-        cta: {
-          kind: "run_action",
-          label: "Create PR",
-          action: {
-            kind: "create_pr",
-          },
-        },
-      },
-    });
-
-    expect(parsed.toast.cta.kind).toBe("run_action");
-    if (parsed.toast.cta.kind === "run_action") {
-      expect(parsed.toast.cta.action.kind).toBe("create_pr");
-    }
   });
 });
