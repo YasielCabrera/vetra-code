@@ -1,6 +1,5 @@
 import {
   CommandId,
-  ClaudeSettings,
   DEFAULT_PROVIDER_INTERACTION_MODE,
   type ProjectId,
   ThreadId,
@@ -9,24 +8,23 @@ import {
   type TicketLaunchDraftResult,
   type TicketStatusDefinition,
 } from "@t3tools/contracts";
-import { parseCliArgs } from "@t3tools/shared/cliArgs";
 import { escapeComposerContextPayloadText } from "@t3tools/shared/composerContextReferences";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/sql/SqlClient";
 
+import * as ProjectionStore from "../orchestration-v2/ProjectionStore.ts";
 import * as ThreadLaunchService from "../orchestration-v2/ThreadLaunchService.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as TicketService from "./TicketService.ts";
 
 const TITLE_INSTRUCTION_CHARS = 60;
-const decodeClaudeSettings = Schema.decodeEffect(ClaudeSettings);
 
 /**
  * Launches analyzer threads: a visible thread in the selection's project that investigates
@@ -91,6 +89,7 @@ const make = Effect.gen(function* () {
   const crypto = yield* Crypto.Crypto;
   const threadLaunch = yield* ThreadLaunchService.ThreadLaunchService;
   const projects = yield* ProjectService.ProjectService;
+  const projections = yield* ProjectionStore.ProjectionStoreV2;
   const serverSettings = yield* ServerSettings.ServerSettingsService;
   const tickets = yield* TicketService.TicketService;
 
@@ -113,41 +112,26 @@ const make = Effect.gen(function* () {
     if (input.instruction.trim().length === 0 && input.selection.text.trim().length === 0) {
       return yield* new TicketError({ message: "Describe the ticket or capture a selection." });
     }
-    yield* requireProject(input.projectId);
+    const project = yield* requireProject(input.projectId);
     const settings = yield* serverSettings.getSettings.pipe(
       Effect.mapError(
         (cause) => new TicketError({ message: "Could not read the settings.", cause }),
       ),
     );
-    const instance = settings.providerInstances[input.modelSelection.instanceId];
-    const driver = instance?.driver ?? input.modelSelection.instanceId;
-    // These drivers enforce file approvals while pre-approving Vetra ticket tools.
-    if (driver !== "codex" && driver !== "claudeAgent") {
-      return yield* new TicketError({
-        message:
-          "Create with agent requires Codex or Claude. Choose one of those providers, or write the ticket yourself.",
-      });
-    }
-    if (driver === "claudeAgent") {
-      const config = yield* decodeClaudeSettings(instance?.config ?? {}).pipe(
-        Effect.mapError(
-          (cause) => new TicketError({ message: "Could not read the Claude settings.", cause }),
-        ),
-      );
-      const { flags } = parseCliArgs(config.launchArgs);
-      const permissionMode =
-        flags["permission-mode"] ??
-        (flags["dangerously-skip-permissions"] === null ||
-        flags["dangerously-skip-permissions"] === "true"
-          ? "bypassPermissions"
-          : "default");
-      if (!["default", "plan", "dontAsk"].includes(permissionMode)) {
-        return yield* new TicketError({
-          message:
-            "Agent drafting requires file-write approval. Remove Claude's permission override in provider settings, or choose another provider.",
-        });
-      }
-    }
+    const sourceThread =
+      input.sourceThreadId === undefined
+        ? null
+        : yield* projections
+            .getThreadShell(input.sourceThreadId)
+            .pipe(
+              Effect.mapError(
+                (cause) => new TicketError({ message: "Could not read the source thread.", cause }),
+              ),
+            );
+    const runtimeMode =
+      sourceThread !== null && sourceThread.projectId === input.projectId
+        ? sourceThread.runtimeMode
+        : resolveProjectSettings(settings, project.id, project).settings.defaultRuntimeMode;
     const { statuses } = yield* tickets.readStatuses;
     const commandId = CommandId.make(yield* crypto.randomUUIDv4().pipe(Effect.orDie));
     const threadId = ThreadId.make(commandId);
@@ -169,7 +153,7 @@ const make = Effect.gen(function* () {
         projectId: input.projectId,
         title: draftThreadTitle(input.instruction),
         modelSelection: input.modelSelection,
-        runtimeMode: "approval-required",
+        runtimeMode,
         interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
         workspaceStrategy: { type: "root" },
         initialMessage: {

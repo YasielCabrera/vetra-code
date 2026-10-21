@@ -498,10 +498,7 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
         >
           <DialogHeader>
             <DialogTitle>Create ticket</DialogTitle>
-            <DialogDescription>
-              An agent investigates and files the ticket. File changes require approval. Choose
-              Codex or Claude.
-            </DialogDescription>
+            <DialogDescription>An agent investigates and files the ticket.</DialogDescription>
           </DialogHeader>
           <DialogPanel>
             {Composer ? (

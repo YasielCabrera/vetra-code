@@ -7,7 +7,10 @@ import { ModelSelection } from "./modelSelection.ts";
 
 export const TicketLaunchDraftInput = Schema.Struct({
   projectId: ProjectId,
-  /** The thread the selection came from; the drafted ticket links it. */
+  /**
+   * The thread the selection came from. The drafted ticket links it, and a draft in the same
+   * project runs in its permission mode.
+   */
   sourceThreadId: Schema.optional(ThreadId),
   /** What the user wants the ticket to be about. May be empty when a selection says enough. */
   instruction: Schema.String.check(Schema.isMaxLength(4_000)),

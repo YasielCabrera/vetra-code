@@ -385,7 +385,11 @@ export const layerProduction = Layer.mergeAll(
   layerSecretRequestsProvided,
   layerAutomationRunsProvided,
   layerAutomationRunCleanupProvided,
-  Tickets.layer.pipe(Layer.provide(Layer.merge(layerThreadLaunchProvided, layerProjectService))),
+  Tickets.layer.pipe(
+    Layer.provide(
+      Layer.mergeAll(layerThreadLaunchProvided, layerProjectService, ProjectionStore.layer),
+    ),
+  ),
   UsageLimitRecoveryWorker.layer.pipe(
     Layer.provide(
       Layer.mergeAll(

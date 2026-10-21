@@ -4,8 +4,6 @@ import {
   ComposerContextId,
   type OrchestrationMessageContext,
   ProjectId,
-  ProviderDriverKind,
-  type ProviderInstanceConfigMap,
   ProviderInstanceId,
   type RuntimeMode,
   ThreadId,
@@ -16,6 +14,7 @@ import * as Ref from "effect/Ref";
 import * as SqlClient from "effect/sql/SqlClient";
 
 import * as ServerConfig from "../config.ts";
+import * as ProjectionStore from "../orchestration-v2/ProjectionStore.ts";
 import * as ThreadLaunchService from "../orchestration-v2/ThreadLaunchService.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as ProjectService from "../project/ProjectService.ts";
@@ -45,7 +44,8 @@ const makeHarness = (
   options: {
     readonly failLaunch?: boolean;
     readonly defaultRuntimeMode?: RuntimeMode;
-    readonly providerInstances?: ProviderInstanceConfigMap;
+    readonly sourceThreads?: Partial<Record<ThreadId, RuntimeMode>>;
+    readonly sourceThreadProjects?: Partial<Record<ThreadId, ProjectId>>;
   } = {},
 ) =>
   Effect.gen(function* () {
@@ -77,11 +77,24 @@ const makeHarness = (
           Layer.mock(ProjectService.ProjectService)({
             getById: () => Effect.succeedSome({ id: PROJECT_ID } as never),
           }),
+          Layer.mock(ProjectionStore.ProjectionStoreV2)({
+            getThreadShell: (threadId) => {
+              const runtimeMode = options.sourceThreads?.[threadId];
+              return Effect.succeed(
+                runtimeMode === undefined
+                  ? null
+                  : ({
+                      id: threadId,
+                      projectId: options.sourceThreadProjects?.[threadId] ?? PROJECT_ID,
+                      runtimeMode,
+                    } as never),
+              );
+            },
+          }),
           ServerSettings.layerTest({
             projectSettingsOverrides: {
               [PROJECT_ID]: { defaultRuntimeMode: options.defaultRuntimeMode ?? "full-access" },
             },
-            providerInstances: options.providerInstances ?? {},
           }),
         ),
       ),
@@ -103,7 +116,7 @@ const readDrafts = Effect.gen(function* () {
 });
 
 describe("TicketDrafting", () => {
-  it.effect("requires approval for an analyzer despite the project's full-access default", () =>
+  it.effect("launches an analyzer and records the draft", () =>
     Effect.gen(function* () {
       const { launches, layer } = yield* makeHarness();
       yield* Effect.gen(function* () {
@@ -124,13 +137,11 @@ describe("TicketDrafting", () => {
         assert.deepStrictEqual(
           {
             title: launch?.title,
-            runtimeMode: launch?.runtimeMode,
             workspaceStrategy: launch?.workspaceStrategy,
             context: launch?.initialMessage?.context,
           },
           {
             title: "Draft ticket: Checkout crashes when the cart is empty",
-            runtimeMode: "approval-required",
             workspaceStrategy: { type: "root" },
             context: selectionContext,
           },
@@ -175,19 +186,60 @@ describe("TicketDrafting", () => {
   );
 
   it.effect.each([
-    "approval-required",
-    "auto-accept-edits",
-    "auto",
-    "full-access",
-  ] satisfies ReadonlyArray<RuntimeMode>)(
-    "requires approval when the project defaults to %s",
-    (defaultRuntimeMode) =>
+    {
+      name: "the source thread's mode",
+      sourceThreadId: SOURCE_THREAD_ID,
+      expected: "full-access",
+    },
+    { name: "the project default without a source thread", expected: "auto-accept-edits" },
+    {
+      name: "the project default when the source thread is gone",
+      sourceThreadId: ThreadId.make("thread-gone"),
+      expected: "auto-accept-edits",
+    },
+  ] satisfies ReadonlyArray<{
+    readonly name: string;
+    readonly sourceThreadId?: ThreadId;
+    readonly expected: RuntimeMode;
+  }>)("launches in $name", ({ sourceThreadId, expected }) =>
+    Effect.gen(function* () {
+      const { launches, layer } = yield* makeHarness({
+        defaultRuntimeMode: "auto-accept-edits",
+        sourceThreads: { [SOURCE_THREAD_ID]: "full-access" },
+      });
+      yield* Effect.gen(function* () {
+        const drafting = yield* TicketDrafting.TicketDrafting;
+        const { threadId } = yield* drafting.launchDraft({
+          projectId: PROJECT_ID,
+          ...(sourceThreadId === undefined ? {} : { sourceThreadId }),
+          instruction: "Investigate checkout",
+          selection: { text: "" },
+          modelSelection: MODEL,
+        });
+
+        const [launch] = yield* Ref.get(launches);
+        assert.deepStrictEqual(
+          { threadId: launch?.threadId, runtimeMode: launch?.runtimeMode },
+          { threadId, runtimeMode: expected },
+        );
+      }).pipe(Effect.provide(layer));
+    }),
+  );
+
+  it.effect(
+    "launches in the project default when the source thread belongs to another project",
+    () =>
       Effect.gen(function* () {
-        const { launches, layer } = yield* makeHarness({ defaultRuntimeMode });
+        const { launches, layer } = yield* makeHarness({
+          defaultRuntimeMode: "auto-accept-edits",
+          sourceThreads: { [SOURCE_THREAD_ID]: "full-access" },
+          sourceThreadProjects: { [SOURCE_THREAD_ID]: ProjectId.make("project-other") },
+        });
         yield* Effect.gen(function* () {
           const drafting = yield* TicketDrafting.TicketDrafting;
           const { threadId } = yield* drafting.launchDraft({
             projectId: PROJECT_ID,
+            sourceThreadId: SOURCE_THREAD_ID,
             instruction: "Investigate checkout",
             selection: { text: "" },
             modelSelection: MODEL,
@@ -196,24 +248,16 @@ describe("TicketDrafting", () => {
           const [launch] = yield* Ref.get(launches);
           assert.deepStrictEqual(
             { threadId: launch?.threadId, runtimeMode: launch?.runtimeMode },
-            { threadId, runtimeMode: "approval-required" },
+            { threadId, runtimeMode: "auto-accept-edits" },
           );
         }).pipe(Effect.provide(layer));
       }),
   );
 
-  it.effect.each([
-    { instanceId: "claudeAgent", driver: "claudeAgent", configured: false },
-    { instanceId: "my-codex", driver: "codex", configured: true },
-    { instanceId: "my-claude", driver: "claudeAgent", configured: true },
-  ])("requires approval for supported instance $instanceId", ({ instanceId, driver, configured }) =>
+  it.effect("launches with a provider other than Codex or Claude", () =>
     Effect.gen(function* () {
-      const modelSelection = { ...MODEL, instanceId: ProviderInstanceId.make(instanceId) };
-      const { launches, layer } = yield* makeHarness({
-        providerInstances: configured
-          ? { [modelSelection.instanceId]: { driver: ProviderDriverKind.make(driver) } }
-          : {},
-      });
+      const modelSelection = { ...MODEL, instanceId: ProviderInstanceId.make("cursor") };
+      const { launches, layer } = yield* makeHarness();
       yield* Effect.gen(function* () {
         const drafting = yield* TicketDrafting.TicketDrafting;
         const { threadId } = yield* drafting.launchDraft({
@@ -225,121 +269,10 @@ describe("TicketDrafting", () => {
 
         const [launch] = yield* Ref.get(launches);
         assert.deepStrictEqual(
-          {
-            threadId: launch?.threadId,
-            modelSelection: launch?.modelSelection,
-            runtimeMode: launch?.runtimeMode,
-          },
-          { threadId, modelSelection, runtimeMode: "approval-required" },
+          { threadId: launch?.threadId, modelSelection: launch?.modelSelection },
+          { threadId, modelSelection },
         );
-      }).pipe(Effect.provide(layer));
-    }),
-  );
-
-  it.effect.each([
-    { instanceId: "cursor", driver: "cursor", configured: false },
-    { instanceId: "my-cursor", driver: "cursor", configured: true },
-    { instanceId: "codex", driver: "cursor", configured: true },
-    { instanceId: "my-grok", driver: "grok", configured: true },
-    { instanceId: "my-opencode", driver: "opencode", configured: true },
-    { instanceId: "my-antigravity", driver: "antigravity", configured: true },
-    { instanceId: "my-provider", driver: "custom", configured: true },
-    { instanceId: "unknown", driver: "unknown", configured: false },
-  ])(
-    "rejects unsupported instance $instanceId before recording a draft",
-    ({ instanceId, driver, configured }) =>
-      Effect.gen(function* () {
-        const modelSelection = { ...MODEL, instanceId: ProviderInstanceId.make(instanceId) };
-        const { launches, layer } = yield* makeHarness({
-          providerInstances: configured
-            ? { [modelSelection.instanceId]: { driver: ProviderDriverKind.make(driver) } }
-            : {},
-        });
-        yield* Effect.gen(function* () {
-          const drafting = yield* TicketDrafting.TicketDrafting;
-          const error = yield* drafting
-            .launchDraft({
-              projectId: PROJECT_ID,
-              instruction: "Investigate checkout",
-              selection: { text: "" },
-              modelSelection,
-            })
-            .pipe(Effect.flip);
-
-          assert.strictEqual(
-            error.message,
-            "Create with agent requires Codex or Claude. Choose one of those providers, or write the ticket yourself.",
-          );
-          assert.deepStrictEqual(yield* Ref.get(launches), []);
-          assert.deepStrictEqual(yield* readDrafts, []);
-        }).pipe(Effect.provide(layer));
-      }),
-  );
-
-  it.effect.each([
-    "--effort high",
-    "--permission-mode default",
-    "--permission-mode plan --dangerously-skip-permissions",
-    "--dangerously-skip-permissions=false",
-  ])("permits safe Claude launch settings %s", (launchArgs) =>
-    Effect.gen(function* () {
-      const modelSelection = { ...MODEL, instanceId: ProviderInstanceId.make("my-claude") };
-      const { launches, layer } = yield* makeHarness({
-        providerInstances: {
-          [modelSelection.instanceId]: {
-            driver: ProviderDriverKind.make("claudeAgent"),
-            config: { launchArgs },
-          },
-        },
-      });
-      yield* Effect.gen(function* () {
-        const drafting = yield* TicketDrafting.TicketDrafting;
-        yield* drafting.launchDraft({
-          projectId: PROJECT_ID,
-          instruction: "Investigate checkout",
-          selection: { text: "" },
-          modelSelection,
-        });
-        const [launch] = yield* Ref.get(launches);
-        assert.strictEqual(launch?.runtimeMode, "approval-required");
-      }).pipe(Effect.provide(layer));
-    }),
-  );
-
-  it.effect.each([
-    "--permission-mode acceptEdits",
-    "--permission-mode=bypassPermissions",
-    "--permission-mode auto",
-    "--dangerously-skip-permissions",
-    "--dangerously-skip-permissions=true",
-  ])("rejects Claude approval overrides %s before recording a draft", (launchArgs) =>
-    Effect.gen(function* () {
-      const modelSelection = { ...MODEL, instanceId: ProviderInstanceId.make("my-claude") };
-      const { launches, layer } = yield* makeHarness({
-        providerInstances: {
-          [modelSelection.instanceId]: {
-            driver: ProviderDriverKind.make("claudeAgent"),
-            config: { launchArgs },
-          },
-        },
-      });
-      yield* Effect.gen(function* () {
-        const drafting = yield* TicketDrafting.TicketDrafting;
-        const error = yield* drafting
-          .launchDraft({
-            projectId: PROJECT_ID,
-            instruction: "Investigate checkout",
-            selection: { text: "" },
-            modelSelection,
-          })
-          .pipe(Effect.flip);
-
-        assert.strictEqual(
-          error.message,
-          "Agent drafting requires file-write approval. Remove Claude's permission override in provider settings, or choose another provider.",
-        );
-        assert.deepStrictEqual(yield* Ref.get(launches), []);
-        assert.deepStrictEqual(yield* readDrafts, []);
+        assert.strictEqual((yield* readDrafts).length, 1);
       }).pipe(Effect.provide(layer));
     }),
   );
@@ -374,7 +307,7 @@ describe("TicketDrafting", () => {
 
   it.effect("links only the source thread and project to the ticket the analyzer files", () =>
     Effect.gen(function* () {
-      const { launches, layer } = yield* makeHarness();
+      const { layer } = yield* makeHarness();
       yield* Effect.gen(function* () {
         const drafting = yield* TicketDrafting.TicketDrafting;
         const tickets = yield* TicketService.TicketService;
@@ -385,8 +318,6 @@ describe("TicketDrafting", () => {
           selection: { text: "> The cart total is NaN" },
           modelSelection: MODEL,
         });
-        const [launch] = yield* Ref.get(launches);
-        assert.strictEqual(launch?.runtimeMode, "approval-required");
 
         const filed = (yield* tickets.create(
           { title: "Cart total is NaN", links: [] },
