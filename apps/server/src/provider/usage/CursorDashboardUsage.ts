@@ -160,10 +160,7 @@ const localDayKey = (milliseconds: number): string => {
   return `${year}-${month}-${day}`;
 };
 
-export const cursorDashboardPeriodStart = (
-  nowMs: number,
-  periodDays = DEFAULT_PERIOD_DAYS,
-): number => {
+const cursorDashboardPeriodStart = (nowMs: number, periodDays = DEFAULT_PERIOD_DAYS): number => {
   const normalizedDays = normalizePeriodDays(periodDays);
   return DateTime.makeZonedUnsafe(nowMs, { timeZone: DateTime.zoneMakeLocal() }).pipe(
     DateTime.startOf("day"),

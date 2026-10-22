@@ -25,7 +25,7 @@ export function fromProviders(
   };
 }
 
-export const make = Effect.map(GitHubIssueProvider.make, (github) => fromProviders([github]));
+const make = Effect.map(GitHubIssueProvider.make, (github) => fromProviders([github]));
 
 /** Reads GitHub through the server's one `GitHubApi`, sharing its credentials and rate limits. */
 export const layer = Layer.effect(IssueProviderRegistry, make).pipe(

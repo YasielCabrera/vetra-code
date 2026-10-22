@@ -136,7 +136,7 @@ const isSafeDirectoryName = (name: string) =>
   !name.includes("\\") &&
   !name.includes("\0");
 
-export const make = Effect.gen(function* () {
+const make = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const workspacePaths = yield* WorkspacePaths.WorkspacePaths;
@@ -154,53 +154,54 @@ export const make = Effect.gen(function* () {
    * The directory a project ref points at, rejecting anything that resolves
    * outside the workspace.
    */
-  const resolveProjectDir = (ref: PowerhouseProjectRef) =>
-    Effect.gen(function* () {
-      const workspaceRoot = yield* normalizeRoot(ref.cwd);
-      const projectPath = ref.projectPath?.trim() ?? "";
-      const projectDir =
-        projectPath.length === 0
-          ? workspaceRoot
-          : (yield* workspacePaths
-              .resolveRelativePathWithinRoot({ workspaceRoot, relativePath: projectPath })
-              .pipe(
-                Effect.mapError(
-                  (cause) =>
-                    new PowerhouseProjectError({
-                      failure: "invalid_project_path",
-                      cwd: ref.cwd,
-                      detail: projectPath,
-                      cause,
-                    }),
-                ),
-              )).absolutePath;
-      const canonicalWorkspaceRoot = yield* fileSystem
-        .realPath(workspaceRoot)
-        .pipe(
-          Effect.mapError(
-            (cause) => new PowerhouseProjectError({ failure: "read_failed", cwd: ref.cwd, cause }),
-          ),
-        );
-      const canonicalProjectDir = yield* fileSystem.realPath(projectDir).pipe(
+  const resolveProjectDir = Effect.fn("PowerhouseProject.resolveProjectDir")(function* (
+    ref: PowerhouseProjectRef,
+  ) {
+    const workspaceRoot = yield* normalizeRoot(ref.cwd);
+    const projectPath = ref.projectPath?.trim() ?? "";
+    const projectDir =
+      projectPath.length === 0
+        ? workspaceRoot
+        : (yield* workspacePaths
+            .resolveRelativePathWithinRoot({ workspaceRoot, relativePath: projectPath })
+            .pipe(
+              Effect.mapError(
+                (cause) =>
+                  new PowerhouseProjectError({
+                    failure: "invalid_project_path",
+                    cwd: ref.cwd,
+                    detail: projectPath,
+                    cause,
+                  }),
+              ),
+            )).absolutePath;
+    const canonicalWorkspaceRoot = yield* fileSystem
+      .realPath(workspaceRoot)
+      .pipe(
         Effect.mapError(
-          (cause) =>
-            new PowerhouseProjectError({
-              failure: isNotFound(cause) ? "invalid_project_path" : "read_failed",
-              cwd: ref.cwd,
-              ...(projectPath.length === 0 ? {} : { detail: projectPath }),
-              cause,
-            }),
+          (cause) => new PowerhouseProjectError({ failure: "read_failed", cwd: ref.cwd, cause }),
         ),
       );
-      if (!isPathWithin(path, canonicalWorkspaceRoot, canonicalProjectDir)) {
-        return yield* new PowerhouseProjectError({
-          failure: "invalid_project_path",
-          cwd: ref.cwd,
-          detail: projectPath,
-        });
-      }
-      return { workspaceRoot: canonicalWorkspaceRoot, projectDir: canonicalProjectDir };
-    });
+    const canonicalProjectDir = yield* fileSystem.realPath(projectDir).pipe(
+      Effect.mapError(
+        (cause) =>
+          new PowerhouseProjectError({
+            failure: isNotFound(cause) ? "invalid_project_path" : "read_failed",
+            cwd: ref.cwd,
+            ...(projectPath.length === 0 ? {} : { detail: projectPath }),
+            cause,
+          }),
+      ),
+    );
+    if (!isPathWithin(path, canonicalWorkspaceRoot, canonicalProjectDir)) {
+      return yield* new PowerhouseProjectError({
+        failure: "invalid_project_path",
+        cwd: ref.cwd,
+        detail: projectPath,
+      });
+    }
+    return { workspaceRoot: canonicalWorkspaceRoot, projectDir: canonicalProjectDir };
+  });
 
   /**
    * Read a directory's project config, if it has one.
@@ -209,66 +210,69 @@ export const make = Effect.gen(function* () {
    * parse resolves to defaults with `configValid: false`, the same way
    * Powerhouse's own loader falls back rather than failing.
    */
-  const readConfigAt = (directory: string, cwd: string) =>
-    Effect.gen(function* () {
-      const canonicalDirectory = yield* fileSystem
-        .realPath(directory)
-        .pipe(
-          Effect.mapError(
-            (cause) => new PowerhouseProjectError({ failure: "read_failed", cwd, cause }),
-          ),
-        );
-      const configPath = path.join(canonicalDirectory, POWERHOUSE_CONFIG_FILE_NAME);
-      const canonicalConfigPath = yield* fileSystem.realPath(configPath).pipe(
-        Effect.map(Option.some),
-        Effect.catchTag("PlatformError", (cause) =>
+  const readConfigAt = Effect.fn("PowerhouseProject.readConfigAt")(function* (
+    directory: string,
+    cwd: string,
+  ) {
+    const canonicalDirectory = yield* fileSystem
+      .realPath(directory)
+      .pipe(
+        Effect.mapError(
+          (cause) => new PowerhouseProjectError({ failure: "read_failed", cwd, cause }),
+        ),
+      );
+    const configPath = path.join(canonicalDirectory, POWERHOUSE_CONFIG_FILE_NAME);
+    const canonicalConfigPath = yield* fileSystem.realPath(configPath).pipe(
+      Effect.map(Option.some),
+      Effect.catchTags({
+        PlatformError: (cause) =>
           isNotFound(cause)
             ? Effect.succeed(Option.none<string>())
             : Effect.fail(new PowerhouseProjectError({ failure: "read_failed", cwd, cause })),
+      }),
+    );
+    if (Option.isNone(canonicalConfigPath)) {
+      return Option.none<{ readonly config: PowerhouseProjectConfig; readonly valid: boolean }>();
+    }
+    if (!isPathWithin(path, canonicalDirectory, canonicalConfigPath.value)) {
+      return yield* new PowerhouseProjectError({
+        failure: "read_failed",
+        cwd,
+        detail: POWERHOUSE_CONFIG_FILE_NAME,
+      });
+    }
+    const configStat = yield* fileSystem
+      .stat(canonicalConfigPath.value)
+      .pipe(
+        Effect.mapError(
+          (cause) => new PowerhouseProjectError({ failure: "read_failed", cwd, cause }),
         ),
       );
-      if (Option.isNone(canonicalConfigPath)) {
-        return Option.none<{ readonly config: PowerhouseProjectConfig; readonly valid: boolean }>();
-      }
-      if (!isPathWithin(path, canonicalDirectory, canonicalConfigPath.value)) {
-        return yield* new PowerhouseProjectError({
-          failure: "read_failed",
-          cwd,
-          detail: POWERHOUSE_CONFIG_FILE_NAME,
-        });
-      }
-      const configStat = yield* fileSystem
-        .stat(canonicalConfigPath.value)
-        .pipe(
-          Effect.mapError(
-            (cause) => new PowerhouseProjectError({ failure: "read_failed", cwd, cause }),
-          ),
-        );
-      if (configStat.type !== "File" || configStat.size > MAX_CONFIG_BYTES) {
-        return yield* new PowerhouseProjectError({
-          failure: "read_failed",
-          cwd,
-          detail: POWERHOUSE_CONFIG_FILE_NAME,
-        });
-      }
-      const contents = yield* fileSystem
-        .readFileString(canonicalConfigPath.value)
-        .pipe(
-          Effect.mapError(
-            (cause) => new PowerhouseProjectError({ failure: "read_failed", cwd, cause }),
-          ),
-        );
-      const parsed = parsePowerhouseConfig(contents);
-      // Connect ships a same-named runtime config for a built app. It is not a project.
-      if (parsed.status === "runtime-config") {
-        return Option.none<{ readonly config: PowerhouseProjectConfig; readonly valid: boolean }>();
-      }
-      return Option.some(
-        parsed.status === "invalid"
-          ? { config: {} as PowerhouseProjectConfig, valid: false }
-          : { config: parsed.config, valid: true },
+    if (configStat.type !== "File" || configStat.size > MAX_CONFIG_BYTES) {
+      return yield* new PowerhouseProjectError({
+        failure: "read_failed",
+        cwd,
+        detail: POWERHOUSE_CONFIG_FILE_NAME,
+      });
+    }
+    const contents = yield* fileSystem
+      .readFileString(canonicalConfigPath.value)
+      .pipe(
+        Effect.mapError(
+          (cause) => new PowerhouseProjectError({ failure: "read_failed", cwd, cause }),
+        ),
       );
-    });
+    const parsed = parsePowerhouseConfig(contents);
+    // Connect ships a same-named runtime config for a built app. It is not a project.
+    if (parsed.status === "runtime-config") {
+      return Option.none<{ readonly config: PowerhouseProjectConfig; readonly valid: boolean }>();
+    }
+    return Option.some(
+      parsed.status === "invalid"
+        ? { config: {} as PowerhouseProjectConfig, valid: false }
+        : { config: parsed.config, valid: true },
+    );
+  });
 
   const readSubdirectoryNames = (directory: string, cwd: string) =>
     Effect.tryPromise({
@@ -310,39 +314,38 @@ export const make = Effect.gen(function* () {
     const workspaceRoot = yield* normalizeRoot(cwd);
     const found: Array<PowerhouseProjectLocation> = [];
 
-    const visit = (
+    const visit = Effect.fn("PowerhouseProject.visit")(function* (
       directory: string,
       projectPath: string,
       depth: number,
-    ): Effect.Effect<void, PowerhouseProjectError> =>
-      Effect.gen(function* () {
-        const config = yield* readConfigAt(directory, cwd);
-        if (Option.isSome(config)) {
-          found.push(
-            toLocation({
-              projectPath,
-              directory,
-              config: config.value.config,
-              valid: config.value.valid,
-            }),
-          );
-          // A project's own subdirectories are its models and editors, not
-          // more projects.
-          return;
-        }
-        if (depth >= MAX_SCAN_DEPTH) return;
-        const names = yield* readSubdirectoryNames(directory, cwd);
-        yield* Effect.forEach(
-          names,
-          (name) =>
-            visit(
-              path.join(directory, name),
-              projectPath.length === 0 ? name : `${projectPath}/${name}`,
-              depth + 1,
-            ),
-          { discard: true },
+    ): Effect.fn.Return<void, PowerhouseProjectError> {
+      const config = yield* readConfigAt(directory, cwd);
+      if (Option.isSome(config)) {
+        found.push(
+          toLocation({
+            projectPath,
+            directory,
+            config: config.value.config,
+            valid: config.value.valid,
+          }),
         );
-      });
+        // A project's own subdirectories are its models and editors, not
+        // more projects.
+        return;
+      }
+      if (depth >= MAX_SCAN_DEPTH) return;
+      const names = yield* readSubdirectoryNames(directory, cwd);
+      yield* Effect.forEach(
+        names,
+        (name) =>
+          visit(
+            path.join(directory, name),
+            projectPath.length === 0 ? name : `${projectPath}/${name}`,
+            depth + 1,
+          ),
+        { discard: true },
+      );
+    });
 
     yield* visit(workspaceRoot, "", 0);
     return found;
@@ -381,55 +384,54 @@ export const make = Effect.gen(function* () {
    * Absolute path of the configured models directory, rejecting a
    * `documentModelsDir` that points outside its project.
    */
-  const resolveModelsDir = (input: {
+  const resolveModelsDir = Effect.fn("PowerhouseProject.resolveModelsDir")(function* (input: {
     readonly ref: PowerhouseProjectRef;
     readonly projectDir: string;
     readonly configuredDir: string;
-  }) =>
-    Effect.gen(function* () {
-      const absolute = path.resolve(input.projectDir, input.configuredDir);
-      if (!isPathWithin(path, input.projectDir, absolute)) {
-        return yield* new PowerhouseProjectError({
-          failure: "models_dir_missing",
-          cwd: input.ref.cwd,
-          detail: input.configuredDir,
-        });
-      }
-      const canonicalModelsDir = yield* fileSystem.realPath(absolute).pipe(
+  }) {
+    const absolute = path.resolve(input.projectDir, input.configuredDir);
+    if (!isPathWithin(path, input.projectDir, absolute)) {
+      return yield* new PowerhouseProjectError({
+        failure: "models_dir_missing",
+        cwd: input.ref.cwd,
+        detail: input.configuredDir,
+      });
+    }
+    const canonicalModelsDir = yield* fileSystem.realPath(absolute).pipe(
+      Effect.mapError(
+        (cause) =>
+          new PowerhouseProjectError({
+            failure: isNotFound(cause) ? "models_dir_missing" : "read_failed",
+            cwd: input.ref.cwd,
+            detail: input.configuredDir,
+            cause,
+          }),
+      ),
+    );
+    if (!isPathWithin(path, input.projectDir, canonicalModelsDir)) {
+      return yield* new PowerhouseProjectError({
+        failure: "models_dir_missing",
+        cwd: input.ref.cwd,
+        detail: input.configuredDir,
+      });
+    }
+    const stat = yield* fileSystem
+      .stat(canonicalModelsDir)
+      .pipe(
         Effect.mapError(
           (cause) =>
-            new PowerhouseProjectError({
-              failure: isNotFound(cause) ? "models_dir_missing" : "read_failed",
-              cwd: input.ref.cwd,
-              detail: input.configuredDir,
-              cause,
-            }),
+            new PowerhouseProjectError({ failure: "read_failed", cwd: input.ref.cwd, cause }),
         ),
       );
-      if (!isPathWithin(path, input.projectDir, canonicalModelsDir)) {
-        return yield* new PowerhouseProjectError({
-          failure: "models_dir_missing",
-          cwd: input.ref.cwd,
-          detail: input.configuredDir,
-        });
-      }
-      const stat = yield* fileSystem
-        .stat(canonicalModelsDir)
-        .pipe(
-          Effect.mapError(
-            (cause) =>
-              new PowerhouseProjectError({ failure: "read_failed", cwd: input.ref.cwd, cause }),
-          ),
-        );
-      if (stat.type !== "Directory") {
-        return yield* new PowerhouseProjectError({
-          failure: "models_dir_missing",
-          cwd: input.ref.cwd,
-          detail: input.configuredDir,
-        });
-      }
-      return canonicalModelsDir;
-    });
+    if (stat.type !== "Directory") {
+      return yield* new PowerhouseProjectError({
+        failure: "models_dir_missing",
+        cwd: input.ref.cwd,
+        detail: input.configuredDir,
+      });
+    }
+    return canonicalModelsDir;
+  });
 
   const readModelDirectoryNames = (input: {
     readonly ref: PowerhouseProjectRef;
@@ -464,80 +466,80 @@ export const make = Effect.gen(function* () {
    * to a failure reason for directories that look like models but cannot be
    * read or parsed.
    */
-  const readModelDirectory = (input: {
+  const readModelDirectory = Effect.fn("PowerhouseProject.readModelDirectory")(function* (input: {
     readonly modelsDir: string;
     readonly directoryName: string;
-  }) =>
-    Effect.gen(function* () {
-      const directoryPath = path.join(input.modelsDir, input.directoryName);
-      const canonicalDirectory = yield* fileSystem.realPath(directoryPath).pipe(Effect.result);
-      if (canonicalDirectory._tag === "Failure") {
-        return isNotFound(canonicalDirectory.failure)
-          ? null
-          : ({ ok: false, reason: "read_failed" } as const);
-      }
-      if (!isPathWithin(path, input.modelsDir, canonicalDirectory.success)) {
-        return { ok: false, reason: "read_failed" } as const;
-      }
-      const stat = yield* fileSystem.stat(canonicalDirectory.success).pipe(Effect.result);
-      if (stat._tag === "Failure") {
-        return { ok: false, reason: "read_failed" } as const;
-      }
-      if (stat.success.type !== "Directory") {
-        return null;
-      }
-      const modelPath = path.join(canonicalDirectory.success, `${input.directoryName}.json`);
-      const canonicalModelPath = yield* fileSystem.realPath(modelPath).pipe(Effect.result);
-      if (canonicalModelPath._tag === "Failure") {
-        return isNotFound(canonicalModelPath.failure)
-          ? ({ ok: false, reason: "missing_json" } as const)
-          : ({ ok: false, reason: "read_failed" } as const);
-      }
-      if (!isPathWithin(path, canonicalDirectory.success, canonicalModelPath.success)) {
-        return { ok: false, reason: "read_failed" } as const;
-      }
-      const modelStat = yield* fileSystem.stat(canonicalModelPath.success).pipe(Effect.result);
-      if (modelStat._tag === "Failure") {
-        return { ok: false, reason: "read_failed" } as const;
-      }
-      if (modelStat.success.type !== "File") {
-        return { ok: false, reason: "missing_json" } as const;
-      }
-      if (modelStat.success.size > MAX_DOCUMENT_MODEL_BYTES) {
-        return { ok: false, reason: "too_large" } as const;
-      }
-      const contents = yield* fileSystem
-        .readFileString(canonicalModelPath.success)
-        .pipe(Effect.result);
-      if (contents._tag === "Failure") {
-        return { ok: false, reason: "read_failed" } as const;
-      }
-      if (UTF8_ENCODER.encode(contents.success).byteLength > MAX_DOCUMENT_MODEL_BYTES) {
-        return { ok: false, reason: "too_large" } as const;
-      }
-      return parseDocumentModelFile({
-        directoryName: input.directoryName,
-        contents: contents.success,
-      });
+  }) {
+    const directoryPath = path.join(input.modelsDir, input.directoryName);
+    const canonicalDirectory = yield* fileSystem.realPath(directoryPath).pipe(Effect.result);
+    if (canonicalDirectory._tag === "Failure") {
+      return isNotFound(canonicalDirectory.failure)
+        ? null
+        : ({ ok: false, reason: "read_failed" } as const);
+    }
+    if (!isPathWithin(path, input.modelsDir, canonicalDirectory.success)) {
+      return { ok: false, reason: "read_failed" } as const;
+    }
+    const stat = yield* fileSystem.stat(canonicalDirectory.success).pipe(Effect.result);
+    if (stat._tag === "Failure") {
+      return { ok: false, reason: "read_failed" } as const;
+    }
+    if (stat.success.type !== "Directory") {
+      return null;
+    }
+    const modelPath = path.join(canonicalDirectory.success, `${input.directoryName}.json`);
+    const canonicalModelPath = yield* fileSystem.realPath(modelPath).pipe(Effect.result);
+    if (canonicalModelPath._tag === "Failure") {
+      return isNotFound(canonicalModelPath.failure)
+        ? ({ ok: false, reason: "missing_json" } as const)
+        : ({ ok: false, reason: "read_failed" } as const);
+    }
+    if (!isPathWithin(path, canonicalDirectory.success, canonicalModelPath.success)) {
+      return { ok: false, reason: "read_failed" } as const;
+    }
+    const modelStat = yield* fileSystem.stat(canonicalModelPath.success).pipe(Effect.result);
+    if (modelStat._tag === "Failure") {
+      return { ok: false, reason: "read_failed" } as const;
+    }
+    if (modelStat.success.type !== "File") {
+      return { ok: false, reason: "missing_json" } as const;
+    }
+    if (modelStat.success.size > MAX_DOCUMENT_MODEL_BYTES) {
+      return { ok: false, reason: "too_large" } as const;
+    }
+    const contents = yield* fileSystem
+      .readFileString(canonicalModelPath.success)
+      .pipe(Effect.result);
+    if (contents._tag === "Failure") {
+      return { ok: false, reason: "read_failed" } as const;
+    }
+    if (UTF8_ENCODER.encode(contents.success).byteLength > MAX_DOCUMENT_MODEL_BYTES) {
+      return { ok: false, reason: "too_large" } as const;
+    }
+    return parseDocumentModelFile({
+      directoryName: input.directoryName,
+      contents: contents.success,
     });
+  });
 
   /** Project directory plus the models directory its config points at. */
-  const resolveProjectModelsDir = (ref: PowerhouseProjectRef) =>
-    Effect.gen(function* () {
-      const { projectDir } = yield* resolveProjectDir(ref);
-      const config = yield* readConfigAt(projectDir, ref.cwd);
-      if (Option.isNone(config)) {
-        return yield* new PowerhouseProjectError({
-          failure: "not_a_powerhouse_project",
-          cwd: ref.cwd,
-          ...(ref.projectPath === undefined ? {} : { detail: ref.projectPath }),
-        });
-      }
-      const configuredDir =
-        config.value.config.documentModelsDir ?? POWERHOUSE_DEFAULT_DOCUMENT_MODELS_DIR;
-      const modelsDir = yield* resolveModelsDir({ ref, projectDir, configuredDir });
-      return { configuredDir, modelsDir };
-    });
+  const resolveProjectModelsDir = Effect.fn("PowerhouseProject.resolveProjectModelsDir")(function* (
+    ref: PowerhouseProjectRef,
+  ) {
+    const { projectDir } = yield* resolveProjectDir(ref);
+    const config = yield* readConfigAt(projectDir, ref.cwd);
+    if (Option.isNone(config)) {
+      return yield* new PowerhouseProjectError({
+        failure: "not_a_powerhouse_project",
+        cwd: ref.cwd,
+        ...(ref.projectPath === undefined ? {} : { detail: ref.projectPath }),
+      });
+    }
+    const configuredDir =
+      config.value.config.documentModelsDir ?? POWERHOUSE_DEFAULT_DOCUMENT_MODELS_DIR;
+    const modelsDir = yield* resolveModelsDir({ ref, projectDir, configuredDir });
+    return { configuredDir, modelsDir };
+  });
 
   const listDocumentModels: PowerhouseProject["Service"]["listDocumentModels"] = Effect.fn(
     "PowerhouseProject.listDocumentModels",

@@ -120,7 +120,7 @@ export class PowerhouseReactorClient extends Context.Service<
 >()("t3/powerhouse/PowerhouseReactorClient") {}
 
 /** Safe, canonical base URL retained in connection results and later requests. */
-export function normalizeReactorBaseUrl(url: string): string | null {
+function normalizeReactorBaseUrl(url: string): string | null {
   let parsed: URL;
   try {
     parsed = new URL(url.trim());
@@ -408,7 +408,7 @@ const decodeDocumentSummaryQuery = Schema.decodeUnknownEffect(RawDocumentSummary
 const decodeDocumentQuery = Schema.decodeUnknownEffect(RawDocumentQuery);
 const decodeOperationsQuery = Schema.decodeUnknownEffect(RawOperationsQuery);
 
-export const make = Effect.gen(function* () {
+const make = Effect.gen(function* () {
   const httpClient = yield* HttpClient.HttpClient;
 
   /**

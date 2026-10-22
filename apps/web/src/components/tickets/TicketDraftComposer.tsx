@@ -406,8 +406,6 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                         provider={activeInstance.driverKind}
                         models={activeInstance.models}
                         model={props.modelSelection.model}
-                        prompt={props.prompt}
-                        onPromptChange={props.onPromptChange}
                         modelOptions={props.modelSelection.options ?? []}
                         allowPromptInjectedEffort={false}
                         planModeEnabled={false}

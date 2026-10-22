@@ -37,7 +37,7 @@ function signedStorageUrl(location: string | undefined): string | null {
   }
 }
 
-export const make = Effect.gen(function* () {
+const make = Effect.gen(function* () {
   const credentials = yield* GitHubCredentials.GitHubCredentials;
   const httpClient = yield* HttpClient.HttpClient;
 

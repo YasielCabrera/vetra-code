@@ -42,7 +42,7 @@ const loopbackUrl = (port: number) => `http://127.0.0.1:${port}`;
  * An explicit override is the only candidate when set: falling back from it
  * would report a connection to somewhere the user did not ask for.
  */
-export function reactorCandidates(input: {
+function reactorCandidates(input: {
   readonly overrideUrl?: string | undefined;
   readonly configuredPort?: number | undefined;
   readonly headers?: PowerhouseGraphqlHeaders | undefined;

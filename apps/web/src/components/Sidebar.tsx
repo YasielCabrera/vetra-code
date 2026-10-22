@@ -123,7 +123,7 @@ import {
   useAllEnvironmentProjectSnapshotsReady,
   useProjects,
   useServerConfigs,
-  useThreadShells,
+  useQuietThreadShells,
 } from "../state/entities";
 import { environmentPresentations } from "../state/presentation";
 import { primaryServerKeybindingsAtom } from "../state/server";
@@ -376,7 +376,7 @@ function useSidebarThreads(input: {
 }) {
   const { projectScopeKey, scopedProjectKeys, serverConfigs, optimisticDrop, routeThreadRef } =
     input;
-  const allThreads = useThreadShells();
+  const allThreads = useQuietThreadShells();
   const automationRunsByThreadKey = useAutomationRunsByThreadKey();
   const threads = allThreads.filter(
     (thread) => !isHiddenAutomationRun(automationRunsByThreadKey, thread),

@@ -71,7 +71,7 @@ function speakDecimal(match: string) {
   return `${whole} point ${fraction!.split("").join(" ")}`;
 }
 
-export function normalizeKokoroText(text: string): string {
+function normalizeKokoroText(text: string): string {
   return text
     .replace(/[‘’]/g, "'")
     .replace(/«/g, "“")

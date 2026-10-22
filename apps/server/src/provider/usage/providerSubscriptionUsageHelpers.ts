@@ -37,7 +37,7 @@ export const failureProbe = (
     : { result };
 
 /** Conservative classifier shared by CLI and HTTP-backed probes. */
-export const providerSubscriptionUsageFailureLooksTransient = (cause: unknown): boolean => {
+const providerSubscriptionUsageFailureLooksTransient = (cause: unknown): boolean => {
   if (typeof cause === "object" && cause !== null && "kind" in cause) {
     const kind = (cause as { readonly kind?: unknown }).kind;
     if (["network", "timeout", "rate-limit", "server"].includes(String(kind))) return true;

@@ -21,21 +21,17 @@ import * as VcsDriverRegistry from "./VcsDriverRegistry.ts";
 
 export const FILE_BLAME_MAX_BYTES = 768 * 1024;
 
-export class FileAnnotationContentChangedError extends Data.TaggedError(
+class FileAnnotationContentChangedError extends Data.TaggedError(
   "FileAnnotationContentChangedError",
 )<{
   readonly path: string;
 }> {}
 
-export class FileAnnotationFileTooLargeError extends Data.TaggedError(
-  "FileAnnotationFileTooLargeError",
-)<{
+class FileAnnotationFileTooLargeError extends Data.TaggedError("FileAnnotationFileTooLargeError")<{
   readonly path: string;
 }> {}
 
-export class FileAnnotationUnsupportedError extends Data.TaggedError(
-  "FileAnnotationUnsupportedError",
-)<{
+class FileAnnotationUnsupportedError extends Data.TaggedError("FileAnnotationUnsupportedError")<{
   readonly path: string;
 }> {}
 
@@ -61,7 +57,7 @@ export class FileAnnotationService extends Context.Service<
   }
 >()("t3/vcs/FileAnnotationService") {}
 
-export const make = Effect.gen(function* () {
+const make = Effect.gen(function* () {
   const workspace = yield* WorkspaceFileSystem.WorkspaceFileSystem;
   const registry = yield* VcsDriverRegistry.VcsDriverRegistry;
   const git = yield* GitVcsDriver.GitVcsDriver;

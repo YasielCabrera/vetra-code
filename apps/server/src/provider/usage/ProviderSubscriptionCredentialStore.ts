@@ -60,7 +60,7 @@ export class ProviderSubscriptionCredentialStore extends Context.Reference<Provi
   },
 ) {}
 
-export const make = Effect.gen(function* () {
+const make = Effect.gen(function* () {
   const secrets = yield* ServerSecretStore;
   const crypto = yield* Crypto.Crypto;
 

@@ -208,6 +208,7 @@ import { MarkdownExternalLinkContent } from "./chat/MarkdownExternalLink";
 import { MarkdownFileLink } from "./chat/MarkdownFileLink";
 import { canUseMarkdownFileShellActions } from "./chat/MarkdownFileLink.logic";
 import { handleMarkdownFragmentClick, rehypeHeadingIds } from "./chat/markdownFragments";
+import { rehypeTextDirection } from "./chat/markdownTextDirection";
 import { hastHasText, hastPlainTextDeep, plainHastText } from "./chat/markdownHast.logic";
 import {
   extractCodeBlock,
@@ -427,16 +428,19 @@ function normalizeMarkdownLinkHrefKey(href: string): string {
 const CHAT_MARKDOWN_RENDER_REHYPE_PLUGINS = [
   ...CHAT_MARKDOWN_REHYPE_PLUGINS,
   rehypeHeadingIds,
+  rehypeTextDirection,
 ] satisfies NonNullable<ReactMarkdownOptions["rehypePlugins"]>;
 
 const CHAT_MARKDOWN_RENDER_REHYPE_PLUGINS_WITHOUT_LOCAL_FILES = [
   ...CHAT_MARKDOWN_REHYPE_PLUGINS_WITHOUT_LOCAL_FILES,
   rehypeHeadingIds,
+  rehypeTextDirection,
 ] satisfies NonNullable<ReactMarkdownOptions["rehypePlugins"]>;
 
-const CHAT_MARKDOWN_LITERAL_HTML_REHYPE_PLUGINS = [rehypeHeadingIds] satisfies NonNullable<
-  ReactMarkdownOptions["rehypePlugins"]
->;
+const CHAT_MARKDOWN_LITERAL_HTML_REHYPE_PLUGINS = [
+  rehypeHeadingIds,
+  rehypeTextDirection,
+] satisfies NonNullable<ReactMarkdownOptions["rehypePlugins"]>;
 
 const NO_MARKDOWN_EDITORS: ReadonlyArray<EditorId> = [];
 
@@ -1028,7 +1032,8 @@ const CHAT_MARKDOWN_COMPONENTS = {
       <div
         {...pluginDataAttributes(attributes)}
         role="note"
-        className={cn("my-1 border-l-2 pl-3", alert.borderClassName)}
+        dir={props.dir}
+        className={cn("my-1 border-s-2 ps-3", alert.borderClassName)}
       >
         <p
           data-thread-find-ignore="true"

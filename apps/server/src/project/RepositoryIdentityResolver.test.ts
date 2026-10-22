@@ -272,6 +272,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       expect(identity?.displayName).toBe("Vetra-Code/vetra-code");
       expect(identity?.origin).toEqual({
         canonicalKey: "github.com/julius/vetra-code-fork",
+        remoteUrl: "git@github.com:julius/vetra-code-fork.git",
         displayName: "julius/vetra-code-fork",
       });
     }).pipe(Effect.provide(RepositoryIdentityResolver.layer)),

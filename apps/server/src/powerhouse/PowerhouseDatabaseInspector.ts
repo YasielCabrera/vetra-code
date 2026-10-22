@@ -1214,23 +1214,22 @@ const mapUnexpectedDatabaseError = (
   });
 };
 
-export const make = Effect.gen(function* () {
+const make = Effect.gen(function* () {
   const project = yield* PowerhouseProject.PowerhouseProject;
   const runtime = new InspectorRuntime();
   yield* Effect.addFinalizer(() => Effect.promise(() => runtime.close()));
 
-  const withProject = <A>(
+  const withProject = Effect.fn("PowerhouseDatabaseInspector.withProject")(function* <A>(
     input: ProjectDatabaseRef,
     target: PowerhouseDatabaseTargetId | undefined,
     operation: (projectDirectory: string, signal: AbortSignal) => Promise<A>,
-  ) =>
-    Effect.gen(function* () {
-      const projectDirectory = yield* project.resolveProjectDirectory(input);
-      return yield* Effect.tryPromise({
-        try: (signal) => operation(projectDirectory, signal),
-        catch: (cause) => mapUnexpectedDatabaseError(cause, target),
-      });
+  ) {
+    const projectDirectory = yield* project.resolveProjectDirectory(input);
+    return yield* Effect.tryPromise({
+      try: (signal) => operation(projectDirectory, signal),
+      catch: (cause) => mapUnexpectedDatabaseError(cause, target),
     });
+  });
 
   return PowerhouseDatabaseInspector.of({
     discover: (input) =>

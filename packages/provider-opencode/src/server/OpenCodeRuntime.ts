@@ -162,7 +162,7 @@ export const runOpenCodeSdk = <A>(
       new OpenCodeRuntimeError({ operation, detail: openCodeRuntimeErrorDetail(cause), cause }),
   }).pipe(Effect.withSpan(`opencode.${operation}`));
 
-export const verifyOpenCodeServerVersion = Effect.fn("verifyOpenCodeServerVersion")(function* (
+const verifyOpenCodeServerVersion = Effect.fn("verifyOpenCodeServerVersion")(function* (
   client: OpencodeClient,
 ) {
   const healthOption = yield* runOpenCodeSdk("global.health", (signal) =>

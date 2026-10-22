@@ -67,11 +67,5 @@ export function attachConsoleStdin(): number | undefined {
   }
   const stdin = new NodeTty.ReadStream(fd);
   Object.defineProperty(process, "stdin", { value: stdin, configurable: true, enumerable: true });
-  consoleStdinFd = fd;
   return fd;
 }
-
-let consoleStdinFd: number | undefined;
-
-/** The stdin to hand an interactive child: the reopened console, or the inherited one. */
-export const interactiveStdin = (): number | "inherit" => consoleStdinFd ?? "inherit";

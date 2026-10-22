@@ -774,8 +774,6 @@ export function AutomationDetailPanel(props: {
                   provider={activeInstanceEntry.driverKind as ProviderDriverKind}
                   models={activeInstanceEntry.models}
                   model={resolvedModelSelection.model}
-                  prompt=""
-                  onPromptChange={() => {}}
                   modelOptions={resolvedModelSelection.options ?? []}
                   allowPromptInjectedEffort={false}
                   planModeEnabled={settings.planModeEnabled}

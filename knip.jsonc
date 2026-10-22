@@ -5,7 +5,7 @@
   // These executables are supplied by the OS or installed separately from npm.
   "ignoreBinaries": ["eas", "file", "mkfifo", "pkill", "pkg-config", "plutil", "sips"],
   // Kept for a future Vetra release workflow. Upstream's release.yml, which ran it, is deleted in this fork.
-  "ignoreFiles": ["scripts/smoke-cli-archive.ts"],
+  "ignoreFiles": ["scripts/build-cli-archive.ts", "scripts/smoke-cli-archive.ts"],
   "workspaces": {
     ".": {
       // Keep vendored reference repositories outside the root project.
@@ -24,6 +24,8 @@
       // electron-builder loads the macOS signer by path.
       "entry": [
         "knip-schemas.ts",
+        // release-smoke.ts runs this in a subprocess.
+        "resolve-nightly-release.ts",
         "setup-worktree.ts",
         "sign-macos.ts",
         "verify-windows-desktop-artifact.ts",

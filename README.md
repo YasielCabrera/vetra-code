@@ -27,7 +27,7 @@ Vetra Code runtime state is isolated under `~/.vetra-code` by default. Never poi
 
 ## Prerequisites
 
-- Node.js `24.13.1` or a compatible version from `package.json`
+- Node.js `26.12.1`, as pinned in `package.json`
 - pnpm `11.10.0`
 - At least one installed and authenticated provider:
   - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`

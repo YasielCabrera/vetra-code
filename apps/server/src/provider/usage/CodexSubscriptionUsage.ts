@@ -48,7 +48,7 @@ const codexWindowRole = (window: RateLimitWindow): CodexWindowRole => {
 };
 
 /** Mirrors CodexBar's duration-based normalization for app-server slots. */
-export const normalizeCodexRateLimitWindows = (
+const normalizeCodexRateLimitWindows = (
   primary: RateLimitSnapshot["primary"],
   secondary: RateLimitSnapshot["secondary"],
 ): {
