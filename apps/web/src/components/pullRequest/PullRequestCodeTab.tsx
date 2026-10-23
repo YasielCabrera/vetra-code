@@ -450,7 +450,6 @@ function PullRequestCodeTab({
   // The sentinel is held as state rather than a ref because the viewer mounts its own footer:
   // an effect reading a ref could run before that node exists and would never arm the observer.
   const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null);
-  const requestTreeReveal = useCodeViewFileReveal(viewer, scopeKey);
   const answeredReveal = useRef<number | null>(null);
 
   const loadDiffFiles = createPullRequestDiffFileContentsLoader(getDiffFileContents, {
@@ -653,6 +652,11 @@ function PullRequestCodeTab({
       };
     },
   );
+  const readyFiles = items.map((item) => ({
+    filePath: resolveFileDiffPath(item.fileDiff),
+    fileKey: item.id,
+  }));
+  const requestTreeReveal = useCodeViewFileReveal(viewer, scopeKey, readyFiles);
   const fileKeys = items.map((item) => item.id);
   const collapsedFileKeys = new Set(
     items.filter((item) => item.collapsed === true).map((item) => item.id),
@@ -696,7 +700,7 @@ function PullRequestCodeTab({
     const item = items.find((candidate) => resolveFileDiffPath(candidate.fileDiff) === path);
     if (item === undefined) return;
     if (item.collapsed === true) toggleFile(item.id);
-    requestTreeReveal(item.id);
+    requestTreeReveal(path);
   };
 
   const toggleAllFiles = () => {

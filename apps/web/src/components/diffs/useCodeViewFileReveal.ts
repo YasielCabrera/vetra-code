@@ -9,9 +9,9 @@ interface FileRevealHandle {
 export function useCodeViewFileReveal<TScope>(
   viewer: FileRevealHandle | null,
   scope: TScope,
-  readyFileKeys?: ReadonlyArray<string>,
+  readyFiles: ReadonlyArray<{ filePath: string; fileKey: string }>,
 ) {
-  const [request, setRequest] = useState<{ fileKey: string; scope: TScope } | null>(null);
+  const [request, setRequest] = useState<{ filePath: string; scope: TScope } | null>(null);
   const handledRequest = useRef<typeof request>(null);
 
   useEffect(() => {
@@ -20,12 +20,12 @@ export function useCodeViewFileReveal<TScope>(
       handledRequest.current = request;
       return;
     }
-    if (!viewer?.getInstance() || (readyFileKeys && !readyFileKeys.includes(request.fileKey)))
-      return;
+    const file = readyFiles.find((candidate) => candidate.filePath === request.filePath);
+    if (!file || !viewer?.getInstance()) return;
 
-    viewer.scrollTo({ type: "item", id: request.fileKey, align: "start" });
+    viewer.scrollTo({ type: "item", id: file.fileKey, align: "start" });
     handledRequest.current = request;
-  }, [request, scope, viewer, readyFileKeys]);
+  }, [request, scope, viewer, readyFiles]);
 
-  return (fileKey: string) => setRequest({ fileKey, scope });
+  return (filePath: string) => setRequest({ filePath, scope });
 }
