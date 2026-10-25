@@ -123,8 +123,6 @@
             },
           },
         };
-        // Keep the built-in mode list in sync with the runtime so the selected
-        // Vetra Chat palette is visible before React has mounted.
         const BUILT_IN_THEME_MODES = Object.fromEntries(
           Object.entries(BUILT_IN_THEME_PALETTES).map(([id, palettes]) => [
             id,
@@ -146,8 +144,6 @@
           "vetra-ember",
           "vetra-iris",
         ];
-        // Update every theme-color meta so any element another layer added
-        // carries the resolved color too.
         const setThemeColor = (color) => {
           for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
             meta.setAttribute("content", color);
@@ -220,9 +216,6 @@
         try {
           const storedTheme = window.localStorage.getItem("vetra:theme");
           const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          // Older builds stored the dark Vetra Chat palette as its own theme id
-          // and every maintainer theme under a vetra- prefix; keep those
-          // preferences readable. Mirrors the runtime's legacy alias table.
           const LEGACY_THEME_IDS = {
             "vetra-chat-dark": "vetra-chat",
             "vetra-grove": "grove",
@@ -243,7 +236,6 @@
                   (mode) => mode === customTheme.appearance || customTheme.variants?.[mode],
                 )
               : null);
-          // Mirrors the runtime's isKnownThemePreference.
           const isKnownTheme =
             storedTheme === "light" ||
             storedTheme === "dark" ||
@@ -257,8 +249,6 @@
             THEME_APPEARANCE_MODE_STORAGE_KEY,
           );
           const storedFollowSystem = window.localStorage.getItem(THEME_FOLLOW_SYSTEM_STORAGE_KEY);
-          // Mirrors the runtime's getThemePreferenceMode fallback: a bare
-          // "light"/"dark" preference names its own mode.
           const preferenceMode =
             theme === "light" || theme === "dark" ? theme : (legacyMode ?? baseAppearance);
           const appearanceMode = isThemePreferenceMode(storedAppearanceMode)
@@ -297,9 +287,7 @@
                 halfCustomTheme = halfCustom;
               }
             }
-          } catch {
-            // A malformed mix degrades to the base preference.
-          }
+          } catch {}
           const themeMode = !isThemed
             ? null
             : appearanceMode === "system"
@@ -386,13 +374,10 @@
           }
           setThemeColor(chromeColor);
         } catch {
-          // Mirror the runtime's storage-failure fallback: follow the OS.
           let prefersDark = true;
           try {
             prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          } catch {
-            // Keep the dark default when even matchMedia is unavailable.
-          }
+          } catch {}
           delete document.documentElement.dataset.themeId;
           delete document.documentElement.dataset.themeSelected;
           document.documentElement.classList.toggle("dark", prefersDark);

@@ -7,7 +7,7 @@ import {
   type TicketLinkTarget,
   type TicketPlanComment,
 } from "@t3tools/contracts";
-import { parseChangeRequestUrl } from "@t3tools/shared/changeRequestUrl";
+import { sourceControlDefinitions } from "../../../sourceControl/sourceControlDefinitions.ts";
 import { orderPlanCommentThreads } from "@t3tools/shared/ticketPlanAnchors";
 import * as Effect from "effect/Effect";
 
@@ -50,7 +50,7 @@ const toLinkTarget = (
     snapshot: { title: `${ref.repository}#${ref.number}`, state: "open" as const, url },
   });
   if ("url" in target) {
-    const ref = parseChangeRequestUrl(target.url);
+    const ref = sourceControlDefinitions.parseChangeRequestUrl(target.url)?.link ?? null;
     return ref === null
       ? Effect.fail(new TicketError({ message: `${target.url} is not a pull request URL.` }))
       : Effect.succeed({ kind: "pull_request", ...placeholder(ref, target.url) });

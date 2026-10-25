@@ -25,7 +25,7 @@ import {
   useTicketStatuses,
 } from "../../state/tickets";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
-import { GitHubIcon } from "../Icons";
+import { getSourceControlPresentationForKind } from "~/sourceControlPresentation";
 import { eligibleTicketGitHubProjects } from "../tickets/ticketGitHub.logic";
 import { useTicketGitHubRemotes } from "../tickets/useTicketGitHubRemotes";
 import { TICKET_STATUS_COLOR_OPTIONS, TicketStatusIcon } from "../tickets/ticketPresentation";
@@ -55,6 +55,8 @@ import {
   type TicketStatusEditQueue,
   ticketStatusUpsert,
 } from "./ticketStatusSettings.logic";
+
+const { Icon: GitHubIcon } = getSourceControlPresentationForKind("github");
 
 const CATEGORY_OPTIONS: ReadonlyArray<{ value: TicketStatusCategory; label: string }> = [
   { value: "open", label: "Open" },

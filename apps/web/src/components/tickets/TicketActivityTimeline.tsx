@@ -33,7 +33,7 @@ import { cn } from "../../lib/utils";
 import { useThreadShell, useThreadShells } from "../../state/entities";
 import { formatRelativeTimeLabel, formatTimestamp } from "../../timestampFormat";
 import ChatMarkdown from "../ChatMarkdown";
-import { GitHubIcon } from "../Icons";
+import { getSourceControlPresentationForKind } from "~/sourceControlPresentation";
 import { Button } from "../ui/button";
 import {
   foldTicketActivity,
@@ -42,6 +42,8 @@ import {
   type TicketActivityRow,
 } from "./ticketActivity.logic";
 import { TicketResourceLink } from "./ThreadTicketWorkspace";
+
+const { Icon: GitHubIcon } = getSourceControlPresentationForKind("github");
 
 const FIELD_LABELS = { title: "the title", body: "the description", labels: "the labels" } as const;
 const LINK_KIND_LABELS = {
@@ -401,7 +403,7 @@ function ActivityGroupRow(props: {
           aria-expanded={expanded}
           aria-controls={expanded ? cardId : undefined}
           onClick={() => props.onToggle(group.id)}
-          className="cursor-pointer rounded-sm text-start outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="cursor-pointer rounded-sm text-start outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
         >
           <ChevronRightIcon
             aria-hidden

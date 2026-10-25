@@ -56,6 +56,12 @@ const RESTRICTED_IMPORT_PATHS = [
     importNames: ["CodeView"],
     message: "Use StyledDiffCodeView so web diff surfaces share styling and virtualized geometry.",
   },
+  {
+    name: "react-native-screens",
+    importNames: ["ScrollViewMarker"],
+    message:
+      "Use NativeScrollViewMarker or NativeScrollView (src/native/NativeScrollViewMarker.tsx): they carry the header's scroll-edge blur under the Duo's vertical bar.",
+  },
 ];
 
 const RESTRICTED_UI_VARIANT_PATTERNS = [
@@ -90,6 +96,9 @@ const RESTRICTED_PULL_REQUEST_GLYPH_IMPORTS = {
 };
 
 export default defineConfig({
+  run: {
+    cache: { scripts: false },
+  },
   resolve: {
     alias: {
       "~": NodeURL.fileURLToPath(new URL("./apps/web/src", import.meta.url)),
@@ -97,6 +106,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Fixture subprocesses must not inherit the outer task runner’s cache policy.
+    env: { VP_REMOTE_CACHE: "off", VP_REMOTE_CACHE_URL: "" },
     exclude: TEST_EXCLUDE,
     hookTimeout: 60_000,
     testTimeout: 60_000,
@@ -152,8 +163,7 @@ export default defineConfig({
   fmt: {
     ignorePatterns: [
       ".repos/**",
-      // Macroscope's glob-per-line ignore grammar, not Markdown: formatting
-      // it rewrites `*` as `_` and joins lines.
+      // Macroscope requires one glob per line; Markdown formatting corrupts it.
       ".macroscope/ignore.md",
       ".alchemy",
       "dist",
@@ -237,8 +247,8 @@ export default defineConfig({
       "t3code/no-low-value-comments": "error",
       "t3code/no-manual-effect-runtime-in-tests": "error",
       "t3code/no-native-title-tooltip": "error",
-      // Test files only (the rule checks the filename). Becomes an error once existing polls are converted.
-      "t3code/no-polling-loop-in-tests": "warn",
+      // Test files only (the rule checks the filename).
+      "t3code/no-polling-loop-in-tests": "error",
       "t3code/no-raw-mcp-registration": "error",
       "t3code/no-real-time-wait-in-tests": "error",
       "t3code/no-test-in-loop": "error",
@@ -270,8 +280,26 @@ export default defineConfig({
         rules: { "t3code/no-frame-waits-in-browser-tests": "error" },
       },
       {
-        files: ["**/*.browser.test.*"],
-        rules: { "t3code/no-real-time-wait-in-tests": "off" },
+        // Burn-down list: these files still have polling loops, so they stay at "warn".
+        // Remove a file when you convert its loops. New polling loops in all other
+        // test files fail lint. Do not add new files to this list.
+        files: [
+          "apps/mobile/src/features/agent-awareness/remoteRegistration.test.ts",
+          "apps/server/src/background/HostPowerMonitor.test.ts",
+          "apps/server/src/orchestration-v2/Adapters/AcpAdapterV2.test.ts",
+          "apps/server/src/orchestration-v2/FoundationPersistence.test.ts",
+          "apps/server/src/project/ProjectEnrichmentService.test.ts",
+          "apps/server/src/project/ProjectService.test.ts",
+          "apps/server/src/scheduledTasks/ScheduledTaskService.webhook.test.ts",
+          "apps/server/src/usage/UsageService.test.ts",
+          "packages/client-runtime/src/connection/supervisor.test.ts",
+          "packages/client-runtime/src/rpc/client.test.ts",
+          "packages/client-runtime/src/rpc/session.test.ts",
+          "packages/client-runtime/src/state/shell-sync.test.ts",
+          "packages/client-runtime/src/state/threads-sync.test.ts",
+          "packages/shared/src/atomicWrite.test.ts",
+        ],
+        rules: { "t3code/no-polling-loop-in-tests": "warn" },
       },
       {
         files: ["apps/**/src/**", "packages/**/src/**"],
@@ -349,8 +377,67 @@ export default defineConfig({
         rules: { "eslint/no-restricted-imports": ["error", { paths: RESTRICTED_IMPORT_PATHS }] },
       },
       {
-        // React commits state set in a raw ResizeObserver callback after the paint, so derived
-        // layout lands a frame late. observeResize flushes every observed resize in one render.
+        // The server and every client load a forge's shared definition, so a UI runtime
+        // imported there would break the server; client-only forge code goes in `src/client/`.
+        files: ["packages/source-control-*/src/shared/**"],
+        rules: {
+          "eslint/no-restricted-imports": [
+            "error",
+            {
+              paths: [...RESTRICTED_IMPORT_PATHS, RESTRICTED_PULL_REQUEST_GLYPH_IMPORTS],
+              patterns: [
+                {
+                  group: [
+                    "react",
+                    "react/*",
+                    "react-*",
+                    "expo",
+                    "expo-*",
+                    "lucide-react",
+                    "@t3tools/client-runtime",
+                    "@t3tools/client-runtime/*",
+                    "../client/*",
+                    "../server/*",
+                    "../../client/*",
+                    "../../server/*",
+                    "../../../client/*",
+                    "../../../server/*",
+                    "@t3tools/source-control-*/client/*",
+                    "@t3tools/source-control-*/server/*",
+                  ],
+                  message:
+                    "Shared forge definitions load on the server and every client; keep UI and server code out.",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        files: ["apps/server/src/**", "packages/source-control-*/src/server/**"],
+        rules: {
+          "eslint/no-restricted-imports": [
+            "error",
+            {
+              paths: [...RESTRICTED_IMPORT_PATHS, RESTRICTED_PULL_REQUEST_GLYPH_IMPORTS],
+              patterns: [
+                {
+                  group: [
+                    "@t3tools/source-control-*/client/*",
+                    "../client/*",
+                    "../../client/*",
+                    "../../../client/*",
+                  ],
+                  message:
+                    "A forge's client entry is UI-only; the server reads its `shared/definition`.",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        // Raw ResizeObserver state commits miss the paint; observeResize flushes derived layout together.
         files: ["apps/web/src/**"],
         excludeFiles: [
           "apps/web/src/lib/observeResize.ts",
@@ -367,12 +454,22 @@ export default defineConfig({
         rules: { "t3code/no-outset-state-indicators": "error" },
       },
       {
+        files: ["apps/*/src/**", "packages/*/src/**"],
+        excludeFiles: [
+          "**/*.{test,spec}.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+          "**/testkit/**",
+          "**/_generated/**",
+          // Real user quotes stay verbatim.
+          "apps/marketing/src/lib/tweets.ts",
+        ],
+        rules: { "t3code/no-em-dash-copy": "error" },
+      },
+      {
         files: ["apps/web/src/**"],
         rules: { "shadcn/no-raw-colors": "error" },
       },
       {
-        // Third-party marks (brand logos, the macOS permission panes, Codex's Computer Use
-        // mark) must keep their exact colors, so the files that hold them are exempt.
+        // Third-party marks must retain their exact colors.
         files: ["apps/web/src/components/Icons.tsx", "apps/web/src/components/JetBrainsIcons.tsx"],
         rules: { "shadcn/no-raw-colors": "off" },
       },
@@ -410,9 +507,7 @@ export default defineConfig({
               allow: ["layout"],
               contracts: [
                 {
-                  // CollapsibleTrigger is a bare button with no styled counterpart
-                  // (a disclosure row is not a Button), so its className is the API.
-                  // Every other trigger has one: style them with render={<Button …/>}.
+                  // CollapsibleTrigger has no styled counterpart; other triggers use render={<Button …/>}.
                   pattern: "^CollapsibleTrigger$",
                   allow: ["layout", "color", "typography", "spacing", "shape", "effects", "motion"],
                 },
@@ -427,9 +522,7 @@ export default defineConfig({
         rules: { "shadcn/no-arbitrary-values": "off" },
       },
       {
-        // Shared client code must not call APIs missing from Hermes. Our ESNext
-        // TypeScript target accepts them even when they would crash a Hermes client at launch.
-        // Tests run on Node and are exempt.
+        // ESNext types allow APIs absent from Hermes; restrict shared client code, exempting Node tests.
         files: [
           "packages/client-runtime/src/**",
           "packages/contracts/src/**",

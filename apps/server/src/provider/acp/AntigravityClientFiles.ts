@@ -4,10 +4,7 @@ import type * as Path from "effect/Path";
 import * as EffectAcpErrors from "effect-acp/errors";
 import type * as EffectAcpSchema from "effect-acp/compat";
 
-/**
- * The agent gates each write behind `session/request_permission`, so only
- * path containment is checked here.
- */
+/** The agent requests permission for every write; check only path containment here. */
 const CLIENT_FILE_MAX_BYTES = 8 * 1024 * 1024;
 
 function isInsideRoot(path: Path.Path, root: string, candidate: string): boolean {
@@ -15,14 +12,7 @@ function isInsideRoot(path: Path.Path, root: string, candidate: string): boolean
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
-/**
- * Resolve every symlink the path already has on disk, keeping the segments that
- * do not exist yet. A write may name a directory the agent has not created, so
- * `realPath` on the parent can fail; falling back to the unresolved parent
- * would then compare an unresolved candidate against resolved roots and reject
- * a legitimate path whenever the workspace is reached through a link — every
- * macOS temp directory, and any symlinked projects directory.
- */
+/** Resolve existing symlinks before appending missing segments; unresolved parents reject valid symlinked workspaces. */
 const realPathOfNearestAncestor = Effect.fn("AntigravityClientFiles.realPathOfNearestAncestor")(
   function* (input: {
     readonly fileSystem: FileSystem.FileSystem;
@@ -48,13 +38,7 @@ const realPathOfNearestAncestor = Effect.fn("AntigravityClientFiles.realPathOfNe
   },
 );
 
-/**
- * Resolves an agent-supplied path and rejects anything outside the session
- * roots. Symlinks resolve before the check, including the final component, so
- * a link inside the workspace cannot read or write through to a file outside
- * it. An entry that exists but cannot be resolved, like a dangling link, is
- * rejected rather than written through.
- */
+/** Resolve symlinks before checking session roots; reject dangling links rather than writing through them. */
 const resolveClientFilePath = Effect.fn("AntigravityClientFiles.resolveClientFilePath")(
   function* (input: {
     readonly fileSystem: FileSystem.FileSystem;
@@ -70,8 +54,7 @@ const resolveClientFilePath = Effect.fn("AntigravityClientFiles.resolveClientFil
     const real = yield* input.fileSystem.realPath(resolved).pipe(
       Effect.catch(() =>
         Effect.gen(function* () {
-          // Only a missing file (a new write) falls back to its parent; a
-          // dangling or unreadable link must not be followed on write.
+          // Fall back to the parent only for missing files, never dangling or unreadable links.
           const entryExists = yield* input.fileSystem.readLink(resolved).pipe(
             Effect.as(true),
             Effect.catch(() => input.fileSystem.exists(resolved)),

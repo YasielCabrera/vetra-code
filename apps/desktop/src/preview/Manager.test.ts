@@ -54,8 +54,6 @@ describe("previewWindowOpenAction", () => {
   });
 
   it("opens a real window for scripted popups so the opener survives", () => {
-    // OAuth SDKs read a null `window.open()` as a blocked popup, and they need
-    // the opener alive to receive the credential back.
     expect(PreviewManager.previewWindowOpenAction(details({}))).toBe("popup");
     expect(
       PreviewManager.previewWindowOpenAction(details({ url: "http://localhost:5173/auth" })),
@@ -63,7 +61,6 @@ describe("previewWindowOpenAction", () => {
   });
 
   it("keeps a form POST with a body on the in-place path", () => {
-    // A new tab can only reopen the URL as a GET, which would drop the body.
     const postBody = { data: [], contentType: "application/x-www-form-urlencoded" };
     expect(
       PreviewManager.previewWindowOpenAction({
@@ -74,9 +71,6 @@ describe("previewWindowOpenAction", () => {
   });
 
   it("does not hand a window to schemes that cannot be hardened", () => {
-    // A popup skips the `will-attach-webview` hardening, so it only gets a window
-    // when its preferences can be overridden. Chromium copies the guest's
-    // preferences for `about:blank` and forbids overriding them.
     for (const url of [
       "javascript:alert(1)",
       "file:///etc/passwd",
@@ -88,8 +82,6 @@ describe("previewWindowOpenAction", () => {
   });
 
   it("denies a blank window instead of blanking the opener", () => {
-    // MSAL opens `about:blank` first and falls back to a redirect on `null`;
-    // loading the blank page into the tab would destroy that fallback.
     for (const url of ["about:blank", ""]) {
       for (const disposition of ["new-window", "foreground-tab"] as const) {
         expect(PreviewManager.previewWindowOpenAction(details({ url, disposition }))).toBe("deny");

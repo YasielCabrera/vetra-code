@@ -17,7 +17,7 @@ import {
   normalizeThreadPullRequestKey,
   threadPullRequestKeyOf,
   visibleThreadPullRequests,
-} from "@t3tools/shared/threadPullRequests";
+} from "../sourceControl/threadPullRequests.ts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Schedule from "effect/Schedule";
@@ -118,16 +118,16 @@ export const make = Effect.gen(function* () {
   const pullRequests = yield* PullRequestService.PullRequestService;
   const pullRequestSync = yield* PullRequestSyncReactor.PullRequestSyncReactor;
 
-  const linkAndAdvance = (
-    ticketId: TicketId,
-    target: TicketLinkTarget,
-    transition: (previous: TicketLinkTarget | null) => AutoAdvanceEvent | null,
-    context: {
-      readonly statuses: ReadonlyArray<TicketStatusDefinition>;
-      readonly settings: TicketAutoAdvanceSettings;
-    },
-  ) =>
-    Effect.gen(function* () {
+  const linkAndAdvance = Effect.fn("TicketLinkReactor.linkAndAdvance")(
+    function* (
+      ticketId: TicketId,
+      target: TicketLinkTarget,
+      transition: (previous: TicketLinkTarget | null) => AutoAdvanceEvent | null,
+      context: {
+        readonly statuses: ReadonlyArray<TicketStatusDefinition>;
+        readonly settings: TicketAutoAdvanceSettings;
+      },
+    ) {
       const { ticket, previous, suppressed } = yield* tickets.link(
         { ticketId, target },
         AUTOMATION,
@@ -140,12 +140,24 @@ export const make = Effect.gen(function* () {
         { ticketId, expectedRevision: ticket.revision, statusId: status.id },
         AUTOMATION,
       );
-    }).pipe(
-      Effect.catchTags({
-        TicketNotFoundError: () => Effect.void,
-        TicketRevisionConflictError: () => Effect.void,
-      }),
-    );
+    },
+    (
+      effect,
+      ticketId: TicketId,
+      target: TicketLinkTarget,
+      transition: (previous: TicketLinkTarget | null) => AutoAdvanceEvent | null,
+      context: {
+        readonly statuses: ReadonlyArray<TicketStatusDefinition>;
+        readonly settings: TicketAutoAdvanceSettings;
+      },
+    ) =>
+      effect.pipe(
+        Effect.catchTags({
+          TicketNotFoundError: () => Effect.void,
+          TicketRevisionConflictError: () => Effect.void,
+        }),
+      ),
+  );
 
   const readContext = Effect.gen(function* () {
     const settings = yield* settingsService.getSettings;
@@ -153,68 +165,69 @@ export const make = Effect.gen(function* () {
     return { statuses, settings: settings.ticketAutoAdvance };
   });
 
-  const onMessageSent = (threadId: ThreadId, ticketIds: ReadonlyArray<TicketId>) =>
-    Effect.gen(function* () {
-      // An analyzer thread's tickets are what it was asked to file a ticket about, not work it
-      // started on; TicketService.create links the drafted ticket to the source thread instead.
-      const [draft] = yield* sql`SELECT 1 FROM ticket_drafts WHERE thread_id = ${threadId}`;
-      if (draft !== undefined) return;
-      const context = yield* readContext;
+  const onMessageSent = Effect.fn("TicketLinkReactor.onMessageSent")(function* (
+    threadId: ThreadId,
+    ticketIds: ReadonlyArray<TicketId>,
+  ) {
+    // An analyzer thread's tickets are what it was asked to file a ticket about, not work it
+    // started on; TicketService.create links the drafted ticket to the source thread instead.
+    const [draft] = yield* sql`SELECT 1 FROM ticket_drafts WHERE thread_id = ${threadId}`;
+    if (draft !== undefined) return;
+    const context = yield* readContext;
+    yield* Effect.forEach(
+      ticketIds,
+      (ticketId) =>
+        linkAndAdvance(
+          ticketId,
+          { kind: "thread", threadId },
+          (previous) => (previous === null ? "threadStarted" : null),
+          context,
+        ),
+      { discard: true },
+    );
+  });
+
+  const onPullRequestsSynced = Effect.fn("TicketLinkReactor.onPullRequestsSynced")(function* (
+    threadId: ThreadId,
+    links: ReadonlyArray<ThreadPullRequestLink> | undefined,
+  ) {
+    const pullRequests = visibleThreadPullRequests(links ?? []);
+    if (pullRequests.length === 0) return;
+    const linked = yield* tickets.listForTarget({ kind: "thread", targetKey: threadId });
+    if (linked.length === 0) return;
+    const context = yield* readContext;
+    const stateOf = (link: ThreadPullRequestLink) => link.snapshot?.state ?? "open";
+    for (const pullRequest of pullRequests) {
+      const state = stateOf(pullRequest);
+      const othersOpen = pullRequests.some(
+        (other) => other !== pullRequest && stateOf(other) === "open",
+      );
+      const target = {
+        kind: "pull_request" as const,
+        ref: {
+          host: pullRequest.host,
+          repository: pullRequest.repository,
+          number: pullRequest.number,
+        },
+        snapshot: {
+          title: pullRequest.snapshot?.title ?? `${pullRequest.repository}#${pullRequest.number}`,
+          state,
+          url: pullRequest.url,
+        },
+      };
       yield* Effect.forEach(
-        ticketIds,
-        (ticketId) =>
+        linked,
+        (ticket) =>
           linkAndAdvance(
-            ticketId,
-            { kind: "thread", threadId },
-            (previous) => (previous === null ? "threadStarted" : null),
+            ticket.id,
+            target,
+            (previous) => pullRequestTransition(target, previous, othersOpen),
             context,
           ),
         { discard: true },
       );
-    });
-
-  const onPullRequestsSynced = (
-    threadId: ThreadId,
-    links: ReadonlyArray<ThreadPullRequestLink> | undefined,
-  ) =>
-    Effect.gen(function* () {
-      const pullRequests = visibleThreadPullRequests(links ?? []);
-      if (pullRequests.length === 0) return;
-      const linked = yield* tickets.listForTarget({ kind: "thread", targetKey: threadId });
-      if (linked.length === 0) return;
-      const context = yield* readContext;
-      const stateOf = (link: ThreadPullRequestLink) => link.snapshot?.state ?? "open";
-      for (const pullRequest of pullRequests) {
-        const state = stateOf(pullRequest);
-        const othersOpen = pullRequests.some(
-          (other) => other !== pullRequest && stateOf(other) === "open",
-        );
-        const target = {
-          kind: "pull_request" as const,
-          ref: {
-            host: pullRequest.host,
-            repository: pullRequest.repository,
-            number: pullRequest.number,
-          },
-          snapshot: {
-            title: pullRequest.snapshot?.title ?? `${pullRequest.repository}#${pullRequest.number}`,
-            state,
-            url: pullRequest.url,
-          },
-        };
-        yield* Effect.forEach(
-          linked,
-          (ticket) =>
-            linkAndAdvance(
-              ticket.id,
-              target,
-              (previous) => pullRequestTransition(target, previous, othersOpen),
-              context,
-            ),
-          { discard: true },
-        );
-      }
-    });
+    }
+  });
 
   /** Keep ticket auto-advance watching settled threads until their linked tickets close. */
   const syncSettledPullRequests = Effect.gen(function* () {

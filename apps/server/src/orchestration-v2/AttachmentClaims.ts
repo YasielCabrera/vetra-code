@@ -51,10 +51,7 @@ export const releaseClaimedAttachments = Effect.fn("AttachmentClaims.releaseClai
   },
 );
 
-/**
- * A copy, not a move — the pending file stays behind as the retry source for a
- * failed bootstrap, and the periodic pending sweep reclaims it later.
- */
+/** Copies preserve the pending retry source after failed bootstrap; the pending sweep reclaims it. */
 export const claimPendingAttachments = Effect.fn("AttachmentClaims.claimPendingAttachments")(
   function* (input: {
     readonly threadId: string;

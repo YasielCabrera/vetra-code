@@ -33,11 +33,7 @@ class LocalTracer extends Context.Reference("@t3tools/shared/relayTracing/LocalT
   defaultValue: () => Option.none<Tracer.Tracer>(),
 }) {}
 
-/**
- * Exports every span `effect` creates through the product tracer. Use it only
- * around Vetra Connect work; wrap local work inside it with
- * {@link withLocalTracing} so it stays off the product tracer.
- */
+/** Export only Vetra Connect spans; wrap local work with {@link withLocalTracing}. */
 export const withRelayClientTracing = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> =>
@@ -58,10 +54,7 @@ export const withRelayClientTracing = <A, E, R>(
     ),
   );
 
-/**
- * Its spans stay in the local trace and are never exported, so a relay span can
- * time the work without shipping what the user's machine did to answer it.
- */
+/** Keep local work in the local trace without exporting machine details through relay spans. */
 export const withLocalTracing = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   LocalTracer.pipe(
     Effect.flatMap(
@@ -173,7 +166,7 @@ export function layer(
       attributes: {
         "service.namespace": "vetra",
         "service.runtime": resource.runtime,
-        "service.component": resource.component ?? "relay-client",
+        "vetra.component": resource.component ?? "relay-client",
         "vetra.client.surface": resource.client,
       },
     },

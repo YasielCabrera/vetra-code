@@ -20,7 +20,7 @@ import {
   type TicketPlanSummary,
   type TicketSummary,
 } from "@t3tools/contracts";
-import { threadPullRequestKeyOf } from "@t3tools/shared/threadPullRequests";
+import { threadPullRequestKeyOf } from "../sourceControl/threadPullRequests.ts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

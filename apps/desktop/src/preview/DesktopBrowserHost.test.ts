@@ -37,28 +37,37 @@ const pageRequest = {
 const makeDebuggee = () => {
   const emitter = new NodeEvents.EventEmitter();
   const pending: Array<() => void> = [];
+  const sent: Array<unknown> = [];
+  const sendWaiters: Array<() => void> = [];
   const debuggee = Object.assign(emitter, {
-    sendCommand: (method: string) =>
+    sendCommand: (method: string, params?: { id?: number }) =>
       new Promise((resolve) => {
         if (method === "Target.getTargetInfo") {
           resolve({ targetInfo: { targetId: "GUEST" } });
           return;
         }
+        sent.push(params?.id);
         pending.push(() => resolve({ method }));
+        sendWaiters.shift()?.();
       }),
   });
-  const webContents = {
+  const webContents = Object.assign(new NodeEvents.EventEmitter(), {
     getURL: () => "http://localhost/",
     getTitle: () => "Page",
     getUserAgent: () => "Electron",
-  };
+  });
   return {
     tab: {
       webContents: webContents as unknown as Electron.WebContents,
       debugger: debuggee as unknown as Electron.Debugger,
     },
     emit: (method: string, params: unknown) => emitter.emit("message", {}, method, params, ""),
+    navigate: () => webContents.emit("did-navigate"),
+    /** Ids of the commands the debugger received, in order. */
+    sent,
+    nextSend: () => new Promise<void>((resolve) => sendWaiters.push(resolve)),
     release: () => pending.splice(0).forEach((resolve) => resolve()),
+    releaseFirst: () => pending.shift()?.(),
   };
 };
 
@@ -114,7 +123,104 @@ const withHost = <A, E>(
     }).pipe(Effect.provide(layerEnvironment));
   }).pipe(Effect.scoped, Effect.provide(NodeServices.layer));
 
+/** Sends a page command whose id the fake debugger records as it receives it. */
+const command = (
+  host: DesktopBrowserHost.DesktopBrowserHost["Service"],
+  id: number,
+  method: string,
+) =>
+  host.handleCommandLine(
+    encodeJson({
+      type: "cdp",
+      ...key,
+      message: encodeJson({ id, method, params: { id }, sessionId: "t3-preview-page" }),
+    }),
+  );
+
+/**
+ * Ids of the replies the host sends, in order. A screenshot's reply leaves after its turn
+ * has passed on, so by then the next waiting screenshot, if any, has been sent. Subscribe
+ * before sending commands: a new subscriber releases the tab's relay.
+ */
+const watchReplies = (host: DesktopBrowserHost.DesktopBrowserHost["Service"]) =>
+  Effect.gen(function* () {
+    const replies = yield* Queue.unbounded<number>();
+    yield* host.events.pipe(
+      Stream.map((line) => decodeEvent(new TextDecoder().decode(line))),
+      Stream.runForEach((event) =>
+        event.type === "cdp" ? Queue.offer(replies, decodeCdpReply(event.message).id) : Effect.void,
+      ),
+      Effect.forkScoped,
+    );
+    yield* Effect.yieldNow;
+    return replies;
+  });
+
 describe("DesktopBrowserHost", () => {
+  it.effect("sends a page one screenshot at a time", () =>
+    withHost((host) =>
+      Effect.gen(function* () {
+        const debuggee = makeDebuggee();
+        host.attach(key, debuggee.tab);
+        const replies = yield* watchReplies(host);
+
+        yield* command(host, 1, "Page.captureScreenshot");
+        yield* command(host, 2, "Page.captureScreenshot");
+        yield* command(host, 3, "DOM.enable");
+        expect(debuggee.sent).toEqual([1, 3]);
+
+        debuggee.releaseFirst();
+        expect(yield* Queue.take(replies)).toBe(1);
+        expect(debuggee.sent).toEqual([1, 3, 2]);
+      }),
+    ),
+  );
+
+  it.effect("stops waiting on a screenshot the page navigated away from", () =>
+    withHost((host) =>
+      Effect.gen(function* () {
+        const debuggee = makeDebuggee();
+        host.attach(key, debuggee.tab);
+        const replies = yield* watchReplies(host);
+
+        yield* command(host, 1, "Page.captureScreenshot");
+        yield* command(host, 2, "Page.captureScreenshot");
+        yield* command(host, 3, "Page.captureScreenshot");
+        debuggee.navigate();
+        expect(debuggee.sent).toEqual([1, 2]);
+
+        // The superseded screenshot answering late must not start a third beside the second.
+        debuggee.releaseFirst();
+        expect(yield* Queue.take(replies)).toBe(1);
+        expect(debuggee.sent).toEqual([1, 2]);
+
+        debuggee.releaseFirst();
+        expect(yield* Queue.take(replies)).toBe(2);
+        expect(debuggee.sent).toEqual([1, 2, 3]);
+      }),
+    ),
+  );
+
+  it.effect("drops screenshots a released relay left waiting", () =>
+    withHost((host) =>
+      Effect.gen(function* () {
+        const debuggee = makeDebuggee();
+        host.attach(key, debuggee.tab);
+
+        yield* command(host, 1, "Page.captureScreenshot");
+        yield* command(host, 2, "Page.captureScreenshot");
+        yield* host.handleCommandLine(encodeJson({ type: "release", ...key }));
+        yield* command(host, 3, "Page.captureScreenshot");
+        expect(debuggee.sent).toEqual([1]);
+
+        const sent = debuggee.nextSend();
+        debuggee.release();
+        yield* Effect.promise(() => sent);
+        expect(debuggee.sent).toEqual([1, 3]);
+      }),
+    ),
+  );
+
   it.effect("announces tabs already attached to a backend that starts later", () =>
     withHost((host) =>
       Effect.gen(function* () {

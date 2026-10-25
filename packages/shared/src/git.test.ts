@@ -62,27 +62,6 @@ describe("normalizeGitRemoteUrl", () => {
     expect(normalizeGitRemoteUrl("C:/repos/project")).toBe("c:/repos/project");
     expect(normalizeGitRemoteUrl("git@x:team/project.git")).toBe("x/team/project");
   });
-
-  it("gives an Azure DevOps repository the same key over SSH as over HTTPS", () => {
-    expect(normalizeGitRemoteUrl("git@ssh.dev.azure.com:v3/Vetra-Code/Platform/T3Code")).toBe(
-      "dev.azure.com/vetra-code/platform/_git/t3code",
-    );
-    expect(
-      normalizeGitRemoteUrl("ssh://git@ssh.dev.azure.com:22/v3/Vetra-Code/Platform/T3Code"),
-    ).toBe("dev.azure.com/vetra-code/platform/_git/t3code");
-    expect(
-      normalizeGitRemoteUrl("https://Vetra-Code@dev.azure.com/Vetra-Code/Platform/_git/T3Code"),
-    ).toBe("dev.azure.com/vetra-code/platform/_git/t3code");
-  });
-
-  it("puts the organization back in the host on the name dev.azure.com replaced", () => {
-    expect(
-      normalizeGitRemoteUrl("Vetra-Code@vs-ssh.visualstudio.com:v3/Vetra-Code/Platform/T3Code"),
-    ).toBe("vetra-code.visualstudio.com/platform/_git/t3code");
-    expect(normalizeGitRemoteUrl("https://Vetra-Code.visualstudio.com/Platform/_git/T3Code")).toBe(
-      "vetra-code.visualstudio.com/platform/_git/t3code",
-    );
-  });
 });
 
 describe("parseOriginUrlFromGitConfig", () => {

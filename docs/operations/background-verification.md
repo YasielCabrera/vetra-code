@@ -1,13 +1,13 @@
 # Live background-work verification
 
-Run from the repository root with Node 24 and installed dependencies. This uses
+Run from the repository root with installed dependencies (`vp` provides the pinned Node). This uses
 real provider CLI credentials and consumes model usage:
 
 ```sh
 node apps/server/scripts/verify-background-live.ts --repeat 2
 ```
 
-Each scenario starts the production server in a fresh temporary T3 home and Git
+Each scenario starts the production server in a fresh temporary Vetra home and Git
 project. It connects through authenticated HTTP and the same typed WebSocket RPC
 contract as clients. There are no substituted adapters, in-memory databases, or
 seeded projection rows. Existing T3 environments are not modified.
@@ -45,7 +45,7 @@ Each run prints its evidence directory. It retains the SQLite database, native
 provider logs, streamed events, final projection, prompt, revision and dirty-file
 inventory, and machine-readable verdict. Suite reports link every attempt,
 including failures; repeating a test does not erase an earlier failure. Evidence
-is local and may contain provider output. Do not upload the entire T3 home.
+is local and may contain provider output. Do not upload the entire Vetra home.
 
 This loop does not verify rendered folding, mobile UI, cancellation, or abrupt
 process loss between provider acceptance and receipt persistence. Those require

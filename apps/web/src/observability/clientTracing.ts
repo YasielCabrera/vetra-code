@@ -18,8 +18,9 @@ const CLIENT_TRACING_RESOURCE = {
   serviceName: "vetra-web",
   attributes: {
     "service.namespace": "vetra",
+    "deployment.environment.name": import.meta.env.DEV ? "development" : "production",
     "service.runtime": "vetra-web",
-    "service.mode": isElectron ? "electron" : "browser",
+    "vetra.client.surface": isElectron ? "desktop" : "web",
     "service.version": APP_VERSION,
   },
 } as const;

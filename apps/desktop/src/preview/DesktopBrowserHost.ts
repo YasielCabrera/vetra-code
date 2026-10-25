@@ -1,8 +1,5 @@
 // @effect-diagnostics nodeBuiltinImport:off - Names download files on the shared disk.
-/**
- * The preview manager owns the tab's single debugger session and hands it here;
- * the relay shares it.
- */
+/** The manager owns the single debugger attachment; the relay shares it. */
 import {
   DesktopBrowserCommand,
   DesktopBrowserEvent,
@@ -62,6 +59,8 @@ interface AttachedTab {
   readonly key: DesktopBrowserTabKey;
   readonly debuggee: DesktopBrowserTabDebugger;
   relay: CdpRelayConnection | null;
+  screenshotTurn: object | null;
+  readonly waitingScreenshots: Array<() => void>;
   downloadDirectory: string | null;
   pendingDownloadGuid: string | null;
   agentInputAt: number;
@@ -71,6 +70,7 @@ interface AttachedTab {
     params: unknown,
     sessionId: string,
   ) => void;
+  readonly onNewDocument: () => void;
 }
 
 export class DesktopBrowserHost extends Context.Service<
@@ -119,15 +119,54 @@ export const make = Effect.gen(function* () {
   const tabs = new Map<string, AttachedTab>();
   const emit = (event: DesktopBrowserEventType) => runFork(PubSub.publish(outbox, event));
 
+  const nextScreenshot = (tab: AttachedTab) => {
+    tab.screenshotTurn = null;
+    tab.waitingScreenshots.shift()?.();
+  };
+
+  /**
+   * Chromium below 157 crashes the whole app when a guest's renderer exits with a
+   * screenshot copy in flight (crbug.com/567321049). Overlapping screenshots make that
+   * far likelier, and one the server gave up on stays pending in Chromium, so each guest
+   * gets one at a time. One queued by a relay released since then is dropped unsent.
+   */
+  const takeScreenshot = (
+    tab: AttachedTab,
+    relay: CdpRelayConnection,
+    capture: () => Promise<unknown>,
+  ) =>
+    new Promise<unknown>((resolve, reject) => {
+      const start = () => {
+        if (tab.relay !== relay) {
+          reject(new Error("The preview connection that asked for this screenshot closed."));
+          nextScreenshot(tab);
+          return;
+        }
+        const turn = {};
+        tab.screenshotTurn = turn;
+        capture()
+          .finally(() => {
+            if (tab.screenshotTurn === turn) nextScreenshot(tab);
+          })
+          .then(resolve, reject);
+      };
+      if (tab.screenshotTurn === null) start();
+      else tab.waitingScreenshots.push(start);
+    });
+
   const relayFor = (tab: AttachedTab) => {
     if (tab.relay) return tab.relay;
     const { webContents, debugger: debuggee } = tab.debuggee;
+    const send = (method: string, params: Record<string, unknown>, sessionId?: string) =>
+      sessionId === undefined
+        ? sendPageCommand(webContents, debuggee, method, params)
+        : debuggee.sendCommand(method, params, sessionId);
     const relay: CdpRelayConnection = createCdpRelayConnection(
       {
         send: (method, params, sessionId) =>
-          sessionId === undefined
-            ? sendPageCommand(webContents, debuggee, method, params)
-            : debuggee.sendCommand(method, params, sessionId),
+          method === "Page.captureScreenshot"
+            ? takeScreenshot(tab, relay, () => send(method, params, sessionId))
+            : send(method, params, sessionId),
         targetId: () =>
           debuggee
             .sendCommand("Target.getTargetInfo")
@@ -149,10 +188,7 @@ export const make = Effect.gen(function* () {
     return relay;
   };
 
-  /**
-   * Without a path Electron would open its Save dialog over the app for a file
-   * the agent asked for. CDP names the download just before this runs.
-   */
+  // CDP supplies the path before this runs; otherwise Electron opens a Save dialog.
   const placeDownload = (source: Electron.WebContents, item: Electron.DownloadItem) => {
     const tab = [...tabs.values()].find(
       (candidate) => candidate.debuggee.webContents === source && candidate.downloadDirectory,
@@ -168,7 +204,9 @@ export const make = Effect.gen(function* () {
     const tab = tabs.get(id);
     if (!tab) return;
     tabs.delete(id);
+    tab.relay = null;
     tab.debuggee.debugger.off("message", tab.onMessage);
+    tab.debuggee.webContents.off("did-navigate", tab.onNewDocument);
     emit({ type: "detached", ...key });
   };
 
@@ -180,6 +218,8 @@ export const make = Effect.gen(function* () {
       key,
       debuggee,
       relay: null,
+      screenshotTurn: null,
+      waitingScreenshots: [],
       downloadDirectory: null,
       pendingDownloadGuid: null,
       agentInputAt: Number.NEGATIVE_INFINITY,
@@ -190,9 +230,15 @@ export const make = Effect.gen(function* () {
         }
         tab.relay?.event(method, params, sessionId);
       },
+      // A screenshot pending when the page loads a new document, a reload included, can
+      // stay unanswered. A crashed page lands here once it reloads, well after its renderer died.
+      onNewDocument: () => {
+        if (tab.screenshotTurn !== null) nextScreenshot(tab);
+      },
     };
     tabs.set(id, tab);
     debuggee.debugger.on("message", tab.onMessage);
+    debuggee.webContents.on("did-navigate", tab.onNewDocument);
     emit({ type: "attached", ...key });
   };
 
@@ -229,27 +275,28 @@ export const make = Effect.gen(function* () {
       }),
   );
 
-  const walletRequest: DesktopBrowserHost["Service"]["walletRequest"] = (request) =>
-    Effect.gen(function* () {
-      lastWalletRequestId += 1;
-      const requestId = String(lastWalletRequestId);
-      const event: DesktopBrowserEventType = { type: "walletRequest", requestId, ...request };
-      // Checked here because an event that fails to encode would end the run.
-      if (Option.isNone(encodeEventOption(event))) return WALLET_INVALID_REQUEST;
-      const reply = yield* Deferred.make<Web3GuestReply>();
-      // Joined in one step, so a run cannot end between the check and the join.
-      const waiters = walletWaiters;
-      if (waiters === null) return WALLET_NOT_CONNECTED;
-      waiters.set(requestId, reply);
-      yield* PubSub.publish(outbox, event);
-      return yield* Deferred.await(reply).pipe(
-        Effect.timeoutOrElse({
-          duration: WALLET_REPLY_TIMEOUT,
-          orElse: () => Effect.succeed(WALLET_NOT_CONNECTED),
-        }),
-        Effect.ensuring(Effect.sync(() => waiters.delete(requestId))),
-      );
-    });
+  const walletRequest: DesktopBrowserHost["Service"]["walletRequest"] = Effect.fn(
+    "DesktopBrowserHost.walletRequest",
+  )(function* (request) {
+    lastWalletRequestId += 1;
+    const requestId = String(lastWalletRequestId);
+    const event: DesktopBrowserEventType = { type: "walletRequest", requestId, ...request };
+    // Checked here because an event that fails to encode would end the run.
+    if (Option.isNone(encodeEventOption(event))) return WALLET_INVALID_REQUEST;
+    const reply = yield* Deferred.make<Web3GuestReply>();
+    // Joined in one step, so a run cannot end between the check and the join.
+    const waiters = walletWaiters;
+    if (waiters === null) return WALLET_NOT_CONNECTED;
+    waiters.set(requestId, reply);
+    yield* PubSub.publish(outbox, event);
+    return yield* Deferred.await(reply).pipe(
+      Effect.timeoutOrElse({
+        duration: WALLET_REPLY_TIMEOUT,
+        orElse: () => Effect.succeed(WALLET_NOT_CONNECTED),
+      }),
+      Effect.ensuring(Effect.sync(() => waiters.delete(requestId))),
+    );
+  });
 
   const legacyKeystorePath = environment.path.join(
     environment.previewWalletsDir,

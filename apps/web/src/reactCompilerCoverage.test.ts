@@ -10,17 +10,33 @@ const repoRoot = NodePath.resolve(
   "../../..",
 );
 
+// Fork features retain manual memoization until their compiler migration.
+const manualMemoizationFiles = new Set([
+  "apps/web/src/components/ProviderSubscriptionUsageMonitor.tsx",
+  "apps/web/src/components/files/useFileLineDecorations.ts",
+  "apps/web/src/components/issue/IssueDetailPanel.tsx",
+  "apps/web/src/components/issue/IssueHandoffActions.tsx",
+  "apps/web/src/components/tickets/CreateTicketDialog.tsx",
+  "apps/web/src/components/tickets/NewTicketPage.tsx",
+  "apps/web/src/components/tickets/TicketBodyEditor.tsx",
+  "apps/web/src/components/tickets/TicketDetailPage.tsx",
+  "apps/web/src/components/tickets/TicketPlanCommentSurface.tsx",
+  "apps/web/src/components/tickets/TicketProjectsEditor.tsx",
+  "apps/web/src/components/tickets/TicketStartThreadMenu.tsx",
+  "apps/web/src/components/tickets/useAutosavedDocument.ts",
+  "apps/web/src/components/tickets/useTicketDocument.ts",
+  "apps/web/src/components/tickets/useTicketGitHubRemotes.ts",
+  "apps/web/src/hooks/useRunning.ts",
+]);
+
 const webSourceFiles = NodeFS.readdirSync(NodePath.join(repoRoot, "apps/web/src"), {
   recursive: true,
 })
   .map(String)
   .filter((file) => /\.tsx?$/.test(file) && !/\.(test|browser)\.tsx?$/.test(file))
   .filter((file) => !file.endsWith(".gen.ts"))
-  .map((file) => `apps/web/src/${file}`);
-
-// ChatView is ~9k lines. Compiling it takes ~9s on a fast machine and passes the
-// 15s project timeout on loaded CI runners.
-const slowFiles = new Set(["apps/web/src/components/ChatView.tsx"]);
+  .map((file) => `apps/web/src/${file}`)
+  .filter((file) => !manualMemoizationFiles.has(file));
 
 const compile = async (file: string) => {
   const absolute = NodePath.join(repoRoot, file);
@@ -35,7 +51,5 @@ const compile = async (file: string) => {
 // Lint reports most compiler bailouts, but not every one (try/finally, throw
 // inside try). A skipped file still builds, just unmemoized, so check the output.
 describe("React Compiler coverage", () => {
-  it.each(webSourceFiles.filter((file) => !slowFiles.has(file)))("compiles %s", compile);
-  // oxlint-disable-next-line t3code/no-test-timeout-or-unreasoned-skip -- CPU-bound compile of a huge file, not a hidden wait.
-  it.each([...slowFiles])("compiles %s", compile, 60_000);
+  it.each(webSourceFiles)("compiles %s", compile);
 });

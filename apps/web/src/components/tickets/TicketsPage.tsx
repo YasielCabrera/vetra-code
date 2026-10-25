@@ -58,7 +58,7 @@ import { environmentShell } from "../../state/shell";
 import { ticketEnvironment, useTicketGitHubSources, useTickets } from "../../state/tickets";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
-import { GitHubIcon } from "../Icons";
+import { getSourceControlPresentationForKind } from "~/sourceControlPresentation";
 import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
 import { ProjectFavicon } from "../ProjectFavicon";
 import { sortScopedProjectsForSidebar } from "../Sidebar.logic";
@@ -116,6 +116,8 @@ declare module "@tanstack/react-router" {
     [TICKET_BOARD_RETAINED_SEARCH]?: TicketBoardSearch | undefined;
   }
 }
+
+const { Icon: GitHubIcon } = getSourceControlPresentationForKind("github");
 
 const ROW_HEIGHT = TICKET_LIST_ROW_HEIGHT;
 
@@ -826,7 +828,7 @@ export function TicketsPage() {
                 }}
                 placeholder="Search tickets"
                 aria-label="Search tickets"
-                className="h-9 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground/72 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/24 sm:h-8"
+                className="h-9 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground/72 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/24 sm:h-8"
               />
             </div>
             <ToggleGroup
@@ -1060,7 +1062,7 @@ const TicketGroupHeader = memo(function TicketGroupHeader(props: {
       data-board-row={props.rowIndex}
       aria-expanded={!props.collapsed}
       onClick={() => props.onToggle(props.group, props.collapsed)}
-      className="flex h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-medium text-muted-foreground outline-none hover:bg-accent/60 focus-visible:ring-1 focus-visible:ring-ring"
+      className="flex h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-medium text-muted-foreground outline-none hover:bg-accent/60 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
     >
       <ChevronRightIcon
         aria-hidden

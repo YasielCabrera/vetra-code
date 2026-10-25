@@ -28,10 +28,7 @@ const CONTEXT_LINK = new RegExp(
   "g",
 );
 
-/**
- * 64 bits of digest, because the slug in front of it is truncated: two long producer
- * ids that agree on their first 48 characters are told apart by this alone.
- */
+// The digest alone distinguishes producer ids sharing the truncated 48-character slug.
 function fnv1a64(value: string): string {
   let forward = 0x811c9dc5;
   let reverse = 0x9dc5811c;

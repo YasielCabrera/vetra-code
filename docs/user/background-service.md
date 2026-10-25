@@ -36,6 +36,16 @@ The install and update paths refuse to replace a newer service with an older ver
 Vetra Connect setup leaves a newer service unchanged. Downgrading is deliberate: it requires the
 exact older version and `--allow-downgrade`.
 
+## Local network access
+
+The service listens on your local network and Tailscale addresses, so the
+desktop app and locally served web clients can connect directly. HTTPS-hosted
+clients need an explicitly configured secure connection because browsers block
+plain HTTP from an HTTPS page. The service does not answer on
+public addresses, and every device still needs to pair or sign in. To keep the service reachable from this machine only, set
+`VETRA_HOST=127.0.0.1` in `service.env` (below). Any `VETRA_HOST` value
+replaces this default.
+
 ## Configure the service environment
 
 Put custom environment variables in `service.env` under the service's Vetra home

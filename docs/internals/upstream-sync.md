@@ -369,7 +369,6 @@ list):
 | `T3 Code` / `T3-Code` / `T3 CODE`                      | `Vetra Code` / `Vetra-Code` / `VETRA CODE`                      |
 | `T3 Connect` / `t3-connect/`                           | `Vetra Connect` / `vetra-connect/`                              |
 | `T3 Chat` / `t3-chat`                                  | `Vetra Chat` / `vetra-chat`                                     |
-| `T3Tools`                                              | `Vetra-Code`                                                    |
 | `npx t3 ` / `` `t3 `` / `<code>t3 `                    | `vetra ` / `` `vetra `` / `<code>vetra `                        |
 | `npx t3@` / `` `t3` `` (the CLI, not the `t3` package) | `npx @vetra-code/server@` / `` `vetra` ``                       |
 | `T3CODE_` / `T3_`                                      | `VETRA_`                                                        |

@@ -2,16 +2,12 @@ import * as GitHubRequestPolicy from "@t3tools/source-control-github/server/GitH
 import {
   ProjectId,
   TicketError,
-  sourceControlHostOf,
   SourceControlProviderKind,
   type OrchestrationProjectShell,
   type TicketId,
   type TicketIssueLinkCandidates,
 } from "@t3tools/contracts";
-import {
-  canonicalRepositoryKey,
-  detectSourceControlProviderFromRemoteUrl,
-} from "@t3tools/shared/sourceControl";
+import { sourceControlDefinitions } from "../sourceControl/sourceControlDefinitions.ts";
 import * as Cache from "effect/Cache";
 import * as Context from "effect/Context";
 import * as Data from "effect/Data";
@@ -104,8 +100,8 @@ const make = Effect.gen(function* () {
       Option.getOrElse(() => SourceControlProviderKind.make("unknown")),
     );
 
-  const projectFor: TicketGitHub["Service"]["projectFor"] = (target, excludeProjectId) =>
-    Effect.gen(function* () {
+  const projectFor: TicketGitHub["Service"]["projectFor"] = Effect.fn("TicketGitHub.projectFor")(
+    function* (target, excludeProjectId) {
       if (target.projectId !== undefined) return target.projectId;
       const sources = yield* sql<{ readonly project_id: string }>`
         SELECT project_id FROM ticket_github_sources
@@ -126,24 +122,31 @@ const make = Effect.gen(function* () {
       const shells = yield* projects.listShells({ projectIds: ids });
       const source = sources.find((row) => shells.some((shell) => shell.id === row.project_id));
       if (source !== undefined) return ProjectId.make(source.project_id);
-      const key = canonicalRepositoryKey(`${target.host}/${target.repository}`.toLowerCase());
+      const key = sourceControlDefinitions.canonicalRepositoryKey(
+        `${target.host}/${target.repository}`.toLowerCase(),
+      );
       return (
         shells.find(
           (shell) =>
             links.some((link) => link.project_id === shell.id) &&
             shell.repositoryIdentity != null &&
-            canonicalRepositoryKey(shell.repositoryIdentity.canonicalKey.toLowerCase()) === key,
+            sourceControlDefinitions.canonicalRepositoryKey(
+              shell.repositoryIdentity.canonicalKey.toLowerCase(),
+            ) === key,
         )?.id ?? null
       );
-    }).pipe(
-      Effect.mapError(
-        (cause) =>
-          new TicketError({ message: "Could not resolve the ticket's GitHub project.", cause }),
+    },
+    (effect, target, excludeProjectId) =>
+      effect.pipe(
+        Effect.mapError(
+          (cause) =>
+            new TicketError({ message: "Could not resolve the ticket's GitHub project.", cause }),
+        ),
       ),
-    );
+  );
 
-  const workingProject = (target: GitHubTarget) =>
-    Effect.gen(function* () {
+  const workingProject = Effect.fn("TicketGitHub.workingProject")(
+    function* (target: GitHubTarget) {
       const projectId = yield* projectFor(target);
       const shells =
         projectId === null ? [] : yield* projects.listShells({ projectIds: [projectId] });
@@ -154,16 +157,19 @@ const make = Effect.gen(function* () {
         });
       }
       return shell;
-    }).pipe(
-      Effect.mapError((cause) =>
-        cause._tag === "TicketError"
-          ? cause
-          : new TicketError({ message: "Could not read the ticket's GitHub project.", cause }),
+    },
+    (effect, target: GitHubTarget) =>
+      effect.pipe(
+        Effect.mapError((cause) =>
+          cause._tag === "TicketError"
+            ? cause
+            : new TicketError({ message: "Could not read the ticket's GitHub project.", cause }),
+        ),
       ),
-    );
+  );
 
-  const run: TicketGitHub["Service"]["run"] = (target, call) =>
-    Effect.gen(function* () {
+  const run: TicketGitHub["Service"]["run"] = Effect.fn("TicketGitHub.run")(
+    function* (target, call) {
       const api = registry.get(SourceControlProviderKind.make("github"));
       if (api === null) {
         return yield* new TicketError({ message: "GitHub issues are not available here." });
@@ -196,10 +202,11 @@ const make = Effect.gen(function* () {
             : Effect.void,
         ),
       );
-    });
+    },
+  );
 
-  const readIssue: TicketGitHub["Service"]["readIssue"] = (target, call) =>
-    Effect.gen(function* () {
+  const readIssue: TicketGitHub["Service"]["readIssue"] = Effect.fn("TicketGitHub.readIssue")(
+    function* (target, call) {
       const credential = yield* githubApi.credential(target.host).pipe(
         Effect.mapError((cause) => {
           const reason =
@@ -254,7 +261,8 @@ const make = Effect.gen(function* () {
           credentialFingerprint: credential.fingerprint,
         }),
       );
-    });
+    },
+  );
 
   class RepositoryRead extends Data.Class<{
     readonly projectId: ProjectId;
@@ -309,129 +317,128 @@ const make = Effect.gen(function* () {
     },
   );
 
-  const issueLinkCandidates: TicketGitHub["Service"]["issueLinkCandidates"] = (projectIds) =>
-    Effect.gen(function* () {
-      const shells = yield* projects
-        .listShells({ projectIds })
-        .pipe(
-          Effect.mapError(
-            (cause) =>
-              new TicketError({ message: "Could not read the ticket's linked projects.", cause }),
-          ),
-        );
-      const unknownByHost = new Map<string, Array<ProviderRead>>();
-      for (const project of shells) {
-        const identity = project.repositoryIdentity;
-        if (identity == null || recordedProvider(project) !== "unknown") continue;
-        const detected = detectSourceControlProviderFromRemoteUrl(identity.locator.remoteUrl);
-        if (detected === null) continue;
-        const candidates = unknownByHost.get(detected.baseUrl) ?? [];
-        candidates.push(
-          new ProviderRead({
-            cwd: project.workspaceRoot,
-            remoteName: identity.locator.remoteName,
-            remoteUrl: identity.locator.remoteUrl,
-            ...detected,
-          }),
-        );
-        unknownByHost.set(detected.baseUrl, candidates);
-      }
-      const refined = new Map(
-        yield* Effect.forEach(
-          unknownByHost,
-          ([host, candidates]) =>
-            Effect.firstSuccessOf(
-              candidates.map((target) => Cache.get(providerCache, target)),
-            ).pipe(
-              Effect.map((kind) => [host, kind] as const),
-              Effect.orElseSucceed(
-                () => [host, SourceControlProviderKind.make("unknown")] as const,
-              ),
-            ),
-          { concurrency: 12 },
+  const issueLinkCandidates: TicketGitHub["Service"]["issueLinkCandidates"] = Effect.fn(
+    "TicketGitHub.issueLinkCandidates",
+  )(function* (projectIds) {
+    const shells = yield* projects
+      .listShells({ projectIds })
+      .pipe(
+        Effect.mapError(
+          (cause) =>
+            new TicketError({ message: "Could not read the ticket's linked projects.", cause }),
         ),
       );
-      const seen = new Set<string>();
-      const repositories: Array<RepositoryRead> = [];
-      const errors: Array<TicketIssueLinkCandidates["errors"][number]> = [];
-      const failProject = (project: OrchestrationProjectShell, message: string) =>
-        errors.push({ projectId: project.id, projectTitle: project.title, message });
-      for (const project of shells) {
-        const identity = project.repositoryIdentity;
-        if (identity == null) {
-          failProject(project, "This project has no repository identity.");
-          continue;
-        }
-        const detected = detectSourceControlProviderFromRemoteUrl(identity.locator.remoteUrl);
-        const recordedKind = recordedProvider(project);
-        const kind =
-          recordedKind === "unknown" && detected !== null
-            ? (refined.get(detected.baseUrl) ?? detected.kind)
-            : recordedKind;
-        let host = sourceControlHostOf(identity, kind);
-        if (host === kind && detected !== null) host = new URL(detected.baseUrl).host.toLowerCase();
-        const canonical = canonicalRepositoryKey(identity.canonicalKey.toLowerCase());
-        const repository = (
-          identity.displayName ??
-          (identity.owner && identity.name
-            ? `${identity.owner}/${identity.name}`
-            : canonical.slice(canonical.indexOf("/") + 1))
-        )
-          .trim()
-          .toLowerCase();
-        const key = `${host}\0${repository}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const api = registry.get(kind);
-        if (kind !== "github" || api === null) {
-          failProject(project, `GitHub issues are not available for ${host}/${repository}.`);
-          continue;
-        }
-        if (api.repositoryLinks({ host, repository }) === null) {
-          failProject(
-            project,
-            `The repository identity ${host}/${repository} is not valid for this host.`,
-          );
-          continue;
-        }
-        repositories.push(new RepositoryRead({ projectId: project.id, host, repository }));
-      }
-      for (const projectId of projectIds) {
-        if (!shells.some((project) => project.id === projectId))
-          errors.push({
-            projectId,
-            projectTitle: projectId,
-            message: "This linked project is no longer available here.",
-          });
-      }
-      const entries = yield* Effect.forEach(
-        repositories,
-        (target) =>
-          Cache.get(candidateCache, target).pipe(
-            Effect.map((batch) =>
-              batch.issues.slice(0, 30).map((issue) => ({
-                host: target.host,
-                repository: target.repository,
-                number: issue.number,
-                title: issue.title,
-                state: issue.state,
-                url: issue.url,
-              })),
-            ),
-            Effect.catch((error) => {
-              const project = shells.find((shell) => shell.id === target.projectId);
-              if (project !== undefined)
-                failProject(
-                  project,
-                  `${target.host}/${target.repository}: ${describeGitHubFailure(error)}`,
-                );
-              return Effect.succeed([]);
-            }),
+    const unknownByHost = new Map<string, Array<ProviderRead>>();
+    for (const project of shells) {
+      const identity = project.repositoryIdentity;
+      if (identity == null || recordedProvider(project) !== "unknown") continue;
+      const detected = sourceControlDefinitions.recognizeRemote(identity.locator.remoteUrl);
+      if (detected === null) continue;
+      const candidates = unknownByHost.get(detected.baseUrl) ?? [];
+      candidates.push(
+        new ProviderRead({
+          cwd: project.workspaceRoot,
+          remoteName: identity.locator.remoteName,
+          remoteUrl: identity.locator.remoteUrl,
+          ...detected,
+        }),
+      );
+      unknownByHost.set(detected.baseUrl, candidates);
+    }
+    const refined = new Map(
+      yield* Effect.forEach(
+        unknownByHost,
+        ([host, candidates]) =>
+          Effect.firstSuccessOf(candidates.map((target) => Cache.get(providerCache, target))).pipe(
+            Effect.map((kind) => [host, kind] as const),
+            Effect.orElseSucceed(() => [host, SourceControlProviderKind.make("unknown")] as const),
           ),
         { concurrency: 12 },
+      ),
+    );
+    const seen = new Set<string>();
+    const repositories: Array<RepositoryRead> = [];
+    const errors: Array<TicketIssueLinkCandidates["errors"][number]> = [];
+    const failProject = (project: OrchestrationProjectShell, message: string) =>
+      errors.push({ projectId: project.id, projectTitle: project.title, message });
+    for (const project of shells) {
+      const identity = project.repositoryIdentity;
+      if (identity == null) {
+        failProject(project, "This project has no repository identity.");
+        continue;
+      }
+      const detected = sourceControlDefinitions.recognizeRemote(identity.locator.remoteUrl);
+      const recordedKind = recordedProvider(project);
+      const kind =
+        recordedKind === "unknown" && detected !== null
+          ? (refined.get(detected.baseUrl) ?? detected.kind)
+          : recordedKind;
+      let host = sourceControlDefinitions.changeRequestHost(identity, kind);
+      if (host === kind && detected !== null) host = new URL(detected.baseUrl).host.toLowerCase();
+      const canonical = sourceControlDefinitions.canonicalRepositoryKey(
+        identity.canonicalKey.toLowerCase(),
       );
-      return { entries: entries.flat(), errors };
-    });
+      const repository = (
+        identity.displayName ??
+        (identity.owner && identity.name
+          ? `${identity.owner}/${identity.name}`
+          : canonical.slice(canonical.indexOf("/") + 1))
+      )
+        .trim()
+        .toLowerCase();
+      const key = `${host}\0${repository}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const api = registry.get(kind);
+      if (kind !== "github" || api === null) {
+        failProject(project, `GitHub issues are not available for ${host}/${repository}.`);
+        continue;
+      }
+      if (api.repositoryLinks({ host, repository }) === null) {
+        failProject(
+          project,
+          `The repository identity ${host}/${repository} is not valid for this host.`,
+        );
+        continue;
+      }
+      repositories.push(new RepositoryRead({ projectId: project.id, host, repository }));
+    }
+    for (const projectId of projectIds) {
+      if (!shells.some((project) => project.id === projectId))
+        errors.push({
+          projectId,
+          projectTitle: projectId,
+          message: "This linked project is no longer available here.",
+        });
+    }
+    const entries = yield* Effect.forEach(
+      repositories,
+      (target) =>
+        Cache.get(candidateCache, target).pipe(
+          Effect.map((batch) =>
+            batch.issues.slice(0, 30).map((issue) => ({
+              host: target.host,
+              repository: target.repository,
+              number: issue.number,
+              title: issue.title,
+              state: issue.state,
+              url: issue.url,
+            })),
+          ),
+          Effect.catch((error) => {
+            const project = shells.find((shell) => shell.id === target.projectId);
+            if (project !== undefined)
+              failProject(
+                project,
+                `${target.host}/${target.repository}: ${describeGitHubFailure(error)}`,
+              );
+            return Effect.succeed([]);
+          }),
+        ),
+      { concurrency: 12 },
+    );
+    return { entries: entries.flat(), errors };
+  });
 
   return TicketGitHub.of({ run, readIssue, projectFor, issueLinkCandidates });
 });

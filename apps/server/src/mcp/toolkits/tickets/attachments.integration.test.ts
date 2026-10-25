@@ -39,6 +39,7 @@ import * as SqlitePersistence from "../../../persistence/Sqlite.ts";
 import * as ProjectFaviconResolver from "../../../project/ProjectFaviconResolver.ts";
 import * as T3ProjectFileLoader from "../../../project/T3ProjectFileLoader.ts";
 import * as GitHubCredentials from "@t3tools/source-control-github/server/GitHubCredentials";
+import * as BuiltInDrivers from "../../../sourceControl/builtInDrivers.ts";
 import * as SourceControlAttachmentResolver from "../../../sourceControl/SourceControlAttachmentResolver.ts";
 import * as TicketGitHub from "../../../ticket/TicketGitHub.ts";
 import * as TicketService from "../../../ticket/TicketService.ts";
@@ -93,6 +94,7 @@ const configLayer = Layer.effect(
   Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "vetra-mcp-ticket-upload-" })),
 );
 const externalLayers = Layer.mergeAll(
+  Layer.succeed(BuiltInDrivers.SourceControlDrivers, []),
   Layer.succeed(McpInvocationContext.McpInvocationContext, {
     environmentId: EnvironmentId.make("environment"),
     requestNamespace: "session",

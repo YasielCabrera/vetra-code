@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId, SourceControlProviderKind } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { EnvironmentProject } from "./models.ts";
@@ -84,7 +84,7 @@ const repositoryIdentity = {
     remoteName: "upstream",
     remoteUrl: "https://github.com/vetra-code/vetra-code.git",
   },
-  provider: "github",
+  provider: SourceControlProviderKind.make("github"),
   owner: "vetra-code",
   name: "vetra-code",
   displayName: "Vetra Code",

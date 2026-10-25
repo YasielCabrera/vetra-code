@@ -19,7 +19,6 @@ interface ThreadTerminalUiState {
   activeTerminalGroupId: string;
 }
 
-// Keep the old storage key so existing drawer layout preferences migrate.
 const TERMINAL_UI_STATE_STORAGE_KEY = "vetra:terminal-state:v1";
 
 interface PersistedTerminalUiStateStoreState {

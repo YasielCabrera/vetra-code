@@ -149,8 +149,7 @@ function selectedTextBoundary(range: Range, node: Node, last: boolean): Text | n
     const text = node as Text;
     const start = node === range.startContainer ? range.startOffset : 0;
     const end = node === range.endContainer ? range.endOffset : text.length;
-    // Triple-click ranges run through unselectable rows (tool calls, timestamps,
-    // author headings) into the next response; that text is not selected.
+    // Triple-click ranges include unselected text from unselectable rows and the next response.
     return start < end && !isUnselectable(text) ? text : null;
   }
   for (

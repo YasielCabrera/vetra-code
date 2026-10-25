@@ -11,10 +11,7 @@ import {
   type TicketSummary,
   type VcsRemote,
 } from "@t3tools/contracts";
-import {
-  canonicalRepositoryKey,
-  detectSourceControlProviderFromRemoteUrl,
-} from "@t3tools/shared/sourceControl";
+import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 
 export type GitHubTicket = Extract<EnvironmentTicket, { kind: "github" }>;
 
@@ -52,7 +49,7 @@ export function projectGitHubRemotes(remotes: ReadonlyArray<Pick<VcsRemote, "nam
             : a.name.localeCompare(b.name),
     )
     .flatMap((remote) => {
-      const provider = detectSourceControlProviderFromRemoteUrl(remote.url);
+      const provider = sourceControlClients.recognizeRemote(remote.url);
       if (provider?.kind !== "github") return [];
       try {
         const url = new URL(remote.url.trim().replace(/^([A-Za-z0-9._-]+@[^:/\s]+):/, "ssh://$1/"));
@@ -133,19 +130,27 @@ export function ticketRepositoryProjectId(
         project.environmentId === environmentId &&
         project.id === source.projectId &&
         project.repositoryIdentity != null &&
-        canonicalRepositoryKey(project.repositoryIdentity.canonicalKey.toLowerCase()) ===
-          canonicalRepositoryKey(`${repository.host}/${repository.repository}`.toLowerCase()),
+        sourceControlClients.canonicalRepositoryKey(
+          project.repositoryIdentity.canonicalKey.toLowerCase(),
+        ) ===
+          sourceControlClients.canonicalRepositoryKey(
+            `${repository.host}/${repository.repository}`.toLowerCase(),
+          ),
     )
   )
     return source.projectId;
-  const key = canonicalRepositoryKey(`${repository.host}/${repository.repository}`.toLowerCase());
+  const key = sourceControlClients.canonicalRepositoryKey(
+    `${repository.host}/${repository.repository}`.toLowerCase(),
+  );
   const linked = new Set(context.linkedProjectIds);
   const project = context.projects.find(
     (candidate) =>
       candidate.environmentId === environmentId &&
       linked.has(candidate.id) &&
       candidate.repositoryIdentity != null &&
-      canonicalRepositoryKey(candidate.repositoryIdentity.canonicalKey.toLowerCase()) === key,
+      sourceControlClients.canonicalRepositoryKey(
+        candidate.repositoryIdentity.canonicalKey.toLowerCase(),
+      ) === key,
   );
   return project?.id ?? null;
 }

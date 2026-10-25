@@ -132,6 +132,12 @@ const ICON_PATHS: Record<string, ReadonlyArray<{ tag: string; attrs: Record<stri
     { tag: "path", attrs: { d: "M12 7v4" } },
     { tag: "path", attrs: { d: "M16 7v9" } },
   ],
+  "user-plus": [
+    { tag: "path", attrs: { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" } },
+    { tag: "circle", attrs: { cx: "9", cy: "7", r: "4" } },
+    { tag: "line", attrs: { x1: "19", x2: "19", y1: "8", y2: "14" } },
+    { tag: "line", attrs: { x1: "22", x2: "16", y1: "11", y2: "11" } },
+  ],
   "folder-tree": [
     {
       tag: "path",
@@ -499,9 +505,7 @@ export function showContextMenuFallback<T extends string>(
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("contextmenu", onContextMenu, true);
     openMenu(items, position?.x ?? 0, position?.y ?? 0, 0);
-    // Only one fallback menu can be open at a time: a new show must dismiss
-    // any prior one, or its DOM and listeners leak and close() can only ever
-    // reach the newest menu.
+    // Dismiss the prior menu before replacing its only cleanup handle, or its DOM and listeners leak.
     if (activeContextMenuDismiss) {
       activeContextMenuDismiss();
     }

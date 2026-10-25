@@ -6,7 +6,7 @@ import { TicketIcon } from "lucide-react";
 import { memo } from "react";
 
 import { formatRelativeTimeLabel } from "../../timestampFormat";
-import { GitHubIcon } from "../Icons";
+import { getSourceControlPresentationForKind } from "~/sourceControlPresentation";
 import { SourceControlActorAvatar } from "../SourceControlActorAvatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -15,6 +15,8 @@ import { isHiddenTicket } from "./ticketBoard.logic";
 import { TicketProjectChip } from "./TicketProjectChip";
 import { TicketLinkCounts, TicketStatusIcon, ticketProjects } from "./ticketPresentation";
 import { formatTicketRef } from "./ticketRefs";
+
+const { Icon: GitHubIcon } = getSourceControlPresentationForKind("github");
 
 export const TICKET_LIST_ROW_HEIGHT = 64;
 
@@ -174,7 +176,7 @@ export const TicketRow = memo(function TicketRow(props: {
       type="button"
       data-board-row={props.rowIndex}
       onClick={() => props.onOpen(ticket)}
-      className="flex h-16 w-full min-w-0 items-center gap-3 rounded-lg border-b border-border/40 px-3 text-left text-sm outline-none hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:ring-1 focus-visible:ring-ring"
+      className="flex h-16 w-full min-w-0 items-center gap-3 rounded-lg border-b border-border/40 px-3 text-left text-sm outline-none hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="flex h-5 min-w-0 items-center gap-2">

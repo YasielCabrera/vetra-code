@@ -23,8 +23,12 @@ export function runServicePreflight(input: {
     return {
       status: "blocked",
       version,
-      reason:
-        "This release requires a newer Vetra Code service launcher. Update it on the server machine.",
+      reason: [
+        `The installed service launcher speaks protocol ${input.launcherProtocol}, but Vetra Code ${version} requires protocol ${SERVICE_LAUNCHER_PROTOCOL}.`,
+        `On the server machine, update and rebuild the Vetra Code source checkout matching version ${version}.`,
+        `Check that \`vetra --version\` prints ${version} and that \`which -a vetra\` lists the rebuilt CLI first, then run \`vetra service install\` with that CLI.`,
+        "Updating the desktop app does not update this CLI, and `vetra service update` only repairs the service with whichever CLI runs it.",
+      ].join(" "),
     };
   }
 

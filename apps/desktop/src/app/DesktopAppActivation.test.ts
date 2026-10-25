@@ -81,7 +81,7 @@ function exchange(address: string, payload: DesktopAppActivationRequest) {
 }
 
 describe("desktop app control server", () => {
-  it.effect("cancels a queued request when the client disconnects", () =>
+  it.live("cancels a queued request when the client disconnects", () =>
     Effect.gen(function* () {
       const platform = yield* HostProcess.Platform;
       const userId = yield* HostProcess.UserId;
@@ -94,10 +94,14 @@ describe("desktop app control server", () => {
         const canceled = new Promise<string>((resolve) => {
           resolveCanceled = resolve;
         });
+        const received = Promise.withResolvers<void>();
         const server = await startDesktopAppControlServer({
           ...target,
           userId,
-          handle: () => new Promise(() => undefined),
+          handle: () => {
+            received.resolve();
+            return new Promise(() => undefined);
+          },
           cancel: resolveCanceled,
           onReclaimError: () => undefined,
         });
@@ -107,12 +111,13 @@ describe("desktop app control server", () => {
           socket.once("error", reject);
           socket.once("connect", () => {
             socket.write(`${JSON.stringify(request("request-canceled", platform))}\n`, () => {
-              socket.destroy();
               resolve();
             });
           });
         });
 
+        await received.promise;
+        socket.destroy();
         await expect(canceled).resolves.toBe("request-canceled");
         await server.close();
         openServers.splice(openServers.indexOf(server), 1);
@@ -121,7 +126,7 @@ describe("desktop app control server", () => {
     }),
   );
 
-  it.effect("keeps a newer app's socket when an older app on the same state dir quits", () =>
+  it.live("keeps a newer app's socket when an older app on the same state dir quits", () =>
     Effect.gen(function* () {
       const platform = yield* HostProcess.Platform;
       const userId = yield* HostProcess.UserId;
@@ -142,7 +147,7 @@ describe("desktop app control server", () => {
     }),
   );
 
-  it.effect("binds its address again after the socket file is removed", () =>
+  it.live("binds its address again after the socket file is removed", () =>
     Effect.gen(function* () {
       const platform = yield* HostProcess.Platform;
       const userId = yield* HostProcess.UserId;

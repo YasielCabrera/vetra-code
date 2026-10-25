@@ -16,12 +16,14 @@ import { IssueAssigneePicker } from "../issue/IssueAssigneePicker";
 import { IssueTimelineGhost } from "../issue/IssueGhosts";
 import { IssueTimeline } from "../issue/IssueTimeline";
 import { SourceControlActorAvatar } from "../SourceControlActorAvatar";
-import { GitHubIcon } from "../Icons";
+import { getSourceControlPresentationForKind } from "~/sourceControlPresentation";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { RefreshIcon } from "../ui/refresh-icon";
 import type { GitHubTicket } from "./ticketGitHub.logic";
 import { TicketPropertyRow } from "./ticketPresentation";
+
+const { Icon: GitHubIcon } = getSourceControlPresentationForKind("github");
 
 export function openOnGitHub(url: string) {
   void readLocalApi()

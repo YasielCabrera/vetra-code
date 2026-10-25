@@ -443,7 +443,9 @@ describe("resolveAssistantCitationRanges", () => {
         this.endOffset = offset;
       },
     });
-    return Object.assign(root, { ownerDocument: { createRange } }) as unknown as HTMLElement;
+    return Object.defineProperty(root, "ownerDocument", {
+      value: { createRange },
+    }) as unknown as HTMLElement;
   }
 
   it("resolves each selector in the root's text, or null when it is missing or ambiguous", () => {

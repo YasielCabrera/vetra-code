@@ -1,5 +1,6 @@
-// Dev container for Vetra Code. Mirrors CI (ubuntu-24.04, Node 24, Rust stable)
-// Contributor doc: docs/internals/devcontainer.md (global `vp`, then `vp i`).
+// Dev container for Vetra Code. Mirrors CI (ubuntu-24.04, Node 26, Rust stable)
+// Setup: global `vp`, then `vp i` (see AGENTS.md).
+// Contributor doc: docs/internals/devcontainer.md
 {
   "name": "Vetra Code",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
@@ -7,7 +8,7 @@
     // nodeGypDependencies (default true) brings python3/make/g++, which Linux
     // needs for node-pty's node-gyp fallback (its prebuilds are mac/win only).
     "ghcr.io/devcontainers/features/node:2": {
-      "version": "24"
+      "version": "26"
     },
     // native/resource-monitor (edition 2024, needs stable >= 1.85). The server
     // degrades gracefully without the binary, but CI checks cargo fmt + test.

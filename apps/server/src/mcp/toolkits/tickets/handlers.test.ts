@@ -707,7 +707,7 @@ describe("TicketsToolkit", () => {
       });
       const notPullRequest = yield* failure("t3_ticket_link", {
         ticket: ticket.id,
-        target: { kind: "pull_request", url: "https://evil.test/acme/app/pull/12" },
+        target: { kind: "pull_request", url: "https://evil.test/acme/app/issues/12" },
       });
 
       const detail = yield* call("t3_ticket_get", { ticket: ticket.id });
@@ -739,7 +739,7 @@ describe("TicketsToolkit", () => {
       );
       assert.strictEqual(
         notPullRequest.message,
-        "https://evil.test/acme/app/pull/12 is not a pull request URL.",
+        "https://evil.test/acme/app/issues/12 is not a pull request URL.",
       );
     }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
   );

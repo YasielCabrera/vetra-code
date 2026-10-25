@@ -28,6 +28,14 @@ UPSTREAM_REF="${1:-upstream/main}"
 # Trees this fork deleted for good. Upstream edits inside them are dropped, and
 # files upstream newly adds inside them never land.
 PRUNE_PATHS=(
+  # T3-owned private build cache and its endpoint.
+  scripts/notify-discord-release.ts
+  scripts/notify-discord-release.test.ts
+  oxlint-plugin-t3code/rules/no-ambiguous-detail-navigation.ts
+  oxlint-plugin-t3code/rules/no-ambiguous-detail-navigation.test.ts
+  .task-cache.json
+  infra/task-cache
+  docs/operations/mobile-app-store-screenshots.md
   .agents/skills/test-t3-mobile
   # iOS build/debug automation for the mobile client this fork does not ship.
   .agents/skills/ios-debugger-agent
@@ -277,6 +285,8 @@ RENAMES=(
   # the wordmark in the DMG installer artwork; neither `T3 Code` nor the
   # leftover grep matches it.
   'T3 CODE=VETRA CODE'
+  'T3 ingest=Telemetry ingest'
+  'data-t3code-=data-vetra-'
   'T3 Code=Vetra Code'
   "T3's=Vetra Code's"
   'T3 home=Vetra home'
@@ -284,6 +294,7 @@ RENAMES=(
   'sudo t3 browser setup=sudo vetra browser setup'
   '"user-agent": "t3code"="user-agent": "vetra-code"'
   'T3-Code=Vetra-Code'
+  'T3-code=vetra-code'
   'T3 Connect=Vetra Connect'
   'T3 Chat=Vetra Chat'
   # The product name as it reaches users in MCP tool labels and as it reaches
@@ -311,8 +322,6 @@ RENAMES=(
   'T3 is installing=Vetra Code is installing'
   'T3 injects=Vetra Code injects'
   'T3 fits=Vetra Code fits'
-  # Upstream's GitHub org / winget publisher, never a TypeScript identifier.
-  'T3Tools=Vetra-Code'
   # The project file this fork reads. Upstream's own t3.json is pruned above.
   't3.json=vetra.json'
   'NodePath.join(worktree, ".t3")=NodePath.join(worktree, ".vetra-code")'

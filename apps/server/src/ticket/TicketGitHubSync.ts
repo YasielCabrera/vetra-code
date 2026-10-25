@@ -144,8 +144,8 @@ const make = Effect.gen(function* () {
     Effect.mapError(ticketError("Could not read the GitHub sources.")),
   );
 
-  const readSource = (ref: TicketGitHubSourceRef) =>
-    Effect.gen(function* () {
+  const readSource = Effect.fn("TicketGitHubSync.readSource")(
+    function* (ref: TicketGitHubSourceRef) {
       const [row] = yield* sql<SourceRow>`
         SELECT project_id, host, repository, enabled, last_synced_at, last_error, issue_count,
           sync_watermark_at
@@ -157,14 +157,17 @@ const make = Effect.gen(function* () {
         return yield* new TicketError({ message: `${ref.repository} is not a GitHub source.` });
       }
       return yield* toSource(row);
-    }).pipe(
-      Effect.catchTags({
-        SqlError: (cause) =>
-          Effect.fail(new TicketError({ message: "Could not read the GitHub source.", cause })),
-        SchemaError: (cause) =>
-          Effect.fail(new TicketError({ message: "Could not read the GitHub source.", cause })),
-      }),
-    );
+    },
+    (effect, ref: TicketGitHubSourceRef) =>
+      effect.pipe(
+        Effect.catchTags({
+          SqlError: (cause) =>
+            Effect.fail(new TicketError({ message: "Could not read the GitHub source.", cause })),
+          SchemaError: (cause) =>
+            Effect.fail(new TicketError({ message: "Could not read the GitHub source.", cause })),
+        }),
+      ),
+  );
 
   const publish = PubSub.publish(changes, undefined);
 
@@ -460,8 +463,10 @@ const make = Effect.gen(function* () {
       }),
     );
 
-  const upsertSource: TicketGitHubSync["Service"]["upsertSource"] = (input) =>
-    Effect.gen(function* () {
+  const upsertSource: TicketGitHubSync["Service"]["upsertSource"] = Effect.fn(
+    "TicketGitHubSync.upsertSource",
+  )(
+    function* (input) {
       const host = input.host.toLowerCase();
       if (
         registry
@@ -488,10 +493,15 @@ const make = Effect.gen(function* () {
       yield* tickets.restoreGitHubRepository({ host, repository: input.repository });
       yield* publish;
       return yield* readSources;
-    }).pipe((effect) => repositoryLocks.withLock(repositoryKey(input), effect));
+    },
+    (effect, input) =>
+      effect.pipe((effect) => repositoryLocks.withLock(repositoryKey(input), effect)),
+  );
 
-  const removeSource: TicketGitHubSync["Service"]["removeSource"] = (input) =>
-    Effect.gen(function* () {
+  const removeSource: TicketGitHubSync["Service"]["removeSource"] = Effect.fn(
+    "TicketGitHubSync.removeSource",
+  )(
+    function* (input) {
       const removed = yield* sql<{ readonly host: string; readonly repository: string }>`
         DELETE FROM ticket_github_sources
         WHERE project_id = ${input.projectId} AND host = ${input.host}
@@ -514,20 +524,24 @@ const make = Effect.gen(function* () {
       }
       yield* publish;
       return yield* readSources;
-    }).pipe(
-      Effect.catchTags({
-        SqlError: (cause) =>
-          Effect.fail(new TicketError({ message: "Could not remove the GitHub source.", cause })),
-      }),
-      (effect) => repositoryLocks.withLock(repositoryKey(input), effect),
-    );
+    },
+    (effect, input) =>
+      effect.pipe(
+        Effect.catchTags({
+          SqlError: (cause) =>
+            Effect.fail(new TicketError({ message: "Could not remove the GitHub source.", cause })),
+        }),
+        (effect) => repositoryLocks.withLock(repositoryKey(input), effect),
+      ),
+  );
 
-  const syncNow: TicketGitHubSync["Service"]["syncNow"] = (input) =>
-    Effect.gen(function* () {
+  const syncNow: TicketGitHubSync["Service"]["syncNow"] = Effect.fn("TicketGitHubSync.syncNow")(
+    function* (input) {
       yield* readSource(input);
       yield* requestRepository(input, true);
       return yield* readSource(input);
-    });
+    },
+  );
 
   const syncDue: TicketGitHubSync["Service"]["syncDue"] = Effect.gen(function* () {
     const dueBefore = DateTime.formatIso(

@@ -11,11 +11,7 @@ import {
   type RecordingKeyPress,
 } from "./RecordingInput.ts";
 
-/**
- * Chromium's capture cursor uses native window bounds, which do not follow a
- * webview's CSS placement or scale. Draw it in the guest's coordinate space
- * while recording, and make the native cursor transparent to avoid two cursors.
- */
+/** Draw in guest coordinates; Chromium's native cursor ignores webview CSS placement/scale. Hide it to avoid duplicates. */
 export function installRecordingCursor(
   document: Document,
   window: Window,
@@ -24,17 +20,17 @@ export function installRecordingCursor(
 ) {
   const style = document.createElement("style");
   style.textContent =
-    "html, html * { cursor: none !important; } @media (prefers-reduced-motion: reduce) { [data-t3code-recording-agent-cursor] { transition: none !important; } }";
+    "html, html * { cursor: none !important; } @media (prefers-reduced-motion: reduce) { [data-vetra-recording-agent-cursor] { transition: none !important; } }";
   const cursor = document.createElement("div");
   cursor.setAttribute("aria-hidden", "true");
-  cursor.setAttribute("data-t3code-recording-cursor", "");
+  cursor.setAttribute("data-vetra-recording-cursor", "");
   cursor.style.cssText =
     "position:fixed;left:0;top:0;width:16px;height:24px;pointer-events:none;z-index:2147483647;display:none;";
   cursor.innerHTML =
     '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="24" viewBox="0 0 16 24"><path d="M1 1v18l4-4 4 8 3-1.5-4-8H15Z" fill="black" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>';
   const agentCursor = document.createElement("div");
   agentCursor.setAttribute("aria-hidden", "true");
-  agentCursor.setAttribute("data-t3code-recording-agent-cursor", "");
+  agentCursor.setAttribute("data-vetra-recording-agent-cursor", "");
   agentCursor.style.cssText =
     "position:fixed;left:0;top:0;width:20px;height:20px;pointer-events:none;z-index:2147483647;display:none;filter:drop-shadow(0 1px 2px #0003);transition:transform 150ms ease-out,opacity 150ms ease-out;";
   agentCursor.innerHTML =

@@ -141,6 +141,7 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
           shells,
           environmentId: props.environmentId,
           excludeThreadId: props.sourceThreadId,
+          now: Date.now(),
           query: trigger.query,
         }),
         ...paths.entries.map((entry) => ({

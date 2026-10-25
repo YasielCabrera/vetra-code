@@ -39,15 +39,8 @@ import {
 
 export { DiffLineStat as PullRequestDiffStat } from "../diffs/DiffLineStat";
 
-/**
- * A host label as a flat tinted tag in the label's own color: a wash of it behind, the name
- * in a mix of it and the theme foreground. The mix leans to the foreground because hosts hand
- * out any color at all: at 30% of the label on light and 45% on dark, white, black and
- * GitHub's pale yellows all clear 4.5:1 on their wash, selected row included, and
- * saturated colors sit well above.
- * A label with no usable color falls back to the muted tag. Children ride after the name,
- * for an overflow count. The height is pinned so a labeled row is as tall as one without.
- */
+/** Host label colors vary widely; mix with the foreground to preserve contrast on their tinted wash.
+ * Fixed height keeps labeled and unlabeled rows aligned. */
 export function PullRequestLabelChip({
   label,
   size = "sm",
@@ -155,8 +148,6 @@ export function PullRequestStateGlyph({
   const presentation = resolvePullRequestState({ state, isDraft });
   return (
     <Tooltip>
-      {/* The list row is itself a button, so the trigger stays a span: an interactive one would
-          nest a control inside that button and steal the row's click target. */}
       <TooltipTrigger render={<span className="inline-flex shrink-0" />}>
         <presentation.Icon
           role="img"
@@ -328,12 +319,7 @@ export function pullRequestReviewOutcomeToneClassName(outcome: PullRequestReview
   return REVIEW_OUTCOME_PRESENTATION[outcome].toneClassName;
 }
 
-/**
- * A faded verdict is mixed into the background rather than made translucent. The ring is the only
- * separator an avatar carrying one has — the summary drops the opaque `ring-background` where a
- * verdict is drawn — and the stack overlaps by 4px, so an alpha ring would let the neighbour show
- * straight through it and the two faces would merge.
- */
+// Mix rings with the background to prevent avatars showing through their overlap.
 export function pullRequestReviewOutcomeRingClassName(
   outcome: PullRequestReviewOutcome,
   stale = false,
@@ -376,7 +362,6 @@ export function PullRequestReviewOutcomeBadge({
   const presentation = REVIEW_OUTCOME_PRESENTATION[outcome];
   return (
     <Badge size="sm" variant={presentation.badgeVariant} className={className}>
-      {/* Align with surrounding text using the label, rather than the icon's bottom edge. */}
       <span className="inline-flex items-baseline gap-1">
         <presentation.Icon aria-hidden className="size-3 self-center" />
         <span>{presentation.label}</span>
@@ -409,7 +394,6 @@ export function PullRequestActorLabel({
   profileUrl?: string | null;
 }) {
   const login = actor?.login ?? "ghost";
-  // Let the name supply the group's baseline while the avatar stays vertically centered.
   const label = (
     <span className={cn("flex min-w-0 items-baseline", variant === "label" && "gap-1.5")}>
       <PullRequestActorAvatar actor={actor} className="self-center" />
@@ -451,13 +435,7 @@ export function PullRequestActorLabel({
   );
 }
 
-/**
- * Dot-separated metadata. It owns the separator, and draws one only between the segments that
- * survive, so a caller can render `{condition ? <span/> : null}` without leaving a stray dot.
- * `Children.toArray` drops the nullish entries and keys what remains, which a plain array
- * check would not do for a single child or a fragment. A separator borrows the key of the
- * segment it precedes, so it stays stable without counting positions.
- */
+/** Children.toArray drops absent segments and preserves keys, preventing stray separators and unstable identities. */
 function separatorKey(segment: ReactNode): string {
   return `separator:${isValidElement(segment) ? String(segment.key) : String(segment)}`;
 }

@@ -73,12 +73,12 @@ import {
   ThreadId,
   ticketLinkTargetKey,
 } from "@t3tools/contracts";
-import { parseChangeRequestUrl } from "@t3tools/shared/changeRequestUrl";
+import { sourceControlDefinitions } from "../sourceControl/sourceControlDefinitions.ts";
 import { isFractionalIndexKey, keyBetween } from "@t3tools/shared/fractionalIndex";
 import {
   normalizeThreadPullRequestKey,
   threadPullRequestKeysEqual,
-} from "@t3tools/shared/threadPullRequests";
+} from "../sourceControl/threadPullRequests.ts";
 import { anchorFromSourceQuote } from "@t3tools/shared/ticketPlanAnchors";
 import * as Arr from "effect/Array";
 import * as Cache from "effect/Cache";
@@ -527,37 +527,35 @@ const toAttachment = (row: AttachmentRow): TicketAttachment => ({
 });
 
 /** The encoded summary; a ticket summary decodes its plans along with it. */
-const planFields = (row: PlanRow) =>
-  Effect.gen(function* () {
-    return {
-      planId: row.plan_id,
-      ticketId: row.ticket_id,
-      ref: formatTicketPlanRef(row.ticket_number, row.number),
-      number: row.number,
-      title: row.title,
-      status: row.status,
-      reviewStatus: row.review_status,
-      revision: row.revision,
-      openCommentCount: row.open_comment_count,
-      createdBy: yield* decodeJson(row.created_by_json),
-      updatedBy: yield* decodeJson(row.updated_by_json),
-      updatedAt: row.updated_at,
-    };
-  });
+const planFields = Effect.fn("TicketService.planFields")(function* (row: PlanRow) {
+  return {
+    planId: row.plan_id,
+    ticketId: row.ticket_id,
+    ref: formatTicketPlanRef(row.ticket_number, row.number),
+    number: row.number,
+    title: row.title,
+    status: row.status,
+    reviewStatus: row.review_status,
+    revision: row.revision,
+    openCommentCount: row.open_comment_count,
+    createdBy: yield* decodeJson(row.created_by_json),
+    updatedBy: yield* decodeJson(row.updated_by_json),
+    updatedAt: row.updated_at,
+  };
+});
 
-const toPlanComment = (row: PlanCommentRow) =>
-  Effect.gen(function* () {
-    return yield* decodePlanComment({
-      id: row.comment_id,
-      parentId: row.parent_comment_id,
-      anchor: row.anchor_json === null ? null : yield* decodeJson(row.anchor_json),
-      body: row.body,
-      author: yield* decodeJson(row.actor_json),
-      createdAt: row.created_at,
-      resolvedAt: row.resolved_at,
-      resolvedBy: row.resolved_by_json === null ? null : yield* decodeJson(row.resolved_by_json),
-    });
+const toPlanComment = Effect.fn("TicketService.toPlanComment")(function* (row: PlanCommentRow) {
+  return yield* decodePlanComment({
+    id: row.comment_id,
+    parentId: row.parent_comment_id,
+    anchor: row.anchor_json === null ? null : yield* decodeJson(row.anchor_json),
+    body: row.body,
+    author: yield* decodeJson(row.actor_json),
+    createdAt: row.created_at,
+    resolvedAt: row.resolved_at,
+    resolvedBy: row.resolved_by_json === null ? null : yield* decodeJson(row.resolved_by_json),
   });
+});
 
 const linkSourceFor = (actor: TicketActor): TicketLinkSource => {
   switch (actor.type) {
@@ -604,7 +602,8 @@ const normalizeLinkTarget = (target: TicketLinkTarget): TicketLinkTarget => {
       return target;
     case "pull_request": {
       const ref = normalizeThreadPullRequestKey(target.ref);
-      const claimed = parseChangeRequestUrl(target.snapshot.url);
+      const claimed =
+        sourceControlDefinitions.parseChangeRequestUrl(target.snapshot.url)?.link ?? null;
       const url =
         claimed !== null &&
         claimed.host === ref.host &&
@@ -670,8 +669,8 @@ const make = Effect.gen(function* () {
     ORDER BY p.number
   `;
 
-  const toSummaries = (rows: ReadonlyArray<TicketRow>) =>
-    Effect.gen(function* () {
+  const toSummaries = Effect.fn("TicketService.toSummaries")(
+    function* (rows: ReadonlyArray<TicketRow>) {
       if (rows.length === 0) return [];
       // Chunked: the full-list snapshot would otherwise pass every ticket id as one bound
       // variable each and fail past SQLite's variable limit.
@@ -736,7 +735,10 @@ const make = Effect.gen(function* () {
           );
         }),
       );
-    }).pipe(Effect.mapError(ticketError("Could not read tickets.")));
+    },
+    (effect, rows: ReadonlyArray<TicketRow>) =>
+      effect.pipe(Effect.mapError(ticketError("Could not read tickets."))),
+  );
 
   const selectSummaries = (
     where: Statement.Fragment,
@@ -769,8 +771,8 @@ const make = Effect.gen(function* () {
       ),
     );
 
-  const readActivityPage = (ticketId: TicketId, options: TicketActivityReadOptions = {}) =>
-    Effect.gen(function* () {
+  const readActivityPage = Effect.fn("TicketService.readActivityPage")(
+    function* (ticketId: TicketId, options: TicketActivityReadOptions = {}) {
       const limit = options.limit ?? TICKET_DETAIL_ACTIVITY_LIMIT;
       const rows = yield* sql<{
         readonly activity_id: number;
@@ -801,16 +803,20 @@ const make = Effect.gen(function* () {
         activityTruncated,
         activityNextBefore: activityTruncated ? (consumed.at(-1)?.activity_id ?? null) : null,
       } satisfies TicketActivityPage;
-    }).pipe(Effect.mapError(ticketError("Could not read ticket activity.")));
+    },
+    (effect, ticketId: TicketId, options: TicketActivityReadOptions = {}) =>
+      effect.pipe(Effect.mapError(ticketError("Could not read ticket activity."))),
+  );
 
-  const activity: TicketService["Service"]["activity"] = (ticketId, options) =>
-    Effect.gen(function* () {
+  const activity: TicketService["Service"]["activity"] = Effect.fn("TicketService.activity")(
+    function* (ticketId, options) {
       yield* requireSummary(ticketId);
       return yield* readActivityPage(ticketId, options);
-    });
+    },
+  );
 
-  const get: TicketService["Service"]["get"] = (ticketId, options) =>
-    Effect.gen(function* () {
+  const get: TicketService["Service"]["get"] = Effect.fn("TicketService.get")(
+    function* (ticketId, options) {
       const summary = yield* requireSummary(ticketId);
       const [bodyRow] = yield* sql<{ readonly body: string }>`
         SELECT body FROM tickets WHERE ticket_id = ${ticketId}
@@ -851,17 +857,20 @@ const make = Effect.gen(function* () {
         })),
         ...page,
       } satisfies TicketDetail;
-    }).pipe(
-      Effect.catchTags({
-        SqlError: (cause) =>
-          Effect.fail(new TicketError({ message: "Could not read the ticket.", cause })),
-        SchemaError: (cause) =>
-          Effect.fail(new TicketError({ message: "Could not read the ticket.", cause })),
-      }),
-    );
+    },
+    (effect, ticketId, options) =>
+      effect.pipe(
+        Effect.catchTags({
+          SqlError: (cause) =>
+            Effect.fail(new TicketError({ message: "Could not read the ticket.", cause })),
+          SchemaError: (cause) =>
+            Effect.fail(new TicketError({ message: "Could not read the ticket.", cause })),
+        }),
+      ),
+  );
 
-  const resolveRef: TicketService["Service"]["resolveRef"] = (reference, projectId) =>
-    Effect.gen(function* () {
+  const resolveRef: TicketService["Service"]["resolveRef"] = Effect.fn("TicketService.resolveRef")(
+    function* (reference, projectId) {
       const parsed = parseTicketReference(reference);
       if (parsed === null) {
         return yield* new TicketError({ message: `"${reference}" is not a ticket reference.` });
@@ -892,10 +901,11 @@ const make = Effect.gen(function* () {
         return yield* new TicketNotFoundError({ ticketId: reference });
       }
       return summary;
-    });
+    },
+  );
 
-  const search: TicketService["Service"]["search"] = (input) =>
-    Effect.gen(function* () {
+  const search: TicketService["Service"]["search"] = Effect.fn("TicketService.search")(
+    function* (input) {
       const query = toFtsQuery(input.query);
       if (query.length === 0) return { hits: [], truncated: false };
       const rows = yield* sql<{
@@ -920,7 +930,9 @@ const make = Effect.gen(function* () {
           snippet: row.snippet,
         })),
       };
-    }).pipe(Effect.mapError(ticketError("Could not search tickets.")));
+    },
+    (effect, input) => effect.pipe(Effect.mapError(ticketError("Could not search tickets."))),
+  );
 
   const linkedTo = (ref: TicketLinkRef) =>
     sql`t.ticket_id IN (
@@ -952,8 +964,8 @@ const make = Effect.gen(function* () {
     Effect.mapError(ticketError("Could not read ticket statuses.")),
   );
 
-  const list: TicketService["Service"]["list"] = (filter) =>
-    Effect.gen(function* () {
+  const list: TicketService["Service"]["list"] = Effect.fn("TicketService.list")(
+    function* (filter) {
       const query = filter.query === undefined ? "" : toFtsQuery(filter.query);
       const conditions = [
         sql`t.hidden_at IS NULL`,
@@ -991,7 +1003,8 @@ const make = Effect.gen(function* () {
         truncated: tickets.length > filter.limit,
         statuses: (yield* readStatuses).statuses,
       };
-    });
+    },
+  );
 
   const readValidStatuses = Effect.gen(function* () {
     const set = yield* readStatuses;
@@ -1041,13 +1054,12 @@ const make = Effect.gen(function* () {
    * the number it had there before, and remembers the one it leaves. Run after any project link
    * or unlink, in the same transaction.
    */
-  const rehome = (ticketId: TicketId) =>
-    Effect.gen(function* () {
-      const [row] = yield* sql<{
-        readonly number: number;
-        readonly number_scope: string;
-        readonly home: string;
-      }>`
+  const rehome = Effect.fn("TicketService.rehome")(function* (ticketId: TicketId) {
+    const [row] = yield* sql<{
+      readonly number: number;
+      readonly number_scope: string;
+      readonly home: string;
+    }>`
         SELECT t.number, t.number_scope, COALESCE(
           (SELECT target_key FROM ticket_links
             WHERE ticket_id = t.ticket_id AND kind = 'project' AND target_key = t.number_scope),
@@ -1058,12 +1070,12 @@ const make = Effect.gen(function* () {
         ) AS home
         FROM tickets t WHERE t.ticket_id = ${ticketId}
       `;
-      if (row === undefined || row.home === row.number_scope) return;
-      yield* sql`
+    if (row === undefined || row.home === row.number_scope) return;
+    yield* sql`
         INSERT INTO ticket_number_aliases (number_scope, number, ticket_id)
         VALUES (${row.number_scope}, ${row.number}, ${ticketId})
       `;
-      const [previous] = yield* sql<{ readonly number: number }>`
+    const [previous] = yield* sql<{ readonly number: number }>`
         DELETE FROM ticket_number_aliases
         WHERE rowid = (
           SELECT rowid FROM ticket_number_aliases
@@ -1072,93 +1084,95 @@ const make = Effect.gen(function* () {
         )
         RETURNING number
       `;
-      yield* sql`
+    yield* sql`
         UPDATE tickets SET
           number = ${previous?.number ?? (yield* takeNumber(row.home))},
           number_scope = ${row.home}
         WHERE ticket_id = ${ticketId}
       `;
-    });
+  });
 
-  const crossesClosedLine = (current: TicketSummary, toStatusId: TicketStatusId) =>
-    Effect.gen(function* () {
-      const from = yield* requireStatus(current.statusId);
-      const to = yield* requireStatus(toStatusId);
-      return (from.category === "closed") !== (to.category === "closed") ? to : null;
-    });
+  const crossesClosedLine = Effect.fn("TicketService.crossesClosedLine")(function* (
+    current: TicketSummary,
+    toStatusId: TicketStatusId,
+  ) {
+    const from = yield* requireStatus(current.statusId);
+    const to = yield* requireStatus(toStatusId);
+    return (from.category === "closed") !== (to.category === "closed") ? to : null;
+  });
 
   /**
    * Closes or reopens the issue when a user's move crosses the closed line, then re-reads it so
    * the stored snapshot carries GitHub's own `updatedAt` for the sync's staleness check.
    */
-  const pushGitHubState = (
+  const pushGitHubState = Effect.fn("TicketService.pushGitHubState")(function* (
     current: TicketSummary,
     toStatusId: TicketStatusId,
     actor: TicketActor,
     expectedRevision: number,
-  ) =>
-    Effect.gen(function* () {
-      if (current.kind !== "github") return null;
-      const to = yield* crossesClosedLine(current, toStatusId);
-      if (to === null) return null;
-      if (mayNotCrossClosedLine(actor)) return yield* agentCannotCross(current, to);
-      if (actor.type === "sync" || current.hiddenAt !== null) return null;
-      if (current.revision !== expectedRevision) {
-        return yield* new TicketRevisionConflictError({
-          ticketId: current.id,
-          expectedRevision,
-          actualRevision: current.revision,
-        });
-      }
-      yield* requireGitHubWriteAccess;
-      const change: IssueStateChange =
-        to.category === "closed" ? { state: "closed", reason: to.closeReason } : { state: "open" };
-      const target = current.github;
-      const ref = { host: target.host, repository: target.repository, number: target.number };
-      yield* github
-        .run({ ...target, ticketId: current.id }, (api, cwd) =>
-          api.setState({ cwd, ...ref, change }),
-        )
-        .pipe(
-          Effect.provideService(Interactive, true),
-          Effect.mapError(
-            (error) =>
-              new TicketError({
-                message: `Could not ${change.state === "closed" ? "close" : "reopen"} ${target.repository}#${target.number} on GitHub. ${TicketGitHub.describeGitHubFailure(error)}`,
-                cause: error,
-              }),
-          ),
-        );
-      const issue = yield* github
-        .run({ ...target, ticketId: current.id }, (api, cwd) => api.getIssue({ cwd, ...ref }))
-        .pipe(
-          Effect.provideService(Interactive, true),
-          Effect.orElseSucceed(() => null),
-        );
-      return { change, issue };
-    });
+  ) {
+    if (current.kind !== "github") return null;
+    const to = yield* crossesClosedLine(current, toStatusId);
+    if (to === null) return null;
+    if (mayNotCrossClosedLine(actor)) return yield* agentCannotCross(current, to);
+    if (actor.type === "sync" || current.hiddenAt !== null) return null;
+    if (current.revision !== expectedRevision) {
+      return yield* new TicketRevisionConflictError({
+        ticketId: current.id,
+        expectedRevision,
+        actualRevision: current.revision,
+      });
+    }
+    yield* requireGitHubWriteAccess;
+    const change: IssueStateChange =
+      to.category === "closed" ? { state: "closed", reason: to.closeReason } : { state: "open" };
+    const target = current.github;
+    const ref = { host: target.host, repository: target.repository, number: target.number };
+    yield* github
+      .run({ ...target, ticketId: current.id }, (api, cwd) => api.setState({ cwd, ...ref, change }))
+      .pipe(
+        Effect.provideService(Interactive, true),
+        Effect.mapError(
+          (error) =>
+            new TicketError({
+              message: `Could not ${change.state === "closed" ? "close" : "reopen"} ${target.repository}#${target.number} on GitHub. ${TicketGitHub.describeGitHubFailure(error)}`,
+              cause: error,
+            }),
+        ),
+      );
+    const issue = yield* github
+      .run({ ...target, ticketId: current.id }, (api, cwd) => api.getIssue({ cwd, ...ref }))
+      .pipe(
+        Effect.provideService(Interactive, true),
+        Effect.orElseSucceed(() => null),
+      );
+    return { change, issue };
+  });
 
   type PushedGitHubState = NonNullable<Effect.Success<ReturnType<typeof pushGitHubState>>>;
 
-  const recordGitHubState = (ticketId: TicketId, pushed: PushedGitHubState | null, at: string) =>
-    Effect.gen(function* () {
-      if (pushed === null) return;
-      const current = Option.getOrUndefined(yield* readSummary(ticketId));
-      if (current?.kind !== "github") return;
-      const { change, issue } = pushed;
-      const snapshot: GitHubIssueSnapshot = {
-        ...current.github,
-        state: change.state,
-        stateReason: issue?.stateReason ?? (change.state === "closed" ? change.reason : "reopened"),
-        updatedAt: issue?.updatedAt ?? current.github.updatedAt,
-        syncedAt: at,
-        stateNeedsConfirmation: issue === null,
-      };
-      yield* sql`
+  const recordGitHubState = Effect.fn("TicketService.recordGitHubState")(function* (
+    ticketId: TicketId,
+    pushed: PushedGitHubState | null,
+    at: string,
+  ) {
+    if (pushed === null) return;
+    const current = Option.getOrUndefined(yield* readSummary(ticketId));
+    if (current?.kind !== "github") return;
+    const { change, issue } = pushed;
+    const snapshot: GitHubIssueSnapshot = {
+      ...current.github,
+      state: change.state,
+      stateReason: issue?.stateReason ?? (change.state === "closed" ? change.reason : "reopened"),
+      updatedAt: issue?.updatedAt ?? current.github.updatedAt,
+      syncedAt: at,
+      stateNeedsConfirmation: issue === null,
+    };
+    yield* sql`
         UPDATE tickets SET github_snapshot_json = ${encodeJson(snapshot)}
         WHERE ticket_id = ${ticketId}
       `;
-    });
+  });
 
   const publishStatuses = PubSub.publish(statusChanges, undefined);
   const publish = <Id>(set: Set<ChangeSubscriber<Id>>, ids: ReadonlyArray<Id>) =>
@@ -1213,73 +1227,66 @@ const make = Effect.gen(function* () {
       { discard: true },
     );
 
-  const refreshSearch = (ticketId: TicketId) =>
-    Effect.gen(function* () {
-      const [row] = yield* sql<{
-        readonly seq: number;
-        readonly title: string;
-        readonly body: string;
-        readonly labels_json: string;
-      }>`SELECT seq, title, body, labels_json FROM tickets WHERE ticket_id = ${ticketId}`;
-      if (row === undefined) return;
-      const labels = yield* decodeLabels(row.labels_json).pipe(
-        Effect.mapError(ticketError("Could not read the ticket's labels.")),
-      );
-      yield* sql`DELETE FROM tickets_fts WHERE rowid = ${row.seq}`;
-      yield* sql`
+  const refreshSearch = Effect.fn("TicketService.refreshSearch")(function* (ticketId: TicketId) {
+    const [row] = yield* sql<{
+      readonly seq: number;
+      readonly title: string;
+      readonly body: string;
+      readonly labels_json: string;
+    }>`SELECT seq, title, body, labels_json FROM tickets WHERE ticket_id = ${ticketId}`;
+    if (row === undefined) return;
+    const labels = yield* decodeLabels(row.labels_json).pipe(
+      Effect.mapError(ticketError("Could not read the ticket's labels.")),
+    );
+    yield* sql`DELETE FROM tickets_fts WHERE rowid = ${row.seq}`;
+    yield* sql`
         INSERT INTO tickets_fts (rowid, title, body, labels)
         VALUES (${row.seq}, ${row.title}, ${row.body}, ${labels.join(" ")})
       `;
-    });
+  });
 
   const appendKey = (statusId: TicketStatusId) =>
     sql<{ readonly sort_key: string }>`
       SELECT sort_key FROM tickets WHERE status_id = ${statusId} ORDER BY sort_key DESC LIMIT 1
     `.pipe(Effect.map(([last]) => keyBetween(last?.sort_key ?? null, null)));
 
-  const ticketWrite = <E>(
+  const ticketWrite = Effect.fn("TicketService.ticketWrite")(function* <E>(
     ticketId: TicketId,
     expectedRevision: number | undefined,
     actor: TicketActor,
     apply: (current: TicketSummary, at: string) => Effect.Effect<TicketWrite, E>,
-  ) =>
-    Effect.gen(function* () {
-      const current = yield* requireSummary(ticketId);
-      const at = yield* now;
-      const write = yield* apply(current, at);
-      if (write.entries.length === 0 && !write.revises) return write.touches === true;
-      if (
-        write.revises &&
-        expectedRevision !== undefined &&
-        current.revision !== expectedRevision
-      ) {
-        return yield* new TicketRevisionConflictError({
-          ticketId,
-          expectedRevision,
-          actualRevision: current.revision,
-        });
-      }
-      yield* appendActivity(ticketId, actor, write.entries, at);
-      yield* sql`
+  ) {
+    const current = yield* requireSummary(ticketId);
+    const at = yield* now;
+    const write = yield* apply(current, at);
+    if (write.entries.length === 0 && !write.revises) return write.touches === true;
+    if (write.revises && expectedRevision !== undefined && current.revision !== expectedRevision) {
+      return yield* new TicketRevisionConflictError({
+        ticketId,
+        expectedRevision,
+        actualRevision: current.revision,
+      });
+    }
+    yield* appendActivity(ticketId, actor, write.entries, at);
+    yield* sql`
           UPDATE tickets SET revision = revision + ${write.revises ? 1 : 0}, updated_at = ${at}
           WHERE ticket_id = ${ticketId}
         `;
-      if (write.revises) yield* refreshSearch(ticketId);
-      return true;
-    });
+    if (write.revises) yield* refreshSearch(ticketId);
+    return true;
+  });
 
-  const writeTicket = <E>(
+  const writeTicket = Effect.fn("TicketService.writeTicket")(function* <E>(
     ticketId: TicketId,
     expectedRevision: number | undefined,
     actor: TicketActor,
     apply: (current: TicketSummary, at: string) => Effect.Effect<TicketWrite, E>,
-  ) =>
-    Effect.gen(function* () {
-      if (yield* sql.withTransaction(ticketWrite(ticketId, expectedRevision, actor, apply))) {
-        yield* publishTickets([ticketId]);
-      }
-      return yield* requireSummary(ticketId);
-    });
+  ) {
+    if (yield* sql.withTransaction(ticketWrite(ticketId, expectedRevision, actor, apply))) {
+      yield* publishTickets([ticketId]);
+    }
+    return yield* requireSummary(ticketId);
+  });
 
   const sqlFailure = (message: string) => (cause: SqlError) =>
     Effect.fail(new TicketError({ message, cause }));
@@ -1398,27 +1405,26 @@ const make = Effect.gen(function* () {
     `;
   };
 
-  const draftLinks = (actor: TicketActor) =>
-    Effect.gen(function* () {
-      if (actor.type !== "agent") return null;
-      const [draft] = yield* sql<{
-        readonly source_thread_id: string | null;
-        readonly project_id: string;
-      }>`
+  const draftLinks = Effect.fn("TicketService.draftLinks")(function* (actor: TicketActor) {
+    if (actor.type !== "agent") return null;
+    const [draft] = yield* sql<{
+      readonly source_thread_id: string | null;
+      readonly project_id: string;
+    }>`
         SELECT source_thread_id, project_id FROM ticket_drafts WHERE thread_id = ${actor.threadId}
       `;
-      if (draft === undefined) return null;
-      const links: Array<TicketLinkTarget> = [
-        { kind: "project", projectId: ProjectId.make(draft.project_id) },
-      ];
-      if (draft.source_thread_id !== null) {
-        links.push({ kind: "thread", threadId: ThreadId.make(draft.source_thread_id) });
-      }
-      return links;
-    });
+    if (draft === undefined) return null;
+    const links: Array<TicketLinkTarget> = [
+      { kind: "project", projectId: ProjectId.make(draft.project_id) },
+    ];
+    if (draft.source_thread_id !== null) {
+      links.push({ kind: "thread", threadId: ThreadId.make(draft.source_thread_id) });
+    }
+    return links;
+  });
 
-  const create: TicketService["Service"]["create"] = (input, actor) =>
-    Effect.gen(function* () {
+  const create: TicketService["Service"]["create"] = Effect.fn("TicketService.create")(
+    function* (input, actor) {
       const ticketId = TicketId.make(yield* randomId);
       const claim = yield* claimAttachments(ticketId, input.attachments ?? [], actor);
       const body = yield* attachmentBody(input.body ?? "", claim, false);
@@ -1475,27 +1481,29 @@ const make = Effect.gen(function* () {
           yield* appendActivity(ticketId, actor, [{ type: "created" }, ...attachmentEntries], at);
           yield* refreshSearch(ticketId);
         }),
-        complete: () =>
-          Effect.gen(function* () {
-            yield* publishTickets([ticketId]);
-            yield* publishThreadLinks([...new Set(linkedThreads)]);
-          }),
+        complete: Effect.fn("TicketService.complete")(function* () {
+          yield* publishTickets([ticketId]);
+          yield* publishThreadLinks([...new Set(linkedThreads)]);
+        }),
       });
       return {
         ticket: yield* requireSummary(ticketId),
         attachments: claim.mapping,
         storedAttachments,
       };
-    }).pipe(
-      Effect.scoped,
-      Effect.catchTags({
-        SqlError: sqlFailure("Could not create the ticket."),
-        TicketNotFoundError: (cause) =>
-          Effect.fail(
-            new TicketError({ message: "The new ticket could not be read back.", cause }),
-          ),
-      }),
-    );
+    },
+    (effect, input, actor) =>
+      effect.pipe(
+        Effect.scoped,
+        Effect.catchTags({
+          SqlError: sqlFailure("Could not create the ticket."),
+          TicketNotFoundError: (cause) =>
+            Effect.fail(
+              new TicketError({ message: "The new ticket could not be read back.", cause }),
+            ),
+        }),
+      ),
+  );
 
   const removeAttachmentRows = (ticketId: TicketId, attachmentIds: ReadonlyArray<string>) =>
     attachmentIds.length === 0
@@ -1506,65 +1514,63 @@ const make = Effect.gen(function* () {
           RETURNING attachment_id, type, name, mime_type, size_bytes, created_at
         `;
 
-  const changeStatus = (current: TicketSummary, statusId: TicketStatusId | undefined) =>
-    Effect.gen(function* () {
-      if (statusId === undefined || statusId === current.statusId) return [];
-      const from = yield* requireStatus(current.statusId);
-      const to = yield* requireStatus(statusId);
-      if (
-        current.kind === "github" &&
-        (from.category === "closed") !== (to.category === "closed")
-      ) {
-        return yield* agentCannotCross(current, to);
-      }
-      yield* sql`
+  const changeStatus = Effect.fn("TicketService.changeStatus")(function* (
+    current: TicketSummary,
+    statusId: TicketStatusId | undefined,
+  ) {
+    if (statusId === undefined || statusId === current.statusId) return [];
+    const from = yield* requireStatus(current.statusId);
+    const to = yield* requireStatus(statusId);
+    if (current.kind === "github" && (from.category === "closed") !== (to.category === "closed")) {
+      return yield* agentCannotCross(current, to);
+    }
+    yield* sql`
         UPDATE tickets SET status_id = ${statusId}, sort_key = ${yield* appendKey(statusId)}
         WHERE ticket_id = ${current.id}
       `;
-      return [{ type: "status_changed" as const, from: current.statusId, to: statusId }];
-    });
+    return [{ type: "status_changed" as const, from: current.statusId, to: statusId }];
+  });
 
   /**
    * Appends `entry`, or folds it into the ticket's latest entry when that is the same actor's from
    * the last few minutes and `merge` returns the folded entry, so autosaving leaves one entry per
    * sitting.
    */
-  const recordEdit = (
+  const recordEdit = Effect.fn("TicketService.recordEdit")(function* (
     ticketId: TicketId,
     actor: TicketActor,
     entry: TicketActivityEntry,
     at: string,
     merge: (previous: TicketActivityEntry) => TicketActivityEntry | undefined,
-  ) =>
-    Effect.gen(function* () {
-      const [latest] = yield* sql<{
-        readonly activity_id: number;
-        readonly actor_json: string;
-        readonly entry_json: string;
-        readonly created_at: string;
-      }>`
+  ) {
+    const [latest] = yield* sql<{
+      readonly activity_id: number;
+      readonly actor_json: string;
+      readonly entry_json: string;
+      readonly created_at: string;
+    }>`
         SELECT activity_id, actor_json, entry_json, created_at FROM ticket_activity
         WHERE ticket_id = ${ticketId} ORDER BY activity_id DESC LIMIT 1
       `;
-      const previous =
-        latest !== undefined &&
-        latest.actor_json === encodeJson(actor) &&
-        Date.parse(at) - Date.parse(latest.created_at) <= EDIT_COALESCE_MS
-          ? Option.getOrUndefined(decodeEntryJson(latest.entry_json))
-          : undefined;
-      const merged = previous === undefined ? undefined : merge(previous);
-      if (latest === undefined || merged === undefined) {
-        yield* appendActivity(ticketId, actor, [entry], at);
-        return;
-      }
-      yield* sql`
+    const previous =
+      latest !== undefined &&
+      latest.actor_json === encodeJson(actor) &&
+      Date.parse(at) - Date.parse(latest.created_at) <= EDIT_COALESCE_MS
+        ? Option.getOrUndefined(decodeEntryJson(latest.entry_json))
+        : undefined;
+    const merged = previous === undefined ? undefined : merge(previous);
+    if (latest === undefined || merged === undefined) {
+      yield* appendActivity(ticketId, actor, [entry], at);
+      return;
+    }
+    yield* sql`
         UPDATE ticket_activity SET entry_json = ${encodeJson(merged)}, created_at = ${at}
         WHERE activity_id = ${latest.activity_id}
       `;
-    });
+  });
 
-  const update: TicketService["Service"]["update"] = (input, actor) =>
-    Effect.gen(function* () {
+  const update: TicketService["Service"]["update"] = Effect.fn("TicketService.update")(
+    function* (input, actor) {
       const claim = yield* claimAttachments(input.ticketId, input.attachments ?? [], actor);
       const body =
         input.body === undefined ? undefined : yield* attachmentBody(input.body, claim, false);
@@ -1652,36 +1658,39 @@ const make = Effect.gen(function* () {
             };
           }),
         ),
-        complete: (changed) =>
-          Effect.gen(function* () {
-            if (changed) yield* publishTickets([input.ticketId]);
-            yield* removeAttachmentFiles(removedFiles);
-          }),
+        complete: Effect.fn("TicketService.complete")(function* (changed) {
+          if (changed) yield* publishTickets([input.ticketId]);
+          yield* removeAttachmentFiles(removedFiles);
+        }),
       });
       return {
         ticket: yield* requireSummary(input.ticketId),
         attachments: claim.mapping,
         storedAttachments,
       };
-    }).pipe(
-      Effect.scoped,
-      Effect.catchTags({ SqlError: sqlFailure("Could not update the ticket.") }),
-    );
+    },
+    (effect, input, actor) =>
+      effect.pipe(
+        Effect.scoped,
+        Effect.catchTags({ SqlError: sqlFailure("Could not update the ticket.") }),
+      ),
+  );
 
   /** The issue was closed or reopened but the move was not saved; the next sync catches up. */
-  const notePushedState = (ticketId: TicketId) =>
-    Effect.gen(function* () {
-      yield* appendActivity(
-        ticketId,
-        { type: "sync" },
-        [{ type: "synced", changes: ["state"] }],
-        yield* now,
-      );
-      yield* publishTickets([ticketId]);
-    });
+  const notePushedState = Effect.fn("TicketService.notePushedState")(function* (
+    ticketId: TicketId,
+  ) {
+    yield* appendActivity(
+      ticketId,
+      { type: "sync" },
+      [{ type: "synced", changes: ["state"] }],
+      yield* now,
+    );
+    yield* publishTickets([ticketId]);
+  });
 
-  const move: TicketService["Service"]["move"] = (input, actor) =>
-    Effect.gen(function* () {
+  const move: TicketService["Service"]["move"] = Effect.fn("TicketService.move")(
+    function* (input, actor) {
       if (!isFractionalIndexKey(input.sortKey)) {
         return yield* new TicketError({ message: `Invalid sort key "${input.sortKey}".` });
       }
@@ -1717,10 +1726,13 @@ const make = Effect.gen(function* () {
           pushed === null ? Effect.void : notePushedState(input.ticketId).pipe(Effect.ignore),
         ),
       );
-    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not move the ticket.") }));
+    },
+    (effect, input, actor) =>
+      effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not move the ticket.") })),
+  );
 
-  const deleteTicket: TicketService["Service"]["delete"] = (input) =>
-    Effect.gen(function* () {
+  const deleteTicket: TicketService["Service"]["delete"] = Effect.fn("TicketService.deleteTicket")(
+    function* (input) {
       const { attachments, planIds } = yield* sql.withTransaction(
         Effect.gen(function* () {
           const current = yield* requireSummary(input.ticketId);
@@ -1747,10 +1759,13 @@ const make = Effect.gen(function* () {
       yield* publishTickets([input.ticketId]);
       yield* publishPlans(planIds);
       yield* removeAttachmentFiles(attachments);
-    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the ticket.") }));
+    },
+    (effect, input) =>
+      effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the ticket.") })),
+  );
 
-  const link: TicketService["Service"]["link"] = (input, actor) =>
-    Effect.gen(function* () {
+  const link: TicketService["Service"]["link"] = Effect.fn("TicketService.link")(
+    function* (input, actor) {
       const target = normalizeLinkTarget(input.target);
       const targetKey = ticketLinkTargetKey(target);
       let previous: TicketLinkTarget | null = null;
@@ -1815,13 +1830,16 @@ const make = Effect.gen(function* () {
         yield* publishThreadLinks([target.threadId]);
       }
       return { ticket, previous, suppressed };
-    }).pipe(
-      Effect.catchTags({
-        SqlError: sqlFailure("Could not link the ticket."),
-        SchemaError: (cause) =>
-          Effect.fail(new TicketError({ message: "Could not read the ticket's link.", cause })),
-      }),
-    );
+    },
+    (effect, input, actor) =>
+      effect.pipe(
+        Effect.catchTags({
+          SqlError: sqlFailure("Could not link the ticket."),
+          SchemaError: (cause) =>
+            Effect.fail(new TicketError({ message: "Could not read the ticket's link.", cause })),
+        }),
+      ),
+  );
 
   const unlink: TicketService["Service"]["unlink"] = (input, actor) =>
     writeTicket(input.ticketId, undefined, actor, (current, at) =>
@@ -1872,37 +1890,38 @@ const make = Effect.gen(function* () {
       Effect.succeed({ entries: [{ type: "comment" as const, body: input.body }], revises: false }),
     ).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not add the comment.") }));
 
-  const postUserComment: TicketService["Service"]["postUserComment"] = (input) =>
-    Effect.gen(function* () {
-      const current = yield* requireSummary(input.ticketId);
-      if (current.kind === "local") return yield* addComment(input, { type: "user" });
-      yield* requireGitHubWriteAccess;
-      const issue = current.github;
-      yield* github
-        .run({ ...issue, ticketId: current.id }, (api, cwd) =>
-          api.addComment({
-            cwd,
-            host: issue.host,
-            repository: issue.repository,
-            number: issue.number,
-            body: input.body,
-          }),
-        )
-        .pipe(
-          Effect.provideService(Interactive, true),
-          Effect.mapError(
-            (error) =>
-              new TicketError({
-                message: `Could not comment on ${issue.repository}#${issue.number}. ${TicketGitHub.describeGitHubFailure(error)}`,
-                cause: error,
-              }),
-          ),
-        );
-      return current;
-    });
+  const postUserComment: TicketService["Service"]["postUserComment"] = Effect.fn(
+    "TicketService.postUserComment",
+  )(function* (input) {
+    const current = yield* requireSummary(input.ticketId);
+    if (current.kind === "local") return yield* addComment(input, { type: "user" });
+    yield* requireGitHubWriteAccess;
+    const issue = current.github;
+    yield* github
+      .run({ ...issue, ticketId: current.id }, (api, cwd) =>
+        api.addComment({
+          cwd,
+          host: issue.host,
+          repository: issue.repository,
+          number: issue.number,
+          body: input.body,
+        }),
+      )
+      .pipe(
+        Effect.provideService(Interactive, true),
+        Effect.mapError(
+          (error) =>
+            new TicketError({
+              message: `Could not comment on ${issue.repository}#${issue.number}. ${TicketGitHub.describeGitHubFailure(error)}`,
+              cause: error,
+            }),
+        ),
+      );
+    return current;
+  });
 
-  const setHidden: TicketService["Service"]["setHidden"] = (input) =>
-    Effect.gen(function* () {
+  const setHidden: TicketService["Service"]["setHidden"] = Effect.fn("TicketService.setHidden")(
+    function* (input) {
       const current = yield* requireSummary(input.ticketId);
       if (current.kind !== "github") {
         return yield* new TicketError({ message: "Only GitHub tickets can stop being tracked." });
@@ -1923,7 +1942,10 @@ const make = Effect.gen(function* () {
       `;
       yield* publishTickets([input.ticketId]);
       return yield* requireSummary(input.ticketId);
-    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not update the ticket.") }));
+    },
+    (effect, input) =>
+      effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not update the ticket.") })),
+  );
 
   const reconciledStatus = (
     statuses: TicketStatusSet["statuses"],
@@ -1973,8 +1995,10 @@ const make = Effect.gen(function* () {
       : ["assignees"]),
   ];
 
-  const upsertGitHubIssue: TicketService["Service"]["upsertGitHubIssue"] = (input) =>
-    Effect.gen(function* () {
+  const upsertGitHubIssue: TicketService["Service"]["upsertGitHubIssue"] = Effect.fn(
+    "TicketService.upsertGitHubIssue",
+  )(
+    function* (input) {
       let issue = input.issue;
       let confirmedState: ProviderIssue["state"] | null =
         input.readKind === "direct" ? issue.state : null;
@@ -2169,14 +2193,17 @@ const make = Effect.gen(function* () {
         }),
       );
       if (written !== null) yield* publishTickets([written]);
-    }).pipe(
-      Effect.catchTags({
-        SqlError: (cause) =>
-          Effect.fail(new TicketError({ message: "Could not save a synced issue.", cause })),
-        SchemaError: (cause) =>
-          Effect.fail(new TicketError({ message: "Could not read a synced ticket.", cause })),
-      }),
-    );
+    },
+    (effect, input) =>
+      effect.pipe(
+        Effect.catchTags({
+          SqlError: (cause) =>
+            Effect.fail(new TicketError({ message: "Could not save a synced issue.", cause })),
+          SchemaError: (cause) =>
+            Effect.fail(new TicketError({ message: "Could not read a synced ticket.", cause })),
+        }),
+      ),
+  );
 
   const captureGitHubIssue = (
     target: GitHubRepository & {
@@ -2199,11 +2226,11 @@ const make = Effect.gen(function* () {
       Effect.mapError(ticketError("Could not read the tracked issue.")),
     );
 
-  const recordMissingGitHubIssue = (
-    target: GitHubRepository & { readonly number: number },
-    captured: Effect.Success<ReturnType<typeof captureGitHubIssue>>,
-  ) =>
-    Effect.gen(function* () {
+  const recordMissingGitHubIssue = Effect.fn("TicketService.recordMissingGitHubIssue")(
+    function* (
+      target: GitHubRepository & { readonly number: number },
+      captured: Effect.Success<ReturnType<typeof captureGitHubIssue>>,
+    ) {
       if (captured === undefined) return "resolved" as const;
       const at = yield* now;
       const written = yield* sql.withTransaction(
@@ -2280,18 +2307,23 @@ const make = Effect.gen(function* () {
       );
       if (written.ticketId !== null) yield* publishTickets([written.ticketId]);
       return written.outcome;
-    }).pipe(
-      Effect.catchTags({
-        SqlError: sqlFailure("Could not record the missing issue."),
-        SchemaError: (cause) =>
-          Effect.fail(new TicketError({ message: "Could not read the tracked issue.", cause })),
-      }),
-    );
+    },
+    (
+      effect,
+      target: GitHubRepository & { readonly number: number },
+      captured: Effect.Success<ReturnType<typeof captureGitHubIssue>>,
+    ) =>
+      effect.pipe(
+        Effect.catchTags({
+          SqlError: sqlFailure("Could not record the missing issue."),
+          SchemaError: (cause) =>
+            Effect.fail(new TicketError({ message: "Could not read the tracked issue.", cause })),
+        }),
+      ),
+  );
 
-  const refreshGitHubIssueMetadata: TicketService["Service"]["refreshGitHubIssueMetadata"] = (
-    input,
-  ) =>
-    Effect.gen(function* () {
+  const refreshGitHubIssueMetadata: TicketService["Service"]["refreshGitHubIssueMetadata"] =
+    Effect.fn("TicketService.refreshGitHubIssueMetadata")(function* (input) {
       const captured = yield* captureGitHubIssue(input);
       const read = yield* github.readIssue(input, (api, cwd) =>
         api.getIssueMetadata({
@@ -2313,24 +2345,25 @@ const make = Effect.gen(function* () {
       return "resolved";
     });
 
-  const githubTarget = (input: TicketGitHubIssueRef) =>
-    Effect.gen(function* () {
-      if (input.linkedIssue !== undefined) {
-        const owner = yield* get(input.ticketId);
-        const target = normalizeThreadPullRequestKey(input.linkedIssue);
-        const linked = owner.links.find(
-          (link) =>
-            link.target.kind === "issue" && threadPullRequestKeysEqual(link.target.ref, target),
-        );
-        if (linked === undefined)
-          return yield* new TicketError({ message: "This issue is not linked to the ticket." });
-        return { ...target, ticketId: owner.summary.id };
-      }
-      const current = yield* requireSummary(input.ticketId);
-      if (current.kind !== "github")
-        return yield* new TicketError({ message: "This ticket has no GitHub issue." });
-      return { ...current.github, ticketId: current.id };
-    });
+  const githubTarget = Effect.fn("TicketService.githubTarget")(function* (
+    input: TicketGitHubIssueRef,
+  ) {
+    if (input.linkedIssue !== undefined) {
+      const owner = yield* get(input.ticketId);
+      const target = normalizeThreadPullRequestKey(input.linkedIssue);
+      const linked = owner.links.find(
+        (link) =>
+          link.target.kind === "issue" && threadPullRequestKeysEqual(link.target.ref, target),
+      );
+      if (linked === undefined)
+        return yield* new TicketError({ message: "This issue is not linked to the ticket." });
+      return { ...target, ticketId: owner.summary.id };
+    }
+    const current = yield* requireSummary(input.ticketId);
+    if (current.kind !== "github")
+      return yield* new TicketError({ message: "This ticket has no GitHub issue." });
+    return { ...current.github, ticketId: current.id };
+  });
   const runResolvedIssue = <A>(
     target: GitHubIssueTarget,
     call: (
@@ -2399,16 +2432,17 @@ const make = Effect.gen(function* () {
     readonly repository: string;
     readonly number: number;
   }> {}
-  const resolveIssueTarget = (input: TicketGitHubIssueRef) =>
-    Effect.gen(function* () {
-      const target = yield* githubTarget(input);
-      const projectId = yield* github.projectFor(target);
-      if (projectId === null)
-        return yield* new TicketError({
-          message: `No project here can read ${target.host}/${target.repository}. Add an enabled GitHub source or link a project with this repository.`,
-        });
-      return { ...target, projectId };
-    });
+  const resolveIssueTarget = Effect.fn("TicketService.resolveIssueTarget")(function* (
+    input: TicketGitHubIssueRef,
+  ) {
+    const target = yield* githubTarget(input);
+    const projectId = yield* github.projectFor(target);
+    if (projectId === null)
+      return yield* new TicketError({
+        message: `No project here can read ${target.host}/${target.repository}. Add an enabled GitHub source or link a project with this repository.`,
+      });
+    return { ...target, projectId };
+  });
   const linkedReadKey = (target: ResolvedGitHubIssueTarget) =>
     new LinkedRead({ projectId: target.projectId, ...normalizeThreadPullRequestKey(target) });
   const linkedDetailCache = yield* Cache.makeWith(readLinkedIssueDetail, {
@@ -2464,51 +2498,53 @@ const make = Effect.gen(function* () {
   const githubIssueAssigneeCandidates: TicketService["Service"]["githubIssueAssigneeCandidates"] = (
     input,
   ) => runTicketIssue(input, (api, ref) => api.listAssigneeCandidates(ref));
-  const githubIssueSetAssignees: TicketService["Service"]["githubIssueSetAssignees"] = (input) =>
-    Effect.gen(function* () {
-      yield* requireGitHubWriteAccess;
-      const target = yield* resolveIssueTarget(input);
-      yield* runResolvedIssue(target, (api, ref) =>
-        api.setAssignees({ ...ref, assignees: input.assignees, assigned: input.assigned }),
-      );
-      yield* invalidateLinkedReads(target);
-    });
-  const refreshGitHubIssue: TicketService["Service"]["refreshGitHubIssue"] = (input) =>
-    Effect.gen(function* () {
-      const target = yield* resolveIssueTarget(input);
-      const captured = yield* captureGitHubIssue(target);
-      const read = yield* github
-        .readIssue(target, (api, cwd) =>
-          api.getIssue({
-            cwd,
-            host: target.host,
-            repository: target.repository,
-            number: target.number,
-          }),
-        )
-        .pipe(
-          Effect.provideService(Interactive, true),
-          Effect.mapError(
-            (error) =>
-              new TicketError({
-                message: TicketGitHub.describeGitHubFailure(error),
-                cause: error,
-              }),
-          ),
-        );
-      if (read.kind === "missing") yield* recordMissingGitHubIssue(target, captured);
-      else
-        yield* upsertGitHubIssue({
-          existingTicketId: input.ticketId,
-          readKind: "direct",
-          projectId: target.projectId,
+  const githubIssueSetAssignees: TicketService["Service"]["githubIssueSetAssignees"] = Effect.fn(
+    "TicketService.githubIssueSetAssignees",
+  )(function* (input) {
+    yield* requireGitHubWriteAccess;
+    const target = yield* resolveIssueTarget(input);
+    yield* runResolvedIssue(target, (api, ref) =>
+      api.setAssignees({ ...ref, assignees: input.assignees, assigned: input.assigned }),
+    );
+    yield* invalidateLinkedReads(target);
+  });
+  const refreshGitHubIssue: TicketService["Service"]["refreshGitHubIssue"] = Effect.fn(
+    "TicketService.refreshGitHubIssue",
+  )(function* (input) {
+    const target = yield* resolveIssueTarget(input);
+    const captured = yield* captureGitHubIssue(target);
+    const read = yield* github
+      .readIssue(target, (api, cwd) =>
+        api.getIssue({
+          cwd,
           host: target.host,
           repository: target.repository,
-          issue: read.issue,
-        });
-      yield* invalidateLinkedReads(target);
-      return yield* requireSummary(input.ticketId);
-    });
+          number: target.number,
+        }),
+      )
+      .pipe(
+        Effect.provideService(Interactive, true),
+        Effect.mapError(
+          (error) =>
+            new TicketError({
+              message: TicketGitHub.describeGitHubFailure(error),
+              cause: error,
+            }),
+        ),
+      );
+    if (read.kind === "missing") yield* recordMissingGitHubIssue(target, captured);
+    else
+      yield* upsertGitHubIssue({
+        existingTicketId: input.ticketId,
+        readKind: "direct",
+        projectId: target.projectId,
+        host: target.host,
+        repository: target.repository,
+        issue: read.issue,
+      });
+    yield* invalidateLinkedReads(target);
+    return yield* requireSummary(input.ticketId);
+  });
 
   const inRepository = (repository: GitHubRepository) =>
     sql`t.kind = 'github' AND t.github_host = ${repository.host}
@@ -2525,8 +2561,10 @@ const make = Effect.gen(function* () {
       Effect.mapError(ticketError("Could not read the tracked issues.")),
     );
 
-  const releaseGitHubRepository: TicketService["Service"]["releaseGitHubRepository"] = (input) =>
-    Effect.gen(function* () {
+  const releaseGitHubRepository: TicketService["Service"]["releaseGitHubRepository"] = Effect.fn(
+    "TicketService.releaseGitHubRepository",
+  )(
+    function* (input) {
       if (!input.deleteCache) {
         const at = yield* now;
         const hidden = yield* sql<{ readonly ticket_id: string }>`
@@ -2562,12 +2600,15 @@ const make = Effect.gen(function* () {
       yield* publishTickets(tickets.map((row) => TicketId.make(row.ticket_id)));
       yield* publishPlans(plans.map((row) => TicketPlanId.make(row.plan_id)));
       yield* removeAttachmentFiles(attachments);
-    }).pipe(Effect.mapError(ticketError("Could not release the repository's tickets.")));
+    },
+    (effect, input) =>
+      effect.pipe(Effect.mapError(ticketError("Could not release the repository's tickets."))),
+  );
 
-  const restoreGitHubRepository: TicketService["Service"]["restoreGitHubRepository"] = (
-    repository,
-  ) =>
-    Effect.gen(function* () {
+  const restoreGitHubRepository: TicketService["Service"]["restoreGitHubRepository"] = Effect.fn(
+    "TicketService.restoreGitHubRepository",
+  )(
+    function* (repository) {
       const at = yield* now;
       const shown = yield* sql<{ readonly ticket_id: string }>`
         UPDATE tickets AS t SET hidden_at = NULL, hidden_reason = NULL, updated_at = ${at}
@@ -2575,31 +2616,38 @@ const make = Effect.gen(function* () {
         RETURNING ticket_id
       `;
       yield* publishTickets(shown.map((row) => TicketId.make(row.ticket_id)));
-    }).pipe(Effect.mapError(ticketError("Could not track the repository's tickets again.")));
+    },
+    (effect, repository) =>
+      effect.pipe(Effect.mapError(ticketError("Could not track the repository's tickets again."))),
+  );
 
   /**
    * Moving a status across the closed line would leave its GitHub tickets disagreeing with their
    * issues, and sync would then close or reopen them in bulk, so it waits until they are moved.
    * Hidden tickets count: they come back when tracked again.
    */
-  const refuseClosedLineChange = (statusId: TicketStatusId, category: TicketStatusCategory) =>
-    Effect.gen(function* () {
-      const current = (yield* readStatuses).statuses.find((status) => status.id === statusId);
-      if (current === undefined || (current.category === "closed") === (category === "closed")) {
-        return;
-      }
-      const [row] = yield* sql<{ readonly count: number }>`
+  const refuseClosedLineChange = Effect.fn("TicketService.refuseClosedLineChange")(function* (
+    statusId: TicketStatusId,
+    category: TicketStatusCategory,
+  ) {
+    const current = (yield* readStatuses).statuses.find((status) => status.id === statusId);
+    if (current === undefined || (current.category === "closed") === (category === "closed")) {
+      return;
+    }
+    const [row] = yield* sql<{ readonly count: number }>`
         SELECT COUNT(*) AS count FROM tickets WHERE status_id = ${statusId} AND kind = 'github'
       `;
-      const count = row?.count ?? 0;
-      if (count === 0) return;
-      return yield* new TicketError({
-        message: `${current.name} holds ${count} GitHub ${count === 1 ? "ticket" : "tickets"}. Move ${count === 1 ? "it" : "them"} to another status first: making ${current.name} ${category === "closed" ? "closed" : "not closed"} would ${category === "closed" ? "close" : "reopen"} ${count === 1 ? "its issue" : "their issues"}.`,
-      });
+    const count = row?.count ?? 0;
+    if (count === 0) return;
+    return yield* new TicketError({
+      message: `${current.name} holds ${count} GitHub ${count === 1 ? "ticket" : "tickets"}. Move ${count === 1 ? "it" : "them"} to another status first: making ${current.name} ${category === "closed" ? "closed" : "not closed"} would ${category === "closed" ? "close" : "reopen"} ${count === 1 ? "its issue" : "their issues"}.`,
     });
+  });
 
-  const upsertStatus: TicketService["Service"]["upsertStatus"] = (input) =>
-    Effect.gen(function* () {
+  const upsertStatus: TicketService["Service"]["upsertStatus"] = Effect.fn(
+    "TicketService.upsertStatus",
+  )(
+    function* (input) {
       const set = yield* sql.withTransaction(
         Effect.gen(function* () {
           const closeReason = input.category === "closed" ? input.closeReason : null;
@@ -2650,10 +2698,15 @@ const make = Effect.gen(function* () {
       );
       yield* publishStatuses;
       return set;
-    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not save the status.") }));
+    },
+    (effect, input) =>
+      effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not save the status.") })),
+  );
 
-  const reorderStatuses: TicketService["Service"]["reorderStatuses"] = (input) =>
-    Effect.gen(function* () {
+  const reorderStatuses: TicketService["Service"]["reorderStatuses"] = Effect.fn(
+    "TicketService.reorderStatuses",
+  )(
+    function* (input) {
       const set = yield* sql.withTransaction(
         Effect.gen(function* () {
           const current = yield* readStatuses;
@@ -2677,10 +2730,15 @@ const make = Effect.gen(function* () {
       );
       yield* publishStatuses;
       return set;
-    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not reorder the statuses.") }));
+    },
+    (effect, input) =>
+      effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not reorder the statuses.") })),
+  );
 
-  const deleteStatus: TicketService["Service"]["deleteStatus"] = (input, actor) =>
-    Effect.gen(function* () {
+  const deleteStatus: TicketService["Service"]["deleteStatus"] = Effect.fn(
+    "TicketService.deleteStatus",
+  )(
+    function* (input, actor) {
       const { set, moved } = yield* sql.withTransaction(
         Effect.gen(function* () {
           const deleted = yield* requireStatus(input.statusId);
@@ -2730,21 +2788,25 @@ const make = Effect.gen(function* () {
       yield* publishStatuses;
       yield* publishTickets(moved);
       return set;
-    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the status.") }));
+    },
+    (effect, input, actor) =>
+      effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the status.") })),
+  );
 
-  const readDelta = (ticketIds: ReadonlyArray<TicketId>) =>
-    Effect.gen(function* () {
-      const chunks = yield* Effect.forEach(Arr.chunksOf(ticketIds, ID_CHUNK), (chunk) =>
-        selectSummaries(sql`t.ticket_id IN ${sql.in(chunk)}`),
-      );
-      const upserted = chunks.flat();
-      const found = new Set<string>(upserted.map((ticket) => ticket.id));
-      return {
-        type: "delta",
-        upserted,
-        removed: ticketIds.filter((ticketId) => !found.has(ticketId)),
-      } satisfies TicketListEvent;
-    });
+  const readDelta = Effect.fn("TicketService.readDelta")(function* (
+    ticketIds: ReadonlyArray<TicketId>,
+  ) {
+    const chunks = yield* Effect.forEach(Arr.chunksOf(ticketIds, ID_CHUNK), (chunk) =>
+      selectSummaries(sql`t.ticket_id IN ${sql.in(chunk)}`),
+    );
+    const upserted = chunks.flat();
+    const found = new Set<string>(upserted.map((ticket) => ticket.id));
+    return {
+      type: "delta",
+      upserted,
+      removed: ticketIds.filter((ticketId) => !found.has(ticketId)),
+    } satisfies TicketListEvent;
+  });
 
   const subscribeList: TicketService["Service"]["subscribeList"] = () =>
     Stream.unwrap(
@@ -2859,93 +2921,92 @@ const make = Effect.gen(function* () {
   const touchTicket = (ticketId: TicketId, at: string) =>
     sql`UPDATE tickets SET updated_at = ${at} WHERE ticket_id = ${ticketId}`;
 
-  const changePlanStatus = (
+  const changePlanStatus = Effect.fn("TicketService.changePlanStatus")(function* (
     current: Effect.Success<ReturnType<typeof requirePlan>>,
     planId: TicketPlanId,
     status: TicketPlanStatus,
     actor: TicketActor,
     at: string,
-  ) =>
-    Effect.gen(function* () {
-      if (current.status === status) return false;
-      yield* sql`
+  ) {
+    if (current.status === status) return false;
+    yield* sql`
         UPDATE ticket_plans
         SET status = ${status}, updated_at = ${at}, updated_by_json = ${encodeJson(actor)}
         WHERE plan_id = ${planId}
       `;
-      yield* appendActivity(
-        current.ticketId,
-        actor,
-        [
-          {
-            type: status === "archived" ? "plan_archived" : "plan_restored",
-            planId,
-            number: current.number,
-          },
-        ],
-        at,
-      );
-      yield* touchTicket(current.ticketId, at);
-      return true;
-    });
+    yield* appendActivity(
+      current.ticketId,
+      actor,
+      [
+        {
+          type: status === "archived" ? "plan_archived" : "plan_restored",
+          planId,
+          number: current.number,
+        },
+      ],
+      at,
+    );
+    yield* touchTicket(current.ticketId, at);
+    return true;
+  });
 
   /** Ones already resolved keep who resolved them. True when any comment changed. */
-  const resolveComments = (
+  const resolveComments = Effect.fn("TicketService.resolveComments")(function* (
     planId: TicketPlanId,
     commentIds: ReadonlyArray<TicketPlanCommentId>,
     actor: TicketActor,
     at: string,
-  ) =>
-    Effect.gen(function* () {
-      if (commentIds.length === 0) return false;
-      const rows = yield* sql<{
-        readonly comment_id: string;
-        readonly parent_comment_id: string | null;
-      }>`
+  ) {
+    if (commentIds.length === 0) return false;
+    const rows = yield* sql<{
+      readonly comment_id: string;
+      readonly parent_comment_id: string | null;
+    }>`
         SELECT comment_id, parent_comment_id FROM ticket_plan_comments
         WHERE plan_id = ${planId} AND comment_id IN ${sql.in(commentIds)}
       `;
-      const parents = new Map(rows.map((row) => [row.comment_id, row.parent_comment_id]));
-      for (const commentId of commentIds) {
-        const parent = parents.get(commentId);
-        if (parent === undefined) {
-          return yield* new TicketError({ message: `Comment ${commentId} is not on this plan.` });
-        }
-        if (parent !== null) {
-          return yield* new TicketError({
-            message: `Comment ${commentId} is a reply; resolve the comment it replies to.`,
-          });
-        }
+    const parents = new Map(rows.map((row) => [row.comment_id, row.parent_comment_id]));
+    for (const commentId of commentIds) {
+      const parent = parents.get(commentId);
+      if (parent === undefined) {
+        return yield* new TicketError({ message: `Comment ${commentId} is not on this plan.` });
       }
-      const resolved = yield* sql<{ readonly comment_id: string }>`
+      if (parent !== null) {
+        return yield* new TicketError({
+          message: `Comment ${commentId} is a reply; resolve the comment it replies to.`,
+        });
+      }
+    }
+    const resolved = yield* sql<{ readonly comment_id: string }>`
         UPDATE ticket_plan_comments
         SET resolved_at = ${at}, resolved_by_json = ${encodeJson(actor)}
         WHERE plan_id = ${planId} AND comment_id IN ${sql.in(commentIds)} AND resolved_at IS NULL
         RETURNING comment_id
       `;
-      return resolved.length > 0;
-    });
+    return resolved.length > 0;
+  });
 
-  const resolvePlanRef: TicketService["Service"]["resolvePlanRef"] = (reference, projectId) =>
-    Effect.gen(function* () {
-      const parsed = parseTicketPlanReference(reference);
-      if (parsed === null) {
-        return yield* new TicketError({ message: `"${reference}" is not a plan reference.` });
-      }
-      if (parsed.type === "id") return yield* requirePlanSummary(parsed.planId);
-      const ticket = yield* resolveRef(parsed.ticket, projectId);
-      const plan = ticket.plans.find((candidate) => candidate.number === parsed.number);
-      if (plan === undefined) {
-        return yield* new TicketPlanNotFoundError({ planId: reference.trim() });
-      }
-      return plan;
-    });
+  const resolvePlanRef: TicketService["Service"]["resolvePlanRef"] = Effect.fn(
+    "TicketService.resolvePlanRef",
+  )(function* (reference, projectId) {
+    const parsed = parseTicketPlanReference(reference);
+    if (parsed === null) {
+      return yield* new TicketError({ message: `"${reference}" is not a plan reference.` });
+    }
+    if (parsed.type === "id") return yield* requirePlanSummary(parsed.planId);
+    const ticket = yield* resolveRef(parsed.ticket, projectId);
+    const plan = ticket.plans.find((candidate) => candidate.number === parsed.number);
+    if (plan === undefined) {
+      return yield* new TicketPlanNotFoundError({ planId: reference.trim() });
+    }
+    return plan;
+  });
 
   const listPlans: TicketService["Service"]["listPlans"] = (ticketId) =>
     requireSummary(ticketId).pipe(Effect.map((summary) => summary.plans));
 
-  const getPlan: TicketService["Service"]["getPlan"] = (planId) =>
-    Effect.gen(function* () {
+  const getPlan: TicketService["Service"]["getPlan"] = Effect.fn("TicketService.getPlan")(
+    function* (planId) {
       // The summary first: a body newer than its revision makes a stale save conflict, while the
       // reverse would let it overwrite.
       const summary = yield* requirePlanSummary(planId);
@@ -2971,13 +3032,16 @@ const make = Effect.gen(function* () {
           .filter((row) => referencedIds.has(row.attachment_id))
           .map(toAttachment),
       } satisfies TicketPlan;
-    }).pipe(
-      Effect.catchTags({
-        SqlError: sqlFailure("Could not read the plan."),
-        SchemaError: (cause) =>
-          Effect.fail(new TicketError({ message: "Could not read the plan.", cause })),
-      }),
-    );
+    },
+    (effect, planId) =>
+      effect.pipe(
+        Effect.catchTags({
+          SqlError: sqlFailure("Could not read the plan."),
+          SchemaError: (cause) =>
+            Effect.fail(new TicketError({ message: "Could not read the plan.", cause })),
+        }),
+      ),
+  );
 
   const subscribePlan: TicketService["Service"]["subscribePlan"] = (planId) =>
     Stream.unwrap(
@@ -2994,8 +3058,8 @@ const make = Effect.gen(function* () {
       }),
     );
 
-  const createPlan: TicketService["Service"]["createPlan"] = (input, actor) =>
-    Effect.gen(function* () {
+  const createPlan: TicketService["Service"]["createPlan"] = Effect.fn("TicketService.createPlan")(
+    function* (input, actor) {
       const planId = TicketPlanId.make(yield* randomId);
       const claim = yield* claimAttachments(input.ticketId, input.attachments ?? [], actor);
       const body = yield* attachmentBody(input.body ?? "", claim, true);
@@ -3039,17 +3103,22 @@ const make = Effect.gen(function* () {
         attachments: claim.mapping,
         storedAttachments,
       };
-    }).pipe(
-      Effect.scoped,
-      Effect.catchTags({
-        SqlError: sqlFailure("Could not create the plan."),
-        TicketPlanNotFoundError: (cause) =>
-          Effect.fail(new TicketError({ message: "The new plan could not be read back.", cause })),
-      }),
-    );
+    },
+    (effect, input, actor) =>
+      effect.pipe(
+        Effect.scoped,
+        Effect.catchTags({
+          SqlError: sqlFailure("Could not create the plan."),
+          TicketPlanNotFoundError: (cause) =>
+            Effect.fail(
+              new TicketError({ message: "The new plan could not be read back.", cause }),
+            ),
+        }),
+      ),
+  );
 
-  const updatePlan: TicketService["Service"]["updatePlan"] = (input, actor) =>
-    Effect.gen(function* () {
+  const updatePlan: TicketService["Service"]["updatePlan"] = Effect.fn("TicketService.updatePlan")(
+    function* (input, actor) {
       if (input.body !== undefined && input.edits !== undefined) {
         return yield* new TicketError({ message: "Send a new body or edits, not both." });
       }
@@ -3167,13 +3236,16 @@ const make = Effect.gen(function* () {
         storedAttachments,
         contentCommit: result.contentCommit,
       };
-    }).pipe(
-      Effect.scoped,
-      Effect.catchTags({ SqlError: sqlFailure("Could not update the plan.") }),
-    );
+    },
+    (effect, input, actor) =>
+      effect.pipe(
+        Effect.scoped,
+        Effect.catchTags({ SqlError: sqlFailure("Could not update the plan.") }),
+      ),
+  );
 
-  const deletePlan: TicketService["Service"]["deletePlan"] = (input, actor) =>
-    Effect.gen(function* () {
+  const deletePlan: TicketService["Service"]["deletePlan"] = Effect.fn("TicketService.deletePlan")(
+    function* (input, actor) {
       const ticketId = yield* sql.withTransaction(
         Effect.gen(function* () {
           const [deleted] = yield* sql<{ readonly ticket_id: string; readonly number: number }>`
@@ -3195,10 +3267,15 @@ const make = Effect.gen(function* () {
         }),
       );
       yield* publishPlan(ticketId, input.planId);
-    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the plan.") }));
+    },
+    (effect, input, actor) =>
+      effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the plan.") })),
+  );
 
-  const addPlanComment: TicketService["Service"]["addPlanComment"] = (input, actor) =>
-    Effect.gen(function* () {
+  const addPlanComment: TicketService["Service"]["addPlanComment"] = Effect.fn(
+    "TicketService.addPlanComment",
+  )(
+    function* (input, actor) {
       if (
         input.parentCommentId !== undefined &&
         (input.anchor !== undefined || input.sourceQuote !== undefined)
@@ -3256,10 +3333,15 @@ const make = Effect.gen(function* () {
         ? publishPlan(ticketId, input.planId)
         : publishPlans([input.planId]);
       return comment;
-    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not add the comment.") }));
+    },
+    (effect, input, actor) =>
+      effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not add the comment.") })),
+  );
 
-  const reopenPlanComment: TicketService["Service"]["reopenPlanComment"] = (input) =>
-    Effect.gen(function* () {
+  const reopenPlanComment: TicketService["Service"]["reopenPlanComment"] = Effect.fn(
+    "TicketService.reopenPlanComment",
+  )(
+    function* (input) {
       const { ticketId, reopened } = yield* sql.withTransaction(
         Effect.gen(function* () {
           const { ticketId } = yield* requirePlan(input.planId);
@@ -3279,10 +3361,15 @@ const make = Effect.gen(function* () {
       );
       if (reopened) yield* publishPlan(ticketId, input.planId);
       return yield* requirePlanSummary(input.planId);
-    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not reopen the comment.") }));
+    },
+    (effect, input) =>
+      effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not reopen the comment.") })),
+  );
 
-  const deletePlanComment: TicketService["Service"]["deletePlanComment"] = (input) =>
-    Effect.gen(function* () {
+  const deletePlanComment: TicketService["Service"]["deletePlanComment"] = Effect.fn(
+    "TicketService.deletePlanComment",
+  )(
+    function* (input) {
       const { ticketId, reply } = yield* sql.withTransaction(
         Effect.gen(function* () {
           const { ticketId } = yield* requirePlan(input.planId);
@@ -3301,7 +3388,10 @@ const make = Effect.gen(function* () {
       );
       yield* reply ? publishPlans([input.planId]) : publishPlan(ticketId, input.planId);
       return yield* requirePlanSummary(input.planId);
-    }).pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the comment.") }));
+    },
+    (effect, input) =>
+      effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the comment.") })),
+  );
 
   return TicketService.of({
     subscribeList,
