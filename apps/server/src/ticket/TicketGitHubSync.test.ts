@@ -1,3 +1,4 @@
+import * as DocumentText from "../provider/DocumentText.ts";
 import * as GitHubRequestPolicy from "@t3tools/source-control-github/server/GitHubRequestPolicy";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
@@ -489,7 +490,7 @@ const withSync = <A, E>(
     ),
     Layer.provideMerge(SqlitePersistence.layerMemory),
     Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-ticket-github-" })),
-    Layer.provideMerge(NodeServices.layer),
+    Layer.provideMerge(DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer))),
   );
   return Effect.gen(function* () {
     yield* TestClock.setTime(Date.parse("2026-09-01T00:00:00Z"));
@@ -1851,12 +1852,12 @@ describe("TicketGitHubSync", () => {
           USER,
         );
         yield* sync.upsertSource({ ...SOURCE, enabled: false });
-        const results = yield* Effect.all(
-          [PROJECT, other].map((projectId) =>
+        const results = yield* Effect.forEach(
+          [PROJECT, other],
+          (projectId) =>
             tickets
               .unlink({ ticketId: ticket.id, kind: "project", targetKey: projectId }, USER)
               .pipe(Effect.exit),
-          ),
           { concurrency: "unbounded" },
         );
         assert.strictEqual(results.filter(Exit.isSuccess).length, 1);

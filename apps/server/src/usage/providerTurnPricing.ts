@@ -1,11 +1,4 @@
-/**
- * Prices each finished provider turn with the same rate table the Usage page
- * uses, so the composer meter can show what a thread's work has cost so far.
- * The meter sums turns, which is what keeps the figure stable across compaction,
- * provider restarts, and server restarts: every turn's price is persisted with it.
- *
- * @module providerTurnPricing
- */
+// Persist each turn's price so compaction and provider restarts cannot change the thread total.
 import type { TurnTokenUsage, UsageTokenTotals } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -46,7 +39,7 @@ export const layer = Layer.effect(
       reasoningTokens: 0,
     });
     return {
-      price: (modelSelection, turnUsage) => {
+      price: Effect.fn("ProviderTurnPricing.price")((modelSelection, turnUsage) => {
         const totals = turnUsageToTotals(turnUsage);
         if (totals === null) return Effect.succeed(null);
         // The turn's event is persisted after this returns, so pricing must
@@ -60,7 +53,7 @@ export const layer = Layer.effect(
                 : priced.costUsd,
             ),
           );
-      },
+      }),
     };
   }),
 );

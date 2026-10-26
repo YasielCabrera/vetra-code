@@ -1,3 +1,4 @@
+import * as DocumentText from "../../../provider/DocumentText.ts";
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
@@ -55,7 +56,7 @@ import { AttachmentToolkit } from "../attachment/tools.ts";
 import { TicketsToolkitHandlersLive } from "./handlers.ts";
 import { TicketsToolkit } from "./tools.ts";
 
-const caller = Schema.decodeUnknownSync(OrchestrationV2ThreadShell)({
+const caller = Schema.decodeSync(OrchestrationV2ThreadShell)({
   createdBy: "user",
   creationSource: "web",
   id: "caller-thread",
@@ -133,7 +134,7 @@ const testLayer = Layer.mergeAll(
   Layer.provideMerge(externalLayers),
   Layer.provideMerge(configLayer),
   Layer.provideMerge(NodeHttpServer.layerTest),
-  Layer.provideMerge(NodeServices.layer),
+  Layer.provideMerge(DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer))),
 );
 
 type Tools = (typeof TicketsToolkit)["tools"];

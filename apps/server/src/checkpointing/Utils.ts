@@ -1,5 +1,5 @@
 import * as Base64Url from "effect/encoding/Base64Url";
-import { CheckpointRef, ProjectId, type ThreadId } from "@t3tools/contracts";
+import { CheckpointRef, type ThreadId } from "@t3tools/contracts";
 import { PRODUCT_CHECKPOINT_REFS_PREFIX } from "@t3tools/shared/productIdentity";
 
 const CHECKPOINT_REFS_PREFIX = PRODUCT_CHECKPOINT_REFS_PREFIX;
@@ -8,22 +8,4 @@ export function checkpointRefForThreadTurn(threadId: ThreadId, turnCount: number
   return CheckpointRef.make(
     `${CHECKPOINT_REFS_PREFIX}/${Base64Url.encode(threadId)}/turn/${turnCount}`,
   );
-}
-
-function resolveThreadWorkspaceCwd(input: {
-  readonly thread: {
-    readonly projectId: ProjectId;
-    readonly worktreePath: string | null;
-  };
-  readonly projects: ReadonlyArray<{
-    readonly id: ProjectId;
-    readonly workspaceRoot: string;
-  }>;
-}): string | undefined {
-  const worktreeCwd = input.thread.worktreePath ?? undefined;
-  if (worktreeCwd) {
-    return worktreeCwd;
-  }
-
-  return input.projects.find((project) => project.id === input.thread.projectId)?.workspaceRoot;
 }

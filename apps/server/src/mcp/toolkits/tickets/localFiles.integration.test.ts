@@ -1,3 +1,4 @@
+import * as DocumentText from "../../../provider/DocumentText.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
 import {
@@ -151,7 +152,7 @@ const layerFor = (
         Effect.map(FileSystem.FileSystem, (fs) => overrides.fileSystem?.(fs) ?? fs),
       ).pipe(Layer.provide(NodeServices.layer)),
     ),
-    Layer.provideMerge(NodeServices.layer),
+    Layer.provideMerge(DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer))),
   );
 
 type Tools = (typeof TicketsToolkit)["tools"];
@@ -215,7 +216,9 @@ const expectPersisted = Effect.fn(function* (
 ) {
   const detail = yield* call("t3_ticket_get", { ticket });
   for (const attachment of attachments) {
-    expect(detail.attachments.find((stored) => stored.id === attachment.id)).toEqual(attachment);
+    expect(detail.attachments.find((stored) => stored.id === attachment.id)).toMatchObject(
+      attachment,
+    );
     expect(attachment.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   }
   return detail;
@@ -234,7 +237,8 @@ const attachmentWriteScenario = Effect.fn(function* (operation: (typeof attachme
   const plan = yield* call("t3_ticket_plan_create", {
     ticket: ticket.id,
     title: "Before plan",
-    body: `[original](vetra-attachment://${attachment.id})`,
+    body:
+      operation === "update" ? "Before plan" : `[original](vetra-attachment://${attachment.id})`,
   });
   const local = yield* source("local.txt", "local");
   const upload = yield* pending("pending.txt", "pending");
@@ -946,7 +950,10 @@ describe("one-call local ticket and plan attachments", () => {
         });
         expect(yield* call("t3_ticket_plan_get", { plan: plan.planId })).toMatchObject({
           plan: { title: "Before plan", revision: 1 },
-          body: `[original](vetra-attachment://${attachment.id})`,
+          body:
+            operation === "update"
+              ? "Before plan"
+              : `[original](vetra-attachment://${attachment.id})`,
         });
         expect(yield* ownedFiles()).toHaveLength(1);
         expect(yield* bytesFor(attachment.id)).toBe("original");
@@ -990,8 +997,12 @@ describe("one-call local ticket and plan attachments", () => {
             type: "snapshot",
             tickets: [{ title: "Before ticket" }],
           });
-          expect((yield* Queue.take(details)).attachments).toEqual([attachment]);
-          expect((yield* Queue.take(plans)).attachments).toEqual([attachment]);
+          expect((yield* Queue.take(details)).attachments).toEqual([
+            { ...attachment, usedByPlanRefs: operation === "update" ? [] : [plan.ref] },
+          ]);
+          expect((yield* Queue.take(plans)).attachments).toEqual(
+            operation === "update" ? [] : [attachment],
+          );
           armed = true;
           const fiber = yield* Effect.forkChild(write);
           yield* Deferred.await(committed);
@@ -1022,7 +1033,8 @@ describe("one-call local ticket and plan attachments", () => {
             expect((yield* Queue.take(details)).attachments).toEqual(detail.attachments);
           }
           if (operation === "update") {
-            expect((yield* Queue.take(plans)).attachments).toEqual([]);
+            expect(yield* Queue.size(plans)).toBe(0);
+            expect((yield* tickets.getPlan(plan.planId)).attachments).toEqual([]);
             expect(detail.attachments).toHaveLength(2);
             expect(yield* ownedFiles()).toHaveLength(2);
             const config = yield* ServerConfig.ServerConfig;

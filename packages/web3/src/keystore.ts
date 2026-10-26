@@ -1,13 +1,4 @@
-/**
- * On-disk persistence for preview wallet keys.
- *
- * Plaintext, mode 0600, and labelled as a test wallet inside the file itself.
- * That is a deliberate choice, not an oversight: these keys sign for a browser
- * preview that loads untrusted web content and can auto-approve, so the honest
- * move is to make the blast radius obvious rather than dress it up as a vault.
- *
- * @module Web3Keystore
- */
+// Preview keys use plaintext files with mode 0600 and a test-wallet warning because previews load untrusted pages.
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -44,7 +35,7 @@ export const readKeystore = Effect.fn("Web3Keystore.read")(function* (keystorePa
   const fileSystem = yield* FileSystem.FileSystem;
 
   const raw = yield* fileSystem.readFileString(keystorePath).pipe(
-    Effect.map(Option.some),
+    Effect.asSome,
     Effect.catchTags({
       PlatformError: (cause) =>
         cause.reason._tag === "NotFound"

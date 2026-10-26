@@ -1,3 +1,4 @@
+import * as DocumentText from "../provider/DocumentText.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import {
@@ -100,7 +101,7 @@ const makeHarness = (
       ),
       Layer.provideMerge(SqlitePersistence.layerMemory),
       Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-ticket-drafts-" })),
-      Layer.provideMerge(NodeServices.layer),
+      Layer.provideMerge(DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer))),
     );
     return { launches, layer };
   });

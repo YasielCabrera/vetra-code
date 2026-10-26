@@ -9,11 +9,9 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
-import * as Logger from "effect/Logger";
 
 import * as Path from "effect/Path";
 import * as PlatformError from "effect/PlatformError";
-import * as Queue from "effect/Queue";
 import * as Ref from "effect/Ref";
 import * as Result from "effect/Result";
 import * as Scope from "effect/Scope";
@@ -704,89 +702,6 @@ it.effect("invalidates origin remote cache when a driver mutation adds origin", 
 );
 
 describe("pullCurrentBranch", () => {
-  const controlledStatusFetch = Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem;
-    const cwd = yield* makeTmpDir();
-    yield* fs.makeDirectory(`${cwd}/.git`);
-    const started = yield* Queue.unbounded<{
-      cwd: string;
-      release: Deferred.Deferred<ChildProcessSpawner.ExitCode>;
-    }>();
-    const finalized = yield* Queue.unbounded<string>();
-    const warnings = yield* Queue.unbounded<void>();
-    const attempts = yield* Ref.make(0);
-    const pulls = yield* Ref.make(0);
-    const fetching = yield* Ref.make(false);
-    const head = yield* Ref.make("before");
-    const pullRemoteRead = yield* Deferred.make<void>();
-    const logger = Logger.make<unknown, void>(() => {
-      Queue.offerUnsafe(warnings, undefined);
-    });
-    const spawner = ChildProcessSpawner.make((command) =>
-      Effect.gen(function* () {
-        if (!ChildProcess.isStandardCommand(command)) return makeNonRepositoryHandle();
-        const workingDirectory = command.options.cwd ?? cwd;
-        const args = command.args;
-        if (args.includes("fetch")) {
-          const release = yield* Deferred.make<ChildProcessSpawner.ExitCode>();
-          yield* Ref.set(fetching, true);
-          yield* Ref.update(attempts, (count) => count + 1);
-          yield* Queue.offer(started, { cwd: workingDirectory, release });
-          yield* Effect.addFinalizer(() => Queue.offer(finalized, workingDirectory));
-          yield* Effect.addFinalizer(() => Ref.set(fetching, false));
-          return ChildProcessSpawner.makeHandle({
-            ...makeSuccessfulHandle(""),
-            stderr: Stream.encodeText(Stream.make("fatal: remote unavailable\n")),
-            exitCode: Deferred.await(release),
-          });
-        }
-        if (args[0] === "pull") {
-          yield* Ref.update(pulls, (count) => count + 1);
-          if (yield* Ref.get(fetching)) {
-            return ChildProcessSpawner.makeHandle({
-              ...makeSuccessfulHandle(""),
-              exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(1)),
-              stderr: Stream.encodeText(
-                Stream.make("error: cannot lock ref 'refs/remotes/origin/main': File exists\n"),
-              ),
-            });
-          }
-          yield* Ref.set(head, "after");
-          return makeSuccessfulHandle("");
-        }
-        if (args.includes("branch.main.remote")) {
-          yield* Deferred.succeed(pullRemoteRead, undefined);
-          return makeSuccessfulHandle("origin\n");
-        }
-        if (args[0] === "status")
-          return makeSuccessfulHandle(
-            "# branch.oid before\0# branch.head main\0# branch.upstream origin/main\0# branch.ab +0 -1\0",
-          );
-        if (args[0] === "diff-index") return makeSuccessfulHandle("");
-        if (args.length === 2 && args[0] === "rev-parse" && args[1] === "HEAD")
-          return makeSuccessfulHandle(`${yield* Ref.get(head)}\n`);
-        if (args.includes("--git-common-dir"))
-          return makeSuccessfulHandle(`${workingDirectory}/.git\n`);
-        if (args.includes("--show-toplevel")) return makeSuccessfulHandle(`${workingDirectory}\n`);
-        if (args.includes("@{upstream}")) return makeSuccessfulHandle("origin/main\n");
-        if (args[0] === "remote") return makeSuccessfulHandle("origin\n");
-        if (args[0] === "rev-list") return makeSuccessfulHandle("0\t0\n");
-        if (args.includes("refs/remotes/origin/HEAD"))
-          return makeSuccessfulHandle("refs/remotes/origin/main\n");
-        return makeSuccessfulHandle("main\n");
-      }),
-    );
-    const driver = yield* makeGitVcsDriverCore().pipe(
-      Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
-    );
-    const status = Effect.fn("test.controlledStatusFetch.status")((directory = cwd) =>
-      driver
-        .statusDetailsRemote(directory)
-        .pipe(Effect.provideService(Logger.CurrentLoggers, new Set([logger]))),
-    );
-    return { cwd, driver, status, started, finalized, warnings, attempts, pulls, pullRemoteRead };
-  });
-
   // A fast-forward that prints over 1 MB takes thousands of files, so the real pull's output is
   // padded past the cap instead.
   const withPaddedPull = (
@@ -2277,10 +2192,12 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
           baseRef: initialBranch,
         });
         const branch = preview.sources.find((source) => source.kind === "branch-range")!;
+        const decodeReviewDiffPreviewInput = Schema.decodeEffect(ReviewDiffPreviewInput);
+
         for (const path of ["renamed.md", "[literal].txt", " leading.txt", "mode-only.sh"]) {
           const stat = branch.files!.find((file) => file.path === path)!;
           assert.isDefined(stat, path);
-          const request = yield* Schema.decodeEffect(ReviewDiffPreviewInput)({
+          const request = yield* decodeReviewDiffPreviewInput({
             cwd,
             baseRef: initialBranch,
             file: { path, previousPath: stat.previousPath, sourceKind: "branch-range" },

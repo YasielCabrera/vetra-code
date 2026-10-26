@@ -29,17 +29,7 @@ import { nextScheduledRunAt } from "../scheduledTasks/Schedule.ts";
 import * as ScheduledTaskService from "../scheduledTasks/ScheduledTaskService.ts";
 import { convertLegacyAutomationSchedule } from "./legacyAutomationSchedule.ts";
 
-/**
- * Automations are upstream's scheduled tasks, unmodified. This service adds
- * the one thing they lack: knowing which threads a task launched, so those
- * runs can be kept out of the sidebar and listed under their automation.
- *
- * Runs are recorded by `trackingThreadLaunchLayer`, which wraps the
- * ThreadLaunchService handed to ScheduledTaskService, and pruned by
- * `cleanupLive` when their task is deleted. `automation_runs` sits outside the
- * migration ledger on purpose: fork ids in that ledger mask upstream's later
- * migrations (see docs/internals/legacy-orchestration-migration.md).
- */
+// Fork run tracking stays outside upstream's migration ledger so its ids cannot mask later migrations.
 export class AutomationRuns extends Context.Service<
   AutomationRuns,
   {
@@ -293,8 +283,8 @@ export const layer = Layer.effect(
       Effect.mapError(automationError("Could not read automation runs.")),
     );
 
-    const recordLaunch: AutomationRuns["Service"]["recordLaunch"] = (input) =>
-      Effect.gen(function* () {
+    const recordLaunch: AutomationRuns["Service"]["recordLaunch"] = Effect.fn("recordLaunch")(
+      function* (input) {
         const now = DateTime.formatIso(yield* DateTime.now);
         yield* sql`
           INSERT OR IGNORE INTO automation_runs (
@@ -304,10 +294,12 @@ export const layer = Layer.effect(
           )
         `;
         yield* notifyChanged;
-      }).pipe(Effect.mapError(automationError("Could not record the automation run.")));
+      },
+      Effect.mapError(automationError("Could not record the automation run.")),
+    );
 
-    const setHidden: AutomationRuns["Service"]["setHidden"] = (input) =>
-      Effect.gen(function* () {
+    const setHidden: AutomationRuns["Service"]["setHidden"] = Effect.fn("setHidden")(
+      function* (input) {
         const now = DateTime.formatIso(yield* DateTime.now);
         // Hiding keeps the original stamp; revealing clears it.
         yield* input.hidden
@@ -317,10 +309,14 @@ export const layer = Layer.effect(
             `
           : sql`UPDATE automation_runs SET hidden_at = NULL WHERE thread_id = ${input.threadId}`;
         yield* notifyChanged;
-      }).pipe(Effect.mapError(automationError("Could not update the run.")));
+      },
+      Effect.mapError(automationError("Could not update the run.")),
+    );
 
-    const pruneDeletedTasks: AutomationRuns["Service"]["pruneDeletedTasks"] = () =>
-      Effect.gen(function* () {
+    const pruneDeletedTasks: AutomationRuns["Service"]["pruneDeletedTasks"] = Effect.fn(
+      "pruneDeletedTasks",
+    )(
+      function* () {
         // Raw ids rather than the decoded task list: a row that fails to
         // decode still exists and must keep its runs. An automation the
         // migration has not moved yet (it failed, or never ran) still owns its
@@ -342,7 +338,9 @@ export const layer = Layer.effect(
         return orphaned
           .filter((row) => row.hidden_at !== null)
           .map((row) => ThreadId.make(row.thread_id));
-      }).pipe(Effect.mapError(automationError("Could not prune automation runs.")));
+      },
+      Effect.mapError(automationError("Could not prune automation runs.")),
+    );
 
     const subscribe: AutomationRuns["Service"]["subscribe"] = () =>
       Stream.unwrap(
@@ -374,7 +372,7 @@ export const trackingThreadLaunchLayer = Layer.effect(
     const runs = yield* AutomationRuns;
     const crypto = yield* Crypto.Crypto;
     return ThreadLaunchService.ThreadLaunchService.of({
-      launch: (input) => {
+      launch: Effect.fn("ThreadLaunchService.ThreadLaunchService.launch")((input) => {
         const scheduledTaskId = input.initialMessage?.scheduledTaskId;
         if (scheduledTaskId === undefined || input.threadId !== undefined) {
           return inner.launch(input);
@@ -393,7 +391,7 @@ export const trackingThreadLaunchLayer = Layer.effect(
             ),
           ),
         );
-      },
+      }),
       checkWorktreeBase: inner.checkWorktreeBase,
       retryPreparation: inner.retryPreparation,
       prepareRun: inner.prepareRun,

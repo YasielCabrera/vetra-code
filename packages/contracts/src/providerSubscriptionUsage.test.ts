@@ -178,7 +178,7 @@ describe("ProviderSubscriptionCredentialSetInput", () => {
       instanceId: "cursor_work",
       secret: Redacted.make(plaintext),
     });
-    const decoded = Schema.decodeUnknownSync(codec)(encoded);
+    const decoded = Schema.decodeSync(codec)(encoded);
 
     expect(Redacted.value(decoded.secret)).toBe(plaintext);
     expect(String(decoded.secret)).toBe("<redacted>");
@@ -190,7 +190,7 @@ describe("ProviderSubscriptionCredentialSetInput", () => {
     const plaintext = " secret-that-must-not-appear ";
     let rendered = "";
     try {
-      Schema.decodeUnknownSync(codec)({ instanceId: "cursor_work", secret: plaintext });
+      Schema.decodeSync(codec)({ instanceId: "cursor_work", secret: plaintext });
     } catch (error) {
       rendered = String(error);
     }

@@ -1,13 +1,4 @@
-/**
- * Subscription usage for drivers that live in provider packages.
- *
- * Provider packages may not import the server, and the quota readers need the
- * server's credential store and HTTP client. So instead of the driver building
- * its own `subscriptionUsage`, the server wraps the package driver and attaches
- * the capability to every instance it creates.
- *
- * @module provider/usage/ProviderPackageSubscriptionUsage
- */
+// Provider packages cannot import the server credential store, so the server attaches subscription usage.
 import type {
   ProviderDriver,
   ProviderDriverCreateInput,
@@ -35,11 +26,10 @@ const withSubscriptionUsage = <Config, R, UsageR, R2>(
   ) => Effect.Effect<ProviderSubscriptionUsageCapability, never, R2>,
 ): ProviderDriver<Config, R | R2, UsageR> => ({
   ...driver,
-  create: (input) =>
-    Effect.gen(function* () {
-      const instance = yield* driver.create(input);
-      return { ...instance, subscriptionUsage: yield* makeCapability(input) };
-    }),
+  create: Effect.fn("create")(function* (input) {
+    const instance = yield* driver.create(input);
+    return { ...instance, subscriptionUsage: yield* makeCapability(input) };
+  }),
 });
 
 export const CursorDriverWithSubscriptionUsage = withSubscriptionUsage(

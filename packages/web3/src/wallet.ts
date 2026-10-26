@@ -1,14 +1,4 @@
-/**
- * The preview wallet: one signer, its approval policy, and the queue of
- * requests waiting for a person or an agent.
- *
- * Transport-free. A host hands it requests from pages it has already
- * authenticated, as an opaque `guestId` (one per browser tab) with the origin
- * the browser reported, and reads `changes` to keep pages and approval UIs
- * current. Keys stay in here and in the `WalletStore` the host provides.
- *
- * @module Web3Wallet
- */
+// Hosts authenticate each tab and supply browser-reported origins; this wallet owns signing and approvals.
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
@@ -390,20 +380,19 @@ export const make = Effect.gen(function* () {
       .pipe(Effect.andThen(SynchronizedRef.update(stateRef, (state) => ({ ...state, keystore }))));
 
   /** First enable generates the mnemonic; it is never regenerated, so funded test state survives. */
-  const generateInto = (base: Web3KeystoreFile) =>
-    Effect.gen(function* () {
-      const mnemonic = generateWalletMnemonic();
-      const accounts = yield* deriveMnemonicAccounts(mnemonic, INITIAL_ACCOUNT_COUNT);
-      yield* Effect.logInfo("generated a preview wallet test mnemonic", {
-        accountCount: accounts.length,
-      });
-      return {
-        ...base,
-        mnemonic,
-        accounts,
-        selectedAddress: accounts[0]?.address ?? null,
-      } satisfies Web3KeystoreFile;
+  const generateInto = Effect.fn("Wallet.generateInto")(function* (base: Web3KeystoreFile) {
+    const mnemonic = generateWalletMnemonic();
+    const accounts = yield* deriveMnemonicAccounts(mnemonic, INITIAL_ACCOUNT_COUNT);
+    yield* Effect.logInfo("generated a preview wallet test mnemonic", {
+      accountCount: accounts.length,
     });
+    return {
+      ...base,
+      mnemonic,
+      accounts,
+      selectedAddress: accounts[0]?.address ?? null,
+    } satisfies Web3KeystoreFile;
+  });
 
   const loadKeystore = store.loadOrCreate(generateInto(EMPTY_KEYSTORE)).pipe(
     Effect.filterOrElse(
@@ -418,21 +407,20 @@ export const make = Effect.gen(function* () {
     ),
   );
 
-  const resolveChain = (settings: Web3WalletSettings) =>
-    Effect.gen(function* () {
-      const chain = yield* withHttp(
-        resolveInitialChain({
-          settingsChainId: settings.chainId,
-          settingsRpcUrl: settings.rpcUrl,
-          disabledBuiltInChainIds: settings.disabledBuiltInChainIds,
-          customNetworks: settings.customNetworks,
-        }),
-      );
-      if (chain === null) return { chain: null, rpcReachable: false } as const;
-      const reachable =
-        chain.rpcUrl !== null && (yield* withHttp(probeChainId(chain.rpcUrl))) === chain.chainId;
-      return { chain, rpcReachable: reachable } as const;
-    });
+  const resolveChain = Effect.fn("Wallet.resolveChain")(function* (settings: Web3WalletSettings) {
+    const chain = yield* withHttp(
+      resolveInitialChain({
+        settingsChainId: settings.chainId,
+        settingsRpcUrl: settings.rpcUrl,
+        disabledBuiltInChainIds: settings.disabledBuiltInChainIds,
+        customNetworks: settings.customNetworks,
+      }),
+    );
+    if (chain === null) return { chain: null, rpcReachable: false } as const;
+    const reachable =
+      chain.rpcUrl !== null && (yield* withHttp(probeChainId(chain.rpcUrl))) === chain.chainId;
+    return { chain, rpcReachable: reachable } as const;
+  });
 
   /** Answers parked requests that match, outside any lock, and forgets them. */
   const settlePending = (
@@ -514,19 +502,18 @@ export const make = Effect.gen(function* () {
       return next;
     });
 
-  const isAgentDriven = (guestId: string) =>
-    Effect.gen(function* () {
-      const last = (yield* Ref.get(agentActivity)).get(guestId);
-      if (last === undefined) return false;
-      return (yield* Clock.currentTimeMillis) - last <= AGENT_ACTIVITY_GRACE_MS;
-    });
+  const isAgentDriven = Effect.fn("Wallet.isAgentDriven")(function* (guestId: string) {
+    const last = (yield* Ref.get(agentActivity)).get(guestId);
+    if (last === undefined) return false;
+    return (yield* Clock.currentTimeMillis) - last <= AGENT_ACTIVITY_GRACE_MS;
+  });
 
   /**
    * `always-auto` still parks the first request from a non-loopback origin:
    * removing friction from local development must not hand a signing oracle to
    * any page that loads in the preview. A granted origin is trusted thereafter.
    */
-  const shouldAutoApprove = (input: {
+  const shouldAutoApprove = Effect.fn("Wallet.shouldAutoApprove")((input: {
     readonly state: WalletState;
     readonly kind: Web3MethodKind;
     readonly origin: string;
@@ -547,7 +534,7 @@ export const make = Effect.gen(function* () {
       case "auto-for-agents":
         return isAgentDriven(input.guestId);
     }
-  };
+  });
 
   const updateKeystore = (update: (keystore: Web3KeystoreFile) => Web3KeystoreFile) =>
     serialized(
@@ -572,191 +559,196 @@ export const make = Effect.gen(function* () {
       ? Effect.fail(new PreviewWalletNoChainError())
       : Effect.succeed({ chainId: state.chain.chainId, rpcUrl: state.chain.rpcUrl });
 
-  const setChain = (chain: Web3Chain, alreadyVerified: boolean) =>
-    Effect.gen(function* () {
-      const reachable =
-        chain.rpcUrl !== null &&
-        (alreadyVerified || (yield* withHttp(probeChainId(chain.rpcUrl))) === chain.chainId);
-      yield* SynchronizedRef.update(stateRef, (state) => ({
-        ...state,
-        chain,
-        rpcReachable: reachable,
-      }));
-      yield* publish;
-    });
+  const setChain = Effect.fn("Wallet.setChain")(function* (
+    chain: Web3Chain,
+    alreadyVerified: boolean,
+  ) {
+    const reachable =
+      chain.rpcUrl !== null &&
+      (alreadyVerified || (yield* withHttp(probeChainId(chain.rpcUrl))) === chain.chainId);
+    yield* SynchronizedRef.update(stateRef, (state) => ({
+      ...state,
+      chain,
+      rpcReachable: reachable,
+    }));
+    yield* publish;
+  });
 
-  const switchChain = (state: WalletState, params: unknown) =>
-    Effect.gen(function* () {
-      const chainId = parseChainId(
-        (Array.isArray(params) ? (params[0] as { chainId?: unknown } | undefined) : undefined)
-          ?.chainId,
-      );
-      if (chainId === null) {
-        return yield* Effect.fail(providerError(4902, "Unrecognised chain id."));
-      }
-      if (state.chain?.chainId === chainId) return null;
-      const custom = findCustomNetwork(state.settings.customNetworks, chainId);
-      // Keep the current endpoint only when it actually serves the target
-      // chain; otherwise the wallet would claim a chain it cannot read.
-      const reuseRpc =
-        state.chain !== null &&
-        state.chain.rpcUrl !== null &&
-        (yield* withHttp(probeChainId(state.chain.rpcUrl))) === chainId
-          ? state.chain.rpcUrl
-          : null;
-      const customRpcUrl = custom?.rpcUrl ?? null;
-      const customChainId =
-        reuseRpc === null && customRpcUrl !== null
-          ? yield* withHttp(probeChainId(customRpcUrl))
-          : null;
-      const localChainId =
-        reuseRpc === null && customChainId !== chainId
-          ? yield* withHttp(probeChainId(DEFAULT_LOCAL_RPC_URL))
-          : null;
-      const defaultChain = isBuiltInNetworkEnabled(chainId, state.settings.disabledBuiltInChainIds)
-        ? getDefaultChain(chainId)
+  const switchChain = Effect.fn("Wallet.switchChain")(function* (
+    state: WalletState,
+    params: unknown,
+  ) {
+    const chainId = parseChainId(
+      (Array.isArray(params) ? (params[0] as { chainId?: unknown } | undefined) : undefined)
+        ?.chainId,
+    );
+    if (chainId === null) {
+      return yield* Effect.fail(providerError(4902, "Unrecognised chain id."));
+    }
+    if (state.chain?.chainId === chainId) return null;
+    const custom = findCustomNetwork(state.settings.customNetworks, chainId);
+    // Keep the current endpoint only when it actually serves the target
+    // chain; otherwise the wallet would claim a chain it cannot read.
+    const reuseRpc =
+      state.chain !== null &&
+      state.chain.rpcUrl !== null &&
+      (yield* withHttp(probeChainId(state.chain.rpcUrl))) === chainId
+        ? state.chain.rpcUrl
         : null;
-      const defaultRpcUrl = defaultChain?.rpcUrl ?? null;
-      const defaultChainId =
-        reuseRpc === null &&
-        customChainId !== chainId &&
-        localChainId !== chainId &&
-        defaultRpcUrl !== null
-          ? yield* withHttp(probeChainId(defaultRpcUrl))
-          : null;
-      const rpcUrl =
-        reuseRpc ??
-        (customChainId === chainId ? customRpcUrl : null) ??
-        (localChainId === chainId ? (DEFAULT_LOCAL_RPC_URL as Web3RpcUrl) : null) ??
-        (defaultChainId === chainId ? defaultRpcUrl : null);
-      if (rpcUrl === null) {
-        return yield* Effect.fail(
-          providerError(
-            4902,
-            `No working JSON-RPC endpoint is known for chain ${chainId}. Add a custom network in Settings > Web3 or call wallet_addEthereumChain.`,
-          ),
-        );
-      }
-      yield* setChain(
-        custom !== null && rpcUrl === custom.rpcUrl
-          ? describeCustomNetwork(custom)
-          : describeChain(chainId, rpcUrl),
-        true,
+    const customRpcUrl = custom?.rpcUrl ?? null;
+    const customChainId =
+      reuseRpc === null && customRpcUrl !== null
+        ? yield* withHttp(probeChainId(customRpcUrl))
+        : null;
+    const localChainId =
+      reuseRpc === null && customChainId !== chainId
+        ? yield* withHttp(probeChainId(DEFAULT_LOCAL_RPC_URL))
+        : null;
+    const defaultChain = isBuiltInNetworkEnabled(chainId, state.settings.disabledBuiltInChainIds)
+      ? getDefaultChain(chainId)
+      : null;
+    const defaultRpcUrl = defaultChain?.rpcUrl ?? null;
+    const defaultChainId =
+      reuseRpc === null &&
+      customChainId !== chainId &&
+      localChainId !== chainId &&
+      defaultRpcUrl !== null
+        ? yield* withHttp(probeChainId(defaultRpcUrl))
+        : null;
+    const rpcUrl =
+      reuseRpc ??
+      (customChainId === chainId ? customRpcUrl : null) ??
+      (localChainId === chainId ? (DEFAULT_LOCAL_RPC_URL as Web3RpcUrl) : null) ??
+      (defaultChainId === chainId ? defaultRpcUrl : null);
+    if (rpcUrl === null) {
+      return yield* Effect.fail(
+        providerError(
+          4902,
+          `No working JSON-RPC endpoint is known for chain ${chainId}. Add a custom network in Settings > Web3 or call wallet_addEthereumChain.`,
+        ),
       );
-      return null;
-    });
+    }
+    yield* setChain(
+      custom !== null && rpcUrl === custom.rpcUrl
+        ? describeCustomNetwork(custom)
+        : describeChain(chainId, rpcUrl),
+      true,
+    );
+    return null;
+  });
 
   /** Runs a request that has cleared the approval gate. */
-  const execute = (input: {
+  const execute = Effect.fn("Wallet.execute")(function* (input: {
     readonly method: string;
     readonly params: unknown;
     readonly origin: string;
     readonly kind: Web3MethodKind;
-  }) =>
-    Effect.gen(function* () {
-      const { method, params, origin, kind } = input;
-      const state = yield* SynchronizedRef.get(stateRef);
+  }) {
+    const { method, params, origin, kind } = input;
+    const state = yield* SynchronizedRef.get(stateRef);
 
-      if (kind === "connect") {
-        if (state.keystore.accounts.length === 0) return yield* new PreviewWalletNoAccountError();
-        yield* grantOrigin(origin);
-        if (method === "wallet_requestPermissions") return [{ parentCapability: "eth_accounts" }];
-        return accountList((yield* SynchronizedRef.get(stateRef)).keystore);
-      }
+    if (kind === "connect") {
+      if (state.keystore.accounts.length === 0) return yield* new PreviewWalletNoAccountError();
+      yield* grantOrigin(origin);
+      if (method === "wallet_requestPermissions") return [{ parentCapability: "eth_accounts" }];
+      return accountList((yield* SynchronizedRef.get(stateRef)).keystore);
+    }
 
-      if (kind === "chain") {
-        if (method === "wallet_addEthereumChain") {
-          const chain = parseAddEthereumChain(params);
-          if (chain === null) {
-            return yield* Effect.fail(
-              providerError(4902, "Could not understand the requested chain."),
-            );
-          }
-          yield* setChain(chain, false);
-          return null;
-        }
-        return yield* switchChain(state, params);
-      }
-
-      // Nothing to track: the preview wallet has no token list. Success keeps
-      // dapp onboarding flows moving.
-      if (kind === "asset") return true;
-
-      const addressParam = Array.isArray(params)
-        ? method === "personal_sign"
-          ? params[1]
-          : params[0]
-        : undefined;
-      const requestedAddress =
-        typeof addressParam === "string" && /^0x[0-9a-fA-F]{40}$/.test(addressParam)
-          ? addressParam
-          : state.keystore.selectedAddress;
-      if (requestedAddress === null) return yield* new PreviewWalletNoAccountError();
-
-      switch (method) {
-        case "personal_sign":
-        case "eth_sign": {
-          const account = yield* resolveSigner(state.keystore, requestedAddress);
-          const message = Array.isArray(params) ? params[method === "personal_sign" ? 0 : 1] : "";
-          return yield* signPersonalMessage({ account, message: String(message ?? "") });
-        }
-        case "eth_signTypedData":
-        case "eth_signTypedData_v1":
-        case "eth_signTypedData_v3":
-        case "eth_signTypedData_v4": {
-          const account = yield* resolveSigner(state.keystore, requestedAddress);
-          const typedData = Array.isArray(params) ? (params[1] ?? params[0]) : params;
-          return yield* signTypedData({ account, typedData });
-        }
-        case "eth_sendTransaction": {
-          const { chainId, rpcUrl } = yield* requireChain(state);
-          const request = (Array.isArray(params) ? params[0] : params) as Record<string, unknown>;
-          const from = typeof request?.from === "string" ? request.from : requestedAddress;
-          const account = yield* resolveSigner(state.keystore, from);
-          return yield* withHttp(
-            sendTransaction({ account, chainId, rpcUrl, request: request ?? {} }),
-          );
-        }
-        default:
+    if (kind === "chain") {
+      if (method === "wallet_addEthereumChain") {
+        const chain = parseAddEthereumChain(params);
+        if (chain === null) {
           return yield* Effect.fail(
-            providerError(-32601, `The preview wallet does not implement ${method}.`),
+            providerError(4902, "Could not understand the requested chain."),
           );
+        }
+        yield* setChain(chain, false);
+        return null;
       }
-    });
+      return yield* switchChain(state, params);
+    }
 
-  const answerLocally = (method: string, origin: string) =>
-    Effect.gen(function* () {
-      const state = yield* SynchronizedRef.get(stateRef);
-      const granted = originGranted(state.keystore, origin);
-      switch (method) {
-        case "eth_accounts":
-          // An empty list, not an error: MetaMask's answer, and what dapp
-          // "not connected" branches expect.
-          return granted ? accountList(state.keystore) : [];
-        case "eth_coinbase":
-          return granted ? (accountList(state.keystore)[0] ?? null) : null;
-        case "eth_chainId":
-          return state.chain === null ? null : chainIdToHex(state.chain.chainId);
-        case "net_version":
-          return state.chain === null ? null : String(state.chain.chainId);
-        case "wallet_getPermissions":
-          return granted ? [{ parentCapability: "eth_accounts" }] : [];
-        case "wallet_revokePermissions":
-          yield* updateKeystore((keystore) =>
-            originGranted(keystore, origin)
-              ? {
-                  ...keystore,
-                  connectedOrigins: keystore.connectedOrigins.filter((entry) => entry !== origin),
-                }
-              : keystore,
-          );
-          return null;
-        case "web3_clientVersion":
-          return "VetraPreviewWallet/1.0.0";
-        default:
-          return null;
+    // Nothing to track: the preview wallet has no token list. Success keeps
+    // dapp onboarding flows moving.
+    if (kind === "asset") return true;
+
+    const addressParam = Array.isArray(params)
+      ? method === "personal_sign"
+        ? params[1]
+        : params[0]
+      : undefined;
+    const requestedAddress =
+      typeof addressParam === "string" && /^0x[0-9a-fA-F]{40}$/.test(addressParam)
+        ? addressParam
+        : state.keystore.selectedAddress;
+    if (requestedAddress === null) return yield* new PreviewWalletNoAccountError();
+
+    switch (method) {
+      case "personal_sign":
+      case "eth_sign": {
+        const account = yield* resolveSigner(state.keystore, requestedAddress);
+        const message = Array.isArray(params) ? params[method === "personal_sign" ? 0 : 1] : "";
+        return yield* signPersonalMessage({ account, message: String(message ?? "") });
       }
-    });
+      case "eth_signTypedData":
+      case "eth_signTypedData_v1":
+      case "eth_signTypedData_v3":
+      case "eth_signTypedData_v4": {
+        const account = yield* resolveSigner(state.keystore, requestedAddress);
+        const typedData = Array.isArray(params) ? (params[1] ?? params[0]) : params;
+        return yield* signTypedData({ account, typedData });
+      }
+      case "eth_sendTransaction": {
+        const { chainId, rpcUrl } = yield* requireChain(state);
+        const request = (Array.isArray(params) ? params[0] : params) as Record<string, unknown>;
+        const from = typeof request?.from === "string" ? request.from : requestedAddress;
+        const account = yield* resolveSigner(state.keystore, from);
+        return yield* withHttp(
+          sendTransaction({ account, chainId, rpcUrl, request: request ?? {} }),
+        );
+      }
+      default:
+        return yield* Effect.fail(
+          providerError(-32601, `The preview wallet does not implement ${method}.`),
+        );
+    }
+  });
+
+  const answerLocally = Effect.fn("Wallet.answerLocally")(function* (
+    method: string,
+    origin: string,
+  ) {
+    const state = yield* SynchronizedRef.get(stateRef);
+    const granted = originGranted(state.keystore, origin);
+    switch (method) {
+      case "eth_accounts":
+        // An empty list, not an error: MetaMask's answer, and what dapp
+        // "not connected" branches expect.
+        return granted ? accountList(state.keystore) : [];
+      case "eth_coinbase":
+        return granted ? (accountList(state.keystore)[0] ?? null) : null;
+      case "eth_chainId":
+        return state.chain === null ? null : chainIdToHex(state.chain.chainId);
+      case "net_version":
+        return state.chain === null ? null : String(state.chain.chainId);
+      case "wallet_getPermissions":
+        return granted ? [{ parentCapability: "eth_accounts" }] : [];
+      case "wallet_revokePermissions":
+        yield* updateKeystore((keystore) =>
+          originGranted(keystore, origin)
+            ? {
+                ...keystore,
+                connectedOrigins: keystore.connectedOrigins.filter((entry) => entry !== origin),
+              }
+            : keystore,
+        );
+        return null;
+      case "web3_clientVersion":
+        return "VetraPreviewWallet/1.0.0";
+      default:
+        return null;
+    }
+  });
 
   /** Takes a parked request out of the queue; only the caller that gets it may settle it. */
   const claim = (requestId: string) =>
@@ -768,79 +760,74 @@ export const make = Effect.gen(function* () {
       return [Option.some(entry), { ...state, pending }];
     }).pipe(Effect.tap((claimed) => (Option.isSome(claimed) ? publish : Effect.void)));
 
-  const park = (input: {
+  const park = Effect.fn("Wallet.park")(function* (input: {
     readonly guest: WalletGuestRequest;
     readonly kind: Web3MethodKind;
     readonly grantOriginOnApproval: boolean;
-  }) =>
-    Effect.gen(function* () {
-      const { guest } = input;
-      const requestId = yield* crypto.randomUUIDv4();
-      const createdAt = DateTime.formatIso(yield* DateTime.now);
-      const outcome = yield* Deferred.make<PendingOutcome>();
-      const entry: PendingEntry = {
-        request: {
-          requestId,
-          origin: guest.origin,
+  }) {
+    const { guest } = input;
+    const requestId = yield* crypto.randomUUIDv4();
+    const createdAt = DateTime.formatIso(yield* DateTime.now);
+    const outcome = yield* Deferred.make<PendingOutcome>();
+    const entry: PendingEntry = {
+      request: {
+        requestId,
+        origin: guest.origin,
+        method: guest.method,
+        params: guest.params,
+        summary: summarizeWeb3Request({
           method: guest.method,
           params: guest.params,
-          summary: summarizeWeb3Request({
-            method: guest.method,
-            params: guest.params,
-            origin: guest.origin,
-          }).concat(input.grantOriginOnApproval ? " Approving also connects this site." : ""),
-          createdAt,
-        },
-        kind: input.kind,
-        guestId: guest.guestId,
-        documentId: guest.documentId,
-        grantOriginOnApproval: input.grantOriginOnApproval,
-        outcome,
-      };
-      const parked = yield* SynchronizedRef.modify(stateRef, (state): [boolean, WalletState] => {
-        const forGuest = [...state.pending.values()].filter(
-          (pending) => pending.guestId === guest.guestId,
-        ).length;
-        if (state.pending.size >= WEB3_PENDING_MAX || forGuest >= WEB3_PENDING_PER_GUEST) {
-          return [false, state];
-        }
-        return [true, { ...state, pending: new Map(state.pending).set(requestId, entry) }];
-      });
-      if (!parked) {
-        return yield* Effect.fail(
-          providerError(-32005, "Too many preview wallet requests are waiting for approval."),
-        );
+          origin: guest.origin,
+        }).concat(input.grantOriginOnApproval ? " Approving also connects this site." : ""),
+        createdAt,
+      },
+      kind: input.kind,
+      guestId: guest.guestId,
+      documentId: guest.documentId,
+      grantOriginOnApproval: input.grantOriginOnApproval,
+      outcome,
+    };
+    const parked = yield* SynchronizedRef.modify(stateRef, (state): [boolean, WalletState] => {
+      const forGuest = [...state.pending.values()].filter(
+        (pending) => pending.guestId === guest.guestId,
+      ).length;
+      if (state.pending.size >= WEB3_PENDING_MAX || forGuest >= WEB3_PENDING_PER_GUEST) {
+        return [false, state];
       }
-      yield* publish;
-
-      // An expired request may already be executing for an approver; then the
-      // page gets that answer rather than a false rejection.
-      const expire = claim(requestId).pipe(
-        Effect.flatMap((claimed) =>
-          Option.isSome(claimed)
-            ? Effect.logInfo("a preview wallet request expired before anyone answered it", {
-                method: guest.method,
-              }).pipe(
-                Effect.as<PendingOutcome>({ _tag: "rejected", code: DEFAULT_WEB3_REJECT_CODE }),
-              )
-            : Deferred.await(outcome),
-        ),
-      );
-      const settled = yield* Deferred.await(outcome).pipe(
-        Effect.timeoutOrElse({ duration: PENDING_REQUEST_TIMEOUT, orElse: () => expire }),
-        Effect.onInterrupt(() => claim(requestId)),
-      );
-      switch (settled._tag) {
-        case "approved":
-          return settled.result;
-        case "rejected":
-          return yield* Effect.fail(
-            providerError(settled.code, WEB3_REJECT_MESSAGES[settled.code]),
-          );
-        case "failed":
-          return yield* Effect.fail(providerError(settled.code, settled.message));
-      }
+      return [true, { ...state, pending: new Map(state.pending).set(requestId, entry) }];
     });
+    if (!parked) {
+      return yield* Effect.fail(
+        providerError(-32005, "Too many preview wallet requests are waiting for approval."),
+      );
+    }
+    yield* publish;
+
+    // An expired request may already be executing for an approver; then the
+    // page gets that answer rather than a false rejection.
+    const expire = claim(requestId).pipe(
+      Effect.flatMap((claimed) =>
+        Option.isSome(claimed)
+          ? Effect.logInfo("a preview wallet request expired before anyone answered it", {
+              method: guest.method,
+            }).pipe(Effect.as<PendingOutcome>({ _tag: "rejected", code: DEFAULT_WEB3_REJECT_CODE }))
+          : Deferred.await(outcome),
+      ),
+    );
+    const settled = yield* Deferred.await(outcome).pipe(
+      Effect.timeoutOrElse({ duration: PENDING_REQUEST_TIMEOUT, orElse: () => expire }),
+      Effect.onInterrupt(() => claim(requestId)),
+    );
+    switch (settled._tag) {
+      case "approved":
+        return settled.result;
+      case "rejected":
+        return yield* Effect.fail(providerError(settled.code, WEB3_REJECT_MESSAGES[settled.code]));
+      case "failed":
+        return yield* Effect.fail(providerError(settled.code, settled.message));
+    }
+  });
 
   const openDocument = (guestId: string, documentId: string) =>
     SynchronizedRef.modify(stateRef, (state): [boolean, WalletState] =>
@@ -858,47 +845,46 @@ export const make = Effect.gen(function* () {
       ),
     );
 
-  const handle = (call: WalletGuestRequest) =>
-    Effect.gen(function* () {
-      if (!isWebOrigin(call.origin)) {
-        return yield* Effect.fail(providerError(4100, WEB3_REJECT_MESSAGES[4100]));
-      }
-      const params = jsonParams(call.params);
-      if (Option.isNone(params)) {
-        return yield* Effect.fail(providerError(-32602, "The request params are too large."));
-      }
-      const guest = { ...call, params: params.value };
-      const state = yield* SynchronizedRef.get(stateRef);
-      if (!state.settings.enabled) {
-        return yield* Effect.fail(providerError(4900, "The preview wallet is disabled."));
-      }
-      yield* openDocument(guest.guestId, guest.documentId);
+  const handle = Effect.fn("Wallet.handle")(function* (call: WalletGuestRequest) {
+    if (!isWebOrigin(call.origin)) {
+      return yield* Effect.fail(providerError(4100, WEB3_REJECT_MESSAGES[4100]));
+    }
+    const params = jsonParams(call.params);
+    if (Option.isNone(params)) {
+      return yield* Effect.fail(providerError(-32602, "The request params are too large."));
+    }
+    const guest = { ...call, params: params.value };
+    const state = yield* SynchronizedRef.get(stateRef);
+    if (!state.settings.enabled) {
+      return yield* Effect.fail(providerError(4900, "The preview wallet is disabled."));
+    }
+    yield* openDocument(guest.guestId, guest.documentId);
 
-      const kind = classifyWeb3Method(guest.method);
-      if (kind === "local") return yield* answerLocally(guest.method, guest.origin);
-      if (kind === "passthrough") {
-        const { rpcUrl } = yield* requireChain(state);
-        return yield* withHttp(
-          web3RpcRequest({ rpcUrl, method: guest.method, params: guest.params }),
-        );
-      }
+    const kind = classifyWeb3Method(guest.method);
+    if (kind === "local") return yield* answerLocally(guest.method, guest.origin);
+    if (kind === "passthrough") {
+      const { rpcUrl } = yield* requireChain(state);
+      return yield* withHttp(
+        web3RpcRequest({ rpcUrl, method: guest.method, params: guest.params }),
+      );
+    }
 
-      // Some connector libraries restore their own "connected" cache without
-      // calling eth_requestAccounts again. The first signature then doubles as
-      // the connect request: it still passes the gate, and the origin is
-      // granted only after signing succeeds.
-      const grantOriginOnApproval =
-        web3MethodNeedsAccountGrant(guest.method) && !originGranted(state.keystore, guest.origin);
-      const input = { ...guest, kind };
-      if (!web3MethodRequiresApproval(kind)) return yield* execute(input);
+    // Some connector libraries restore their own "connected" cache without
+    // calling eth_requestAccounts again. The first signature then doubles as
+    // the connect request: it still passes the gate, and the origin is
+    // granted only after signing succeeds.
+    const grantOriginOnApproval =
+      web3MethodNeedsAccountGrant(guest.method) && !originGranted(state.keystore, guest.origin);
+    const input = { ...guest, kind };
+    if (!web3MethodRequiresApproval(kind)) return yield* execute(input);
 
-      if (yield* shouldAutoApprove({ ...input, state })) {
-        const result = yield* execute(input);
-        if (grantOriginOnApproval) yield* grantOrigin(guest.origin);
-        return result;
-      }
-      return yield* park({ guest, kind, grantOriginOnApproval });
-    });
+    if (yield* shouldAutoApprove({ ...input, state })) {
+      const result = yield* execute(input);
+      if (grantOriginOnApproval) yield* grantOrigin(guest.origin);
+      return result;
+    }
+    return yield* park({ guest, kind, grantOriginOnApproval });
+  });
 
   const request = (guest: WalletGuestRequest) =>
     handle(guest).pipe(
@@ -906,73 +892,72 @@ export const make = Effect.gen(function* () {
       Effect.catchCause((cause) => Effect.succeed(replyFromCause(cause))),
     );
 
-  const approve = (requestId: string) =>
-    Effect.gen(function* () {
-      const claimed = yield* claim(requestId);
-      if (Option.isNone(claimed))
-        return yield* new PreviewWalletRequestNotFoundError({ requestId });
-      const entry = claimed.value;
-      const state = yield* SynchronizedRef.get(stateRef);
-      if (!state.settings.enabled) {
-        yield* Deferred.succeed(entry.outcome, DISCONNECTED);
-        return yield* new PreviewWalletDisabledError();
-      }
-      const executed = yield* execute({
-        method: entry.request.method,
-        params: entry.request.params,
-        origin: entry.request.origin,
-        kind: entry.kind,
-      }).pipe(Effect.result);
-      if (executed._tag === "Failure") {
-        const failure = executed.failure;
-        const code =
-          typeof failure === "object" && "code" in failure && typeof failure.code === "number"
-            ? failure.code
-            : -32603;
-        yield* Deferred.succeed(entry.outcome, {
-          _tag: "failed",
-          code,
-          message: messageOf(failure),
-        });
-        return {
-          requestId,
-          method: entry.request.method,
-          outcome: "approved" as const,
-          result: null,
-          failure: messageOf(failure),
-        };
-      }
-      if (entry.grantOriginOnApproval) {
-        yield* grantOrigin(entry.request.origin).pipe(
-          Effect.catchCause((cause) =>
-            Effect.logWarning("could not record a preview wallet origin grant", cause),
-          ),
-        );
-      }
-      yield* Deferred.succeed(entry.outcome, { _tag: "approved", result: executed.success });
+  const approve = Effect.fn("Wallet.approve")(function* (requestId: string) {
+    const claimed = yield* claim(requestId);
+    if (Option.isNone(claimed)) return yield* new PreviewWalletRequestNotFoundError({ requestId });
+    const entry = claimed.value;
+    const state = yield* SynchronizedRef.get(stateRef);
+    if (!state.settings.enabled) {
+      yield* Deferred.succeed(entry.outcome, DISCONNECTED);
+      return yield* new PreviewWalletDisabledError();
+    }
+    const executed = yield* execute({
+      method: entry.request.method,
+      params: entry.request.params,
+      origin: entry.request.origin,
+      kind: entry.kind,
+    }).pipe(Effect.result);
+    if (executed._tag === "Failure") {
+      const failure = executed.failure;
+      const code =
+        typeof failure === "object" && "code" in failure && typeof failure.code === "number"
+          ? failure.code
+          : -32603;
+      yield* Deferred.succeed(entry.outcome, {
+        _tag: "failed",
+        code,
+        message: messageOf(failure),
+      });
       return {
         requestId,
         method: entry.request.method,
         outcome: "approved" as const,
-        result: executed.success,
-        failure: null,
-      };
-    });
-
-  const reject = (requestId: string, code: Web3RejectCode = DEFAULT_WEB3_REJECT_CODE) =>
-    Effect.gen(function* () {
-      const claimed = yield* claim(requestId);
-      if (Option.isNone(claimed))
-        return yield* new PreviewWalletRequestNotFoundError({ requestId });
-      yield* Deferred.succeed(claimed.value.outcome, { _tag: "rejected", code });
-      return {
-        requestId,
-        method: claimed.value.request.method,
-        outcome: "rejected" as const,
         result: null,
-        failure: WEB3_REJECT_MESSAGES[code],
+        failure: messageOf(failure),
       };
-    });
+    }
+    if (entry.grantOriginOnApproval) {
+      yield* grantOrigin(entry.request.origin).pipe(
+        Effect.catchCause((cause) =>
+          Effect.logWarning("could not record a preview wallet origin grant", cause),
+        ),
+      );
+    }
+    yield* Deferred.succeed(entry.outcome, { _tag: "approved", result: executed.success });
+    return {
+      requestId,
+      method: entry.request.method,
+      outcome: "approved" as const,
+      result: executed.success,
+      failure: null,
+    };
+  });
+
+  const reject = Effect.fn("Wallet.reject")(function* (
+    requestId: string,
+    code: Web3RejectCode = DEFAULT_WEB3_REJECT_CODE,
+  ) {
+    const claimed = yield* claim(requestId);
+    if (Option.isNone(claimed)) return yield* new PreviewWalletRequestNotFoundError({ requestId });
+    yield* Deferred.succeed(claimed.value.outcome, { _tag: "rejected", code });
+    return {
+      requestId,
+      method: claimed.value.request.method,
+      outcome: "rejected" as const,
+      result: null,
+      failure: WEB3_REJECT_MESSAGES[code],
+    };
+  });
 
   const configure = (input: Web3WalletConfigureInput) =>
     serialized(

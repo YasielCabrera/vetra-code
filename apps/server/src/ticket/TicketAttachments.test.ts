@@ -1,3 +1,4 @@
+import * as DocumentText from "../provider/DocumentText.ts";
 // @effect-diagnostics nodeBuiltinImport:off - fixtures must also live outside the OS temp root.
 import * as NodeOS from "node:os";
 
@@ -70,7 +71,10 @@ const withWorkspace = <A, E, R>(
         ),
       ),
     );
-  }).pipe(Effect.provide(NodeServices.layer), Effect.scoped);
+  }).pipe(
+    Effect.provide(DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer))),
+    Effect.scoped,
+  );
 
 const writeSource = Effect.fn(function* (root: string, name = "report.txt", bytes = "report") {
   const fs = yield* FileSystem.FileSystem;
@@ -165,6 +169,40 @@ describe("TicketAttachments agent path confinement", () => {
           assert.strictEqual(yield* fs.readFileString(secret.path), "synthetic Vetra secret");
         }),
       ),
+  );
+
+  it.effect("extracts local notebook text and removes it with an uncommitted claim", () =>
+    withWorkspace(({ workspaceRoot }) =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const source = yield* writeSource(
+          workspaceRoot,
+          "report.ipynb",
+          JSON.stringify({
+            cells: [{ cell_type: "markdown", source: ["Violet crates: 19"] }],
+            metadata: {},
+            nbformat: 4,
+            nbformat_minor: 5,
+          }),
+        );
+        const config = yield* ServerConfig.ServerConfig;
+        const storedPath = yield* Effect.scoped(
+          Effect.gen(function* () {
+            const claim = yield* claimTicketAttachments(ticketId, [source], actor);
+            const stored = resolveAttachmentPath({
+              attachmentsDir: config.attachmentsDir,
+              attachment: claim.attachments[0]!,
+            });
+            assert.isNotNull(stored);
+            assert.include(yield* fs.readFileString(`${stored}.txt`), "Violet crates: 19");
+            return stored!;
+          }),
+        );
+        assert.isFalse(yield* fs.exists(storedPath));
+        assert.isFalse(yield* fs.exists(`${storedPath}.txt`));
+        assert.isTrue(yield* fs.exists(source.path));
+      }),
+    ),
   );
 
   it.effect("refuses an unknown caller even for a temp file", () =>

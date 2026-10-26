@@ -1000,8 +1000,8 @@ export const make = Effect.gen(function* () {
       })),
       Effect.catch(() => currentCredential.pipe(Effect.map(authFromCredential))),
     ),
-    listPullRequests: (input) =>
-      resolveRepository(input).pipe(
+    listPullRequests: Effect.fn("BitbucketApi.listPullRequests")(function (input) {
+      return resolveRepository(input).pipe(
         Effect.flatMap((repository) => {
           const states = toBitbucketStates(input.state);
           const query: Record<string, string | ReadonlyArray<string>> = {
@@ -1026,13 +1026,16 @@ export const make = Effect.gen(function* () {
           );
         }),
         Effect.map((list) => list.values.map(normalizeBitbucketPullRequestRecord)),
-      ),
-    getPullRequest: (input) =>
-      getRawPullRequest(input).pipe(Effect.map(normalizeBitbucketPullRequestRecord)),
-    getRepositoryCloneUrls: (input) =>
-      getRepository(input).pipe(Effect.map(normalizeRepositoryCloneUrls)),
-    createRepository: (input) =>
-      requireRepositoryLocator(input.repository).pipe(
+      );
+    }),
+    getPullRequest: Effect.fn("BitbucketApi.getPullRequest")(function (input) {
+      return getRawPullRequest(input).pipe(Effect.map(normalizeBitbucketPullRequestRecord));
+    }),
+    getRepositoryCloneUrls: Effect.fn("BitbucketApi.getRepositoryCloneUrls")(function (input) {
+      return getRepository(input).pipe(Effect.map(normalizeRepositoryCloneUrls));
+    }),
+    createRepository: Effect.fn("BitbucketApi.createRepository")(function (input) {
+      return requireRepositoryLocator(input.repository).pipe(
         Effect.flatMap((repository) =>
           executeJson(
             "createRepository",
@@ -1050,7 +1053,8 @@ export const make = Effect.gen(function* () {
           ),
         ),
         Effect.map(normalizeRepositoryCloneUrls),
-      ),
+      );
+    }),
     createPullRequest: Effect.fn("BitbucketApi.createPullRequest")(function* (input) {
       const repository = yield* resolveRepository(input);
       const description = yield* fileSystem.readFileString(input.bodyFile).pipe(
@@ -1096,8 +1100,8 @@ export const make = Effect.gen(function* () {
         BitbucketPullRequestSchema,
       );
     }),
-    getDefaultBranch: (input) =>
-      resolveRepository(input).pipe(
+    getDefaultBranch: Effect.fn("BitbucketApi.getDefaultBranch")(function (input) {
+      return resolveRepository(input).pipe(
         Effect.flatMap((locator) =>
           Effect.all(
             {
@@ -1112,7 +1116,8 @@ export const make = Effect.gen(function* () {
           ),
         ),
         Effect.map(defaultChangeRequestTargetBranch),
-      ),
+      );
+    }),
     checkoutPullRequest: Effect.fn("BitbucketApi.checkoutPullRequest")(
       function* (input) {
         const destinationRepository = yield* resolveRepository(input);

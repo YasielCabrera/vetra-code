@@ -1,19 +1,4 @@
-/**
- * PowerhouseProject - finds Powerhouse projects in a workspace and reads their
- * document models off disk.
- *
- * Works with no reactor running, which is what makes it the panel's fallback
- * mode. Reading follows Powerhouse's own conventions: `powerhouse.config.json`
- * marks a project, `documentModelsDir` (default `./document-models`) holds one
- * directory per model, and each directory holds a `<name>/<name>.json` whose
- * filename must match the directory.
- *
- * A workspace is not necessarily a project. Monorepos commonly keep the
- * Powerhouse app under `apps/<name>`, so discovery scans below the root as
- * well — see `listProjects`.
- *
- * @module PowerhouseProject
- */
+// Discover from disk when no reactor runs; workspaces can contain nested Powerhouse projects.
 // @effect-diagnostics nodeBuiltinImport:off
 import * as NodeFSP from "node:fs/promises";
 
@@ -223,7 +208,7 @@ const make = Effect.gen(function* () {
       );
     const configPath = path.join(canonicalDirectory, POWERHOUSE_CONFIG_FILE_NAME);
     const canonicalConfigPath = yield* fileSystem.realPath(configPath).pipe(
-      Effect.map(Option.some),
+      Effect.asSome,
       Effect.catchTags({
         PlatformError: (cause) =>
           isNotFound(cause)

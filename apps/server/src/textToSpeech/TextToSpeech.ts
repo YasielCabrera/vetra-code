@@ -489,28 +489,27 @@ export const makeTextToSpeech = Effect.fn("TextToSpeech.make")(function* (option
     return { url: `${TEXT_TO_SPEECH_ROUTE_PREFIX}/${token}`, sampleRate: KOKORO_SAMPLE_RATE };
   });
 
-  const takeSpeech: TextToSpeechService["takeSpeech"] = (token) =>
-    Effect.gen(function* () {
-      const speech = speeches.get(token);
-      speeches.delete(token);
-      if (!speech || speech.expiresAt <= (yield* Clock.currentTimeMillis)) return undefined;
-      const synthesize = (chunk: string) =>
-        removalsOf(speech.model) !== speech.removals
-          ? Effect.fail(new TextToSpeechError({ detail: "The voice model was removed." }))
-          : Effect.tryPromise({
-              try: () => engines.synthesize(speech.model, chunk, speech.voice, speech.speed),
-              catch: ttsError("Speech synthesis failed."),
-            });
-      // The first chunk is synthesized before the response starts, so a model that
-      // cannot load is reported as an error rather than a stream cut off mid-way.
-      const [first, ...rest] = speech.chunks;
-      const firstAudio = yield* synthesize(first!);
-      return Stream.make(firstAudio).pipe(
-        Stream.concat(Stream.fromIterable(rest).pipe(Stream.mapEffect(synthesize))),
-        Stream.map(toPcm16),
-        Stream.filter((pcm) => pcm.byteLength > 0),
-      );
-    });
+  const takeSpeech: TextToSpeechService["takeSpeech"] = Effect.fn("takeSpeech")(function* (token) {
+    const speech = speeches.get(token);
+    speeches.delete(token);
+    if (!speech || speech.expiresAt <= (yield* Clock.currentTimeMillis)) return undefined;
+    const synthesize = (chunk: string) =>
+      removalsOf(speech.model) !== speech.removals
+        ? Effect.fail(new TextToSpeechError({ detail: "The voice model was removed." }))
+        : Effect.tryPromise({
+            try: () => engines.synthesize(speech.model, chunk, speech.voice, speech.speed),
+            catch: ttsError("Speech synthesis failed."),
+          });
+    // The first chunk is synthesized before the response starts, so a model that
+    // cannot load is reported as an error rather than a stream cut off mid-way.
+    const [first, ...rest] = speech.chunks;
+    const firstAudio = yield* synthesize(first!);
+    return Stream.make(firstAudio).pipe(
+      Stream.concat(Stream.fromIterable(rest).pipe(Stream.mapEffect(synthesize))),
+      Stream.map(toPcm16),
+      Stream.filter((pcm) => pcm.byteLength > 0),
+    );
+  });
 
   yield* Effect.addFinalizer(() => Effect.promise(() => engines.unload()));
 

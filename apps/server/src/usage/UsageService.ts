@@ -193,7 +193,7 @@ const EMPTY_PRICING: UsagePricing = {
 export const layerTest = Layer.succeed(
   UsageService,
   UsageService.of({
-    readSummary: (input) =>
+    readSummary: Effect.fn("UsageService.readSummary")((input) =>
       Effect.succeed({
         contractVersion: USAGE_CONTRACT_VERSION,
         readAt: "1970-01-01T00:00:00.000Z",
@@ -205,6 +205,7 @@ export const layerTest = Layer.succeed(
         pricing: EMPTY_PRICING,
         scanDurationMs: 0,
       }),
+    ),
     readSubscriptionSummary: Effect.succeed({
       contractVersion: USAGE_CONTRACT_VERSION,
       readAt: "1970-01-01T00:00:00.000Z",
@@ -216,9 +217,10 @@ export const layerTest = Layer.succeed(
       pricing: EMPTY_PRICING,
       scanDurationMs: 0,
     }),
-    price: (model, totals, reportedCostUsd) =>
+    price: Effect.fn("UsageService.price")((model, totals, reportedCostUsd) =>
       Effect.succeed(priceUsage(new Map(), { model, totals, speed: "standard", reportedCostUsd })),
-    priceCached: () => Effect.succeed(null),
+    ),
+    priceCached: Effect.fn("UsageService.priceCached")(() => Effect.succeed(null)),
     refreshRates: Effect.succeed(EMPTY_PRICING),
   }),
 );
@@ -690,30 +692,27 @@ export const make = Effect.gen(function* () {
     const scans = Effect.forEach(
       scanReaders,
       ({ driver, reader }) =>
-        usageInstances(driver, settings)
-          .pipe(
-            Effect.flatMap((instances) =>
-              reader.scan({ instances, settings, windowStartMs, retentionCutoffMs, awaitRefresh }),
-            ),
-          )
-          .pipe(
-            Effect.flatMap((sources) =>
-              Effect.forEach(sources, ({ volumeId, ...source }) =>
-                Effect.map(
-                  volumeId === undefined
-                    ? Effect.promise(() => readDirectoryVolumeId(source.dir))
-                    : Effect.succeed(volumeId),
-                  (resolved): ScannedDir => ({
-                    ...source,
-                    files: source.files?.map((file) => ({ ...file, malformedRecords: 0 })) ?? null,
-                    provider: reader.provider,
-                    volumeId: resolved,
-                  }),
-                ),
+        usageInstances(driver, settings).pipe(
+          Effect.flatMap((instances) =>
+            reader.scan({ instances, settings, windowStartMs, retentionCutoffMs, awaitRefresh }),
+          ),
+          Effect.flatMap((sources) =>
+            Effect.forEach(sources, ({ volumeId, ...source }) =>
+              Effect.map(
+                volumeId === undefined
+                  ? Effect.promise(() => readDirectoryVolumeId(source.dir))
+                  : Effect.succeed(volumeId),
+                (resolved): ScannedDir => ({
+                  ...source,
+                  files: source.files?.map((file) => ({ ...file, malformedRecords: 0 })) ?? null,
+                  provider: reader.provider,
+                  volumeId: resolved,
+                }),
               ),
             ),
-            Effect.provideContext(readerContext),
           ),
+          Effect.provideContext(readerContext),
+        ),
       { concurrency: "unbounded" },
     );
 

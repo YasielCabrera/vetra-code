@@ -24,11 +24,12 @@ afterEach(async () => {
   await Promise.all(openServers.splice(0).map((server) => server.close()));
 });
 
+// Short private roots keep Unix socket paths within Darwin's limit and isolate directory watchers.
 function makeTarget(stateDir: string, platform: NodeJS.Platform, userId: number | undefined) {
   return resolveDesktopAppControlAddress({
     stateDir,
     platform,
-    tempDir: NodeOS.tmpdir(),
+    tempDir: NodePath.dirname(stateDir),
     userId,
     joinPath: NodePath.join,
   });
@@ -87,7 +88,7 @@ describe("desktop app control server", () => {
       const userId = yield* HostProcess.UserId;
       yield* Effect.promise(async () => {
         const root = await NodeFSP.mkdtemp(
-          NodePath.join(NodeOS.tmpdir(), "vetra-app-cancel-test-"),
+          NodePath.join(platform === "win32" ? NodeOS.tmpdir() : "/tmp", "vetra-app-cancel-test-"),
         );
         const target = makeTarget(NodePath.join(root, "userdata"), platform, userId);
         let resolveCanceled: (requestId: string) => void = () => undefined;
@@ -132,16 +133,17 @@ describe("desktop app control server", () => {
       const userId = yield* HostProcess.UserId;
       if (platform === "win32") return;
       yield* Effect.promise(async () => {
-        const root = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "t3-app-takeover-test-"));
+        const root = await NodeFSP.mkdtemp(NodePath.join("/tmp", "t3-app-takeover-test-"));
         const target = makeTarget(NodePath.join(root, "userdata"), platform, userId);
         const older = await startOkServer(target, userId);
-        await startOkServer(target, userId);
+        const newer = await startOkServer(target, userId);
 
         await older.close();
 
         await expect(
           exchange(target.address, request("after-quit", platform)),
         ).resolves.toMatchObject({ ok: true, requestId: "after-quit" });
+        await newer.close();
         await NodeFSP.rm(root, { recursive: true, force: true });
       });
     }),
@@ -153,7 +155,7 @@ describe("desktop app control server", () => {
       const userId = yield* HostProcess.UserId;
       if (platform === "win32") return;
       yield* Effect.promise(async () => {
-        const root = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "t3-app-reclaim-test-"));
+        const root = await NodeFSP.mkdtemp(NodePath.join("/tmp", "t3-app-reclaim-test-"));
         const target = makeTarget(NodePath.join(root, "userdata"), platform, userId);
         const server = await startOkServer(target, userId);
 
@@ -166,6 +168,7 @@ describe("desktop app control server", () => {
           ok: true,
           requestId: "reclaimed",
         });
+        await server.close();
         await NodeFSP.rm(root, { recursive: true, force: true });
       });
     }),

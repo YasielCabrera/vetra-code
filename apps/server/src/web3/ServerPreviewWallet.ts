@@ -1,13 +1,4 @@
-/**
- * The environment's preview wallet. One signer for every preview tab of this
- * environment: the server's own headless tabs reach it through
- * `ServerBrowserWallet`, and the tabs a desktop app renders for this server
- * through the desktop browser channel. Agents (MCP) and people (WebSocket) see
- * and resolve the same queue.
- *
- * Keys live only here, in the environment's secret store. Settings come from
- * `ServerSettings.web3Wallet`.
- */
+// Headless and desktop previews share this signer and approval queue; keys stay in the environment secret store.
 import {
   type PreviewWalletPendingRequest,
   type PreviewWalletStatus,
@@ -190,23 +181,22 @@ const make = Effect.gen(function* () {
     );
 
   const store = Wallet.WalletStore.of({
-    loadOrCreate: (create) =>
-      Effect.gen(function* () {
-        const existing = yield* storeLock.withPermits(1)(read);
-        if (Option.isSome(existing)) return existing.value;
-        // A desktop that signed before this server did hands its keys over first.
-        yield* Deferred.await(desktopKeysSettled);
-        return yield* storeLock.withPermits(1)(
-          Effect.gen(function* () {
-            const adopted = yield* read;
-            if (Option.isSome(adopted)) return adopted.value;
-            const created = yield* create;
-            if (yield* createIfAbsent(created)) return created;
-            return Option.getOrThrow(yield* read);
-          }),
-        );
-      }),
-    save: (keystore) =>
+    loadOrCreate: Effect.fn("Wallet.WalletStore.loadOrCreate")(function* (create) {
+      const existing = yield* storeLock.withPermits(1)(read);
+      if (Option.isSome(existing)) return existing.value;
+      // A desktop that signed before this server did hands its keys over first.
+      yield* Deferred.await(desktopKeysSettled);
+      return yield* storeLock.withPermits(1)(
+        Effect.gen(function* () {
+          const adopted = yield* read;
+          if (Option.isSome(adopted)) return adopted.value;
+          const created = yield* create;
+          if (yield* createIfAbsent(created)) return created;
+          return Option.getOrThrow(yield* read);
+        }),
+      );
+    }),
+    save: Effect.fn("Wallet.WalletStore.save")((keystore) =>
       bytesOf(keystore).pipe(
         Effect.flatMap((bytes) =>
           secrets.set(KEYSTORE_SECRET, bytes).pipe(
@@ -218,6 +208,7 @@ const make = Effect.gen(function* () {
         ),
         storeLock.withPermits(1),
       ),
+    ),
   });
 
   const engine = yield* Wallet.make.pipe(Effect.provideService(Wallet.WalletStore, store));
@@ -287,11 +278,10 @@ const make = Effect.gen(function* () {
     ),
   );
 
-  const statusFor = (agent: WalletAgent) =>
-    Effect.gen(function* () {
-      const view = yield* requireEnabled;
-      return { ...view.status, pendingRequests: yield* agentPending(agent, view) };
-    });
+  const statusFor = Effect.fn("statusFor")(function* (agent: WalletAgent) {
+    const view = yield* requireEnabled;
+    return { ...view.status, pendingRequests: yield* agentPending(agent, view) };
+  });
 
   /** An agent may resolve only requests from its own tabs; others look absent. */
   const requireOwned = (requestId: string, agent: WalletAgent | undefined) =>
@@ -336,22 +326,21 @@ const make = Effect.gen(function* () {
             sessions.some((session) => session.tabId === key.tabId && session.runtime === "server"),
           ),
         );
-    const answer = (
+    const answer = Effect.fn("answer")(function* (
       event: Extract<DesktopBrowserChannel.DesktopWalletEvent, { type: "walletRequest" }>,
-    ) =>
-      Effect.gen(function* () {
-        const key = { threadId: event.threadId, tabId: event.tabId };
-        const reply: Web3GuestReply = (yield* isServerTab(key))
-          ? yield* request(key, event)
-          : {
-              ok: false,
-              code: 4100,
-              message: "This page is not a preview tab of this environment.",
-            };
-        yield* channel.walletCommand({ type: "walletReply", requestId: event.requestId, reply });
-      });
-    const adopt = (keystore: Web3KeystoreFile | null) =>
-      Effect.gen(function* () {
+    ) {
+      const key = { threadId: event.threadId, tabId: event.tabId };
+      const reply: Web3GuestReply = (yield* isServerTab(key))
+        ? yield* request(key, event)
+        : {
+            ok: false,
+            code: 4100,
+            message: "This page is not a preview tab of this environment.",
+          };
+      yield* channel.walletCommand({ type: "walletReply", requestId: event.requestId, reply });
+    });
+    const adopt = Effect.fn("adopt")(
+      function* (keystore: Web3KeystoreFile | null) {
         if (keystore !== null) {
           const adopted = yield* storeLock.withPermits(1)(
             read.pipe(
@@ -365,12 +354,12 @@ const make = Effect.gen(function* () {
             yield* channel.walletCommand({ type: "walletKeystoreAccepted" });
           }
         }
-      }).pipe(
-        Effect.catchCause((cause) =>
-          Effect.logWarning("could not adopt the desktop's preview wallet", { cause }),
-        ),
-        Effect.ensuring(Deferred.succeed(desktopKeysSettled, undefined)),
-      );
+      },
+      Effect.catchCause((cause) =>
+        Effect.logWarning("could not adopt the desktop's preview wallet", { cause }),
+      ),
+      Effect.ensuring(Deferred.succeed(desktopKeysSettled, undefined)),
+    );
     yield* channel.walletEvents.pipe(
       Stream.runForEach((event) =>
         event.type === "walletRequest"
@@ -391,7 +380,7 @@ const make = Effect.gen(function* () {
     ready: Deferred.await(ready),
     changes: engine.changes.pipe(Stream.map(humanStatus)),
     statusFor,
-    configure: (input, agent) =>
+    configure: Effect.fn("ServerPreviewWallet.configure")((input, agent) =>
       engine
         .configure(input)
         .pipe(
@@ -399,19 +388,28 @@ const make = Effect.gen(function* () {
             agent === undefined ? engine.view.pipe(Effect.map(humanStatus)) : statusFor(agent),
           ),
         ),
-    approve: (requestId, agent) =>
+    ),
+    approve: Effect.fn("ServerPreviewWallet.approve")((requestId, agent) =>
       requireOwned(requestId, agent).pipe(Effect.andThen(engine.approve(requestId))),
-    reject: (requestId, code, agent) =>
+    ),
+    reject: Effect.fn("ServerPreviewWallet.reject")((requestId, code, agent) =>
       requireOwned(requestId, agent).pipe(Effect.andThen(engine.reject(requestId, code))),
+    ),
     page: engine.changes.pipe(
       Stream.map((view) => view.page),
       Stream.changesWith(samePage),
     ),
     pageState,
     request,
-    openDocument: (key, documentId) => engine.openDocument(guestIdOf(key), documentId),
-    noteAgentActivity: (key) => engine.noteAgentActivity(guestIdOf(key)),
-    clearAgentActivity: (key) => engine.clearAgentActivity(guestIdOf(key)),
+    openDocument: Effect.fn("ServerPreviewWallet.openDocument")((key, documentId) =>
+      engine.openDocument(guestIdOf(key), documentId),
+    ),
+    noteAgentActivity: Effect.fn("ServerPreviewWallet.noteAgentActivity")((key) =>
+      engine.noteAgentActivity(guestIdOf(key)),
+    ),
+    clearAgentActivity: Effect.fn("ServerPreviewWallet.clearAgentActivity")((key) =>
+      engine.clearAgentActivity(guestIdOf(key)),
+    ),
   });
 });
 

@@ -1,3 +1,4 @@
+import * as DocumentText from "../../../provider/DocumentText.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import {
@@ -73,7 +74,7 @@ const layerFor = (caller: { readonly activeRunId: string | null } | null) =>
     Layer.provideMerge(Layer.mock(TicketGitHub.TicketGitHub)({})),
     Layer.provideMerge(SqlitePersistence.layerMemory),
     Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-ticket-tools-" })),
-    Layer.provideMerge(NodeServices.layer),
+    Layer.provideMerge(DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer))),
   );
 
 type Tools = (typeof TicketsToolkit)["tools"];

@@ -64,8 +64,8 @@ describe("IssueActivity", () => {
     };
     const codec = Schema.toCodecJson(IssueActivity);
 
-    expect(
-      Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(activity)),
-    ).toStrictEqual(activity);
+    expect(Schema.decodeSync(codec)(Schema.encodeUnknownSync(codec)(activity))).toStrictEqual(
+      activity,
+    );
   });
 });

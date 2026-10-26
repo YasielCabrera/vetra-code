@@ -1,14 +1,4 @@
-/**
- * Handlers for the preview wallet tools.
- *
- * Every tab of this environment signs with one wallet, so `tabId` does not pick
- * a wallet: it narrows which requests the agent sees and may resolve. Without
- * it, an agent works with the requests of every preview tab its provider
- * session owns in its thread, never another session's.
- *
- * The toolkit is only registered while the wallet is on; a wallet turned off
- * since answers `PreviewWalletDisabledError` from the service.
- */
+// tabId narrows requests, not the signer: one preview wallet serves the environment.
 import * as Effect from "effect/Effect";
 
 import * as ServerPreviewWallet from "../../../web3/ServerPreviewWallet.ts";
@@ -28,18 +18,17 @@ const callerAgent = Effect.fn("PreviewWalletToolkit.callerAgent")(function* (
   } satisfies ServerPreviewWallet.WalletAgent;
 });
 
-const withWallet = <A, E, R>(
+const withWallet = Effect.fn("withWallet")(function* <A, E, R>(
   use: (
     wallet: ServerPreviewWallet.ServerPreviewWallet["Service"],
     agent: ServerPreviewWallet.WalletAgent,
   ) => Effect.Effect<A, E, R>,
   tabId: string | undefined,
-) =>
-  Effect.gen(function* () {
-    const agent = yield* callerAgent(tabId);
-    const wallet = yield* ServerPreviewWallet.ServerPreviewWallet;
-    return yield* use(wallet, agent);
-  });
+) {
+  const agent = yield* callerAgent(tabId);
+  const wallet = yield* ServerPreviewWallet.ServerPreviewWallet;
+  return yield* use(wallet, agent);
+});
 
 export const PreviewWalletToolkitHandlersLive = McpToolAccess.toLayer(PreviewWalletToolkit, {
   preview_wallet_status: McpToolAccess.readsAsCaller(({ tabId }) =>

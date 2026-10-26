@@ -1,16 +1,4 @@
-/**
- * The Electron end of the preview wallet.
- *
- * A page in a `<webview>` that renders one of the server's tabs gets an
- * EIP-1193 provider from `WalletPreload.ts`, and this answers that preload. The
- * server's wallet signs, so nothing here holds keys or wallet state of its own:
- * it decides which guest is asking, takes the origin from the browser rather
- * than the page, forwards the call through `DesktopBrowserHost`, and replays
- * the server's wallet state to each page as provider events.
- *
- * The handlers sit on `ipcMain` itself rather than the typed `DesktopIpc`
- * helpers, which drop `event.sender`, the only identity a page cannot forge.
- */
+// ipcMain preserves event.sender, the browser-owned guest identity that typed DesktopIpc handlers drop.
 import {
   EMPTY_PAGE_VIEW,
   pageEventsBetween,
@@ -113,22 +101,21 @@ const make = Effect.gen(function* () {
   const watched = new WeakSet<WebContents>();
 
   /** The tab a guest renders, waiting for its host to register it if it has not yet. */
-  const registeredTab = (webContentsId: number) =>
-    Effect.gen(function* () {
-      const registered = yield* Deferred.make<PreviewManager.PreviewTabState>();
-      // Subscribed before the lookup, so a registration between the two still lands.
-      yield* manager.subscribeStateChanges((_tabId, state) =>
-        state.webContentsId === webContentsId
-          ? Deferred.succeed(registered, state).pipe(Effect.asVoid)
-          : Effect.void,
-      );
-      const known = yield* manager.tabForGuest(webContentsId);
-      if (known !== null) return known;
-      return yield* Deferred.await(registered).pipe(
-        Effect.timeoutOption(REGISTRATION_TIMEOUT),
-        Effect.map(Option.getOrNull),
-      );
-    }).pipe(Effect.scoped);
+  const registeredTab = Effect.fn("PreviewWallet.registeredTab")(function* (webContentsId: number) {
+    const registered = yield* Deferred.make<PreviewManager.PreviewTabState>();
+    // Subscribed before the lookup, so a registration between the two still lands.
+    yield* manager.subscribeStateChanges((_tabId, state) =>
+      state.webContentsId === webContentsId
+        ? Deferred.succeed(registered, state).pipe(Effect.asVoid)
+        : Effect.void,
+    );
+    const known = yield* manager.tabForGuest(webContentsId);
+    if (known !== null) return known;
+    return yield* Deferred.await(registered).pipe(
+      Effect.timeoutOption(REGISTRATION_TIMEOUT),
+      Effect.map(Option.getOrNull),
+    );
+  }, Effect.scoped);
 
   /**
    * The server tab whose page sent this, or null. Only the top frame of a
@@ -150,8 +137,8 @@ const make = Effect.gen(function* () {
     contents.once("destroyed", () => guests.delete(id));
   };
 
-  const bootstrap = (event: IpcMainEvent) =>
-    Effect.gen(function* () {
+  const bootstrap = Effect.fn("PreviewWallet.bootstrap")(
+    function* (event: IpcMainEvent) {
       const contents = event.sender;
       if ((yield* serverTabOf(event)) === null) return DISABLED;
       // A new document starts over, whatever the last one was told.
@@ -168,14 +155,14 @@ const make = Effect.gen(function* () {
         selectedAddress: view.accounts[0] ?? null,
         documentId,
       } satisfies PreviewWalletBootstrap;
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.logWarning("preview wallet bootstrap failed", { cause }).pipe(Effect.as(DISABLED)),
-      ),
-    );
+    },
+    Effect.catchCause((cause) =>
+      Effect.logWarning("preview wallet bootstrap failed", { cause }).pipe(Effect.as(DISABLED)),
+    ),
+  );
 
-  const request = (event: IpcMainInvokeEvent, raw: unknown) =>
-    Effect.gen(function* () {
+  const request = Effect.fn("PreviewWallet.request")(
+    function* (event: IpcMainInvokeEvent, raw: unknown) {
       const serverTab = yield* serverTabOf(event);
       const guest = guests.get(event.sender.id);
       if (serverTab === null || guest === undefined) return NOT_AVAILABLE;
@@ -192,13 +179,11 @@ const make = Effect.gen(function* () {
         // The channel needs the key; JSON-RPC reads an empty list as no params.
         params: payload.value.params ?? [],
       });
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.logWarning("preview wallet request failed", { cause }).pipe(
-          Effect.as(REQUEST_FAILED),
-        ),
-      ),
-    );
+    },
+    Effect.catchCause((cause) =>
+      Effect.logWarning("preview wallet request failed", { cause }).pipe(Effect.as(REQUEST_FAILED)),
+    ),
+  );
 
   /** Each page hears only what its origin may see, and only what changed for it. */
   const replayState = (state: Web3PageState | null) =>

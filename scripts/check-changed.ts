@@ -253,7 +253,7 @@ const steps = [
   // From the repo root, the root vite.config.ts hands each file to its package's config.
   tests.size > 0 && {
     name: `test (${tests.size} files)`,
-    args: ["test", "run", "--passWithNoTests", ...tests],
+    args: ["test", "run", "--maxWorkers", "4", "--passWithNoTests", ...tests],
   },
 ].filter((step) => step !== false);
 

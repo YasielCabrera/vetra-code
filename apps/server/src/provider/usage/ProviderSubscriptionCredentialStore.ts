@@ -51,7 +51,7 @@ export class ProviderSubscriptionCredentialStore extends Context.Reference<Provi
   "t3/provider/usage/ProviderSubscriptionCredentialStore",
   {
     defaultValue: () => ({
-      get: () => Effect.succeed(Option.none()),
+      get: () => Effect.succeedNone,
       has: () => Effect.succeed(false),
       set: () => unavailable("write"),
       clear: () => unavailable("clear"),

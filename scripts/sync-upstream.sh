@@ -57,6 +57,8 @@ PRUNE_PATHS=(
   apps/mobile
   apps/marketing
   scripts/export-android-icons.ts
+  scripts/mobile-e2e.ts
+  scripts/mobile-e2e
   scripts/mobile-showcase.ts
   scripts/mobile-showcase.test.ts
   scripts/mobile-showcase.config.ts
@@ -287,6 +289,7 @@ RENAMES=(
   'T3 CODE=VETRA CODE'
   'T3 ingest=Telemetry ingest'
   'data-t3code-=data-vetra-'
+  't3-file-icon-=vetra-file-icon-'
   'T3 Code=Vetra Code'
   "T3's=Vetra Code's"
   'T3 home=Vetra home'
@@ -325,6 +328,7 @@ RENAMES=(
   # The project file this fork reads. Upstream's own t3.json is pruned above.
   't3.json=vetra.json'
   'NodePath.join(worktree, ".t3")=NodePath.join(worktree, ".vetra-code")'
+  'path.join(home, ".t3",=path.join(home, ".vetra-code",'
   'path.join(yield* HostProcess.HomeDirectory, ".t3", "userdata"=path.join(yield* HostProcess.HomeDirectory, ".vetra-code", "userdata"'
   # Fixture identity for the relay and the ACP test client.
   't3-relay=vetra-relay'

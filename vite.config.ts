@@ -1,6 +1,7 @@
 import "vite-plus/test/config";
 import { defineConfig } from "vite-plus";
 import * as NodeURL from "node:url";
+import { cachedTestTasks } from "./scripts/lib/cached-tests.ts";
 
 // Fork tests written before upstream rejected DOM-emulation pragmas. Move each to a
 // *.browser.test.tsx and drop it here; new files must not be added.
@@ -98,6 +99,7 @@ const RESTRICTED_PULL_REQUEST_GLYPH_IMPORTS = {
 export default defineConfig({
   run: {
     cache: { scripts: false },
+    tasks: cachedTestTasks(process.env.VETRA_CACHED_TESTS),
   },
   resolve: {
     alias: {
@@ -213,6 +215,39 @@ export default defineConfig({
       perf: "warn",
     },
     rules: {
+      "oxc/no-accumulating-spread": "error",
+      "eslint/no-control-regex": "off",
+      "typescript/no-this-alias": "off",
+      "unicorn/prefer-add-event-listener": "off",
+      "unicorn/prefer-string-starts-ends-with": "off",
+      "unicorn/prefer-set-has": "off",
+      "unicorn/prefer-array-find": "off",
+      "unicorn/no-new-array": "off",
+      "unicorn/no-array-reverse": "off",
+      "react/no-object-type-as-default-prop": "off",
+      "react/jsx-no-constructed-context-values": "off",
+      "react/memo-dependencies": "error",
+      "react/purity": "error",
+      "react/refs": "error",
+      "react/exhaustive-effect-dependencies": "error",
+      "react/set-state-in-effect": "error",
+      "react/immutability": "error",
+      "react/no-array-index-key": "error",
+      "react/no-unstable-nested-components": "error",
+      "react/static-components": "error",
+      "react/capitalized-calls": "error",
+      "typescript/no-extraneous-class": "error",
+      "eslint/no-empty-pattern": "error",
+      "eslint/no-new": "error",
+      "unicorn/no-useless-spread": "error",
+      "eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
+      "eslint/no-unsafe-optional-chaining": "error",
+      "eslint/no-unneeded-ternary": "error",
+      "unicorn/no-useless-fallback-in-spread": "error",
+      "unicorn/require-module-specifiers": "error",
       "unicorn/no-array-sort": "off",
       "unicorn/consistent-function-scoping": "off",
       "oxc/no-map-spread": "off",
@@ -243,7 +278,7 @@ export default defineConfig({
         { paths: [...RESTRICTED_IMPORT_PATHS, RESTRICTED_PULL_REQUEST_GLYPH_IMPORTS] },
       ],
       "t3code/no-global-process-runtime": "error",
-      "t3code/no-inline-schema-compile": "warn",
+      "t3code/no-inline-schema-compile": "error",
       "t3code/no-low-value-comments": "error",
       "t3code/no-manual-effect-runtime-in-tests": "error",
       "t3code/no-native-title-tooltip": "error",
@@ -278,28 +313,6 @@ export default defineConfig({
       {
         files: ["apps/web/src/**/*.browser.test.{ts,tsx}"],
         rules: { "t3code/no-frame-waits-in-browser-tests": "error" },
-      },
-      {
-        // Burn-down list: these files still have polling loops, so they stay at "warn".
-        // Remove a file when you convert its loops. New polling loops in all other
-        // test files fail lint. Do not add new files to this list.
-        files: [
-          "apps/mobile/src/features/agent-awareness/remoteRegistration.test.ts",
-          "apps/server/src/background/HostPowerMonitor.test.ts",
-          "apps/server/src/orchestration-v2/Adapters/AcpAdapterV2.test.ts",
-          "apps/server/src/orchestration-v2/FoundationPersistence.test.ts",
-          "apps/server/src/project/ProjectEnrichmentService.test.ts",
-          "apps/server/src/project/ProjectService.test.ts",
-          "apps/server/src/scheduledTasks/ScheduledTaskService.webhook.test.ts",
-          "apps/server/src/usage/UsageService.test.ts",
-          "packages/client-runtime/src/connection/supervisor.test.ts",
-          "packages/client-runtime/src/rpc/client.test.ts",
-          "packages/client-runtime/src/rpc/session.test.ts",
-          "packages/client-runtime/src/state/shell-sync.test.ts",
-          "packages/client-runtime/src/state/threads-sync.test.ts",
-          "packages/shared/src/atomicWrite.test.ts",
-        ],
-        rules: { "t3code/no-polling-loop-in-tests": "warn" },
       },
       {
         files: ["apps/**/src/**", "packages/**/src/**"],
@@ -517,6 +530,30 @@ export default defineConfig({
         },
       },
       {
+        // React Compiler owns memoization; upstream rules do not ban redundant useMemo/useCallback.
+        files: ["apps/web/src/**/*.{ts,tsx}"],
+        rules: {
+          "react/exhaustive-effect-dependencies": "error",
+          "react/globals": "error",
+          "react/hooks": "error",
+          "react/immutability": "error",
+          // The compiler memoizes context values; this rule would ask for useMemo.
+          "react/jsx-no-constructed-context-values": "off",
+          "react/memo-dependencies": "error",
+          "react/preserve-manual-memoization": "error",
+          // Render-time clock reads use @t3tools/client-runtime/clock or state seeded with the
+          // time; any other read carries a suppression that says why. oxlint also flags time reads
+          // inside event handlers (oxc#27309); those suppressions cite it.
+          "react/purity": "error",
+          "react/refs": "error",
+          "react/set-state-in-effect": "error",
+          "react/set-state-in-render": "error",
+          "react/static-components": "error",
+          "react/unsupported-syntax": "error",
+          "t3code/no-manual-memo": "error",
+        },
+      },
+      {
         // The sign-in masthead is brand artwork: fixed gradients, not theme surfaces.
         files: ["apps/web/src/components/auth/AuthSurfaceShell.tsx"],
         rules: { "shadcn/no-arbitrary-values": "off" },
@@ -530,6 +567,10 @@ export default defineConfig({
         ],
         excludeFiles: ["**/*.test.ts", "**/*.test.tsx"],
         rules: { "t3code/no-hermes-unsupported-apis": "error" },
+      },
+      {
+        files: ["apps/web/src/**", "packages/*/src/**"],
+        rules: { "t3code/react-effect-budget": "error" },
       },
       {
         // The compiler caches a use* function only when it calls a hook.

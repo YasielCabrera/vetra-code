@@ -166,277 +166,272 @@ export const make = Effect.gen(function* () {
       }),
     );
 
-  const resolveDriver = (instanceId: ProviderInstanceId) =>
-    Effect.gen(function* () {
-      const instance = yield* registry.getInstance(instanceId);
-      if (instance) return instance.driverKind;
-      const unavailable = yield* registry.listUnavailable;
-      return unavailable.find((candidate) => candidate.instanceId === instanceId)?.driver;
-    });
+  const resolveDriver = Effect.fn("resolveDriver")(function* (instanceId: ProviderInstanceId) {
+    const instance = yield* registry.getInstance(instanceId);
+    if (instance) return instance.driverKind;
+    const unavailable = yield* registry.listUnavailable;
+    return unavailable.find((candidate) => candidate.instanceId === instanceId)?.driver;
+  });
 
-  const getCredentialStatus = (
+  const getCredentialStatus = Effect.fn("ProviderSubscriptionUsage.getCredentialStatus")(function* (
     instanceId: ProviderInstanceId,
-  ): Effect.Effect<ProviderSubscriptionCredentialStatus, ProviderSubscriptionUsageError> =>
-    Effect.gen(function* () {
-      const driver = yield* resolveDriver(instanceId);
-      if (!driver) {
-        return yield* new ProviderSubscriptionUsageError({
-          reason: "unknown-instance",
-          detail: "The provider instance no longer exists.",
-        });
-      }
-      const configured = yield* credentials.has(instanceId).pipe(
-        Effect.mapError(
-          () =>
-            new ProviderSubscriptionUsageError({
-              reason: "read-failed",
-              detail: "The saved provider credential could not be inspected.",
-            }),
-        ),
-      );
-      return {
-        instanceId,
-        driver,
-        requirement: credentialRequirement(driver),
-        configured,
-        detail: credentialDetail(driver, configured),
-      };
-    });
+  ): Effect.fn.Return<ProviderSubscriptionCredentialStatus, ProviderSubscriptionUsageError> {
+    const driver = yield* resolveDriver(instanceId);
+    if (!driver) {
+      return yield* new ProviderSubscriptionUsageError({
+        reason: "unknown-instance",
+        detail: "The provider instance no longer exists.",
+      });
+    }
+    const configured = yield* credentials.has(instanceId).pipe(
+      Effect.mapError(
+        () =>
+          new ProviderSubscriptionUsageError({
+            reason: "read-failed",
+            detail: "The saved provider credential could not be inspected.",
+          }),
+      ),
+    );
+    return {
+      instanceId,
+      driver,
+      requirement: credentialRequirement(driver),
+      configured,
+      detail: credentialDetail(driver, configured),
+    };
+  });
 
-  const setCredential = (
+  const setCredential = Effect.fn("ProviderSubscriptionUsage.setCredential")(function* (
     instanceId: ProviderInstanceId,
     secret: string,
-  ): Effect.Effect<ProviderSubscriptionCredentialStatus, ProviderSubscriptionUsageError> =>
-    Effect.gen(function* () {
-      const status = yield* getCredentialStatus(instanceId);
-      if (status.requirement === "none") {
-        return yield* new ProviderSubscriptionUsageError({
-          reason: "unsupported",
-          detail: "This provider does not accept a manual subscription credential.",
-        });
-      }
-      const normalized = secret.trim();
-      if (normalized.length === 0) {
-        return yield* new ProviderSubscriptionUsageError({
-          reason: "invalid-credential",
-          detail: "The Cookie header cannot be empty.",
-        });
-      }
-      yield* credentials.set(instanceId, normalized).pipe(
-        Effect.mapError(
-          () =>
-            new ProviderSubscriptionUsageError({
-              reason: "write-failed",
-              detail: "The provider credential could not be saved.",
-            }),
-        ),
-      );
-      yield* invalidate(instanceId);
-      return yield* getCredentialStatus(instanceId);
-    });
+  ): Effect.fn.Return<ProviderSubscriptionCredentialStatus, ProviderSubscriptionUsageError> {
+    const status = yield* getCredentialStatus(instanceId);
+    if (status.requirement === "none") {
+      return yield* new ProviderSubscriptionUsageError({
+        reason: "unsupported",
+        detail: "This provider does not accept a manual subscription credential.",
+      });
+    }
+    const normalized = secret.trim();
+    if (normalized.length === 0) {
+      return yield* new ProviderSubscriptionUsageError({
+        reason: "invalid-credential",
+        detail: "The Cookie header cannot be empty.",
+      });
+    }
+    yield* credentials.set(instanceId, normalized).pipe(
+      Effect.mapError(
+        () =>
+          new ProviderSubscriptionUsageError({
+            reason: "write-failed",
+            detail: "The provider credential could not be saved.",
+          }),
+      ),
+    );
+    yield* invalidate(instanceId);
+    return yield* getCredentialStatus(instanceId);
+  });
 
-  const clearCredential = (
+  const clearCredential = Effect.fn("ProviderSubscriptionUsage.clearCredential")(function* (
     instanceId: ProviderInstanceId,
-  ): Effect.Effect<ProviderSubscriptionCredentialStatus, ProviderSubscriptionUsageError> =>
-    Effect.gen(function* () {
-      yield* getCredentialStatus(instanceId);
-      yield* credentials.clear(instanceId).pipe(
-        Effect.mapError(
-          () =>
-            new ProviderSubscriptionUsageError({
-              reason: "write-failed",
-              detail: "The provider credential could not be cleared.",
-            }),
-        ),
-      );
-      yield* invalidate(instanceId);
-      return yield* getCredentialStatus(instanceId);
-    });
+  ): Effect.fn.Return<ProviderSubscriptionCredentialStatus, ProviderSubscriptionUsageError> {
+    yield* getCredentialStatus(instanceId);
+    yield* credentials.clear(instanceId).pipe(
+      Effect.mapError(
+        () =>
+          new ProviderSubscriptionUsageError({
+            reason: "write-failed",
+            detail: "The provider credential could not be cleared.",
+          }),
+      ),
+    );
+    yield* invalidate(instanceId);
+    return yield* getCredentialStatus(instanceId);
+  });
 
-  const probe = (instance: ProviderInstance, fingerprint: string) =>
-    Effect.gen(function* () {
-      if (!instance.subscriptionUsage) {
-        return {
+  const probe = Effect.fn("probe")(function* (instance: ProviderInstance, fingerprint: string) {
+    if (!instance.subscriptionUsage) {
+      return {
+        instanceId: instance.instanceId,
+        driver: instance.driverKind,
+        displayName: instance.displayName ?? instance.driverKind,
+        state: "unsupported" as const,
+        message: "Subscription limits are not supported by this provider driver.",
+        windows: [],
+        details: [],
+      } satisfies ProviderSubscriptionUsageInstanceResult;
+    }
+
+    const probed = yield* instance.subscriptionUsage.read;
+    let result = probed.result;
+    if (result.state === "ready" && result.accountLabel) {
+      const runtime = yield* instance.snapshot.getSnapshot;
+      if (accountIdentityMismatch(result.accountLabel, runtime.auth.email)) {
+        result = {
           instanceId: instance.instanceId,
           driver: instance.driverKind,
           displayName: instance.displayName ?? instance.driverKind,
-          state: "unsupported" as const,
-          message: "Subscription limits are not supported by this provider driver.",
+          state: "needs-auth",
+          message: "The quota account does not match the account used by this provider instance.",
           windows: [],
           details: [],
-        } satisfies ProviderSubscriptionUsageInstanceResult;
-      }
-
-      const probed = yield* instance.subscriptionUsage.read;
-      let result = probed.result;
-      if (result.state === "ready" && result.accountLabel) {
-        const runtime = yield* instance.snapshot.getSnapshot;
-        if (accountIdentityMismatch(result.accountLabel, runtime.auth.email)) {
-          result = {
-            instanceId: instance.instanceId,
-            driver: instance.driverKind,
-            displayName: instance.displayName ?? instance.driverKind,
-            state: "needs-auth",
-            message: "The quota account does not match the account used by this provider instance.",
-            windows: [],
-            details: [],
-          };
-        }
-      }
-
-      const now = yield* Clock.currentTimeMillis;
-      const previous = (yield* Ref.get(cache)).get(instance.instanceId);
-      const sameIdentity = previous?.fingerprint === fingerprint;
-      if (
-        result.state === "error" &&
-        probed.transient === true &&
-        sameIdentity &&
-        previous?.lastGood
-      ) {
-        const lastGood = previous.lastGood;
-        const stale: ProviderSubscriptionUsageInstanceResult = {
-          ...lastGood,
-          freshness: "stale",
-          message:
-            result.message ?? "The provider could not be refreshed; showing last known data.",
         };
-        yield* cacheIfCurrent(instance.instanceId, fingerprint, {
-          fingerprint,
-          result: stale,
-          lastGood,
-          expiresAt: now + DEGRADED_TTL_MS,
-        });
-        return stale;
       }
+    }
 
-      const normalized =
-        result.state === "ready" ? { ...result, freshness: "fresh" as const } : result;
+    const now = yield* Clock.currentTimeMillis;
+    const previous = (yield* Ref.get(cache)).get(instance.instanceId);
+    const sameIdentity = previous?.fingerprint === fingerprint;
+    if (
+      result.state === "error" &&
+      probed.transient === true &&
+      sameIdentity &&
+      previous?.lastGood
+    ) {
+      const lastGood = previous.lastGood;
+      const stale: ProviderSubscriptionUsageInstanceResult = {
+        ...lastGood,
+        freshness: "stale",
+        message: result.message ?? "The provider could not be refreshed; showing last known data.",
+      };
       yield* cacheIfCurrent(instance.instanceId, fingerprint, {
         fingerprint,
-        result: normalized,
-        ...(normalized.state === "ready" ? { lastGood: normalized } : {}),
-        expiresAt: now + (normalized.state === "ready" ? HEALTHY_TTL_MS : DEGRADED_TTL_MS),
+        result: stale,
+        lastGood,
+        expiresAt: now + DEGRADED_TTL_MS,
       });
-      return normalized;
-    });
+      return stale;
+    }
 
-  const readOne = (instance: ProviderInstance, forceRefresh: boolean) =>
-    Effect.gen(function* () {
-      const fingerprint = instance.subscriptionUsage
-        ? yield* instance.subscriptionUsage.fingerprint
-        : `unsupported:${instance.driverKind}`;
-      const flightKey = `${instance.instanceId}\u0000${fingerprint}`;
-      yield* acquisitionLock.withPermits(1)(
-        Ref.update(latestFingerprints, (entries) => {
+    const normalized =
+      result.state === "ready" ? { ...result, freshness: "fresh" as const } : result;
+    yield* cacheIfCurrent(instance.instanceId, fingerprint, {
+      fingerprint,
+      result: normalized,
+      ...(normalized.state === "ready" ? { lastGood: normalized } : {}),
+      expiresAt: now + (normalized.state === "ready" ? HEALTHY_TTL_MS : DEGRADED_TTL_MS),
+    });
+    return normalized;
+  });
+
+  const readOne = Effect.fn("readOne")(function* (
+    instance: ProviderInstance,
+    forceRefresh: boolean,
+  ) {
+    const fingerprint = instance.subscriptionUsage
+      ? yield* instance.subscriptionUsage.fingerprint
+      : `unsupported:${instance.driverKind}`;
+    const flightKey = `${instance.instanceId}\u0000${fingerprint}`;
+    yield* acquisitionLock.withPermits(1)(
+      Ref.update(latestFingerprints, (entries) => {
+        const next = new Map(entries);
+        next.set(instance.instanceId, fingerprint);
+        return next;
+      }),
+    );
+    const now = yield* Clock.currentTimeMillis;
+    const cached = (yield* Ref.get(cache)).get(instance.instanceId);
+    if (!forceRefresh && cached && cached.fingerprint === fingerprint && cached.expiresAt > now) {
+      return cached.result;
+    }
+
+    const acquired = yield* acquisitionLock.withPermits(1)(
+      Effect.gen(function* () {
+        const running = (yield* Ref.get(inFlight)).get(flightKey);
+        if (running) return { leader: false as const, deferred: running.deferred };
+        const deferred = yield* Deferred.make<ProviderSubscriptionUsageInstanceResult>();
+        yield* Ref.update(inFlight, (entries) => {
           const next = new Map(entries);
-          next.set(instance.instanceId, fingerprint);
+          next.set(flightKey, { deferred });
+          return next;
+        });
+        return { leader: true as const, deferred };
+      }),
+    );
+
+    if (!acquired.leader) return yield* Deferred.await(acquired.deferred);
+
+    const failedResult = errorResult(
+      instance,
+      "The provider subscription limits could not be read.",
+    );
+    return yield* probe(instance, fingerprint).pipe(
+      Effect.catchCause((cause) => {
+        if (Cause.hasInterruptsOnly(cause)) return Effect.interrupt;
+        return Effect.gen(function* () {
+          const now = yield* Clock.currentTimeMillis;
+          yield* cacheIfCurrent(instance.instanceId, fingerprint, {
+            fingerprint,
+            result: failedResult,
+            expiresAt: now + DEGRADED_TTL_MS,
+          });
+          return failedResult;
+        });
+      }),
+      Effect.tap((result) => Deferred.succeed(acquired.deferred, result)),
+      Effect.onInterrupt(() =>
+        Deferred.succeed(acquired.deferred, failedResult).pipe(Effect.asVoid),
+      ),
+      Effect.ensuring(
+        Ref.update(inFlight, (entries) => {
+          const next = new Map(entries);
+          next.delete(flightKey);
           return next;
         }),
-      );
-      const now = yield* Clock.currentTimeMillis;
-      const cached = (yield* Ref.get(cache)).get(instance.instanceId);
-      if (!forceRefresh && cached && cached.fingerprint === fingerprint && cached.expiresAt > now) {
-        return cached.result;
-      }
+      ),
+    );
+  });
 
-      const acquired = yield* acquisitionLock.withPermits(1)(
-        Effect.gen(function* () {
-          const running = (yield* Ref.get(inFlight)).get(flightKey);
-          if (running) return { leader: false as const, deferred: running.deferred };
-          const deferred = yield* Deferred.make<ProviderSubscriptionUsageInstanceResult>();
-          yield* Ref.update(inFlight, (entries) => {
-            const next = new Map(entries);
-            next.set(flightKey, { deferred });
-            return next;
-          });
-          return { leader: true as const, deferred };
+  const read = Effect.fn("read")(function* (input: ProviderSubscriptionUsageReadInput) {
+    const instances = (yield* registry.listInstances).filter((instance) => instance.enabled);
+    const unavailable = (yield* registry.listUnavailable).filter((instance) => instance.enabled);
+    const liveIds = new Set(instances.map((instance) => instance.instanceId));
+    yield* acquisitionLock.withPermits(1)(
+      Effect.all([
+        Ref.update(cache, (entries) => {
+          const next = new Map(entries);
+          for (const id of next.keys()) if (!liveIds.has(id)) next.delete(id);
+          return next;
         }),
-      );
-
-      if (!acquired.leader) return yield* Deferred.await(acquired.deferred);
-
-      const failedResult = errorResult(
-        instance,
-        "The provider subscription limits could not be read.",
-      );
-      return yield* probe(instance, fingerprint).pipe(
-        Effect.catchCause((cause) => {
-          if (Cause.hasInterruptsOnly(cause)) return Effect.interrupt;
-          return Effect.gen(function* () {
-            const now = yield* Clock.currentTimeMillis;
-            yield* cacheIfCurrent(instance.instanceId, fingerprint, {
-              fingerprint,
-              result: failedResult,
-              expiresAt: now + DEGRADED_TTL_MS,
-            });
-            return failedResult;
-          });
+        Ref.update(latestFingerprints, (entries) => {
+          const next = new Map(entries);
+          for (const id of next.keys()) if (!liveIds.has(id)) next.delete(id);
+          return next;
         }),
-        Effect.tap((result) => Deferred.succeed(acquired.deferred, result)),
-        Effect.onInterrupt(() =>
-          Deferred.succeed(acquired.deferred, failedResult).pipe(Effect.asVoid),
-        ),
-        Effect.ensuring(
-          Ref.update(inFlight, (entries) => {
-            const next = new Map(entries);
-            next.delete(flightKey);
-            return next;
-          }),
-        ),
-      );
-    });
+      ]).pipe(Effect.asVoid),
+    );
 
-  const read = (input: ProviderSubscriptionUsageReadInput) =>
-    Effect.gen(function* () {
-      const instances = (yield* registry.listInstances).filter((instance) => instance.enabled);
-      const unavailable = (yield* registry.listUnavailable).filter((instance) => instance.enabled);
-      const liveIds = new Set(instances.map((instance) => instance.instanceId));
-      yield* acquisitionLock.withPermits(1)(
-        Effect.all([
-          Ref.update(cache, (entries) => {
-            const next = new Map(entries);
-            for (const id of next.keys()) if (!liveIds.has(id)) next.delete(id);
-            return next;
-          }),
-          Ref.update(latestFingerprints, (entries) => {
-            const next = new Map(entries);
-            for (const id of next.keys()) if (!liveIds.has(id)) next.delete(id);
-            return next;
-          }),
-        ]).pipe(Effect.asVoid),
-      );
-
-      const liveResults = yield* Effect.forEach(
-        instances,
-        (instance) =>
-          readOne(instance, input.forceRefresh === true).pipe(
-            Effect.catchCause((cause) =>
-              Cause.hasInterruptsOnly(cause)
-                ? Effect.interrupt
-                : Effect.succeed(
-                    errorResult(instance, "The provider subscription limits could not be read."),
-                  ),
-            ),
+    const liveResults = yield* Effect.forEach(
+      instances,
+      (instance) =>
+        readOne(instance, input.forceRefresh === true).pipe(
+          Effect.catchCause((cause) =>
+            Cause.hasInterruptsOnly(cause)
+              ? Effect.interrupt
+              : Effect.succeed(
+                  errorResult(instance, "The provider subscription limits could not be read."),
+                ),
           ),
-        { concurrency: MAX_CONCURRENT_PROBES },
-      );
-      const unavailableResults = unavailable.map(
-        (instance): ProviderSubscriptionUsageInstanceResult => ({
-          instanceId: instance.instanceId,
-          driver: instance.driver,
-          displayName: instance.displayName ?? instance.driver,
-          state: "error",
-          message: instance.unavailableReason ?? "This provider instance is unavailable.",
-          windows: [],
-          details: [],
-        }),
-      );
-      return {
-        contractVersion: PROVIDER_SUBSCRIPTION_USAGE_CONTRACT_VERSION,
-        readAt: yield* nowIso,
-        instances: [...liveResults, ...unavailableResults],
-      } satisfies ProviderSubscriptionUsageReport;
-    });
+        ),
+      { concurrency: MAX_CONCURRENT_PROBES },
+    );
+    const unavailableResults = unavailable.map(
+      (instance): ProviderSubscriptionUsageInstanceResult => ({
+        instanceId: instance.instanceId,
+        driver: instance.driver,
+        displayName: instance.displayName ?? instance.driver,
+        state: "error",
+        message: instance.unavailableReason ?? "This provider instance is unavailable.",
+        windows: [],
+        details: [],
+      }),
+    );
+    return {
+      contractVersion: PROVIDER_SUBSCRIPTION_USAGE_CONTRACT_VERSION,
+      readAt: yield* nowIso,
+      instances: [...liveResults, ...unavailableResults],
+    } satisfies ProviderSubscriptionUsageReport;
+  });
 
   // Remove instance-scoped quota secrets and cache entries when the registry
   // confirms an instance was deleted. Rebuilds retain the same id and secret.

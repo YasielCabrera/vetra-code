@@ -30,6 +30,7 @@ import {
   resolveAttachmentPath,
 } from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
+import * as DocumentText from "../provider/DocumentText.ts";
 import {
   attachmentIsPendingUpload,
   claimPendingAttachments,
@@ -113,6 +114,7 @@ export const claimTicketAttachments = Effect.fn("TicketAttachments.claim")(funct
   const config = yield* ServerConfig.ServerConfig;
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
+  const documents = yield* DocumentText.DocumentText;
   const claimedPaths: string[] = [];
   let committed = false;
   yield* Effect.addFinalizer(() =>
@@ -304,6 +306,8 @@ export const claimTicketAttachments = Effect.fn("TicketAttachments.claim")(funct
                 }),
             ),
           );
+          const extracted = yield* documents.ensure(destinationPath);
+          if (extracted) claimedPaths.push(extracted);
           const after = yield* statMediaFile(source.source.path, source.file).pipe(
             Effect.mapError(
               (cause) =>

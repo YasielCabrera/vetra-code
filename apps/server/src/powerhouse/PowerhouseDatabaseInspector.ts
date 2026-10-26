@@ -1,11 +1,4 @@
-/**
- * PowerhouseDatabaseInspector is the server-only boundary for database
- * discovery and inspection. Its public interface accepts project identities,
- * never paths or connection strings; backend-specific authority stays inside
- * the module.
- *
- * @module PowerhouseDatabaseInspector
- */
+// Database inspection accepts project identities; paths and backend authority stay inside this boundary.
 // @effect-diagnostics nodeBuiltinImport:off globalTimers:off -- Timer owns expiry for imperative child-process sessions.
 import * as NodeFS from "node:fs";
 import * as NodeFSP from "node:fs/promises";
@@ -1232,28 +1225,34 @@ const make = Effect.gen(function* () {
   });
 
   return PowerhouseDatabaseInspector.of({
-    discover: (input) =>
+    discover: Effect.fn("PowerhouseDatabaseInspector.discover")((input) =>
       withProject(input, undefined, (projectDirectory) => runtime.discover(projectDirectory)),
-    catalog: (input) =>
+    ),
+    catalog: Effect.fn("PowerhouseDatabaseInspector.catalog")((input) =>
       withProject(input, input.target, (projectDirectory, signal) =>
         runtime.catalog(projectDirectory, input, signal),
       ),
-    getRelation: (input) =>
+    ),
+    getRelation: Effect.fn("PowerhouseDatabaseInspector.getRelation")((input) =>
       withProject(input, input.target, (projectDirectory, signal) =>
         runtime.getRelation(projectDirectory, input, signal),
       ),
-    previewRelation: (input) =>
+    ),
+    previewRelation: Effect.fn("PowerhouseDatabaseInspector.previewRelation")((input) =>
       withProject(input, input.target, (projectDirectory, signal) =>
         runtime.previewRelation(projectDirectory, input, signal),
       ),
-    executeQuery: (input) =>
+    ),
+    executeQuery: Effect.fn("PowerhouseDatabaseInspector.executeQuery")((input) =>
       withProject(input, input.target, (projectDirectory, signal) =>
         runtime.executeQuery(projectDirectory, input, signal),
       ),
-    refreshSnapshot: (input) =>
+    ),
+    refreshSnapshot: Effect.fn("PowerhouseDatabaseInspector.refreshSnapshot")((input) =>
       withProject(input, input.target, (projectDirectory) =>
         runtime.refreshSnapshot(projectDirectory, input.target),
       ),
+    ),
   });
 });
 

@@ -105,6 +105,7 @@ import type * as Statement from "effect/sql/Statement";
 
 import { resolveAttachmentPath } from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
+import * as DocumentText from "../provider/DocumentText.ts";
 import {
   type IssueStateChange,
   type ProviderIssue,
@@ -645,6 +646,7 @@ const make = Effect.gen(function* () {
   const randomId = crypto.randomUUIDv4().pipe(Effect.orDie);
   const config = yield* ServerConfig.ServerConfig;
   const fileSystem = yield* FileSystem.FileSystem;
+  const documents = yield* DocumentText.DocumentText;
   const path = yield* Path.Path;
   const github = yield* TicketGitHub.TicketGitHub;
 
@@ -736,8 +738,7 @@ const make = Effect.gen(function* () {
         }),
       );
     },
-    (effect, rows: ReadonlyArray<TicketRow>) =>
-      effect.pipe(Effect.mapError(ticketError("Could not read tickets."))),
+    (effect) => effect.pipe(Effect.mapError(ticketError("Could not read tickets."))),
   );
 
   const selectSummaries = (
@@ -804,8 +805,7 @@ const make = Effect.gen(function* () {
         activityNextBefore: activityTruncated ? (consumed.at(-1)?.activity_id ?? null) : null,
       } satisfies TicketActivityPage;
     },
-    (effect, ticketId: TicketId, options: TicketActivityReadOptions = {}) =>
-      effect.pipe(Effect.mapError(ticketError("Could not read ticket activity."))),
+    (effect) => effect.pipe(Effect.mapError(ticketError("Could not read ticket activity."))),
   );
 
   const activity: TicketService["Service"]["activity"] = Effect.fn("TicketService.activity")(
@@ -858,7 +858,7 @@ const make = Effect.gen(function* () {
         ...page,
       } satisfies TicketDetail;
     },
-    (effect, ticketId, options) =>
+    (effect) =>
       effect.pipe(
         Effect.catchTags({
           SqlError: (cause) =>
@@ -931,7 +931,7 @@ const make = Effect.gen(function* () {
         })),
       };
     },
-    (effect, input) => effect.pipe(Effect.mapError(ticketError("Could not search tickets."))),
+    (effect) => effect.pipe(Effect.mapError(ticketError("Could not search tickets."))),
   );
 
   const linkedTo = (ref: TicketLinkRef) =>
@@ -1302,6 +1302,7 @@ const make = Effect.gen(function* () {
       Effect.provideService(Path.Path, path),
       Effect.provideService(SqlClient.SqlClient, sql),
       Effect.provideService(Crypto.Crypto, crypto),
+      Effect.provideService(DocumentText.DocumentText, documents),
     );
 
   const commitAttachmentWrite = <A, E>({
@@ -1492,7 +1493,7 @@ const make = Effect.gen(function* () {
         storedAttachments,
       };
     },
-    (effect, input, actor) =>
+    (effect) =>
       effect.pipe(
         Effect.scoped,
         Effect.catchTags({
@@ -1669,7 +1670,7 @@ const make = Effect.gen(function* () {
         storedAttachments,
       };
     },
-    (effect, input, actor) =>
+    (effect) =>
       effect.pipe(
         Effect.scoped,
         Effect.catchTags({ SqlError: sqlFailure("Could not update the ticket.") }),
@@ -1727,7 +1728,7 @@ const make = Effect.gen(function* () {
         ),
       );
     },
-    (effect, input, actor) =>
+    (effect) =>
       effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not move the ticket.") })),
   );
 
@@ -1760,7 +1761,7 @@ const make = Effect.gen(function* () {
       yield* publishPlans(planIds);
       yield* removeAttachmentFiles(attachments);
     },
-    (effect, input) =>
+    (effect) =>
       effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the ticket.") })),
   );
 
@@ -1831,7 +1832,7 @@ const make = Effect.gen(function* () {
       }
       return { ticket, previous, suppressed };
     },
-    (effect, input, actor) =>
+    (effect) =>
       effect.pipe(
         Effect.catchTags({
           SqlError: sqlFailure("Could not link the ticket."),
@@ -1943,7 +1944,7 @@ const make = Effect.gen(function* () {
       yield* publishTickets([input.ticketId]);
       return yield* requireSummary(input.ticketId);
     },
-    (effect, input) =>
+    (effect) =>
       effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not update the ticket.") })),
   );
 
@@ -2194,7 +2195,7 @@ const make = Effect.gen(function* () {
       );
       if (written !== null) yield* publishTickets([written]);
     },
-    (effect, input) =>
+    (effect) =>
       effect.pipe(
         Effect.catchTags({
           SqlError: (cause) =>
@@ -2308,11 +2309,7 @@ const make = Effect.gen(function* () {
       if (written.ticketId !== null) yield* publishTickets([written.ticketId]);
       return written.outcome;
     },
-    (
-      effect,
-      target: GitHubRepository & { readonly number: number },
-      captured: Effect.Success<ReturnType<typeof captureGitHubIssue>>,
-    ) =>
+    (effect) =>
       effect.pipe(
         Effect.catchTags({
           SqlError: sqlFailure("Could not record the missing issue."),
@@ -2601,7 +2598,7 @@ const make = Effect.gen(function* () {
       yield* publishPlans(plans.map((row) => TicketPlanId.make(row.plan_id)));
       yield* removeAttachmentFiles(attachments);
     },
-    (effect, input) =>
+    (effect) =>
       effect.pipe(Effect.mapError(ticketError("Could not release the repository's tickets."))),
   );
 
@@ -2617,7 +2614,7 @@ const make = Effect.gen(function* () {
       `;
       yield* publishTickets(shown.map((row) => TicketId.make(row.ticket_id)));
     },
-    (effect, repository) =>
+    (effect) =>
       effect.pipe(Effect.mapError(ticketError("Could not track the repository's tickets again."))),
   );
 
@@ -2699,7 +2696,7 @@ const make = Effect.gen(function* () {
       yield* publishStatuses;
       return set;
     },
-    (effect, input) =>
+    (effect) =>
       effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not save the status.") })),
   );
 
@@ -2731,7 +2728,7 @@ const make = Effect.gen(function* () {
       yield* publishStatuses;
       return set;
     },
-    (effect, input) =>
+    (effect) =>
       effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not reorder the statuses.") })),
   );
 
@@ -2789,7 +2786,7 @@ const make = Effect.gen(function* () {
       yield* publishTickets(moved);
       return set;
     },
-    (effect, input, actor) =>
+    (effect) =>
       effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the status.") })),
   );
 
@@ -3033,7 +3030,7 @@ const make = Effect.gen(function* () {
           .map(toAttachment),
       } satisfies TicketPlan;
     },
-    (effect, planId) =>
+    (effect) =>
       effect.pipe(
         Effect.catchTags({
           SqlError: sqlFailure("Could not read the plan."),
@@ -3104,7 +3101,7 @@ const make = Effect.gen(function* () {
         storedAttachments,
       };
     },
-    (effect, input, actor) =>
+    (effect) =>
       effect.pipe(
         Effect.scoped,
         Effect.catchTags({
@@ -3237,7 +3234,7 @@ const make = Effect.gen(function* () {
         contentCommit: result.contentCommit,
       };
     },
-    (effect, input, actor) =>
+    (effect) =>
       effect.pipe(
         Effect.scoped,
         Effect.catchTags({ SqlError: sqlFailure("Could not update the plan.") }),
@@ -3268,7 +3265,7 @@ const make = Effect.gen(function* () {
       );
       yield* publishPlan(ticketId, input.planId);
     },
-    (effect, input, actor) =>
+    (effect) =>
       effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the plan.") })),
   );
 
@@ -3334,7 +3331,7 @@ const make = Effect.gen(function* () {
         : publishPlans([input.planId]);
       return comment;
     },
-    (effect, input, actor) =>
+    (effect) =>
       effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not add the comment.") })),
   );
 
@@ -3362,7 +3359,7 @@ const make = Effect.gen(function* () {
       if (reopened) yield* publishPlan(ticketId, input.planId);
       return yield* requirePlanSummary(input.planId);
     },
-    (effect, input) =>
+    (effect) =>
       effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not reopen the comment.") })),
   );
 
@@ -3389,7 +3386,7 @@ const make = Effect.gen(function* () {
       yield* reply ? publishPlans([input.planId]) : publishPlan(ticketId, input.planId);
       return yield* requirePlanSummary(input.planId);
     },
-    (effect, input) =>
+    (effect) =>
       effect.pipe(Effect.catchTags({ SqlError: sqlFailure("Could not delete the comment.") })),
   );
 

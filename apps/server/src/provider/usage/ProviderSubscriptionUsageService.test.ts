@@ -93,7 +93,7 @@ const makeInstance = (input: {
   }) satisfies ProviderInstance;
 
 const makeCredentialStore = (cleared: string[] = []): ProviderSubscriptionCredentialStoreShape => ({
-  get: () => Effect.succeed(Option.none()),
+  get: () => Effect.succeedNone,
   has: () => Effect.succeed(false),
   set: () => Effect.void,
   clear: (id) => Effect.sync(() => void cleared.push(id)),

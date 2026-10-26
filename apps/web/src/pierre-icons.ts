@@ -4,7 +4,7 @@ import {
   type FileTreeIcons,
 } from "@pierre/trees";
 import { VIDEO_FILE_EXTENSIONS } from "@t3tools/shared/video";
-import { fileIconPathForMimeType } from "@t3tools/shared/filePreview";
+import { fileIconPathForMimeType } from "@t3tools/shared/mediaPreview";
 
 import {
   pierreFolderIconSpriteSheet,
@@ -18,6 +18,14 @@ export interface PierreIconResolution {
 }
 
 const PIERRE_ICON_SPRITE_ID = "vetra-code-pierre-file-icon-sprite";
+
+const DOCUMENT_ICON_COLORS: Readonly<Record<string, string>> = {
+  "vetra-file-icon-pdf": "light-dark(#d52c36, #ff6762)",
+  "vetra-file-icon-word": "light-dark(#1a85d4, #69b1ff)",
+  "vetra-file-icon-spreadsheet": "light-dark(#199f43, #5ecc71)",
+  "vetra-file-icon-slides": "light-dark(#d47628, #ffa359)",
+  "vetra-file-icon-epub": "light-dark(#693acf, #9d6afb)",
+};
 
 const VETRA_FILE_ICON_SPRITE = `
 <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true">
@@ -46,6 +54,48 @@ const VETRA_FILE_ICON_SPRITE = `
   <!-- Lucide Code Xml icon, ISC license. -->
   <symbol id="vetra-file-icon-xml" viewBox="0 0 24 24">
     <path fill="none" style="stroke: light-dark(#d47628, #ffa359)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m18 16 4-4-4-4M6 8l-4 4 4 4M14.5 4l-5 16" />
+  </symbol>
+  <!-- Lucide File Type, File Text, File Spreadsheet, Presentation and Book Open icons, ISC license. -->
+  <symbol id="vetra-file-icon-pdf" viewBox="0 0 24 24">
+    <g fill="none" style="stroke: ${DOCUMENT_ICON_COLORS["vetra-file-icon-pdf"]}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
+      <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+      <path d="M11 18h2" />
+      <path d="M12 12v6" />
+      <path d="M9 13v-.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.5" />
+    </g>
+  </symbol>
+  <symbol id="vetra-file-icon-word" viewBox="0 0 24 24">
+    <g fill="none" style="stroke: ${DOCUMENT_ICON_COLORS["vetra-file-icon-word"]}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
+      <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+      <path d="M10 9H8" />
+      <path d="M16 13H8" />
+      <path d="M16 17H8" />
+    </g>
+  </symbol>
+  <symbol id="vetra-file-icon-spreadsheet" viewBox="0 0 24 24">
+    <g fill="none" style="stroke: ${DOCUMENT_ICON_COLORS["vetra-file-icon-spreadsheet"]}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
+      <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+      <path d="M8 13h2" />
+      <path d="M14 13h2" />
+      <path d="M8 17h2" />
+      <path d="M14 17h2" />
+    </g>
+  </symbol>
+  <symbol id="vetra-file-icon-slides" viewBox="0 0 24 24">
+    <g fill="none" style="stroke: ${DOCUMENT_ICON_COLORS["vetra-file-icon-slides"]}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 3h20" />
+      <path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3" />
+      <path d="m7 21 5-5 5 5" />
+    </g>
+  </symbol>
+  <symbol id="vetra-file-icon-epub" viewBox="0 0 24 24">
+    <g fill="none" style="stroke: ${DOCUMENT_ICON_COLORS["vetra-file-icon-epub"]}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 7v14" />
+      <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+    </g>
   </symbol>
   <!-- Language logos from Simple Icons, CC0. -->
   <symbol id="vetra-file-icon-csharp" viewBox="0 0 24 24">
@@ -103,7 +153,20 @@ export const VETRA_PIERRE_ICONS = {
     ...Object.fromEntries(
       VIDEO_FILE_EXTENSIONS.map((extension) => [extension, "vetra-file-icon-video"]),
     ),
-    // Languages the complete set has no icon for.
+    pdf: "vetra-file-icon-pdf",
+    doc: "vetra-file-icon-word",
+    docx: "vetra-file-icon-word",
+    odt: "vetra-file-icon-word",
+    rtf: "vetra-file-icon-word",
+    xls: "vetra-file-icon-spreadsheet",
+    xlsx: "vetra-file-icon-spreadsheet",
+    ods: "vetra-file-icon-spreadsheet",
+    csv: "vetra-file-icon-spreadsheet",
+    tsv: "vetra-file-icon-spreadsheet",
+    ppt: "vetra-file-icon-slides",
+    pptx: "vetra-file-icon-slides",
+    odp: "vetra-file-icon-slides",
+    epub: "vetra-file-icon-epub",
     cs: "vetra-file-icon-csharp",
     csx: "vetra-file-icon-csharp",
     dart: "vetra-file-icon-dart",
@@ -112,6 +175,8 @@ export const VETRA_PIERRE_ICONS = {
     ex: "vetra-file-icon-elixir",
     exs: "vetra-file-icon-elixir",
     hs: "vetra-file-icon-haskell",
+    heic: "file-tree-builtin-image",
+    heif: "file-tree-builtin-image",
     lhs: "vetra-file-icon-haskell",
     java: "vetra-file-icon-java",
     kt: "vetra-file-icon-kotlin",
@@ -177,6 +242,8 @@ export function resolvePierreIconForEntry(
 ): PierreIconResolution | null {
   if (kind === "directory") return { name: resolvePierreFolderIcon(pathValue).id };
   const icon = completeIconResolver.resolveIcon("file-tree-icon-file", pathValue);
+  if (icon?.name === "file-tree-builtin-image" && icon.token === undefined)
+    return { ...icon, token: "image" };
   return icon?.token === "default" && mimeType
     ? completeIconResolver.resolveIcon(
         "file-tree-icon-file",
@@ -185,12 +252,22 @@ export function resolvePierreIconForEntry(
     : icon;
 }
 
+export function documentIconColorForFileName(fileName: string) {
+  const icon = resolvePierreIconForEntry(fileName, "file");
+  return icon ? DOCUMENT_ICON_COLORS[icon.name] : undefined;
+}
+
 export function hasSpecificPierreIconForFileName(fileName: string): boolean {
   return resolvePierreIconForEntry(fileName, "file")?.token !== "default";
 }
 
 export function ensurePierreIconSprite(): void {
-  if (typeof document === "undefined" || document.getElementById(PIERRE_ICON_SPRITE_ID)) return;
+  if (
+    typeof document === "undefined" ||
+    !document.body ||
+    document.getElementById(PIERRE_ICON_SPRITE_ID)
+  )
+    return;
   const container = document.createElement("div");
   container.id = PIERRE_ICON_SPRITE_ID;
   container.setAttribute("aria-hidden", "true");
