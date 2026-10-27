@@ -14,6 +14,7 @@ import { Atom } from "effect/reactivity";
 import { gitHubLoginAvatarUrl } from "@t3tools/shared/githubActor";
 import {
   BotIcon,
+  BotMessageSquareIcon,
   ChevronRightIcon,
   CircleDashedIcon,
   EyeIcon,
@@ -152,6 +153,11 @@ const TICKET_PULL_REQUEST_OPTIONS: ReadonlyArray<TicketFilterOption> = [
 const TICKET_CREATOR_OPTIONS = [
   { value: "user", label: "You", icon: <UserIcon aria-hidden className="size-3.5" /> },
   { value: "agent", label: "An agent", icon: <BotIcon aria-hidden className="size-3.5" /> },
+  {
+    value: "client",
+    label: "An outside agent",
+    icon: <BotMessageSquareIcon aria-hidden className="size-3.5" />,
+  },
   {
     value: "automation",
     label: "An automation",

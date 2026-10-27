@@ -563,6 +563,7 @@ const linkSourceFor = (actor: TicketActor): TicketLinkSource => {
     case "user":
       return "user";
     case "agent":
+    case "client":
       return "agent";
     case "sync":
     case "automation":
@@ -570,11 +571,13 @@ const linkSourceFor = (actor: TicketActor): TicketLinkSource => {
   }
 };
 
-/** A user's or agent's own link or unlink, which automation must not undo. */
-const isExplicit = (actor: TicketActor) => actor.type === "user" || actor.type === "agent";
+/** An agent inside a thread or an outside MCP client; both follow the agent rules. */
+const isAgent = (actor: TicketActor) => actor.type === "agent" || actor.type === "client";
 
-const mayNotCrossClosedLine = (actor: TicketActor) =>
-  actor.type === "agent" || actor.type === "automation";
+/** A user's or agent's own link or unlink, which automation must not undo. */
+const isExplicit = (actor: TicketActor) => actor.type === "user" || isAgent(actor);
+
+const mayNotCrossClosedLine = (actor: TicketActor) => isAgent(actor) || actor.type === "automation";
 
 const uniqueLabels = (labels: ReadonlyArray<string>) => [...new Set(labels)];
 
@@ -1800,7 +1803,7 @@ const make = Effect.gen(function* () {
             }
             // An agent's target is a placeholder; the removed link's snapshot is the better one.
             const linked =
-              actor.type === "agent" && tombstone !== undefined
+              isAgent(actor) && tombstone !== undefined
                 ? yield* decodeLinkTarget(tombstone.target_json)
                 : target;
             yield* insertLink(input.ticketId, linked, linkSourceFor(actor), at);
@@ -1810,7 +1813,7 @@ const make = Effect.gen(function* () {
           previous = yield* decodeLinkTarget(stored.target_json);
           const json = encodeJson(target);
           if (
-            actor.type === "agent" ||
+            isAgent(actor) ||
             stored.target_json === json ||
             (actor.type === "automation" &&
               target.kind === "pull_request" &&

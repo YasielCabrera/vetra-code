@@ -1,4 +1,5 @@
 import {
+  AuthSessionId,
   OrchestratorMcpFailure,
   type OrchestrationV2ThreadShell,
   type TicketActor,
@@ -14,29 +15,39 @@ import * as Effect from "effect/Effect";
 import * as TicketService from "../../../ticket/TicketService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
-import { readCaller } from "../../threadAccess.ts";
+import { loadCaller } from "../../threadAccess.ts";
 import { type AgentTicketLinkTarget, TicketsToolkit } from "./tools.ts";
 
-const reader = Effect.fn("TicketsToolkit.reader")(function* () {
+/** Tickets need only their own capability, so a Tickets-only client reads and writes them. */
+const ticketCaller = Effect.fn("TicketsToolkit.caller")(function* () {
   yield* McpInvocationContext.requireMcpCapability("tickets");
-  return (yield* readCaller()).caller;
+  return yield* loadCaller();
+});
+
+const reader = Effect.fn("TicketsToolkit.reader")(function* () {
+  return (yield* ticketCaller()).caller;
 });
 
 /**
- * Changes are recorded as the calling thread's agent, so a client outside a thread can only read.
- * `McpToolAccess.writes` has already refused read-only clients; thread callers need a live run.
+ * Changes are recorded as the calling thread's agent, or as the OAuth client outside any thread.
+ * `McpToolAccess.writesWithCapability` has already refused read-only clients; thread callers need a live run.
  */
 const writer = Effect.fn("TicketsToolkit.writer")(function* () {
-  yield* McpInvocationContext.requireMcpCapability("tickets");
-  const { caller } = yield* readCaller();
-  if (caller === undefined) {
+  const { caller, scope } = yield* ticketCaller();
+  if (caller !== undefined) {
+    return { caller, actor: { type: "agent", threadId: caller.id } satisfies TicketActor };
+  }
+  if (scope.client === undefined) {
     return yield* new OrchestratorMcpFailure({
       code: "thread_credential_required",
-      message:
-        "Changing tickets acts as the calling Vetra Code thread, so it needs an agent running inside Vetra Code. This MCP client signed in from outside a thread.",
+      message: "Changing tickets needs a Vetra Code thread or a signed-in MCP client.",
     });
   }
-  const actor: TicketActor = { type: "agent", threadId: caller.id };
+  const actor: TicketActor = {
+    type: "client",
+    sessionId: AuthSessionId.make(scope.client.sessionId),
+    label: scope.client.label,
+  };
   return { caller, actor };
 });
 
@@ -125,25 +136,33 @@ const make = Effect.gen(function* () {
         });
       }),
     ),
-    t3_ticket_create: McpToolAccess.writes(({ linkCaller, links, status, ...input }) =>
-      Effect.gen(function* () {
-        const { caller, actor } = yield* writer();
-        const callerLinks: ReadonlyArray<TicketLinkTarget> =
-          linkCaller === false
-            ? []
-            : [
-                { kind: "project", projectId: caller.projectId },
-                { kind: "thread", threadId: caller.id },
-              ];
-        const extraLinks = yield* Effect.forEach(links ?? [], toLinkTarget);
-        const created = yield* tickets.create(
-          { ...input, statusId: status, links: [...callerLinks, ...extraLinks] },
-          actor,
-        );
-        return { ...created.ticket, attachments: created.storedAttachments };
-      }),
+    t3_ticket_create: McpToolAccess.writesWithCapability(
+      ({ linkCaller, links, status, ...input }) =>
+        Effect.gen(function* () {
+          const { caller, actor } = yield* writer();
+          if (caller === undefined && !(links ?? []).some((link) => link.kind === "project")) {
+            return yield* new OrchestratorMcpFailure({
+              code: "target_required",
+              message:
+                "Pass a project link: this MCP client is not running inside a Vetra Code thread. t3_project_list shows the projects.",
+            });
+          }
+          const callerLinks: ReadonlyArray<TicketLinkTarget> =
+            linkCaller === false || caller === undefined
+              ? []
+              : [
+                  { kind: "project", projectId: caller.projectId },
+                  { kind: "thread", threadId: caller.id },
+                ];
+          const extraLinks = yield* Effect.forEach(links ?? [], toLinkTarget);
+          const created = yield* tickets.create(
+            { ...input, statusId: status, links: [...callerLinks, ...extraLinks] },
+            actor,
+          );
+          return { ...created.ticket, attachments: created.storedAttachments };
+        }),
     ),
-    t3_ticket_update: McpToolAccess.writes(({ ticket, status, ...input }) =>
+    t3_ticket_update: McpToolAccess.writesWithCapability(({ ticket, status, ...input }) =>
       Effect.gen(function* () {
         const { caller, actor } = yield* writer();
         const updated = yield* tickets.update(
@@ -153,7 +172,7 @@ const make = Effect.gen(function* () {
         return { ...updated.ticket, attachments: updated.storedAttachments };
       }),
     ),
-    t3_ticket_link: McpToolAccess.writes(({ ticket, target }) =>
+    t3_ticket_link: McpToolAccess.writesWithCapability(({ ticket, target }) =>
       Effect.gen(function* () {
         const { caller, actor } = yield* writer();
         const linked = yield* tickets.link(
@@ -163,7 +182,7 @@ const make = Effect.gen(function* () {
         return linked.ticket;
       }),
     ),
-    t3_ticket_unlink: McpToolAccess.writes(({ ticket, kind, targetKey }) =>
+    t3_ticket_unlink: McpToolAccess.writesWithCapability(({ ticket, kind, targetKey }) =>
       Effect.gen(function* () {
         const { caller, actor } = yield* writer();
         return yield* tickets.unlink(
@@ -172,7 +191,7 @@ const make = Effect.gen(function* () {
         );
       }),
     ),
-    t3_ticket_note: McpToolAccess.writes(({ ticket, body }) =>
+    t3_ticket_note: McpToolAccess.writesWithCapability(({ ticket, body }) =>
       Effect.gen(function* () {
         const { caller, actor } = yield* writer();
         return yield* tickets.addComment(
@@ -199,7 +218,7 @@ const make = Effect.gen(function* () {
         };
       }),
     ),
-    t3_ticket_plan_create: McpToolAccess.writes(({ ticket, ...input }) =>
+    t3_ticket_plan_create: McpToolAccess.writesWithCapability(({ ticket, ...input }) =>
       Effect.gen(function* () {
         const { caller, actor } = yield* writer();
         const created = yield* tickets.createPlan(
@@ -209,7 +228,7 @@ const make = Effect.gen(function* () {
         return { ...created.plan, attachments: created.storedAttachments };
       }),
     ),
-    t3_ticket_plan_update: McpToolAccess.writes(({ plan, ...input }) =>
+    t3_ticket_plan_update: McpToolAccess.writesWithCapability(({ plan, ...input }) =>
       Effect.gen(function* () {
         const { caller, actor } = yield* writer();
         const updated = yield* tickets.updatePlan(
@@ -219,7 +238,7 @@ const make = Effect.gen(function* () {
         return { ...updated.plan, attachments: updated.storedAttachments };
       }),
     ),
-    t3_ticket_plan_comment: McpToolAccess.writes(({ plan, quote, ...input }) =>
+    t3_ticket_plan_comment: McpToolAccess.writesWithCapability(({ plan, quote, ...input }) =>
       Effect.gen(function* () {
         const { caller, actor } = yield* writer();
         return yield* tickets.addPlanComment(
@@ -228,7 +247,7 @@ const make = Effect.gen(function* () {
         );
       }),
     ),
-    t3_ticket_plan_reopen_comment: McpToolAccess.writes(({ plan, commentId }) =>
+    t3_ticket_plan_reopen_comment: McpToolAccess.writesWithCapability(({ plan, commentId }) =>
       Effect.gen(function* () {
         const { caller } = yield* writer();
         return yield* tickets.reopenPlanComment({

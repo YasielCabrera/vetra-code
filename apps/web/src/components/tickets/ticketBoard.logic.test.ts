@@ -1,5 +1,6 @@
 import { type EnvironmentTicket, ticketKey } from "@t3tools/client-runtime/state/tickets";
 import {
+  AuthSessionId,
   EnvironmentId,
   TicketId,
   ThreadId,
@@ -269,7 +270,12 @@ describe("GitHub, link and creator filters", () => {
     createdBy: { type: "agent", threadId: ThreadId.make("thread-9") },
     linkRefs: [{ kind: "pull_request", targetKey: "github.com/acme/web#3" }],
   });
-  const BOARD = [LOGIN, web, api, ghost, agentMade];
+  const clientMade = ticket({
+    id: "client-made",
+    statusId: "local-todo",
+    createdBy: { type: "client", sessionId: AuthSessionId.make("session-1"), label: "ChatGPT" },
+  });
+  const BOARD = [LOGIN, web, api, ghost, agentMade, clientMade];
   const matching = (filters: Parameters<typeof filterTickets>[1]) =>
     ids(filterTickets(BOARD, filters, STATUS_SETS));
 
@@ -283,8 +289,10 @@ describe("GitHub, link and creator filters", () => {
 
   it("narrows by linked pull request and by who created the ticket", () => {
     expect(matching({ pullRequest: "linked" })).toEqual(["agent-made"]);
-    expect(matching({ pullRequest: "unlinked", kind: "local" })).toEqual(["login"]);
+    expect(matching({ pullRequest: "unlinked", kind: "local" })).toEqual(["login", "client-made"]);
     expect(matching({ creator: "agent" })).toEqual(["agent-made"]);
+    expect(matching({ creator: "client" })).toEqual(["client-made"]);
+    expect(validateTicketBoardSearch({ creator: "client" })).toEqual({ creator: "client" });
     expect(matching({ creator: "sync" })).toEqual(["web", "api", "ghost"]);
   });
 });

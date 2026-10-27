@@ -321,7 +321,13 @@ function isLinkFilter(value: unknown): value is TicketLinkFilter {
 }
 
 function isCreatorFilter(value: unknown): value is TicketCreatorFilter {
-  return value === "user" || value === "agent" || value === "sync" || value === "automation";
+  return (
+    value === "user" ||
+    value === "agent" ||
+    value === "client" ||
+    value === "sync" ||
+    value === "automation"
+  );
 }
 
 /** Drops anything malformed rather than failing the route; an empty field is no filter. */

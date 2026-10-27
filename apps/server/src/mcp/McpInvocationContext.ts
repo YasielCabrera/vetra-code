@@ -55,14 +55,22 @@ export class McpInvocationContext extends Context.Service<
   McpInvocationScope
 >()("t3/mcp/McpInvocationContext") {}
 
-/**
- * `McpSchema.EnabledWhen` for tools a delegated child must not see or call.
- * EnabledWhen only receives the MCP client profile, so read the T3 caller from the request fiber.
- */
-export const hiddenFromSubagents = (): boolean => {
+/** EnabledWhen only receives the MCP client profile, so read the T3 caller from the request fiber. */
+const requestScope = () => {
   const fiber = Fiber.getCurrent();
-  const scope = fiber && Context.getOrUndefined(fiber.context, McpInvocationContext);
-  return scope?.thread?.subagent !== true;
+  return fiber && Context.getOrUndefined(fiber.context, McpInvocationContext);
+};
+
+/** `McpSchema.EnabledWhen` for tools a delegated child must not see or call. */
+export const hiddenFromSubagents = (): boolean => requestScope()?.thread?.subagent !== true;
+
+/** `McpSchema.EnabledWhen` listing a tool to threads, and to OAuth clients holding one of `capabilities`. */
+export const listedFor = (capabilities: ReadonlyArray<McpCapability>) => (): boolean => {
+  const scope = requestScope();
+  return (
+    scope?.client === undefined ||
+    capabilities.some((capability) => scope.capabilities.has(capability))
+  );
 };
 
 export type McpCapabilityError<C extends McpCapability> = C extends "preview"
@@ -97,6 +105,19 @@ export const requireMcpCapability = <const C extends McpCapability>(
       (invocation) => missingCapability(invocation, capability) as McpCapabilityError<C>,
     ),
     Effect.withSpan("mcp.requireCapability"),
+  );
+
+/** For tools that serve several capabilities, such as project reads for orchestration and tickets. */
+export const requireAnyMcpCapability = (
+  capabilities: ReadonlyArray<McpCapability>,
+  message: string,
+): Effect.Effect<McpInvocationScope, OrchestratorMcpFailure, McpInvocationContext> =>
+  McpInvocationContext.pipe(
+    Effect.filterOrFail(
+      (invocation) => capabilities.some((capability) => invocation.capabilities.has(capability)),
+      () => new OrchestratorMcpFailure({ code: "capability_denied", message }),
+    ),
+    Effect.withSpan("mcp.requireAnyCapability"),
   );
 
 export const requireThreadMcpCapability = <const C extends "preview" | "device">(

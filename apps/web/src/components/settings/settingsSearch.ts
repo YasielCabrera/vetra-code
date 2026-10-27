@@ -958,6 +958,15 @@ export const SETTINGS_SEARCH_ITEMS = [
     localBackendManagementOnly: true,
   },
   {
+    id: "mcp-server",
+    title: "MCP server",
+    to: "/settings/connections",
+    targetId: "connections-environment",
+    searchTerms: [
+      "connect an agent outside claude code codex cursor chatgpt bot oauth sign in access token url",
+    ],
+  },
+  {
     id: "tailscale-https",
     title: "Tailscale HTTPS",
     to: "/settings/connections",

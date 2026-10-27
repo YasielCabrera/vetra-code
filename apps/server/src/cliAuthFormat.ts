@@ -143,6 +143,38 @@ export function formatIssuedSession(
   );
 }
 
+export function formatIssuedMcpClientToken(
+  issued: {
+    readonly sessionId: string;
+    readonly token: string;
+    readonly expiresAt: DateTime.DateTime;
+  },
+  options?: {
+    readonly json?: boolean;
+  },
+): string {
+  if (options?.json) {
+    return `${JSON.stringify(
+      {
+        sessionId: issued.sessionId,
+        token: issued.token,
+        expiresAt: toIsoString(issued.expiresAt),
+      },
+      null,
+      2,
+    )}${newline}`;
+  }
+
+  return (
+    [
+      `Issued MCP access token ${issued.sessionId}.`,
+      `Token: ${issued.token}`,
+      `Header: Authorization: Bearer ${issued.token}`,
+      `Expires at: ${toIsoString(issued.expiresAt)}`,
+    ].join(newline) + newline
+  );
+}
+
 export function formatSessionList(
   sessions: ReadonlyArray<AuthClientSession>,
   options?: {

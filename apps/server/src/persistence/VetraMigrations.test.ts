@@ -170,6 +170,7 @@ it.effect("defaults existing active and archived plans to Draft and preserves da
       "006_TicketLinkTombstones",
       "007_ProjectTicketNumbers",
       "008_TicketGitHubSyncCursor",
+      "009_AuthSessionMcpTools",
     ]);
     const migratedPlans = yield* sql`
       SELECT plan_id, ticket_id, number, title, body, status, revision,
@@ -201,6 +202,7 @@ it.effect("defaults existing active and archived plans to Draft and preserves da
         "006_TicketLinkTombstones",
         "007_ProjectTicketNumbers",
         "008_TicketGitHubSyncCursor",
+        "009_AuthSessionMcpTools",
       ],
       upstream: ["1_OrchestrationEvents"],
     });
@@ -281,6 +283,7 @@ it.effect("numbers existing tickets in their earliest project and keeps every ro
     assert.deepStrictEqual(yield* runVetraMigrations(), [
       "007_ProjectTicketNumbers",
       "008_TicketGitHubSyncCursor",
+      "009_AuthSessionMcpTools",
     ]);
 
     assert.deepStrictEqual(

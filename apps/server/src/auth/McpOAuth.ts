@@ -10,9 +10,11 @@ import {
   type AuthMcpTokenRequest,
   type AuthMcpTokenResult,
   type AuthMcpClientAccess,
+  type AuthMcpClientTools,
   type AuthEnvironmentScope,
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
+  mcpClientScopes,
 } from "@t3tools/contracts";
 import { encodeOAuthScope } from "@t3tools/shared/oauthScope";
 import * as Clock from "effect/Clock";
@@ -176,6 +178,7 @@ interface PendingCode {
   readonly codeChallenge: string;
   readonly resource: string;
   readonly access: AuthMcpClientAccess;
+  readonly tools: AuthMcpClientTools | undefined;
   readonly expiresAtMs: number;
 }
 
@@ -374,7 +377,7 @@ const make = Effect.gen(function* () {
 
   const mintCode = Effect.fn("McpOAuth.mintCode")(function* (
     authorization: AuthorizationRequest,
-    access: AuthMcpClientAccess,
+    { access, tools }: ApprovalDecision,
   ) {
     const now = yield* Clock.currentTimeMillis;
     const code = Buffer.from(yield* crypto.randomBytes(32).pipe(Effect.orDie)).toString(
@@ -389,6 +392,7 @@ const make = Effect.gen(function* () {
         codeChallenge: authorization.codeChallenge,
         resource: authorization.resource,
         access,
+        tools,
         expiresAtMs: now + AUTHORIZATION_CODE_TTL_MS,
       });
       return next;
@@ -417,19 +421,18 @@ const make = Effect.gen(function* () {
       if (
         session === undefined ||
         !timingSafeEqualBase64Url(decision.csrfToken, session.csrfToken) ||
-        !EnvironmentAuth.mcpClientScopes(decision.access).every((scope) =>
-          session.scopes.includes(scope),
-        )
+        !mcpClientScopes(decision.access).every((scope) => session.scopes.includes(scope))
       ) {
         return yield* new McpOAuthPageError({
           description: "Your session cannot approve this request. Enter a pairing code instead.",
         });
       }
     }
-    const code = yield* mintCode(input.authorization, decision.access);
+    const code = yield* mintCode(input.authorization, decision);
     yield* Effect.logInfo("Approved an MCP client sign-in.", {
       client: input.authorization.client.name,
       access: decision.access,
+      tools: decision.tools ?? "all",
       method: decision._tag,
     });
     return redirectWith(input.authorization.redirectUri, {
@@ -488,6 +491,7 @@ const make = Effect.gen(function* () {
         .issueMcpClientSession({
           label: pending.clientName,
           access: pending.access,
+          ...(pending.tools === undefined ? {} : { tools: pending.tools }),
           client: deriveAuthClientMetadata({ request }),
         })
         .pipe(
@@ -503,7 +507,7 @@ const make = Effect.gen(function* () {
         access_token: issued.token,
         token_type: "Bearer",
         expires_in: Math.max(0, Math.floor((issued.expiresAt.epochMilliseconds - now) / 1000)),
-        scope: encodeOAuthScope(EnvironmentAuth.mcpClientScopes(pending.access)),
+        scope: encodeOAuthScope(mcpClientScopes(pending.access)),
       };
     },
   );
@@ -541,12 +545,11 @@ export const layerMcpClientAuthenticator = Layer.effect(
                     label: client.label,
                     access: client.access,
                   },
-                  capabilities: new Set<McpInvocationContext.McpCapability>([
-                    "orchestration",
-                    "worktree",
-                    "pull-requests",
-                    "tickets",
-                  ]),
+                  capabilities: new Set<McpInvocationContext.McpCapability>(
+                    client.tools === "tickets"
+                      ? ["tickets"]
+                      : ["orchestration", "worktree", "pull-requests", "tickets"],
+                  ),
                   issuedAt,
                 })),
               ),

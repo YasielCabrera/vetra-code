@@ -132,6 +132,13 @@ export const claimTicketAttachments = Effect.fn("TicketAttachments.claim")(funct
     }
     references.add(reference);
   }
+  // An outside client's paths would name files on this server, not on its own machine.
+  if (actor.type === "client" && sources.some((source) => "path" in source)) {
+    return yield* new TicketError({
+      message:
+        "MCP clients outside Vetra Code cannot attach server file paths. Upload each file with t3_attachment_prepare_upload and pass its pending-upload metadata instead.",
+    });
+  }
   const localFileRoots = yield* Effect.gen(function* () {
     if (actor.type !== "agent" || !sources.some((source) => "path" in source)) return null;
     const sql = yield* SqlClient.SqlClient;

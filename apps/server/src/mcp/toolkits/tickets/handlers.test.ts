@@ -2,6 +2,7 @@ import * as DocumentText from "../../../provider/DocumentText.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import {
+  type AuthMcpClientAccess,
   ChatAttachmentId,
   EnvironmentId,
   GitHubIssueSnapshot,
@@ -37,8 +38,14 @@ const callerId = ThreadId.make("caller-thread");
 const projectId = ProjectId.make("caller-project");
 const providerInstanceId = ProviderInstanceId.make("codex");
 
-/** `null` is an MCP client signed in from outside any thread. */
-const layerFor = (caller: { readonly activeRunId: string | null } | null) =>
+/** `null` is an MCP client signed in from outside any thread, by default approved for Tickets only. */
+const layerFor = (
+  caller: { readonly activeRunId: string | null } | null,
+  client: {
+    readonly access?: AuthMcpClientAccess;
+    readonly capabilities?: ReadonlyArray<McpInvocationContext.McpCapability>;
+  } = {},
+) =>
   McpToolAccess.HandlersLayer.layer(TicketsToolkitHandlersLive).pipe(
     Layer.provideMerge(
       Layer.mergeAll(
@@ -48,14 +55,20 @@ const layerFor = (caller: { readonly activeRunId: string | null } | null) =>
           ...(caller === null
             ? {
                 thread: undefined,
-                client: { sessionId: "client", label: "CLI", access: "full-access" },
+                client: {
+                  sessionId: "client",
+                  label: "CLI",
+                  access: client.access ?? "full-access",
+                },
               }
             : {
                 thread: { threadId: callerId, providerSessionId: "session", providerInstanceId },
                 client: undefined,
               }),
           issuedAt: 0,
-          capabilities: new Set(["orchestration", "tickets"] as const),
+          capabilities: new Set<McpInvocationContext.McpCapability>(
+            client.capabilities ?? (caller === null ? ["tickets"] : ["orchestration", "tickets"]),
+          ),
         }),
         Layer.mock(ThreadManagement.ThreadManagementService)({
           getThreadShell: () =>
@@ -95,6 +108,7 @@ const failure = <Name extends keyof Tools & string>(
 ) => call(name, params).pipe(Effect.flip);
 
 const AGENT = { type: "agent", threadId: callerId } as const;
+const CLIENT = { type: "client", sessionId: "client", label: "CLI" } as const;
 
 type PlanThread = Tool.Success<Tools["t3_ticket_plan_get"]>["comments"][number];
 
@@ -599,61 +613,141 @@ describe("TicketsToolkit", () => {
     }).pipe(Effect.provide(layerFor({ activeRunId: "run-1" }))),
   );
 
-  it.effect("lets a client outside a thread read but not write", () =>
+  it.effect("records an outside client's ticket and plan changes as that client", () =>
+    Effect.gen(function* () {
+      const unplaced = yield* failure("t3_ticket_create", { title: "From outside" });
+      assert.strictEqual(
+        unplaced.message,
+        "Pass a project link: this MCP client is not running inside a Vetra Code thread. t3_project_list shows the projects.",
+      );
+
+      const ticket = yield* call("t3_ticket_create", {
+        title: "From outside",
+        links: [{ kind: "project", projectId }],
+      });
+      const updated = yield* call("t3_ticket_update", {
+        ticket: `T-${ticket.number}`,
+        expectedRevision: ticket.revision,
+        title: "Renamed outside",
+      });
+      yield* call("t3_ticket_link", {
+        ticket: ticket.id,
+        target: { kind: "pull_request", url: "https://github.com/acme/app/pull/12" },
+      });
+      yield* call("t3_ticket_unlink", {
+        ticket: ticket.id,
+        kind: "pull_request",
+        targetKey: "github.com/acme/app#12",
+      });
+      yield* call("t3_ticket_note", { ticket: ticket.id, body: "Progress" });
+
+      const plan = yield* call("t3_ticket_plan_create", { ticket: ticket.id, title: "Plan" });
+      const edited = yield* call("t3_ticket_plan_update", {
+        plan: plan.ref,
+        expectedRevision: plan.revision,
+        body: "Steps",
+      });
+      const comment = yield* call("t3_ticket_plan_comment", { plan: plan.ref, body: "Question" });
+      yield* call("t3_ticket_plan_update", {
+        plan: plan.ref,
+        expectedRevision: edited.revision,
+        resolveCommentIds: [comment.id],
+      });
+      const reopened = yield* call("t3_ticket_plan_reopen_comment", {
+        plan: plan.ref,
+        commentId: comment.id,
+      });
+
+      const detail = yield* call("t3_ticket_get", { ticket: ticket.id });
+      const listed = yield* call("t3_ticket_list", {});
+      assert.deepStrictEqual(
+        [
+          ticket.createdBy,
+          ticket.homeProjectId,
+          updated.title,
+          detail.links.map(({ target }) => target.kind),
+          [...new Set(detail.activity.map(({ actor }) => actor.type))],
+          detail.activity.map(({ entry }) => entry.type),
+          [plan.createdBy, edited.updatedBy, comment.author],
+          reopened.openCommentCount,
+          listed.tickets.map(({ id }) => id),
+        ],
+        [
+          CLIENT,
+          projectId,
+          "Renamed outside",
+          ["project"],
+          ["client"],
+          ["created", "edited", "linked", "unlinked", "comment", "plan_created", "plan_edited"],
+          [CLIENT, CLIENT, CLIENT],
+          1,
+          [ticket.id],
+        ],
+      );
+    }).pipe(Effect.provide(layerFor(null))),
+  );
+
+  it.effect("lets a read-only outside client read tickets and refuses every write", () =>
     Effect.gen(function* () {
       const tickets = yield* TicketService.TicketService;
-      const ticket = (yield* tickets.create({ title: "Seeded" }, { type: "user" })).ticket;
+      const ticket = (yield* tickets.create(
+        { title: "Seeded", links: [{ kind: "project", projectId }] },
+        { type: "user" },
+      )).ticket;
       const plan = (yield* tickets.createPlan(
         { ticketId: ticket.id, title: "Plan", body: "Steps" },
         { type: "user" },
       )).plan;
-      const comment = yield* tickets.addPlanComment(
-        { planId: plan.planId, body: "Question" },
-        { type: "user" },
-      );
-      yield* tickets.updatePlan(
-        { planId: plan.planId, expectedRevision: 1, resolveCommentIds: [comment.id] },
-        { type: "user" },
-      );
 
       const listed = yield* call("t3_ticket_list", {});
       const detail = yield* call("t3_ticket_get", { ticket: "T-1" });
-      const write = yield* failure("t3_ticket_create", { title: "From outside" });
-      assert.strictEqual(
-        (yield* call("t3_ticket_plan_list", { ticket: `T-${ticket.number}` })).plans[0]?.planId,
-        plan.planId,
-      );
-      assert.strictEqual((yield* call("t3_ticket_plan_get", { plan: plan.ref })).body, "Steps");
-      const note = yield* failure("t3_ticket_note", {
-        ticket: `T-${ticket.number}`,
-        body: "Outside",
-      });
-      const edit = yield* failure("t3_ticket_plan_update", {
-        plan: plan.ref,
-        expectedRevision: plan.revision,
-        body: "Outside",
-      });
-      const reopen = yield* failure("t3_ticket_plan_reopen_comment", {
-        plan: plan.ref,
-        commentId: comment.id,
-      });
+      const read = yield* call("t3_ticket_plan_get", { plan: plan.ref });
+      const writes = [
+        yield* failure("t3_ticket_create", {
+          title: "From outside",
+          links: [{ kind: "project", projectId }],
+        }),
+        yield* failure("t3_ticket_note", { ticket: "T-1", body: "Outside" }),
+        yield* failure("t3_ticket_plan_update", {
+          plan: plan.ref,
+          expectedRevision: plan.revision,
+          body: "Outside",
+        }),
+      ];
       assert.deepStrictEqual(
-        [note, edit, reopen].map((error) => error.message),
-        [write.message, write.message, write.message],
+        [listed.tickets.map(({ title }) => title), detail.summary.title, read.body],
+        [["Seeded"], "Seeded", "Steps"],
       );
-      assert.strictEqual((yield* tickets.getPlan(plan.planId)).summary.openCommentCount, 0);
+      assert.deepStrictEqual(
+        writes.map((error) => error.message),
+        Array(3).fill(
+          "This tool changes the environment, and this MCP client was approved for read-only access.",
+        ),
+      );
+    }).pipe(Effect.provide(layerFor(null, { access: "read-only" }))),
+  );
 
+  it.effect("refuses an outside client's server paths and its GitHub issue closes", () =>
+    Effect.gen(function* () {
+      yield* seedGitHubTicket;
+      const attached = yield* failure("t3_ticket_create", {
+        title: "With a file",
+        links: [{ kind: "project", projectId }],
+        attachments: [{ path: "/etc/hosts" }],
+      });
+      const close = yield* failure("t3_ticket_update", {
+        ticket: "acme/app#7",
+        expectedRevision: 1,
+        status: TicketStatusId.make("done"),
+      });
       assert.deepStrictEqual(
-        [listed.tickets.map((ticket) => ticket.title), detail.summary.title],
-        [["Seeded"], "Seeded"],
-      );
-      assert.deepStrictEqual(
-        [write._tag, write.message],
+        [attached.message, close.message],
         [
-          "OrchestratorMcpFailure",
-          "Changing tickets acts as the calling Vetra Code thread, so it needs an agent running inside Vetra Code. This MCP client signed in from outside a thread.",
+          "MCP clients outside Vetra Code cannot attach server file paths. Upload each file with t3_attachment_prepare_upload and pass its pending-upload metadata instead.",
+          "Moving T-100 to a closed status would close its GitHub issue. Agents cannot do that: ask the user to move it in Vetra Code.",
         ],
       );
+      assert.deepStrictEqual((yield* call("t3_ticket_list", {})).tickets.length, 1);
     }).pipe(Effect.provide(layerFor(null))),
   );
 

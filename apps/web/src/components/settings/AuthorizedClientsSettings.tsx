@@ -524,6 +524,7 @@ const ConnectedClientListRow = memo(function ConnectedClientListRow({
     clientSession.client.deviceType !== "unknown"
       ? clientSession.client.deviceType[0]?.toUpperCase() + clientSession.client.deviceType.slice(1)
       : null,
+    clientSession.mcpTools === "tickets" ? "Tickets only" : null,
     clientSession.client.os ?? null,
     clientSession.client.browser ?? null,
     clientSession.client.ipAddress ?? null,

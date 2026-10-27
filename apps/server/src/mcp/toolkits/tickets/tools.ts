@@ -63,12 +63,12 @@ const shared = {
 
 const ticket = TrimmedNonEmptyString.annotate({
   description:
-    "The ticket as its ticket id, T-42, or owner/repo#123 for a GitHub ticket. T-42 counts per project and means this thread's project's ticket; use the ticket id for any other.",
+    "The ticket as its ticket id, T-42, or owner/repo#123 for a GitHub ticket. T-42 counts per project: from a Vetra Code thread it means the thread's project's ticket; use the ticket id for any other.",
 });
 
 const plan = TrimmedNonEmptyString.annotate({
   description:
-    "The plan as its plan id, T-42/P1, or owner/repo#123/P1 for a GitHub ticket's plan. T-42 means this thread's project's ticket.",
+    "The plan as its plan id, T-42/P1, or owner/repo#123/P1 for a GitHub ticket's plan. From a Vetra Code thread, T-42 means the thread's project's ticket.",
 });
 
 const bodyAttachments = Schema.optional(
@@ -76,7 +76,7 @@ const bodyAttachments = Schema.optional(
     .check(Schema.isMaxLength(PROVIDER_SEND_TURN_MAX_ATTACHMENTS))
     .annotate({
       description:
-        "Pass {path} for an absolute file on this environment. Names, MIME types and sizes are inferred; sources remain untouched. Optional unique ref aliases place files with vetra-attachment://<ref> in the body. Images/videos embed with ![label](...) and other files link with [label](...). Results return canonical metadata in input order. Pending-upload metadata remains supported. Up to 100 files; images 10 MiB each and 80 MiB total, files/videos 50 MiB each.",
+        "Pass {path} for an absolute file on this environment. Names, MIME types and sizes are inferred; sources remain untouched. Optional unique ref aliases place files with vetra-attachment://<ref> in the body. Images/videos embed with ![label](...) and other files link with [label](...). Results return canonical metadata in input order. Pending-upload metadata remains supported, and is the only form outside clients may pass: upload with t3_attachment_prepare_upload first. Up to 100 files; images 10 MiB each and 80 MiB total, files/videos 50 MiB each.",
     }),
 );
 
@@ -106,7 +106,7 @@ export type AgentTicketLinkTarget = typeof AgentTicketLinkTarget.Type;
 const TicketListTool = Tool.make("t3_ticket_list", {
   ...shared,
   description:
-    "List tickets, most recently updated first, with the status set they move through. Every filter given must match. Without projectId or threadId, lists the tickets numbered in this thread's project; pass projectId to see tickets linked to another project. T-42 always means this project's ticket, so name a ticket whose homeProjectId is another project by its id.",
+    "List tickets, most recently updated first, with the status set they move through. Every filter given must match. From a Vetra Code thread without projectId or threadId, lists the tickets numbered in the thread's project, and T-42 always means that project's ticket, so name a ticket whose homeProjectId is another project by its id. Outside clients list every project's tickets and name a T-42 shared by several projects by its id.",
   parameters: Schema.Struct({
     status: Schema.optional(
       Schema.Union([TicketStatusCategory, TicketStatusId]).annotate({
@@ -162,7 +162,7 @@ const TicketGetTool = Tool.make("t3_ticket_get", {
 const TicketCreateTool = Tool.make("t3_ticket_create", {
   ...shared,
   description:
-    "Create a local ticket. It links this thread and its project unless linkCaller is false. An analyzer draft always links its recorded project and source thread instead of the analyzer thread. New tickets land in the default open status unless status is given. Add attachments in this call with attachments: [{path}]. Paths are absolute files on this server environment, including remote connections. Existing pending-upload metadata also works. Body references are optional and become canonical stored IDs. If the write outcome is uncertain, read the ticket before retrying to avoid duplicate attachments.",
+    "Create a local ticket. From a Vetra Code thread, it links that thread and its project unless linkCaller is false; an analyzer draft links its recorded project and source thread instead. Outside clients must pass a project link; t3_project_list shows the projects. New tickets land in the default open status unless status is given. Add attachments in this call with attachments: [{path}]. Paths are absolute files on this server environment, including remote connections. Existing pending-upload metadata also works. Body references are optional and become canonical stored IDs. If the write outcome is uncertain, read the ticket before retrying to avoid duplicate attachments.",
   parameters: Schema.Struct({
     title: TicketCreateInput.fields.title,
     body: TicketCreateInput.fields.body.annotate({ description: "Markdown." }),
@@ -173,7 +173,7 @@ const TicketCreateTool = Tool.make("t3_ticket_create", {
       Schema.Array(AgentTicketLinkTarget)
         .check(Schema.isMaxLength(TICKET_LINKS_MAX_COUNT))
         .annotate({
-          description: "Links to add besides this thread.",
+          description: "Links to add besides the calling thread.",
         }),
     ),
     linkCaller: Schema.optional(Schema.Boolean.annotate({ description: "Defaults to true." })),

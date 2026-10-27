@@ -20,7 +20,22 @@ import * as Stream from "effect/Stream";
 import { McpSchema, McpServer, Tool, Toolkit } from "effect/ai";
 import { HttpBody, HttpClient, HttpClientRequest, HttpRouter } from "effect/http";
 
+import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
+import * as GitWorkflowService from "../git/GitWorkflowService.ts";
+import * as ProviderAdapterRegistry from "../orchestration-v2/ProviderAdapterRegistry.ts";
+import * as ThreadLaunchService from "../orchestration-v2/ThreadLaunchService.ts";
+import * as ThreadSearch from "../orchestration-v2/ThreadSearch.ts";
+import * as ManagedProjectFolders from "../project/ManagedProjectFolders.ts";
+import * as ProjectSetupScriptRunner from "../project/ProjectSetupScriptRunner.ts";
 import * as ProjectService from "../project/ProjectService.ts";
+import * as DocumentText from "../provider/DocumentText.ts";
+import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
+import * as ScheduledTaskService from "../scheduledTasks/ScheduledTaskService.ts";
+import * as SecretRequests from "../secrets/SecretRequests.ts";
+import * as Repositories from "../sourceControl/SourceControlRepositoryService.ts";
+import * as TicketService from "../ticket/TicketService.ts";
+import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
+import * as VcsStatusBroadcaster from "../vcs/VcsStatusBroadcaster.ts";
 import * as PullRequestReviewGuideService from "../pullRequest/PullRequestReviewGuideService.ts";
 import * as ServerConfig from "../config.ts";
 import * as ServerSettings from "../serverSettings.ts";
@@ -954,6 +969,149 @@ it.effect("lists pull request watch tools only to threads that are not delegated
       expect(childTools).toContain("link_pull_request");
       expect(childTools).not.toContain("watch_pull_request");
       expect(childTools).not.toContain("unwatch_pull_request");
+    }),
+  ).pipe(Effect.provide(NodeHttpServer.layerTest)),
+);
+
+it.effect("lists a Tickets-only client ticket and project read tools and refuses the rest", () =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const clientScope = (
+        capabilities: ReadonlyArray<McpInvocationContext.McpCapability>,
+      ): McpInvocationContext.McpInvocationScope => ({
+        environmentId,
+        requestNamespace: "client:session-1",
+        thread: undefined,
+        client: { sessionId: "session-1", label: "ChatGPT", access: "full-access" },
+        capabilities: new Set(capabilities),
+        issuedAt: 1,
+      });
+      const scopes = new Map([
+        ["tickets.only", clientScope(["tickets"])],
+        ["all.tools", clientScope(["orchestration", "worktree", "pull-requests", "tickets"])],
+      ]);
+      const serverLayer = Layer.mergeAll(
+        McpHttpServer.layerOrchestratorToolkit,
+        McpHttpServer.layerThreadToolkit,
+        McpHttpServer.layerWorktreeToolkitRegistration,
+        McpHttpServer.layerProjectRegistration,
+        McpHttpServer.layerAttachmentToolkit,
+        McpHttpServer.layerTicketsToolkitRegistration,
+      ).pipe(
+        Layer.provideMerge(McpHttpServer.layerMcpTransport),
+        Layer.provide(
+          Layer.mock(McpSessionRegistry.McpSessionRegistry)({
+            resolve: () => Effect.undefined,
+          }),
+        ),
+        Layer.provide(
+          Layer.succeed(McpHttpServer.McpClientAuthenticator, {
+            authenticate: (request) =>
+              Effect.succeed(
+                scopes.get(request.headers.authorization?.slice("Bearer ".length) ?? ""),
+              ),
+          }),
+        ),
+        Layer.provide(
+          Layer.mergeAll(
+            McpToolAccessTestkit.liveThreadsLayer,
+            Layer.mock(ThreadLaunchService.ThreadLaunchService)({}),
+            Layer.mock(GitVcsDriver.GitVcsDriver)({}),
+            Layer.mock(GitWorkflowService.GitWorkflowService)({}),
+            Layer.mock(ProjectSetupScriptRunner.ProjectSetupScriptRunner)({}),
+            Layer.mock(VcsStatusBroadcaster.VcsStatusBroadcaster)({}),
+            Layer.mock(ProviderRegistry.ProviderRegistry)({}),
+            Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({}),
+            Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
+            Layer.mock(SecretRequests.SecretRequests)({}),
+            Layer.mock(ThreadSearch.ThreadSearch)({}),
+            Layer.mock(ProjectService.ProjectService)({}),
+            Layer.mock(ManagedProjectFolders.ManagedProjectFolders)({
+              namedProjectsRoot: "/projects",
+            }),
+            Layer.mock(Repositories.SourceControlRepositoryService)({}),
+            Layer.mock(TicketService.TicketService)({}),
+            Layer.mock(ServerSecretStore.ServerSecretStore)({}),
+            Layer.mock(DocumentText.DocumentText)({}),
+            ServerSettings.layerTest(),
+            ServerConfig.layerTest(process.cwd(), { prefix: "t3-mcp-tickets-only-" }),
+          ),
+        ),
+        Layer.provideMerge(NodeServices.layer),
+      );
+      yield* HttpRouter.serve(serverLayer, { disableListenLog: true, disableLogger: true }).pipe(
+        Layer.build,
+      );
+      const httpClient = yield* HttpClient.HttpClient;
+      const session = (token: string) =>
+        Effect.gen(function* () {
+          const headers = {
+            accept: "application/json, text/event-stream",
+            authorization: `Bearer ${token}`,
+          };
+          const initialize = yield* httpClient.post("/mcp", {
+            headers,
+            body: HttpBody.text(
+              `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"1.0.0"}}}`,
+              "application/json",
+            ),
+          });
+          return (id: number, method: string, params: object) =>
+            httpClient
+              .post("/mcp", {
+                headers: {
+                  ...headers,
+                  "mcp-session-id": initialize.headers["mcp-session-id"]!,
+                  "mcp-protocol-version": "2025-06-18",
+                },
+                body: HttpBody.text(
+                  JSON.stringify({ jsonrpc: "2.0", id, method, params }),
+                  "application/json",
+                ),
+              })
+              .pipe(Effect.flatMap((response) => response.json));
+        });
+      const listedTools = (token: string) =>
+        session(token).pipe(
+          Effect.flatMap((request) => request(2, "tools/list", {})),
+          Effect.map((body) =>
+            (
+              body as {
+                readonly result: { readonly tools: ReadonlyArray<{ readonly name: string }> };
+              }
+            ).result.tools
+              .map((tool) => tool.name)
+              .toSorted(),
+          ),
+        );
+
+      const ticketsOnly = yield* listedTools("tickets.only");
+      expect(ticketsOnly.filter((name) => !name.startsWith("t3_ticket_"))).toEqual([
+        "t3_attachment_discard",
+        "t3_attachment_prepare_upload",
+        "t3_project_list",
+        "t3_project_read",
+      ]);
+      expect(ticketsOnly).toEqual(
+        expect.arrayContaining(["t3_ticket_create", "t3_ticket_plan_reopen_comment"]),
+      );
+      expect(yield* listedTools("all.tools")).toEqual(
+        expect.arrayContaining([
+          "t3_thread_list",
+          "t3_thread_launch",
+          "t3_project_create",
+          "t3_worktree_list",
+          "t3_thread_send_attachments",
+          ...ticketsOnly,
+        ]),
+      );
+
+      const request = yield* session("tickets.only");
+      const threadList = (yield* request(3, "tools/call", {
+        name: "t3_thread_list",
+        arguments: {},
+      })) as { readonly error?: { readonly message: string } };
+      expect(threadList.error?.message).toBe("Tool 't3_thread_list' not found");
     }),
   ).pipe(Effect.provide(NodeHttpServer.layerTest)),
 );

@@ -1,4 +1,5 @@
 import {
+  AuthSessionId,
   ProjectId,
   ThreadId,
   TicketId,
@@ -18,6 +19,11 @@ const START = Date.parse("2026-10-03T14:00:00.000Z");
 const USER = { type: "user" } as const;
 const AUTOMATION = { type: "automation" } as const;
 const agent = (thread: string): TicketActor => ({ type: "agent", threadId: ThreadId.make(thread) });
+const client = (session: string): TicketActor => ({
+  type: "client",
+  sessionId: AuthSessionId.make(session),
+  label: "Claude Code",
+});
 
 type Entry = TicketActivity["entry"];
 const created: Entry = { type: "created" };
@@ -93,6 +99,20 @@ describe("groupTicketActivity", () => {
       { type: "entry", index: 2 },
       { type: "group", id: 4, family: EDITS, start: 3, end: 5 },
       { type: "entry", index: 5 },
+    ]);
+  });
+
+  it("groups an outside agent's burst by its session, not its name", () => {
+    const activity = timeline(
+      [0, client("session-a"), edit],
+      [10, client("session-a"), edit],
+      [20, client("session-b"), edit],
+      [30, agent("thread-a"), edit],
+    );
+    expect(groupTicketActivity(activity)).toEqual([
+      { type: "group", id: 1, family: EDITS, start: 0, end: 2 },
+      { type: "entry", index: 2 },
+      { type: "entry", index: 3 },
     ]);
   });
 

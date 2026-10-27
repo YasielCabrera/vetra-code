@@ -2,6 +2,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 import {
+  AuthSessionId,
   IsoDateTime,
   NonNegativeInt,
   PositiveInt,
@@ -74,6 +75,12 @@ export type TicketStatusSet = typeof TicketStatusSet.Type;
 export const TicketActor = Schema.Union([
   Schema.Struct({ type: Schema.Literal("user") }),
   Schema.Struct({ type: Schema.Literal("agent"), threadId: ThreadId }),
+  /** An agent signed in to the MCP server from outside Vetra Code. */
+  Schema.Struct({
+    type: Schema.Literal("client"),
+    sessionId: AuthSessionId,
+    label: TrimmedNonEmptyString,
+  }),
   Schema.Struct({ type: Schema.Literal("sync") }),
   Schema.Struct({ type: Schema.Literal("automation") }),
 ]);

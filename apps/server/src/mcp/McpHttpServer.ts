@@ -939,6 +939,29 @@ const withToolAnalytics =
     return yield* registration.pipe(Effect.provideService(McpServer.McpServer, recordingServer));
   });
 
+/** Hidden tools are also uncallable, so OAuth grants see only what their capabilities reach. */
+const listedFor = (capabilities: ReadonlyArray<McpInvocationContext.McpCapability> | undefined) =>
+  Effect.fn("McpHttpServer.listedFor")(function* <A, E, R>(registration: Effect.Effect<A, E, R>) {
+    if (capabilities === undefined) return yield* registration;
+    const server = yield* McpServer.McpServer;
+    const listed = McpInvocationContext.listedFor(capabilities);
+    const listingServer = McpServer.McpServer.of({
+      ...server,
+      addTool: Effect.fn("McpServer.addTool")(function (options) {
+        const own = Context.getOrUndefined(options.annotations, McpSchema.EnabledWhen);
+        return server.addTool({
+          ...options,
+          annotations: Context.add(
+            options.annotations,
+            McpSchema.EnabledWhen,
+            (profile) => listed() && (own === undefined || own(profile)),
+          ),
+        });
+      }),
+    });
+    return yield* registration.pipe(Effect.provideService(McpServer.McpServer, listingServer));
+  });
+
 /**
  * `McpServer.toolkit` asks for every service its tools declare when it
  * registers them, but the auth middleware provides `McpInvocationContext` to
@@ -948,9 +971,10 @@ const withToolAnalytics =
 export const toolkitRegistration = <Tools extends Record<string, Tool.Any>, EX, RX>(
   toolkit: Toolkit.Toolkit<Tools>,
   handlers: McpToolAccess.HandlersLayer<Tools, EX, RX>,
+  listedTo?: ReadonlyArray<McpInvocationContext.McpCapability>,
 ) => {
   const registration = Layer.effectDiscard(
-    withToolAnalytics(McpServer.registerToolkit(decodeAsAdvertised(toolkit))),
+    listedFor(listedTo)(withToolAnalytics(McpServer.registerToolkit(decodeAsAdvertised(toolkit)))),
   ).pipe(Layer.provide(McpServer.McpServer.layer));
   // @effect-diagnostics-next-line unsafeEffectTypeAssertion:off - the auth middleware provides it per request.
   const registered = registration as Layer.Layer<
@@ -964,19 +988,24 @@ export const toolkitRegistration = <Tools extends Record<string, Tool.Any>, EX, 
 const imageToolRegistration = <Tools extends Record<string, Tool.Any>, A, E, R, EX, RX>(
   register: Effect.Effect<A, E, R>,
   handlers: McpToolAccess.HandlersLayer<Tools, EX, RX>,
+  listedTo: ReadonlyArray<McpInvocationContext.McpCapability>,
 ) =>
-  Layer.effectDiscard(withToolAnalytics(register)).pipe(
+  Layer.effectDiscard(listedFor(listedTo)(withToolAnalytics(register))).pipe(
     Layer.provide(McpToolAccess.HandlersLayer.layer(handlers)),
   );
 
+/** Tools that act as the calling thread; OAuth clients have none. */
+const THREADS_ONLY: ReadonlyArray<McpInvocationContext.McpCapability> = [];
+
 export const layerHtmlToolkit = Layer.mergeAll(
-  toolkitRegistration(HtmlRenderToolkit, HtmlHandlers.layerRender),
-  imageToolRegistration(registerHtmlPreview(), HtmlHandlers.layerPreview),
+  toolkitRegistration(HtmlRenderToolkit, HtmlHandlers.layerRender, THREADS_ONLY),
+  imageToolRegistration(registerHtmlPreview(), HtmlHandlers.layerPreview, THREADS_ONLY),
 ).pipe(Layer.provide(HtmlRender.layer));
 
 const layerPreviewStandardToolkitRegistration = toolkitRegistration(
   PreviewStandardToolkit,
   PreviewHandlers.layerStandard,
+  ["preview"],
 );
 
 /** MCP toolkits cannot be removed after registration: enabling the wallet requires a restart.
@@ -995,13 +1024,14 @@ const layerPreviewWalletToolkitRegistration = Layer.unwrap(
     );
     if (!enabled) return Layer.empty;
     yield* Effect.logInfo("advertising preview wallet MCP tools", { toolCount: 5 });
-    return toolkitRegistration(PreviewWalletToolkit, PreviewWalletToolkitHandlersLive);
+    return toolkitRegistration(PreviewWalletToolkit, PreviewWalletToolkitHandlersLive, ["preview"]);
   }),
 );
 
 const layerPreviewSnapshotRegistration = imageToolRegistration(
   registerPreviewSnapshot(),
   PreviewHandlers.layerSnapshot,
+  ["preview"],
 );
 
 export const layerPreviewToolkit = Layer.mergeAll(
@@ -1013,50 +1043,62 @@ export const layerPreviewToolkit = Layer.mergeAll(
 export const layerOrchestratorToolkit = toolkitRegistration(
   OrchestratorToolkit,
   OrchestratorHandlers.layer,
+  ["orchestration"],
 ).pipe(Layer.provide(OrchestratorMcpService.layer), Layer.provide(ThreadMetadataMcpService.layer));
 
-export const layerThreadToolkit = toolkitRegistration(ThreadToolkit, ThreadHandlers.layer);
+export const layerThreadToolkit = toolkitRegistration(ThreadToolkit, ThreadHandlers.layer, [
+  "orchestration",
+]);
 
-const layerWorktreeToolkitRegistration = toolkitRegistration(
+export const layerWorktreeToolkitRegistration = toolkitRegistration(
   WorktreeToolkit,
   WorktreeHandlers.layer,
+  ["worktree"],
 ).pipe(Layer.provide(WorktreeMcpService.layer));
 
 const layerPreviewControlsRegistration = toolkitRegistration(
   PreviewControlsToolkit,
   PreviewControlsHandlers.layer,
+  ["preview"],
 );
 
-const layerEnvironmentToolkit = toolkitRegistration(
-  EnvironmentToolkit,
-  EnvironmentHandlers.layer,
-).pipe(Layer.provide(ThreadCommandExecutor.layer));
+const layerEnvironmentToolkit = toolkitRegistration(EnvironmentToolkit, EnvironmentHandlers.layer, [
+  "orchestration",
+]).pipe(Layer.provide(ThreadCommandExecutor.layer));
 
-const layerProjectRegistration = toolkitRegistration(ProjectToolkit, ProjectHandlers.layer);
+export const layerProjectRegistration = toolkitRegistration(ProjectToolkit, ProjectHandlers.layer, [
+  "orchestration",
+  "tickets",
+]);
 
 export const layerAttachmentToolkit = toolkitRegistration(
   AttachmentToolkit,
   AttachmentHandlers.layer,
+  ["orchestration", "tickets"],
 );
 
 export const layerPullRequestsToolkit = toolkitRegistration(
   PullRequestsToolkit,
   PullRequestsHandlers.layer,
+  ["pull-requests"],
 );
 
 const layerDeviceStandardToolkitRegistration = toolkitRegistration(
   DeviceStandardToolkit,
   DeviceHandlers.layerStandard,
+  ["device"],
 );
 
-const layerTicketsToolkitRegistration = toolkitRegistration(
+export const layerTicketsToolkitRegistration = toolkitRegistration(
   TicketsToolkit,
   TicketsToolkitHandlersLive,
+  ["tickets"],
 );
 
 const layerDeviceScreenshotRegistration = imageToolRegistration(
   registerDeviceScreenshot(),
   DeviceHandlers.layerScreenshot,
+  ["device"],
 );
 
 export const layerDeviceToolkit = Layer.mergeAll(

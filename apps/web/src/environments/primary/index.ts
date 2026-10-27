@@ -4,6 +4,7 @@ export {
 } from "./context";
 
 export {
+  createServerMcpClientToken,
   createServerPairingCredential,
   peekPairingTokenFromUrl,
   PrimaryEnvironmentPairingCredentialRejectedError,

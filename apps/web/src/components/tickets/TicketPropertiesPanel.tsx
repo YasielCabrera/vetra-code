@@ -269,9 +269,11 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
         ? "You"
         : summary.createdBy.type === "agent"
           ? "An agent"
-          : summary.createdBy.type === "automation"
-            ? "Auto-advance"
-            : "GitHub sync";
+          : summary.createdBy.type === "client"
+            ? `${summary.createdBy.label} (outside agent)`
+            : summary.createdBy.type === "automation"
+              ? "Auto-advance"
+              : "GitHub sync";
   const threadById = useMemo(
     () =>
       new Map(

@@ -5,6 +5,7 @@ import {
   type AuthClientMetadata,
   type AuthClientSession,
   type AuthEnvironmentScope,
+  AuthMcpClientTools,
   AuthWebSocketTicketUse,
   type ClientSurface,
   RuntimeMode,
@@ -60,6 +61,7 @@ export interface VerifiedSession {
   readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
   readonly proofKeyThumbprint?: string;
   readonly runtimeModeCeiling?: RuntimeMode;
+  readonly mcpTools?: AuthMcpClientTools;
 }
 
 export interface VerifiedWebSocketTicket extends VerifiedSession {
@@ -381,6 +383,7 @@ export class SessionStore extends Context.Service<
       readonly client?: AuthClientMetadata;
       readonly proofKeyThumbprint?: string;
       readonly runtimeModeCeiling?: RuntimeMode;
+      readonly mcpTools?: AuthMcpClientTools;
       readonly replaceActiveForSubjectAndMethod?: boolean;
       readonly replaceSessionId?: AuthSessionId;
     }) => Effect.Effect<IssuedSession, SessionCredentialInternalError>;
@@ -441,6 +444,7 @@ const SessionClaims = Schema.Struct({
   method: Schema.Literals(["browser-session-cookie", "bearer-access-token", "dpop-access-token"]),
   jkt: Schema.optionalKey(Schema.String),
   rtc: Schema.optionalKey(RuntimeMode),
+  tools: Schema.optionalKey(AuthMcpClientTools),
   iat: Schema.Number,
   exp: Schema.Number,
 });
@@ -569,6 +573,7 @@ const make = Effect.gen(function* () {
         scopes: row.value.scopes,
         method: row.value.method,
         client: toClientMetadata(row.value.client),
+        ...(row.value.mcpTools === null ? {} : { mcpTools: row.value.mcpTools }),
         issuedAt: row.value.issuedAt,
         expiresAt: row.value.expiresAt,
         lastConnectedAt: row.value.lastConnectedAt,
@@ -679,6 +684,7 @@ const make = Effect.gen(function* () {
         method: input?.method ?? "browser-session-cookie",
         ...(input?.proofKeyThumbprint ? { jkt: input.proofKeyThumbprint } : {}),
         ...(input?.runtimeModeCeiling ? { rtc: input.runtimeModeCeiling } : {}),
+        ...(input?.mcpTools ? { tools: input.mcpTools } : {}),
         iat: issuedAt.epochMilliseconds,
         exp: expiresAt.epochMilliseconds,
       };
@@ -712,6 +718,7 @@ const make = Effect.gen(function* () {
           os: client.os ?? null,
           browser: client.browser ?? null,
         },
+        ...(claims.tools ? { mcpTools: claims.tools } : {}),
         issuedAt,
         expiresAt,
       } satisfies AuthSessions.CreateAuthSessionInput;
@@ -746,6 +753,7 @@ const make = Effect.gen(function* () {
           scopes: claims.scopes,
           method: claims.method,
           client,
+          ...(claims.tools ? { mcpTools: claims.tools } : {}),
           issuedAt,
           expiresAt,
           lastConnectedAt: null,
@@ -860,6 +868,7 @@ const make = Effect.gen(function* () {
         scopes: claims.scopes,
         ...(claims.jkt ? { proofKeyThumbprint: claims.jkt } : {}),
         ...(claims.rtc ? { runtimeModeCeiling: claims.rtc } : {}),
+        ...(claims.tools ? { mcpTools: claims.tools } : {}),
       } satisfies VerifiedSession;
     },
   );
@@ -991,6 +1000,7 @@ const make = Effect.gen(function* () {
           scopes: row.scopes,
           method: row.method,
           client: toClientMetadata(row.client),
+          ...(row.mcpTools === null ? {} : { mcpTools: row.mcpTools }),
           issuedAt: row.issuedAt,
           expiresAt: row.expiresAt,
           lastConnectedAt: row.lastConnectedAt,

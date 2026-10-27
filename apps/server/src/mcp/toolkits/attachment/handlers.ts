@@ -46,15 +46,20 @@ const uploadOwner = McpInvocationContext.McpInvocationContext.pipe(
   Effect.map((scope) => scope.thread?.threadId ?? scope.requestNamespace),
 );
 
+const requireUploadCapability = McpInvocationContext.requireAnyMcpCapability(
+  ["orchestration", "tickets"],
+  "This credential cannot upload attachments.",
+);
+
 export const layer = McpToolAccess.toLayer(
   AttachmentToolkit,
   Effect.sync(() => {
     const uploadOwners = new Map<string, { readonly owner: string; readonly issuedAt: number }>();
     return {
-      t3_attachment_prepare_upload: McpToolAccess.writes((input) =>
+      t3_attachment_prepare_upload: McpToolAccess.writesWithCapability((input) =>
         Effect.gen(function* () {
+          const invocation = yield* requireUploadCapability;
           const httpServer = yield* HttpServer.HttpServer;
-          const invocation = yield* McpInvocationContext.McpInvocationContext;
           const request = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest);
           if (invocation.client !== undefined && Option.isNone(request)) {
             return yield* new OrchestratorMcpFailure({
@@ -90,8 +95,9 @@ export const layer = McpToolAccess.toLayer(
           return { ...result, uploadUrl: new URL(result.relativeUrl, origin.success).href };
         }),
       ),
-      t3_attachment_discard: McpToolAccess.writes((input) =>
+      t3_attachment_discard: McpToolAccess.writesWithCapability((input) =>
         Effect.gen(function* () {
+          yield* requireUploadCapability;
           if (uploadOwners.get(input.attachmentId)?.owner !== (yield* uploadOwner)) {
             return yield* new OrchestratorMcpFailure({
               code: "invalid_request",

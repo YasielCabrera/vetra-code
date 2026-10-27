@@ -236,6 +236,22 @@ it.live("registers loopback and https clients and never redirects for an unverif
   ),
 );
 
+const authenticateAtMcp = (auth: EnvironmentAuth.EnvironmentAuth["Service"], token: string) =>
+  McpHttpServer.McpClientAuthenticator.pipe(
+    Effect.provide(McpOAuth.layerMcpClientAuthenticator),
+    Effect.provideService(EnvironmentAuth.EnvironmentAuth, auth),
+    Effect.provide(
+      Layer.mock(ServerEnvironment.ServerEnvironment)({
+        getEnvironmentId: Effect.succeed(EnvironmentId.make("oauth-test")),
+      }),
+    ),
+    Effect.flatMap((authenticator) =>
+      authenticator.authenticate(
+        HttpServerRequest.fromWeb(at("/mcp", { headers: { authorization: `Bearer ${token}` } })),
+      ),
+    ),
+  );
+
 it.live("signs in with a pairing code and issues a token only /mcp accepts", () =>
   withRoutes((handler, auth) =>
     Effect.gen(function* () {
@@ -293,21 +309,14 @@ it.live("signs in with a pairing code and issues a token only /mcp accepts", () 
         ),
       );
       expect(client).toMatchObject({ label: "Claude Code", access: "auto" });
-      const authenticator = yield* McpHttpServer.McpClientAuthenticator.pipe(
-        Effect.provide(McpOAuth.layerMcpClientAuthenticator),
-        Effect.provideService(EnvironmentAuth.EnvironmentAuth, auth),
-        Effect.provide(
-          Layer.mock(ServerEnvironment.ServerEnvironment)({
-            getEnvironmentId: Effect.succeed(EnvironmentId.make("oauth-test")),
-          }),
-        ),
-      );
-      const invocation = yield* authenticator.authenticate(
-        HttpServerRequest.fromWeb(
-          at("/mcp", { headers: { authorization: `Bearer ${token.access_token}` } }),
-        ),
-      );
-      expect(invocation?.capabilities.has("tickets")).toBe(true);
+      expect(client.tools).toBeUndefined();
+      const invocation = yield* authenticateAtMcp(auth, token.access_token);
+      expect([...invocation!.capabilities]).toEqual([
+        "orchestration",
+        "worktree",
+        "pull-requests",
+        "tickets",
+      ]);
       expect(invocation?.thread).toBeUndefined();
 
       const session = yield* handler(
@@ -321,6 +330,135 @@ it.live("signs in with a pairing code and issues a token only /mcp accepts", () 
         }),
       );
       expect(ticket.status).toBe(401);
+    }),
+  ),
+);
+
+it.live("keeps a Tickets-only sign-in to ticket tools and shows it on the session", () =>
+  withRoutes((handler, auth) =>
+    Effect.gen(function* () {
+      const clientId = yield* registeredClientId(handler);
+      const params = authorizeParams(clientId);
+      const pairing = yield* auth.issuePairingCredential();
+      const approved = yield* decide(handler, params, {
+        _tag: "pairing-code",
+        access: "full-access",
+        tools: "tickets",
+        code: pairing.credential,
+      });
+      const token = yield* handler(
+        at(
+          "/oauth/mcp/token",
+          form({
+            grant_type: "authorization_code",
+            code: new URL(approved.redirectTo!).searchParams.get("code")!,
+            redirect_uri: params.redirect_uri,
+            client_id: clientId,
+            code_verifier: verifier,
+            resource: `${ORIGIN}/mcp`,
+          }),
+        ),
+      ).pipe(Effect.flatMap(json<{ access_token: string }>));
+
+      const client = yield* auth.authenticateMcpClient(
+        HttpServerRequest.fromWeb(
+          at("/mcp", { headers: { authorization: `Bearer ${token.access_token}` } }),
+        ),
+      );
+      const invocation = yield* authenticateAtMcp(auth, token.access_token);
+      const sessions = yield* auth.listClientSessions(client.sessionId);
+      expect(client).toMatchObject({ access: "full-access", tools: "tickets" });
+      expect([...invocation!.capabilities]).toEqual(["tickets"]);
+      expect(
+        sessions
+          .filter((session) => session.client.deviceType === "bot")
+          .map((session) => [session.client.label, session.mcpTools]),
+      ).toEqual([["Claude Code", "tickets"]]);
+    }),
+  ),
+);
+
+const mintMcpToken = (handler: Handler, bearer: string, payload: Record<string, string>) =>
+  handler(
+    at("/api/auth/mcp-client-token", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${bearer}` },
+      body: encodeJson(payload),
+    }),
+  );
+
+it.live("mints a Tickets-only token for an agent that cannot sign in with a browser", () =>
+  withRoutes((handler, auth) =>
+    Effect.gen(function* () {
+      const owner = yield* auth.issueSession({ scopes: [...AuthStandardClientScopes] });
+      const response = yield* mintMcpToken(handler, owner.token, {
+        label: "Ticket bot",
+        access: "auto",
+        tools: "tickets",
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      const minted = yield* json<{ token: string; sessionId: string }>(response);
+
+      const client = yield* auth.authenticateMcpClient(
+        HttpServerRequest.fromWeb(
+          at("/mcp", { headers: { authorization: `Bearer ${minted.token}` } }),
+        ),
+      );
+      const invocation = yield* authenticateAtMcp(auth, minted.token);
+      const sessions = yield* auth.listClientSessions(owner.sessionId);
+      expect(client).toEqual({
+        sessionId: minted.sessionId,
+        label: "Ticket bot",
+        access: "auto",
+        tools: "tickets",
+      });
+      expect([...invocation!.capabilities]).toEqual(["tickets"]);
+      expect(sessions.find((session) => session.sessionId === minted.sessionId)).toMatchObject({
+        client: { label: "Ticket bot", deviceType: "bot" },
+        mcpTools: "tickets",
+      });
+    }),
+  ),
+);
+
+it.live("mints MCP tokens only within the caller's own access", () =>
+  withRoutes((handler, auth) =>
+    Effect.gen(function* () {
+      const operator = yield* auth.issueSession({
+        scopes: ["orchestration:read", "orchestration:operate"],
+      });
+      const withoutAccessWrite = yield* mintMcpToken(handler, operator.token, {
+        label: "Bot",
+        access: "read-only",
+      });
+      expect(withoutAccessWrite.status).toBe(403);
+      expect(yield* json<unknown>(withoutAccessWrite)).toMatchObject({
+        requiredScope: "access:write",
+      });
+
+      const reader = yield* auth.issueSession({ scopes: ["access:write", "orchestration:read"] });
+      const beyondReader = yield* mintMcpToken(handler, reader.token, {
+        label: "Bot",
+        access: "approval-required",
+      });
+      expect(beyondReader.status).toBe(403);
+      expect(yield* json<unknown>(beyondReader)).toMatchObject({
+        requiredScope: "orchestration:operate",
+      });
+
+      const readOnly = yield* mintMcpToken(handler, reader.token, {
+        label: "Reader bot",
+        access: "read-only",
+      }).pipe(Effect.flatMap(json<{ token: string }>));
+      const invocation = yield* authenticateAtMcp(auth, readOnly.token);
+      expect(invocation?.client).toMatchObject({ label: "Reader bot", access: "read-only" });
+      expect([...invocation!.capabilities]).toEqual([
+        "orchestration",
+        "worktree",
+        "pull-requests",
+        "tickets",
+      ]);
     }),
   ),
 );

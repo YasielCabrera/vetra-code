@@ -30,7 +30,9 @@ import {
   isWslSettingsRowVisible,
   missingTailscaleEndpointDescription,
   resolveLocalVersionStatusLabel,
+  resolveMcpServerUrl,
 } from "./ConnectionsSettings.logic";
+import { McpServerRow } from "./ConnectAgentDialog";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
 import { LocalEnvironmentSetting } from "./LocalEnvironmentSetting";
 import { searchableSetting } from "./settingsSearch";
@@ -68,6 +70,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { Button } from "../ui/button";
 import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
 import {
+  readPrimaryEnvironmentTarget,
   revokeOtherServerClientSessions,
   revokeServerClientSession,
   revokeServerPairingLink,
@@ -629,6 +632,16 @@ export function ConnectionsSettings() {
   const defaultDesktopAdvertisedEndpointKey = defaultDesktopAdvertisedEndpoint
     ? endpointDefaultPreferenceKey(defaultDesktopAdvertisedEndpoint)
     : null;
+  const primaryHttpBaseUrl = readPrimaryEnvironmentTarget()?.target.httpBaseUrl ?? null;
+  const primaryMcpUrl =
+    primaryHttpBaseUrl === null
+      ? null
+      : resolveMcpServerUrl({
+          endpoints: visibleDesktopAdvertisedEndpoints,
+          defaultEndpointKey: defaultDesktopAdvertisedEndpointKey,
+          endpointUrl: desktopServerExposureState?.endpointUrl,
+          environmentBaseUrl: primaryHttpBaseUrl,
+        });
   const handleSetDefaultAdvertisedEndpoint = (endpoint: AdvertisedEndpoint) => {
     setDefaultAdvertisedEndpointKey(endpointDefaultPreferenceKey(endpoint));
   };
@@ -1133,6 +1146,14 @@ export function ConnectionsSettings() {
                   <CloudLinkRow canReadRelay={canReadRelay} canManageRelay={canManageRelay} />
                 ) : null}
               </>
+            ) : null}
+            {primaryMcpUrl !== null ? (
+              <McpServerRow
+                mcpUrl={primaryMcpUrl}
+                canCreateAccess={canWriteAccess}
+                delegatableScopes={currentSessionScopes ?? []}
+                onPairingLinkCreated={handlePairingLinkCreated}
+              />
             ) : null}
             {primaryEnvironment ? (
               <details className="group px-3 sm:px-4">

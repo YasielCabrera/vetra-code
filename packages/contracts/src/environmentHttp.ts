@@ -14,6 +14,7 @@ import {
   AuthBrowserSessionRequest,
   AuthBrowserSessionResult,
   AuthClientSession,
+  AuthCreateMcpClientTokenInput,
   AuthCreatePairingCredentialInput,
   AuthMcpApprovalDecisionRequest,
   AuthMcpApprovalDetails,
@@ -22,6 +23,7 @@ import {
   AuthMcpAuthorizationRequest,
   AuthMcpAuthorizationServerMetadata,
   AuthMcpClientRegistration,
+  AuthMcpClientTokenResult,
   AuthMcpProtectedResourceMetadata,
   AuthMcpRegisteredClient,
   AuthMcpRegistrationError,
@@ -116,6 +118,7 @@ export const EnvironmentInternalErrorReason = Schema.Literals([
   "access_token_issuance_failed",
   "websocket_ticket_issuance_failed",
   "pairing_credential_issuance_failed",
+  "mcp_client_token_issuance_failed",
   "pairing_links_load_failed",
   "pairing_link_revoke_failed",
   "client_sessions_load_failed",
@@ -578,6 +581,14 @@ class EnvironmentAuthHttpApi extends HttpApiGroup.make("auth")
       payload: AuthCreatePairingCredentialInput,
       success: AuthPairingCredentialResult,
       error: EnvironmentPairingCredentialErrors,
+    }).middleware(EnvironmentAuthenticatedAuth),
+  )
+  .add(
+    HttpApiEndpoint.post("mcpClientToken", "/api/auth/mcp-client-token", {
+      headers: OptionalBearerHeaders,
+      payload: AuthCreateMcpClientTokenInput,
+      success: AuthMcpClientTokenResult,
+      error: EnvironmentScopedOperationErrors,
     }).middleware(EnvironmentAuthenticatedAuth),
   )
   .add(

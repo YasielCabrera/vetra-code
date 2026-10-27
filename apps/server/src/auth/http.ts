@@ -17,6 +17,7 @@ import {
   EnvironmentScopeRequiredError,
   EnvironmentAuthenticatedAuth,
   EnvironmentAuthenticatedPrincipal,
+  mcpClientScopes,
 } from "@t3tools/contracts";
 import type { AuthEnvironmentScope, DpopFailureReason } from "@t3tools/contracts";
 import { parseOAuthScope } from "@t3tools/shared/oauthScope";
@@ -461,6 +462,30 @@ export const layer = HttpApiBuilder.group(
           },
           Effect.catchIf(EnvironmentAuth.isServerAuthInternalError, (error) =>
             failEnvironmentInternal("pairing_credential_issuance_failed", error),
+          ),
+        ),
+      )
+      .handle(
+        "mcpClientToken",
+        Effect.fn("environment.auth.mcpClientToken")(
+          function* (args) {
+            yield* annotateEnvironmentRequest(args.endpoint.name);
+            const session = yield* requireEnvironmentScope(AuthAccessWriteScope);
+            for (const scope of mcpClientScopes(args.payload.access)) {
+              if (!session.scopes.has(scope)) {
+                return yield* failEnvironmentScopeRequired(scope);
+              }
+            }
+            const request = yield* HttpServerRequest.HttpServerRequest;
+            const issued = yield* serverAuth.issueMcpClientSession({
+              ...args.payload,
+              client: deriveAuthClientMetadata({ request }),
+            });
+            yield* appendCredentialResponseHeaders;
+            return { ...issued, expiresAt: DateTime.toUtc(issued.expiresAt) };
+          },
+          Effect.catchIf(EnvironmentAuth.isServerAuthInternalError, (error) =>
+            failEnvironmentInternal("mcp_client_token_issuance_failed", error),
           ),
         ),
       )

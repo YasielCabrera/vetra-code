@@ -65,7 +65,14 @@ export function ticketActivityFamily(entry: TicketActivityEntry): TicketActivity
 }
 
 function actorKey(actor: TicketActor): string {
-  return actor.type === "agent" ? `agent:${actor.threadId}` : actor.type;
+  switch (actor.type) {
+    case "agent":
+      return `agent:${actor.threadId}`;
+    case "client":
+      return `client:${actor.sessionId}`;
+    default:
+      return actor.type;
+  }
 }
 
 /** A group's `id` is its first activity's, so entries joining later keep its expanded state. */

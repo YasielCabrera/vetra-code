@@ -10,6 +10,7 @@ import * as SqlSchema from "effect/sql/SqlSchema";
 import {
   AuthClientMetadataDeviceType,
   AuthEnvironmentScopes,
+  AuthMcpClientTools,
   AuthSessionId,
   ClientSurface,
   ServerAuthSessionMethod,
@@ -38,6 +39,7 @@ export const AuthSessionRecord = Schema.Struct({
   scopes: AuthEnvironmentScopes,
   method: ServerAuthSessionMethod,
   client: AuthSessionClientMetadataRecord,
+  mcpTools: Schema.NullOr(AuthMcpClientTools),
   issuedAt: Schema.DateTimeUtcFromString,
   expiresAt: Schema.DateTimeUtcFromString,
   lastConnectedAt: Schema.NullOr(Schema.DateTimeUtcFromString),
@@ -51,6 +53,7 @@ export const CreateAuthSessionInput = Schema.Struct({
   scopes: AuthEnvironmentScopes,
   method: ServerAuthSessionMethod,
   client: AuthSessionClientMetadataRecord,
+  mcpTools: Schema.optionalKey(AuthMcpClientTools),
   issuedAt: Schema.DateTimeUtcFromString,
   expiresAt: Schema.DateTimeUtcFromString,
 });
@@ -144,6 +147,7 @@ const AuthSessionDbRow = Schema.Struct({
   clientDeviceType: Schema.Literals(["desktop", "mobile", "tablet", "bot", "unknown"]),
   clientOs: Schema.NullOr(Schema.String),
   clientBrowser: Schema.NullOr(Schema.String),
+  mcpTools: Schema.NullOr(AuthMcpClientTools),
   issuedAt: Schema.DateTimeUtcFromString,
   expiresAt: Schema.DateTimeUtcFromString,
   lastConnectedAt: Schema.NullOr(Schema.DateTimeUtcFromString),
@@ -161,6 +165,7 @@ const AuthSessionRawDbRow = Schema.Struct({
   clientDeviceType: Schema.Unknown,
   clientOs: Schema.Unknown,
   clientBrowser: Schema.Unknown,
+  mcpTools: Schema.Unknown,
   issuedAt: Schema.Unknown,
   expiresAt: Schema.Unknown,
   lastConnectedAt: Schema.Unknown,
@@ -183,6 +188,7 @@ function toAuthSessionRecord(row: typeof AuthSessionDbRow.Type): AuthSessionReco
       os: row.clientOs,
       browser: row.clientBrowser,
     },
+    mcpTools: row.mcpTools,
     issuedAt: row.issuedAt,
     expiresAt: row.expiresAt,
     lastConnectedAt: row.lastConnectedAt,
@@ -250,6 +256,25 @@ export const make = Effect.gen(function* () {
   const createSessionRow = insertSessionRow(false);
   const createSessionRowIfAbsent = insertSessionRow(true);
 
+  const insertMcpToolsRow = SqlSchema.void({
+    Request: Schema.Struct({ sessionId: AuthSessionId, tools: AuthMcpClientTools }),
+    execute: ({ sessionId, tools }) =>
+      sql`
+        INSERT INTO vetra_auth_session_mcp_tools (session_id, tools)
+        VALUES (${sessionId}, ${tools})
+      `,
+  });
+  const createSession = (input: CreateAuthSessionInput) =>
+    input.mcpTools === undefined
+      ? createSessionRow(input)
+      : sql.withTransaction(
+          createSessionRow(input).pipe(
+            Effect.andThen(
+              insertMcpToolsRow({ sessionId: input.sessionId, tools: input.mcpTools }),
+            ),
+          ),
+        );
+
   const getSessionRowById = SqlSchema.findOneOption({
     Request: GetAuthSessionByIdInput,
     Result: AuthSessionRawDbRow,
@@ -266,6 +291,10 @@ export const make = Effect.gen(function* () {
           client_device_type AS "clientDeviceType",
           client_os AS "clientOs",
           client_browser AS "clientBrowser",
+          (
+            SELECT tools FROM vetra_auth_session_mcp_tools
+            WHERE vetra_auth_session_mcp_tools.session_id = auth_sessions.session_id
+          ) AS "mcpTools",
           issued_at AS "issuedAt",
           expires_at AS "expiresAt",
           last_connected_at AS "lastConnectedAt",
@@ -310,6 +339,10 @@ export const make = Effect.gen(function* () {
           client_device_type AS "clientDeviceType",
           client_os AS "clientOs",
           client_browser AS "clientBrowser",
+          (
+            SELECT tools FROM vetra_auth_session_mcp_tools
+            WHERE vetra_auth_session_mcp_tools.session_id = auth_sessions.session_id
+          ) AS "mcpTools",
           issued_at AS "issuedAt",
           expires_at AS "expiresAt",
           last_connected_at AS "lastConnectedAt",
@@ -371,7 +404,7 @@ export const make = Effect.gen(function* () {
   });
 
   const create: AuthSessionRepository["Service"]["create"] = (input) =>
-    createSessionRow(input).pipe(
+    createSession(input).pipe(
       Effect.mapError(
         toPersistenceSqlOrDecodeError(
           "AuthSessionRepository.create:query",
@@ -388,9 +421,7 @@ export const make = Effect.gen(function* () {
       .withTransaction(
         revokeActiveSessionsForReplacement(input).pipe(
           Effect.flatMap((revokedRows) =>
-            createSessionRow(input.session).pipe(
-              Effect.as(revokedRows.map((row) => row.sessionId)),
-            ),
+            createSession(input.session).pipe(Effect.as(revokedRows.map((row) => row.sessionId))),
           ),
         ),
       )

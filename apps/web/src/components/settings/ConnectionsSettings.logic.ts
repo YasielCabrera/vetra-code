@@ -352,6 +352,20 @@ export function selectPairingEndpoint(
   );
 }
 
+/** Agents reach `/mcp` on the host pairing links advertise, else on this environment's own origin. */
+export function resolveMcpServerUrl(input: {
+  readonly endpoints: ReadonlyArray<AdvertisedEndpoint>;
+  readonly defaultEndpointKey: string | null;
+  readonly endpointUrl: string | null | undefined;
+  readonly environmentBaseUrl: string;
+}): string {
+  const baseUrl =
+    selectPairingEndpoint(input.endpoints, input.defaultEndpointKey)?.httpBaseUrl ||
+    input.endpointUrl ||
+    input.environmentBaseUrl;
+  return new URL("/mcp", baseUrl).href;
+}
+
 export function isTailscaleHttpsEndpoint(endpoint: AdvertisedEndpoint): boolean {
   return endpoint.id.startsWith("tailscale-magicdns:");
 }

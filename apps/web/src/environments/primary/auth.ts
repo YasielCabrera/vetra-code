@@ -1,8 +1,11 @@
 import type {
   AuthBrowserSessionResult,
   AuthClientMetadata,
+  AuthCreateMcpClientTokenInput,
   AuthEnvironmentScope,
   AuthGrantScope,
+  AuthMcpClientTokenResult,
+  AuthMcpClientTools,
   AuthPairingCredentialResult,
   ServerAuthSessionMethod,
   AuthSessionId,
@@ -27,6 +30,7 @@ const PrimaryEnvironmentRequestOperation = Schema.Literals([
   "exchange-bootstrap-credential",
   "fetch-environment-descriptor",
   "create-pairing-credential",
+  "create-mcp-client-token",
   "list-pairing-links",
   "revoke-pairing-link",
   "list-client-sessions",
@@ -120,6 +124,7 @@ export interface ServerClientSessionRecord {
   readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
   readonly method: ServerAuthSessionMethod;
   readonly client: AuthClientMetadata;
+  readonly mcpTools?: AuthMcpClientTools;
   readonly issuedAt: string;
   readonly expiresAt: string;
   readonly lastConnectedAt: string | null;
@@ -369,6 +374,23 @@ export async function createServerPairingCredential(input?: {
   } catch (error) {
     throw PrimaryEnvironmentRequestError.fromCause({
       operation: "create-pairing-credential",
+      cause: error,
+    });
+  }
+}
+
+export async function createServerMcpClientToken(
+  payload: AuthCreateMcpClientTokenInput,
+): Promise<AuthMcpClientTokenResult> {
+  try {
+    return await runPrimaryHttp(
+      PrimaryEnvironmentHttpClient.pipe(
+        Effect.flatMap((client) => client.auth.mcpClientToken({ headers: {}, payload })),
+      ),
+    );
+  } catch (error) {
+    throw PrimaryEnvironmentRequestError.fromCause({
+      operation: "create-mcp-client-token",
       cause: error,
     });
   }

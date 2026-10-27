@@ -13,8 +13,15 @@ import * as ServerSettings from "../../../serverSettings.ts";
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import { formatThreadLink } from "@t3tools/shared/threadLinks";
 import { resolveRuntimeMode } from "../../OrchestratorMcpService.ts";
+import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
-import { newCommandId, readCaller, resolveProjectId, unavailable } from "../../threadAccess.ts";
+import {
+  loadCaller,
+  newCommandId,
+  readCaller,
+  resolveProjectId,
+  unavailable,
+} from "../../threadAccess.ts";
 import { ProjectToolkit } from "./tools.ts";
 
 function projectFailure(error: Project.ProjectServiceError) {
@@ -49,7 +56,11 @@ const assertProjectWorktree = Effect.fn("mcp.assertProjectWorktree")(function* (
 });
 
 const access = Effect.gen(function* () {
-  yield* readCaller();
+  yield* McpInvocationContext.requireAnyMcpCapability(
+    ["orchestration", "tickets"],
+    "This credential cannot read projects.",
+  );
+  yield* loadCaller();
   return yield* Project.ProjectService;
 });
 export const layer = McpToolAccess.toLayer(ProjectToolkit, {

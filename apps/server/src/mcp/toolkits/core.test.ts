@@ -802,8 +802,8 @@ it.effect("discovers workflow stop targets and requires orchestration capability
           Effect.provideService(McpInvocationContext.McpInvocationContext, invocation),
           Effect.provideService(McpSchema.McpServerClient, client),
         );
-    const denied = yield* call({ ...scope, capabilities: new Set(["worktree"]) });
-    expect(declaredFailure(denied)).toMatchObject({ code: "capability_denied" });
+    const denied = yield* call({ ...scope, capabilities: new Set(["worktree"]) }).pipe(Effect.flip);
+    expect(denied.message).toBe("Tool 't3_workflow_stop' not found");
     expect(stopped).toEqual([]);
     const allowed = yield* call(scope);
     expect(allowed.isError).toBe(false);

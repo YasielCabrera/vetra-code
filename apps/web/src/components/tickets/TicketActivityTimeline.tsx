@@ -13,6 +13,7 @@ import {
   ArchiveIcon,
   ArchiveRestoreIcon,
   BotIcon,
+  BotMessageSquareIcon,
   CircleDotIcon,
   CheckIcon,
   ChevronRightIcon,
@@ -127,6 +128,7 @@ function describeEntry(
 const ACTOR_ICONS = {
   user: UserRoundIcon,
   agent: BotIcon,
+  client: BotMessageSquareIcon,
   sync: GitHubIcon,
   automation: ZapIcon,
 };
@@ -181,7 +183,7 @@ function ActivityMarker(props: { readonly activity: TicketActivity }) {
   );
 }
 
-/** Who did something to a ticket: "You", "GitHub sync", or an agent by its thread's title. */
+/** Who did something to a ticket: "You", "GitHub sync", an agent by its thread's title, or an outside agent by name. */
 function ticketActorName(actor: TicketActor, threadTitle: string | undefined): string {
   switch (actor.type) {
     case "user":
@@ -192,6 +194,8 @@ function ticketActorName(actor: TicketActor, threadTitle: string | undefined): s
       return "Auto-advance";
     case "agent":
       return threadTitle === undefined ? "An agent" : `An agent in “${threadTitle}”`;
+    case "client":
+      return `${actor.label} (outside agent)`;
   }
 }
 

@@ -12,7 +12,7 @@ import {
 import * as Crypto from "effect/Crypto";
 import * as FileSystem from "effect/FileSystem";
 import * as Schema from "effect/Schema";
-import { Tool, Toolkit } from "effect/ai";
+import { McpSchema, Tool, Toolkit } from "effect/ai";
 import * as HttpServer from "effect/http/HttpServer";
 import * as ServerSecretStore from "../../../auth/ServerSecretStore.ts";
 import * as ServerConfig from "../../../config.ts";
@@ -68,7 +68,8 @@ const AttachmentSendTool = Tool.make("t3_thread_send_attachments", {
   }),
 })
   .annotate(Tool.Destructive, true)
-  .annotate(Tool.OpenWorld, true);
+  .annotate(Tool.OpenWorld, true)
+  .annotate(McpSchema.EnabledWhen, McpInvocationContext.listedFor(["orchestration"]));
 export const AttachmentToolkit = Toolkit.make(
   AttachmentUploadTool,
   AttachmentDiscardTool,

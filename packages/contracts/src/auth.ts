@@ -282,12 +282,17 @@ export const AuthClientMetadata = Schema.Struct({
 });
 export type AuthClientMetadata = typeof AuthClientMetadata.Type;
 
+/** Narrows an MCP client below every tool its access allows. Absent means all tools. */
+export const AuthMcpClientTools = Schema.Literal("tickets");
+export type AuthMcpClientTools = typeof AuthMcpClientTools.Type;
+
 export const AuthClientSession = Schema.Struct({
   sessionId: AuthSessionId,
   subject: TrimmedNonEmptyString,
   ...authScopeResponseFields,
   method: ServerAuthSessionMethod,
   client: AuthClientMetadata,
+  mcpTools: Schema.optionalKey(AuthMcpClientTools),
   issuedAt: Schema.DateTimeUtc,
   expiresAt: Schema.DateTimeUtc,
   lastConnectedAt: Schema.NullOr(Schema.DateTimeUtc),
@@ -408,6 +413,40 @@ export const AuthMcpClientAccess = Schema.Literals([
 ]);
 export type AuthMcpClientAccess = typeof AuthMcpClientAccess.Type;
 
+export const mcpClientScopes = (access: AuthMcpClientAccess): ReadonlyArray<AuthGrantScope> =>
+  access === "read-only"
+    ? [AuthOrchestrationReadScope]
+    : access === "full-access"
+      ? [
+          AuthOrchestrationReadScope,
+          AuthOrchestrationOperateScope,
+          AuthSettingsWriteScope,
+          AuthSourceControlWriteScope,
+        ]
+      : [AuthOrchestrationReadScope, AuthOrchestrationOperateScope];
+
+/** A session can hand out only the access levels whose scopes it holds. */
+export const grantableMcpClientAccess = (
+  scopes: ReadonlyArray<AuthEnvironmentScope>,
+): ReadonlyArray<AuthMcpClientAccess> =>
+  AuthMcpClientAccess.literals.filter((access) =>
+    mcpClientScopes(access).every((scope) => scopes.includes(scope)),
+  );
+
+export const AuthCreateMcpClientTokenInput = Schema.Struct({
+  label: TrimmedNonEmptyString,
+  access: AuthMcpClientAccess,
+  tools: Schema.optionalKey(AuthMcpClientTools),
+});
+export type AuthCreateMcpClientTokenInput = typeof AuthCreateMcpClientTokenInput.Type;
+
+export const AuthMcpClientTokenResult = Schema.Struct({
+  token: TrimmedNonEmptyString,
+  sessionId: AuthSessionId,
+  expiresAt: Schema.DateTimeUtc,
+});
+export type AuthMcpClientTokenResult = typeof AuthMcpClientTokenResult.Type;
+
 export const AuthMcpProtectedResourceMetadata = Schema.Struct({
   resource: Schema.String,
   authorization_servers: Schema.Array(Schema.String),
@@ -495,10 +534,12 @@ export const AuthMcpApprovalDecision = Schema.Union([
   Schema.TaggedStruct("deny", {}),
   Schema.TaggedStruct("pairing-code", {
     access: AuthMcpClientAccess,
+    tools: Schema.optionalKey(AuthMcpClientTools),
     code: TrimmedNonEmptyString,
   }),
   Schema.TaggedStruct("browser-session", {
     access: AuthMcpClientAccess,
+    tools: Schema.optionalKey(AuthMcpClientTools),
     csrfToken: Schema.String,
   }),
 ]);

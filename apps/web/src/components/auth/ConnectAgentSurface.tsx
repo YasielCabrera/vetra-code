@@ -2,12 +2,10 @@ import {
   type AuthMcpApprovalDecision,
   type AuthMcpApprovalDetails,
   AuthMcpApprovalError,
-  AuthMcpClientAccess,
+  type AuthMcpClientAccess,
   type AuthMcpAuthorizationRequest,
 } from "@t3tools/contracts";
-import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 import { isLoopbackHost } from "@t3tools/shared/preview";
-import { EyeIcon, type LucideIcon } from "lucide-react";
 import type * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -15,26 +13,12 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import { PrimaryEnvironmentHttpClient } from "~/environments/primary/httpClient";
 import { runPrimaryHttp } from "~/lib/runtime";
-import { cn } from "~/lib/utils";
-import { runtimeModeConfig } from "../chat/runtimeModeConfig";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { RadioGroup } from "../ui/radio-group";
 import { Spinner } from "../ui/spinner";
 import { AuthSurfaceShell } from "./AuthSurfaceShell";
-
-const accessConfig: Record<
-  AuthMcpClientAccess,
-  { readonly label: string; readonly description: string; readonly icon: LucideIcon }
-> = {
-  "read-only": {
-    label: "Read only",
-    description: "Read projects and threads. Cannot start, message or change anything.",
-    icon: EyeIcon,
-  },
-  ...runtimeModeConfig,
-};
+import { McpClientGrantFields, type McpToolsChoice } from "./McpClientGrantFields";
 
 function redirectsToThisComputer(redirectHost: string): boolean {
   return isLoopbackHost(new URL(`http://${redirectHost}`).hostname);
@@ -89,6 +73,7 @@ export function ConnectAgentSurface() {
   const [authorization] = useState(readAuthorizationRequest);
   const [loaded, setLoaded] = useState<Loaded>({ status: "loading" });
   const [access, setAccess] = useState<AuthMcpClientAccess>("read-only");
+  const [tools, setTools] = useState<McpToolsChoice>("all");
   const [pairingCode, setPairingCode] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [pending, setPending] = useState<"approve" | "deny" | null>(null);
@@ -119,12 +104,13 @@ export function ConnectAgentSurface() {
     setPending(choice);
     setErrorMessage("");
     const { csrfToken } = loaded.details;
+    const grant = { access, ...(tools === "tickets" ? { tools } : {}) };
     const decision: AuthMcpApprovalDecision =
       choice === "deny"
         ? { _tag: "deny" }
         : csrfToken !== undefined && oneClickApproves(loaded.details, access)
-          ? { _tag: "browser-session", access, csrfToken }
-          : { _tag: "pairing-code", access, code: pairingCode.trim() };
+          ? { _tag: "browser-session", ...grant, csrfToken }
+          : { _tag: "pairing-code", ...grant, code: pairingCode.trim() };
     const answer = await runApproval((client) =>
       client.mcpOAuth.decision({ payload: { authorization, decision } }),
     );
@@ -169,7 +155,8 @@ export function ConnectAgentSurface() {
         title={`Connect ${details.clientName}`}
         description={
           <>
-            This agent wants to use the threads in every project on{" "}
+            This agent wants to use the {tools === "tickets" ? "tickets" : "threads"} in every
+            project on{" "}
             <span className="font-medium text-foreground">{details.environmentHost}</span>.
           </>
         }
@@ -196,24 +183,12 @@ export function ConnectAgentSurface() {
           if (canApprove) void decide("approve");
         }}
       >
-        <div className="space-y-2">
-          <span id="connect-agent-access-label" className="text-sm font-medium">
-            What it may do
-          </span>
-          <RadioGroup
-            aria-labelledby="connect-agent-access-label"
-            value={access}
-            onValueChange={(value) => setAccess(value as AuthMcpClientAccess)}
-          >
-            {AuthMcpClientAccess.literals.map((option) => (
-              <AccessOption key={option} access={option} selected={option === access} />
-            ))}
-          </RadioGroup>
-          <p className="text-xs text-muted-foreground">
-            Beyond read only, it can start, message and stop threads, and none of them can run with
-            more than the mode you pick.
-          </p>
-        </div>
+        <McpClientGrantFields
+          access={access}
+          onAccessChange={setAccess}
+          tools={tools}
+          onToolsChange={setTools}
+        />
 
         {oneClick ? null : (
           <div className="space-y-2">
@@ -233,8 +208,8 @@ export function ConnectAgentSurface() {
               value={pairingCode}
             />
             <p className="text-xs text-muted-foreground">
-              Create one in Settings → Connections, or run <code>vetra auth pairing create</code> on
-              this machine.
+              Create one in Settings → Connections → Connect an agent, or run{" "}
+              <code>vetra auth pairing create</code> on this machine.
             </p>
           </div>
         )}
@@ -276,39 +251,5 @@ function ConnectAgentHeading({
       <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
     </>
-  );
-}
-
-function AccessOption({
-  access,
-  selected,
-}: {
-  readonly access: AuthMcpClientAccess;
-  readonly selected: boolean;
-}) {
-  const { label, description, icon: Icon } = accessConfig[access];
-  return (
-    <RadioPrimitive.Root
-      value={access}
-      className={cn(
-        "flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-left outline-none transition-[background-color,border-color,box-shadow]",
-        "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-        selected
-          ? "border-primary bg-background ring-2 ring-inset ring-primary/25 dark:border-transparent dark:bg-primary/10 dark:ring-1 dark:ring-primary/30"
-          : "border-border bg-background hover:bg-muted/50 dark:border-transparent dark:bg-white/[0.035] dark:hover:bg-accent",
-      )}
-    >
-      <Icon
-        aria-hidden
-        className={cn(
-          "mt-0.5 size-4 shrink-0",
-          selected ? "text-primary" : "text-muted-foreground",
-        )}
-      />
-      <span className="min-w-0">
-        <span className="block text-sm font-medium text-foreground">{label}</span>
-        <span className="block text-xs text-muted-foreground">{description}</span>
-      </span>
-    </RadioPrimitive.Root>
   );
 }
