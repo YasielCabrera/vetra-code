@@ -141,6 +141,7 @@ FORK_OWNED_PATHS=(
 # names this fork shares with upstream, and rewriting them is what used to make
 # every merge a conflict.
 RENAMES=(
+  'assets/prod/t3-black-=assets/prod/vetra-black-'
   't3coderelay-managedendpoint=vetracoderelay-managedendpoint'
   # Upstream tells users to run the published CLI as `npx t3 <cmd>`. The fork's
   # server package is private, so there is no npx entry point; the command is
