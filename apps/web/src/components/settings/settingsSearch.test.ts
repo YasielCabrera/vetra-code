@@ -14,6 +14,7 @@ import {
   isSettingsSearchScopeAvailable,
   movedSettingsPath,
   searchSettings,
+  SETTINGS_NAV_GROUPS,
   SETTINGS_SEARCH_ITEMS,
   sourceControlHostSearchItems,
   sourceControlHostSettingsSearchId,
@@ -50,6 +51,17 @@ const ITEMS: ReadonlyArray<SettingsSearchItem> = [
     to: "/settings/general",
   },
 ];
+
+describe("settings navigation", () => {
+  it("keeps Tickets and Web3 reachable from the settings sidebar", () => {
+    expect(SETTINGS_NAV_GROUPS.find((group) => group.heading === "Code")?.paths).toContain(
+      "/settings/tickets",
+    );
+    expect(SETTINGS_NAV_GROUPS.find((group) => group.heading === "Connections")?.paths).toContain(
+      "/settings/web3",
+    );
+  });
+});
 
 describe("searchSettings", () => {
   it("matches titles, sections, and remembered setting details", () => {
