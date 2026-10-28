@@ -24,6 +24,19 @@ Treat a base directory as disposable only when it was created or deliberately se
 
 The worktree-local default deliberately outranks an ambient `VETRA_HOME`; do not pass the shared home through to a worktree dev server.
 
+## Drive agent turns for free
+
+Do not spend a paid model to see a turn render. `vp run dev` registers the
+`Replay (dev)` provider, which replays recorded turns with simulated streaming
+through the real adapter and orchestration. Its models are scenarios:
+`showcase` covers thinking, a plan, tool calls, an approval, and markdown.
+Press `Ctrl+Alt+Shift+R` for a picker (GNOME takes that key for screen
+recording), call `window.t3dev.replay("showcase")`
+with `preview_evaluate`, or run
+`node apps/server/src/bin.ts thread start --base-dir .t3 --provider devReplay --model showcase <project> "go"`.
+When the test needs real provider behavior, use that provider's cheapest
+model, such as Haiku for Claude or Luna for Codex.
+
 ## Use the Browser panel
 
 Call `preview_status`, then `preview_open` if the Browser panel is closed.

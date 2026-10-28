@@ -9,6 +9,7 @@ import {
   filterPinnedBrowseEntries,
   filterCommandPaletteGroups,
   reduceCommandPaletteUiState,
+  resolveAddProjectEntry,
   createCommandPaletteSearchState,
   reduceCommandPaletteSearchState,
   type CommandPaletteUiState,
@@ -32,7 +33,13 @@ describe("linked pull request thread navigation", () => {
       ],
     };
     const state = reduceCommandPaletteUiState(
-      { open: false, mode: "command", openIntent: null, addProjectCompletion: "open-thread" },
+      {
+        open: false,
+        mode: "command",
+        openIntent: null,
+        session: 0,
+        addProjectCompletion: "open-thread",
+      },
       {
         _tag: "OpenSearch",
         query,
@@ -61,12 +68,19 @@ describe("reduceCommandPaletteUiState", () => {
     open: false,
     mode: "command",
     openIntent: null,
+    session: 0,
     addProjectCompletion: "open-thread",
   } as const;
 
   it("opens PR search from another overlay and replaces an earlier search", () => {
     const first = reduceCommandPaletteUiState(
-      { open: true, mode: "files", openIntent: null, addProjectCompletion: "open-thread" },
+      {
+        open: true,
+        mode: "files",
+        openIntent: null,
+        session: 0,
+        addProjectCompletion: "open-thread",
+      },
       {
         _tag: "OpenSearch",
         query: "https://github.com/acme/web/pull/7",
@@ -75,6 +89,7 @@ describe("reduceCommandPaletteUiState", () => {
     expect(first).toEqual({
       open: true,
       mode: "command",
+      session: 1,
       addProjectCompletion: "open-thread",
       openIntent: { kind: "search", query: "https://github.com/acme/web/pull/7" },
     });
@@ -86,6 +101,8 @@ describe("reduceCommandPaletteUiState", () => {
       kind: "search",
       query: "https://github.com/acme/web/pull/8",
     });
+    // The second intent starts a new session, so the open palette starts over from it.
+    expect(second.session).toBe(2);
     expect(
       reduceCommandPaletteUiState(second, { _tag: "SetOpen", open: false }).openIntent,
     ).toBeNull();
@@ -97,6 +114,7 @@ describe("reduceCommandPaletteUiState", () => {
       open: true,
       mode: "command",
       openIntent: { kind: "add-project" },
+      session: 1,
       addProjectCompletion: "open-thread",
     });
     expect(
@@ -105,6 +123,7 @@ describe("reduceCommandPaletteUiState", () => {
       open: true,
       mode: "command",
       openIntent: { kind: "add-project" },
+      session: 1,
       addProjectCompletion: "select",
     });
   });
@@ -120,6 +139,7 @@ describe("reduceCommandPaletteUiState", () => {
       open: true,
       mode: "command",
       openIntent: null,
+      session: 1,
       addProjectCompletion: "select",
     });
   });
@@ -133,6 +153,7 @@ describe("reduceCommandPaletteUiState", () => {
       open: false,
       mode: "command",
       openIntent: null,
+      session: 1,
       addProjectCompletion: "open-thread",
     });
   });
@@ -146,7 +167,53 @@ describe("reduceCommandPaletteUiState", () => {
       open: true,
       mode: "files",
       openIntent: null,
+      session: 1,
       addProjectCompletion: "open-thread",
+    });
+  });
+
+  it("keeps the session across mode switches so only intents start the palette over", () => {
+    let state: CommandPaletteUiState = {
+      open: false,
+      mode: "command",
+      openIntent: null,
+      session: 0,
+      addProjectCompletion: "open-thread",
+    };
+    state = reduceCommandPaletteUiState(state, { _tag: "OpenNewThreadIn" });
+    expect(state).toMatchObject({ open: true, openIntent: { kind: "new-thread-in" }, session: 1 });
+    state = reduceCommandPaletteUiState(state, { _tag: "ToggleMode", mode: "files" });
+    expect(state).toMatchObject({ mode: "files", openIntent: null, session: 1 });
+    state = reduceCommandPaletteUiState(state, { _tag: "OpenAddProject" });
+    expect(state).toMatchObject({
+      mode: "command",
+      openIntent: { kind: "add-project" },
+      session: 2,
+    });
+  });
+});
+
+describe("resolveAddProjectEntry", () => {
+  const local = EnvironmentId.make("local");
+  const remote = EnvironmentId.make("remote");
+
+  it("sends the user to connect an environment when none can add a project", () => {
+    expect(resolveAddProjectEntry([], null)).toEqual({ kind: "connect-environment" });
+  });
+
+  it("asks for an environment when there is a choice or no connected default", () => {
+    expect(
+      resolveAddProjectEntry([{ environmentId: local }, { environmentId: remote }], local),
+    ).toEqual({ kind: "choose-environment" });
+    expect(resolveAddProjectEntry([{ environmentId: local }], null)).toEqual({
+      kind: "choose-environment",
+    });
+  });
+
+  it("goes straight to sources for the only environment", () => {
+    expect(resolveAddProjectEntry([{ environmentId: local }], local)).toEqual({
+      kind: "choose-source",
+      environmentId: local,
     });
   });
 });
@@ -896,6 +963,7 @@ describe("returning from file and content search", () => {
     open: true,
     mode: "command",
     openIntent: null,
+    session: 0,
     addProjectCompletion: "open-thread",
   };
   const query = "https://github.com/acme/web/pull/7";
@@ -936,6 +1004,7 @@ describe("returning from file and content search", () => {
       open: false,
       mode: "files",
       openIntent: null,
+      session: 0,
       addProjectCompletion: "open-thread",
     });
     expect(reduceCommandPaletteUiState(closed, { _tag: "BackToCommand" })).toEqual(closed);

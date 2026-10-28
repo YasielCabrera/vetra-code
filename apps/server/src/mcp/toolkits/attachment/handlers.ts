@@ -56,58 +56,62 @@ export const layer = McpToolAccess.toLayer(
   Effect.sync(() => {
     const uploadOwners = new Map<string, { readonly owner: string; readonly issuedAt: number }>();
     return {
-      t3_attachment_prepare_upload: McpToolAccess.writesWithCapability((input) =>
-        Effect.gen(function* () {
-          const invocation = yield* requireUploadCapability;
-          const httpServer = yield* HttpServer.HttpServer;
-          const request = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest);
-          if (invocation.client !== undefined && Option.isNone(request)) {
-            return yield* new OrchestratorMcpFailure({
-              code: "orchestration_error",
-              message: "Outside clients need an HTTP request origin to upload attachments.",
-            });
-          }
-          let origin = providerHttpOrigin(httpServer.address);
-          if (invocation.client !== undefined && Option.isSome(request)) {
-            const url = HttpServerRequest.toURL(request.value);
-            if (Option.isNone(url)) {
+      t3_attachment_prepare_upload: McpToolAccess.writesWithCapability(
+        (input) =>
+          Effect.gen(function* () {
+            const invocation = yield* requireUploadCapability;
+            const httpServer = yield* HttpServer.HttpServer;
+            const request = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest);
+            if (invocation.client !== undefined && Option.isNone(request)) {
               return yield* new OrchestratorMcpFailure({
                 code: "orchestration_error",
-                message: "The upload request origin is invalid.",
+                message: "Outside clients need an HTTP request origin to upload attachments.",
               });
             }
-            origin = Result.succeed(url.value.origin);
-          }
-          if (Result.isFailure(origin)) {
-            return yield* new OrchestratorMcpFailure({
-              code: "orchestration_error",
-              message: origin.failure.message,
-            });
-          }
-          const result = yield* Upload.issueAttachmentUploadUrl(input.upload).pipe(
-            Effect.mapError(unavailable),
-          );
-          const now = yield* Clock.currentTimeMillis;
-          for (const [id, entry] of uploadOwners) {
-            if (now - entry.issuedAt > UPLOAD_OWNER_TTL_MS) uploadOwners.delete(id);
-          }
-          uploadOwners.set(result.attachmentId, { owner: yield* uploadOwner, issuedAt: now });
-          return { ...result, uploadUrl: new URL(result.relativeUrl, origin.success).href };
-        }),
+            let origin = providerHttpOrigin(httpServer.address);
+            if (invocation.client !== undefined && Option.isSome(request)) {
+              const url = HttpServerRequest.toURL(request.value);
+              if (Option.isNone(url)) {
+                return yield* new OrchestratorMcpFailure({
+                  code: "orchestration_error",
+                  message: "The upload request origin is invalid.",
+                });
+              }
+              origin = Result.succeed(url.value.origin);
+            }
+            if (Result.isFailure(origin)) {
+              return yield* new OrchestratorMcpFailure({
+                code: "orchestration_error",
+                message: origin.failure.message,
+              });
+            }
+            const result = yield* Upload.issueAttachmentUploadUrl(input.upload).pipe(
+              Effect.mapError(unavailable),
+            );
+            const now = yield* Clock.currentTimeMillis;
+            for (const [id, entry] of uploadOwners) {
+              if (now - entry.issuedAt > UPLOAD_OWNER_TTL_MS) uploadOwners.delete(id);
+            }
+            uploadOwners.set(result.attachmentId, { owner: yield* uploadOwner, issuedAt: now });
+            return { ...result, uploadUrl: new URL(result.relativeUrl, origin.success).href };
+          }),
+        { linkedCallers: "allowed" },
       ),
-      t3_attachment_discard: McpToolAccess.writesWithCapability((input) =>
-        Effect.gen(function* () {
-          yield* requireUploadCapability;
-          if (uploadOwners.get(input.attachmentId)?.owner !== (yield* uploadOwner)) {
-            return yield* new OrchestratorMcpFailure({
-              code: "invalid_request",
-              message: "Only the caller that prepared a pending upload can discard it.",
-            });
-          }
-          yield* Upload.deletePendingAttachment(input.attachmentId);
-          uploadOwners.delete(input.attachmentId);
-          return {};
-        }),
+      t3_attachment_discard: McpToolAccess.writesWithCapability(
+        (input) =>
+          Effect.gen(function* () {
+            yield* requireUploadCapability;
+            if (uploadOwners.get(input.attachmentId)?.owner !== (yield* uploadOwner)) {
+              return yield* new OrchestratorMcpFailure({
+                code: "invalid_request",
+                message: "Only the caller that prepared a pending upload can discard it.",
+              });
+            }
+            yield* Upload.deletePendingAttachment(input.attachmentId);
+            uploadOwners.delete(input.attachmentId);
+            return {};
+          }),
+        { linkedCallers: "allowed" },
       ),
       t3_thread_send_attachments: McpToolAccess.writesThreads(
         (input) => [input.threadId],

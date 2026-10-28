@@ -683,15 +683,14 @@ const make = Effect.gen(function* () {
     }
   };
 
-  const desktopRenders = (snapshot: PreviewSessionSnapshot) =>
-    desktopChannel.available
-      ? runPromise(
-          desktopChannel.awaitAttached(
-            { threadId: snapshot.threadId, tabId: snapshot.tabId },
-            DESKTOP_ATTACH_TIMEOUT,
-          ),
-        )
-      : Promise.resolve(false);
+  const desktopRenders = async (snapshot: PreviewSessionSnapshot) => {
+    if (!desktopChannel.available) return false;
+    const key = { threadId: snapshot.threadId, tabId: snapshot.tabId };
+    if (await runPromise(desktopChannel.isAttached(key))) return true;
+    return (
+      !snapshot.headless && runPromise(desktopChannel.awaitAttached(key, DESKTOP_ATTACH_TIMEOUT))
+    );
+  };
 
   const connectDesktop = async (snapshot: PreviewSessionSnapshot) => {
     const scope = await runPromise(Scope.make());
@@ -722,6 +721,14 @@ const make = Effect.gen(function* () {
       adopted === undefined && (await desktopRenders(snapshot))
         ? await connectDesktop(snapshot)
         : null;
+    // Otherwise a desktop that attaches late shows its own page, and the agent drives another.
+    if (!desktop && desktopChannel.available) {
+      await runPromise(
+        manager
+          .markHeadless({ threadId: ThreadId.make(snapshot.threadId), tabId: snapshot.tabId })
+          .pipe(Effect.ignore),
+      );
+    }
     const isolatedContext =
       adopted === undefined &&
       desktop === null &&

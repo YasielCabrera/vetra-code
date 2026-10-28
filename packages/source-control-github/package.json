@@ -74,6 +74,10 @@
     "./server/GitHubApi": {
       "types": "./src/server/GitHubApi.ts",
       "import": "./src/server/GitHubApi.ts"
+    },
+    "./server/GitHubAppAccess": {
+      "types": "./src/server/GitHubAppAccess.ts",
+      "import": "./src/server/GitHubAppAccess.ts"
     }
   },
   "scripts": {

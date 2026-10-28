@@ -1,3 +1,4 @@
+import { normalizeHost } from "@t3tools/source-control-core/server/pullRequestUtils";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -49,7 +50,7 @@ const make = Effect.gen(function* () {
 
   const graphql: GitHubApi["Service"]["graphql"] = Effect.fn("GitHubApi.graphql")(
     function* (input) {
-      const host = GitHubRequestPolicy.normalizeHost(input.host);
+      const host = normalizeHost(input.host);
       return yield* policy.request(
         {
           host,

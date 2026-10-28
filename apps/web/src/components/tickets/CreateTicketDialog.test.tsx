@@ -19,7 +19,7 @@ import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { threadContextRecord } from "../../lib/composerContextRecords";
+import { threadContextRecord } from "@t3tools/shared/composerContextReferences";
 import { ticketDrafts } from "../../ticketDraftStore";
 import { CreateTicketDialogHost, openCreateTicketDialog } from "./CreateTicketDialog";
 import type { TicketCapture } from "./ticketCapture";

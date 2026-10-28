@@ -1,6 +1,7 @@
 import * as GitHubPullRequestApi from "@t3tools/source-control-github/server/GitHubPullRequestApi";
 import * as GitHubDriver from "@t3tools/source-control-github/server/driver";
 import * as GitHubApi from "@t3tools/source-control-github/server/GitHubApi";
+import * as GitHubAppAccess from "@t3tools/source-control-github/server/GitHubAppAccess";
 import type {
   SourceControlDriver,
   SourceControlDriverInstance,
@@ -35,7 +36,10 @@ const make = Effect.forEach(BUILT_IN_SOURCE_CONTROL_DRIVER_LIST, (driver) =>
 
 export const layer = Layer.effect(SourceControlDrivers, make).pipe(
   Layer.provideMerge(
-    GitHubPullRequestApi.layer.pipe(Layer.provideMerge(GitHubApi.layerWithDependencies)),
+    GitHubPullRequestApi.layer.pipe(
+      Layer.provideMerge(GitHubAppAccess.layer),
+      Layer.provideMerge(GitHubApi.layerWithDependencies),
+    ),
   ),
   Layer.provideMerge(ServerSourceControlHost.layer),
   Layer.provideMerge(SourceControlRateLimit.layer),

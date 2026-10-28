@@ -6,6 +6,8 @@ import * as Redacted from "effect/Redacted";
 import { HttpClient, HttpClientResponse, type HttpClientRequest } from "effect/http";
 import * as SourceControlRateLimit from "@t3tools/source-control-core/server/SourceControlRateLimit";
 
+import * as GitHubAppSignIn from "./GitHubAppSignIn.ts";
+
 import * as GitHubApi from "./GitHubApi.ts";
 import * as GitHubCredentials from "./GitHubCredentials.ts";
 import * as GitHubQuota from "./GitHubQuota.ts";
@@ -31,12 +33,21 @@ function harness(respond: () => Response) {
           fingerprint: "selected-account",
           source: "gh",
         }),
+      saved: () => Effect.succeedNone,
+      fingerprint: (host) => Effect.succeed(`${host}:selected-account`),
       invalidate: () => Effect.void,
     }),
   );
   const layer = GitHubApi.layer.pipe(
     Layer.provideMerge(GitHubRest.layer),
     Layer.provide(Layer.mergeAll(credentials, GitHubQuota.layer, SourceControlRateLimit.layer)),
+    Layer.provide(
+      Layer.mock(GitHubAppSignIn.GitHubAppSignIn)({
+        enabled: false,
+        token: () => Effect.succeedNone,
+        invalidate: () => Effect.void,
+      }),
+    ),
     Layer.provide(http),
   );
   return { requests, layer };

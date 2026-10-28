@@ -4,7 +4,7 @@ import { EnvironmentId, ProjectId, ThreadId, TicketId, TicketStatusId } from "@t
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { createMemoryStorage } from "./lib/storage";
-import { threadContextRecord } from "./lib/composerContextRecords";
+import { threadContextRecord } from "@t3tools/shared/composerContextReferences";
 import { createTicketDraftStore, TICKET_DRAFT_STORAGE_KEY } from "./ticketDraftStore";
 import type { PendingTicketUpload } from "./components/tickets/ticketAttachments";
 import type { TicketCapture } from "./components/tickets/ticketCapture";

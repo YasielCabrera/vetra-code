@@ -12,14 +12,16 @@
     "@electron/osx-sign": "2.7.0",
     "@t3tools/shared": "workspace:*",
     "@t3tools/tailscale": "workspace:*",
-    "agent-device": "0.21.31",
+    "agent-device": "0.21.32",
     "effect": "catalog:",
+    "playwright-core": "1.60.0",
     "plist": "catalog:"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
     "@types/plist": "catalog:",
     "esbuild": "0.28.2",
+    "postject": "1.0.0-alpha.6",
     "typescript": "catalog:",
     "typescript-legacy": "npm:typescript@~6.0.3",
     "vite-plus": "catalog:"

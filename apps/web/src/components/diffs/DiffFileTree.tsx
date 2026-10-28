@@ -118,10 +118,12 @@ export function DiffFileTree({
     areAllDirectoriesExpanded(currentModel, directoryPaths),
   );
 
+  // oxlint-disable-next-line t3code/react-effect-budget -- pushes the icon set into the imperative Pierre file tree model
   useEffect(() => {
     model.setIcons(icons);
   }, [icons, model]);
 
+  // oxlint-disable-next-line t3code/react-effect-budget -- applies path updates, ordering and git status to the imperative Pierre file tree model
   useEffect(() => {
     ordering.update(positions);
     const mounted = mountedPresentationRef.current;
@@ -167,6 +169,7 @@ export function DiffFileTree({
     model.setGitStatus(gitStatus);
   }, [directoryPaths, gitStatus, model, modelPaths, ordering, positions, presented]);
 
+  // oxlint-disable-next-line t3code/react-effect-budget -- expands ancestors, selects and scrolls to the requested file in the Pierre tree model
   useEffect(() => {
     treeModelRef.current = model;
   }, [model]);

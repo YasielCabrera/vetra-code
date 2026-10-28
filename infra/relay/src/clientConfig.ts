@@ -32,7 +32,7 @@ export class RelayUrlUnavailableError extends Schema.TaggedError<RelayUrlUnavail
   }
 }
 
-export const relayClientConfigEnv = (config: RelayClientConfig & { readonly url: string }) =>
+const relayClientConfigEnv = (config: RelayClientConfig & { readonly url: string }) =>
   ({
     VETRA_RELAY_URL: config.url,
     VETRA_MOBILE_OTLP_TRACES_URL: config.mobileTracingUrl,

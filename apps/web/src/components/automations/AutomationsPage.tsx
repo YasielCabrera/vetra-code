@@ -15,7 +15,7 @@ import {
   SearchIcon,
   Trash2Icon,
 } from "lucide-react";
-import { memo, useCallback, useMemo, useState, type ReactNode } from "react";
+import { memo, useState, type ReactNode } from "react";
 
 import { isElectron } from "../../env";
 import { useAllEnvironmentShellsBootstrapped, useThreadShells } from "../../state/entities";
@@ -39,7 +39,7 @@ import {
   deriveProviderInstanceEntries,
 } from "../../providerInstances";
 import { primaryServerProvidersAtom } from "../../state/server";
-import { getTriggerDisplayModelLabel } from "../chat/providerIconUtils";
+import { getTriggerDisplayModelName } from "../chat/providerIconUtils";
 import { Button } from "../ui/button";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { ScrollArea } from "../ui/scroll-area";
@@ -86,22 +86,16 @@ export function AutomationsPage(props?: {
   const canOperate = useCanOperateAutomations(primaryEnvironmentId);
   const [query, setQuery] = useState("");
 
-  const projectTitleByKey = useMemo(
-    () =>
-      new Map(projects.map((project) => [`${project.environmentId}:${project.id}`, project.title])),
-    [projects],
+  const projectTitleByKey = new Map(
+    projects.map((project) => [`${project.environmentId}:${project.id}`, project.title]),
   );
-  const environmentLabelById = useMemo(
-    () =>
-      new Map(
-        environments.map((environment) => [environment.environmentId, environment.label] as const),
-      ),
-    [environments],
+  const environmentLabelById = new Map(
+    environments.map((environment) => [environment.environmentId, environment.label] as const),
   );
   // Labelled the way the picker labels it, so a row reads the same as the form
   // that produced it. Falls back to the raw slug for a model this workspace no
   // longer offers.
-  const modelLabelBySlug = useMemo(() => {
+  const modelLabelBySlug = (() => {
     const labels = new Map<string, string>();
     for (const entry of applyProviderInstanceSettings(
       deriveProviderInstanceEntries(serverProviders),
@@ -109,71 +103,51 @@ export function AutomationsPage(props?: {
       null,
     )) {
       for (const model of entry.models) {
-        labels.set(`${entry.instanceId}:${model.slug}`, getTriggerDisplayModelLabel(model));
+        labels.set(
+          `${entry.instanceId}:${model.slug}`,
+          getTriggerDisplayModelName(model, entry.driverKind),
+        );
       }
     }
     return labels;
-  }, [serverProviders, settings]);
+  })();
 
-  const rows = useMemo(
-    () =>
-      sortAutomationRows(
-        buildAutomationRowModels({
-          automations,
-          threads,
-          runsByThreadKey,
-          resolveProjectName: (automation) =>
-            projectTitleByKey.get(`${automation.environmentId}:${automation.projectId}`) ?? null,
-          resolveModelLabel: (automation) =>
-            modelLabelBySlug.get(
-              `${automation.modelSelection.instanceId}:${automation.modelSelection.model}`,
-            ) ?? automation.modelSelection.model,
-          // Named only when the automation runs somewhere other than here: a
-          // label on every row would say nothing about any of them.
-          resolveEnvironmentLabel: (automation) =>
-            automation.environmentId === primaryEnvironmentId
-              ? null
-              : (environmentLabelById.get(automation.environmentId) ?? null),
-          lastVisitedAtByThreadKey: threadLastVisitedAtById,
-          use24Hour: timestampFormat === "24-hour",
-        }),
-      ),
-    [
+  const rows = sortAutomationRows(
+    buildAutomationRowModels({
       automations,
-      environmentLabelById,
-      modelLabelBySlug,
-      primaryEnvironmentId,
-      projectTitleByKey,
-      runsByThreadKey,
-      threadLastVisitedAtById,
       threads,
-      timestampFormat,
-    ],
+      runsByThreadKey,
+      resolveProjectName: (automation) =>
+        projectTitleByKey.get(`${automation.environmentId}:${automation.projectId}`) ?? null,
+      resolveModelLabel: (automation) =>
+        modelLabelBySlug.get(
+          `${automation.modelSelection.instanceId}:${automation.modelSelection.model}`,
+        ) ?? automation.modelSelection.model,
+      // Named only when the automation runs somewhere other than here: a
+      // label on every row would say nothing about any of them.
+      resolveEnvironmentLabel: (automation) =>
+        automation.environmentId === primaryEnvironmentId
+          ? null
+          : (environmentLabelById.get(automation.environmentId) ?? null),
+      lastVisitedAtByThreadKey: threadLastVisitedAtById,
+      use24Hour: timestampFormat === "24-hour",
+    }),
   );
 
-  const visibleRows = useMemo(
-    () => rows.filter((row) => matchesAutomationQuery(row, query)),
-    [query, rows],
-  );
+  const visibleRows = rows.filter((row) => matchesAutomationQuery(row, query));
 
-  const openAutomation = useCallback(
-    (automation: EnvironmentAutomation) => {
-      void navigate({
-        to: "/automations/$automationKey",
-        params: { automationKey: `${automation.environmentId}:${automation.id}` },
-      });
-    },
-    [navigate],
-  );
-  const newAutomation = useCallback(
-    (template?: AutomationTemplate) => {
-      void navigate({
-        to: "/automations/new",
-        search: { template: template?.id },
-      });
-    },
-    [navigate],
-  );
+  const openAutomation = (automation: EnvironmentAutomation) => {
+    void navigate({
+      to: "/automations/$automationKey",
+      params: { automationKey: `${automation.environmentId}:${automation.id}` },
+    });
+  };
+  const newAutomation = (template?: AutomationTemplate) => {
+    void navigate({
+      to: "/automations/new",
+      search: { template: template?.id },
+    });
+  };
 
   const breadcrumb = (
     <WorkspaceBreadcrumb ariaLabel="Automations breadcrumb">

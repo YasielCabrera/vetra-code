@@ -35,6 +35,7 @@ dist-electron/
 /.generated/
 artifacts/app-store/screenshots/
 artifacts/mobile-e2e/
+artifacts/mobile-behavior/
 .github/pr-assets/
 native/**/target/
 node_modules/

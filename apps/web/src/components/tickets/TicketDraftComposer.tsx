@@ -1,3 +1,5 @@
+import { useLinkedEnvironments } from "~/state/peerLinks";
+import { threadContextRecord } from "@t3tools/shared/composerContextReferences";
 import { useAtomValue } from "@effect/atom-react";
 import { matchComposerThreadItems } from "@t3tools/client-runtime/composerThreadItems";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
@@ -12,7 +14,7 @@ import { createModelSelection } from "@t3tools/shared/model";
 import { formatComposerContextReference } from "@t3tools/shared/composerContextReferences";
 import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
 import { FolderIcon } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState, type ComponentProps } from "react";
+import { useEffect, useId, useRef, useState, type ComponentProps } from "react";
 
 import { ComposerHandleContext } from "../../composerHandleContext";
 import {
@@ -25,14 +27,17 @@ import {
 import { useEnvironmentSettings } from "../../hooks/useSettings";
 import { useTheme } from "../../hooks/useTheme";
 import { useSoftwareKeyboardOpen } from "../../hooks/useSoftwareKeyboardOpen";
-import { reviewCommentFromRecord, threadContextRecord } from "../../lib/composerContextRecords";
+import { reviewCommentFromRecord } from "../../lib/composerContextRecords";
 import { useThreadShells } from "../../state/entities";
 import { useComposerPathSearch } from "../../state/queries";
 import { useEnvironments } from "../../state/environments";
 import { primaryServerKeybindingsAtom } from "../../state/server";
 import { useEnvironmentTickets } from "../../state/tickets";
 import { readPastedComposerContext } from "../composerInlineTokenPaste";
-import { ComposerPromptEditor, type ComposerPromptEditorHandle } from "../ComposerPromptEditor";
+import {
+  ComposerPromptEditorTiptap as ComposerPromptEditor,
+  type ComposerPromptEditorHandle,
+} from "../ComposerPromptEditorTiptap";
 import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
 import { type ComposerDraftContextRecord } from "../composerContextPresentation";
 import {
@@ -83,14 +88,17 @@ interface TicketDraftComposerProps {
 /** A controlled composer: its lifetime is the dialog, with no real-thread draft or send machinery. */
 export function TicketDraftComposer(props: TicketDraftComposerProps) {
   const settings = useEnvironmentSettings(props.environmentId);
+  const linkedEnvironments = useLinkedEnvironments(props.environmentId);
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const { resolvedTheme } = useTheme();
   const isSoftwareKeyboardOpen = useSoftwareKeyboardOpen();
   const { environments } = useEnvironments();
   const environment = environments.find((entry) => entry.environmentId === props.environmentId);
   const shells = useThreadShells();
+  const [now] = useState(() => Date.now());
   const editorRef = useRef<ComposerPromptEditorHandle | null>(null);
   const promptRecordsRef = useRef(props.promptRecords);
+  // oxlint-disable-next-line t3code/react-effect-budget -- The paste handler reads the latest prompt records through its mounted editor callback.
   useEffect(() => {
     promptRecordsRef.current = props.promptRecords;
   }, [props.promptRecords]);
@@ -109,7 +117,7 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
   const tickets = useEnvironmentTickets(
     trigger?.kind === "pull-request" ? props.environmentId : null,
   );
-  const promptContextRecords = useMemo(() => {
+  const promptContextRecords = (() => {
     const referenced = new Set(collectInlineContextIds(props.prompt));
     const records = new Map<string, ComposerDraftContextRecord>();
     for (const [contextId, record] of props.captureRecords) {
@@ -133,15 +141,16 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
       }
     }
     return records;
-  }, [props.captureRecords, props.prompt, props.promptRecords]);
-  const items = useMemo<ComposerCommandItem[]>(() => {
+  })();
+  const items = (() => {
     if (trigger?.kind === "path") {
       return [
         ...matchComposerThreadItems({
           shells,
+          linkedEnvironments,
           environmentId: props.environmentId,
           excludeThreadId: props.sourceThreadId,
-          now: Date.now(),
+          now,
           query: trigger.query,
         }),
         ...paths.entries.map((entry) => ({
@@ -165,21 +174,13 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
           query: trigger.query,
         }).filter((item) => item.type === "ticket")
       : [];
-  }, [
-    trigger,
-    shells,
-    props.environmentId,
-    props.project?.id,
-    props.sourceThreadId,
-    paths.entries,
-    paths.searchedTarget,
-    tickets,
-  ]);
+  })();
   const activeItem = items.find((item) => item.id === highlightedId) ?? items[0] ?? null;
   const activeInstance = props.instanceEntries.find(
     (entry) => entry.instanceId === props.modelSelection?.instanceId,
   );
 
+  // oxlint-disable-next-line t3code/react-effect-budget -- Focus the editor after the dialog mounts.
   useEffect(() => {
     const frame = requestAnimationFrame(() => editorRef.current?.focusAtEnd());
     return () => cancelAnimationFrame(frame);

@@ -1,12 +1,11 @@
 import { LINUX_FILE_EXCLUSIONS } from "./build-desktop-artifact.ts";
 import { MAC_FILE_EXCLUSIONS } from "./build-desktop-artifact.ts";
-import { bundlesWslRuntime } from "./build-desktop-artifact.ts";
 // @effect-diagnostics nodeBuiltinImport:off - Tests use Node's glob matcher to verify electron-builder exclusions.
 import * as NodeCrypto from "node:crypto";
 import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { extractFile } from "@electron/asar";
+import { createPackageWithOptions, extractFile } from "@electron/asar";
 import { assert, it } from "@effect/vitest";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Deferred from "effect/Deferred";
@@ -23,49 +22,54 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
-import { buildDesktopBundles } from "./build-desktop-artifact.ts";
-import { DesktopBuildManifestRestoreError } from "./build-desktop-artifact.ts";
-import { BundleNotSelfContainedError } from "./build-desktop-artifact.ts";
-import { BuildCommandFailedError } from "./build-desktop-artifact.ts";
-import { parseWslRuntimeArchiveMembers } from "./build-desktop-artifact.ts";
-import { readWorkspaceConfig } from "./build-desktop-artifact.ts";
-import { createBuildConfig } from "./build-desktop-artifact.ts";
-import { DESKTOP_FILE_EXCLUSIONS } from "./build-desktop-artifact.ts";
-import { InvalidMacPasskeyRpDomainError } from "./build-desktop-artifact.ts";
-import { InvalidMacPasskeyPublishableKeyError } from "./build-desktop-artifact.ts";
-import { UnsupportedDesktopBuildArchitectureError } from "./build-desktop-artifact.ts";
-import { MacPasskeySigningConfigurationResolutionError } from "./build-desktop-artifact.ts";
-import { MissingMacPasskeyProvisioningProfileError } from "./build-desktop-artifact.ts";
-import { packWindowsServerAsar } from "./build-desktop-artifact.ts";
-import { preflightWindowsDesktopBuild } from "./build-desktop-artifact.ts";
-import { renderMacPasskeyEntitlements } from "./build-desktop-artifact.ts";
-import { resolveMacWebAuthnEntitlements } from "./build-desktop-artifact.ts";
-import { resolveMacPasskeySigningConfiguration } from "./build-desktop-artifact.ts";
-import { resolveMergedStageDependencies } from "./build-desktop-artifact.ts";
-import { resolveBuildOptions } from "./build-desktop-artifact.ts";
-import { resolveWindowsServerAsarIgnoreGlobs } from "./build-desktop-artifact.ts";
-import { resolveLinuxFileExclusions } from "./build-desktop-artifact.ts";
-import { resolveGitHubPublishConfig } from "./build-desktop-artifact.ts";
-import { stageWslRuntimeArchive } from "./build-desktop-artifact.ts";
-import { ancestorNodeModulesPaths } from "./build-desktop-artifact.ts";
-import { copyDirectoryPreservingSymlinks } from "./build-desktop-artifact.ts";
-import { LinuxBrowserSecretHostError } from "./build-desktop-artifact.ts";
-import { stageBrowserSecret } from "./build-desktop-artifact.ts";
-import { validateWindowsPackagedPayload } from "./build-desktop-artifact.ts";
-import { verifyPackagedBundleIsSelfContained } from "./build-desktop-artifact.ts";
-import { WindowsPrimaryNativeProbeError } from "./build-desktop-artifact.ts";
-import { WindowsDesktopBuildPrerequisitesMissingError } from "./build-desktop-artifact.ts";
-import { WindowsPackagedPayloadValidationError } from "./build-desktop-artifact.ts";
-import { stageCursorSdkPlatformPackages } from "./build-desktop-artifact.ts";
-import { WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT } from "./build-desktop-artifact.ts";
-import { WINDOWS_SERVER_ASAR_IGNORE_GLOBS } from "./build-desktop-artifact.ts";
-import { WINDOWS_SERVER_ASAR_RESOURCE } from "./build-desktop-artifact.ts";
-import { WSL_RUNTIME_ARCHIVE_EXTRA_RESOURCE } from "./build-desktop-artifact.ts";
-import { WSL_RUNTIME_ARCHIVE_HASH_EXTRA_RESOURCE } from "./build-desktop-artifact.ts";
-import { WSL_RUNTIME_ARCHIVE_HASH_NAME } from "./build-desktop-artifact.ts";
-import { WSL_RUNTIME_ARCHIVE_NAME } from "./build-desktop-artifact.ts";
-import { wslRuntimeArchiveStem } from "./build-desktop-artifact.ts";
-
+import {
+  buildDesktopBundles,
+  DesktopBuildManifestRestoreError,
+  BundleNotSelfContainedError,
+  BuildCommandFailedError,
+  parseWslRuntimeArchiveMembers,
+  readWorkspaceConfig,
+  createBuildConfig,
+  DESKTOP_FILE_EXCLUSIONS,
+  InvalidMacPasskeyRpDomainError,
+  InvalidMacPasskeyPublishableKeyError,
+  UnsupportedDesktopBuildArchitectureError,
+  MacPasskeySigningConfigurationResolutionError,
+  MissingMacPasskeyProvisioningProfileError,
+  packWindowsServerAsar,
+  preflightWindowsDesktopBuild,
+  renderMacPasskeyEntitlements,
+  resolveMacWebAuthnEntitlements,
+  resolveMacPasskeySigningConfiguration,
+  resolveMergedStageDependencies,
+  resolveBuildOptions,
+  stageWslRuntimeArchive,
+  ancestorNodeModulesPaths,
+  copyDirectoryPreservingSymlinks,
+  LinuxBrowserSecretHostError,
+  MacPackagedAppMissingError,
+  stageBrowserSecret,
+  validateMacPackagedPayload,
+  validateWindowsPackagedPayload,
+  verifyPackagedBundleIsSelfContained,
+  WindowsPrimaryNativeProbeError,
+  WindowsDesktopBuildPrerequisitesMissingError,
+  WindowsPackagedPayloadValidationError,
+  stageCursorSdkPlatformPackages,
+  WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT,
+  WINDOWS_SERVER_ASAR_IGNORE_GLOBS,
+  WINDOWS_SERVER_ASAR_RESOURCE,
+  WSL_RUNTIME_ARCHIVE_EXTRA_RESOURCE,
+  WSL_RUNTIME_ARCHIVE_HASH_EXTRA_RESOURCE,
+  WSL_RUNTIME_ARCHIVE_HASH_NAME,
+  WSL_RUNTIME_ARCHIVE_NAME,
+  wslRuntimeArchiveStem,
+} from "./build-desktop-artifact.ts";
+import {
+  resolveWindowsServerAsarIgnoreGlobs,
+  resolveLinuxFileExclusions,
+  resolveGitHubPublishConfig,
+} from "./build-desktop-artifact.ts";
 import {
   ReleasePackageManifestError,
   releasePackageFiles,
@@ -214,6 +218,26 @@ const makeWindowsPayloadFixture = Effect.fn("test.makeWindowsPayloadFixture")(fu
     generatedAsarPath,
     appExecutableName,
   } as const;
+});
+
+const makeMacPayloadFixture = Effect.fn("test.makeMacPayloadFixture")(function* (input: {
+  readonly serverEntrySource?: string;
+}) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-mac-payload-test-" });
+  const sourceDir = path.join(tempDir, "app-source");
+  const serverEntryPath = path.join(sourceDir, "apps/server/dist/bin.mjs");
+  yield* fs.makeDirectory(path.dirname(serverEntryPath), { recursive: true });
+  yield* fs.writeFileString(serverEntryPath, input.serverEntrySource ?? "console.log('server');\n");
+
+  const stageDistDir = path.join(tempDir, "dist");
+  const resourcesDir = path.join(stageDistDir, "mac-arm64/Vetra Code.app/Contents/Resources");
+  yield* fs.makeDirectory(resourcesDir, { recursive: true });
+  yield* Effect.promise(() =>
+    createPackageWithOptions(sourceDir, path.join(resourcesDir, "app.asar"), {}),
+  );
+  return { stageDistDir } as const;
 });
 
 it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
@@ -1413,6 +1437,58 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
         assert.instanceOf(error, BundleNotSelfContainedError);
         assert.include(error.output, "vetra-code-deliberately-missing-package");
+      }),
+    ),
+  );
+
+  it.effect("rejects a macOS app whose packaged server bundle cannot resolve", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const fixture = yield* makeMacPayloadFixture({
+          serverEntrySource: 'import "t3code-deliberately-missing-package";\n',
+        });
+        const error = yield* validateMacPackagedPayload({
+          stageDistDir: fixture.stageDistDir,
+        }).pipe(Effect.flip);
+
+        assert.instanceOf(error, BundleNotSelfContainedError);
+        assert.include(error.output, "t3code-deliberately-missing-package");
+      }),
+    ),
+  );
+
+  it.effect("accepts a macOS app whose packaged server bundle resolves", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const fixture = yield* makeMacPayloadFixture({});
+        yield* validateMacPackagedPayload({ stageDistDir: fixture.stageDistDir });
+      }),
+    ),
+  );
+
+  it.effect("rejects a macOS stage without a packaged app", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const stageDistDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-mac-payload-test-" });
+        const error = yield* validateMacPackagedPayload({ stageDistDir }).pipe(Effect.flip);
+
+        assert.instanceOf(error, MacPackagedAppMissingError);
+      }),
+    ),
+  );
+
+  it.effect("rejects a macOS app without app.asar", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const stageDistDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-mac-payload-test-" });
+        yield* fs.makeDirectory(`${stageDistDir}/mac-arm64/Vetra Code.app/Contents/Resources`, {
+          recursive: true,
+        });
+        const error = yield* validateMacPackagedPayload({ stageDistDir }).pipe(Effect.flip);
+
+        assert.instanceOf(error, BundleNotSelfContainedError);
       }),
     ),
   );

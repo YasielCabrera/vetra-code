@@ -1,11 +1,15 @@
+import { it as effectIt } from "@effect/vitest";
+import * as HostProcess from "@t3tools/shared/HostProcess";
+import * as Effect from "effect/Effect";
 import { describe, expect, it } from "vite-plus/test";
 
-import { accessibleWindowElementTree } from "./snapShot.ts";
-import { accessibleWindowText } from "./snapShot.ts";
-import { compactAccessibilityTree } from "./snapShot.ts";
-import { findAccessibleWindow } from "./snapShot.ts";
-import { findCaptureSource } from "./snapShot.ts";
-import { hideAndWaitForBlur } from "./snapShot.ts";
+import {
+  accessibleWindowElementTree,
+  accessibleWindowText,
+  compactAccessibilityTree,
+  findAccessibleWindow,
+  isWaylandSession,
+} from "./snapShot.ts";
 
 describe("accessibleWindowText", () => {
   it("caps large text without splitting a surrogate pair", () => {
@@ -423,8 +427,8 @@ describe("findAccessibleWindow", () => {
   });
 
   it.each([
-    ["⠋ vetra-code", "vetra-code"],
-    ["vetra-code", "⠙ vetra-code"],
+    ["⠋ t3code", "t3code"],
+    ["t3code", "⠙ t3code"],
   ])("matches a Wayland spinner starting or stopping: %s → %s", (title, name) => {
     const windows = [{ name, bounds: captured.bounds }];
 
@@ -432,10 +436,10 @@ describe("findAccessibleWindow", () => {
   });
 
   it.each([
-    ["⠋ vetra-code", "⠙ private"],
-    ["vetra-code ⠋", "vetra-code ⠙"],
-    ["⠋vetra-code", "⠙vetra-code"],
-    ["⠁ vetra-code", "⠙ vetra-code"],
+    ["⠋ t3code", "⠙ private"],
+    ["t3code ⠋", "t3code ⠙"],
+    ["⠋t3code", "⠙t3code"],
+    ["⠁ t3code", "⠙ t3code"],
     ["⠋", "⠋"],
   ])("does not guess a Wayland title match: %s → %s", (title, name) => {
     expect(
@@ -444,64 +448,48 @@ describe("findAccessibleWindow", () => {
   });
 });
 
-describe("hideAndWaitForBlur", () => {
-  it("waits for a delayed blur after hiding the window", async () => {
-    let blur: (() => void) | undefined;
-    let settled = false;
-    const hidden = hideAndWaitForBlur({
-      hide: () => undefined,
-      once: (_event, listener) => {
-        blur = listener;
-      },
-      removeListener: () => undefined,
-    }).then(() => {
-      settled = true;
-    });
-
-    await Promise.resolve();
-    expect(settled).toBe(false);
-    blur?.();
-    await hidden;
-    expect(settled).toBe(true);
-  });
-});
-
-describe("findCaptureSource", () => {
-  const sources = [
-    { id: "window:42:0", name: "Terminal" },
-    { id: "window:84:0", name: "Editor" },
-  ];
-
-  it("matches the native window id before its title", () => {
-    expect(
-      findCaptureSource(sources, {
-        id: 84,
-        title: "Changed title",
+describe("isWaylandSession", () => {
+  effectIt.effect(
+    "falls back to a live runtime directory socket when session variables are stripped",
+    () =>
+      Effect.gen(function* () {
+        if ((yield* HostProcess.Platform) !== "linux") return;
+        yield* Effect.promise(async () => {
+          const { mkdtemp, rm, writeFile } = await import("node:fs/promises");
+          const { createServer } = await import("node:net");
+          const { tmpdir } = await import("node:os");
+          const { join } = await import("node:path");
+          const runtimeDirectory = await mkdtemp(join(tmpdir(), "t3-wayland-"));
+          const socketPath = join(runtimeDirectory, "wayland-0");
+          const server = createServer();
+          try {
+            expect(isWaylandSession("linux", { XDG_RUNTIME_DIR: runtimeDirectory })).toBe(false);
+            await writeFile(socketPath, "");
+            expect(isWaylandSession("linux", { XDG_RUNTIME_DIR: runtimeDirectory })).toBe(false);
+            await rm(socketPath);
+            await new Promise<void>((resolve, reject) => {
+              server.once("error", reject);
+              server.listen(socketPath, resolve);
+            });
+            expect(isWaylandSession("linux", { XDG_RUNTIME_DIR: runtimeDirectory })).toBe(true);
+            expect(
+              isWaylandSession("linux", {
+                XDG_RUNTIME_DIR: runtimeDirectory,
+                XDG_SESSION_TYPE: "x11",
+              }),
+            ).toBe(false);
+            expect(isWaylandSession("linux", { XDG_RUNTIME_DIR: "/nonexistent-vetra-test" })).toBe(
+              false,
+            );
+          } finally {
+            if (server.listening) {
+              await new Promise<void>((resolve, reject) => {
+                server.close((error) => (error ? reject(error) : resolve()));
+              });
+            }
+            await rm(runtimeDirectory, { recursive: true, force: true });
+          }
+        });
       }),
-    ).toEqual(sources[1]);
-  });
-
-  it("falls back to a unique title match", () => {
-    expect(
-      findCaptureSource(sources, {
-        id: 100,
-        title: "Terminal",
-      }),
-    ).toEqual(sources[0]);
-  });
-
-  it("does not guess when a title is ambiguous", () => {
-    expect(
-      findCaptureSource(
-        [
-          { id: "window:42:0", name: "Editor" },
-          { id: "window:84:0", name: "Editor" },
-        ],
-        {
-          id: 100,
-          title: "Editor",
-        },
-      ),
-    ).toBeUndefined();
-  });
+  );
 });

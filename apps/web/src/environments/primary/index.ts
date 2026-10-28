@@ -1,9 +1,4 @@
 export {
-  resetPrimaryEnvironmentDescriptorForTests,
-  resolveInitialPrimaryEnvironmentDescriptor,
-} from "./context";
-
-export {
   createServerMcpClientToken,
   createServerPairingCredential,
   peekPairingTokenFromUrl,

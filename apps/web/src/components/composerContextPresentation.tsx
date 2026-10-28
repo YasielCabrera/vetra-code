@@ -6,6 +6,7 @@ import type {
   ThreadContextRecord,
   TicketContextRecord,
   TicketPlanContextRecord,
+  EnvironmentContextRecord,
 } from "@t3tools/contracts";
 import { formatAttachmentSize } from "@t3tools/client-runtime/state/attachments";
 import { videoMimeType } from "@t3tools/shared/video";
@@ -41,8 +42,10 @@ import {
 import type { TerminalContextDraft } from "~/lib/terminalContext";
 import type { ReviewCommentContext } from "~/reviewCommentContext";
 import { ComposerPendingTerminalContextChip } from "./chat/ComposerPendingTerminalContexts";
+import { EnvironmentContextChip } from "./EnvironmentContextChip";
 import { ThreadContextChip } from "./ThreadContextChip";
 import { TicketContextChip, TicketPlanContextChip } from "./tickets/TicketContextChip";
+import { useLinkedEnvironments } from "~/state/peerLinks";
 import {
   createContextPresentationRegistry,
   type ContextPresentationCapability,
@@ -71,7 +74,8 @@ export type ComposerDraftContextRecord =
   | { kind: "file"; record: ComposerFileAttachment; upload?: AttachmentUploadState | undefined }
   | { kind: "thread"; record: ThreadContextRecord }
   | { kind: "ticket"; record: TicketContextRecord }
-  | { kind: "ticket-plan"; record: TicketPlanContextRecord };
+  | { kind: "ticket-plan"; record: TicketPlanContextRecord }
+  | { kind: "environment"; record: EnvironmentContextRecord };
 
 export interface ComposerContextActions {
   environmentId: EnvironmentId | null;
@@ -110,6 +114,7 @@ export function composerContextRecordsFromDraft(input: {
   reviewComments?: ReadonlyArray<ReviewCommentContext>;
   previewAnnotations?: ReadonlyArray<PreviewAnnotationPayload>;
   threadContexts?: ReadonlyArray<AttachedContextRecord>;
+  environmentContexts?: ReadonlyArray<EnvironmentContextRecord>;
   images?: ReadonlyArray<ComposerImageAttachment>;
   files?: ReadonlyArray<ComposerFileAttachment>;
   uploadsByImageId?: Readonly<Record<string, AttachmentUploadState>>;
@@ -155,6 +160,9 @@ export function composerContextRecordsFromDraft(input: {
         records.set(record.contextId, { kind: "ticket-plan", record });
         break;
     }
+  }
+  for (const record of input.environmentContexts ?? []) {
+    records.set(record.contextId, { kind: "environment", record });
   }
   return records;
 }
@@ -357,10 +365,15 @@ function ComposerPreviewAnnotationDetails({
 
 function ComposerThreadContextChip(props: { record: ThreadContextRecord }) {
   const { environmentId } = use(ComposerContextActionsContext);
+  const linkedEnvironments = useLinkedEnvironments(environmentId);
   return (
     <ThreadContextChip
       record={props.record}
-      unreadable={environmentId !== null && props.record.environmentId !== environmentId}
+      unreadable={
+        environmentId !== null &&
+        props.record.environmentId !== environmentId &&
+        !linkedEnvironments.has(props.record.environmentId)
+      }
     />
   );
 }
@@ -392,6 +405,7 @@ const composerContextPresentationRegistry = createContextPresentationRegistry<
     "thread",
     "ticket",
     "ticket-plan",
+    "environment",
   ],
   handlers: [
     {
@@ -504,6 +518,16 @@ const composerContextPresentationRegistry = createContextPresentationRegistry<
       render: (entry, context) =>
         entry.kind === "ticket-plan" ? (
           <TicketPlanContextChip record={entry.record} />
+        ) : (
+          <UnresolvedContextChip label={context.label} />
+        ),
+    },
+    {
+      kind: "environment",
+      canRender: (entry) => entry.kind === "environment",
+      render: (entry, context) =>
+        entry.kind === "environment" ? (
+          <EnvironmentContextChip record={entry.record} />
         ) : (
           <UnresolvedContextChip label={context.label} />
         ),

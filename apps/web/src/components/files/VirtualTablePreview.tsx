@@ -184,7 +184,7 @@ function RowPage(
   const rows = props.getRows(props.page);
   // A page stays mounted while the worker fills it, preserving the scroll position.
   const { loadPage, page } = props;
-  // oxlint-disable-next-line t3code/react-effect-budget -- Request missing rows from the indexing worker while preserving the mounted page's scroll position.
+  // oxlint-disable-next-line t3code/react-effect-budget -- Request this page's rows from the indexing worker when they are missing or incomplete.
   useEffect(() => {
     const expected = Math.min(PREVIEW_PAGE_ROWS, props.count - page * PREVIEW_PAGE_ROWS);
     if (!rows || rows.length < expected) loadPage?.(page);

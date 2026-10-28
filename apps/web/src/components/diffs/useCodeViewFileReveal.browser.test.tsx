@@ -1,7 +1,7 @@
 import type { FileDiffMetadata } from "@pierre/diffs";
 import type { CodeViewHandle, CodeViewDiffItem } from "@pierre/diffs/react";
 import { parsePatchFiles } from "@pierre/diffs/utils/parsePatchFiles";
-import { createRef, useState } from "react";
+import { createRef } from "react";
 import { expect, it, vi } from "vite-plus/test";
 
 import "~/index.css";
@@ -38,18 +38,13 @@ function RevealHarness({
   scope?: string;
   onViewer?: (viewer: CodeViewHandle<undefined, undefined> | null) => void;
 }) {
-  const [viewer, setViewer] = useState<CodeViewHandle<undefined, undefined> | null>(null);
   const readyFiles = files.filter((file) => readyPaths.includes(resolveFileDiffPath(file)));
   const items: CodeViewDiffItem<undefined>[] = readyFiles.map((fileDiff) => ({
     id: buildFileDiffIdentityKey(fileDiff),
     type: "diff",
     fileDiff,
   }));
-  const requestReveal = useCodeViewFileReveal(
-    viewer,
-    scope,
-    items.map((item) => ({ filePath: resolveFileDiffPath(item.fileDiff), fileKey: item.id })),
-  );
+  const reveal = useCodeViewFileReveal();
 
   return (
     <div style={{ display: "flex", width: 900, height: 400 }}>
@@ -57,17 +52,26 @@ function RevealHarness({
         <DiffFileTree
           entries={diffFileTreeEntries(files)}
           ariaLabel="Changed files"
-          onSelectFile={requestReveal}
+          onSelectFile={(path) => {
+            const file = files.find((file) => resolveFileDiffPath(file) === path);
+            if (file) reveal.request(buildFileDiffIdentityKey(file));
+          }}
         />
       </div>
       <StyledDiffCodeView
+        key={scope}
         viewerRef={(next) => {
-          setViewer(next);
+          reveal.attach(next);
           onViewer?.(next);
         }}
         items={items}
         style={{ flex: 1, minWidth: 0, height: 400, overflow: "auto" }}
-        options={{ diffStyle: "unified", theme: "github-light", disableFileHeader: false }}
+        options={{
+          onPostRender: reveal.flush,
+          diffStyle: "unified",
+          theme: "github-light",
+          disableFileHeader: false,
+        }}
         renderCustomHeader={(item) => (
           <div role="heading" aria-level={2} style={{ height: 32 }}>
             {item.type === "diff" ? resolveFileDiffPath(item.fileDiff) : item.file.name}

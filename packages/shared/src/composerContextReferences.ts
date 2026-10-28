@@ -7,6 +7,7 @@ import {
   type EnvironmentId,
   type KnownComposerContextRecord,
   parseTicketPlanReference,
+  type ScopedThreadRef,
   type ThreadContextRecord,
 } from "@t3tools/contracts";
 
@@ -81,6 +82,20 @@ export function sanitizeComposerContextLabel(label: string, kind: ComposerContex
     .trim()
     .slice(0, COMPOSER_CONTEXT_LABEL_MAX_CHARS);
   return cleaned.length > 0 ? cleaned : kind;
+}
+
+/** One record per thread, so re-attaching a renamed thread reuses its chip. */
+export function threadContextRecord(ref: ScopedThreadRef, title: string): ThreadContextRecord {
+  const label = sanitizeComposerContextLabel(title, "thread");
+  return {
+    version: 1,
+    kind: "thread",
+    contextId: toKindScopedComposerContextId("thread", ref.threadId),
+    label,
+    environmentId: ref.environmentId,
+    threadId: ref.threadId,
+    title: label,
+  };
 }
 
 export function formatComposerContextReference(reference: {
@@ -337,6 +352,12 @@ function formatComposerContextProviderPayload(record: KnownComposerContextRecord
         `The user attached plan ${ref}: this plan is the work to do. Before starting, read its current body and open comments with ${tool}, and resolve each comment with t3_ticket_plan_update as you address it. This thread is linked to ticket ${ticketRef}.`,
       ].join("\n");
     }
+    case "environment":
+      return [
+        `label: ${record.label}`,
+        `environmentId: ${record.environmentId}`,
+        "The user means this machine. Not linked here yet: call t3_environment_link with this environmentId. Linked: pass it as environmentId, or target.environmentId for delegate_task.",
+      ].join("\n");
   }
 }
 
@@ -406,11 +427,13 @@ export function projectComposerContextForProvider(input: {
   return `${body}\n\n<${CONTEXT_ENVELOPE_TAG} version="1">\n${entries.join("\n")}\n</${CONTEXT_ENVELOPE_TAG}>`;
 }
 
-// Thread reads are environment-local even when a draft moves between machines.
+// An agent reads threads on its own machine and on those it links to, even when a draft
+// moves between machines.
 export function threadContextsOutsideEnvironment(input: {
   text: string;
   records: ReadonlyArray<ComposerContextRecord>;
   environmentId: EnvironmentId;
+  linkedEnvironments: ReadonlyMap<EnvironmentId, string>;
 }): ThreadContextRecord[] {
   const referenced = new Set(
     collectComposerContextReferences(input.text).map((occurrence) => occurrence.contextId),
@@ -420,7 +443,8 @@ export function threadContextsOutsideEnvironment(input: {
       record.kind === "thread" &&
       "threadId" in record &&
       referenced.has(record.contextId) &&
-      record.environmentId !== input.environmentId,
+      record.environmentId !== input.environmentId &&
+      !input.linkedEnvironments.has(record.environmentId),
   );
 }
 

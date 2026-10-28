@@ -267,6 +267,7 @@ const mcpTokenCommand = Command.make("mcp-token", {
             access: flags.access,
             ...(flags.tools === "tickets" ? { tools: flags.tools } : {}),
             client: { deviceType: "bot" },
+            peerLink: false,
           });
           yield* Console.log(formatIssuedMcpClientToken(issued, { json: flags.json }));
         }),

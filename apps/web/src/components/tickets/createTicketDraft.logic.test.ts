@@ -13,7 +13,7 @@ import { formatComposerContextReference } from "@t3tools/shared/composerContextR
 import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
 import { describe, expect, it } from "vite-plus/test";
 
-import { threadContextRecord } from "../../lib/composerContextRecords";
+import { threadContextRecord } from "@t3tools/shared/composerContextReferences";
 import {
   prepareTicketDraftPaste,
   ticketDraftModelSelection,

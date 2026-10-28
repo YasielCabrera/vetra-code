@@ -21,7 +21,6 @@ import {
   expandCollapsedComposerCursor,
   extendReplacementRangeForTrailingSpace,
   formatAssistantCitationForComposer,
-  isCollapsedCursorAdjacentToInlineToken,
   isPathSuggestionCurrent,
   isTicketPlanReferenceQuery,
   replaceTextRange,
@@ -517,9 +516,6 @@ describe("assistant citation cursor offsets", () => {
     for (const offset of [1, citationSource.length - 1, citationSource.length]) {
       expect(collapseExpandedComposerCursor(text, prefix.length + offset)).toBe(prefix.length + 1);
     }
-    expect(isCollapsedCursorAdjacentToInlineToken(text, prefix.length, "right")).toBe(true);
-    expect(isCollapsedCursorAdjacentToInlineToken(text, prefix.length + 1, "left")).toBe(true);
-    expect(isCollapsedCursorAdjacentToInlineToken(text, prefix.length + 2, "left")).toBe(false);
   });
 
   it("deletes one collapsed citation without changing its neighbor or surrounding punctuation", () => {
@@ -533,59 +529,6 @@ describe("assistant citation cursor offsets", () => {
 
     expect(result).toEqual({ text: `(),${citationSource}!`, cursor: 1 });
     expect(collapseExpandedComposerCursor(result.text, result.text.length)).toBe("(),□!".length);
-  });
-});
-
-describe("isCollapsedCursorAdjacentToInlineToken", () => {
-  it("detects left adjacency only when cursor is directly after a mention", () => {
-    const text = "open @AGENTS.md next";
-    const mentionStart = "open ".length;
-    const mentionEnd = mentionStart + 1;
-
-    expect(isCollapsedCursorAdjacentToInlineToken(text, mentionEnd, "left")).toBe(true);
-    expect(isCollapsedCursorAdjacentToInlineToken(text, mentionStart, "left")).toBe(false);
-    expect(isCollapsedCursorAdjacentToInlineToken(text, mentionEnd + 1, "left")).toBe(false);
-  });
-
-  it("treats context reference pills as inline tokens for adjacency checks", () => {
-    const text = `open ${terminalReference} next`;
-    const tokenStart = "open ".length;
-    const tokenEnd = tokenStart + 1;
-
-    expect(isCollapsedCursorAdjacentToInlineToken(text, tokenEnd, "left")).toBe(true);
-    expect(isCollapsedCursorAdjacentToInlineToken(text, tokenStart, "right")).toBe(true);
-  });
-});
-
-describe("composer cursors across a Powerhouse reference", () => {
-  const reference = "`powerhouse:doc/abc` (a.pdf \u00b7 t/x \u00b7 http://127.0.0.1:4001)";
-  const text = `look at ${reference} now`;
-
-  it("collapses a reference to one character, like a mention", () => {
-    expect(collapseExpandedComposerCursor(text, `look at ${reference}`.length)).toBe(
-      "look at ".length + 1,
-    );
-  });
-
-  it("expands a collapsed cursor back past the whole reference source", () => {
-    expect(expandCollapsedComposerCursor(text, "look at ".length + 1)).toBe(
-      `look at ${reference}`.length,
-    );
-  });
-
-  it("round-trips every collapsed cursor position", () => {
-    const collapsedLength = "look at ".length + 1 + " now".length;
-    for (let cursor = 0; cursor <= collapsedLength; cursor += 1) {
-      expect(
-        collapseExpandedComposerCursor(text, expandCollapsedComposerCursor(text, cursor)),
-      ).toBe(cursor);
-    }
-  });
-
-  it("reports a collapsed cursor sitting beside the reference chip", () => {
-    expect(isCollapsedCursorAdjacentToInlineToken(text, "look at ".length, "right")).toBe(true);
-    expect(isCollapsedCursorAdjacentToInlineToken(text, "look at ".length + 1, "left")).toBe(true);
-    expect(isCollapsedCursorAdjacentToInlineToken(text, 0, "right")).toBe(false);
   });
 });
 

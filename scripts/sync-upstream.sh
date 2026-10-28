@@ -57,6 +57,9 @@ PRUNE_PATHS=(
   apps/mobile
   apps/marketing
   scripts/export-android-icons.ts
+  scripts/mobile-behavior.ts
+  scripts/mobile-behavior
+  apps/server/src/triage
   scripts/mobile-e2e.ts
   scripts/mobile-e2e
   scripts/mobile-showcase.ts
@@ -73,6 +76,7 @@ PRUNE_PATHS=(
   docs/internals/mobile-development.md
   docs/internals/mobile-navigation.md
   docs/internals/voice-input.md
+  docs/user/triage.md
   docs/user/mobile-appearance.md
   docs/user/mobile-notifications.md
   # Firebase/APNs setup for the mobile client's push notifications.
@@ -205,6 +209,7 @@ RENAMES=(
   't3code-dev:=vetra-dev:'
   'x-scheme-handler/t3code=x-scheme-handler/vetra'
   't3code://=vetra://'
+  '^t3code(?:-[a-z]+)?:=^vetra(?:-[a-z]+)?:'
   # The systemd unit the CLI installs. Two units cannot share a name.
   't3code.service=vetra-code.service'
   't3.cmd=vetra.cmd'
@@ -221,6 +226,8 @@ RENAMES=(
   # stored preference or points a remote client at a path this server does not
   # serve.
   't3_session=vetra_session'
+  'T3-Mode-Limit=Vetra-Mode-Limit'
+  't3-mode-limit=vetra-mode-limit'
   'persist:t3-preview-=persist:vetra-code-preview-'
   'Reconnected on t3@=Reconnected on vetra@'
   # Persisted client keys and CSS highlight registry names. Keyed on the

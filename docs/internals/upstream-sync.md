@@ -433,6 +433,9 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
   file has completed its manual-memoization migration. Vetra-only features still use those hooks.
   Keep the existing lint policy until those features migrate separately; take the runtime
   refactors and lint rule implementation without expanding the sync into a fork-wide UI rewrite.
+  Retain `react-effect-budget` and its budget file, and translate incoming
+  `no-unreasoned-state-sync` suppressions to that rule so their reasons still apply.
+  Keep the existing DOM-test exceptions until those tests migrate.
 - **`@types/hast` split.** The MDX packages augment whichever `@types/hast` they resolve, so every
   `hast-util-*` / `mdast-util-*` / `rehype-*` / `react-markdown` package must resolve the same
   version as shiki, which `@pierre/diffs` highlights with. A regenerated lockfile can leave some on

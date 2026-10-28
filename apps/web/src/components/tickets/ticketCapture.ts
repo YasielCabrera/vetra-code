@@ -14,7 +14,7 @@ import { serializeAssistantCitation } from "@t3tools/shared/assistantCitations";
 import { formatComposerContextReference } from "@t3tools/shared/composerContextReferences";
 import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
 
-import { threadContextRecord } from "../../lib/composerContextRecords";
+import { threadContextRecord } from "@t3tools/shared/composerContextReferences";
 import { formatReviewCommentFence } from "../../reviewCommentContext";
 import { isLatestRunSettled } from "../../session-logic";
 

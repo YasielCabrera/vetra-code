@@ -84,6 +84,7 @@ const missingIssueThroughClassifier = (input: {
       Effect.provideService(
         GitHubApi.GitHubApi,
         GitHubApi.GitHubApi.of({
+          appCredential: () => Effect.succeedNone,
           // GitHub answers a missing issue with a NOT_FOUND error, which the API fails as such.
           graphql: (request) =>
             Effect.fail(
@@ -477,6 +478,7 @@ const withSync = <A, E>(
         Layer.succeed(
           GitHubApi.GitHubApi,
           GitHubApi.GitHubApi.of({
+            appCredential: () => Effect.succeedNone,
             credential: () =>
               Effect.sync(() => ({
                 token: Redacted.make("fake-ticket-token"),

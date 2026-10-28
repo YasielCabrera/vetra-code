@@ -7,6 +7,7 @@
 //
 //   vp run check:changed          compare against the merge base with origin/main
 //   vp run check:changed <ref>    compare against the merge base with <ref>
+//   vp run check:changed --exclude-browser    leave browser tests for an authorized client pass
 //
 // Uncommitted and untracked files count. Affected packages come from
 // .github/scripts/ci-changes.cjs, the same mapping CI uses to gate its jobs.
@@ -32,7 +33,8 @@ const git = (...args: Array<string>) =>
     .split("\n")
     .filter(Boolean);
 
-const ref = process.argv[2] ?? "origin/main";
+const excludeBrowser = process.argv.includes("--exclude-browser");
+const ref = process.argv.slice(2).find((arg) => arg !== "--exclude-browser") ?? "origin/main";
 const mergeBase = NodeChildProcess.spawnSync("git", ["merge-base", "HEAD", ref], {
   cwd: root,
   encoding: "utf8",
@@ -62,7 +64,7 @@ console.log(`check:changed: ${files.length} files since ${base.slice(0, 12)}`);
 const inputKey = () => {
   const hash = NodeCrypto.createHash("sha256");
   // CI changes test behavior (vite.config.ts rejects .only under CI).
-  hash.update(`${process.version}\0${base}\0${process.env.CI ?? ""}\0`);
+  hash.update(`${process.version}\0${base}\0${process.env.CI ?? ""}\0${excludeBrowser}\0`);
   hash.update(
     NodeChildProcess.execFileSync(
       "git",
@@ -130,12 +132,14 @@ const { affected, outputs } = decide(files, packages, false);
 // `related` reaches most of a package: one leaf server file pulled in 252 of
 // 406 server test files and took 7 minutes. CI runs the rest.
 const TEST = /\.test\.[cm]?[jt]sx?$/;
-const tests = new Set(code.filter((file) => TEST.test(file)));
+const includeTest = (file: string) =>
+  TEST.test(file) && (!excludeBrowser || !file.includes(".browser.test."));
+const tests = new Set(code.filter(includeTest));
 for (const file of code) {
   const dir = NodePath.dirname(file);
   const prefix = `${NodePath.basename(file).replace(CODE, "")}.`;
   for (const entry of NodeFS.readdirSync(NodePath.join(root, dir))) {
-    if (entry.startsWith(prefix) && TEST.test(entry)) tests.add(NodePath.join(dir, entry));
+    if (entry.startsWith(prefix) && includeTest(entry)) tests.add(NodePath.join(dir, entry));
   }
 }
 

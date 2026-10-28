@@ -9,13 +9,13 @@ import {
 } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 import { formatInlineContextReference } from "./lib/composerContextReferences";
-import { threadContextRecord, threadContextReference } from "./lib/composerContextRecords";
+import { threadContextReference } from "./lib/composerContextRecords";
+import { threadContextRecord } from "@t3tools/shared/composerContextReferences";
 
 import {
   buildPendingUserInputAnswers,
   carryDisplacedCustomAnswerIntoPrompt,
   derivePendingUserInputProgress,
-  findFirstUnansweredPendingUserInputQuestionIndex,
   projectPendingUserInputAnswer,
   resolvePendingUserInputAnswer,
   setPendingUserInputCustomAnswer,
@@ -35,7 +35,7 @@ describe("projectPendingUserInputAnswer", () => {
   it("sends thread chips as readable links with the actual thread ID", () => {
     const answer = `Compare ${formatInlineContextReference(threadContextReference(record))}`;
     expect(projectPendingUserInputAnswer(answer, [record])).toBe(
-      "Compare [Reference work](vetra-thread://v1/reference-thread)",
+      "Compare [Reference work](vetra-thread://v2/env-answer/reference-thread)",
     );
   });
 
@@ -77,7 +77,7 @@ describe("projectPendingUserInputAnswer", () => {
       .join(" ");
     const projected = projectPendingUserInputAnswer(answer, [record, ticket, plan]);
 
-    expect(projected).toContain("[Reference work](vetra-thread://v1/reference-thread)");
+    expect(projected).toContain("[Reference work](vetra-thread://v2/env-answer/reference-thread)");
     expect(projected).toContain("ticket: T-42\nticketId: ticket-answer\ntitle: Login loop");
     expect(projected).toContain('t3_ticket_get(ticket="ticket-answer")');
     expect(projected).toContain("plan: T-42/P1\nplanId: plan-answer\nticket: T-42");
@@ -145,9 +145,7 @@ describe("resolvePendingUserInputAnswer", () => {
         question,
       ),
     ).toEqual({ customAnswer: "" });
-    const questions = [question, { ...singleSelectQuestion, id: "follow-up" }];
     const drafts = { scope: { customAnswer: "" } };
-    expect(findFirstUnansweredPendingUserInputQuestionIndex(questions, drafts)).toBe(1);
     expect(derivePendingUserInputProgress([question], drafts, 0)).toMatchObject({
       customAnswer: "",
       resolvedAnswer: "",
@@ -255,19 +253,6 @@ describe("pending user input question progress", () => {
       multiSelect: false,
     },
   ] as const;
-
-  it("returns the last question index when all answers are complete", () => {
-    expect(
-      findFirstUnansweredPendingUserInputQuestionIndex(questions, {
-        scope: {
-          selectedOptionValues: ["Orchestration-first"],
-        },
-        compat: {
-          customAnswer: "Keep it for one release window",
-        },
-      }),
-    ).toBe(1);
-  });
 
   it("derives the active question and advancement state", () => {
     expect(

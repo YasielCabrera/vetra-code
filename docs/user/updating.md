@@ -1,9 +1,8 @@
 # Updating Vetra Code
 
 The app you use and the server running your agents can be on different machines.
-When a server is behind your web or desktop app, an update notice appears in the
-conversation and **Settings → Connections**. Update the machine named in that
-notice.
+When a server is behind your web or desktop app, the update button at the bottom
+of the sidebar and **Settings → Environments** offer to update it.
 
 ## Update everything at once
 
@@ -20,8 +19,8 @@ updates itself; rebuild a checkout as described below.
 
 Server updates appear only after that version is published to npm. Remote
 desktop apps do not wait for npm. The confirmation lists each machine it skips
-and why, such as a machine that is offline or needs a manual update. Use the
-notice or **Settings → Connections** for those.
+and why, such as a machine that is offline or needs a manual update. Use
+**Settings → Environments** for those.
 
 If a desktop app restarts on its old version, Vetra Code tells you the update did
 not apply. It does not install that version again on its own, even when another
@@ -36,7 +35,7 @@ below.
 Server updates restart the connection and can interrupt active agents and
 terminal commands. Saved threads, settings, and project files remain.
 
-**Settings → General → Continue threads after restarts** is on by default.
+**Settings → Maintenance → Continue threads after restarts** is on by default.
 It resumes supported active threads after an update, crash, or machine
 restart. Changes are saved to connected environments that support this setting;
 update older servers first. If a supported environment was offline or has a
@@ -85,6 +84,14 @@ or `--tailscale-serve`.
 Only one server can use a Vetra home directory at a time. If startup reports that
 another server owns it, stop that server before retrying, or use a separate home
 directory and pair with the running server.
+
+## If the desktop app does not start
+
+If the desktop app's server keeps failing at startup, Vetra Code shows a "Vetra Code
+could not start" window instead of the app. If a newer version is available,
+choose **Update** to install it. If not, the window links to the last version
+that started on your computer. Download and install it to go back. Use **Copy
+details** to include the error in a bug report.
 
 ## Update providers
 

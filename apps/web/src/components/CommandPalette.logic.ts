@@ -89,6 +89,7 @@ export type CommandPaletteOpenIntent =
 export interface CommandPaletteUiState {
   readonly open: boolean;
   readonly mode: SearchOverlayMode;
+  /** What the current palette session opened to; read once when the palette view mounts. */
   readonly openIntent: CommandPaletteOpenIntent | null;
   /**
    * How the add-project flow should end. This deliberately outlives
@@ -97,6 +98,8 @@ export interface CommandPaletteUiState {
    * project is finally created.
    */
   readonly addProjectCompletion: CommandPaletteAddProjectCompletion;
+  /** Bumped by every intent so an open palette starts over from the new one. */
+  readonly session: number;
   readonly parentSearch?: CommandPaletteReturnContext;
   readonly restoredSearch?: CommandPaletteReturnContext;
 }
@@ -113,9 +116,9 @@ export type CommandPaletteUiAction =
       readonly _tag: "OpenAddProject";
       readonly completion?: CommandPaletteAddProjectCompletion;
     }
+  | { readonly _tag: "ClearOpenIntent" }
   | { readonly _tag: "OpenNewThreadIn" }
   | { readonly _tag: "OpenChangeTheme" }
-  | { readonly _tag: "ClearOpenIntent" }
   | {
       readonly _tag: "OpenChildSearch";
       readonly mode: "files" | "content";
@@ -127,6 +130,14 @@ export function reduceCommandPaletteUiState(
   state: CommandPaletteUiState,
   action: CommandPaletteUiAction,
 ): CommandPaletteUiState {
+  const { session } = state;
+  const openWithIntent = (openIntent: CommandPaletteOpenIntent): CommandPaletteUiState => ({
+    open: true,
+    mode: "command",
+    openIntent,
+    session: session + 1,
+    addProjectCompletion: "open-thread",
+  });
   switch (action._tag) {
     case "SetOpen":
       return action.open
@@ -134,19 +145,39 @@ export function reduceCommandPaletteUiState(
             open: true,
             mode: "command",
             openIntent: state.openIntent,
+            session,
             addProjectCompletion: state.addProjectCompletion,
           }
-        : { open: false, mode: state.mode, openIntent: null, addProjectCompletion: "open-thread" };
+        : {
+            session,
+            open: false,
+            mode: state.mode,
+            openIntent: null,
+            addProjectCompletion: "open-thread",
+          };
     case "ToggleMode":
       return state.open && state.mode === action.mode
-        ? { open: false, mode: state.mode, openIntent: null, addProjectCompletion: "open-thread" }
-        : { open: true, mode: action.mode, openIntent: null, addProjectCompletion: "open-thread" };
+        ? {
+            session,
+            open: false,
+            mode: state.mode,
+            openIntent: null,
+            addProjectCompletion: "open-thread",
+          }
+        : {
+            session,
+            open: true,
+            mode: action.mode,
+            openIntent: null,
+            addProjectCompletion: "open-thread",
+          };
     case "OpenChildSearch":
       return {
         open: true,
         mode: action.mode,
         openIntent: null,
         addProjectCompletion: "open-thread",
+        session,
         parentSearch: action.context,
       };
     case "BackToCommand":
@@ -156,44 +187,43 @@ export function reduceCommandPaletteUiState(
             mode: "command",
             openIntent: null,
             addProjectCompletion: "open-thread",
+            session,
             ...(state.parentSearch ? { restoredSearch: state.parentSearch } : {}),
           }
         : state;
     case "OpenSearch":
-      return {
-        open: true,
-        mode: "command",
-        openIntent: {
-          kind: "search",
-          query: action.query,
-          ...(action.linkedThreads ? { linkedThreads: action.linkedThreads } : {}),
-        },
-        addProjectCompletion: "open-thread",
-      };
+      return openWithIntent({
+        kind: "search",
+        query: action.query,
+        ...(action.linkedThreads ? { linkedThreads: action.linkedThreads } : {}),
+      });
     case "OpenAddProject":
       return {
-        open: true,
-        mode: "command",
-        openIntent: { kind: "add-project" },
+        ...openWithIntent({ kind: "add-project" }),
         addProjectCompletion: action.completion ?? "open-thread",
       };
     case "OpenNewThreadIn":
-      return {
-        open: true,
-        mode: "command",
-        openIntent: { kind: "new-thread-in" },
-        addProjectCompletion: "open-thread",
-      };
+      return openWithIntent({ kind: "new-thread-in" });
     case "OpenChangeTheme":
-      return {
-        open: true,
-        mode: "command",
-        openIntent: { kind: "change-theme" },
-        addProjectCompletion: "open-thread",
-      };
+      return openWithIntent({ kind: "change-theme" });
     case "ClearOpenIntent":
       return state.openIntent ? { ...state, openIntent: null } : state;
   }
+}
+
+/** Where "Add project" starts, given the environments that can take a new project. */
+export type AddProjectEntry =
+  | { readonly kind: "connect-environment" }
+  | { readonly kind: "choose-environment" }
+  | { readonly kind: "choose-source"; readonly environmentId: EnvironmentId };
+
+export function resolveAddProjectEntry(
+  options: ReadonlyArray<Pick<AddProjectEnvironmentOption, "environmentId">>,
+  defaultEnvironmentId: EnvironmentId | null,
+): AddProjectEntry {
+  if (options.length === 0) return { kind: "connect-environment" };
+  if (options.length > 1 || defaultEnvironmentId === null) return { kind: "choose-environment" };
+  return { kind: "choose-source", environmentId: defaultEnvironmentId };
 }
 
 export interface CommandPaletteThreadContentMatch {

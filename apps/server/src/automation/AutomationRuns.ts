@@ -23,7 +23,7 @@ import * as SqlClient from "effect/sql/SqlClient";
 
 import * as GitWorkflowService from "../git/GitWorkflowService.ts";
 import * as ThreadLaunchService from "../orchestration-v2/ThreadLaunchService.ts";
-import * as ThreadLifecycleService from "../orchestration-v2/ThreadLifecycleService.ts";
+import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import { nextScheduledRunAt } from "../scheduledTasks/Schedule.ts";
 import * as ScheduledTaskService from "../scheduledTasks/ScheduledTaskService.ts";
@@ -408,7 +408,7 @@ export const trackingThreadLaunchLayer = Layer.effect(
 export const cleanupLive = Layer.effectDiscard(
   Effect.gen(function* () {
     const tasks = yield* ScheduledTaskService.ScheduledTaskService;
-    const lifecycle = yield* ThreadLifecycleService.ThreadLifecycleService;
+    const lifecycle = yield* ThreadManagementService.ThreadManagementService;
     const runs = yield* AutomationRuns;
     const archiveOrphans = runs.pruneDeletedTasks().pipe(
       Effect.flatMap((threadIds) =>
@@ -416,7 +416,8 @@ export const cleanupLive = Layer.effectDiscard(
           threadIds,
           (threadId) =>
             lifecycle
-              .archive({
+              .dispatch({
+                type: "thread.archive",
                 commandId: CommandId.make(`automation-run-archive:${threadId}`),
                 threadId,
               })
