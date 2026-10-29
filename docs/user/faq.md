@@ -45,7 +45,7 @@ Get the [iOS](https://apps.apple.com/us/app/vetra-code-remote-claude-more/id6787
 
 ## Why does Vetra Connect keep disconnecting?
 
-Vetra Connect is our built-in alternative to Tailscale for remote connections. If it keeps dropping, open **Settings > Connections**, find the machine, and select **Details**. The first part marked as failed is the cause. I will not be disappointed if you set up Tailscale as a fallback (I do this personally). [Vetra Connect troubleshooting](./t3-connect-troubleshooting.md)
+Vetra Connect is our built-in alternative to Tailscale for remote connections. If it keeps dropping, open **Settings > Environments**, find the machine, and select **Details**. The first part marked as failed is the cause. I will not be disappointed if you set up Tailscale as a fallback (I do this personally). [Vetra Connect troubleshooting](./t3-connect-troubleshooting.md)
 
 ## Will I get banned for using my subscription?
 
