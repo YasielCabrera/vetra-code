@@ -1,7 +1,8 @@
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { RightPanelResizeHandle } from "~/components/preview/RightPanelResizeHandle";
 import { useResizableWidth } from "~/hooks/useResizableWidth";
+import { observeResize } from "~/lib/observeResize";
 import { cn } from "~/lib/utils";
 
 import { fileTreePaneResizeEdge, resolveFileTreePaneMaxWidth } from "./fileTreePaneWidth";
@@ -30,42 +31,26 @@ export function ResizableFileTreePane({
   className,
   children,
 }: ResizableFileTreePaneProps) {
-  const paneRef = useRef<HTMLElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const edge = fileTreePaneResizeEdge(side);
-  const { width, handlers } = useResizableWidth({
+  const maxWidth = resolveFileTreePaneMaxWidth(containerWidth, maxFraction, minWidth);
+  const { width, setWidth, handlers } = useResizableWidth({
     storageKey,
     defaultWidth,
     minWidth,
-    maxWidth: resolveFileTreePaneMaxWidth(containerWidth, maxFraction, minWidth),
+    maxWidth,
     edge,
   });
 
-  useLayoutEffect(() => {
-    const parent = paneRef.current?.parentElement;
-    if (!parent || typeof ResizeObserver === "undefined") return;
-
-    let frame = 0;
-    const observer = new ResizeObserver((entries) => {
-      const nextWidth = entries[0]?.contentRect.width;
-      if (nextWidth == null || frame !== 0) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = 0;
-        setContainerWidth(nextWidth);
-      });
-    });
-    observer.observe(parent);
-    setContainerWidth(parent.getBoundingClientRect().width);
-
-    return () => {
-      observer.disconnect();
-      if (frame !== 0) window.cancelAnimationFrame(frame);
-    };
-  }, []);
-
   return (
     <aside
-      ref={paneRef}
+      ref={(host) => {
+        const parent = host?.parentElement;
+        if (!parent) return;
+        const measure = () => setContainerWidth(parent.getBoundingClientRect().width);
+        measure();
+        return observeResize(parent, measure);
+      }}
       data-file-tree-pane={side}
       className={cn(
         "relative flex min-h-0 bg-background",
@@ -82,7 +67,40 @@ export function ResizableFileTreePane({
             }
       }
     >
-      {fill ? null : <RightPanelResizeHandle edge={edge} handlers={handlers} label={label} />}
+      {fill ? null : (
+        <RightPanelResizeHandle
+          edge={edge}
+          handlers={handlers}
+          label={label}
+          tabIndex={0}
+          aria-valuenow={width}
+          aria-valuemin={minWidth}
+          aria-valuemax={maxWidth}
+          onKeyDown={(event) => {
+            if (event.altKey || event.ctrlKey || event.metaKey) return;
+            let nextWidth: number;
+            switch (event.key) {
+              case "ArrowLeft":
+                nextWidth = width + (edge === "left" ? 16 : -16);
+                break;
+              case "ArrowRight":
+                nextWidth = width + (edge === "left" ? -16 : 16);
+                break;
+              case "Home":
+                nextWidth = minWidth;
+                break;
+              case "End":
+                nextWidth = maxWidth;
+                break;
+              default:
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            setWidth(nextWidth);
+          }}
+        />
+      )}
       {children}
     </aside>
   );

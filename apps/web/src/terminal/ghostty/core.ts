@@ -183,7 +183,6 @@ export function ghosttyCellText(codepointView: DataView, graphemeLength: number)
   let text = "";
   for (let start = 0; start < graphemeLength; start += CHUNK_SIZE) {
     const count = Math.min(CHUNK_SIZE, graphemeLength - start);
-    // oxlint-disable-next-line unicorn/no-new-array -- Preallocate each bounded chunk before filling it from the DataView.
     const codes = new Array<number>(count);
     for (let index = 0; index < count; index += 1) {
       codes[index] = codepointView.getUint32((start + index) * 4, true);
@@ -1068,7 +1067,8 @@ export class GhosttyTerminalCore {
         }
       }
       let wide = 0;
-      if (text.length === 0 && cells.at(-1)?.text.length) {
+      // A wrap spacer in the final column can follow a spacer tail.
+      if (text.length === 0 && (cells.at(-1)?.text.length || cells.length === cols - 1)) {
         this.assertSuccess(
           "ghostty_render_state_row_cells_get(raw)",
           this.runtime.call(

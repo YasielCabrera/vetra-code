@@ -104,6 +104,8 @@ PRUNE_PATHS=(
   docs/operations/development.md
   # Nightly toast and settings row promoting T3's beta mobile app through T3's
   # TestFlight and Google Play links. The fork ships no mobile app.
+  # Vetra already owns a side-aware, resizable file tree.
+  apps/web/src/components/files/FileExplorerPane.tsx
   apps/web/src/components/NightlyMobileBeta.tsx
   apps/web/src/components/settings/MobileAppSettingsRow.tsx
 )
@@ -147,6 +149,7 @@ RENAMES=(
   # server package is private, so there is no npx entry point; the command is
   # just `vetra <cmd>`. Keyed on the whole prefix, ahead of the pairs below,
   # because none of them match a bare `t3` followed by a space.
+  'another t3 is installing=another Vetra Code CLI is installing'
   'npx t3 =vetra '
   # The versioned form (`npx t3@latest`). Neighboring copy already names the
   # reserved package spec, PRODUCT_SERVER_PACKAGE, as the fallback.

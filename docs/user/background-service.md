@@ -90,6 +90,24 @@ version when that is newer, so an older CLI never recommends a downgrade. Enabli
 While service distribution stays gated, these codes describe a source-built server you supervise
 yourself.
 
+## Keep the server responsive when agents use all memory
+
+On Linux, agents already run with lower priority than the server. When they
+fill the machine's memory, though, the kernel may still slow down or stop the
+server, because only an administrator can reserve memory for it. Run, as your
+normal user:
+
+```sh
+vetra service protect
+```
+
+It shows the system settings it will change, asks before applying them, and
+then asks for your sudo password. If the machine runs Tailscale or SSH, it
+also offers to protect them, so you can still reach the machine. Memory
+protection takes effect at once. The server's protection from the kernel's
+out-of-memory killer takes effect after `vetra service restart`. `vetra service status` reports whether
+the protection is in place, and `vetra service protect --undo` removes it.
+
 ## Vetra Connect
 
 Vetra Connect remains unavailable until Vetra-owned cloud configuration is present. Once enabled,
