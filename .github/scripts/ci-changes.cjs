@@ -1,15 +1,5 @@
-// Decides which CI jobs a change needs. Prints `key=value` lines for
-// $GITHUB_OUTPUT; a job runs unless its key is "false".
-//
-//   node ci-changes.cjs --paths <file>          gate by the listed paths
-//   node ci-changes.cjs --paths <file> --full   run every Linux job, gate only the macOS lint
-//   node ci-changes.cjs                         changed paths unknown: run everything
-//
-// scripts/check-changed.ts requires the same decisions so local runs match CI.
-//
-// Every changed path maps to workspace packages, which then pull in their
-// dependents from package.json. A path this file does not recognize runs
-// everything, so a new root file or directory can only cost minutes.
+// CI and local checks share these decisions; unknown paths run every job.
+// Prints key=value lines for GITHUB_OUTPUT.
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -24,7 +14,9 @@ const INERT = [
 ];
 
 // Shared test setup affects every package.
-const RUNS_EVERYTHING = [/^packages\/shared\/src\/(HostProcess|testing\/longTempDir)\.ts$/];
+const RUNS_EVERYTHING = [
+  /^packages\/shared\/src\/(HostProcess|testing\/(longTempDir|providerEnv))\.ts$/,
+];
 
 // Paths outside a package, or files inside one that other packages read
 // through relative imports rather than a package.json dependency.
@@ -95,6 +87,7 @@ function readWorkspace() {
 // Returns the packages a path touches, [] for an inert path, or null when the
 // path is not understood and everything must run.
 function ownersOf(file, packages) {
+  if (file === "docs/user/t3-connect-troubleshooting.md") return ["t3"];
   if (INERT.some((pattern) => pattern.test(file))) return [];
   // A manifest can change dependencies or versions other packages read.
   if (path.posix.basename(file) === "package.json") return null;

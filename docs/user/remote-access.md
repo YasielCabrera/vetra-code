@@ -52,8 +52,9 @@ machine's current LAN and Tailscale addresses and adds them as routes, so
 pairing once through Vetra Connect is enough to use the LAN at home. When the
 machine's LAN address changes, for example after it joins another Wi-Fi network,
 the learned route follows it. The machine must allow network access for its LAN
-address to be learned. The [background service](./background-service.md#local-network-access)
-allows it on private networks by default. You can reorder a learned route, but not remove it; it
+address to be learned: **Network access** in the desktop app, or the
+[local network](./background-service.md#local-network-access) choice in `vetra up`.
+You can reorder a learned route, but not remove it; it
 goes away with the route it was learned through, or when the machine stops
 reporting that address.
 
@@ -136,8 +137,22 @@ app's own `vetra` instead. It allows Chrome's sandbox with an AppArmor profile
 and installs any missing libraries and system fonts with apt. Pages without text can mean the host has no fonts. It is safe to run again. Without
 `sudo`, it only reports what it would change.
 
-The browser always runs in Chrome's sandbox. Where you cannot change the host,
-set `VETRA_SERVER_BROWSER_SANDBOX=0` for the environment to run without it.
+The browser runs in Chrome's sandbox by default. Chrome cannot start that sandbox
+as root. If your Vetra Code server runs as root, run it as a nonroot user to keep
+sandboxing enabled. `vetra browser setup` does not fix this root restriction.
+
+If you need to run as root, or cannot enable the sandbox on your host, set
+`VETRA_SERVER_BROWSER_SANDBOX=0` in the **Vetra Code server's environment** and restart
+the server. This disables Chrome's sandbox. For a manual launch:
+
+```sh
+VETRA_SERVER_BROWSER_SANDBOX=0 t3 serve
+```
+
+For a systemd service, add `Environment=VETRA_SERVER_BROWSER_SANDBOX=0` under
+`[Service]` in its configuration, run `sudo systemctl daemon-reload`, then restart
+your T3 service. Setting the variable in an agent's terminal does not change the
+environment of an already running Vetra Code server.
 
 ## Connect an outside agent
 

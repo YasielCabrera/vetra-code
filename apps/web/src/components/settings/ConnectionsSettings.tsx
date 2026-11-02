@@ -15,6 +15,7 @@ import {
   type DesktopServerExposureState,
   type DesktopWslState,
   type EnvironmentId,
+  managedCapabilityDenial,
   resolveEnvironmentMachineKind,
 } from "@t3tools/contracts";
 import {
@@ -31,9 +32,11 @@ import {
   missingTailscaleEndpointDescription,
   resolveLocalVersionStatusLabel,
   resolveMcpServerUrl,
+  resolveTailscaleServeBaseUrl,
 } from "./ConnectionsSettings.logic";
 import { McpServerRow } from "./ConnectAgentDialog";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
+import { ManagedByOrganization } from "../ManagedPolicy";
 import { LocalEnvironmentSetting } from "./LocalEnvironmentSetting";
 import { searchableSetting } from "./settingsSearch";
 import { EnvironmentIconMenu } from "./EnvironmentIconPicker";
@@ -270,6 +273,9 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
     DesktopServerExposureState["mode"] | null
   >(null);
   const primaryServerConfig = primaryEnvironment?.serverConfig ?? null;
+  const primaryManagedPolicy = primaryServerConfig?.managedPolicy;
+  // Turning remote access off stays possible; only the way in is managed.
+  const remoteClientsDenial = managedCapabilityDenial(primaryManagedPolicy, "remoteClients");
   const primaryVersionMismatch = resolveServerConfigVersionMismatch(primaryServerConfig);
   const primaryServerUpdateState = useAtomValue(
     serverEnvironment.updateStateAtom(primaryEnvironmentId),
@@ -343,20 +349,11 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
     parsedTailscaleServePort >= 1 &&
     parsedTailscaleServePort <= 65_535;
 
-  const pendingTailscaleServeBaseUrl = (() => {
-    if (!pendingTailscaleServeEndpoint) return null;
-    if (!isTailscaleServePortValid) return pendingTailscaleServeEndpoint.httpBaseUrl;
-    if (parsedTailscaleServePort === DEFAULT_TAILSCALE_SERVE_PORT) {
-      return pendingTailscaleServeEndpoint.httpBaseUrl;
-    }
-    try {
-      const url = new URL(pendingTailscaleServeEndpoint.httpBaseUrl);
-      url.port = String(parsedTailscaleServePort);
-      return url.toString().replace(/\/$/u, "");
-    } catch {
-      return pendingTailscaleServeEndpoint.httpBaseUrl;
-    }
-  })();
+  const pendingTailscaleServeBaseUrl = resolveTailscaleServeBaseUrl(
+    pendingTailscaleServeEndpoint,
+    parsedTailscaleServePort,
+    isTailscaleServePortValid,
+  );
 
   const handleDesktopServerExposureChange = async (checked: boolean) => {
     if (
@@ -941,6 +938,7 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
           />
         ) : null
       }
+      managed={tailscaleHttpsEndpoint?.status === "available" ? undefined : remoteClientsDenial}
     />
   );
   const renderAuthorizedClients = () => (
@@ -996,6 +994,7 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
         ) : null
       }
       control={renderNetworkAccessToggle()}
+      managed={isLocalBackendNetworkAccessible ? undefined : remoteClientsDenial}
     />
   );
   const renderDisabledNetworkAccessRow = () => (
@@ -1080,6 +1079,11 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
               ) : null
             }
           >
+            {primaryManagedPolicy ? (
+              <div className="px-3 py-2 sm:px-4">
+                <ManagedByOrganization policy={primaryManagedPolicy} />
+              </div>
+            ) : null}
             {canManageLocalBackend ? (
               <SettingsRow
                 title="Version"
@@ -1539,6 +1543,7 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
       {hasCloudPublicConfig() ? (
         <RemoveT3ConnectEnvironmentDialog
           environmentLabel={pendingT3ConnectRemoval?.label ?? null}
+          environmentId={pendingT3ConnectRemoval?.environmentId ?? null}
           onCancel={() => setPendingT3ConnectRemoval(null)}
           onConfirm={() => {
             if (!pendingT3ConnectRemoval) return;

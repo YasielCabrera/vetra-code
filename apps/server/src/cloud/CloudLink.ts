@@ -98,6 +98,8 @@ import {
 import { getOrCreateEnvironmentKeyPairFromSecretStore } from "./environmentKeys.ts";
 import * as ConnectReachability from "./ConnectReachability.ts";
 import * as ManagedEndpointRuntime from "./ManagedEndpointRuntime.ts";
+import * as ManagedLimits from "../policy/managedLimits.ts";
+import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
 import { relayUrlConfig } from "./publicConfig.ts";
 import {
   filterRelayResponse,
@@ -431,7 +433,8 @@ export class CloudLink extends Context.Service<
       RelayEnvironmentLinkProof,
       | CloudLinkOriginInvalidError
       | CloudLinkInternalError
-      | EnvironmentAuth.ServerAuthInternalError,
+      | EnvironmentAuth.ServerAuthInternalError
+      | ManagedLimits.ManagedPolicyRefusedError,
       EnvironmentAuthenticatedPrincipal
     >;
     readonly applyRelayConfig: (
@@ -445,6 +448,7 @@ export class CloudLink extends Context.Service<
       | CloudLinkRelayConfigInvalidError
       | CloudLinkTunnelSupersededError
       | EnvironmentAuth.ServerAuthInternalError
+      | ManagedLimits.ManagedPolicyRefusedError
       | RelayRequestError
     >;
     readonly linkState: () => Effect.Effect<
@@ -456,7 +460,7 @@ export class CloudLink extends Context.Service<
       input: EnvironmentCloudPreferencesRequest,
     ) => Effect.Effect<
       EnvironmentCloudLinkStateResult,
-      CloudLinkNotLinkedError | CloudLinkInternalError
+      CloudLinkNotLinkedError | CloudLinkInternalError | ManagedLimits.ManagedPolicyRefusedError
     >;
     readonly answerHealthRequest: (
       request: RelayCloudEnvironmentHealthRequest,
@@ -466,6 +470,7 @@ export class CloudLink extends Context.Service<
       | CloudLinkProofReplayedError
       | CloudLinkInternalError
       | EnvironmentAuth.ServerAuthInternalError
+      | ManagedLimits.ManagedPolicyRefusedError
     >;
     readonly mintCredential: (
       request: RelayCloudMintCredentialRequest,
@@ -475,6 +480,7 @@ export class CloudLink extends Context.Service<
       | CloudLinkProofReplayedError
       | CloudLinkInternalError
       | EnvironmentAuth.ServerAuthInternalError
+      | ManagedLimits.ManagedPolicyRefusedError
     >;
     readonly reconcileDesiredLinkIfStillDesired: (
       localOrigin: string,
@@ -528,6 +534,7 @@ const make = Effect.gen(function* () {
   const config = yield* ServerConfig.ServerConfig;
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
+  const managedPolicy = yield* ManagedPolicy.ManagedPolicy;
 
   const withSecrets = Effect.provideService(ServerSecretStore.ServerSecretStore, secrets);
   const withRuntimeFiles = <A, E>(
@@ -1616,6 +1623,38 @@ const make = Effect.gen(function* () {
     Effect.catchIf(ServerSecretStore.isSecretStoreError, internalError("issue-credential")),
     Effect.catchTags({ PlatformError: internalError("issue-credential") }),
   );
+
+  if (!ManagedLimits.allowsConnect(managedPolicy)) {
+    // Reading state and unlinking stay available so clients can show and leave the old link.
+    yield* unlink().pipe(
+      Effect.tap(() => Effect.logInfo("Vetra Connect is off by managed policy; unlinked.")),
+      Effect.catch((cause) =>
+        Effect.logWarning("Failed to unlink Vetra Connect turned off by managed policy", { cause }),
+      ),
+    );
+    const refused = Effect.fn("CloudLink.refusedByPolicy")(function* () {
+      return yield* ManagedLimits.refuseConnect(managedPolicy);
+    });
+    const notLinked = Effect.fn("CloudLink.notLinkedByPolicy")(() =>
+      Effect.succeed({ status: "not_linked" as const }),
+    );
+    const notDesired = Effect.fn("CloudLink.notDesiredByPolicy")(() => Effect.succeed(null));
+    const notStarted = Effect.fn("CloudLink.notStartedByPolicy")(() => Effect.succeed(false));
+    return CloudLink.of({
+      linkProof: refused,
+      applyRelayConfig: refused,
+      linkState,
+      unlink,
+      updatePreferences: refused,
+      answerHealthRequest: refused,
+      mintCredential: refused,
+      reconcileDesiredLinkIfStillDesired: notDesired,
+      registerManagedTunnelRecovery: notLinked,
+      recoverManagedTunnel: notStarted,
+      startManagedTunnelIfOriginConfirmed: notStarted,
+      releaseManagedTunnelOnShutdown,
+    });
+  }
 
   return CloudLink.of({
     linkProof,

@@ -9,7 +9,7 @@ import {
   PIERRE_FOLDER_ICONS,
   resolvePierreFolderIcon,
 } from "./pierre-folder-icons";
-import { hasSpecificPierreIconForFileName } from "./pierre-icons";
+import { hasSpecificPierreIconForFileName, syntheticFileNameForLanguageId } from "./pierre-icons";
 
 describe("Pierre file icons", () => {
   it.each(["photo.heic", "photo.heif", "PHOTO.HEIC", "folder/photo.HEIF"])(
@@ -108,5 +108,23 @@ describe("Pierre file icons", () => {
     );
     assert.include(VETRA_PIERRE_FOLDER_ICON_CSS, "[data-item-path='apps/' i]");
     assert.include(VETRA_PIERRE_FOLDER_ICON_CSS, "[data-item-path$='/node_modules/' i]");
+  });
+
+  it.each([
+    ["luau", "lua"],
+    ["xsd", "xml"],
+    ["xsl", "xml"],
+    ["xslt", "xml"],
+  ])("gives %s files and fences the %s icon", (dialect, base) => {
+    const baseIcon = resolvePierreIconForEntry(`file.${base}`, "file")?.name;
+    assert.equal(baseIcon, `vetra-file-icon-${base}`);
+    for (const path of [`src/init.${dialect}`, `src/INIT.${dialect.toUpperCase()}`]) {
+      assert.equal(resolvePierreIconForEntry(path, "file")?.name, baseIcon);
+      assert.isTrue(hasSpecificPierreIconForFileName(path));
+    }
+    assert.equal(
+      resolvePierreIconForEntry(syntheticFileNameForLanguageId(dialect), "file")?.name,
+      baseIcon,
+    );
   });
 });

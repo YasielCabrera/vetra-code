@@ -8,6 +8,7 @@ import { createMemoryStorage } from "./lib/storage";
 import { useClosedViewStore } from "./closedViewStore";
 import { reopenClosedView } from "./reopenClosedView";
 import {
+  hostRightPanel,
   migratePersistedRightPanelState,
   pullRequestSurface,
   pullRequestSurfaceId,
@@ -49,6 +50,23 @@ async function reloadRightPanelStore() {
 }
 
 describe("rightPanelStore", () => {
+  it("opens a hosted side chat's panel actions in its parent's panel until unhosted", () => {
+    const store = useRightPanelStore.getState();
+    const unhost = hostRightPanel(refB, refA);
+    store.openFile(refB, "src/app.ts");
+    expect(selectActiveRightPanelSurface(useRightPanelStore.getState().byThreadKey, refA)?.id).toBe(
+      "file:src/app.ts",
+    );
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refB).surfaces,
+    ).toEqual([]);
+    unhost();
+    store.openFile(refB, "src/app.ts");
+    expect(selectActiveRightPanelSurface(useRightPanelStore.getState().byThreadKey, refB)?.id).toBe(
+      "file:src/app.ts",
+    );
+  });
+
   it("records single and bulk tab closes, newest first", () => {
     const store = useRightPanelStore.getState();
     const pr = pullRequestSurface({

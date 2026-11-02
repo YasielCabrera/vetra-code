@@ -38,6 +38,10 @@ const contextChipVariants = cva(
         ticket: "[--context-chip-accent:oklch(0.62_0.134_120)]",
         "ticket-plan": "[--context-chip-accent:oklch(0.62_0.134_120)]",
       },
+      shape: {
+        inline: "",
+        bubble: "w-64 gap-2 rounded-2xl bg-message px-3 py-2 text-sm text-message-foreground",
+      },
       state: {
         unresolved: "data-[state=unresolved]:[--context-chip-accent:currentColor]",
         invalid:
@@ -52,11 +56,12 @@ type ContextChipKind = NonNullable<VariantProps<typeof contextChipVariants>["kin
 interface ContextChipProps extends useRender.ComponentProps<"span"> {
   kind?: ContextChipKind;
   state?: "unresolved" | "invalid";
+  shape?: "inline" | "bubble";
 }
 
-function ContextChip({ className, kind, state, render, ...props }: ContextChipProps) {
+function ContextChip({ className, kind, state, shape, render, ...props }: ContextChipProps) {
   const defaultProps = {
-    className: cn(contextChipVariants({ kind, state }), className),
+    className: cn(contextChipVariants({ kind, state, shape }), className),
     "data-slot": "context-chip",
     "data-state": state,
   };

@@ -1,6 +1,6 @@
 // @effect-diagnostics nodeBuiltinImport:off - Stands in for an Electron debugger.
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { assert, describe, expect, it } from "@effect/vitest";
+import { assert, describe, expect, it, vi } from "@effect/vitest";
 import { DesktopBrowserEvent } from "@t3tools/contracts";
 import { EMPTY_KEYSTORE, readKeystore, writeKeystore } from "@t3tools/web3/keystore";
 import * as Effect from "effect/Effect";
@@ -1007,12 +1007,14 @@ describe("DesktopBrowserHost", () => {
       Effect.gen(function* () {
         const debuggee = makeDebuggee();
         host.attach(key, debuggee.tab);
+        const replies = yield* watchReplies(host);
         const paths: Array<string> = [];
         const item = {
           setSavePath: (path: string) => void paths.push(path),
         } as unknown as Electron.DownloadItem;
-        // Before the server sets a directory, Electron keeps its own handling.
+
         expect(host.placeDownload(debuggee.tab.webContents, item)).toBe(false);
+        const sent = debuggee.nextSend();
         yield* host.handleCommandLine(
           encodeJson({
             type: "cdp",
@@ -1024,9 +1026,14 @@ describe("DesktopBrowserHost", () => {
             }),
           }),
         );
-        debuggee.emit("Browser.downloadWillBegin", { guid: "guid-1", suggestedFilename: "r.csv" });
+        yield* Effect.promise(() => sent);
+        debuggee.release();
+        expect(yield* Queue.take(replies)).toBe(1);
+        debuggee.emit("Page.downloadWillBegin", { guid: "guid-1", suggestedFilename: "r.csv" });
+        expect(host.placeDownload(makeDebuggee().tab.webContents, item)).toBe(false);
         expect(host.placeDownload(debuggee.tab.webContents, item)).toBe(true);
         expect(paths).toEqual(["/srv/downloads/guid-1"]);
+        expect(host.placeDownload(debuggee.tab.webContents, item)).toBe(false);
       }),
     ),
   );
@@ -1155,6 +1162,75 @@ describe("DesktopBrowserHost", () => {
           }),
         );
         expect(host.humanStartedDownload(debuggee.tab.webContents)).toBe(false);
+      }),
+    ),
+  );
+
+  it.effect("detaches only the tab whose CDP event is too large to relay", () =>
+    withHost((host) =>
+      Effect.gen(function* () {
+        const tabs = [makeDebuggee({ deferFocus: true }), makeDebuggee()];
+        const send = vi.spyOn(tabs[0]!.tab.debugger, "sendCommand");
+        const keys = [key, { threadId: "thread-2", tabId: "tab-2" }];
+        const events = yield* Queue.unbounded<DesktopBrowserEvent>();
+        yield* host.events.pipe(
+          Stream.map((line) => decodeEvent(new TextDecoder().decode(line))),
+          Stream.filter((event) => event.type !== "walletKeystoreOffer"),
+          Stream.runForEach((event) => Queue.offer(events, event)),
+          Effect.forkScoped,
+        );
+        for (const [index, tabKey] of keys.entries()) {
+          host.attach(tabKey, tabs[index]!.tab);
+          expect(yield* Queue.take(events)).toEqual({ type: "attached", ...tabKey });
+          yield* host.handleCommandLine(
+            encodeJson({
+              type: "cdp",
+              ...tabKey,
+              message: encodeJson({ id: 1, method: "Target.setAutoAttach" }),
+            }),
+          );
+          // The command's reply and the page announcement.
+          yield* Queue.takeN(events, 2);
+        }
+
+        yield* host.handleCommandLine(
+          encodeJson({
+            type: "cdp",
+            ...key,
+            message: encodeJson({
+              id: 2,
+              method: "Target.setAutoAttach",
+              params: { autoAttach: true, waitForDebuggerOnStart: true, flatten: true },
+              sessionId: "t3-preview-page",
+            }),
+          }),
+        );
+        yield* command(host, 3, "Page.startScreencast");
+        tabs[0]!.emit("Runtime.consoleAPICalled", {
+          args: Array(2048).fill("x".repeat(40 * 1024)),
+        });
+        tabs[1]!.emit("Page.loadEventFired", { timestamp: 1 });
+        const [detached, next] = yield* Queue.takeN(events, 2);
+
+        expect(detached).toEqual({ type: "detached", ...key });
+        expect(send).toHaveBeenCalledWith("Target.setAutoAttach", {
+          autoAttach: false,
+          waitForDebuggerOnStart: false,
+          flatten: true,
+        });
+        tabs[0]!.settleFocus();
+        yield* settle;
+        expect(send).not.toHaveBeenCalledWith("Target.setAutoAttach", {
+          autoAttach: true,
+          waitForDebuggerOnStart: true,
+          flatten: true,
+        });
+        expect(send).toHaveBeenCalledWith("Page.stopScreencast");
+        expect(tabs[0]!.focusEmulation).toEqual([true, false]);
+        expect(next).toMatchObject({ type: "cdp", ...keys[1] });
+        expect(JSON.parse((next as { message: string }).message)).toMatchObject({
+          method: "Page.loadEventFired",
+        });
       }),
     ),
   );

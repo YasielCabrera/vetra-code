@@ -14,7 +14,6 @@ import {
   PRODUCT_DESKTOP_APP_ID,
   PRODUCT_DESKTOP_DEV_APP_ID,
   PRODUCT_NAME,
-  PRODUCT_SLUG,
 } from "@t3tools/shared/productIdentity";
 
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
@@ -82,7 +81,6 @@ export class DesktopEnvironment extends Context.Service<
     readonly displayName: string;
     readonly appUserModelId: string;
     readonly linuxDesktopEntryName: string;
-    readonly linuxWmClass: string;
     readonly linuxApplicationsDir: string;
     readonly desktopLauncherPath: Option.Option<string>;
     readonly appImagePath: Option.Option<string>;
@@ -240,7 +238,6 @@ const make = Effect.fn("desktop.environment.make")(function* (
       isDevelopment ? PRODUCT_DESKTOP_DEV_APP_ID : PRODUCT_DESKTOP_APP_ID,
     ),
     linuxDesktopEntryName: resolveLinuxDesktopEntryName(isDevelopment),
-    linuxWmClass: isDevelopment ? `${PRODUCT_SLUG}-dev` : PRODUCT_SLUG,
     linuxApplicationsDir,
     desktopLauncherPath: config.desktopLauncherPath,
     appImagePath: config.appImagePath,

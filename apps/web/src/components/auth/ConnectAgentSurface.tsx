@@ -4,8 +4,10 @@ import {
   type AuthMcpApprovalDecision,
   type AuthMcpApprovalDetails,
   AuthMcpApprovalError,
-  type AuthMcpClientAccess,
-  type AuthMcpAuthorizationRequest,
+  AuthMcpClientAccess,
+  AuthMcpAuthorizationRequest,
+  isRuntimeModeAbove,
+  managedRuntimeModeCeilingMessage,
 } from "@t3tools/contracts";
 import { isLoopbackHost } from "@t3tools/shared/preview";
 import type * as Context from "effect/Context";
@@ -74,8 +76,10 @@ function runApproval<A>(
   ).catch((): Answer<A> => ({ kind: "error", message: UNREACHABLE }));
 }
 
+const decodeAuthorizationRequest = Schema.decodeSync(AuthMcpAuthorizationRequest);
+
 function readAuthorizationRequest(): AuthMcpAuthorizationRequest {
-  return Object.fromEntries(new URL(window.location.href).searchParams);
+  return decodeAuthorizationRequest(Object.fromEntries(new URL(window.location.href).searchParams));
 }
 
 /** Sessions can grant only scopes they hold. */
@@ -201,6 +205,7 @@ export function ConnectAgentSurface() {
         <McpClientGrantFields
           access={access}
           onAccessChange={setAccess}
+          accessDisabledReason={(option) => ceilingReason(details, option)}
           tools={tools}
           onToolsChange={setTools}
         />
@@ -261,4 +266,14 @@ function ConnectAgentHeading({
   readonly description: ReactNode;
 }) {
   return <StandalonePageHeader context="Agent sign-in" title={title} description={description} />;
+}
+
+/** Why a managed policy keeps `access` from being granted, or undefined when it may be. */
+function ceilingReason(details: AuthMcpApprovalDetails, access: AuthMcpClientAccess) {
+  const ceiling = details.runtimeModeCeiling;
+  return ceiling === undefined ||
+    access === "read-only" ||
+    !isRuntimeModeAbove(access, ceiling.maxRuntimeMode)
+    ? undefined
+    : managedRuntimeModeCeilingMessage(ceiling.organization, ceiling.maxRuntimeMode);
 }

@@ -2,8 +2,6 @@ import { fromLenientJson } from "@t3tools/shared/schemaJson";
 import {
   PRODUCT_DESKTOP_APP_ID,
   PRODUCT_DESKTOP_DEV_APP_ID,
-  PRODUCT_DESKTOP_DEV_USER_DATA_DIRECTORY_NAME,
-  PRODUCT_DESKTOP_USER_DATA_DIRECTORY_NAME,
 } from "@t3tools/shared/productIdentity";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -32,7 +30,6 @@ type EarlyLinuxElectronOptionsInput = EarlyDesktopSettingsInput;
 
 export interface EarlyLinuxElectronOptions {
   readonly isDevelopment: boolean;
-  readonly linuxWmClass: string;
   readonly linuxDesktopEntryName: string;
   readonly passwordStore: LinuxPasswordStoreSwitch | null;
 }
@@ -152,9 +149,6 @@ export function resolveEarlyLinuxElectronOptions(
   const isDevelopment = isDevelopmentEnvironment(input.env);
   return {
     isDevelopment,
-    linuxWmClass: isDevelopment
-      ? PRODUCT_DESKTOP_DEV_USER_DATA_DIRECTORY_NAME
-      : PRODUCT_DESKTOP_USER_DATA_DIRECTORY_NAME,
     linuxDesktopEntryName: resolveLinuxDesktopEntryName(isDevelopment),
     passwordStore: resolveLinuxPasswordStoreSwitch({
       preference,

@@ -58,17 +58,18 @@ check the `orchestration` capability before reading or mutating state.
 
 ### Codex V2
 
-Codex app-server receives the remote MCP server through command-line config
-overrides:
+Codex gets Vetra Code's MCP server in each thread's `thread/start`, `thread/resume`,
+and `thread/fork` config, with the provider-session token in an
+`Authorization` header. The same server is registered twice:
 
-```text
--c mcp_servers.vetra-code.url=http://127.0.0.1:<port>/mcp
--c mcp_servers.vetra-code.bearer_token_env_var="VETRA_MCP_BEARER_TOKEN"
-```
+- `vetra-code`: every tool except `t3_thread_wait`.
+- `vetra-code-direct`: only `t3_thread_wait`, with `omit_tools_from = ["code_mode", "deferred"]`.
 
-The provider-session token is placed in `VETRA_MCP_BEARER_TOKEN`. Both the
-production Codex launcher and the injectable test launcher use the same
-projection helper.
+Code Mode runs a nested call as part of a script, so the model keeps working
+while a blocking wait runs. The second entry makes the wait a direct tool call,
+like Codex's own wait tools. Codex reports calls as `<server>.<tool>`, so
+`packages/shared/src/t3McpToolPresentation.ts` must resolve both server names.
+Tool display and pending-work detection depend on it.
 
 ### Claude Agent SDK V2
 
@@ -171,7 +172,7 @@ The bridge calls the original MCP tool name over HTTP. Follow-up requests send
 without it. The first turn of a session also receives the shared T3
 orchestration instructions.
 
-Pi keeps ownership of native extension discovery. T3 does not replace Pi's
+Pi keeps ownership of native extension discovery. Vetra Code does not replace Pi's
 `subagent` tool or reproduce Pi's package and project-trust loader. Durable
 delegation goes through the namespaced T3 MCP `delegate_task` tool and the
 shared orchestration child-thread lifecycle. When Pi's example `subagent`
@@ -364,7 +365,9 @@ Pass the task in `message`. Project, model, and modes inherit when omitted;
 workspace does not. `scratch: true` launches without a project, in a folder of
 its own under the environment's Scratch project. For stacked PRs, use the parent branch as `baseRef` with
 `startFromOrigin: false`. The new thread may not run with broader runtime or
-interaction modes than the caller. Launch has no retry key, so inspect existing threads after a failed or lost response before
+interaction modes than the caller. As for `delegate_task`, a runtime mode the
+provider does not offer is refused, and an inherited or default one steps down
+to the broadest mode it offers. Launch has no retry key, so inspect existing threads after a failed or lost response before
 launching again. `create_threads` remains the batch option for a shared checkout.
 
 ### `t3_thread_list`

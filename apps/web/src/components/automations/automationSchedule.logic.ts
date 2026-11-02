@@ -82,7 +82,7 @@ function distinctWeekdays(weekdays: ReadonlyArray<number> | undefined): Readonly
  * express it — the form then keeps it as it is instead of pretending.
  */
 export function presetFromSchedule(schedule: ScheduledTaskSchedule): SchedulePreset | null {
-  if (schedule.type === "webhook") return null;
+  if (schedule.type === "webhook" || schedule.type === "once") return null;
   if (schedule.type === "interval") {
     const everyHours = schedule.everyMs / HOUR_MS;
     return Number.isInteger(everyHours) && everyHours >= 1 && everyHours <= 23
@@ -132,6 +132,7 @@ export function describeAutomationSchedule(
 ): string {
   if (schedule.type === "interval") return describeInterval(schedule.everyMs);
   if (schedule.type === "webhook") return "On webhook";
+  if (schedule.type === "once") return `Once at ${schedule.runAt}`;
   const use24Hour = options?.use24Hour === true;
   const minutesOfDay = parseMinutesOfDay(schedule.timeOfDay);
   const at = minutesOfDay === null ? schedule.timeOfDay : formatClockLabel(minutesOfDay, use24Hour);

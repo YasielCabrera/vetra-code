@@ -17,11 +17,11 @@ it will update.
 Vetra Code does not publish server releases yet. A desktop app installed from a release
 updates itself; rebuild a checkout as described below.
 
-Remote desktop apps never wait for npm. When the desktop app offers the update,
-background services update right away too. Other servers, including older
-background services, update only after that version is published to npm. The
-confirmation lists each machine it skips and why, such as a machine that is
-offline or needs a manual update. Use **Settings → Environments** for those.
+Each server checks that it can install the release before it restarts. If the
+release is not available to a server yet, its update fails, the server keeps
+running, and you can retry. The confirmation lists each machine it skips and
+why, such as a machine that is offline or needs a manual update. Use
+**Settings → Environments** for those.
 
 If a desktop app restarts on its old version, Vetra Code tells you the update did
 not apply. It does not install that version again on its own, even when another
@@ -109,6 +109,19 @@ Only one server can use a Vetra home directory at a time. If startup reports tha
 another server owns it, stop that server before retrying, or use a separate home
 directory and pair with the running server.
 
+### macOS app does not reopen after an Alpha update
+
+Updating an older **Vetra Code (Alpha)** installation can replace it with
+**Vetra Code (Beta)** without reopening the app. Open **Vetra Code (Beta)** from
+Applications, or run:
+
+```sh
+open "/Applications/Vetra Code (Beta).app"
+```
+
+If an old Dock shortcut no longer opens the app, remove it and add the Beta app
+from Applications again.
+
 ## If the desktop app does not start
 
 If the desktop app's server keeps failing at startup, Vetra Code shows a "Vetra Code
@@ -116,6 +129,16 @@ could not start" window instead of the app. If a newer version is available,
 choose **Update** to install it. If not, the window links to the last version
 that started on your computer. Download and install it to go back. Use **Copy
 details** to include the error in a bug report.
+
+## Registries and proxies
+
+Each server checks Vetra Code releases, and providers installed with npm, through
+its own npm, so the checks use npm's configured registry, authentication, and
+proxy settings. Providers installed with Homebrew or pnpm check through those
+tools.
+Configure npm on the server's machine. If that registry cannot be reached, the
+release shows as unavailable; Vetra Code does not try the public registry instead.
+Machines without npm check the public npm registry directly.
 
 ## Update providers
 

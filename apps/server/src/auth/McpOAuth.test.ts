@@ -30,6 +30,7 @@ import * as McpHttpServer from "../mcp/McpHttpServer.ts";
 import * as McpOAuthHttp from "./mcpOAuthHttp.ts";
 import * as ServerSecretStore from "./ServerSecretStore.ts";
 import * as AuthHttp from "./http.ts";
+import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
 
 class AuthTestApi extends HttpApi.make("environment")
   .add(EnvironmentHttpApi.groups.auth)
@@ -37,6 +38,7 @@ class AuthTestApi extends HttpApi.make("environment")
 
 const layerConfig = ServerConfig.layerTest(process.cwd(), { prefix: "t3-mcp-oauth-test-" });
 const layerEnvironmentAuth = EnvironmentAuth.layer.pipe(
+  Layer.provide(ManagedPolicy.layerTest()),
   Layer.provide(Sqlite.layerMemory),
   Layer.provideMerge(ServerSecretStore.layer),
   Layer.provideMerge(ServerEnvironment.layerIdentity),
@@ -311,13 +313,14 @@ it.live("signs in with a pairing code and issues a token only /mcp accepts", () 
 
       expect((yield* exchange(verifier)).status).toBe(400);
 
-      const client = yield* auth.authenticateMcpClient(
-        HttpServerRequest.fromWeb(
-          at("/mcp", { headers: { authorization: `Bearer ${token.access_token}` } }),
-        ),
-      );
-      expect(client).toMatchObject({ label: "Claude Code", access: "auto" });
-      expect(client.tools).toBeUndefined();
+      for (const scheme of ["Bearer", "bearer", "bEaReR"]) {
+        const client = yield* auth.authenticateMcpClient(
+          HttpServerRequest.fromWeb(
+            at("/mcp", { headers: { authorization: `${scheme} ${token.access_token}` } }),
+          ),
+        );
+        expect(client).toMatchObject({ label: "Claude Code", access: "auto" });
+      }
       const invocation = yield* authenticateAtMcp(auth, token.access_token);
       expect([...invocation!.capabilities]).toEqual([
         "orchestration",

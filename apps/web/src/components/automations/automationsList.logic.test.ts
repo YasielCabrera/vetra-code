@@ -152,6 +152,7 @@ describe("schedule presets", () => {
     { type: "interval", everyMs: 15 * 60_000 },
     { type: "interval", everyMs: 24 * 60 * 60_000 },
     { type: "webhook", signature: null },
+    { type: "once", runAt: "2026-11-02T12:00:00.000Z" },
   ] as const)("refuses to round off a schedule the picker cannot express", (schedule) => {
     expect(presetFromSchedule(schedule)).toBeNull();
   });
@@ -177,6 +178,9 @@ describe("schedule presets", () => {
       "Every 15 minutes",
     );
     expect(describeAutomationSchedule({ type: "webhook", signature: null })).toBe("On webhook");
+    expect(describeAutomationSchedule({ type: "once", runAt: "2026-11-02T12:00:00.000Z" })).toBe(
+      "Once at 2026-11-02T12:00:00.000Z",
+    );
   });
 
   it("names the days of a schedule no preset covers", () => {

@@ -26,10 +26,12 @@ export interface SelectionAction {
  */
 export function SelectionActionToolbar<Captured extends { readonly range: Range }>({
   viewport,
+  background = false,
   capture,
   actions,
 }: {
   readonly viewport: HTMLElement | null;
+  readonly background?: boolean;
   /** Keep it stable: a new one observes the viewport again. */
   readonly capture: (selection: Selection | null, viewport: HTMLElement) => Captured | null;
   readonly actions: (captured: Captured) => ReadonlyArray<SelectionAction>;
@@ -41,6 +43,7 @@ export function SelectionActionToolbar<Captured extends { readonly range: Range 
   const toolbarRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<ReturnType<typeof observeSelectionActions> | null>(null);
 
+  // oxlint-disable-next-line t3code/react-effect-budget -- measures the floating toolbar and keeps it within the viewport
   useLayoutEffect(() => {
     const toolbar = toolbarRef.current;
     if (!toolbar || !selection) return;
@@ -49,6 +52,7 @@ export function SelectionActionToolbar<Captured extends { readonly range: Range 
     toolbar.style.top = `${Math.max(8, Math.min(selection.position.y, window.innerHeight - rect.height - 8))}px`;
   }, [selection]);
 
+  // oxlint-disable-next-line t3code/react-effect-budget -- observes document selection and keyboard events while the viewport is mounted
   useEffect(() => {
     if (!viewport) return;
     const clear = () => setSelection(null);
@@ -159,7 +163,7 @@ export function SelectionActionToolbar<Captured extends { readonly range: Range 
       event.stopPropagation();
       firstAction.focus({ preventScroll: true });
     };
-    document.addEventListener("keydown", focusActions, true);
+    if (!background) document.addEventListener("keydown", focusActions, true);
     document.addEventListener("selectionchange", observer.selectionChanged);
     return () => {
       document.removeEventListener("keydown", focusActions, true);
@@ -167,7 +171,7 @@ export function SelectionActionToolbar<Captured extends { readonly range: Range 
       observer.dispose();
       observerRef.current = null;
     };
-  }, [capture, viewport]);
+  }, [background, capture, viewport]);
 
   if (!selection) return null;
   const dismiss = () => {

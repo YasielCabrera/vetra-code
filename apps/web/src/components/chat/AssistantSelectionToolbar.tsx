@@ -5,12 +5,13 @@ import {
   type ScopedThreadRef,
 } from "@t3tools/contracts";
 import { QuoteIcon, SquareKanbanIcon } from "lucide-react";
-import { useCallback } from "react";
+import { use } from "react";
 import {
   captureAssistantTextSelection,
   type AssistantCitationSourceAnchor,
 } from "~/lib/assistantTextSelection";
 import { SelectionActionToolbar } from "../SelectionActionToolbar";
+import { BackgroundThreadContext } from "./backgroundThread";
 
 export function AssistantSelectionToolbar({
   viewport,
@@ -23,30 +24,29 @@ export function AssistantSelectionToolbar({
   onCite: (citation: AssistantCitation, sourceAnchor: AssistantCitationSourceAnchor) => boolean;
   onCreateTicket?: ((citation: AssistantCitation) => void) | undefined;
 }) {
-  const capture = useCallback(
-    (selection: Selection | null, viewport: HTMLElement) => {
-      const captured = captureAssistantTextSelection(viewport, selection);
-      const messageId = captured?.source.dataset.assistantCitationSource;
-      if (!captured || !messageId) return null;
-      const citation: AssistantCitation = {
-        version: 1,
-        ...threadRef,
-        messageId: MessageId.make(messageId),
-        ...captured.selector,
-      };
-      const sourceAnchor: AssistantCitationSourceAnchor = {
-        source: captured.source,
-        range: captured.range,
-        viewport,
-      };
-      return { range: captured.range, citation, sourceAnchor };
-    },
-    [threadRef],
-  );
+  const background = use(BackgroundThreadContext);
+  const capture = (selection: Selection | null, viewport: HTMLElement) => {
+    const captured = captureAssistantTextSelection(viewport, selection);
+    const messageId = captured?.source.dataset.assistantCitationSource;
+    if (!captured || !messageId) return null;
+    const citation: AssistantCitation = {
+      version: 1,
+      ...threadRef,
+      messageId: MessageId.make(messageId),
+      ...captured.selector,
+    };
+    const sourceAnchor: AssistantCitationSourceAnchor = {
+      source: captured.source,
+      range: captured.range,
+      viewport,
+    };
+    return { range: captured.range, citation, sourceAnchor };
+  };
 
   return (
     <SelectionActionToolbar
       viewport={viewport}
+      background={background}
       capture={capture}
       actions={({ citation, sourceAnchor }) => {
         const tooLong = citation.text.length > ASSISTANT_CITATION_MAX_TEXT_LENGTH;

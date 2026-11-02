@@ -46,12 +46,14 @@ export function McpClientGrantFields({
   access,
   onAccessChange,
   accessOptions = AuthMcpClientAccess.literals,
+  accessDisabledReason,
   tools,
   onToolsChange,
 }: {
   readonly access: AuthMcpClientAccess;
   readonly onAccessChange: (access: AuthMcpClientAccess) => void;
   readonly accessOptions?: ReadonlyArray<AuthMcpClientAccess>;
+  readonly accessDisabledReason?: (access: AuthMcpClientAccess) => string | undefined;
   readonly tools: McpToolsChoice;
   readonly onToolsChange: (tools: McpToolsChoice) => void;
 }) {
@@ -74,6 +76,7 @@ export function McpClientGrantFields({
               value={option}
               selected={option === access}
               {...accessChoices[option]}
+              disabledReason={accessDisabledReason?.(option)}
             />
           ))}
         </RadioGroup>
@@ -113,10 +116,16 @@ function ChoiceOption({
   label,
   description,
   icon: Icon,
-}: ChoiceConfig & { readonly value: string; readonly selected: boolean }) {
+  disabledReason,
+}: ChoiceConfig & {
+  readonly value: string;
+  readonly selected: boolean;
+  readonly disabledReason?: string | undefined;
+}) {
   return (
     <RadioPrimitive.Root
       value={value}
+      disabled={disabledReason !== undefined}
       className={cn(
         "flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-left outline-none transition-[background-color,border-color,box-shadow]",
         "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
@@ -134,7 +143,7 @@ function ChoiceOption({
       />
       <span className="min-w-0">
         <span className="block text-sm font-medium text-foreground">{label}</span>
-        <span className="block text-xs text-muted-foreground">{description}</span>
+        <span className="block text-xs text-muted-foreground">{disabledReason ?? description}</span>
       </span>
     </RadioPrimitive.Root>
   );

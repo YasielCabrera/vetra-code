@@ -183,6 +183,7 @@ export const VETRA_PIERRE_ICONS = {
     kt: "vetra-file-icon-kotlin",
     kts: "vetra-file-icon-kotlin",
     lua: "vetra-file-icon-lua",
+    luau: "vetra-file-icon-lua",
     php: "vetra-file-icon-php",
     ps1: "vetra-file-icon-powershell",
     psm1: "vetra-file-icon-powershell",
@@ -191,6 +192,9 @@ export const VETRA_PIERRE_ICONS = {
     scala: "vetra-file-icon-scala",
     toml: "vetra-file-icon-toml",
     xml: "vetra-file-icon-xml",
+    xsd: "vetra-file-icon-xml",
+    xsl: "vetra-file-icon-xml",
+    xslt: "vetra-file-icon-xml",
   },
 } satisfies FileTreeIcons;
 
