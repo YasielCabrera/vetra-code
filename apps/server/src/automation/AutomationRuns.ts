@@ -10,7 +10,7 @@ import {
   ThreadId,
 } from "@t3tools/contracts";
 import * as Context from "effect/Context";
-import * as Crypto from "effect/Crypto";
+import * as Digest from "effect/crypto/Digest";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -370,14 +370,14 @@ export const trackingThreadLaunchLayer = Layer.effect(
   Effect.gen(function* () {
     const inner = yield* ThreadLaunchService.ThreadLaunchService;
     const runs = yield* AutomationRuns;
-    const crypto = yield* Crypto.Crypto;
+    const digest = yield* Digest.Digest;
     return ThreadLaunchService.ThreadLaunchService.of({
       launch: Effect.fn("ThreadLaunchService.ThreadLaunchService.launch")((input) => {
         const scheduledTaskId = input.initialMessage?.scheduledTaskId;
         if (scheduledTaskId === undefined || input.threadId !== undefined) {
           return inner.launch(input);
         }
-        return crypto.digest("SHA-256", new TextEncoder().encode(input.commandId)).pipe(
+        return digest.digest(Digest.sha256, new TextEncoder().encode(input.commandId)).pipe(
           Effect.orDie,
           Effect.map((digest) => automationRunThreadId(Hex.encode(digest))),
           Effect.flatMap((threadId) =>

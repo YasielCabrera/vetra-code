@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as DocumentText from "../provider/DocumentText.ts";
 // @effect-diagnostics nodeBuiltinImport:off - fixtures must also live outside the OS temp root.
 import * as NodeOS from "node:os";
@@ -72,7 +73,11 @@ const withWorkspace = <A, E, R>(
       ),
     );
   }).pipe(
-    Effect.provide(DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer))),
+    Effect.provide(
+      DocumentText.layer.pipe(
+        Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
+      ),
+    ),
     Effect.scoped,
   );
 

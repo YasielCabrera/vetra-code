@@ -68,10 +68,11 @@ export function classifyReachability(
   const restart = "Restart Vetra Code. If it stays, run `vetra connect` again.";
 
   if (!facts.managedTunnelConfigured) {
+    // A running server reads the link `vetra connect` stores only at startup.
     return fail(
       "not_linked",
       "The server has not set up a Vetra Connect tunnel.",
-      "Run `vetra connect`, then restart the server (`vetra service restart`) so it applies the link.",
+      "Run `vetra connect`, then restart Vetra Code so it applies the link.",
     );
   }
   if (connector === null) {

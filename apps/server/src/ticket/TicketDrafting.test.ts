@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as DocumentText from "../provider/DocumentText.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
@@ -101,7 +102,11 @@ const makeHarness = (
       ),
       Layer.provideMerge(SqlitePersistence.layerMemory),
       Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-ticket-drafts-" })),
-      Layer.provideMerge(DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer))),
+      Layer.provideMerge(
+        DocumentText.layer.pipe(
+          Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
+        ),
+      ),
     );
     return { launches, layer };
   });

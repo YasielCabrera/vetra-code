@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as DocumentText from "../provider/DocumentText.ts";
 import * as GitHubRequestPolicy from "@t3tools/source-control-github/server/GitHubRequestPolicy";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -492,7 +493,11 @@ const withSync = <A, E>(
     ),
     Layer.provideMerge(SqlitePersistence.layerMemory),
     Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-ticket-github-" })),
-    Layer.provideMerge(DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer))),
+    Layer.provideMerge(
+      DocumentText.layer.pipe(
+        Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
+      ),
+    ),
   );
   return Effect.gen(function* () {
     yield* TestClock.setTime(Date.parse("2026-09-01T00:00:00Z"));

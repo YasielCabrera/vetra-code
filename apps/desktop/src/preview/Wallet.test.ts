@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as PreviewPasskeys from "./Passkeys.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
@@ -187,7 +188,11 @@ const withBridge = <A, E>(
     return yield* use({ setState, forwarded }).pipe(
       Effect.provide(
         PreviewWallet.layer.pipe(
-          Layer.provide([layerBrowserHost, layerManager, NodeServices.layer]),
+          Layer.provide([
+            layerBrowserHost,
+            layerManager,
+            Layer.mergeAll(NodeServices.layer, NodeCrypto.layer),
+          ]),
         ),
       ),
     );
@@ -411,7 +416,7 @@ const withManager = <A, E>(
     Effect.provide(
       PreviewWallet.layer.pipe(
         Layer.provideMerge(layerRealManager),
-        Layer.provideMerge(NodeServices.layer),
+        Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
       ),
     ),
     Effect.scoped,

@@ -1,4 +1,6 @@
 // @effect-diagnostics nodeBuiltinImport:off - Stands in for an Electron debugger.
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
+import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, expect, it, vi } from "@effect/vitest";
 import { DesktopBrowserEvent } from "@t3tools/contracts";
@@ -124,7 +126,7 @@ const withHost = <A, E>(
   use: (
     host: DesktopBrowserHost.DesktopBrowserHost["Service"],
     previewWalletsDir: string,
-  ) => Effect.Effect<A, E, NodeServices.NodeServices | Scope.Scope>,
+  ) => Effect.Effect<A, E, NodeServices.NodeServices | SecureRandom.SecureRandom | Scope.Scope>,
 ) =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
@@ -149,7 +151,7 @@ const withHost = <A, E>(
       const host = yield* DesktopBrowserHost.make;
       return yield* use(host, environment.previewWalletsDir);
     }).pipe(Effect.provide(layerEnvironment));
-  }).pipe(Effect.scoped, Effect.provide(NodeServices.layer));
+  }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)));
 
 /** Sends a page command whose id the fake debugger records as it receives it. */
 const command = (
@@ -215,7 +217,7 @@ const makeHost = Effect.gen(function* () {
     ),
   );
   return yield* DesktopBrowserHost.make.pipe(Effect.provide(layerEnvironment));
-}).pipe(Effect.provide(NodeServices.layer));
+}).pipe(Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)));
 
 describe("DesktopBrowserHost", () => {
   it.effect("sends a page one screenshot at a time", () =>

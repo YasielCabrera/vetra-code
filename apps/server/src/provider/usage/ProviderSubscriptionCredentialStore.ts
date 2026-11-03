@@ -1,6 +1,6 @@
 import type { ProviderInstanceId } from "@t3tools/contracts";
 import * as Context from "effect/Context";
-import * as Crypto from "effect/Crypto";
+import * as Digest from "effect/crypto/Digest";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as Hex from "effect/encoding/Hex";
@@ -62,7 +62,7 @@ export class ProviderSubscriptionCredentialStore extends Context.Reference<Provi
 
 const make = Effect.gen(function* () {
   const secrets = yield* ServerSecretStore;
-  const crypto = yield* Crypto.Crypto;
+  const digest = yield* Digest.Digest;
 
   const get = (instanceId: ProviderInstanceId) =>
     secrets.get(secretName(instanceId)).pipe(
@@ -77,7 +77,7 @@ const make = Effect.gen(function* () {
         Option.match({
           onNone: () => Effect.succeed("automatic"),
           onSome: (secret) =>
-            crypto.digest("SHA-256", encoder.encode(secret)).pipe(
+            digest.digest(Digest.sha256, encoder.encode(secret)).pipe(
               Effect.map(Hex.encode),
               Effect.map((digest) => `manual:${digest}`),
               Effect.mapError(

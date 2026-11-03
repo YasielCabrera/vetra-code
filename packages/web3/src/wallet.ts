@@ -2,7 +2,7 @@
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
-import * as Crypto from "effect/Crypto";
+import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -299,9 +299,9 @@ const jsonParams = (params: unknown): Option.Option<unknown> => {
 
 export const make = Effect.gen(function* () {
   const store = yield* WalletStore;
-  const crypto = yield* Crypto.Crypto;
+  const random = yield* SecureRandom.SecureRandom;
   const httpClient = yield* HttpClient.HttpClient;
-  const uuid = yield* crypto.randomUUIDv4();
+  const uuid = yield* random.uuidV4();
 
   const stateRef = yield* SynchronizedRef.make<WalletState>({
     persisted: DEFAULT_SETTINGS,
@@ -766,7 +766,7 @@ export const make = Effect.gen(function* () {
     readonly grantOriginOnApproval: boolean;
   }) {
     const { guest } = input;
-    const requestId = yield* crypto.randomUUIDv4();
+    const requestId = yield* random.uuidV4();
     const createdAt = DateTime.formatIso(yield* DateTime.now);
     const outcome = yield* Deferred.make<PendingOutcome>();
     const entry: PendingEntry = {

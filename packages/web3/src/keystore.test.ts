@@ -1,7 +1,9 @@
+import * as Layer from "effect/Layer";
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
-import * as Crypto from "effect/Crypto";
+import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 
@@ -11,13 +13,13 @@ import { WEB3_KEYSTORE_WARNING, type Web3Address, type Web3KeystoreFile } from "
 const withTempDir = <A, E>(
   use: (
     directory: string,
-  ) => Effect.Effect<A, E, FileSystem.FileSystem | Path.Path | Crypto.Crypto>,
+  ) => Effect.Effect<A, E, FileSystem.FileSystem | Path.Path | SecureRandom.SecureRandom>,
 ) =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const directory = yield* fileSystem.makeTempDirectoryScoped({ prefix: "vetra-web3-keystore-" });
     return yield* use(directory);
-  }).pipe(Effect.scoped, Effect.provide(NodeServices.layer));
+  }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)));
 
 const SAMPLE: Web3KeystoreFile = {
   ...EMPTY_KEYSTORE,

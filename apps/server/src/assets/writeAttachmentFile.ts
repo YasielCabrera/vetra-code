@@ -1,4 +1,4 @@
-import * as Crypto from "effect/Crypto";
+import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -21,8 +21,8 @@ export const writeAttachmentFile = Effect.fn("writeAttachmentFile")(function* <E
 }) {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const crypto = yield* Crypto.Crypto;
-  const partId = yield* crypto.randomUUIDv4().pipe(Effect.orDie);
+  const random = yield* SecureRandom.SecureRandom;
+  const partId = yield* random.uuidV4();
   const partPath = `${input.destinationPath}.${partId}.part`;
   let receivedBytes = 0;
   yield* Effect.gen(function* () {

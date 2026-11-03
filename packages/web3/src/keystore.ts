@@ -1,5 +1,5 @@
 // Preview keys use plaintext files with mode 0600 and a test-wallet warning because previews load untrusted pages.
-import * as Crypto from "effect/Crypto";
+import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
@@ -71,7 +71,7 @@ export const writeKeystore = Effect.fn("Web3Keystore.write")(function* (input: {
 }) {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const crypto = yield* Crypto.Crypto;
+  const random = yield* SecureRandom.SecureRandom;
 
   const failure = (detail: unknown) =>
     new PreviewWalletKeystoreError({
@@ -85,7 +85,7 @@ export const writeKeystore = Effect.fn("Web3Keystore.write")(function* (input: {
     warning: WEB3_KEYSTORE_WARNING,
   }).pipe(Effect.mapError(failure));
 
-  const suffix = yield* crypto.randomUUIDv4().pipe(
+  const suffix = yield* random.uuidV4().pipe(
     Effect.map((uuid) => uuid.replace(/-/g, "")),
     Effect.mapError(failure),
   );

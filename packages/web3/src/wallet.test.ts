@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
 import * as Context from "effect/Context";
@@ -136,7 +137,11 @@ const withWallet = <A, E>(
   input: Harness,
   use: (wallet: Wallet.PreviewWalletEngine["Service"]) => Effect.Effect<A, E>,
 ) =>
-  startWallet(input).pipe(Effect.flatMap(use), Effect.scoped, Effect.provide(NodeServices.layer));
+  startWallet(input).pipe(
+    Effect.flatMap(use),
+    Effect.scoped,
+    Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
+  );
 
 /** What the page sees: the result, or its EIP-1193 error. */
 const settle = (reply: Web3GuestReply) =>
@@ -281,7 +286,7 @@ describe("startup", () => {
         // Activity from the old process does not approve anything here.
         yield* Effect.forkChild(signHello(second));
         expect(yield* parked(second, 1)).toHaveLength(1);
-      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer));
+      }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)));
     },
   );
 });
@@ -977,7 +982,7 @@ describe("configure", () => {
 
       const restarted = yield* status(yield* startWallet({ store: keys.store }));
       expect(restarted.accounts[1]?.label).toBe("Treasury");
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer));
+    }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)));
   });
 
   it.effect("clears connect grants so the next request prompts again", () =>

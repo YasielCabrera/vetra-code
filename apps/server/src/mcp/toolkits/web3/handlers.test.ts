@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
 import { EnvironmentId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
@@ -76,7 +77,7 @@ const makeLayer = (input: {
       ),
     ),
     Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-web3-handlers-" })),
-    Layer.provideMerge(NodeServices.layer),
+    Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
   );
 
 const callTool = Effect.fn("Web3Handlers.test.callTool")(function* (

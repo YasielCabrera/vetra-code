@@ -346,6 +346,7 @@ RENAMES=(
   'path.join(home, ".t3",=path.join(home, ".vetra-code",'
   'path.join(yield* HostProcess.HomeDirectory, ".t3", "userdata"=path.join(yield* HostProcess.HomeDirectory, ".vetra-code", "userdata"'
   # Fixture identity for the relay and the ACP test client.
+  't3code.test=vetra-code.test'
   't3-relay=vetra-relay'
   't3-test=vetra-test'
   't3code-pr-=vetra-code-pr-'

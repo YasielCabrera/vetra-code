@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as ServerSourceControlHost from "./ServerSourceControlHost.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
@@ -37,7 +38,7 @@ const layer = SourceControlAttachmentResolver.layer.pipe(
   Layer.provide(ServerSettings.layerTest()),
   Layer.provide(FetchHttpClient.layer),
   Layer.provide(Layer.succeed(FetchHttpClient.Fetch, mockFetch)),
-  Layer.provide(NodeServices.layer),
+  Layer.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
 );
 
 // An environment token would win over gh, so the gh path under test needs none.

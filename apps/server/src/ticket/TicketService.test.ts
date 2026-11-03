@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as DocumentText from "../provider/DocumentText.ts";
 // @effect-diagnostics nodeBuiltinImport:off
 import * as NodeFS from "node:fs";
@@ -45,7 +46,11 @@ const testLayer = TicketService.layer.pipe(
   Layer.provideMerge(Layer.mock(TicketGitHub.TicketGitHub)({})),
   Layer.provideMerge(SqlitePersistence.layerMemory),
   Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-tickets-" })),
-  Layer.provideMerge(DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer))),
+  Layer.provideMerge(
+    DocumentText.layer.pipe(
+      Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
+    ),
+  ),
 );
 
 const withTickets = <A, E, R>(

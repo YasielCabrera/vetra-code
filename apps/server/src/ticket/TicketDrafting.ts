@@ -11,7 +11,7 @@ import {
 import { escapeComposerContextPayloadText } from "@t3tools/shared/composerContextReferences";
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import * as Context from "effect/Context";
-import * as Crypto from "effect/Crypto";
+import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -86,7 +86,7 @@ function draftMessageText(input: {
 
 const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
-  const crypto = yield* Crypto.Crypto;
+  const random = yield* SecureRandom.SecureRandom;
   const threadLaunch = yield* ThreadLaunchService.ThreadLaunchService;
   const projects = yield* ProjectService.ProjectService;
   const projections = yield* ProjectionStore.ProjectionStoreV2;
@@ -133,7 +133,7 @@ const make = Effect.gen(function* () {
         ? sourceThread.runtimeMode
         : resolveProjectSettings(settings, project.id, project).settings.defaultRuntimeMode;
     const { statuses } = yield* tickets.readStatuses;
-    const commandId = CommandId.make(yield* crypto.randomUUIDv4().pipe(Effect.orDie));
+    const commandId = CommandId.make(yield* random.uuidV4());
     const threadId = ThreadId.make(commandId);
     yield* sql`
       INSERT INTO ticket_drafts (thread_id, source_thread_id, project_id, instruction, created_at)

@@ -83,7 +83,7 @@ import { anchorFromSourceQuote } from "@t3tools/shared/ticketPlanAnchors";
 import * as Arr from "effect/Array";
 import * as Cache from "effect/Cache";
 import * as Context from "effect/Context";
-import * as Crypto from "effect/Crypto";
+import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as Data from "effect/Data";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
@@ -645,8 +645,8 @@ const isOwnIssue = (ticket: TicketSummary, target: TicketLinkTarget) =>
 
 const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
-  const crypto = yield* Crypto.Crypto;
-  const randomId = crypto.randomUUIDv4().pipe(Effect.orDie);
+  const random = yield* SecureRandom.SecureRandom;
+  const randomId = random.uuidV4();
   const config = yield* ServerConfig.ServerConfig;
   const fileSystem = yield* FileSystem.FileSystem;
   const documents = yield* DocumentText.DocumentText;
@@ -1304,7 +1304,7 @@ const make = Effect.gen(function* () {
       Effect.provideService(FileSystem.FileSystem, fileSystem),
       Effect.provideService(Path.Path, path),
       Effect.provideService(SqlClient.SqlClient, sql),
-      Effect.provideService(Crypto.Crypto, crypto),
+      Effect.provideService(SecureRandom.SecureRandom, random),
       Effect.provideService(DocumentText.DocumentText, documents),
     );
 

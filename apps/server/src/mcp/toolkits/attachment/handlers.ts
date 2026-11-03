@@ -14,6 +14,7 @@ import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as Upload from "../../../assets/AttachmentUpload.ts";
 import * as Claims from "../../../orchestration-v2/AttachmentClaims.ts";
 import * as ThreadMessageIntake from "../../../orchestration-v2/ThreadMessageIntake.ts";
+import { requestUrl } from "../../../requestUrl.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import { newCommandId, readThread, unavailable } from "../../threadAccess.ts";
 import { AttachmentToolkit } from "./tools.ts";
@@ -70,7 +71,7 @@ export const layer = McpToolAccess.toLayer(
             }
             let origin = providerHttpOrigin(httpServer.address);
             if (invocation.client !== undefined && Option.isSome(request)) {
-              const url = HttpServerRequest.toURL(request.value);
+              const url = requestUrl(request.value);
               if (Option.isNone(url)) {
                 return yield* new OrchestratorMcpFailure({
                   code: "orchestration_error",

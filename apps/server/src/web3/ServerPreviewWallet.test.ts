@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 // @effect-diagnostics nodeBuiltinImport:off - The test desktop holds the far ends of real pipes.
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
@@ -238,7 +239,7 @@ describe("ServerPreviewWallet", () => {
       const again = yield* untilStatus(restarted.wallet, (status) => status.accounts.length > 0);
       expect(again.accounts).toEqual(enabled.accounts);
       expect(yield* fs.readFileString(secretPath)).toBe(stored);
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))),
   );
 
   it.effect("never replaces a stored wallet it cannot read", () =>
@@ -259,7 +260,7 @@ describe("ServerPreviewWallet", () => {
         .pipe(Effect.flip);
       expect(failure._tag).toBe("PreviewWalletKeystoreError");
       expect(yield* fs.readFileString(secretPath)).toBe("not a keystore");
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))),
   );
 
   it.effect("answers a tab's prompts when its preview session closes", () =>
@@ -279,7 +280,7 @@ describe("ServerPreviewWallet", () => {
       yield* untilStatus(wallet, (status) => status.pendingRequests.length === 1);
       yield* manager.close({ threadId: THREAD, tabId: tab.tabId });
       expect(yield* Fiber.join(page)).toMatchObject({ ok: false, code: 4900 });
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))),
   );
 
   it.effect("signs for the desktop's pages and refuses tabs that are not this server's", () =>
@@ -328,7 +329,7 @@ describe("ServerPreviewWallet", () => {
         requestId: "stranger",
         reply: { ok: false, code: 4100 },
       });
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))),
   );
 
   it.effect("adopts the desktop's earlier keys before making its own, and only once", () =>
@@ -371,6 +372,6 @@ describe("ServerPreviewWallet", () => {
       expect(answered.map((command) => command.type)).not.toContain("walletKeystoreAccepted");
       const kept = yield* untilStatus(restarted.wallet, (status) => status.accounts.length > 0);
       expect(kept.accounts).toEqual(keystore.accounts);
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))),
   );
 });

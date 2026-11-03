@@ -11,7 +11,7 @@ import {
   type Web3PageState,
 } from "@t3tools/web3/schema";
 import { ipcMain, type IpcMainEvent, type IpcMainInvokeEvent, type WebContents } from "electron";
-import * as Crypto from "effect/Crypto";
+import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -94,7 +94,7 @@ interface Guest {
 const make = Effect.gen(function* () {
   const browserHost = yield* DesktopBrowserHost.DesktopBrowserHost;
   const manager = yield* PreviewManager.PreviewManager;
-  const crypto = yield* Crypto.Crypto;
+  const random = yield* SecureRandom.SecureRandom;
   const context = yield* Effect.context<never>();
   const runPromise = Effect.runPromiseWith(context);
   const guests = new Map<number, Guest>();
@@ -146,7 +146,7 @@ const make = Effect.gen(function* () {
       const state = browserHost.walletState();
       if (state === null || !state.enabled) return DISABLED;
       const view = pageViewFor(state, originOf(contents.getURL()));
-      const documentId = yield* crypto.randomUUIDv4();
+      const documentId = yield* random.uuidV4();
       track(contents, { contents, documentId, view });
       return {
         enabled: true,

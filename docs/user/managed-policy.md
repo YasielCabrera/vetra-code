@@ -111,7 +111,7 @@ cannot enforce, so upgrade Vetra Code before you deploy a policy that uses them.
 
 Each key under `settings` is a setting's path in the server's `settings.json`, such as
 `storageCleanup.logsAfterDays`. To find a path, change the setting in Vetra Code and look in
-`settings.json` under `~/.t3/userdata`.
+`settings.json` under `~/.vetra-code/userdata`.
 
 - `"locked": false` sets a default. It applies wherever the user has not chosen a value of their
   own, and users can change it.

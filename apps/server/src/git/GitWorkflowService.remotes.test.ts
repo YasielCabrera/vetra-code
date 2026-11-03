@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
@@ -19,7 +20,7 @@ const workflowLayer = GitWorkflowService.layer.pipe(
   Layer.provide(VcsDriverRegistry.layer.pipe(Layer.provide(driverLayer))),
   Layer.provideMerge(driverLayer),
   Layer.provide(Layer.mock(GitManager.GitManager)({})),
-  Layer.provideMerge(NodeServices.layer),
+  Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
 );
 
 it.effect("lists every remote of the requested checkout without collapsing fork identity", () =>

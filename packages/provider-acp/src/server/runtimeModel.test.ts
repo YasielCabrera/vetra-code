@@ -1366,6 +1366,20 @@ describe("extractMcpToolCallIdentity", () => {
     }
   });
 
+  it("recovers T3 identity from Kiro's @-scoped titles", () => {
+    for (const tool of ["html_render", "t3_thread_read", "delegate_task"]) {
+      const toolCall = toolCallFromUpdate({
+        sessionUpdate: "tool_call",
+        toolCallId: "kiro-1",
+        kind: "other",
+        title: `@vetra-code/${tool}`,
+        status: "pending",
+        rawInput: { tool_id: `vetra-code::${tool}`, arguments: { threadId: "thread-1" } },
+      });
+      expect(extractMcpToolCallIdentity(toolCall), tool).toEqual({ server: "vetra-code", tool });
+    }
+  });
+
   it("does not claim an agent's own tool that shares a Vetra Code tool name", () => {
     const toolCall = toolCallFromUpdate({
       sessionUpdate: "tool_call",

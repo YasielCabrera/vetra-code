@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
@@ -15,7 +16,7 @@ import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 import { GrokDriverWithSubscriptionUsage } from "./ProviderPackageSubscriptionUsage.ts";
 
 const layerTest = TestProviderHost.layer({ runBackgroundWork: false }).pipe(
-  Layer.provideMerge(NodeServices.layer),
+  Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
   Layer.provideMerge(IdAllocator.layer),
   Layer.provideMerge(ProviderLatestVersions.layer),
   Layer.provideMerge(McpProviderSessions.layer),
