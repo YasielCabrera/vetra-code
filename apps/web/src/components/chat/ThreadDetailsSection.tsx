@@ -7,6 +7,7 @@ export function ThreadDetailsSection({
   headingId,
   title,
   actions,
+  actionsPlacement = "end",
   separated = true,
   showHeading = true,
   expanded,
@@ -17,6 +18,7 @@ export function ThreadDetailsSection({
   headingId: string;
   title: string;
   actions?: ReactNode;
+  actionsPlacement?: "end" | "after-title";
   separated?: boolean;
   showHeading?: boolean;
   expanded?: boolean;
@@ -37,7 +39,8 @@ export function ThreadDetailsSection({
     >
       <div
         className={cn(
-          "flex min-h-8 min-w-0 items-center justify-between gap-2 px-1.5",
+          "flex min-h-8 min-w-0 items-center gap-2 px-1.5",
+          actionsPlacement === "end" && "justify-between",
           !collapsed && "mb-1",
           !showHeading && "hidden",
         )}
@@ -46,7 +49,7 @@ export function ThreadDetailsSection({
           id={headingId}
           className={cn(
             "min-w-0 truncate text-2xs font-medium text-muted-foreground select-none",
-            expanded !== undefined && "flex-1",
+            expanded !== undefined && actionsPlacement === "end" && "flex-1",
           )}
         >
           {expanded === undefined ? (

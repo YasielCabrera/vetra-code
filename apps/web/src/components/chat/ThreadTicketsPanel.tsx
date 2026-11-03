@@ -12,6 +12,7 @@ import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ThreadDetailsControl } from "./ThreadDetailsControl";
 import { ThreadDetailsSection } from "./ThreadDetailsSection";
+import { ThreadTicketStatusSummary } from "./ThreadTicketStatusSummary";
 
 /**
  * Thread details panel section listing the tickets linked to this thread,
@@ -49,6 +50,8 @@ export function ThreadTicketsPanel(props: { readonly threadRef: ScopedThreadRef 
     <ThreadDetailsSection
       headingId="thread-details-tickets-heading"
       title={`Tickets · ${tickets.length}`}
+      actions={<ThreadTicketStatusSummary tickets={tickets} statuses={statuses} />}
+      actionsPlacement="after-title"
       data-thread-tickets-panel
       expanded={expanded}
       onExpandedChange={setExpanded}
