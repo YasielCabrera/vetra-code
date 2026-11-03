@@ -356,6 +356,38 @@ describe("third-party license generation", () => {
     expect(manifest.entries[0]?.noticeText).toBe("Override text");
   });
 
+  it("supplies the committed runtime notice without a sibling React license", async () => {
+    const fixture = await createFixture();
+    const dependencyRoot = NodePath.join(fixture.root, "node_modules", "react-compiler-runtime");
+    await NodeFSP.rename(fixture.dependencyRoot, dependencyRoot);
+    await NodeFSP.rm(NodePath.join(dependencyRoot, "LICENSE"));
+    await writeJson(fixture.appManifest, {
+      name: "fixture-app",
+      dependencies: { "react-compiler-runtime": "19.1.0-rc.1" },
+    });
+    await writeJson(NodePath.join(dependencyRoot, "package.json"), {
+      name: "react-compiler-runtime",
+      version: "19.1.0-rc.1",
+      license: "MIT",
+      main: "index.js",
+      repository: "git+https://github.com/facebook/react.git",
+    });
+
+    const manifest = await generateThirdPartyLicenseManifest({
+      configFile: NodePath.join(REPOSITORY_ROOT, "third-party-licenses.config.json"),
+      packageManifests: [{ bundle: "web", path: fixture.appManifest }],
+    });
+
+    const runtime = manifest.entries.find((entry) => entry.name === "react-compiler-runtime");
+    expect(runtime).toMatchObject({
+      license: "MIT",
+      version: "19.1.0-rc.1",
+    });
+    expect(runtime?.noticeText).toContain("Copyright (c) Meta Platforms, Inc. and affiliates.");
+    expect(runtime?.noticeText).toContain("Permission is hereby granted, free of charge");
+    expect(runtime?.noticeText).toContain('THE SOFTWARE IS PROVIDED "AS IS"');
+  });
+
   it("keeps all licenses and attributions in a package with multiple generated notices", async () => {
     const fixture = await createFixture();
     await NodeFSP.rm(NodePath.join(fixture.dependencyRoot, "LICENSE"));

@@ -259,6 +259,14 @@
   ],
   "packageOverrides": [
     {
+      "name": "react-compiler-runtime",
+      "version": "19.1.0-rc.1",
+      "generatedNotice": {
+        "licenseId": "MIT",
+        "copyrights": ["Copyright (c) Meta Platforms, Inc. and affiliates."]
+      }
+    },
+    {
       "name": "entities",
       "version": "8.1.0",
       "license": "BSD-2-Clause",
