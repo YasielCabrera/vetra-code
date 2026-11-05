@@ -298,6 +298,49 @@ describe("DesktopBrowserHost", () => {
     ),
   );
 
+  it.effect("re-sends shown to a backend that starts later and when a tab attaches again", () =>
+    withHost((host) =>
+      Effect.gen(function* () {
+        host.attach(key, makeDebuggee().tab);
+        host.setShown(key, true);
+        const received = yield* startRun(host.events);
+        expect(yield* Queue.takeN(received, 3)).toEqual([
+          NO_KEYSTORE,
+          { type: "attached", ...key },
+          { type: "shown", ...key, shown: true },
+        ]);
+
+        host.detach(key);
+        host.attach(key, makeDebuggee().tab);
+
+        expect(yield* Queue.takeN(received, 3)).toEqual([
+          { type: "detached", ...key },
+          { type: "attached", ...key },
+          { type: "shown", ...key, shown: true },
+        ]);
+      }),
+    ),
+  );
+
+  it.effect("replays an explicit hidden report before announcing another tab", () =>
+    withHost((host) =>
+      Effect.gen(function* () {
+        const other = { ...key, tabId: "tab-2" };
+        host.setShown(key, false);
+        host.attach(key, makeDebuggee().tab);
+        host.setShown(other, true);
+        host.attach(other, makeDebuggee().tab);
+
+        expect(yield* takeEvents(host, 4)).toEqual([
+          NO_KEYSTORE,
+          { type: "attached", ...key },
+          { type: "shown", ...key, shown: false },
+          { type: "attached", ...other },
+        ]);
+      }),
+    ),
+  );
+
   it.effect("drops replies from a relay the server released", () =>
     withHost((host) =>
       Effect.gen(function* () {

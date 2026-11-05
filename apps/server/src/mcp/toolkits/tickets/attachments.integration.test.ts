@@ -30,6 +30,7 @@ import * as NetAddress from "effect/net/NetAddress";
 import * as SqlClient from "effect/sql/SqlClient";
 
 import { issueAssetUrl } from "../../../assets/AssetAccess.ts";
+import * as AssetSigner from "../../../assets/AssetSigner.ts";
 import * as NativeAppIconResolver from "../../../assets/NativeAppIconResolver.ts";
 import { resolveAttachmentPathById } from "../../../attachmentStore.ts";
 import * as ServerSecretStore from "../../../auth/ServerSecretStore.ts";
@@ -121,26 +122,29 @@ const externalLayers = Layer.mergeAll(
   Layer.mock(GitHubCredentials.GitHubCredentials)({}),
   SqlitePersistence.layerMemory,
 );
-const testLayer = Layer.mergeAll(
-  McpToolAccess.HandlersLayer.layer(TicketsToolkitHandlersLive),
-  McpToolAccess.HandlersLayer.layer(AttachmentHandlers.layer),
-  HttpRouter.serve(Layer.merge(ServerHttp.layerAssetRoute, ServerHttp.layerAttachmentUploadRoute), {
-    disableListenLog: true,
-    disableLogger: true,
-  }),
-).pipe(
-  Layer.provideMerge(
-    Layer.mergeAll(TicketService.layer, ServerSecretStore.layer, WorkspacePaths.layer),
-  ),
-  Layer.provideMerge(externalLayers),
-  Layer.provideMerge(configLayer),
-  Layer.provideMerge(NodeHttpServer.layerTest),
-  Layer.provideMerge(
-    DocumentText.layer.pipe(
-      Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
+const layerWithAssetSigner = (assetSigner: typeof AssetSigner.layer) =>
+  Layer.mergeAll(
+    McpToolAccess.HandlersLayer.layer(TicketsToolkitHandlersLive),
+    McpToolAccess.HandlersLayer.layer(AttachmentHandlers.layer),
+    HttpRouter.serve(
+      Layer.merge(ServerHttp.layerAssetRoute, ServerHttp.layerAttachmentUploadRoute),
+      { disableListenLog: true, disableLogger: true },
     ),
-  ),
-);
+  ).pipe(
+    Layer.provideMerge(assetSigner),
+    Layer.provideMerge(
+      Layer.mergeAll(TicketService.layer, ServerSecretStore.layer, WorkspacePaths.layer),
+    ),
+    Layer.provideMerge(externalLayers),
+    Layer.provideMerge(configLayer),
+    Layer.provideMerge(NodeHttpServer.layerTest),
+    Layer.provideMerge(
+      DocumentText.layer.pipe(
+        Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
+      ),
+    ),
+  );
+const testLayer = layerWithAssetSigner(AssetSigner.layer);
 
 type Tools = (typeof TicketsToolkit)["tools"];
 const decodePrepared = Schema.decodeUnknownEffect(
@@ -239,11 +243,22 @@ const storedForUploads = (
   });
 
 describe("ticket attachments through MCP and HTTP", () => {
-  it.live("rejects unsupported HTTP origins before requesting the signing key", () =>
-    Effect.gen(function* () {
+  it.live("rejects unsupported HTTP origins before requesting the signing key", () => {
+    let signingRequests = 0;
+    const countingSigner = AssetSigner.layer.pipe(
+      Layer.provide(
+        Layer.mock(ServerSecretStore.ServerSecretStore)({
+          getOrCreateRandom: () =>
+            Effect.sync(() => {
+              signingRequests++;
+              return new Uint8Array(32);
+            }),
+        }),
+      ),
+    );
+    return Effect.gen(function* () {
       const toolkit = yield* AttachmentToolkit;
       const server = yield* HttpServer.HttpServer;
-      let signingRequests = 0;
       for (const address of [
         NetAddress.unixPathAddress("/tmp/vetra-upload-test.sock"),
         Result.getOrThrow(
@@ -260,15 +275,6 @@ describe("ticket attachments through MCP and HTTP", () => {
             Stream.unwrap,
             Stream.runCollect,
             Effect.provideService(HttpServer.HttpServer, { ...server, address }),
-            Effect.provide(
-              Layer.mock(ServerSecretStore.ServerSecretStore)({
-                getOrCreateRandom: () =>
-                  Effect.sync(() => {
-                    signingRequests++;
-                    return new Uint8Array(32);
-                  }),
-              }),
-            ),
           );
         expect(results.at(-1)?.isFailure).toBe(true);
         expect(results.at(-1)?.result).toMatchObject({
@@ -277,8 +283,8 @@ describe("ticket attachments through MCP and HTTP", () => {
         });
       }
       expect(signingRequests).toBe(0);
-    }).pipe(Effect.provide(testLayer)),
-  );
+    }).pipe(Effect.provide(layerWithAssetSigner(countingSigner)));
+  });
 
   it.live(
     "uploads image, video and file bytes, claims canonical copies, appends and removes them",

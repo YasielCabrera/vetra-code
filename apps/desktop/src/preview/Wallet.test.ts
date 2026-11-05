@@ -159,6 +159,7 @@ const withBridge = <A, E>(
     const layerBrowserHost = Layer.mock(DesktopBrowserHost.DesktopBrowserHost)({
       attach: () => {},
       detach: () => {},
+      setShown: () => {},
       placeDownload: () => false,
       humanStartedDownload: () => false,
       walletState: () => state,

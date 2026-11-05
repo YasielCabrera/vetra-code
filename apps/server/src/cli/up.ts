@@ -171,12 +171,12 @@ const formatSetup = (setup: Setup) => {
   ].join("\n");
 };
 
-const formatNextSteps = (routes: Routes, serviceInstalled: boolean) =>
+const formatNextSteps = (routes: Routes, serviceInstalled: boolean, pairCommand: string) =>
   [
     ...(routes.connect
       ? ["On your other device, sign in to Vetra Connect with the same account."]
       : []),
-    ...(routes.lan ? ["Run `vetra pair`. Use the code on your other device."] : []),
+    ...(routes.lan ? [`Run \`${pairCommand}\`. Use the code on your other device.`] : []),
     ...(routes.connect || routes.lan
       ? []
       : [
@@ -197,6 +197,11 @@ const setUp = Effect.fn("cli.up")(function* (flags: {
 }) {
   const { baseDir } = yield* ServerConfig.ServerConfig;
   const service = yield* BootService.BootService;
+  const baseDirArgs = Option.match(flags.baseDir, {
+    onNone: () => [],
+    onSome: (dir) => ["--base-dir", dir],
+  });
+  const { command: pairCommand } = yield* resolveHostCliCommand("pair", baseDirArgs);
   const before = yield* readSetup();
   if (before.connect === null && Option.getOrElse(flags.connect, () => false)) {
     return yield* new CliError.UserError({
@@ -252,7 +257,7 @@ const setUp = Effect.fn("cli.up")(function* (flags: {
       yield* disconnectCloud({ clearAuthorization: false });
     }
     if (current.lan) yield* CliService.writeServiceEnv(baseDir, { VETRA_LAN: "false" });
-    return yield* Console.log(formatNextSteps(routes, false));
+    return yield* Console.log(formatNextSteps(routes, false, pairCommand));
   }
   const { installedVersion } = before.service;
   const newer =
@@ -327,7 +332,7 @@ const setUp = Effect.fn("cli.up")(function* (flags: {
 
   const printServeCommand = Effect.fn(function* (reason: string) {
     const { command } = yield* resolveHostCliCommand("serve", [
-      ...Option.match(flags.baseDir, { onNone: () => [], onSome: (dir) => ["--base-dir", dir] }),
+      ...baseDirArgs,
       // Explicit either way, so a VETRA_LAN in the shell cannot override the choice.
       routes.lan ? "--lan" : "--no-lan",
     ]);
@@ -408,6 +413,7 @@ const setUp = Effect.fn("cli.up")(function* (flags: {
     `\nThis machine\n${formatSetup(after)}\n\n${formatNextSteps(
       { connect: after.connect === true, lan: after.lan },
       after.service.installed,
+      pairCommand,
     )}`,
   );
 });
@@ -439,12 +445,12 @@ export const upCommand = Command.make("up", {
     "Set up remote access and the Vetra Code background service. Access flags skip the question, and routes not named keep their settings. Without a terminal, a needed restart runs without asking and stops running agent turns.",
   ),
   Command.withExamples([
-    { command: "t3 up", description: "Choose remote access." },
-    { command: "t3 up --connect", description: "Turn on Vetra Connect. Keep other settings." },
-    { command: "t3 up --lan", description: "Allow LAN access with pairing codes." },
-    { command: "t3 up --no-lan", description: "Stop LAN access." },
-    { command: "t3 up --yes", description: "Take the defaults with no questions." },
-    { command: "t3 status --json", description: "Read the settings from a script." },
+    { command: "vetra up", description: "Choose remote access." },
+    { command: "vetra up --connect", description: "Turn on Vetra Connect. Keep other settings." },
+    { command: "vetra up --lan", description: "Allow LAN access with pairing codes." },
+    { command: "vetra up --no-lan", description: "Stop LAN access." },
+    { command: "vetra up --yes", description: "Take the defaults with no questions." },
+    { command: "vetra status --json", description: "Read the settings from a script." },
   ]),
   Command.withHandler((flags) => runCloudCommand(flags, setUp(flags), { quietLogs: true })),
 );
@@ -494,8 +500,8 @@ export const statusCommand = Command.make("status", {
 }).pipe(
   Command.withDescription("Show service setup and remote access settings."),
   Command.withExamples([
-    { command: "t3 status", description: "Show the settings." },
-    { command: "t3 status --json", description: "Print them for scripts and agents." },
+    { command: "vetra status", description: "Show the settings." },
+    { command: "vetra status --json", description: "Print them for scripts and agents." },
   ]),
   Command.withHandler(
     Effect.fn("cli.status")(function* (flags) {

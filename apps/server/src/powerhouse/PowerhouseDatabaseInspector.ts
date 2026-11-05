@@ -11,6 +11,7 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import { Client, type FieldDef } from "pg";
 import Cursor from "pg-cursor";
 
@@ -183,6 +184,9 @@ const databaseError = (
   });
 
 const isPowerhouseDatabaseError = Schema.is(PowerhouseDatabaseError);
+const isPowerhouseSnapshotDecodeError = Schema.is(PowerhouseSnapshotDecodeError);
+const isPowerhousePgliteWorkerError = Schema.is(PowerhousePgliteWorkerError);
+const isPowerhouseSqlRejectedError = Schema.is(PowerhouseSqlRejectedError);
 
 const publicTarget = (input: {
   readonly id: PowerhouseDatabaseTargetId;
@@ -228,9 +232,10 @@ const readProjectEnvironment = async (projectDirectory: string) => {
 
 const configuredValue = (
   key: DatabaseEnvironmentKey,
+  serverEnvironment: NodeJS.ProcessEnv,
   projectEnvironment: Partial<Record<DatabaseEnvironmentKey, string>>,
 ): ConfiguredValue | undefined => {
-  const serverValue = process.env[key];
+  const serverValue = serverEnvironment[key];
   if (serverValue !== undefined) return { value: serverValue, source: "server_env" };
   const projectValue = projectEnvironment[key];
   return projectValue === undefined ? undefined : { value: projectValue, source: "project_env" };
@@ -264,13 +269,17 @@ const missingDetail = (target: PowerhouseDatabaseTargetId) =>
 
 const selectTargetValue = (
   target: PowerhouseDatabaseTargetId,
+  serverEnvironment: NodeJS.ProcessEnv,
   projectEnvironment: Partial<Record<DatabaseEnvironmentKey, string>>,
 ): ConfiguredValue => {
   const primary = configuredValue(
     target === "read_models" ? "DATABASE_URL" : "PH_REACTOR_DATABASE_URL",
+    serverEnvironment,
     projectEnvironment,
   );
-  const configured = primary ?? configuredValue("PH_SWITCHBOARD_DATABASE_URL", projectEnvironment);
+  const configured =
+    primary ??
+    configuredValue("PH_SWITCHBOARD_DATABASE_URL", serverEnvironment, projectEnvironment);
   // Powerhouse's `??` precedence preserves an explicitly empty variable, then
   // its path selection uses `value || default` rather than treating it as an
   // in-memory database or falling through to the next variable.
@@ -442,9 +451,10 @@ const resolvePgliteTarget = async (input: {
 const resolveDatabaseTarget = async (input: {
   readonly id: PowerhouseDatabaseTargetId;
   readonly projectDirectory: string;
+  readonly serverEnvironment: NodeJS.ProcessEnv;
   readonly projectEnvironment: Partial<Record<DatabaseEnvironmentKey, string>>;
 }) => {
-  const configured = selectTargetValue(input.id, input.projectEnvironment);
+  const configured = selectTargetValue(input.id, input.serverEnvironment, input.projectEnvironment);
   if (!isPostgresUrl(configured.value)) {
     return resolvePgliteTarget({ ...input, configured });
   }
@@ -710,15 +720,25 @@ const reconstructDefinition = (
 };
 
 class InspectorRuntime {
+  readonly #serverEnvironment: NodeJS.ProcessEnv;
   readonly #sessions = new Map<string, CachedPgliteSession>();
   #sessionMutation: Promise<void> = Promise.resolve();
   #closing = false;
+
+  constructor(serverEnvironment: NodeJS.ProcessEnv) {
+    this.#serverEnvironment = serverEnvironment;
+  }
 
   async discover(projectDirectory: string): Promise<PowerhouseDatabaseDiscoverResult> {
     const projectEnvironment = await readProjectEnvironment(projectDirectory);
     const targets = await Promise.all(
       (["read_models", "reactor"] as const).map((id) =>
-        resolveDatabaseTarget({ id, projectDirectory, projectEnvironment }),
+        resolveDatabaseTarget({
+          id,
+          projectDirectory,
+          serverEnvironment: this.#serverEnvironment,
+          projectEnvironment,
+        }),
       ),
     );
     return { targets: targets.map((target) => this.#targetWithLoadedSnapshot(target)) };
@@ -915,6 +935,7 @@ class InspectorRuntime {
     const target = await resolveDatabaseTarget({
       id: targetId,
       projectDirectory,
+      serverEnvironment: this.#serverEnvironment,
       projectEnvironment,
     });
     if (target.connection === null || target.publicTarget.status !== "ready") {
@@ -1030,7 +1051,7 @@ class InspectorRuntime {
       if (restored !== undefined) {
         await removeRestoredPowerhouseSnapshot(restored.directory).catch(() => undefined);
       }
-      if (cause instanceof PowerhouseSnapshotDecodeError) {
+      if (isPowerhouseSnapshotDecodeError(cause)) {
         throw databaseError(
           cause.reason === "too_large" ? "snapshot_too_large" : "decode_failed",
           target.publicTarget.id,
@@ -1131,7 +1152,7 @@ class InspectorRuntime {
 }
 
 const postgresErrorCode = (cause: unknown) => {
-  if (cause instanceof PowerhousePgliteWorkerError) return cause.code;
+  if (isPowerhousePgliteWorkerError(cause)) return cause.code;
   return typeof cause === "object" &&
     cause !== null &&
     "code" in cause &&
@@ -1183,7 +1204,7 @@ const mapQueryError = (
       secrets,
     });
   }
-  if (cause instanceof PowerhouseSqlRejectedError) {
+  if (isPowerhouseSqlRejectedError(cause)) {
     return databaseError("query_rejected", targetId, { message: cause.message });
   }
   return mapAdapterError(cause, targetId, []);
@@ -1194,7 +1215,7 @@ const mapUnexpectedDatabaseError = (
   target?: PowerhouseDatabaseTargetId,
 ): PowerhouseDatabaseError => {
   if (isPowerhouseDatabaseError(cause)) return cause;
-  if (cause instanceof PowerhouseSqlRejectedError) {
+  if (isPowerhouseSqlRejectedError(cause)) {
     return new PowerhouseDatabaseError({
       failure: "query_rejected",
       ...(target === undefined ? {} : { target }),
@@ -1209,7 +1230,7 @@ const mapUnexpectedDatabaseError = (
 
 const make = Effect.gen(function* () {
   const project = yield* PowerhouseProject.PowerhouseProject;
-  const runtime = new InspectorRuntime();
+  const runtime = new InspectorRuntime(yield* HostProcess.Environment);
   yield* Effect.addFinalizer(() => Effect.promise(() => runtime.close()));
 
   const withProject = Effect.fn("PowerhouseDatabaseInspector.withProject")(function* <A>(

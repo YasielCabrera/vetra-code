@@ -27,7 +27,11 @@ import {
   settledResult,
   type ProviderSubscriptionUsageIdentity,
 } from "./providerSubscriptionUsageHelpers.ts";
-import { ProviderUsageHttpError, providerUsageHttpRequest } from "./ProviderUsageHttpClient.ts";
+import {
+  isProviderUsageHttpError,
+  ProviderUsageHttpError,
+  providerUsageHttpRequest,
+} from "./ProviderUsageHttpClient.ts";
 
 const OPENCODE_ORIGIN = "https://opencode.ai";
 const WORKSPACES_SERVER_ID = "def39973159c7f0483d8793a822b8dbb10d067e12c65455fcb4608459ba0234f";
@@ -548,9 +552,9 @@ export const makeOpenCodeSubscriptionUsageCapability = (input: {
             }),
             Effect.map(settledProbe),
             Effect.catch((error) => {
-              const auth = error instanceof ProviderUsageHttpError && error.kind === "auth";
+              const auth = isProviderUsageHttpError(error) && error.kind === "auth";
               const unsupported =
-                error instanceof ProviderUsageHttpError &&
+                isProviderUsageHttpError(error) &&
                 error.kind === "response" &&
                 error.status === 404;
               return Effect.succeed(

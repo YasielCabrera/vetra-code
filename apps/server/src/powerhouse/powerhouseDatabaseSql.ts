@@ -1,11 +1,15 @@
 import { POWERHOUSE_DATABASE_SQL_MAX_LENGTH } from "@t3tools/contracts";
+import * as Schema from "effect/Schema";
 
-export class PowerhouseSqlRejectedError extends Error {
-  constructor(message = "Only one read-only row-producing SQL statement is allowed.") {
-    super(message);
-    this.name = "PowerhouseSqlRejectedError";
-  }
-}
+export class PowerhouseSqlRejectedError extends Schema.TaggedError<PowerhouseSqlRejectedError>()(
+  "PowerhouseSqlRejectedError",
+  { message: Schema.String },
+) {}
+
+const singleReadStatementRequired = () =>
+  new PowerhouseSqlRejectedError({
+    message: "Only one read-only row-producing SQL statement is allowed.",
+  });
 
 const ALLOWED_FIRST_KEYWORDS = new Set(["SELECT", "WITH", "VALUES", "TABLE"]);
 const MUTATING_CTE_KEYWORDS = new Set(["INSERT", "UPDATE", "DELETE", "MERGE"]);
@@ -118,20 +122,24 @@ export function validatePowerhouseReadQuery(sql: string): string {
     trimmed.length === 0 ||
     Buffer.byteLength(trimmed, "utf8") > POWERHOUSE_DATABASE_SQL_MAX_LENGTH
   ) {
-    throw new PowerhouseSqlRejectedError("The SQL query is empty or exceeds the 64 KiB limit.");
+    throw new PowerhouseSqlRejectedError({
+      message: "The SQL query is empty or exceeds the 64 KiB limit.",
+    });
   }
   const scanned = scanSql(trimmed);
   const firstKeyword = scanned.tokens[0];
   if (firstKeyword === undefined || !ALLOWED_FIRST_KEYWORDS.has(firstKeyword)) {
-    throw new PowerhouseSqlRejectedError();
+    throw singleReadStatementRequired();
   }
   if (firstKeyword === "WITH" && scanned.tokens.some((token) => MUTATING_CTE_KEYWORDS.has(token))) {
-    throw new PowerhouseSqlRejectedError("Data-changing common table expressions are not allowed.");
+    throw new PowerhouseSqlRejectedError({
+      message: "Data-changing common table expressions are not allowed.",
+    });
   }
-  if (scanned.semicolons.length > 1) throw new PowerhouseSqlRejectedError();
+  if (scanned.semicolons.length > 1) throw singleReadStatementRequired();
   const semicolon = scanned.semicolons[0];
   if (semicolon !== undefined && scanned.meaningfulAfter(semicolon)) {
-    throw new PowerhouseSqlRejectedError();
+    throw singleReadStatementRequired();
   }
   return semicolon === undefined ? trimmed : trimmed.slice(0, semicolon).trimEnd();
 }

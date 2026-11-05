@@ -14,6 +14,7 @@ import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
+import * as Schema from "effect/Schema";
 
 import { resolveClaudeSdkExecutablePath } from "../Drivers/ClaudeExecutable.ts";
 import { makeClaudeEnvironment } from "../Drivers/ClaudeHome.ts";
@@ -260,6 +261,15 @@ function waitForAbortSignal(signal: AbortSignal): Promise<void> {
   );
 }
 
+class ClaudeSubscriptionUsageProbeError extends Schema.TaggedError<ClaudeSubscriptionUsageProbeError>()(
+  "ClaudeSubscriptionUsageProbeError",
+  { cause: Schema.Defect() },
+) {
+  override get message(): string {
+    return "Could not read Claude subscription usage.";
+  }
+}
+
 export const makeClaudeSubscriptionUsageCapability = (input: {
   readonly instance: Pick<ProviderInstance, "instanceId" | "driverKind" | "displayName">;
   readonly settings: ClaudeSettings;
@@ -289,54 +299,57 @@ export const makeClaudeSubscriptionUsageCapability = (input: {
       input.settings.binaryPath,
       claudeEnvironment,
     );
-    return yield* Effect.tryPromise(async (signal) => {
-      const abort = new AbortController();
-      const abortProbe = () => abort.abort();
-      signal.addEventListener("abort", abortProbe, { once: true });
-      const q = claudeQuery({
-        // oxlint-disable-next-line require-yield -- The probe reads account state only; no prompt may reach the API.
-        prompt: (async function* (): AsyncGenerator<SDKUserMessage> {
-          await waitForAbortSignal(abort.signal);
-        })(),
-        options: buildClaudeCapabilitiesProbeQueryOptions({
-          executablePath,
-          abortController: abort,
-          environment: claudeEnvironment,
-          cwd: input.cwd,
-          managedMcpConfig: input.managedMcpConfig,
-        }),
-      });
-      try {
-        const init = await q.initializationResult();
-        const usageMethod = (
-          q as {
-            usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET?: (opts?: {
-              readonly skipBehaviors?: boolean;
-            }) => Promise<SDKControlGetUsageResponse>;
-          }
-        ).usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET;
-        if (typeof usageMethod !== "function") {
-          return settledResult(identity, {
-            state: "unsupported",
-            message: "Update Claude Code to a version that supports structured usage limits.",
-            windows: [],
-            details: [],
-          });
-        }
-        // Only the rate limits are read; the transcript scan behind `behaviors` outlasts the
-        // timeout for users with large histories.
-        const response = await usageMethod.call(q, { skipBehaviors: true });
-        const account = init.account as { readonly email?: string } | undefined;
-        return parseClaudeSubscriptionUsage({
-          identity,
-          fetchedAt,
-          ...(account?.email ? { accountEmail: account.email } : {}),
-          response,
+    return yield* Effect.tryPromise({
+      try: async (signal) => {
+        const abort = new AbortController();
+        const abortProbe = () => abort.abort();
+        signal.addEventListener("abort", abortProbe, { once: true });
+        const q = claudeQuery({
+          // oxlint-disable-next-line require-yield -- The probe reads account state only; no prompt may reach the API.
+          prompt: (async function* (): AsyncGenerator<SDKUserMessage> {
+            await waitForAbortSignal(abort.signal);
+          })(),
+          options: buildClaudeCapabilitiesProbeQueryOptions({
+            executablePath,
+            abortController: abort,
+            environment: claudeEnvironment,
+            cwd: input.cwd,
+            managedMcpConfig: input.managedMcpConfig,
+          }),
         });
-      } finally {
-        signal.removeEventListener("abort", abortProbe);
-        if (!abort.signal.aborted) abort.abort();
-      }
+        try {
+          const init = await q.initializationResult();
+          const usageMethod = (
+            q as {
+              usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET?: (opts?: {
+                readonly skipBehaviors?: boolean;
+              }) => Promise<SDKControlGetUsageResponse>;
+            }
+          ).usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET;
+          if (typeof usageMethod !== "function") {
+            return settledResult(identity, {
+              state: "unsupported",
+              message: "Update Claude Code to a version that supports structured usage limits.",
+              windows: [],
+              details: [],
+            });
+          }
+          // Only the rate limits are read; the transcript scan behind `behaviors` outlasts the
+          // timeout for users with large histories.
+          const response = await usageMethod.call(q, { skipBehaviors: true });
+          const account = init.account as { readonly email?: string } | undefined;
+          return parseClaudeSubscriptionUsage({
+            identity,
+            fetchedAt,
+            ...(account?.email ? { accountEmail: account.email } : {}),
+            response,
+          });
+        } finally {
+          signal.removeEventListener("abort", abortProbe);
+          if (!abort.signal.aborted) abort.abort();
+        }
+      },
+      catch: (cause) => new ClaudeSubscriptionUsageProbeError({ cause }),
     });
   }).pipe(
     Effect.timeout("15 seconds"),

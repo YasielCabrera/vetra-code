@@ -442,6 +442,12 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
   an older version, and `apps/web` then fails with `Root is not assignable to Nodes`. Point their
   `@types/hast` entries at the one version upstream's lockfile uses, drop the orphaned entry, and
   delete `apps/web/tsconfig.tsbuildinfo` before re-checking: a stale one keeps reporting the split.
+- **Fork-only dependencies under upstream's install rules.** Upstream sets
+  `strictPeerDependencies: true`, so a fork-only dependency with a peer mismatch (GraphiQL's
+  plugins, extra Tiptap extensions) fails `pnpm install` instead of warning. Keep fork Tiptap
+  packages on the same range as upstream's so one version resolves, and give a deliberate pin a
+  `peerDependencyRules.allowedVersions` entry. Fork-only packages (`packages/web3`) follow
+  upstream's typecheck command and devDependencies, not the catalog entries upstream removed.
 - **Clean merge, wrong names.** If the script printed `rewrote N file(s)` but `git diff --cached`
   still shows `T3 Code`, the rewrite was not staged. That was a real bug once; the script now
   stages clean rewrites. If it happens again, stop and fix the script rather than committing.

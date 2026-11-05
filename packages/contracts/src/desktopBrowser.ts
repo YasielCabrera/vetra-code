@@ -40,6 +40,8 @@ export const DesktopBrowserEvent = Schema.Union([
     type: Schema.Literal("walletKeystoreOffer"),
     keystore: Schema.NullOr(Web3KeystoreFile),
   }),
+  /** Its `<webview>` started or stopped being on screen in a desktop window. */
+  Schema.Struct({ type: Schema.Literal("shown"), ...TabKey, shown: Schema.Boolean }),
 ]);
 export type DesktopBrowserEvent = typeof DesktopBrowserEvent.Type;
 

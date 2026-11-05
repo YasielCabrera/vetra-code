@@ -9,6 +9,7 @@ import {
   inlineCodeFilePathCandidate,
   parseMarkdownFileLink,
 } from "@t3tools/shared/markdownLinks";
+import { taskListMarkerOffset } from "@t3tools/shared/markdownTaskList";
 import { isHostPath, resolveWorkspaceFilePath } from "@t3tools/shared/path";
 import { usePullRequestLinking } from "~/hooks/usePullRequestLinking";
 import {
@@ -189,12 +190,12 @@ import {
   openFileInPreview,
   openUrlInPreview,
   BrowserPreviewUnavailableError,
-  BrowserSettingsReadError,
+  isBrowserSettingsReadError,
 } from "../browser/openFileInPreview";
 import { resolveLinkTarget } from "../browser/browserLinkTarget";
 import { PullRequestLinkPreview } from "./pullRequest/PullRequestLinkPreview";
 import { MarkdownCodeBlock, SuspenseShikiCodeBlock } from "./chat/MarkdownCodeBlock";
-import { createMarkdownRenderer } from "./chat/markdownRenderer";
+import { createMarkdownRenderer, type MarkdownUrlTransform } from "./chat/markdownRenderer";
 import { splitMarkdownBlocks } from "./chat/markdownStreamBlocks";
 import { MarkdownMermaidCodeBlock } from "./chat/MarkdownMermaidCodeBlock";
 import { MarkdownTable } from "./chat/MarkdownTable";
@@ -364,17 +365,6 @@ function CodexArtifactTemplateCard(props: {
 
 const WINDOWS_DRIVE_PATH_REGEX = /^[A-Za-z]:[\\/]/;
 
-function findTaskListMarkerOffset(markdown: string, listItemStart: number): number | null {
-  const firstLineEnd = markdown.indexOf("\n", listItemStart);
-  const firstLine = markdown.slice(
-    listItemStart,
-    firstLineEnd === -1 ? markdown.length : firstLineEnd,
-  );
-  const match = firstLine.match(/^(?:\s*(?:[-+*]|\d+[.)])\s+)(\[[ xX]\])/);
-  if (!match?.[1]) return null;
-  return listItemStart + firstLine.indexOf(match[1]);
-}
-
 function orderedListGutterStyle(
   itemCount: number,
   start: unknown,
@@ -451,13 +441,9 @@ const CHAT_MARKDOWN_LITERAL_HTML_REHYPE_PLUGINS = [
   rehypeChipPunctuation,
 ] satisfies NonNullable<ReactMarkdownOptions["rehypePlugins"]>;
 
-function markdownUrlTransform(href: string) {
-  if (parseAssistantCitationHref(href)) return href;
-  if (parseComposerContextHref(href)) return href;
-  if (parseThreadLinkHref(href)) return href;
-  if (isWindowsDrivePathHref(href)) return href;
-  return rewriteMarkdownFileUriHref(href) ?? defaultUrlTransform(href);
-}
+const markdownUrlTransform: MarkdownUrlTransform = (href) => transformMarkdownUrl(href);
+const markdownUrlTransformWithoutLocalFiles: MarkdownUrlTransform = (href) =>
+  transformMarkdownUrl(href, false);
 
 const NO_MARKDOWN_EDITORS: ReadonlyArray<EditorId> = [];
 
@@ -774,7 +760,7 @@ function useChatMarkdownState({
       if (result._tag === "Success") recordVisitForThread(threadRef, url);
       else if (!isAtomCommandInterrupted(result)) {
         const error = squashAtomCommandFailure(result);
-        if (error instanceof BrowserSettingsReadError) {
+        if (isBrowserSettingsReadError(error)) {
           toastManager.add(
             stackedThreadToast({
               type: "error",
@@ -1092,7 +1078,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
         <input
           {...props}
           type={type}
-          checked={checked}
+          checked={type === "checkbox" ? checked === true : checked}
           disabled={_disabled}
           readOnly={type === "checkbox"}
         />
@@ -1104,11 +1090,11 @@ const CHAT_MARKDOWN_COMPONENTS = {
         type="checkbox"
         name="markdown-task"
         aria-label="Toggle task"
-        checked={checked}
+        checked={checked === true}
         onChange={(event) => {
           const listItemStart = Number(event.currentTarget.closest("li")?.dataset.listItemOffset);
           if (!Number.isSafeInteger(listItemStart)) return;
-          const markerOffset = findTaskListMarkerOffset(text, listItemStart);
+          const markerOffset = taskListMarkerOffset(text, listItemStart);
           if (markerOffset === null) return;
           onTaskListChange({ markerOffset, checked: event.currentTarget.checked });
         }}
@@ -1295,7 +1281,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
                 { operation: "open-link-in-preview", target: href },
                 result.cause,
               );
-              if (squashAtomCommandFailure(result) instanceof BrowserSettingsReadError) return;
+              if (isBrowserSettingsReadError(squashAtomCommandFailure(result))) return;
               void readLocalApi()?.shell.openExternal(href);
             });
           }}
@@ -1795,20 +1781,26 @@ function withExtraPlugins(shared: PluggableList, extra: PluggableList): Pluggabl
 }
 
 const markdownRenderers = new WeakMap<
-  PluggableList,
-  WeakMap<PluggableList, ReturnType<typeof createMarkdownRenderer>>
+  MarkdownUrlTransform,
+  WeakMap<PluggableList, WeakMap<PluggableList, ReturnType<typeof createMarkdownRenderer>>>
 >();
 
-function markdownRenderer(remarkPlugins: PluggableList, rehypePlugins: PluggableList) {
-  let byRehype = markdownRenderers.get(remarkPlugins);
-  if (!byRehype) markdownRenderers.set(remarkPlugins, (byRehype = new WeakMap()));
+function markdownRenderer(
+  remarkPlugins: PluggableList,
+  rehypePlugins: PluggableList,
+  urlTransform: MarkdownUrlTransform,
+) {
+  let byRemark = markdownRenderers.get(urlTransform);
+  if (!byRemark) markdownRenderers.set(urlTransform, (byRemark = new WeakMap()));
+  let byRehype = byRemark.get(remarkPlugins);
+  if (!byRehype) byRemark.set(remarkPlugins, (byRehype = new WeakMap()));
   let renderer = byRehype.get(rehypePlugins);
   if (!renderer) {
     renderer = createMarkdownRenderer({
       remarkPlugins,
       rehypePlugins,
       components: CHAT_MARKDOWN_COMPONENTS,
-      urlTransform: markdownUrlTransform,
+      urlTransform,
     });
     byRehype.set(rehypePlugins, renderer);
   }
@@ -1819,12 +1811,14 @@ const MarkdownSource = memo(function MarkdownSource({
   text,
   remarkPlugins,
   rehypePlugins,
+  urlTransform,
   shared,
   cache,
 }: {
   text: string;
   remarkPlugins: PluggableList;
   rehypePlugins: PluggableList;
+  urlTransform: MarkdownUrlTransform;
   /** The plugins are one of the shared sets. */
   shared: boolean;
   /** The text will not change again; streamed text would only fill the cache with prefixes. */
@@ -1832,12 +1826,12 @@ const MarkdownSource = memo(function MarkdownSource({
 }) {
   // Per-instance plugins, such as the incremental parser, set up their state on every render.
   const render = shared
-    ? markdownRenderer(remarkPlugins, rehypePlugins)
+    ? markdownRenderer(remarkPlugins, rehypePlugins, urlTransform)
     : createMarkdownRenderer({
         remarkPlugins,
         rehypePlugins,
         components: CHAT_MARKDOWN_COMPONENTS,
-        urlTransform: markdownUrlTransform,
+        urlTransform,
       });
   return (
     <ChatMarkdownTextContext value={text}>{render(text, shared && cache)}</ChatMarkdownTextContext>
@@ -1894,6 +1888,10 @@ function ChatMarkdown({
       ? CHAT_MARKDOWN_RENDER_REHYPE_PLUGINS_WITHOUT_LOCAL_FILES
       : CHAT_MARKDOWN_RENDER_REHYPE_PLUGINS
     : CHAT_MARKDOWN_LITERAL_HTML_REHYPE_PLUGINS;
+  const urlTransform =
+    props.allowLocalFileLinks === false
+      ? markdownUrlTransformWithoutLocalFiles
+      : markdownUrlTransform;
   const rehypePlugins =
     extraRehypePlugins.length === 0
       ? baseRehypePlugins
@@ -1919,6 +1917,7 @@ function ChatMarkdown({
             text={source}
             remarkPlugins={remarkPlugins}
             rehypePlugins={rehypePlugins}
+            urlTransform={urlTransform}
             shared={!uncachedPlugins}
             // Every block before the last is finished, so its parse can be reused.
             cache={!props.isStreaming || index < blocks.length - 1}

@@ -31,7 +31,6 @@ import {
   type ThreadId,
 } from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
-import * as Data from "effect/Data";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";
@@ -82,9 +81,11 @@ export const CURSOR_DEFAULT_INSTANCE_ID = defaultInstanceIdForDriver(CURSOR_DRIV
 const CURSOR_TURN_INACTIVITY_TIMEOUT = Duration.minutes(10);
 const CURSOR_ACTIVE_TOOL_INACTIVITY_TIMEOUT = Duration.minutes(30);
 
-class CursorTurnStalledError extends Data.TaggedError("CursorTurnStalledError")<{
-  readonly timeout: Duration.Duration;
-}> {}
+class CursorTurnStalledError extends Schema.TaggedError<CursorTurnStalledError>()(
+  "CursorTurnStalledError",
+  { timeout: Schema.Duration },
+) {}
+const isCursorTurnStalledError = Schema.is(CursorTurnStalledError);
 
 export const CursorProviderCapabilitiesV2 = {
   sessions: {
@@ -388,6 +389,17 @@ function cursorToolOutput(toolCall: ToolCall): unknown {
   const result = toolCall.result;
   if (result === undefined) {
     return undefined;
+  }
+  if (toolCall.type === "mcp" && toolCall.result?.status === "success") {
+    return {
+      ...toolCall.result.value,
+      content: toolCall.result.value.content.flatMap((part) => [
+        ...(part.text === undefined ? [] : [{ type: "text", text: part.text.text }]),
+        ...(part.image === undefined
+          ? []
+          : [{ type: "image", mimeType: part.image.mimeType, data: part.image.data }]),
+      ]),
+    };
   }
   return result.status === "success" ? result.value : result.error;
 }
@@ -2572,7 +2584,7 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
               Effect.catch((cause) =>
                 Effect.gen(function* () {
                   if (context !== null) {
-                    const stalled = cause instanceof CursorTurnStalledError;
+                    const stalled = isCursorTurnStalledError(cause);
                     if (stalled) {
                       // Stop the agent working on a turn nobody is waiting on.
                       yield* context.run.cancel.pipe(Effect.timeout("10 seconds"), Effect.ignore);

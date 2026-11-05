@@ -412,8 +412,9 @@ know renders as a label that opens nothing. Older `vetra-thread://v1/<threadId>`
 links name no environment: clients resolve them in the message's environment,
 then by a unique match in another enabled environment. An outside OAuth client,
 one that is not a linked environment, cannot render `vetra-thread://` links, so it
-gets a web URL on the origin it reached, `<origin>/<environmentId>/<threadId>`,
-for threads in this environment.
+gets the link Copy thread copies, `<hosted app>/threads/<environmentId>/<threadId>`
+on the server's `VETRA_HOSTED_APP_URL`, for threads in this environment. The
+hosted app offers the desktop app or itself.
 
 List and read results report `snoozed` and `snoozedUntil`, and
 `t3_thread_list` filters on `snoozed`. The server's `isSnoozed` follows the

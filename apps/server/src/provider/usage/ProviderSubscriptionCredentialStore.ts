@@ -1,11 +1,11 @@
 import type { ProviderInstanceId } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Digest from "effect/crypto/Digest";
-import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as Hex from "effect/encoding/Hex";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 
 import { ServerSecretStore } from "../../auth/ServerSecretStore.ts";
 
@@ -13,11 +13,10 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const secretName = (instanceId: ProviderInstanceId) => `provider-subscription-usage-${instanceId}`;
 
-export class ProviderSubscriptionCredentialStoreError extends Data.TaggedError(
+export class ProviderSubscriptionCredentialStoreError extends Schema.TaggedError<ProviderSubscriptionCredentialStoreError>()(
   "ProviderSubscriptionCredentialStoreError",
-)<{
-  readonly operation: "read" | "write" | "clear" | "fingerprint";
-}> {}
+  { operation: Schema.Literals(["read", "write", "clear", "fingerprint"]) },
+) {}
 
 export interface ProviderSubscriptionCredentialStoreShape {
   readonly get: (

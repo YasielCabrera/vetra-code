@@ -303,9 +303,10 @@ export const makeTextToSpeech = Effect.fn("TextToSpeech.make")(function* (option
   const download = Effect.fn("TextToSpeech.download")(function* (model: TextToSpeechModelId) {
     const source = sources[model];
     yield* fs.makeDirectory(options.modelsDir, { recursive: true });
-    const available = yield* Effect.tryPromise(() =>
-      NodeFSP.statfs(options.modelsDir, { bigint: true }),
-    ).pipe(Effect.option);
+    const available = yield* Effect.tryPromise({
+      try: () => NodeFSP.statfs(options.modelsDir, { bigint: true }),
+      catch: ttsError("Could not check free disk space."),
+    }).pipe(Effect.option);
     const required = totalBytes(model) + FREE_SPACE_MARGIN;
     if (
       Option.isSome(available) &&

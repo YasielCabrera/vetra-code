@@ -1,7 +1,7 @@
 import * as Context from "effect/Context";
-import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Schema from "effect/Schema";
 
 import type {
   GitCommandError,
@@ -21,19 +21,20 @@ import * as VcsDriverRegistry from "./VcsDriverRegistry.ts";
 
 export const FILE_BLAME_MAX_BYTES = 768 * 1024;
 
-class FileAnnotationContentChangedError extends Data.TaggedError(
+class FileAnnotationContentChangedError extends Schema.TaggedError<FileAnnotationContentChangedError>()(
   "FileAnnotationContentChangedError",
-)<{
-  readonly path: string;
-}> {}
+  { path: Schema.String },
+) {}
 
-class FileAnnotationFileTooLargeError extends Data.TaggedError("FileAnnotationFileTooLargeError")<{
-  readonly path: string;
-}> {}
+class FileAnnotationFileTooLargeError extends Schema.TaggedError<FileAnnotationFileTooLargeError>()(
+  "FileAnnotationFileTooLargeError",
+  { path: Schema.String },
+) {}
 
-class FileAnnotationUnsupportedError extends Data.TaggedError("FileAnnotationUnsupportedError")<{
-  readonly path: string;
-}> {}
+class FileAnnotationUnsupportedError extends Schema.TaggedError<FileAnnotationUnsupportedError>()(
+  "FileAnnotationUnsupportedError",
+  { path: Schema.String },
+) {}
 
 export type FileAnnotationServiceError =
   | WorkspaceFileSystem.WorkspaceFileSystemError

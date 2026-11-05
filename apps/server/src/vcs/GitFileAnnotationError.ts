@@ -1,10 +1,10 @@
-export class GitFileAnnotationParseError extends Error {
-  readonly _tag = "GitFileAnnotationParseError";
-  readonly detail: string;
+import * as Schema from "effect/Schema";
 
-  constructor(detail: string) {
-    super(detail);
-    this.detail = detail;
-    this.name = "GitFileAnnotationParseError";
+export class GitFileAnnotationParseError extends Schema.TaggedError<GitFileAnnotationParseError>()(
+  "GitFileAnnotationParseError",
+  { detail: Schema.String },
+) {
+  override get message(): string {
+    return this.detail;
   }
 }

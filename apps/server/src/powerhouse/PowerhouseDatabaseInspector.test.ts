@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
 import * as PowerhouseDatabaseInspector from "./PowerhouseDatabaseInspector.ts";
@@ -130,24 +131,26 @@ describe("PowerhouseDatabaseInspector", () => {
 
     it.effect("uses the Vetra server environment before the project .env", () =>
       Effect.gen(function* () {
-        const inspector = yield* PowerhouseDatabaseInspector.PowerhouseDatabaseInspector;
         const project = yield* makeProject({
           env: "DATABASE_URL=postgres://project:secret@database.example.com/read_models\n",
         });
-        const previous = process.env.DATABASE_URL;
-        process.env.DATABASE_URL = "postgres://server:secret@localhost/read_models";
-        try {
-          const result = yield* inspector.discover({ cwd: project.workspace });
-          expect(result.targets[0]).toMatchObject({
-            backend: "postgres",
-            status: "ready",
-            source: "server_env",
-          });
-          expect(targetText(result.targets)).not.toContain("secret");
-        } finally {
-          if (previous === undefined) delete process.env.DATABASE_URL;
-          else process.env.DATABASE_URL = previous;
-        }
+        const result = yield* Effect.gen(function* () {
+          const inspector = yield* PowerhouseDatabaseInspector.PowerhouseDatabaseInspector;
+          return yield* inspector.discover({ cwd: project.workspace });
+        }).pipe(
+          Effect.provide(
+            Layer.fresh(PowerhouseDatabaseInspector.layer).pipe(Layer.provide(ProjectLayer)),
+          ),
+          Effect.provideService(HostProcess.Environment, {
+            DATABASE_URL: "postgres://server:secret@localhost/read_models",
+          }),
+        );
+        expect(result.targets[0]).toMatchObject({
+          backend: "postgres",
+          status: "ready",
+          source: "server_env",
+        });
+        expect(targetText(result.targets)).not.toContain("secret");
       }),
     );
 

@@ -465,7 +465,11 @@ it.live("mints MCP tokens only within the caller's own access", () =>
         access: "read-only",
       }).pipe(Effect.flatMap(json<{ token: string }>));
       const invocation = yield* authenticateAtMcp(auth, readOnly.token);
-      expect(invocation?.client).toMatchObject({ label: "Reader bot", access: "read-only" });
+      expect(invocation?.client).toMatchObject({
+        label: "Reader bot",
+        access: "read-only",
+        hostedAppUrl: "https://box.example.ts.net",
+      });
       expect([...invocation!.capabilities]).toEqual([
         "orchestration",
         "worktree",

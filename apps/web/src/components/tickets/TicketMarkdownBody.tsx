@@ -1,9 +1,9 @@
 import type { EnvironmentId, TicketAttachment } from "@t3tools/contracts";
+import { setMarkdownTaskChecked } from "@t3tools/shared/markdownTaskList";
 import type { PlanSourceSpan } from "@t3tools/shared/ticketPlanAnchors";
-import { memo, useCallback, useState } from "react";
+import { memo, useState } from "react";
 
 import ChatMarkdown, { type ChatMarkdownAttachmentReference } from "../ChatMarkdown";
-import { setMarkdownTaskChecked } from "../files/filePreviewMode";
 import { TicketAttachmentReference } from "./ticketAttachments";
 
 type PlanHastNode = {
@@ -77,21 +77,20 @@ export const TicketMarkdownBody = memo(function TicketMarkdownBody(props: {
 }) {
   const { environmentId, body, onBodyChange } = props;
   const attachments = useSameAttachments(props.attachments);
-  const renderAttachment = useCallback(
-    (reference: ChatMarkdownAttachmentReference) => (
-      <TicketAttachmentReference
-        environmentId={environmentId}
-        attachments={attachments}
-        reference={reference}
-      />
-    ),
-    [attachments, environmentId],
+  const renderAttachment = (reference: ChatMarkdownAttachmentReference) => (
+    <TicketAttachmentReference
+      environmentId={environmentId}
+      attachments={attachments}
+      reference={reference}
+    />
   );
-  const onTaskListChange = useCallback(
-    ({ markerOffset, checked }: { markerOffset: number; checked: boolean }) =>
-      onBodyChange?.(setMarkdownTaskChecked(body, markerOffset, checked)),
-    [body, onBodyChange],
-  );
+  const onTaskListChange = ({
+    markerOffset,
+    checked,
+  }: {
+    markerOffset: number;
+    checked: boolean;
+  }) => onBodyChange?.(setMarkdownTaskChecked(body, markerOffset, checked));
   return (
     <ChatMarkdown
       allowLocalFileLinks={false}

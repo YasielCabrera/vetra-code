@@ -1,25 +1,31 @@
-import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
 import { HttpClient, HttpClientRequest, type HttpClientResponse } from "effect/http";
 
 import { collectUint8StreamText } from "@t3tools/provider-core/server/collectStreamText";
 
 const MAX_RESPONSE_BYTES = 1024 * 1024;
 
-export type ProviderUsageHttpErrorKind =
-  | "untrusted-url"
-  | "redirect"
-  | "auth"
-  | "rate-limit"
-  | "server"
-  | "response"
-  | "network"
-  | "timeout";
+export type ProviderUsageHttpErrorKind = ProviderUsageHttpError["kind"];
 
-export class ProviderUsageHttpError extends Data.TaggedError("ProviderUsageHttpError")<{
-  readonly kind: ProviderUsageHttpErrorKind;
-  readonly status?: number;
-}> {}
+export class ProviderUsageHttpError extends Schema.TaggedError<ProviderUsageHttpError>()(
+  "ProviderUsageHttpError",
+  {
+    kind: Schema.Literals([
+      "untrusted-url",
+      "redirect",
+      "auth",
+      "rate-limit",
+      "server",
+      "response",
+      "network",
+      "timeout",
+    ]),
+    status: Schema.optional(Schema.Number),
+  },
+) {}
+
+export const isProviderUsageHttpError = Schema.is(ProviderUsageHttpError);
 
 export interface ProviderUsageHttpResponse {
   readonly status: number;

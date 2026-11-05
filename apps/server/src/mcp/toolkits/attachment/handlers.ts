@@ -10,6 +10,7 @@ import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as HttpServer from "effect/http/HttpServer";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
+import * as AssetSigner from "../../../assets/AssetSigner.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as Upload from "../../../assets/AttachmentUpload.ts";
 import * as Claims from "../../../orchestration-v2/AttachmentClaims.ts";
@@ -54,7 +55,8 @@ const requireUploadCapability = McpInvocationContext.requireAnyMcpCapability(
 
 export const layer = McpToolAccess.toLayer(
   AttachmentToolkit,
-  Effect.sync(() => {
+  Effect.gen(function* () {
+    const assetSigner = yield* AssetSigner.AssetSigner;
     const uploadOwners = new Map<string, { readonly owner: string; readonly issuedAt: number }>();
     return {
       t3_attachment_prepare_upload: McpToolAccess.writesWithCapability(
@@ -87,6 +89,7 @@ export const layer = McpToolAccess.toLayer(
               });
             }
             const result = yield* Upload.issueAttachmentUploadUrl(input.upload).pipe(
+              Effect.provideService(AssetSigner.AssetSigner, assetSigner),
               Effect.mapError(unavailable),
             );
             const now = yield* Clock.currentTimeMillis;

@@ -3,6 +3,7 @@ import * as NodeFS from "node:fs";
 import * as NodeFSP from "node:fs/promises";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
+import * as Schema from "effect/Schema";
 
 export const POWERHOUSE_SNAPSHOT_MAX_BYTES = 512 * 1024 * 1024;
 
@@ -14,19 +15,14 @@ const MAX_ENTRY_COUNT = 100_000;
 const MAX_PATH_BYTES = 4_096;
 const COPY_BUFFER_BYTES = 256 * 1024;
 
-export class PowerhouseSnapshotDecodeError extends Error {
-  readonly reason: "invalid" | "too_large" | "unsupported_version";
-
-  constructor(
-    reason: "invalid" | "too_large" | "unsupported_version",
-    message: string,
-    options?: ErrorOptions,
-  ) {
-    super(message, options);
-    this.name = "PowerhouseSnapshotDecodeError";
-    this.reason = reason;
-  }
-}
+export class PowerhouseSnapshotDecodeError extends Schema.TaggedError<PowerhouseSnapshotDecodeError>()(
+  "PowerhouseSnapshotDecodeError",
+  {
+    reason: Schema.Literals(["invalid", "too_large", "unsupported_version"]),
+    message: Schema.String,
+    cause: Schema.optional(Schema.Defect()),
+  },
+) {}
 
 export interface RestoredPowerhouseSnapshot {
   readonly directory: string;
@@ -44,11 +40,11 @@ interface SnapshotReader {
 }
 
 const invalidSnapshot = (message: string, cause?: unknown) =>
-  new PowerhouseSnapshotDecodeError(
-    "invalid",
+  new PowerhouseSnapshotDecodeError({
+    reason: "invalid",
     message,
-    cause === undefined ? undefined : { cause },
-  );
+    ...(cause === undefined ? {} : { cause }),
+  });
 
 const readExact = async (file: NodeFSP.FileHandle, offset: number, length: number) => {
   const output = Buffer.allocUnsafe(length);
@@ -130,10 +126,10 @@ const readPostgresMajorVersion = async (pgDataDirectory: string): Promise<16 | 1
   }
   if (value === "16") return 16;
   if (value === "17") return 17;
-  throw new PowerhouseSnapshotDecodeError(
-    "unsupported_version",
-    `The snapshot uses unsupported PostgreSQL major version ${value || "unknown"}.`,
-  );
+  throw new PowerhouseSnapshotDecodeError({
+    reason: "unsupported_version",
+    message: `The snapshot uses unsupported PostgreSQL major version ${value || "unknown"}.`,
+  });
 };
 
 /**
@@ -151,10 +147,10 @@ export async function restorePowerhouseSnapshot(
     const stat = await source.stat();
     if (!stat.isFile()) throw invalidSnapshot("The snapshot path is not a regular file.");
     if (stat.size > POWERHOUSE_SNAPSHOT_MAX_BYTES) {
-      throw new PowerhouseSnapshotDecodeError(
-        "too_large",
-        "The snapshot is larger than the 512 MiB inspection limit.",
-      );
+      throw new PowerhouseSnapshotDecodeError({
+        reason: "too_large",
+        message: "The snapshot is larger than the 512 MiB inspection limit.",
+      });
     }
     if (stat.size < SNAPSHOT_HEADER_BYTES) {
       throw invalidSnapshot("The snapshot is shorter than its header.");
@@ -167,10 +163,10 @@ export async function restorePowerhouseSnapshot(
     }
     const formatVersion = header.readUInt32LE(4);
     if (formatVersion !== SNAPSHOT_FORMAT_VERSION) {
-      throw new PowerhouseSnapshotDecodeError(
-        "unsupported_version",
-        `Snapshot format version ${formatVersion} is not supported.`,
-      );
+      throw new PowerhouseSnapshotDecodeError({
+        reason: "unsupported_version",
+        message: `Snapshot format version ${formatVersion} is not supported.`,
+      });
     }
     const entryCount = header.readUInt32LE(8);
     if (entryCount > MAX_ENTRY_COUNT) {

@@ -31,7 +31,7 @@ import {
   settledResult,
   type ProviderSubscriptionUsageIdentity,
 } from "./providerSubscriptionUsageHelpers.ts";
-import { ProviderUsageHttpError, providerUsageHttpRequest } from "./ProviderUsageHttpClient.ts";
+import { isProviderUsageHttpError, providerUsageHttpRequest } from "./ProviderUsageHttpClient.ts";
 
 const CURSOR_ORIGIN = "https://cursor.com";
 const CURSOR_COST_TTL_MS = 60 * 60_000;
@@ -444,7 +444,7 @@ export const makeCursorSubscriptionUsageCapability = (input: {
         }),
         Effect.map(settledProbe),
         Effect.catch((error) => {
-          const unauthenticated = error instanceof ProviderUsageHttpError && error.kind === "auth";
+          const unauthenticated = isProviderUsageHttpError(error) && error.kind === "auth";
           return Effect.succeed(
             failureProbe(
               settledResult(identity, {

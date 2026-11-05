@@ -3,6 +3,7 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodeModule from "node:module";
 import * as NodePath from "node:path";
+import * as Schema from "effect/Schema";
 
 export interface RawPowerhouseDatabaseQueryResult {
   readonly columns: ReadonlyArray<{ readonly name: string; readonly dataTypeId: number }>;
@@ -29,15 +30,13 @@ interface PendingRequest {
   readonly cleanup: () => void;
 }
 
-export class PowerhousePgliteWorkerError extends Error {
-  readonly code: string | undefined;
-
-  constructor(message: string, code?: string | undefined) {
-    super(message);
-    this.name = "PowerhousePgliteWorkerError";
-    this.code = code;
-  }
-}
+export class PowerhousePgliteWorkerError extends Schema.TaggedError<PowerhousePgliteWorkerError>()(
+  "PowerhousePgliteWorkerError",
+  {
+    message: Schema.String,
+    code: Schema.optional(Schema.String),
+  },
+) {}
 
 const WORKER_SOURCE = String.raw`
 import readline from "node:readline";
@@ -163,11 +162,9 @@ export function resolvePowerhousePgliteRuntime(
   // resolving the package root fails even when it is installed correctly.
   const cliPackage = projectRequire.resolve("@powerhousedao/ph-cli/package.json");
   const cliRequire = NodeModule.createRequire(cliPackage);
-  // Current Switchboard releases expose import-only entry points. Looking up
-  // the package root or package.json through require.resolve therefore throws
-  // ERR_PACKAGE_PATH_NOT_EXPORTED. Locate the installed dependency package
-  // from ph-cli's normal module search paths, then resolve the matching PGlite
-  // runtime from Switchboard's dependency context.
+  // Switchboard exposes import-only entry points, so require.resolve of its root
+  // or package.json throws ERR_PACKAGE_PATH_NOT_EXPORTED. Find it on ph-cli's
+  // module search paths and resolve PGlite from Switchboard's dependency context.
   const switchboardPackage = findDependencyPackageJson(cliRequire, "@powerhousedao/switchboard");
   const switchboardRequire = NodeModule.createRequire(switchboardPackage);
   return switchboardRequire.resolve(
@@ -206,7 +203,9 @@ export class PowerhousePgliteSession {
       const timeout = setTimeout(() => {
         cleanup();
         this.#terminate();
-        reject(new PowerhousePgliteWorkerError("PGlite did not become ready in time."));
+        reject(
+          new PowerhousePgliteWorkerError({ message: "PGlite did not become ready in time." }),
+        );
       }, 30_000);
       timeout.unref();
       const onStderr = (chunk: Buffer) => {
@@ -218,7 +217,11 @@ export class PowerhousePgliteSession {
       };
       const onExit = () => {
         cleanup();
-        reject(new PowerhousePgliteWorkerError(stderr.trim() || "PGlite exited during startup."));
+        reject(
+          new PowerhousePgliteWorkerError({
+            message: stderr.trim() || "PGlite exited during startup.",
+          }),
+        );
       };
       const onData = (chunk: Buffer) => {
         this.#stdoutBuffer += chunk.toString("utf8");
@@ -232,7 +235,11 @@ export class PowerhousePgliteSession {
         } catch {
           cleanup();
           this.#terminate();
-          reject(new PowerhousePgliteWorkerError("PGlite returned an invalid startup response."));
+          reject(
+            new PowerhousePgliteWorkerError({
+              message: "PGlite returned an invalid startup response.",
+            }),
+          );
           return;
         }
         cleanup();
@@ -265,7 +272,9 @@ export class PowerhousePgliteSession {
         try {
           message = JSON.parse(line);
         } catch {
-          this.#failAll(new PowerhousePgliteWorkerError("PGlite returned an invalid response."));
+          this.#failAll(
+            new PowerhousePgliteWorkerError({ message: "PGlite returned an invalid response." }),
+          );
           this.#terminate();
           return;
         }
@@ -277,14 +286,21 @@ export class PowerhousePgliteSession {
         if (message.ok) {
           pending.resolve({ columns: message.columns, rows: message.rows });
         } else {
-          pending.reject(new PowerhousePgliteWorkerError(message.message, message.code));
+          pending.reject(
+            new PowerhousePgliteWorkerError({
+              message: message.message,
+              ...(message.code === undefined ? {} : { code: message.code }),
+            }),
+          );
         }
       }
     });
     this.#child.once("error", (error) => this.#failAll(error));
     this.#child.once("exit", () => {
       this.#closed = true;
-      this.#failAll(new PowerhousePgliteWorkerError("The PGlite inspection process exited."));
+      this.#failAll(
+        new PowerhousePgliteWorkerError({ message: "The PGlite inspection process exited." }),
+      );
     });
   }
 
@@ -293,7 +309,8 @@ export class PowerhousePgliteSession {
     limit: number,
     signal?: AbortSignal,
   ): Promise<RawPowerhouseDatabaseQueryResult> {
-    if (this.#closed) return Promise.reject(new PowerhousePgliteWorkerError("PGlite is closed."));
+    if (this.#closed)
+      return Promise.reject(new PowerhousePgliteWorkerError({ message: "PGlite is closed." }));
     return new Promise((resolve, reject) => {
       const id = this.#nextRequestId++;
       const onAbort = () => {
@@ -342,7 +359,9 @@ export class PowerhousePgliteSession {
     if (this.#closed) return;
     this.#closed = true;
     this.#child.kill("SIGTERM");
-    this.#failAll(new PowerhousePgliteWorkerError("The PGlite inspection process was closed."));
+    this.#failAll(
+      new PowerhousePgliteWorkerError({ message: "The PGlite inspection process was closed." }),
+    );
   }
 
   #failAll(error: Error) {

@@ -58,3 +58,11 @@ before it replaces it.
 Vetra Code removes characters you cannot see, such as zero-width and hidden tag characters, because
 they can hide instructions for the agent. When a prompt had them, Vetra Code warns you that it may be
 malicious.
+
+## Share a thread
+
+**Copy thread** copies a link such as `<hosted app>/threads/<environment>/<thread>` on the
+configured hosted app address. Paste it anywhere, such as Slack, a GitHub comment, or your notes.
+Opening it asks where to open it, like a prompt link, then opens the thread. Only someone
+connected to the machine that runs the thread can see it. In Vetra Code, a thread link in a
+message opens the thread in the app.

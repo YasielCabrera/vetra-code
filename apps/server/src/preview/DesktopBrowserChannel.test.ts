@@ -170,4 +170,33 @@ it.layer(NodeServices.layer)("DesktopBrowserChannel", (it) => {
       });
     }).pipe(Effect.scoped),
   );
+
+  it.effect("protects unknown desktop visibility until an explicit hidden report arrives", () =>
+    Effect.gen(function* () {
+      const { channel, send } = yield* channelWithDesktop;
+      const attach = (tabId: string) =>
+        send([{ type: "attached", threadId: key.threadId, tabId }]).pipe(
+          Effect.andThen(channel.awaitAttached({ threadId: key.threadId, tabId }, "5 seconds")),
+        );
+
+      expect(channel.isShown(key)).toBe(true);
+      yield* attach(key.tabId);
+      expect(channel.isShown(key)).toBe(true);
+
+      yield* send([{ type: "shown", ...key, shown: false }]);
+      yield* attach("sentinel-1");
+      expect(channel.isShown(key)).toBe(false);
+
+      yield* send([{ type: "shown", ...key, shown: true }]);
+      yield* attach("sentinel-2");
+      expect(channel.isShown(key)).toBe(true);
+
+      yield* send([
+        { type: "shown", ...key, shown: false },
+        { type: "detached", ...key },
+      ]);
+      yield* attach("sentinel-3");
+      expect(channel.isShown(key)).toBe(true);
+    }).pipe(Effect.scoped),
+  );
 });

@@ -153,8 +153,8 @@ For failures after signing in to Vetra Connect, see
 
 ## Reclaim database space
 
-Vetra Code removes superseded internal history on its own while it runs; your
-conversations are kept. Databases created before this shrank automatically
+Vetra Code removes internal history older than a day on its own while it runs;
+your conversations are kept. Databases created before this shrank automatically
 still hold the freed space on disk until a one-time offline repair returns it
 and turns on automatic shrinking. Settings > Storage suggests the repair when at least 1 GiB can be
 reclaimed.

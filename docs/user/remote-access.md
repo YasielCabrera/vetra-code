@@ -166,6 +166,10 @@ A pairing link authorizes a client to exchange its one-time token for a durable 
 Revoke credentials or sessions that are no longer trusted. Managed cloud execution will keep this
 typed authenticated connection seam while placing each server in its own isolated workspace.
 
+**Settings → Sharing & access** lets authorized administrators create pairing links and revoke
+client sessions. When the app connects to more than one environment, choose one at the top of the
+page.
+
 To choose a token's permissions, pass `--scope` once for each scope you want:
 
 ```bash

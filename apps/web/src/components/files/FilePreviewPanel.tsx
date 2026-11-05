@@ -128,10 +128,10 @@ import {
   filePreviewReadErrorMessage,
   isMarkdownPreviewFile,
   resolveFilePreviewPath,
-  setMarkdownTaskChecked,
   shouldShowFileExplorer,
   workspaceAssetResource,
 } from "./filePreviewMode";
+import { setMarkdownTaskChecked } from "@t3tools/shared/markdownTaskList";
 import { changeFileSaveSession, useFileSaveSession } from "./fileSaveSessions";
 import { revisionedQuery } from "~/state/revisionedQuery";
 import {
@@ -1661,7 +1661,7 @@ export default function FilePreviewPanel({
                   threadRef={threadRef}
                   contents={file.data.contents}
                   workspaceMutationId={workspaceMutationId}
-                  readOnly={isHostFile || !canWriteFiles}
+                  readOnly={file.data.truncated || isHostFile || !canWriteFiles}
                   onPendingChange={onPendingChange}
                 />
               ) : tableDelimiter && renderTable ? (

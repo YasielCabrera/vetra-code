@@ -27,6 +27,7 @@ import { Route as ChatUsageRouteImport } from './routes/_chat.usage'
 import { Route as ChatSettingsRouteImport } from './routes/_chat.settings'
 import { Route as ChatPullRequestsRouteImport } from './routes/_chat.pull-requests'
 import { Route as ChatNewRouteImport } from './routes/_chat.new'
+import { Route as ThreadsEnvironmentIdThreadIdRouteImport } from './routes/threads.$environmentId.$threadId'
 import { Route as ChatSettingsWorktreesRouteImport } from './routes/_chat.settings.worktrees'
 import { Route as ChatSettingsWeb3RouteImport } from './routes/_chat.settings.web3'
 import { Route as ChatSettingsTicketsRouteImport } from './routes/_chat.settings.tickets'
@@ -150,6 +151,12 @@ const ChatNewRoute = ChatNewRouteImport.update({
   path: '/new',
   getParentRoute: () => ChatRoute,
 } as any)
+const ThreadsEnvironmentIdThreadIdRoute =
+  ThreadsEnvironmentIdThreadIdRouteImport.update({
+    id: '/threads/$environmentId/$threadId',
+    path: '/threads/$environmentId/$threadId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ChatSettingsWorktreesRoute = ChatSettingsWorktreesRouteImport.update({
   id: '/worktrees',
   path: '/worktrees',
@@ -366,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/settings/tickets': typeof ChatSettingsTicketsRoute
   '/settings/web3': typeof ChatSettingsWeb3Route
   '/settings/worktrees': typeof ChatSettingsWorktreesRoute
+  '/threads/$environmentId/$threadId': typeof ThreadsEnvironmentIdThreadIdRoute
   '/tickets/$ticketKey/plans/$planNumber': typeof TicketsTicketKeyPlansPlanNumberRoute
 }
 export interface FileRoutesByTo {
@@ -417,6 +425,7 @@ export interface FileRoutesByTo {
   '/settings/tickets': typeof ChatSettingsTicketsRoute
   '/settings/web3': typeof ChatSettingsWeb3Route
   '/settings/worktrees': typeof ChatSettingsWorktreesRoute
+  '/threads/$environmentId/$threadId': typeof ThreadsEnvironmentIdThreadIdRoute
   '/tickets/$ticketKey/plans/$planNumber': typeof TicketsTicketKeyPlansPlanNumberRoute
 }
 export interface FileRoutesById {
@@ -470,6 +479,7 @@ export interface FileRoutesById {
   '/_chat/settings/tickets': typeof ChatSettingsTicketsRoute
   '/_chat/settings/web3': typeof ChatSettingsWeb3Route
   '/_chat/settings/worktrees': typeof ChatSettingsWorktreesRoute
+  '/threads/$environmentId/$threadId': typeof ThreadsEnvironmentIdThreadIdRoute
   '/tickets/$ticketKey_/plans/$planNumber': typeof TicketsTicketKeyPlansPlanNumberRoute
 }
 export interface FileRouteTypes {
@@ -523,6 +533,7 @@ export interface FileRouteTypes {
     | '/settings/tickets'
     | '/settings/web3'
     | '/settings/worktrees'
+    | '/threads/$environmentId/$threadId'
     | '/tickets/$ticketKey/plans/$planNumber'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -574,6 +585,7 @@ export interface FileRouteTypes {
     | '/settings/tickets'
     | '/settings/web3'
     | '/settings/worktrees'
+    | '/threads/$environmentId/$threadId'
     | '/tickets/$ticketKey/plans/$planNumber'
   id:
     | '__root__'
@@ -626,6 +638,7 @@ export interface FileRouteTypes {
     | '/_chat/settings/tickets'
     | '/_chat/settings/web3'
     | '/_chat/settings/worktrees'
+    | '/threads/$environmentId/$threadId'
     | '/tickets/$ticketKey_/plans/$planNumber'
   fileRoutesById: FileRoutesById
 }
@@ -643,6 +656,7 @@ export interface RootRouteChildren {
   TicketsNewRoute: typeof TicketsNewRoute
   AutomationsIndexRoute: typeof AutomationsIndexRoute
   TicketsIndexRoute: typeof TicketsIndexRoute
+  ThreadsEnvironmentIdThreadIdRoute: typeof ThreadsEnvironmentIdThreadIdRoute
   TicketsTicketKeyPlansPlanNumberRoute: typeof TicketsTicketKeyPlansPlanNumberRoute
 }
 
@@ -773,6 +787,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/new'
       preLoaderRoute: typeof ChatNewRouteImport
       parentRoute: typeof ChatRoute
+    }
+    '/threads/$environmentId/$threadId': {
+      id: '/threads/$environmentId/$threadId'
+      path: '/threads/$environmentId/$threadId'
+      fullPath: '/threads/$environmentId/$threadId'
+      preLoaderRoute: typeof ThreadsEnvironmentIdThreadIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_chat/settings/worktrees': {
       id: '/_chat/settings/worktrees'
@@ -1105,6 +1126,7 @@ const rootRouteChildren: RootRouteChildren = {
   TicketsNewRoute: TicketsNewRoute,
   AutomationsIndexRoute: AutomationsIndexRoute,
   TicketsIndexRoute: TicketsIndexRoute,
+  ThreadsEnvironmentIdThreadIdRoute: ThreadsEnvironmentIdThreadIdRoute,
   TicketsTicketKeyPlansPlanNumberRoute: TicketsTicketKeyPlansPlanNumberRoute,
 }
 export const routeTree = rootRouteImport

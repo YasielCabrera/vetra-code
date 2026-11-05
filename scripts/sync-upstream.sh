@@ -75,6 +75,9 @@ PRUNE_PATHS=(
   # describe trees the prune pass deletes.
   docs/internals/mobile-development.md
   docs/internals/mobile-navigation.md
+  docs/internals/mobile-layout.md
+  docs/internals/images/mobile-layers.png
+  docs/internals/images/mobile-workspace-split.png
   docs/internals/voice-input.md
   docs/user/triage.md
   docs/user/mobile-appearance.md
@@ -107,6 +110,9 @@ PRUNE_PATHS=(
   # Vetra already owns a side-aware, resizable file tree.
   apps/web/src/components/files/FileExplorerPane.tsx
   apps/web/src/components/NightlyMobileBeta.tsx
+  # iOS/Android app-link files carry T3's Apple team id and Android signing keys.
+  apps/web/public/.well-known/apple-app-site-association.json
+  apps/web/public/.well-known/assetlinks.json
   apps/web/src/components/settings/MobileAppSettingsRow.tsx
 )
 PRUNE_GLOBS=(

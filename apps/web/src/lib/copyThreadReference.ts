@@ -3,15 +3,23 @@ import {
   COMPOSER_CONTEXT_CLIPBOARD_MIME,
   encodeComposerContextFragment,
 } from "@t3tools/shared/composerContextClipboard";
+import { parseThreadLinkHref } from "@t3tools/shared/threadLinks";
 
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
 import { writeTextToClipboard } from "../hooks/useCopyToClipboard";
+import { shareableThreadLink } from "./threadShareLink";
 
 export async function copyThreadReference(target: ThreadReferenceCopyTarget): Promise<void> {
   const fragment = target.fragment ? encodeComposerContextFragment(target.fragment) : null;
+  // Parses only links on the default hosted app, which Vetra does not run yet.
+  const link = target.kind === "thread" ? parseThreadLinkHref(target.value) : null;
+  const value =
+    link?.environmentId == null
+      ? target.value
+      : shareableThreadLink({ environmentId: link.environmentId, threadId: link.threadId });
   try {
     const didCopy = await writeTextToClipboard(
-      target.value,
+      value,
       target.clipboardTarget,
       fragment ? { [COMPOSER_CONTEXT_CLIPBOARD_MIME]: fragment } : undefined,
     );
