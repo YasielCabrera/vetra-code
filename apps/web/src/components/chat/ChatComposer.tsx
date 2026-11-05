@@ -254,7 +254,7 @@ import {
   type ComposerDispatchMode,
 } from "@t3tools/client-runtime/state/composer-dispatch";
 import { deriveLatestContextWindowSnapshot } from "@t3tools/client-runtime/state/context-window";
-import { canPriceThreadCost } from "../../lib/contextWindow";
+import { canPriceThreadCost, withThreadCost } from "../../lib/contextWindow";
 import {
   resolveProviderSkillsForCwd,
   resolveProviderSlashCommandsForCwd,
@@ -431,6 +431,7 @@ export interface ChatComposerProps {
   contextWindowEntries: Parameters<typeof deriveLatestContextWindowSnapshot>[0];
   contextWindowLiveUsage: Parameters<typeof deriveLatestContextWindowSnapshot>[1];
   contextWindowProviderThread: Parameters<typeof deriveLatestContextWindowSnapshot>[2];
+  threadCostUsd: number;
   compactThreadUnavailable: boolean;
   compactDisabled: boolean;
   compactDisabledReason: string | null;
@@ -559,6 +560,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     contextWindowEntries,
     contextWindowLiveUsage,
     contextWindowProviderThread,
+    threadCostUsd,
     compactThreadUnavailable,
     compactDisabled,
     compactDisabledReason,
@@ -604,10 +606,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     editingQueuedAttachments,
     onRemoveEditingQueuedAttachment,
   } = props;
-  const activeContextWindow = deriveLatestContextWindowSnapshot(
-    contextWindowEntries,
-    contextWindowLiveUsage,
-    contextWindowProviderThread,
+  const activeContextWindow = withThreadCost(
+    deriveLatestContextWindowSnapshot(
+      contextWindowEntries,
+      contextWindowLiveUsage,
+      contextWindowProviderThread,
+    ),
+    threadCostUsd,
   );
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const composerDraftTargetKey = composerTargetKey(composerDraftTarget);
