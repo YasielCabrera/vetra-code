@@ -58,7 +58,6 @@ import {
   WindowsDesktopBuildPrerequisitesMissingError,
   WindowsPackagedPayloadValidationError,
   stageCursorSdkPlatformPackages,
-  WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT,
   WINDOWS_SERVER_ASAR_IGNORE_GLOBS,
   WINDOWS_SERVER_ASAR_RESOURCE,
   WSL_RUNTIME_ARCHIVE_EXTRA_RESOURCE,
@@ -1020,12 +1019,15 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
   // The fixture's t3code.exe is a text placeholder, not an executable. These
   // cases reach the native-load probe, so pin only that host-platform check to
   // Linux. Host-native paths and the real Windows tar/archive checks still run.
-  it.effect("validates every ASAR-unpacked native in the packaged Windows payload", () =>
+  it.effect.each([5, 86, 100])("validates a Windows payload with %i files", (fileCount) =>
     Effect.scoped(
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
         const fixture = yield* makeWindowsPayloadFixture({ copyUnpackedNatives: true });
+        for (let index = 5; index < fileCount; index += 1) {
+          yield* fs.writeFileString(path.join(fixture.packagedAppDir, `payload-${index}`), "file");
+        }
         const result = yield* validateWindowsPackagedPayload({
           stageDistDir: fixture.stageDistDir,
           appExecutableName: fixture.appExecutableName,
@@ -1046,7 +1048,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
         assert.equal(result.packagedAppDir, fixture.packagedAppDir);
         assert.deepStrictEqual(result.unpackedFiles, ["node_modules/native/addon.node"]);
-        assert.isBelow(result.fileCount, WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT);
+        assert.equal(result.fileCount, fileCount);
         assert.deepStrictEqual(secondAsar, firstAsar);
       }),
     ).pipe(Effect.provideService(HostProcess.Platform, "linux")),
@@ -1428,23 +1430,37 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
-  it.effect("rejects a Windows payload that regresses above the file-count budget", () =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const fixture = yield* makeWindowsPayloadFixture({ copyUnpackedNatives: true });
-        const error = yield* validateWindowsPackagedPayload({
-          stageDistDir: fixture.stageDistDir,
-          appExecutableName: fixture.appExecutableName,
-          targetArch: "x64",
-          appVersion: WINDOWS_PAYLOAD_FIXTURE_VERSION,
-          fileLimit: 2,
-        }).pipe(Effect.flip);
+  it.effect.each([
+    { fileCount: 101, options: {}, expectedLimit: 100 },
+    { fileCount: 5, options: { fileLimit: 2 }, expectedLimit: 2 },
+  ])(
+    "rejects a Windows payload above its file-count budget (%j)",
+    ({ fileCount, options, expectedLimit }) =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const fs = yield* FileSystem.FileSystem;
+          const path = yield* Path.Path;
+          const fixture = yield* makeWindowsPayloadFixture({ copyUnpackedNatives: true });
+          for (let index = 5; index < fileCount; index += 1) {
+            yield* fs.writeFileString(
+              path.join(fixture.packagedAppDir, `payload-${index}`),
+              "file",
+            );
+          }
+          const error = yield* validateWindowsPackagedPayload({
+            stageDistDir: fixture.stageDistDir,
+            appExecutableName: fixture.appExecutableName,
+            targetArch: "x64",
+            appVersion: WINDOWS_PAYLOAD_FIXTURE_VERSION,
+            ...options,
+          }).pipe(Effect.flip);
 
-        assert.instanceOf(error, WindowsPackagedPayloadValidationError);
-        assert.equal(error.reason, "file-limit-exceeded");
-        assert.isAbove(error.fileCount ?? 0, 2);
-      }),
-    ),
+          assert.instanceOf(error, WindowsPackagedPayloadValidationError);
+          assert.equal(error.reason, "file-limit-exceeded");
+          assert.equal(error.fileCount, fileCount);
+          assert.equal(error.fileLimit, expectedLimit);
+        }),
+      ),
   );
 
   it.effect("rejects a sidecar whose extracted server bundle cannot resolve", () =>
