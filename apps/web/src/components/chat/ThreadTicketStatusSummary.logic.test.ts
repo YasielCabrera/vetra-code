@@ -41,37 +41,26 @@ const ticket = (id: string) => Object.freeze({ statusId: TicketStatusId.make(id)
 
 it.each([
   {
-    name: "configured order, zero counts, collapsed statuses, and identical names",
+    name: "configured order and identical names while omitting unused statuses",
     tickets: [ticket("todo"), ticket("progress"), ticket("progress"), ticket("unknown")],
     statuses,
     expected: [
-      { status: done, count: 0 },
       { status: progress, count: 2 },
       { status: todo, count: 1 },
       { status: sameName, count: 1 },
     ],
   },
   {
-    name: "all tickets in one status",
+    name: "all tickets in one collapsed status",
     tickets: Array.from({ length: 25 }, () => ticket("done")),
     statuses,
-    expected: [
-      { status: done, count: 25 },
-      { status: progress, count: 0 },
-      { status: todo, count: 0 },
-      { status: sameName, count: 0 },
-    ],
+    expected: [{ status: done, count: 25 }],
   },
   {
     name: "empty tickets with configured statuses",
     tickets: [],
     statuses,
-    expected: [
-      { status: done, count: 0 },
-      { status: progress, count: 0 },
-      { status: todo, count: 0 },
-      { status: sameName, count: 0 },
-    ],
+    expected: [],
   },
   {
     name: "missing definitions while tickets load independently",
@@ -82,7 +71,7 @@ it.each([
   {
     name: "mixed known and unresolved status IDs",
     tickets: [ticket("todo"), ticket("deleted"), ticket("deleted"), ticket("other-deleted")],
-    statuses: [todo],
+    statuses: [todo, progress],
     expected: [
       { status: todo, count: 1 },
       { status: undefined, count: 3 },

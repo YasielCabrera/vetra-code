@@ -64,18 +64,16 @@ export function ThreadTicketStatusSummary({
           </div>
           <p className="mt-1 text-2xs text-muted-foreground">Linked to this thread</p>
           <div aria-hidden className="mt-4 mb-3 flex h-2 overflow-hidden rounded-sm bg-muted">
-            {rows
-              .filter((row) => row.count > 0)
-              .map((row) => (
-                <span
-                  key={row.status ? `known:${row.status.id}` : "unknown"}
-                  className={cn(
-                    "min-w-0 basis-0 bg-current",
-                    projectIconColorClassName(row.status?.color ?? "gray"),
-                  )}
-                  style={{ flexGrow: row.count }}
-                />
-              ))}
+            {rows.map((row) => (
+              <span
+                key={row.status ? `known:${row.status.id}` : "unknown"}
+                className={cn(
+                  "min-w-0 basis-0 bg-current",
+                  projectIconColorClassName(row.status?.color ?? "gray"),
+                )}
+                style={{ flexGrow: row.count }}
+              />
+            ))}
           </div>
           <dl className="grid gap-1">
             {rows.map((row) => (
