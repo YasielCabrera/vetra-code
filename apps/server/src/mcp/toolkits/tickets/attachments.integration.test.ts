@@ -44,6 +44,7 @@ import * as T3ProjectFileLoader from "../../../project/T3ProjectFileLoader.ts";
 import * as GitHubCredentials from "@t3tools/source-control-github/server/GitHubCredentials";
 import * as BuiltInDrivers from "../../../sourceControl/builtInDrivers.ts";
 import * as SourceControlAttachmentResolver from "../../../sourceControl/SourceControlAttachmentResolver.ts";
+import * as RepositoryIdentityResolver from "../../../project/RepositoryIdentityResolver.ts";
 import * as TicketGitHub from "../../../ticket/TicketGitHub.ts";
 import * as TicketService from "../../../ticket/TicketService.ts";
 import * as TicketDrafting from "../../../ticket/TicketDrafting.ts";
@@ -119,6 +120,7 @@ const externalLayers = Layer.mergeAll(
   Layer.mock(T3ProjectFileLoader.T3ProjectFileLoader)({}),
   Layer.mock(NativeAppIconResolver.NativeAppIconResolver)({}),
   Layer.mock(SourceControlAttachmentResolver.SourceControlAttachmentResolver)({}),
+  Layer.mock(RepositoryIdentityResolver.RepositoryIdentityResolver)({}),
   Layer.mock(GitHubCredentials.GitHubCredentials)({}),
   SqlitePersistence.layerMemory,
 );

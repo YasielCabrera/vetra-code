@@ -18,6 +18,8 @@ allowBuilds:
   electron: false
   electron-winstaller: false
   esbuild: true
+  # Ships prebuilds; its host-architecture probe triggers source builds during cross-packaging.
+  koffi: false
   node-pty: true
   # Its install script only fetches optional CUDA providers; the CPU binaries ship in the package.
   onnxruntime-node: false

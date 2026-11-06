@@ -168,6 +168,7 @@ RENAMES=(
   '`t3 =`vetra '
   # The same references inside JSX, as `<code>t3 auth pairing create</code>`.
   '<code>t3 =<code>vetra '
+  '"t3 __service-launcher="vetra __service-launcher'
   # The CLI named alone ("if `t3` is missing", "the CLI as `t3`"), including the
   # escaped backticks of a template literal. Fork prose names the private `t3`
   # workspace package the same way, and that name stays upstream's, so skip the
@@ -341,6 +342,11 @@ RENAMES=(
   'T3 can lease=Vetra Code can lease'
   'T3 does not=Vetra Code does not'
   'T3 sends it=Vetra Code sends it'
+  'T3 stops=Vetra Code stops'
+  'T3 account=Vetra Connect account'
+  'T3 child=Vetra Code child'
+  'T3 delegate_task=Vetra Code delegate_task'
+  'T3 delivers=Vetra Code delivers'
   'version as T3 (=version as Vetra Code ('
   'T3 provides=Vetra Code provides'
   'T3 is installing=Vetra Code is installing'

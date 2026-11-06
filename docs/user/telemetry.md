@@ -11,31 +11,30 @@ and a random identifier for each device that connects. Events include the provid
 reasoning effort, permission mode, turn result, duration, release channel, and main-agent token
 totals when available.
 
-Events do not include prompts, responses, file contents, authentication tokens, conversation IDs,
+Product events do not include prompts, responses, file contents, authentication tokens, conversation IDs,
 raw provider events, or child-agent output.
 
-Vetra Code sends relay connection traces only when relay tracing is configured for Vetra Connect.
+## Relay connection diagnostics
 
-To disable product events and relay tracing, set `VETRA_TELEMETRY_ENABLED=false` in the server's
-environment before starting it. Relay tracing also stops when `VETRA_OTEL_SDK_DISABLED` or
-`OTEL_SDK_DISABLED` turns OpenTelemetry export off. The web app in a browser, including one the
-`vetra` CLI opens, does not read these variables.
+Vetra Code sends relay connection traces only when tracing is configured for Vetra Connect. These are
+separate from product events. Depending on the client version, traces can include connection
+timings, environment identifiers and the connected machine's name. Failed spans can include error
+messages and stack traces; error text can quote a value the app was handling.
 
-An administrator can turn product events and relay tracing off for every user on a machine with
-a [managed policy](./managed-policy.md#other-capabilities).
+To disable product events and relay tracing from the server, set
+`VETRA_TELEMETRY_ENABLED=false` in its environment before starting it. Relay tracing also stops
+when `VETRA_OTEL_SDK_DISABLED` or `OTEL_SDK_DISABLED` turns OpenTelemetry export off.
+
+An administrator can turn product events and relay tracing off in the server and desktop app with
+a [managed policy](./managed-policy.md#other-capabilities). This does not control traces sent by
+separate browser or mobile clients.
 
 The desktop app reads `VETRA_TELEMETRY_ENABLED` from your shell profile (for example `~/.zshrc`) on macOS and
 Linux, so export it there and restart the app. On Windows, set it as a user environment variable.
 
-## Mobile app crash reports
-
-When the iOS or Android app crashes or hits an error, it sends a report to Vetra Code: the error
-message, the stack trace, the app version, and the device model and OS version. Each launch also
-sends startup timings, and every report carries a random ID for the install. Reports go through
-the Vetra Connect relay to Axiom. They do not include your threads, prompts, or connection details,
-but an error message can quote a value the app was handling.
-
-To stop sending them, turn off **Send crash reports** in **Settings > About Vetra Code > Diagnostics**.
+The web app in a browser, including one the `vetra` CLI opens, does not read these environment
+variables. When its build has relay tracing configured, it sends its own connection traces even
+if the server has opted out. The browser app has no relay tracing toggle.
 
 ## Export diagnostics to your own receiver
 

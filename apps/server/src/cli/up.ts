@@ -140,7 +140,7 @@ const formatSetup = (setup: Setup) => {
           [
             "Vetra Connect",
             setup.connect
-              ? "on · your T3 account"
+              ? "on · your Vetra Connect account"
               : setup.connectRevoked
                 ? "off · link revoked. Run `vetra connect`."
                 : "off",
@@ -367,8 +367,9 @@ const setUp = Effect.fn("cli.up")(function* (flags: {
     if ("failed" in result && before.service.installed) {
       // The old service still runs, so a foreground server would clash with it.
       yield* restoreServiceEnv;
+      const { command } = yield* resolveHostCliCommand("up", baseDirArgs);
       yield* Console.log(
-        `Service setup failed: ${result.failed} Fix that, then run \`vetra up\` again.`,
+        `Service setup failed: ${result.failed} Fix that, then run \`${command}\` again.`,
       );
     } else if ("failed" in result) {
       yield* printServeCommand(`Service setup failed: ${result.failed}`);
@@ -387,7 +388,8 @@ const setUp = Effect.fn("cli.up")(function* (flags: {
           }),
         ).pipe(Effect.catchTags({ QuitError: () => Effect.succeed(false) })));
       if (!confirmed) {
-        yield* Console.log("Run `vetra service restart` to turn Vetra Connect off.");
+        const { command } = yield* resolveHostCliCommand("service restart", baseDirArgs);
+        yield* Console.log(`Run \`${command}\` to turn Vetra Connect off.`);
       } else {
         if (!interactive && !stopped) {
           yield* Console.log("Restarting Vetra Code. Running agent turns will stop.");
@@ -422,7 +424,7 @@ export const upCommand = Command.make("up", {
   ...projectLocationFlags,
   connect: Flag.Boolean("connect").pipe(
     Flag.withDescription(
-      "Allow access through Vetra Connect with your T3 account. Turn off with --no-connect.",
+      "Allow access through Vetra Connect with your Vetra Connect account. Turn off with --no-connect.",
     ),
     Flag.optional,
   ),

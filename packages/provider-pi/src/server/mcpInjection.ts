@@ -32,7 +32,7 @@ const RESERVED_PI_LAUNCH_ARGUMENTS = new Set([
   "-v",
 ]);
 
-const PI_ARGUMENTS_WITH_VALUES = new Set([
+export const PI_ARGUMENTS_WITH_VALUES = new Set([
   "--api-key",
   "--append-system-prompt",
   "--exclude-tools",
@@ -244,7 +244,7 @@ export function buildPiRpcLaunch(input: {
   readonly extensionPath: string | undefined;
   readonly sessionPath?: string | undefined;
   readonly ephemeral?: boolean;
-  // T3 stops these processes as soon as they answer. They run --offline because Pi's startup
+  // Vetra Code stops these processes as soon as they answer. They run --offline because Pi's startup
   // catalog refresh renews expired OAuth tokens, and a stop mid-request loses the rotated one.
   readonly shortLived?: boolean;
   readonly disableExtensions?: boolean;

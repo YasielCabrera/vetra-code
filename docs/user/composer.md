@@ -202,39 +202,11 @@ Stashes containing uploaded files must be restored in their original environment
 Those files are retained for 24 hours. After an upload expires, restore the prompt
 and use **Attach again** or remove the missing file before sending.
 
-## Voice input on mobile
+## Voice input on web and desktop
 
-On supported iPhones with iOS 26 or later and Android devices with Android 12 or
-later, use the composer's microphone to record, then confirm to transcribe. Text is
-inserted where your selection was when recording started, ready for you to review
-and edit before sending.
-
-Voice input uses on-device speech transcription: Apple's on iOS, and compatible
-Google speech services on Android. When it is unavailable for the device or its
-language, the composer has no microphone button and **Settings → Microphone** says
-voice input isn't available. On Android, keep Vetra Code open while recording and
-transcribing.
-
-The first use may download a speech model and needs a network connection.
-Later transcription works offline for that language. On Android, transcription
-processes the full recording at roughly its original duration. Recordings can be up to five
-minutes long. Canceling or an audio interruption discards the recording and
-preserves your existing draft. Navigating to another screen keeps dictation active;
-use the floating controls to finish or cancel. While recording, the screen stays
-awake; it can sleep normally once recording stops.
-
-Choose a preferred order in **Settings → Microphone**. Voice input requests the first
-connected microphone in the list. The list mixes kinds (built-in, other wired, other
-Bluetooth, and CarPlay on iOS) with wired and Bluetooth devices you have dictated
-with, listed by name. Drag to rank them together:
-for example, put **Other Bluetooth** above your AirPods so a new headset is preferred
-while the AirPods microphone stays low. By default, CarPlay comes after the built-in
-microphone on iOS. Swipe a device left to forget it. Android may use another input
-when the preferred microphone cannot be routed. Devices with the same name may share
-a saved preference, but simultaneous same-name inputs remain separately selectable.
-
-Transcription runs on your device. Vetra Code deletes the temporary audio after
-transcription or cancellation; only the message text is sent when you submit.
+Use the composer's microphone or `mod+shift+d` to dictate into your draft. Audio
+is transcribed on an environment you choose in **Settings → Voice**; nothing is
+sent until you choose one. See [Voice input](./voice-input.md).
 
 ## Queued messages
 
@@ -281,6 +253,12 @@ Provider commands must start the message to run. Vetra Code commands such as
 
 Send `/compact` in an existing conversation to reduce context usage when the
 provider supports it, even with the context meter turned off.
+
+Send `/clear` on its own, or pick it from the slash menu, to start a fresh session
+in the same thread. Your next message goes to a new provider session that doesn't see the
+earlier messages, and the thread marks where it began with **New session**.
+Earlier messages and diffs stay in the thread. Dismiss the notice above the
+composer to keep the current session instead.
 
 On web and desktop, turn on **Settings → Labs → Legacy → Context
 window indicator (legacy)** to see context usage. The meter is off by default

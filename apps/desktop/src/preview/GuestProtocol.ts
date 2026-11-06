@@ -12,14 +12,8 @@ export const RECORDING_KEY_CHANNEL = "preview:recording-key";
 export const RECORDING_INPUT_CHANNEL = "preview:recording-input";
 export const RECORDING_CONTROLLER_CHANNEL = "preview:recording-controller";
 
-/**
- * Wallet channels used by the preview guest preload.
- *
- * These are reached by *untrusted page content* via the preload, so their
- * `ipcMain` handlers live in `Wallet.ts` where `event.sender` can be checked,
- * rather than going through the typed `DesktopIpc` helpers that discard it.
- * Requests are answered with a `Web3GuestReply` envelope.
- */
+// Untrusted pages reach these channels, so Wallet.ts checks event.sender;
+// DesktopIpc helpers discard it. Replies use a Web3GuestReply envelope.
 export const PREVIEW_WALLET_BOOTSTRAP_CHANNEL = "preview:wallet-bootstrap";
 export const PREVIEW_WALLET_REQUEST_CHANNEL = "preview:wallet-request";
 export const PREVIEW_WALLET_PROVIDER_EVENT_CHANNEL = "preview:wallet-provider-event";
@@ -41,3 +35,5 @@ export type PreviewWalletBootstrap =
 export const PASSKEY_CREATE_CHANNEL = "preview:passkey-create";
 export const PASSKEY_GET_CHANNEL = "preview:passkey-get";
 export const PASSKEY_BRIDGE_ARGUMENT = "--vetra-code-preview-passkey-bridge";
+export const ANNOTATION_VOICE_EVENT_CHANNEL = "preview:annotation-voice-event";
+export const ANNOTATION_VOICE_STATE_CHANNEL = "preview:annotation-voice-state";

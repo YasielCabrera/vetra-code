@@ -34,6 +34,7 @@ import {
   persistServerRuntimeState,
   type PersistedServerRuntimeState,
 } from "../serverRuntimeState.ts";
+import { resolveHostCliCommand } from "./invocation.ts";
 import { DevServerNotProxiableError, resolveTailscaleLocalTarget } from "./pair.ts";
 
 import packageJson from "../../package.json" with { type: "json" };
@@ -334,6 +335,10 @@ describe("vetra pair", () => {
           typeof error === "object" && error !== null && "cause" in error ? error.cause : error,
         );
         assert.include(rendered, "No running Vetra Code server found.");
+        for (const subcommand of ["serve", "connect"]) {
+          const { command } = yield* resolveHostCliCommand(subcommand, ["--base-dir", baseDir]);
+          assert.include(rendered, `\`${command}\``);
+        }
       }),
     ).pipe(Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))),
   );
