@@ -182,6 +182,9 @@ RENAMES=(
   'mcp add t3 =mcp add vetra-code '
   're:mcp login t3(?![A-Za-z0-9_.-])=mcp login vetra-code'
   'mcp list` shows `t3`=mcp list` shows `vetra-code`'
+  'Package the t3 single-executable=Package the vetra single-executable'
+  'Notarized t3=Notarized vetra'
+  'Submitted t3 for notarization=Submitted vetra for notarization'
 
   # Desktop application identity. Two installed apps cannot share an
   # application id, a D-Bus name, or a URL scheme.

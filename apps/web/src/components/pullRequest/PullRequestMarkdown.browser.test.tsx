@@ -64,7 +64,7 @@ it("lets text the host did not write opt out of the host's breaks", async () => 
 
 it("loads the body's host media in the pull request's repository, not the checkout's", async () => {
   setup();
-  const image = "https://github.com/user-attachments/assets/7195f963-51a9-4331-be74-3e06be760422";
+  const image = "https://raw.githubusercontent.com/enterprise/private/main/shot.png";
   const video = "https://github.com/user-attachments/assets/2f8c1a90-1b2c-4d5e-8f90-abcdef123456";
   await using _screen = await renderBody("github", {
     repository: "enterprise/private",
@@ -75,7 +75,7 @@ it("loads the body's host media in the pull request's repository, not the checko
       expect.arrayContaining([
         expect.objectContaining({
           cwd: "/repo",
-          url: expect.stringContaining("7195f963"),
+          url: image,
           repository: "enterprise/private",
         }),
         expect.objectContaining({
