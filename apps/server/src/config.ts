@@ -45,6 +45,7 @@ export interface ServerDerivedPaths {
   readonly worktreesDir: string;
   /** Root for the projects automations create for themselves. */
   readonly automationsDir: string;
+  readonly worktreeCheckoutCacheDir: string;
   readonly attachmentsDir: string;
   readonly browserArtifactsDir: string;
   readonly logsDir: string;
@@ -162,6 +163,7 @@ export const deriveServerPaths = Effect.fn(function* (
     providerStatusCacheDir,
     worktreesDir: join(baseDir, "worktrees"),
     automationsDir: join(stateDir, "automations"),
+    worktreeCheckoutCacheDir: join(providerStatusCacheDir, "worktree-checkouts"),
     attachmentsDir,
     browserArtifactsDir: join(stateDir, "browser-artifacts"),
     logsDir,

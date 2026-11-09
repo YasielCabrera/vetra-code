@@ -28,14 +28,7 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import { onCommandPaletteProjectSelected, openCommandPalette } from "../../commandPaletteBus";
 import { isElectron } from "../../env";
@@ -235,7 +228,7 @@ export function AutomationDetailPanel(props: {
   const settings = usePrimarySettings();
   const serverProviders = useAtomValue(primaryServerProvidersAtom);
 
-  const automationRef = useMemo(() => {
+  const automationRef = (() => {
     if (props.automationKey === undefined) return null;
     const separatorIndex = props.automationKey.indexOf(":");
     if (separatorIndex <= 0) return null;
@@ -243,11 +236,11 @@ export function AutomationDetailPanel(props: {
       environmentId: props.automationKey.slice(0, separatorIndex) as EnvironmentId,
       automationId: props.automationKey.slice(separatorIndex + 1) as EnvironmentAutomation["id"],
     };
-  }, [props.automationKey]);
+  })();
   const automation = useAutomation(automationRef);
   const isNew = automationRef === null;
 
-  const template = useMemo(() => findAutomationTemplate(props.templateId), [props.templateId]);
+  const template = findAutomationTemplate(props.templateId);
   const [draft, setDraft] = useState<AutomationDraft>(() => ({
     title: template?.title ?? "",
     prompt: template?.prompt ?? "",
@@ -280,7 +273,7 @@ export function AutomationDetailPanel(props: {
   const markRunsRead = useMarkAutomationRunsRead();
   const threadLastVisitedAtById = useUiStateStore((state) => state.threadLastVisitedAtById);
 
-  const runThreads = useMemo(() => {
+  const runThreads = (() => {
     if (automation === null) return [];
     return threads
       .filter(
@@ -289,23 +282,16 @@ export function AutomationDetailPanel(props: {
           runsByThreadKey.get(automationRunVisitKey(thread))?.scheduledTaskId === automation.id,
       )
       .toSorted((left, right) => right.createdAt.localeCompare(left.createdAt));
-  }, [automation, runsByThreadKey, threads]);
+  })();
   // Which runs still owe the reader a look. Opening one clears its own mark
   // (ChatView stamps the visit), so this list shrinks as they are read.
-  const unreadRunThreads = useMemo(
-    () =>
-      runThreads.filter((thread) =>
-        isAutomationRunUnread({
-          thread,
-          localLastVisitedAt: threadLastVisitedAtById[automationRunVisitKey(thread)],
-        }),
-      ),
-    [runThreads, threadLastVisitedAtById],
+  const unreadRunThreads = runThreads.filter((thread) =>
+    isAutomationRunUnread({
+      thread,
+      localLastVisitedAt: threadLastVisitedAtById[automationRunVisitKey(thread)],
+    }),
   );
-  const unreadRunKeys = useMemo(
-    () => new Set(unreadRunThreads.map((thread) => automationRunVisitKey(thread))),
-    [unreadRunThreads],
-  );
+  const unreadRunKeys = new Set(unreadRunThreads.map((thread) => automationRunVisitKey(thread)));
 
   const canRevealRuns = useAtomValue(
     automationEnvironment.setRunHidden.permissionAtom(automation?.environmentId ?? null),
@@ -318,24 +304,22 @@ export function AutomationDetailPanel(props: {
   // and hunting for that at the bottom of a list is the wrong shape. It is an
   // action, not a choice, so it sits above the divider — the selected value
   // still defaults to the automation's own workspace.
-  const projectSelectItems = useMemo(
-    () => [
-      { value: ADD_PROJECT_VALUE, label: "Add a location…" },
-      { value: NEW_PROJECT_VALUE, label: "A new project" },
-      ...projectGroups.map((group) => ({
-        value: `${group.environmentId}:${group.id}`,
-        label: group.displayName,
-      })),
-    ],
-    [projectGroups],
-  );
+  const projectSelectItems = [
+    { value: ADD_PROJECT_VALUE, label: "Add a location…" },
+    { value: NEW_PROJECT_VALUE, label: "A new project" },
+    ...projectGroups.map((group) => ({
+      value: `${group.environmentId}:${group.id}`,
+      label: group.displayName,
+    })),
+  ];
 
   // Borrows the command palette's whole import-source flow — local folder, git
   // URL, GitHub, and the rest — rather than growing a second way to add a
   // project. It hands the project back here instead of opening a thread in it.
-  const addProjectLocation = useCallback(() => {
+  const addProjectLocation = () => {
     openCommandPalette({ open: "add-project", completion: "select" });
-  }, []);
+  };
+  // oxlint-disable-next-line t3code/react-effect-budget -- subscribes to project selections from the command palette
   useEffect(
     () =>
       onCommandPaletteProjectSelected((selected) => {
@@ -347,30 +331,20 @@ export function AutomationDetailPanel(props: {
     [],
   );
 
-  const selectedProject = useMemo(
-    () =>
-      draft.projectKey === null
-        ? null
-        : (projects.find(
-            (project) => `${project.environmentId}:${project.id}` === draft.projectKey,
-          ) ?? null),
-    [draft.projectKey, projects],
-  );
+  const selectedProject =
+    draft.projectKey === null
+      ? null
+      : (projects.find(
+          (project) => `${project.environmentId}:${project.id}` === draft.projectKey,
+        ) ?? null);
   // The same provider surface the composer and project settings read, so an
   // automation can be pointed at any instance and model the workspace has.
-  const instanceEntries = useMemo(
-    () =>
-      applyProviderInstanceSettings(
-        deriveProviderInstanceEntries(serverProviders),
-        settings,
-        selectedProject?.id ?? null,
-      ),
-    [serverProviders, settings, selectedProject?.id],
+  const instanceEntries = applyProviderInstanceSettings(
+    deriveProviderInstanceEntries(serverProviders),
+    settings,
+    selectedProject?.id ?? null,
   );
-  const modelOptionsByInstance = useMemo(
-    () => getCustomModelOptionsByInstance(settings, serverProviders),
-    [serverProviders, settings],
-  );
+  const modelOptionsByInstance = getCustomModelOptionsByInstance(settings, serverProviders);
 
   const targetEnvironmentId =
     automation?.environmentId ?? selectedProject?.environmentId ?? primaryEnvironmentId;
@@ -399,44 +373,37 @@ export function AutomationDetailPanel(props: {
 
   // A draft with no selection yet falls back to the chosen project's default,
   // then the server's — so the picker always has something real to show.
-  const resolvedModelSelection = useMemo(
-    () =>
-      resolveDefaultProviderModelSelection(
-        serverProviders,
-        draft.modelSelection ?? selectedProject?.defaultModelSelection ?? null,
-      ),
-    [draft.modelSelection, selectedProject, serverProviders],
+  const resolvedModelSelection = resolveDefaultProviderModelSelection(
+    serverProviders,
+    draft.modelSelection ?? selectedProject?.defaultModelSelection ?? null,
   );
   const activeInstanceEntry = instanceEntries.find(
     (entry) => entry.instanceId === resolvedModelSelection?.instanceId,
   );
-  const setModelSelection = useCallback((selection: ModelSelection) => {
+  const setModelSelection = (selection: ModelSelection) => {
     setDraft((current) => ({ ...current, modelSelection: selection }));
-  }, []);
+  };
 
   /**
    * An atom command resolves with its failure rather than throwing, so the
    * result has to be read before anything downstream treats it as saved.
    * Interruption means a newer command took over, which needs no toast.
    */
-  const settled = useCallback(
-    (title: string, result: AtomCommandResult<unknown, unknown>): boolean => {
-      if (result._tag !== "Failure") return true;
-      if (isAtomCommandInterrupted(result)) return false;
-      const error = squashAtomCommandFailure(result);
-      toastManager.add(
-        stackedThreadToast({
-          type: "error",
-          title,
-          description: error instanceof Error ? error.message : "An error occurred.",
-        }),
-      );
-      return false;
-    },
-    [],
-  );
+  const settled = (title: string, result: AtomCommandResult<unknown, unknown>): boolean => {
+    if (result._tag !== "Failure") return true;
+    if (isAtomCommandInterrupted(result)) return false;
+    const error = squashAtomCommandFailure(result);
+    toastManager.add(
+      stackedThreadToast({
+        type: "error",
+        title,
+        description: error instanceof Error ? error.message : "An error occurred.",
+      }),
+    );
+    return false;
+  };
 
-  const handleSave = useCallback(async () => {
+  const handleSave = async () => {
     const title = draft.title.trim();
     const prompt = draft.prompt.trim();
     if (title.length === 0 || prompt.length === 0) {
@@ -531,52 +498,35 @@ export function AutomationDetailPanel(props: {
       params: { automationKey: `${environmentId}:${automationId}` },
       replace: true,
     });
-  }, [
-    automation,
-    createProject,
-    draft,
-    effectiveBaseRef,
-    navigate,
-    resolvedModelSelection,
-    selectedProject,
-    settled,
-    targetEnvironmentId,
-    upsertAutomation,
-  ]);
+  };
 
-  const handleToggleEnabled = useCallback(
-    async (nextEnabled: boolean) => {
-      // Optimistic so the switch answers the click; reverted if the server
-      // disagrees. A draft that was never saved has only the local flag.
-      setDraft((current) => ({ ...current, enabled: nextEnabled }));
-      if (automation === null) return;
-      if (!(await setEnabled(automation, nextEnabled))) {
-        setDraft((current) => ({ ...current, enabled: !nextEnabled }));
-      }
-    },
-    [automation, setEnabled],
-  );
+  const handleToggleEnabled = async (nextEnabled: boolean) => {
+    // Optimistic so the switch answers the click; reverted if the server
+    // disagrees. A draft that was never saved has only the local flag.
+    setDraft((current) => ({ ...current, enabled: nextEnabled }));
+    if (automation === null) return;
+    if (!(await setEnabled(automation, nextEnabled))) {
+      setDraft((current) => ({ ...current, enabled: !nextEnabled }));
+    }
+  };
 
-  const handleRunNow = useCallback(async () => {
+  const handleRunNow = async () => {
     if (automation === null) return;
     await runNow(automation);
-  }, [automation, runNow]);
+  };
 
-  const handleDelete = useCallback(async () => {
+  const handleDelete = async () => {
     if (automation === null) return;
     if (await confirmAndDelete(automation, runThreads)) {
       void navigate({ to: "/automations", replace: true });
     }
-  }, [automation, confirmAndDelete, navigate, runThreads]);
+  };
 
-  const handleRevealRun = useCallback(
-    async (environmentId: EnvironmentId, threadId: ThreadId) => {
-      const result = await setRunHidden({ environmentId, input: { threadId, hidden: false } });
-      if (!settled("Could not move the run", result)) return;
-      toastManager.add({ type: "success", title: "Moved to the sidebar" });
-    },
-    [setRunHidden, settled],
-  );
+  const handleRevealRun = async (environmentId: EnvironmentId, threadId: ThreadId) => {
+    const result = await setRunHidden({ environmentId, input: { threadId, hidden: false } });
+    if (!settled("Could not move the run", result)) return;
+    toastManager.add({ type: "success", title: "Moved to the sidebar" });
+  };
 
   const projectTitle =
     projects.find(
@@ -776,7 +726,6 @@ export function AutomationDetailPanel(props: {
                   model={resolvedModelSelection.model}
                   modelOptions={resolvedModelSelection.options ?? []}
                   allowPromptInjectedEffort={false}
-                  planModeEnabled={settings.planModeEnabled}
                   triggerClassName="min-w-0 max-w-none shrink-0 text-foreground/90 hover:text-foreground"
                   onModelOptionsChange={(nextOptions) => {
                     setModelSelection(
@@ -1044,16 +993,6 @@ export function AutomationDetailPanel(props: {
   );
 }
 
-/**
- * The panel's chrome: a title row over a scrolling body. Slides in from the
- * right once, on mount — a one-shot keyframe rather than a transition, so
- * nothing keeps repainting after it lands.
- *
- * Sized by a drag handle on its own edge, the way a thread's right panel is:
- * the list beside it takes whatever is left. Below lg the list is hidden and
- * the panel is the whole page, so there is no split to move and the width
- * gives way to the viewport.
- */
 function AutomationPanelFrame(props: {
   readonly title: string;
   readonly onClose: () => void;
@@ -1077,10 +1016,6 @@ function AutomationPanelFrame(props: {
       style={{ "--automation-panel-width": `${width}px` } as CSSProperties}
     >
       <RightPanelResizeHandle handlers={handlers} className="max-lg:hidden" />
-      {/* The page's own top strip, on this side of the rule: title and close
-          sit level with the breadcrumb beside them rather than below an empty
-          band. Sized and typed like the rest of the workspace chrome, and on
-          desktop it is the drag region for its half of the titlebar. */}
       <header
         className={cn(
           "flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] w-full shrink-0 items-center gap-2 px-5",

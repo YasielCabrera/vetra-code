@@ -223,7 +223,6 @@ describe("ticketDraftModelSelection", () => {
             { id: "not-a-real-option", value: "x" },
           ],
         },
-        planModeEnabled: false,
       }),
     ).toEqual({
       instanceId,
@@ -239,7 +238,6 @@ describe("ticketDraftModelSelection", () => {
         driverKind,
         models: agentModel(),
         stored: { instanceId: otherInstanceId, model: "claude-sonnet" },
-        planModeEnabled: false,
       }),
     ).toEqual({ instanceId, model: "gpt-test" });
   });
@@ -251,7 +249,6 @@ describe("ticketDraftModelSelection", () => {
         driverKind,
         models: [],
         stored: null,
-        planModeEnabled: false,
       }),
     ).toBeNull();
   });

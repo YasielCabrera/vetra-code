@@ -20,6 +20,7 @@
 - [Keyboard shortcuts](./user/keybindings.md)
 - [Keyboard focus](./user/keyboard-focus.md)
 - [Voice input](./user/voice-input.md)
+- [Text generation models](./user/text-generation.md)
 - [SnapShots](./user/snap-shot.md)
 - [Review usage](./user/usage.md)
 - [Visual replies](./user/html-renders.md)

@@ -410,7 +410,6 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                         model={props.modelSelection.model}
                         modelOptions={props.modelSelection.options ?? []}
                         allowPromptInjectedEffort={false}
-                        planModeEnabled={false}
                         onModelOptionsChange={(options) => {
                           if (props.modelSelection)
                             props.onModelChange(

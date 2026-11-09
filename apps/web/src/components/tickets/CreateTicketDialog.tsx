@@ -24,7 +24,7 @@ import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { create, useStore } from "zustand";
 
 import { useRightPanelStore } from "../../rightPanelStore";
@@ -181,16 +181,13 @@ function PendingDraftWatcher(props: { readonly draft: PendingDraft }) {
         })
       : null,
   );
-  const confirmedTickets = useMemo(
-    () =>
-      confirmation.data?.map((ticket) => ({ ...ticket, environmentId: draft.environmentId })) ??
-      null,
-    [confirmation.data, draft.environmentId],
-  );
+  const confirmedTickets =
+    confirmation.data?.map((ticket) => ({ ...ticket, environmentId: draft.environmentId })) ?? null;
   const outcome =
     pendingOutcome?.type === "confirming"
       ? draftOutcome(tickets, draft.threadId, analyzerState, confirmedTickets)
       : pendingOutcome;
+  // oxlint-disable-next-line t3code/react-effect-budget -- observes persisted ticket outcomes to finish pending drafts and notify the user
   useEffect(() => {
     if (outcome === null || outcome.type === "confirming") return;
     let watching = false;
@@ -313,6 +310,7 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
   );
   const launchingRef = useRef(false);
   const [Composer, setComposer] = useState<typeof TicketDraftComposer | null>(null);
+  // oxlint-disable-next-line t3code/react-effect-budget -- loads the draft composer on demand and ignores the import after unmount
   useEffect(() => {
     let closed = false;
     void import("./TicketDraftComposer").then((module) => {
@@ -323,10 +321,7 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
     };
   }, []);
 
-  const environmentProjects = useMemo(
-    () => projects.filter((project) => project.environmentId === environmentId),
-    [environmentId, projects],
-  );
+  const environmentProjects = projects.filter((project) => project.environmentId === environmentId);
   const chosenProject =
     chosenProjectId === null
       ? null
@@ -337,19 +332,12 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
       : (environmentProjects.find((candidate) => candidate.id === sourceThread.projectId) ?? null);
   // A captured project that no longer exists falls through to the source thread's project.
   const project = chosenProject ?? sourceProject;
-  const instanceEntries = useMemo(
-    () =>
-      applyProviderInstanceSettings(
-        deriveProviderInstanceEntries(providers),
-        settings,
-        project?.id ?? null,
-      ),
-    [providers, settings, project?.id],
+  const instanceEntries = applyProviderInstanceSettings(
+    deriveProviderInstanceEntries(providers),
+    settings,
+    project?.id ?? null,
   );
-  const modelOptionsByInstance = useMemo(
-    () => getCustomModelOptionsByInstance(settings, providers),
-    [providers, settings],
-  );
+  const modelOptionsByInstance = getCustomModelOptionsByInstance(settings, providers);
   const storedSelection =
     chosenModel ??
     resolveProjectSettings(settings, project?.id ?? null, project).settings.defaultModelSelection ??
@@ -364,14 +352,10 @@ function CreateTicketDialog(props: { readonly capture: TicketCapture }) {
         driverKind: selectableEntry.driverKind,
         models: selectableEntry.models,
         stored: storedSelection,
-        planModeEnabled: false,
       })
     : null;
-  const chipRecords = useMemo(() => captureChipRecords(capture.items), [capture.items]);
-  const draft = useMemo(
-    () => ticketDraftPayload(instruction, capture.items, promptRecords),
-    [capture.items, instruction, promptRecords],
-  );
+  const chipRecords = captureChipRecords(capture.items);
+  const draft = ticketDraftPayload(instruction, capture.items, promptRecords);
   const hasSelection = capture.items.length > 0;
   const instructionTooLong = draft.instruction.length > 4_000;
   const selectionTooLong = draft.selection.text.length > PROVIDER_SEND_TURN_MAX_INPUT_CHARS;

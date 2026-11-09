@@ -42,6 +42,7 @@ const layerElectronApp = (calls: ElectronAppCalls) =>
     metadata: Effect.die("unexpected metadata read"),
     name: Effect.succeed("Vetra Code"),
     systemLocale: Effect.succeed("en-US"),
+    preferredSystemLanguages: Effect.succeed(["en-US"]),
     whenReady: Effect.void,
     requestSingleInstanceLock: Effect.succeed(true),
     quit: Effect.void,
@@ -128,7 +129,7 @@ const withIdentity = <A, E, R>(
         Layer.provide(NodePath.layerPosix),
         Layer.provideMerge(
           FileSystem.layerNoop({
-            exists: (path) =>
+            exists: () =>
               input.legacyPathProbeError
                 ? Effect.fail(input.legacyPathProbeError)
                 : Effect.succeed(input.legacyPathExists === true),

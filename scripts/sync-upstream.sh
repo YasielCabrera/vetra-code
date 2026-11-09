@@ -227,6 +227,10 @@ RENAMES=(
   # The systemd unit the CLI installs. Two units cannot share a name.
   't3code.service=vetra-code.service'
   't3.cmd=vetra.cmd'
+  't3.exe=vetra.exe'
+  't3(?:\.exe)=vetra(?:\.exe)'
+  '.t3/runtime=.vetra-code/runtime'
+  '.t3/bin/=.vetra-code/bin/'
   'schemes: ["t3code", "t3code-dev"]=schemes: ["vetra", "vetra-dev"]'
   'com\.t3tools\.t3code=com\.vetra\.code'
 
@@ -312,6 +316,7 @@ RENAMES=(
   'data-t3code-=data-vetra-'
   't3-file-icon-=vetra-file-icon-'
   'T3 Code=Vetra Code'
+  'T3%20Code=Vetra%20Code'
   "T3's=Vetra Code's"
   'T3 home=Vetra home'
   'T3 is still installing=Vetra Code is still installing'

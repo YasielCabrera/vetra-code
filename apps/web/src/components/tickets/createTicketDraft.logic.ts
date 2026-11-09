@@ -213,7 +213,6 @@ export function ticketDraftModelSelection(input: {
   readonly driverKind: ProviderDriverKind;
   readonly models: ReadonlyArray<ServerProviderModel>;
   readonly stored: ModelSelection | null;
-  readonly planModeEnabled: boolean;
 }): ModelSelection | null {
   const sameInstance = input.stored?.instanceId === input.instanceId;
   const model = sameInstance ? input.stored?.model : defaultModelSlug(input.models);
@@ -223,7 +222,6 @@ export function ticketDraftModelSelection(input: {
     model,
     models: input.models,
     modelOptions: sameInstance ? input.stored?.options : undefined,
-    planModeEnabled: input.planModeEnabled,
   });
   return createModelSelection(input.instanceId, model, modelOptionsForDispatch);
 }

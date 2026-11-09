@@ -1,5 +1,4 @@
 import { EyeIcon, type LucideIcon } from "lucide-react";
-import { runtimeModeConfig } from "../chat/runtimeModeConfig";
 import {
   type AuthMcpApprovalDecision,
   type AuthMcpApprovalDetails,
@@ -8,6 +7,7 @@ import {
   AuthMcpAuthorizationRequest,
   isRuntimeModeAbove,
   managedRuntimeModeCeilingMessage,
+  parseMcpApprovalCode,
 } from "@t3tools/contracts";
 import { isLoopbackHost } from "@t3tools/shared/preview";
 import type * as Context from "effect/Context";
@@ -17,6 +17,10 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import { PrimaryEnvironmentHttpClient } from "~/environments/primary/httpClient";
 import { runPrimaryHttp } from "~/lib/runtime";
+import { cn } from "~/lib/utils";
+import { Radio as RadioPrimitive } from "@base-ui/react/radio";
+import { resolveApprovalDecision, resolveMcpAccess } from "./ConnectAgentSurface.logic";
+import { runtimeModeConfig } from "../chat/runtimeModeConfig";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -82,17 +86,17 @@ function readAuthorizationRequest(): AuthMcpAuthorizationRequest {
   return decodeAuthorizationRequest(Object.fromEntries(new URL(window.location.href).searchParams));
 }
 
-/** Sessions can grant only scopes they hold. */
-function oneClickApproves(details: AuthMcpApprovalDetails, access: AuthMcpClientAccess) {
-  return details.csrfToken !== undefined && (details.oneClickAccess ?? []).includes(access);
-}
-
 export function ConnectAgentSurface() {
   const [authorization] = useState(readAuthorizationRequest);
   const [loaded, setLoaded] = useState<Loaded>({ status: "loading" });
-  const [access, setAccess] = useState<AuthMcpClientAccess>("read-only");
+  const [requestedAccess, setAccess] = useState<AuthMcpClientAccess | null>(null);
   const [tools, setTools] = useState<McpToolsChoice>("all");
   const [pairingCode, setPairingCode] = useState("");
+  const access = resolveMcpAccess(
+    requestedAccess,
+    loaded.status === "ready" ? loaded.details.runtimeModeCeiling : undefined,
+    pairingCode.trim().length > 0,
+  );
   const [errorMessage, setErrorMessage] = useState("");
   const [pending, setPending] = useState<"approve" | "deny" | null>(null);
 
@@ -120,18 +124,23 @@ export function ConnectAgentSurface() {
 
   const decide = async (choice: "approve" | "deny") => {
     if (loaded.status !== "ready") return;
-    setPending(choice);
-    setErrorMessage("");
-    const { csrfToken } = loaded.details;
-    const grant = { access, ...(tools === "tickets" ? { tools } : {}) };
-    const decision: AuthMcpApprovalDecision =
+    const decision: AuthMcpApprovalDecision | null =
       choice === "deny"
         ? { _tag: "deny" }
-        : csrfToken !== undefined && oneClickApproves(loaded.details, access)
-          ? { _tag: "browser-session", ...grant, csrfToken }
-          : { _tag: "pairing-code", ...grant, code: pairingCode.trim() };
+        : resolveApprovalDecision({ code: pairingCode, access, details: loaded.details });
+    if (decision === null) return;
+    setPending(choice);
+    setErrorMessage("");
     const answer = await runApproval((client) =>
-      client.mcpOAuth.decision({ payload: { authorization, decision } }),
+      client.mcpOAuth.decision({
+        payload: {
+          authorization,
+          decision:
+            decision._tag === "deny"
+              ? decision
+              : { ...decision, ...(tools === "tickets" ? { tools } : {}) },
+        },
+      }),
     );
     if (answer.kind === "redirect") {
       window.location.replace(answer.url);
@@ -165,8 +174,10 @@ export function ConnectAgentSurface() {
   }
 
   const { details } = loaded;
-  const oneClick = oneClickApproves(details, access);
-  const canApprove = pending === null && (oneClick || pairingCode.trim().length > 0);
+  const canApprove =
+    pending === null && resolveApprovalDecision({ code: pairingCode, access, details }) !== null;
+  // A code from "Use Vetra Code in another app" names its level, so the page does not ask again.
+  const codeAccess = parseMcpApprovalCode(pairingCode)?.access;
 
   return (
     <StandalonePage>
@@ -180,20 +191,23 @@ export function ConnectAgentSurface() {
           </>
         }
       />
-      <p className="mt-2 text-xs text-muted-foreground">
-        {redirectsToThisComputer(details.redirectHost) ? (
-          <>
-            The name is chosen by the agent. Approval returns to {details.redirectHost} on the
-            computer that opened this page. Only approve a sign-in you just started.
-          </>
-        ) : (
-          <>
-            The name is chosen by the agent. Approval gives access to whoever runs{" "}
-            <span className="font-medium text-foreground">{details.redirectHost}</span>. Only
-            approve a sign-in you just started there.
-          </>
-        )}
-      </p>
+      <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+        <dt className="text-muted-foreground">App</dt>
+        <dd className="min-w-0 break-words">
+          {details.clientName} <span className="text-muted-foreground">· name set by the app</span>
+        </dd>
+        <dt className="text-muted-foreground">Access goes to</dt>
+        <dd className="min-w-0 break-words font-medium">
+          {details.redirectHost}
+          {redirectsToThisComputer(details.redirectHost) ? (
+            <span className="font-normal text-muted-foreground">
+              {" "}
+              on the computer that opened this page
+            </span>
+          ) : null}
+        </dd>
+      </dl>
+      <p className="mt-2 text-xs text-muted-foreground">Only approve a sign-in you just started.</p>
 
       <form
         className="mt-6 space-y-5"
@@ -202,37 +216,36 @@ export function ConnectAgentSurface() {
           if (canApprove) void decide("approve");
         }}
       >
+        <div className="space-y-2">
+          <label className="text-sm font-medium" htmlFor="connect-agent-pairing-code">
+            Sign-in code
+          </label>
+          <Input
+            id="connect-agent-pairing-code"
+            autoCapitalize="none"
+            autoComplete="one-time-code"
+            autoCorrect="off"
+            disabled={pending !== null}
+            nativeInput
+            onChange={(event) => setPairingCode(event.currentTarget.value)}
+            placeholder="Paste a code"
+            spellCheck={false}
+            value={pairingCode}
+          />
+          <p className="text-xs text-muted-foreground">
+            Get one from Use Vetra Code in another app (MCP), Settings → Sharing & access, or{" "}
+            <code>vetra auth pairing create</code> on this machine.
+          </p>
+        </div>
+
         <McpClientGrantFields
-          access={access}
+          access={codeAccess ?? access}
           onAccessChange={setAccess}
+          accessOptions={codeAccess ? [codeAccess] : AuthMcpClientAccess.literals}
           accessDisabledReason={(option) => ceilingReason(details, option)}
           tools={tools}
           onToolsChange={setTools}
         />
-
-        {oneClick ? null : (
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="connect-agent-pairing-code">
-              Pairing code
-            </label>
-            <Input
-              id="connect-agent-pairing-code"
-              autoCapitalize="none"
-              autoComplete="one-time-code"
-              autoCorrect="off"
-              disabled={pending !== null}
-              nativeInput
-              onChange={(event) => setPairingCode(event.currentTarget.value)}
-              placeholder="Paste a one-time pairing code"
-              spellCheck={false}
-              value={pairingCode}
-            />
-            <p className="text-xs text-muted-foreground">
-              Create one in Settings → Connections → Connect an agent, or run{" "}
-              <code>vetra auth pairing create</code> on this machine.
-            </p>
-          </div>
-        )}
 
         {errorMessage ? (
           <Alert variant="error">
@@ -242,7 +255,11 @@ export function ConnectAgentSurface() {
 
         <div className="flex flex-wrap gap-2">
           <Button disabled={!canApprove} type="submit">
-            {pending === "approve" ? "Approving…" : "Approve"}
+            {pending === "approve"
+              ? "Approving…"
+              : codeAccess
+                ? `Approve ${accessConfig[codeAccess].label}`
+                : "Approve"}
           </Button>
           <Button
             disabled={pending !== null}
@@ -276,4 +293,48 @@ function ceilingReason(details: AuthMcpApprovalDetails, access: AuthMcpClientAcc
     !isRuntimeModeAbove(access, ceiling.maxRuntimeMode)
     ? undefined
     : managedRuntimeModeCeilingMessage(ceiling.organization, ceiling.maxRuntimeMode);
+}
+
+/** One access level in a radio group; `description` replaces the level's own, null hides it. */
+export function AccessOption({
+  access,
+  selected,
+  disabledReason,
+  description,
+}: {
+  readonly access: AuthMcpClientAccess;
+  readonly selected: boolean;
+  readonly disabledReason: string | undefined;
+  readonly description?: string | null;
+}) {
+  const { label, icon: Icon } = accessConfig[access];
+  const detail =
+    disabledReason ?? (description === undefined ? accessConfig[access].description : description);
+  return (
+    <RadioPrimitive.Root
+      value={access}
+      disabled={disabledReason !== undefined}
+      className={cn(
+        "flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-left outline-none transition-[background-color,border-color,box-shadow]",
+        "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+        selected
+          ? "border-primary bg-background ring-2 ring-inset ring-primary/25 dark:border-transparent dark:bg-primary/10 dark:ring-1 dark:ring-primary/30"
+          : "border-border bg-background hover:bg-muted/50 dark:border-transparent dark:bg-white/[0.035] dark:hover:bg-accent",
+      )}
+    >
+      <Icon
+        aria-hidden
+        className={cn(
+          "mt-0.5 size-4 shrink-0",
+          selected ? "text-primary" : "text-muted-foreground",
+        )}
+      />
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-foreground">{label}</span>
+        {detail === null ? null : (
+          <span className="block text-xs text-muted-foreground">{detail}</span>
+        )}
+      </span>
+    </RadioPrimitive.Root>
+  );
 }

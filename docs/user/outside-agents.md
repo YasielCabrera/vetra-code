@@ -6,6 +6,24 @@ with tickets, and check which providers and models are available. This covers
 Claude Code or Codex in your own terminal, ChatGPT, and bots that support MCP.
 Each agent signs in once, and you choose what it may do.
 
+## Add Vetra Code to an assistant app
+
+Open the command palette (`Cmd/Ctrl+K`) and choose **Use Vetra Code in another
+app (MCP)**, or use the button in **Settings → Sharing & access**. Pick the
+app, choose what it may do, and follow the step for that app. Assistants like
+Poke and Claude run in the cloud, so the wizard first asks you to sign in to T3
+Connect and turn it on for the environment. To reach your other machines through
+the same connection, turn on **Linked environments** in Labs and
+[link them](./remote-access.md#link-another-environment).
+
+When the app opens the sign-in page, choose **Get code** in the wizard and paste
+the code there. A code works once, for 5 minutes, and approves only the level
+you chose.
+
+For an app that is not listed, choose **Something else…**, add a remote MCP
+server with OAuth in that app, and paste the URL. Apps that require their own
+client ID cannot connect.
+
 ## Get the MCP URL
 
 In **Settings → Connections**, the **MCP server** row shows the URL of the
@@ -22,6 +40,10 @@ The **MCP server** row prefers the address your pairing links use, such as a
 Tailscale HTTPS address when you have turned it on. A saved environment's URL
 uses the route this device is connected over, so an agent on the same device
 can reach it.
+
+When Vetra Connect serves the environment, the copied URL is its Vetra Connect
+address, which agents can reach from anywhere. Otherwise it uses the route this
+device is connected over, so an agent on the same device can reach it.
 
 - **An agent on your own computers** can use `localhost` on the host, Vetra
   Connect, or any `https` address. See [remote access](./remote-access.md). Signing in sends the
@@ -43,14 +65,17 @@ The page names the agent and where its access goes:
 - For a hosted agent, approval goes to that service, such as `chatgpt.com`.
   Anyone who runs that service gets the access.
 
-Only approve a sign-in you just started. To approve, enter a pairing code. Create
-one in **Settings → Connections → MCP server → Connect an agent**, or run
+Only approve a sign-in you just started. To approve, enter a code from
+**Use Vetra Code in another app (MCP)**, **Settings → Sharing & access**, or
 `vetra auth pairing create` on the host. A browser already signed in to the
 environment with permission to manage access can approve without a code.
 
-Then choose what the agent may do:
+A code from **Use Vetra Code in another app (MCP)** already carries the level you
+picked there. With another code, choose what the agent may do here: **Auto** is
+selected by default, or the closest lower mode allowed by your organization’s
+policy. Approving without a code starts at **Read only**:
 
-- **Read only** is the default. The agent can read projects and threads and see
+- **Read only** lets the agent read projects and threads and see
   the available providers and models. It cannot change anything.
 - **Supervised** through **Full access** also let it start, message and stop
   threads in every project. A thread it starts or steers cannot run with more

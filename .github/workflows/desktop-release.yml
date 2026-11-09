@@ -153,6 +153,16 @@ jobs:
             native/hyprland-snap-shot/target/${{ matrix.rust_target }}/release/t3-hyprland-snap-shot
           key: linux-capture-helpers-${{ matrix.rust_target }}-${{ hashFiles('native/kde-snap-shot/Cargo.lock', 'native/kde-snap-shot/Cargo.toml', 'native/kde-snap-shot/src/**', 'native/hyprland-snap-shot/Cargo.lock', 'native/hyprland-snap-shot/Cargo.toml', 'native/hyprland-snap-shot/src/**', 'native/hyprland-snap-shot/protocols/**') }}
 
+      - name: Cache Linux packaging tool archives
+        if: matrix.platform == 'linux'
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/electron-builder/appimage@*/appimage-tools-runtime-*.tar.gz
+            ~/.cache/electron-builder/fpm@*/fpm-*.7z
+            ~/.cache/electron-builder/7zip@*/7zip-linux-*.tar.gz
+          key: electron-builder-linux-tools-${{ matrix.arch }}-${{ hashFiles('node_modules/.pnpm/app-builder-lib@*/node_modules/app-builder-lib/out/toolsets/linux.js', 'node_modules/.pnpm/app-builder-lib@*/node_modules/app-builder-lib/out/toolsets/7zip.js') }}
+
       - name: Setup Rust
         if: steps.resource_monitor_cache.outputs.cache-hit != 'true' || (matrix.platform == 'linux' && steps.capture_helper_cache.outputs.cache-hit != 'true')
         uses: dtolnay/rust-toolchain@stable
@@ -182,7 +192,7 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsecret-1-dev pkg-config imagemagick
+          sudo apt-get install -y libsecret-1-dev pkg-config imagemagick libgtk-3-0t64 libnss3 libasound2t64 libgbm1
 
       # Only macOS is signed (and notarized); Windows and Linux ship unsigned,
       # and only the macOS job receives Apple credentials.
