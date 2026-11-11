@@ -50,7 +50,7 @@ export function McpClientGrantFields({
   tools,
   onToolsChange,
 }: {
-  readonly access: AuthMcpClientAccess;
+  readonly access: AuthMcpClientAccess | null;
   readonly onAccessChange: (access: AuthMcpClientAccess) => void;
   readonly accessOptions?: ReadonlyArray<AuthMcpClientAccess>;
   readonly accessDisabledReason?: (access: AuthMcpClientAccess) => string | undefined;

@@ -28,8 +28,10 @@ export function RightPanelResizeHandle({
       {...separatorProps}
 
       className={cn(
-        "group absolute inset-y-0 z-20 w-2 cursor-col-resize select-none",
-        edge === "left" ? "-left-1" : "-right-1",
+        "group absolute inset-y-0 z-20 w-2 cursor-col-resize touch-none select-none any-pointer-coarse:w-4",
+        edge === "left"
+          ? "-left-1 any-pointer-coarse:-left-2"
+          : "-right-1 any-pointer-coarse:-right-2",
         className,
       )}
       {...handlers}

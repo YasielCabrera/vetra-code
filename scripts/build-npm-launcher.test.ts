@@ -74,9 +74,13 @@ exit 7
   const archive = yield* fs.readFile(path.join(root, "release", archiveName));
   let checksum = NodeCrypto.createHash("sha256").update(archive).digest("hex");
   const requests: Array<string> = [];
+  const failures: Array<number> = [];
   const server = NodeHttp.createServer((request, response) => {
     requests.push(request.url ?? "");
-    if (request.url === `/v${VERSION}/SHA256SUMS`) {
+    const failure = failures.shift();
+    if (failure !== undefined) {
+      response.writeHead(failure).end("upstream timed out");
+    } else if (request.url === `/v${VERSION}/SHA256SUMS`) {
       response.end(`${checksum}  ${archiveName}\n`);
     } else if (request.url === `/v${VERSION}/${archiveName}`) {
       response.writeHead(200, { "Content-Length": archive.length }).end(archive);
@@ -100,6 +104,9 @@ exit 7
     requests,
     corruptChecksum: () => {
       checksum = "0".repeat(64);
+    },
+    failNextRequests: (...statuses: Array<number>) => {
+      failures.push(...statuses);
     },
   };
 });
@@ -140,6 +147,8 @@ it.layer(NodeServices.layer)("build-npm-launcher", (it) => {
         const packageDir = path.join(installed, "package");
 
         const release = yield* serveFakeRelease(root);
+        // regression: #32897
+        release.failNextRequests(504, 524);
         const home = path.join(root, "home");
         const env = {
           PATH: (yield* HostProcess.Environment).PATH,
@@ -370,17 +379,6 @@ fs.readFileSync = (file, ...rest) => {
           const release = yield* serveFakeRelease(root, executable);
           const home = path.join(root, "home");
           const dir = path.join(home, "runtime/versions", VERSION);
-          const probeTimeoutHook = path.join(root, "probe-timeout.mjs");
-          yield* fs.writeFileString(
-            probeTimeoutHook,
-            `import childProcess from "node:child_process";
-import { syncBuiltinESMExports } from "node:module";
-const { spawnSync } = childProcess;
-childProcess.spawnSync = (command, args, options) => spawnSync(command, args,
-  options?.timeout === undefined ? options : { ...options, timeout: 500 });
-syncBuiltinESMExports();
-`,
-          );
           const env = {
             PATH: (yield* HostProcess.Environment).PATH,
             VETRA_HOME: home,
@@ -389,11 +387,7 @@ syncBuiltinESMExports();
             VETRA_TEST_TERM: path.join(root, "probe-term"),
           };
           const launcher = path.join(output.packageDir, "bin/vetra.mjs");
-          const failed = yield* run(
-            process.execPath,
-            ["--import", probeTimeoutHook, launcher, "serve"],
-            { cwd: root, env },
-          );
+          const failed = yield* run(process.execPath, [launcher, "serve"], { cwd: root, env });
           assert.equal(failed.exitCode, 1, failed.stderr);
           assert.deepStrictEqual(yield* fs.readDirectory(path.dirname(dir)), [], failed.stderr);
           assert.include(failed.stderr, "could not run");
@@ -401,7 +395,7 @@ syncBuiltinESMExports();
             assert.include(failed.stderr, "runtime loader failed");
           }
           if (executable.includes("trap")) {
-            assert.isTrue(yield* fs.exists(env.VETRA_TEST_READY));
+            assert.isTrue(yield* fs.exists(env.VETRA_TEST_READY), failed.stderr);
             assert.isFalse(yield* fs.exists(env.VETRA_TEST_TERM));
           }
           if ((yield* HostProcess.Platform) === "linux") {

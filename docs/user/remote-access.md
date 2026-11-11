@@ -166,9 +166,58 @@ A pairing link authorizes a client to exchange its one-time token for a durable 
 Revoke credentials or sessions that are no longer trusted. Managed cloud execution will keep this
 typed authenticated connection seam while placing each server in its own isolated workspace.
 
-**Settings → Sharing & access** lets authorized administrators create pairing links and revoke
-client sessions. When the app connects to more than one environment, choose one at the top of the
-page.
+Linked environments is a beta. Turn it on for both machines in **Settings →
+Labs**. While it is off on either machine, agents start nothing over a link between them. A task
+already running on the other machine still finishes, and if that machine has it
+off, its result arrives once it is back on.
+
+On the machine you will work from, open **Settings → Environments → Linked environments**,
+choose **Link**, and pick the other machine or enter its address. The list
+holds the machines this app knows and those on your Vetra Connect account. If this
+app has an address for that machine and is connected to it with a session that
+manages access there, it makes the pairing code itself; otherwise paste one
+from that machine's **Settings → Sharing & access**. An address you type always
+needs a pasted code. From a terminal, use
+`vetra environment link <address> --pairing-code <code> --access <mode>`.
+
+You can also ask an agent to link a machine by name, such as "delegate this to
+my vps". It shows a card in the thread where you pick the machine the same way
+and the access, then approve. An address the agent gives that this app does
+not know for one of your machines also needs a pasted code. Paste one only for
+an address you trust: the code is sent there.
+
+- The access you pick is the most agents from this machine may do there. An
+  agent also never gets more there than its own mode here.
+- Threads a link starts are marked **From** and this machine's name there.
+- A full-access link works there like that machine's own agents. Below full
+  access, the link's agents can change only threads it started, not that
+  machine's own threads, projects or settings, and they skip its project setup
+  scripts.
+- The link shows up in that machine's **Settings → Sharing & access** like any
+  outside agent. Revoke it there to end it. **Forget** on this machine only
+  removes it here.
+- Links last 30 days. Link again with a new pairing code to renew one.
+
+An agent can also hand a task to a linked machine with `delegate_task`: it runs
+there as an ordinary thread, in the project with the same repository (or the
+one `target.projectId` names), and this thread wakes with its result when it
+ends, as for any delegated task. It keeps following the task across restarts.
+If the other machine revokes the link, or the link is removed here, the task
+fails with that reason.
+
+## Manage or revoke access
+
+On the host, **Settings → Sharing & access** lets authorized administrators create
+pairing links and revoke client sessions. Revoking an unused link prevents new
+pairings; revoke a device's session to remove its existing access. Command-line
+management is available through `vetra auth --help`.
+
+When the app connects to more than one environment, choose one at the top of the
+page. A desktop app with **Local environment** off can manage a background
+service on the same machine this way, including its Vetra Connect link.
+
+A session with an open connection stays listed after its access credential
+expires.
 
 To choose a token's permissions, pass `--scope` once for each scope you want:
 
@@ -234,3 +283,17 @@ registered to your account.
 When Vetra Connect is configured and a connection fails, see
 [Vetra Connect troubleshooting](./t3-connect-troubleshooting.md). It explains each
 error, where the problem is, and how to fix it.
+
+## Using the Desktop App as a Remote Only
+
+If a computer should only drive work running elsewhere, turn off its local environment. In the
+desktop app, open **Settings → Environments** and switch off **Local
+environment**. Vetra Code restarts without a local server: no local agents or terminals run, WSL
+backends stay off, and other devices can no longer connect to this computer. Your projects,
+history, and saved connections are kept, and you keep working through pairing, Vetra Connect, or SSH.
+If a [background service](./background-service.md) on this computer uses the same Vetra home, the
+app still treats it as this computer: **Open in** and file reveal for its projects run here,
+whichever connection you reach it through.
+
+Switch **Local environment** back on in the same place to restart with your previous local
+settings.

@@ -8,10 +8,9 @@ import {
 import { settlePromise } from "@t3tools/client-runtime/state/runtime";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
-import { Check, Copy } from "lucide";
+import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 
-import { MorphIcon } from "~/components/MorphIcon";
 import {
   createServerMcpClientToken,
   createServerPairingCredential,
@@ -366,7 +365,7 @@ function CopyButton({ value, target }: { readonly value: string; readonly target
       aria-label={`Copy ${target}`}
       onClick={() => copyToClipboard(value, undefined)}
     >
-      <MorphIcon className="size-3.5" icon={isCopied ? Check : Copy} />
+      {isCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
     </Button>
   );
 }

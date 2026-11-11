@@ -78,7 +78,8 @@ source alone does not explain. Most code changes do not need an internal documen
 
 ### Runbooks
 
-- [Syncing upstream Vetra Code](./internals/upstream-sync.md)
+- [Syncing upstream T3 Code](./internals/upstream-sync.md)
+- [Scenarios: real-app proof for a fix](./operations/scenarios.md)
 - [Release](./operations/release.md)
 - [Observability](./operations/observability.md)
 - [Relay observability](./operations/relay-observability.md)

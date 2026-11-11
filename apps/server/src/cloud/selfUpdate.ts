@@ -283,16 +283,27 @@ export const make = Effect.fn("cloud.server_self_update.make")(function* () {
               ),
             ),
       }).pipe(
-        Effect.mapError((error) =>
-          error._tag === "PinnedRuntimePreflightBlockedError"
-            ? failWith(error.reason, error)
-            : mirror !== undefined && isUnpublishedRelease(error)
-              ? failWith(
-                  `${mirror.organization}'s update mirror has no ${PRODUCT_CLI_NAME}@${targetVersion} for this machine.`,
-                  error,
-                )
-              : failWith(`Could not prepare ${PRODUCT_SERVER_PACKAGE}@${targetVersion}.`, error),
-        ),
+        Effect.mapError((error) => {
+          if (error._tag === "PinnedRuntimePreflightBlockedError") {
+            return failWith(error.reason, error);
+          }
+          if (mirror !== undefined && isUnpublishedRelease(error)) {
+            return failWith(
+              `${mirror.organization}'s update mirror has no ${PRODUCT_CLI_NAME}@${targetVersion} for this machine.`,
+              error,
+            );
+          }
+          const downloadFailure = [
+            error.httpStatus === undefined ? undefined : `HTTP ${error.httpStatus}`,
+            error.downloadHost === undefined ? undefined : `from ${error.downloadHost}`,
+          ]
+            .filter((part) => part !== undefined)
+            .join(" ");
+          return failWith(
+            `Could not prepare ${PRODUCT_SERVER_PACKAGE}@${targetVersion} while ${error.step}${downloadFailure ? ` (${downloadFailure})` : ""}.`,
+            error,
+          );
+        }),
       );
 
       yield* reportProgress("installing");

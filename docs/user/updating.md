@@ -105,6 +105,20 @@ Then restart the desktop app if it hosts the server. For a server you started by
 stop it and start it again afterwards with your usual options such as `--host`
 or `--tailscale-serve`.
 
+A background service installed by an older release refuses **Update server**
+until you update it once on the host and let that update restart it. If you
+decline the restart, the service can stay down after a crash or reboot until you
+run `vetra service restart`.
+
+## If an update fails
+
+Keep the client open until it reconnects or reports a failure. A failed service
+update can roll back to the previous version. If the update still fails:
+
+1. Retry the offered action once.
+2. Check that you updated the server's machine, not only the device you are using.
+3. For a command-line server, stop it and relaunch the exact version shown in the notice.
+
 Only one server can use a Vetra home directory at a time. If startup reports that
 another server owns it, stop that server before retrying, or use a separate home
 directory and pair with the running server.

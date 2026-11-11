@@ -333,7 +333,9 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                   return false;
                 }}
                 onCitationSubmitAndSend={() => {
-                  if (!props.disabled) props.onSubmit();
+                  if (props.disabled) return false;
+                  props.onSubmit();
+                  return true;
                 }}
                 importContextFragment={(fragment) => {
                   const prepared = prepareTicketDraftPaste({

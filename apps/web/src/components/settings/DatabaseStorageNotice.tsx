@@ -163,7 +163,7 @@ function ReclaimRow({
       title={`${amount} on ${label}`}
       description={
         status.reclaimFailure === undefined
-          ? `Restarts Vetra Code there. It is offline for about ${minutes} min.`
+          ? `Restarts Vetra Code there. It will be offline for about ${minutes} min.`
           : `The last attempt failed: ${status.reclaimFailure}`
       }
       control={
@@ -184,7 +184,7 @@ function ReclaimRow({
                   Reclaim {amount} on {label}?
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  Vetra Code on {label} stops, rebuilds its database, and starts again. It is
+                  Vetra Code on {label} stops, rebuilds its database, and starts again. It will be
                   offline for about {minutes} min. Running agents stop when it restarts.
                 </AlertDialogDescription>
               </AlertDialogHeader>

@@ -59,6 +59,8 @@ PRUNE_PATHS=(
   scripts/export-android-icons.ts
   scripts/mobile-behavior.ts
   scripts/mobile-behavior
+  scripts/scenarios/t3-mobile.ts
+  scripts/scenarios/mobile-opens-a-seeded-thread.e2e.ts
   apps/server/src/triage
   scripts/mobile-e2e.ts
   scripts/mobile-e2e
@@ -244,6 +246,9 @@ RENAMES=(
   # stored preference or points a remote client at a path this server does not
   # serve.
   't3_session=vetra_session'
+  '.t3/userdata/secrets/files=.vetra-code/userdata/secrets/files'
+  '\.t3\/userdata\/secrets\/files=\.vetra-code\/userdata\/secrets\/files'
+  '.t3/worktrees/=.vetra-code/worktrees/'
   'T3-Mode-Limit=Vetra-Mode-Limit'
   't3-mode-limit=vetra-mode-limit'
   'persist:t3-preview-=persist:vetra-code-preview-'
@@ -313,6 +318,9 @@ RENAMES=(
   # leftover grep matches it.
   'T3 CODE=VETRA CODE'
   'T3 ingest=Telemetry ingest'
+  't3 release=vetra release'
+  'prepare t3@=prepare @vetra-code/server@'
+  't3@${version}=vetra@${version}'
   'data-t3code-=data-vetra-'
   't3-file-icon-=vetra-file-icon-'
   'T3 Code=Vetra Code'

@@ -1,11 +1,6 @@
-/**
- * Schema migrations for fork-owned tables, recorded in `vetra_schema_migrations`.
- *
- * Upstream's `effect_sql_migrations` skips every id at or below its recorded maximum, so a fork id
- * there would hide a future upstream migration (docs/internals/legacy-orchestration-migration.md).
- * This ledger records each applied id instead, so an entry missing from a database is applied
- * wherever it sits in the list. Append new entries; never rename or reorder applied ones.
- */
+// Fork schema uses a separate ledger: an upstream id at or below its maximum never runs again.
+// Missing fork entries run regardless of position; append entries without renaming applied ones.
+// See docs/internals/legacy-orchestration-migration.md for the divergent upstream ids.
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as SqlClient from "effect/sql/SqlClient";
@@ -37,6 +32,17 @@ const vetraMigrations: ReadonlyArray<VetraMigration> = [
   ["008_TicketGitHubSyncCursor", Migration008],
   ["009_AuthSessionMcpTools", Migration009],
 ];
+
+export const hasPendingVetraMigrations = Effect.fn("hasPendingVetraMigrations")(function* () {
+  const sql = yield* SqlClient.SqlClient;
+  const tables = yield* sql`
+    SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'vetra_schema_migrations'
+  `;
+  if (tables.length === 0) return true;
+  const recorded = yield* sql<{ readonly id: string }>`SELECT id FROM vetra_schema_migrations`;
+  const applied = new Set(recorded.map((row) => row.id));
+  return vetraMigrations.some(([id]) => !applied.has(id));
+});
 
 export const runVetraMigrations = Effect.fn("runVetraMigrations")(function* (
   migrations: ReadonlyArray<VetraMigration> = vetraMigrations,
