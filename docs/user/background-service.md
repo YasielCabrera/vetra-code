@@ -1,4 +1,46 @@
-# Background service status
+# Running Vetra Code in the background
+
+On Linux, macOS, and Windows, Vetra Code can run as a service for your user so you
+do not need to keep a terminal open.
+
+## Manage the service
+
+Install the `vetra` CLI first ([Install Vetra Code](./install.md#command-line)), then
+run these commands on the machine that will host Vetra Code:
+
+| Task                                  | Command                   |
+| ------------------------------------- | ------------------------- |
+| Set up access from your other devices | `vetra up`                |
+| See how your other devices reach it   | `vetra status`            |
+| Install and start                     | `vetra service install`   |
+| Inspect status and log location       | `vetra service status`    |
+| Move to a newer release               | `vetra update`            |
+| Restart                               | `vetra service restart`   |
+| Stop and remove from startup          | `vetra service uninstall` |
+
+Uninstalling the service leaves your projects, threads, and settings intact.
+Running `vetra service install` again repairs a service that `vetra service status`
+reports as broken.
+
+`vetra update` downloads the newest release on your channel and switches `vetra`
+and the service to it. Restarting interrupts running agent turns, terminals,
+and remote clients, so it asks first; answer no and the service keeps running
+the old version until you run `vetra service restart`. Pass `--yes` from a
+script. A server you started by hand is left running; stop and start it again
+to pick up the new version. Wait for any remote update already in progress
+before updating; to match a remote client's version, follow
+[Updating Vetra Code](./updating.md).
+
+Pass an exact version (`vetra update 0.0.42`) to pin one, `--channel nightly` to
+switch trains, or `--allow-downgrade` to move backwards. `preview` is a
+maintainers' test train: its builds can be broken and are never offered as
+updates, so the installer and `vetra update` ask for confirmation before
+installing one.
+
+`vetra uninstall` removes the background service, the `vetra` launcher, and the
+downloaded versions after showing you the list and asking once. Your projects,
+threads, and settings under `~/.t3/userdata` are kept, along with `service.env`
+under Vetra home. Pass `--yes` from a script.
 
 Vetra Code includes Linux and macOS background-service support, but installing it is not yet a
 supported workflow because `t3` is private and unpublished. Until Vetra publishes
@@ -83,9 +125,12 @@ enabled at startup, and allowed to survive logout. It lists any problems it find
 | `service-disabled`         | The service is not enabled to start automatically.                               |
 | `service-stopped`          | The service is installed but is not running.                                     |
 
-Status prints a repair command alongside these. It names the CLI version, or the installed service
-version when that is newer, so an older CLI never recommends a downgrade. Enabling lingering needs
-`sudo loginctl enable-linger "$(id -un)"`; run only that command with elevated permissions.
+Windows starts the service when you log in and stops it when you sign out. It
+runs without a window as the `t3code-<domain>-<user name>` task in Task Scheduler, and Task
+Scheduler starts it again within a minute if it exits. Lock the screen instead
+of signing out, and keep the PC awake, for unattended remote access. Installing
+over SSH while nobody is signed in at the PC can fail at the final start step;
+the service is still installed and will start at the next sign-in.
 
 While service distribution stays gated, these codes describe a source-built server you supervise
 yourself.
@@ -139,7 +184,7 @@ that session open.
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `linger-unavailable`                    | Run `loginctl show-user "$(id -un)" --property=Linger` and check that systemd-logind is available.                             |
 | `user-manager-unavailable`              | Run `systemctl --user status` in a login session for the service user; check your distribution's systemd user-session support. |
-| `service-disabled` or `service-stopped` | Read the log and `systemctl --user status vetra-code.service`, then use the repair command printed by Vetra Code.              |
+| `service-disabled` or `service-stopped` | Read the log and, on Linux, `systemctl --user status vetra-code.service`, then use the repair command printed by Vetra Code.   |
 | `restart-pending`                       | A newer version is installed but the service still runs the previous one. Run `vetra service restart`.                         |
 
 On macOS, check **System Settings → General → Login Items** if the service no
@@ -175,11 +220,13 @@ the repair fails. Quit a server you started by hand, or the desktop app, first:
 the repair refuses to touch a database that is in use. Use `--base-dir` for a
 different data directory.
 
-The repair can take several minutes on a large database. It rebuilds the
-database through a temporary copy, so it needs free space of about twice the
-data still in use (the database size minus the reclaimable space): once in the
-system temporary directory (on Linux and macOS, `TMPDIR`, or `/var/tmp` when it
-is not set) and once next to the database for its write-ahead log.
+The repair's time grows with the size of the whole database, not only the
+space it reclaims, and can exceed an hour on a large database or a slow disk;
+`vetra doctor` shows each step as it runs. It rebuilds the database through a
+temporary copy, so it needs free space of about twice the data still in use
+(the database size minus the reclaimable space): once in the system temporary
+directory (on Linux and macOS, `TMPDIR`, or `/var/tmp` when it is not set) and
+once next to the database for its write-ahead log.
 
 If you upgraded from a version before 0.1.0, its database (`state.sqlite`) is
 still kept next to the current one so you can roll back. `vetra doctor` offers to

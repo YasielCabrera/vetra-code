@@ -25,6 +25,7 @@ import {
 import * as Schema from "effect/Schema";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { useCodeViewFileReveal } from "./diffs/useCodeViewFileReveal";
+import { useCodeViewScrollRestore } from "./diffs/useCodeViewScrollRestore";
 import { useFilesystemReadAccess } from "~/state/filesystem";
 import { useOpenInPreferredEditor } from "../editorPreferences";
 import { useFileContextMenuHandlerWithTicket, useTicketCapture } from "./tickets/useTicketCapture";
@@ -66,8 +67,8 @@ import { useClientSettings, updateClientSettings } from "../hooks/useSettings";
 import { formatRelativeTimeLabel, formatShortTimestamp } from "../timestampFormat";
 import { DiffFilePathCopyButton } from "./DiffFilePathCopyButton";
 import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
-import { AnnotatableCodeView } from "./diffs/AnnotatableCodeView";
 import { DiffStatLabel } from "./chat/DiffStatLabel";
+import { AnnotatableCodeView, type AnnotatableCodeViewHandle } from "./diffs/AnnotatableCodeView";
 import { DiffFileTree } from "./diffs/DiffFileTree";
 import { diffFileTreeEntries } from "./diffs/diffFileTree.logic";
 import {
@@ -718,12 +719,27 @@ export default function DiffPanel({
   const diffLineStat = sourceLineStat ?? getDiffLineStat(renderableFiles);
   const fileTreeEntries = diffFileTreeEntries(renderableFiles.filter(isFileShown));
   const codeViewReveal = useCodeViewFileReveal();
+  // Lazy files that sat above the saved position load again only when asked for.
+  const codeViewScroll = useCodeViewScrollRestore(
+    collapseScopeKey,
+    !isRefreshingDiff && remainingFileCount === 0,
+    remainingFileCount > 0 ? loadNextFiles : null,
+  );
+  const attachCodeView = useStableCallback((handle: AnnotatableCodeViewHandle | null) => {
+    codeViewScroll.attach(handle);
+    codeViewReveal.attach(handle);
+  });
+  const flushCodeView = useStableCallback(() => {
+    codeViewScroll.flush();
+    codeViewReveal.flush();
+  });
   const revealDiffFile = (filePath: string) => {
     const index = renderableFileEntries.findIndex(
       (candidate) => resolveFileDiffPath(candidate.fileDiff) === filePath,
     );
     const file = renderableFileEntries[index];
     if (!file) return false;
+    codeViewScroll.discard();
     updateCollapsedDiffFiles((current) => {
       const next = new Set(current);
       next.delete(file.fileKey);
@@ -800,6 +816,7 @@ export default function DiffPanel({
   });
 
   const toggleDiffFileCollapse = () => {
+    codeViewScroll.discard();
     setCodeViewRevision((current) => current + 1);
     updateCollapsedDiffFiles((current) => toggleAllDiffFiles(shownFileKeys, current));
   };
@@ -1456,7 +1473,8 @@ export default function DiffPanel({
                     key={collapseScopeKey ?? reviewSectionId}
                     environmentId={activeThread?.environmentId}
                     projectId={activeThread?.projectId}
-                    viewerRef={codeViewReveal.attach}
+                    viewerRef={attachCodeView}
+                    onScroll={codeViewScroll.onScroll}
                     codeViewKey={codeViewMountKey}
                     className="h-full min-h-0 overflow-auto"
                     files={codeViewFiles}
@@ -1519,7 +1537,7 @@ export default function DiffPanel({
                       preferredHighlighter: PREFERRED_HIGHLIGHTER,
                       themeType: resolvedTheme as DiffThemeType,
                       stickyHeaders: true,
-                      onPostRender: codeViewReveal.flush,
+                      onPostRender: flushCodeView,
                       ...(currentLoadDiffFiles ? { loadDiffFiles } : {}),
                     }}
                   />

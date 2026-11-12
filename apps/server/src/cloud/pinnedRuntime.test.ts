@@ -386,7 +386,9 @@ it("isVersionExecutable accepts only <version>/vetra, never another drive or pro
   assert.isTrue(
     isVersionExecutable(win32, "C:\\t3\\versions", "C:\\t3\\versions\\1.0.0\\vetra.exe"),
   );
-  assert.isFalse(isVersionExecutable(win32, "C:\\t3\\versions", "C:\\t3\\versions\\1.0.0\\t3.exe"));
+  assert.isFalse(
+    isVersionExecutable(win32, "C:\\t3\\versions", "C:\\t3\\versions\\1.0.0\\other.exe"),
+  );
   assert.isFalse(isVersionExecutable(win32, "C:\\t3\\versions", "D:\\vetra.exe"));
   assert.isFalse(
     isVersionExecutable(win32, "C:\\t3\\versions", "C:\\t3\\versions\\1.0.0\\node.exe"),
@@ -513,6 +515,97 @@ it.layer(NodeServices.layer)("prunePinnedRuntimes", (it) => {
         "2.0.0",
         "other",
       ]);
+    }),
+  );
+
+  it.effect.each([
+    { name: "its directory is on PATH", onPath: true, recorded: false, linkedHome: false },
+    {
+      name: "an earlier prune recorded its entry as a launcher",
+      onPath: false,
+      recorded: true,
+      linkedHome: false,
+    },
+    {
+      name: "its real directory in a symlinked home is on PATH",
+      onPath: true,
+      recorded: false,
+      linkedHome: true,
+    },
+  ])("removes a runtime only its own entry names when $name", ({ onPath, recorded, linkedHome }) =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const { baseDir, versionsDir } = yield* setup(["1.0.0", "1.1.0"]);
+      const binDir = path.join(baseDir, "bin");
+      yield* fs.makeDirectory(binDir);
+      yield* fs.symlink(path.join(versionsDir, "1.1.0", "vetra"), path.join(binDir, "vetra"));
+      const ownDir = path.join(versionsDir, "1.0.0");
+      if (recorded) {
+        yield* fs.writeFileString(
+          path.join(baseDir, "runtime", "launchers"),
+          `${path.join(ownDir, "vetra")}\n`,
+        );
+      }
+
+      const home = linkedHome
+        ? path.join(yield* fs.makeTempDirectoryScoped({ prefix: "t3-pinned-link-" }), "home")
+        : baseDir;
+      if (linkedHome) yield* fs.symlink(baseDir, home);
+
+      // The launch agent puts the running runtime's own directory on PATH.
+      const removed = yield* prunePinnedRuntimes({ baseDir: home, keep: ["2.0.0"] }).pipe(
+        Effect.provideService(
+          ProcessRunner.ProcessRunner,
+          lsofRunner("p1\nftxt\nn/sbin/launchd\n"),
+        ),
+        Effect.provideService(HostProcess.Platform, "darwin"),
+        Effect.provideService(HostProcess.Environment, {
+          VETRA_INSTALL_BIN_DIR: binDir,
+          PATH: onPath ? `${ownDir}:/usr/bin:/bin` : "/usr/bin:/bin",
+        }),
+      );
+      assert.deepEqual(removed, ["1.0.0"]);
+    }),
+  );
+
+  it.effect.each([
+    { name: "a launcher inside the versions directory", via: "bin" as const },
+    { name: "a PATH directory linked to its version directory", via: "linked dir" as const },
+    {
+      name: "a PATH directory in the versions directory linked to its version directory",
+      via: "linked versions dir" as const,
+    },
+  ])("keeps a runtime $name names", ({ via }) =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const { baseDir, versionsDir } = yield* setup(["1.0.0", "1.1.0"]);
+      let pathDirs = "/usr/bin:/bin";
+      if (via === "bin") {
+        // The installer accepts any bin directory, including one under the versions directory.
+        const binDir = path.join(versionsDir, "bin");
+        yield* fs.makeDirectory(binDir);
+        yield* fs.symlink(path.join(versionsDir, "1.0.0", "vetra"), path.join(binDir, "vetra"));
+        yield* fs.writeFileString(
+          path.join(baseDir, "runtime", "launchers"),
+          `${path.join(binDir, "vetra")}\n`,
+        );
+      } else {
+        const linkedDir = path.join(via === "linked dir" ? baseDir : versionsDir, "current");
+        yield* fs.symlink(path.join(versionsDir, "1.0.0"), linkedDir);
+        pathDirs = `${linkedDir}:${pathDirs}`;
+      }
+
+      const removed = yield* prunePinnedRuntimes({ baseDir, keep: ["2.0.0"] }).pipe(
+        Effect.provideService(
+          ProcessRunner.ProcessRunner,
+          lsofRunner("p1\nftxt\nn/sbin/launchd\n"),
+        ),
+        Effect.provideService(HostProcess.Platform, "darwin"),
+        Effect.provideService(HostProcess.Environment, { PATH: pathDirs }),
+      );
+      assert.deepEqual(removed, ["1.1.0"]);
     }),
   );
 

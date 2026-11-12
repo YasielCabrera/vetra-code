@@ -38,3 +38,4 @@ export const PASSKEY_GET_CHANNEL = "preview:passkey-get";
 export const PASSKEY_BRIDGE_ARGUMENT = "--vetra-code-preview-passkey-bridge";
 export const ANNOTATION_VOICE_EVENT_CHANNEL = "preview:annotation-voice-event";
 export const ANNOTATION_VOICE_STATE_CHANNEL = "preview:annotation-voice-state";
+export const PRIMARY_PASTE_DISABLED_ARGUMENT = "--vetra-code-preview-primary-paste-disabled";

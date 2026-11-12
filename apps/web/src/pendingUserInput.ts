@@ -1,4 +1,4 @@
-import type { UserInputQuestion } from "@t3tools/contracts";
+import type { ReviewCommentContextRecord, UserInputQuestion } from "@t3tools/contracts";
 import {
   projectComposerContextForProvider,
   replaceComposerContextReferences,
@@ -17,15 +17,20 @@ import { collectInlineContextIds } from "./lib/composerContextReferences";
 
 export function projectPendingUserInputAnswer(
   answer: unknown,
-  threadContexts: ReadonlyArray<AttachedContextRecord>,
+  records: ReadonlyArray<AttachedContextRecord | ReviewCommentContextRecord>,
 ) {
-  if (typeof answer !== "string" || threadContexts.length === 0) return answer;
-  const recordsById = new Map(threadContexts.map((record) => [record.contextId, record]));
+  if (typeof answer !== "string" || records.length === 0) return answer;
+  const recordsById = new Map(records.map((record) => [record.contextId, record]));
   const text = replaceComposerContextReferences(answer, (reference) => {
-    const record = reference.kind === "thread" ? recordsById.get(reference.contextId) : undefined;
-    return record?.kind === "thread" ? formatThreadLink(record, reference.label) : reference.source;
+    const record = recordsById.get(reference.contextId);
+    if (record?.kind !== reference.kind) return reference.source;
+    return record.kind === "thread"
+      ? formatThreadLink(record, reference.label)
+      : record.kind === "review-comment"
+        ? projectComposerContextForProvider({ text: reference.source, records: [record] })
+        : reference.source;
   });
-  return projectComposerContextForProvider({ text, records: threadContexts });
+  return projectComposerContextForProvider({ text, records });
 }
 
 // Question drafts retain deleted chip records for undo; only transfer referenced records.
@@ -37,9 +42,9 @@ export function threadContextsReferencedByAnswer(
   return threadContexts.filter((record) => referencedIds.has(record.contextId));
 }
 
-export interface PendingUserInputProgress {
+export interface PendingUserInputProgress<Q extends UserInputQuestion = UserInputQuestion> {
   questionIndex: number;
-  activeQuestion: UserInputQuestion | null;
+  activeQuestion: Q | null;
   activeDraft: PendingUserInputDraftAnswer | undefined;
   selectedOptionValues: ReadonlyArray<string>;
   customAnswer: string;
@@ -78,11 +83,11 @@ function countAnsweredPendingUserInputQuestions(
   }, 0);
 }
 
-export function derivePendingUserInputProgress(
-  questions: ReadonlyArray<UserInputQuestion>,
+export function derivePendingUserInputProgress<Q extends UserInputQuestion>(
+  questions: ReadonlyArray<Q>,
   draftAnswers: Record<string, PendingUserInputDraftAnswer>,
   questionIndex: number,
-): PendingUserInputProgress {
+): PendingUserInputProgress<Q> {
   const normalizedQuestionIndex =
     questions.length === 0 ? 0 : Math.max(0, Math.min(questionIndex, questions.length - 1));
   const activeQuestion = questions[normalizedQuestionIndex] ?? null;

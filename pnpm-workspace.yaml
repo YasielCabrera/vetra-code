@@ -107,12 +107,14 @@ overrides:
   micromark: 4.0.2
   mdast-util-to-hast: 13.2.1
   alchemy: "catalog:"
+  "@cursor/sdk": 1.2.0
   "@ff-labs/fff-node": 0.11.0
   "@legendapp/list": 3.7.2
   "@pierre/diffs": 1.7.0-beta.3
   dbus-next: 0.10.2
   node-pty: 1.2.0-beta.15
   app-builder-lib: 26.16.1
+  electron-updater: 6.8.9
   # Keep jsdom's optional peer consistent so Vite+ has one test-runner instance.
   "@exodus/bytes>@noble/hashes": "1.8.0"
   # The dbus-next patch drops usocket from the package, but pnpm resolves from the
@@ -182,6 +184,11 @@ overrides:
   vite: "catalog:"
   vite-plus: "catalog:"
   yaml: "catalog:"
+  # @vercel/routing-utils pins exactly 6.1.0, which has a ReDoS advisory (GHSA-9wv6-86v2-598j).
+  "@vercel/routing-utils>path-to-regexp": 6.3.0
+  # zod 3 has a high advisory (GHSA-mrhx-c7xc-m3w5) fixed only in 4.6.6. @vercel/config only
+  # builds a z.object of z.string().regex() and calls parse, which zod 4 keeps unchanged.
+  "@vercel/config>zod": 4.6.7
 
 packageExtensions:
   # Our patch makes @effect/vitest import vite-plus/test. A catalog: spec here
@@ -206,6 +213,11 @@ patchedDependencies:
   dbus-next@0.10.2: patches/dbus-next@0.10.2.patch
   node-pty@1.2.0-beta.15: patches/node-pty@1.2.0-beta.15.patch
   app-builder-lib@26.16.1: patches/app-builder-lib@26.16.1.patch
+  # Electron net requests never emit "socket", so upstream's idle timeout never fires and a
+  # stalled update download hangs forever.
+  electron-updater@6.8.9: patches/electron-updater@6.8.9.patch
+  # Local agents honor the attribution settings in the user's Cursor CLI cli-config.json.
+  "@cursor/sdk@1.2.0": patches/@cursor__sdk@1.2.0.patch
   # A failed Artifacts.cached effect hangs every later caller: https://github.com/alchemy-run/alchemy/issues/2981
   alchemy@2.0.0-beta.85: patches/alchemy@2.0.0-beta.85.patch
   "@legendapp/list@3.7.2": patches/@legendapp__list@3.7.2.patch

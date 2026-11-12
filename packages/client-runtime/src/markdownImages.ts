@@ -16,7 +16,7 @@ const URI_SCHEME_PATTERN = /^[A-Za-z][A-Za-z0-9+.-]*:/;
 
 export type MarkdownImageSource =
   | { readonly _tag: "Direct"; readonly uri: string }
-  | { readonly _tag: "WorkspaceFile"; readonly path: string }
+  | { readonly _tag: "WorkspaceFile"; readonly path: string; readonly relative?: true }
   /** An upload only the environment's source control login can fetch. */
   | { readonly _tag: "SourceControlAttachment"; readonly url: string }
   | { readonly _tag: "Blocked" };
@@ -76,5 +76,5 @@ export function classifyMarkdownImageSource(
   }
   if (!workspaceRoot) return { _tag: "Blocked" };
 
-  return { _tag: "WorkspaceFile", path: joinWorkspacePath(workspaceRoot, path) };
+  return { _tag: "WorkspaceFile", path: joinWorkspacePath(workspaceRoot, path), relative: true };
 }

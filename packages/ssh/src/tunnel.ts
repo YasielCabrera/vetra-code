@@ -37,6 +37,7 @@ import {
   resolveSshCommand,
   resolveSshTarget,
   runSshCommand,
+  shellSingleQuote,
   sshTargetLogFields,
   targetConnectionKey,
 } from "./command.ts";
@@ -167,6 +168,8 @@ export interface SshEnvironmentManagerShape {
   readonly disconnectEnvironment: (
     target: DesktopSshEnvironmentTarget,
   ) => Effect.Effect<void, SshEnvironmentEffectError, SshEnvironmentEffectContext>;
+  /** Closes every tunnel, as the manager's scope finalizer does. */
+  readonly closeAllTunnels: Effect.Effect<void>;
 }
 
 const RemoteLaunchResult = Schema.Struct({
@@ -232,10 +235,6 @@ function normalizeSshErrorMessage(stderr: string, fallbackMessage: string): stri
 
 function stripTrailingNewlines(value: string): string {
   return value.replace(/\n+$/u, "");
-}
-
-function shellSingleQuote(value: string): string {
-  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 function applyScriptPlaceholders(
@@ -515,7 +514,10 @@ if ! vetra_runtime_ready; then
     if command -v curl >/dev/null 2>&1; then curl -fsSL --connect-timeout 30 --max-time "$3" "$1" -o "$2"
     elif command -v wget >/dev/null 2>&1; then wget -q --timeout=30 --tries=1 "$1" -O "$2"
     else printf 'Remote host needs curl or wget to download %s.\\n' "$VETRA_ARCHIVE" >&2; exit 1
-    fi
+    fi || {
+      printf 'Could not download Vetra Code %s from %s. Install a matching Vetra Code source build on this host or configure a Vetra-owned release mirror.\\n' "$VETRA_ARCHIVE_VERSION" "$1" >&2
+      exit 1
+    }
   }
   vetra_fetch "$VETRA_RELEASE_BASE_URL/v$VETRA_ARCHIVE_VERSION/SHA256SUMS" "$VETRA_STAGING/SHA256SUMS" @@VETRA_ARCHIVE_CHECKSUMS_SECONDS@@
   vetra_fetch "$VETRA_RELEASE_BASE_URL/v$VETRA_ARCHIVE_VERSION/$VETRA_ARCHIVE" "$VETRA_STAGING/$VETRA_ARCHIVE" @@VETRA_ARCHIVE_DOWNLOAD_SECONDS@@
@@ -545,6 +547,20 @@ if [ -n "\${VETRA_LOCK:-}" ]; then
 fi
 exec "$VETRA_RUNTIME_DIR/vetra" "$@"
 `;
+
+// kill -0 also passes for a zombie, a reused PID and, on Linux, a thread ID,
+// which ps does not list. Only the serve command the launcher started counts;
+// where ps cannot look up a PID at all, trust kill -0.
+const REMOTE_MANAGED_SERVER_RUNNING_SCRIPT = `managed_server_running() {
+  [ -n "$1" ] && kill -0 "$1" 2>/dev/null || return 1
+  if MANAGED_ARGS="$(ps -ww -o args= -p "$1" 2>/dev/null)"; then
+    case "$MANAGED_ARGS" in
+      *" serve --host 127.0.0.1 --port "[0-9]*) return 0 ;;
+    esac
+    return 1
+  fi
+  ! ps -ww -o args= -p "$$" >/dev/null 2>&1
+}`;
 
 const REMOTE_LAUNCH_SCRIPT = `set -eu
 @@VETRA_NODE_ENV_SCRIPT@@
@@ -668,6 +684,7 @@ server_running() {
     *Z*) return 1 ;;
   esac
 }
+@@VETRA_MANAGED_SERVER_RUNNING_SCRIPT@@
 resolve_default_runtime_port() {
   if [ "$VETRA_ARCHIVE_MODE" = "1" ]; then
     "$RUNNER_FILE" __ssh-helper runtime-port "$DEFAULT_RUNTIME_FILE"
@@ -716,7 +733,7 @@ elif [ -n "$DEFAULT_REMOTE_PORT" ]; then
   if wait_ready "@@VETRA_REUSE_READY_TIMEOUT_MS@@"; then
     ADOPTED_PID="$DEFAULT_RUNTIME_PID"
     if [ "$REMOTE_MANAGED" = "managed" ]; then
-      if [ -n "$REMOTE_PID" ] && kill -0 "$REMOTE_PID" 2>/dev/null; then
+      if managed_server_running "$REMOTE_PID"; then
         kill "$REMOTE_PID" 2>/dev/null || true
         wait_for_pid_exit "$REMOTE_PID"
       fi
@@ -748,7 +765,7 @@ if [ "$REMOTE_MANAGED" = "external" ]; then
     REMOTE_PORT=""
     REMOTE_MANAGED=""
   fi
-elif [ -n "$REMOTE_PID" ] && [ -n "$REMOTE_PORT" ] && server_running "$REMOTE_PID"; then
+elif [ -n "$REMOTE_PORT" ] && managed_server_running "$REMOTE_PID"; then
   # Reconnect owns the local tunnel, not the lifetime of an already running
   # server. A changed runner is the update path and still replaces it.
   if [ "$RUNNER_CHANGED" -eq 1 ]; then
@@ -772,7 +789,7 @@ fi
 if [ -z "$REMOTE_PORT" ] && [ -z "$DEFAULT_RUNTIME_INFO" ]; then
   for SIBLING_DIR in "$DEFAULT_SERVER_HOME"/ssh-launch/*; do
     [ "$SIBLING_DIR" != "$STATE_DIR" ] && [ "$(cat "$SIBLING_DIR/managed" 2>/dev/null || true)" = "managed" ] || continue
-    server_running "$(cat "$SIBLING_DIR/pid" 2>/dev/null || true)" || continue
+    managed_server_running "$(cat "$SIBLING_DIR/pid" 2>/dev/null || true)" || continue
     REMOTE_PORT="$(cat "$SIBLING_DIR/port" 2>/dev/null || true)"
     if [ -n "$REMOTE_PORT" ] && wait_ready "@@VETRA_REUSE_READY_TIMEOUT_MS@@"; then
       REMOTE_MANAGED="external"
@@ -844,7 +861,8 @@ PORT_FILE="$STATE_DIR/port"
 MANAGED_FILE="$STATE_DIR/managed"
 REMOTE_MANAGED="$(cat "$MANAGED_FILE" 2>/dev/null || true)"
 REMOTE_PID="$(cat "$PID_FILE" 2>/dev/null || true)"
-if [ "$REMOTE_MANAGED" != "external" ] && [ -n "$REMOTE_PID" ] && kill -0 "$REMOTE_PID" 2>/dev/null; then
+@@VETRA_MANAGED_SERVER_RUNNING_SCRIPT@@
+if [ "$REMOTE_MANAGED" != "external" ] && managed_server_running "$REMOTE_PID"; then
   kill "$REMOTE_PID" 2>/dev/null || true
   WAIT_COUNT=0
   while kill -0 "$REMOTE_PID" 2>/dev/null && [ "$WAIT_COUNT" -lt 20 ]; do
@@ -934,6 +952,7 @@ function buildRemoteLaunchScript(input?: RemoteT3RunnerOptions): string {
     VETRA_RUNNER_SCRIPT: stripTrailingNewlines(buildRemoteT3RunnerScript(input)),
     VETRA_PICK_PORT_SCRIPT: stripTrailingNewlines(REMOTE_PICK_PORT_SCRIPT),
     VETRA_WAIT_READY_SCRIPT: stripTrailingNewlines(REMOTE_WAIT_READY_SCRIPT),
+    VETRA_MANAGED_SERVER_RUNNING_SCRIPT: REMOTE_MANAGED_SERVER_RUNNING_SCRIPT,
     VETRA_DEFAULT_REMOTE_PORT: String(DEFAULT_REMOTE_PORT),
     VETRA_REMOTE_PORT_SCAN_WINDOW: String(REMOTE_PORT_SCAN_WINDOW),
     VETRA_READY_TIMEOUT_MS: String(REMOTE_READY_TIMEOUT_MS),
@@ -955,6 +974,7 @@ function buildRemotePairingScript(stateKey: string, input?: RemoteT3RunnerOption
 function buildRemoteStopScript(stateKey: string): string {
   return applyScriptPlaceholders(REMOTE_STOP_SCRIPT, {
     VETRA_STATE_KEY: stateKey,
+    VETRA_MANAGED_SERVER_RUNNING_SCRIPT: REMOTE_MANAGED_SERVER_RUNNING_SCRIPT,
   });
 }
 
@@ -1507,15 +1527,14 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
     });
   });
 
-  yield* Scope.addFinalizer(
-    managerScope,
-    Effect.sync(() => [...tunnels.values()]).pipe(
-      Effect.flatMap((entries) =>
-        Effect.forEach(entries, closeTunnelEntry, { concurrency: "unbounded" }),
-      ),
-      Effect.ignore,
+  const closeAllTunnels = Effect.sync(() => [...tunnels.values()]).pipe(
+    Effect.flatMap((entries) =>
+      Effect.forEach(entries, closeTunnelEntry, { concurrency: "unbounded" }),
     ),
+    Effect.ignore,
   );
+
+  yield* Scope.addFinalizer(managerScope, closeAllTunnels);
 
   const promptForPassword = Effect.fn("ssh/tunnel.promptForPassword")(function* (
     target: DesktopSshEnvironmentTarget,
@@ -1855,7 +1874,8 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
           issuedPairingToken: pairingToken !== null,
         });
         return {
-          target: entry.target,
+          // Callers save this target; a port ssh -G resolved would pin the alias's current Port.
+          target: { ...entry.target, port: target.port },
           httpBaseUrl: entry.httpBaseUrl,
           wsBaseUrl: entry.wsBaseUrl,
           pairingToken,
@@ -1906,7 +1926,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
     );
   });
 
-  return SshEnvironmentManager.of({ ensureEnvironment, disconnectEnvironment });
+  return SshEnvironmentManager.of({ ensureEnvironment, disconnectEnvironment, closeAllTunnels });
 });
 
 /**

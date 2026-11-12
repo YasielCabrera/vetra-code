@@ -40,6 +40,17 @@ export const DesktopBrowserEvent = Schema.Union([
     type: Schema.Literal("walletKeystoreOffer"),
     keystore: Schema.NullOr(Web3KeystoreFile),
   }),
+  /**
+   * The tab's page failed to load. The desktop starts a tab's first load before
+   * the server connects, so the server cannot always observe the failure itself.
+   */
+  Schema.Struct({
+    type: Schema.Literal("loadFailed"),
+    ...TabKey,
+    url: Schema.String,
+    code: Schema.Int,
+    description: Schema.String,
+  }),
   /** Its `<webview>` started or stopped being on screen in a desktop window. */
   Schema.Struct({ type: Schema.Literal("shown"), ...TabKey, shown: Schema.Boolean }),
 ]);

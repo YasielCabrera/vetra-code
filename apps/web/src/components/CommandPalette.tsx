@@ -11,6 +11,7 @@ import {
 import {
   canCreateProjectInEnvironment,
   getCloneDestinationBrowsePath,
+  getCloneDestinationForPickedFolder,
   getCloneDestinationPath,
   getCloneDirectoryLeafName,
   getCloneDirectoryPath,
@@ -1084,6 +1085,10 @@ function OpenCommandPaletteDialog(props: {
     environments.find((environment) => environment.environmentId === environmentId)?.serverConfig
       ?.newProjectsRoot ?? null;
 
+  const offeredProvidersFor = (environmentId: EnvironmentId | null) =>
+    environments.find((environment) => environment.environmentId === environmentId)?.serverConfig
+      ?.settings.offeredSourceControlProviders;
+
   const startNewProject = (
     environmentId: EnvironmentId,
     sourcesEnvironmentId: EnvironmentId | null,
@@ -1140,7 +1145,7 @@ function OpenCommandPaletteDialog(props: {
 
     const orderedSources: ReadonlyArray<AddProjectRemoteSource> = [
       "url",
-      ...sortAddProjectProviderSources(readinessBySource),
+      ...sortAddProjectProviderSources(readinessBySource, offeredProvidersFor(environmentId)),
     ];
 
     for (const source of orderedSources) {
@@ -2348,7 +2353,12 @@ function OpenCommandPaletteDialog(props: {
   };
 
   const newProjectPublishTargets =
-    newProjectFlow === null ? [] : getNewProjectPublishTargets(sourceControlDiscovery.data ?? null);
+    newProjectFlow === null
+      ? []
+      : getNewProjectPublishTargets(
+          sourceControlDiscovery.data ?? null,
+          offeredProvidersFor(newProjectFlow.environmentId),
+        );
   const newProjectPublishTarget = getNewProjectPublishTarget(
     newProjectPublishTargets,
     newProjectPublishKind,
@@ -3154,12 +3164,42 @@ function OpenCommandPaletteDialog(props: {
         );
         return;
       }
+      if (addProjectCloneFlow?.step === "confirm") {
+        if (selection.environmentId !== addProjectCloneFlow.environmentId) {
+          toastManager.add(
+            stackedThreadToast({
+              type: "error",
+              title: "Clone failed",
+              description: "Choose a folder in the environment the repository is cloned into.",
+            }),
+          );
+          return;
+        }
+        await submitAddProjectCloneFlow(
+          getCloneDestinationForPickedFolder({
+            pickedPath: selection.linuxPath,
+            cloneDirectoryName: pinnedCloneDirectoryName,
+            caseSensitive: true,
+          }),
+        );
+        return;
+      }
       await handleAddProjectForEnvironment({
         environmentId: selection.environmentId,
         rawCwd: selection.linuxPath,
         platform: "Linux",
         currentProjectCwd: null,
       });
+      return;
+    }
+    if (addProjectCloneFlow?.step === "confirm") {
+      await submitAddProjectCloneFlow(
+        getCloneDestinationForPickedFolder({
+          pickedPath,
+          cloneDirectoryName: pinnedCloneDirectoryName,
+          caseSensitive: !isWindowsPlatform(browseEnvironmentPlatform),
+        }),
+      );
       return;
     }
     await handleAddProject(pickedPath);

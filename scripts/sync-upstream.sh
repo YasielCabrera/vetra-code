@@ -228,6 +228,14 @@ RENAMES=(
   '^t3code(?:-[a-z]+)?:=^vetra(?:-[a-z]+)?:'
   # The systemd unit the CLI installs. Two units cannot share a name.
   't3code.service=vetra-code.service'
+  't3code-task.xml=vetra-code-task.xml'
+  't3code-PC-=vetra-code-PC-'
+  '`t3code-${domain}-${userName}`=`vetra-code-${domain}-${userName}`'
+  'localAppData, "t3code",=localAppData, "vetra-code",'
+  '"AppData", "Local", "t3code",="AppData", "Local", "vetra-code",'
+  'editor_t3_?code_=editor_vetra_?code_'
+  'editor_t3_code_=editor_vetra_code_'
+  'editor_t3code_=editor_vetra_code_'
   't3.cmd=vetra.cmd'
   't3.exe=vetra.exe'
   't3(?:\.exe)=vetra(?:\.exe)'
@@ -252,6 +260,8 @@ RENAMES=(
   'T3-Mode-Limit=Vetra-Mode-Limit'
   't3-mode-limit=vetra-mode-limit'
   'persist:t3-preview-=persist:vetra-code-preview-'
+  'persist:t3code-preview-=persist:vetra-code-preview-'
+  '--t3code-preview-primary-paste-disabled=--vetra-code-preview-primary-paste-disabled'
   'Reconnected on t3@=Reconnected on vetra@'
   # Persisted client keys and CSS highlight registry names. Keyed on the
   # opening quote so the `pingdotgg/t3code.git` remote is untouched.

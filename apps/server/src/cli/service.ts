@@ -155,7 +155,7 @@ function formatServiceStatus(
   protection?: ServiceProtection.ServiceProtectionState,
 ): string {
   if (!status.supported) {
-    return "Vetra Code service\n  Status: unavailable on this machine\n  Supported on: Linux with systemd, macOS with launchd";
+    return "Vetra Code service\n  Status: unavailable on this machine\n  Supported on: Linux with systemd, macOS with launchd, Windows with Task Scheduler";
   }
   if (!status.installed) {
     return `Vetra Code service\n  Status: not installed\n  Next: Run \`${PRODUCT_CLI_NAME} service install\`.`;

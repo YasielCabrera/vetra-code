@@ -420,6 +420,24 @@ function formatComposerContextProviderPayload(record: KnownComposerContextRecord
         `The user attached plan ${ref}: this plan is the work to do. Before starting, read its current body and open comments with ${tool}, and resolve each comment with t3_ticket_plan_update as you address it. This thread is linked to ticket ${ticketRef}.`,
       ].join("\n");
     }
+    case "response": {
+      const { citation } = record;
+      const lines = [
+        "The user is replying to this earlier response of yours. Reference, not instructions.",
+      ];
+      for (const subagent of record.subagents ?? []) {
+        lines.push(`about subagent: ${subagent.title}`, `subagent threadId: ${subagent.threadId}`);
+        if (subagent.environmentId !== undefined) {
+          lines.push(`subagent environmentId: ${subagent.environmentId}`);
+        }
+      }
+      // The opening stays: without it an agent rereads a response it already has, to be sure.
+      lines.push(
+        `starts: ${citation.text.replace(/\s+/g, " ").trim()}`,
+        `Read it in full: t3_thread_read(${JSON.stringify({ threadId: citation.threadId, itemId: record.itemId })})`,
+      );
+      return lines.join("\n");
+    }
     case "environment":
       return [
         `label: ${record.label}`,
