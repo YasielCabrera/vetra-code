@@ -1,12 +1,79 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import * as Config from "effect/Config";
+import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
+import * as TestConsole from "effect/testing/TestConsole";
+import { Command } from "effect/cli";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import * as NetService from "@t3tools/shared/Net";
+import { afterEach, vi } from "vite-plus/test";
 
-import { findOwnedLauncher, findRecordedLaunchers, spawnWindowsRemoval } from "./uninstall.ts";
+import packageJson from "../../package.json" with { type: "json" };
+import * as BootService from "../cloud/bootService.ts";
+import { posixLauncherScript } from "../cloud/pinnedRuntime.ts";
+import {
+  findOwnedLauncher,
+  findRecordedLaunchers,
+  spawnWindowsRemoval,
+  uninstallCommand,
+} from "./uninstall.ts";
+
+afterEach(() => vi.restoreAllMocks());
+
+it.layer(Layer.mergeAll(NodeServices.layer, NetService.layer))("t3 uninstall command", (it) => {
+  it.effect("names another home's service it leaves installed", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-uninstall-cli-test-" });
+      const uninstalls: Array<true> = [];
+      vi.spyOn(BootService, "layer").mockReturnValue(
+        Layer.succeed(
+          BootService.BootService,
+          BootService.BootService.of({
+            status: Effect.succeed({
+              supported: true,
+              installed: true,
+              current: true,
+              installedBaseDir: "/home/me/.t3",
+              unitPath: "/home/me/.config/systemd/user/vetra-code.service",
+              logPath: "/home/me/.t3/userdata/logs/boot-service.log",
+            }),
+            withStopped: (operation) => operation,
+            restart: Effect.die("unexpected restart"),
+            install: () => Effect.die("unexpected install"),
+            uninstall: Effect.sync(() => {
+              uninstalls.push(true);
+              return true;
+            }),
+          }),
+        ),
+      );
+
+      const output = yield* Command.runWith(uninstallCommand, { version: packageJson.version })([
+        "--base-dir",
+        baseDir,
+        "--yes",
+      ]).pipe(
+        Effect.andThen(TestConsole.logLines),
+        Effect.map((lines) => lines.join("\n")),
+        Effect.provideService(HostProcess.Environment, {}),
+        Effect.provideService(HostProcess.IsExecutable, false),
+        Effect.provide(
+          Layer.mergeAll(
+            ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })),
+            Layer.fresh(TestConsole.layer),
+          ),
+        ),
+      );
+      assert.deepStrictEqual(uninstalls, []);
+      assert.include(output, "--base-dir '/home/me/.t3'");
+    }),
+  );
+});
 
 it.layer(NodeServices.layer)("vetra uninstall launcher", (it) => {
   it.effect("claims only a launcher that points into this home's runtime tree", () =>
@@ -36,6 +103,19 @@ it.layer(NodeServices.layer)("vetra uninstall launcher", (it) => {
       assert.isUndefined(yield* findOwnedLauncher({ launchedAs: theirs, versionsDir }));
       assert.isUndefined(yield* findOwnedLauncher({ launchedAs: copy, versionsDir }));
       assert.isUndefined(yield* findOwnedLauncher({ launchedAs: undefined, versionsDir }));
+      // A script launcher execs by absolute path, so argv0 names the executable.
+      const scriptDir = path.join(root, "script-bin");
+      const script = path.join(scriptDir, "vetra");
+      yield* fs.makeDirectory(scriptDir);
+      yield* fs.writeFileString(script, posixLauncherScript(exe), { mode: 0o755 });
+      assert.equal(
+        yield* findOwnedLauncher({ launchedAs: exe, versionsDir }).pipe(
+          Effect.provideService(HostProcess.Environment, { PATH: scriptDir }),
+        ),
+        script,
+      );
+      const editedScript = path.join(scriptDir, "vetra-edited");
+      yield* fs.writeFileString(editedScript, `${posixLauncherScript(exe)}# mine\n`);
 
       // On Windows, only the shim exactly as written is ours; a user's wrapper stays.
       const shimDir = path.join(root, "win-bin");
@@ -64,11 +144,25 @@ it.layer(NodeServices.layer)("vetra uninstall launcher", (it) => {
       yield* fs.symlink(path.join(versionsDir, "1.0.0/node"), sibling);
       yield* fs.writeFileString(
         path.join(root, "runtime/launchers"),
-        [ours, theirs, copy, throughAlias, pruned, sibling, path.join(root, "missing")].join("\n") +
-          "\n",
+        [
+          ours,
+          theirs,
+          copy,
+          throughAlias,
+          pruned,
+          sibling,
+          script,
+          editedScript,
+          path.join(root, "missing"),
+        ].join("\n") + "\n",
       );
       for (const dir of [versionsDir, path.join(root, "alias/runtime/versions")]) {
-        assert.deepStrictEqual(yield* findRecordedLaunchers(dir), [ours, throughAlias, pruned]);
+        assert.deepStrictEqual(yield* findRecordedLaunchers(dir), [
+          ours,
+          throughAlias,
+          pruned,
+          script,
+        ]);
       }
 
       // On Windows only an unedited vetra.cmd is ours; a hand-edited wrapper belongs to the user.
@@ -83,7 +177,7 @@ it.layer(NodeServices.layer)("vetra uninstall launcher", (it) => {
         ),
         [cmd],
       );
-    }).pipe(Effect.scoped, Effect.provideService(HostProcess.Platform, "linux")),
+    }).pipe(Effect.provideService(HostProcess.Platform, "linux")),
   );
 });
 
@@ -96,7 +190,7 @@ it.live.runIf(HostProcess.Platform.defaultValue() === "win32")(
       const root = yield* fs.makeTempDirectoryScoped({ prefix: "t3-uninstall-" });
       const runtimeDir = path.join(root, "t3 home %COMSPEC% !COMSPEC! & data", "runtime");
       yield* fs.makeDirectory(path.join(runtimeDir, "versions", "1.0.0"), { recursive: true });
-      yield* fs.writeFileString(path.join(runtimeDir, "versions", "1.0.0", "t3.exe"), "");
+      yield* fs.writeFileString(path.join(runtimeDir, "versions", "1.0.0", "vetra.exe"), "");
 
       const child = spawnWindowsRemoval(
         yield* Config.String("ComSpec").pipe(Config.withDefault("cmd.exe")),

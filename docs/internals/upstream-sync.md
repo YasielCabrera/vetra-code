@@ -388,7 +388,7 @@ list):
 | `t3-citation` / `t3-context` / `t3-assistant-citation` | `vetra-citation` / `vetra-context` / `vetra-assistant-citation` |
 | `t3-thread://` / `"t3-thread"`                         | `vetra-thread://` / `"vetra-thread"`                            |
 | `.t3-capture-` / `t3-snap-shot-` / `t3-kde-bus-`       | `.vetra-capture-` / `vetra-snap-shot-` / `vetra-kde-bus-`       |
-| `t3-relay` / `t3-test`                                 | `vetra-relay` / `vetra-test`                                    |
+| `t3-relay` / `t3_relay` / `t3-test`                    | `vetra-relay` / `vetra_relay` / `vetra-test`                    |
 | `t3code/pr-` (pull request branches)                   | `vetra/pr-`                                                     |
 
 Names that stay upstream's. Adding any of these to the table would undo the reason merges are

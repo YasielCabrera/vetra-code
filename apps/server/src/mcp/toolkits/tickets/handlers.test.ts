@@ -97,20 +97,15 @@ const layerFor = (
 
 type Tools = (typeof TicketsToolkit)["tools"];
 
-const call = <Name extends keyof Tools & string>(
-  name: Name,
-  params: Tool.Parameters<Tools[Name]>,
-) =>
+const call = <Name extends keyof Tools & string>(name: Name, params: Schema.Json) =>
   Effect.gen(function* () {
     const toolkit = yield* TicketsToolkit;
     const results = yield* toolkit.handle(name, params).pipe(Stream.unwrap, Stream.runCollect);
     return results.at(-1)!.result as Tool.Success<Tools[Name]>;
   });
 
-const failure = <Name extends keyof Tools & string>(
-  name: Name,
-  params: Tool.Parameters<Tools[Name]>,
-) => call(name, params).pipe(Effect.flip);
+const failure = <Name extends keyof Tools & string>(name: Name, params: Schema.Json) =>
+  call(name, params).pipe(Effect.flip);
 
 const AGENT = { type: "agent", threadId: callerId } as const;
 const CLIENT = { type: "client", sessionId: "client", label: "CLI" } as const;
@@ -604,7 +599,7 @@ describe("TicketsToolkit", () => {
       );
       yield* tickets.create({ title: "No project" }, { type: "user" });
 
-      const listed = (input: Tool.Parameters<Tools["t3_ticket_list"]>) =>
+      const listed = (input: Schema.Json) =>
         call("t3_ticket_list", input).pipe(
           Effect.map((result) =>
             result.tickets.map((ticket) => [ticket.title, ticket.number, ticket.homeProjectId]),

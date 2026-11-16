@@ -18,7 +18,7 @@ import {
 } from "@t3tools/contracts";
 import { PreviewWalletError } from "@t3tools/web3/schema";
 import * as Schema from "effect/Schema";
-import { Tool, Toolkit } from "effect/ai";
+import { McpSchema, Tool, Toolkit } from "effect/ai";
 
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
@@ -43,7 +43,10 @@ const walletFailure = Schema.Union([
 ]);
 
 const walletTool = <T extends Tool.Any>(tool: T): T =>
-  tool.annotate(Tool.OpenWorld, true).annotate(Tool.Destructive, false) as T;
+  tool
+    .annotate(Tool.OpenWorld, true)
+    .annotate(Tool.Destructive, false)
+    .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenFromOutsideClients) as T;
 
 const readonlyWalletTool = <T extends Tool.Any>(tool: T): T =>
   walletTool(tool).annotate(Tool.Readonly, true).annotate(Tool.Idempotent, true) as T;

@@ -187,21 +187,29 @@ it.layer(NodeServices.layer)("server self update", (it) => {
   ])("reports an HTTP $status downloading $asset and allows retry", ({ asset, status }) =>
     Effect.gen(function* () {
       let failDownload = true;
+      const downloadFailed = yield* Deferred.make<void>();
       const { selfUpdate, order, baseDir } = yield* makeHarness({
         httpClient: releaseHttpClient([], []).pipe(
-          HttpClient.transform((response, request) =>
-            failDownload && request.url.endsWith("/SHA256SUMS") === (asset === "checksums")
-              ? Effect.succeed(
-                  HttpClientResponse.fromWeb(
-                    HttpClientRequest.get("https://user:password@cdn.example/private?token=secret"),
-                    new Response("private response body", { status }),
-                  ),
-                )
-              : response,
-          ),
+          HttpClient.transform((response, request) => {
+            if (!failDownload || request.url.endsWith("/SHA256SUMS") !== (asset === "checksums"))
+              return response;
+            Deferred.doneUnsafe(downloadFailed, Effect.void);
+            return Effect.succeed(
+              HttpClientResponse.fromWeb(
+                HttpClientRequest.get("https://user:password@cdn.example/private?token=secret"),
+                new Response("private response body", { status }),
+              ),
+            );
+          }),
         ),
       });
-      const error = yield* selfUpdate.update({ targetVersion: "1.1.0" }).pipe(Effect.flip);
+      const failing = yield* selfUpdate
+        .update({ targetVersion: "1.1.0" })
+        .pipe(Effect.flip, Effect.forkScoped);
+      yield* Deferred.await(downloadFailed);
+      // A 5xx is retried after 2, 4, then 8 seconds before the update gives up.
+      yield* TestClock.adjust("14 seconds");
+      const error = yield* Fiber.join(failing);
       expect(error.reason).toBe(
         `Could not prepare @vetra-code/server@1.1.0 while downloading the vetra release ${asset} (HTTP ${status} from cdn.example).`,
       );
@@ -218,9 +226,20 @@ it.layer(NodeServices.layer)("server self update", (it) => {
   // regression: #34502 a remote update never replaces the launcher, so it can be older than the server
   it.effect("names its launcher's protocol to the staged preflight, not its own", () =>
     Effect.gen(function* () {
-      const { selfUpdate, preflightProtocols } = yield* makeHarness({ launcherProtocol: 3 });
+      const { selfUpdate, preflightProtocols, baseDir } = yield* makeHarness({
+        launcherProtocol: 3,
+      });
+      yield* TestClock.setTime(5_000);
       expect((yield* selfUpdate.update({ targetVersion: "1.1.0" })).updateId).toBe("launcher-id");
       expect(preflightProtocols).toEqual(["3"]);
+      // That launcher holds no lock between its servers; SSH launches wait on this marker instead.
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      expect(
+        JSON.parse(
+          yield* fs.readFileString(path.join(baseDir, "runtime", "desktop-update-in-progress")),
+        ),
+      ).toEqual({ startedAt: 5_000, expiresAt: 65_000 });
     }),
   );
 
@@ -338,6 +357,19 @@ it.layer(NodeServices.layer)("server self update", (it) => {
       );
       yield* Deferred.succeed(accepted, "launcher-id");
       expect((yield* Fiber.join(first)).updateId).toBe("launcher-id");
+    }),
+  );
+
+  it.effect("stages the runtime without asking the launcher to restart", () =>
+    Effect.gen(function* () {
+      const { selfUpdate, order } = yield* makeHarness();
+      expect(yield* selfUpdate.update({ targetVersion: "1.1.0", stageOnly: true })).toEqual({
+        targetVersion: "1.1.0",
+        method: "boot-service",
+      });
+      expect(order).toEqual(["download", "extract", "preflight"]);
+      expect((yield* selfUpdate.update({ targetVersion: "1.1.0" })).updateId).toBe("launcher-id");
+      expect(order).toEqual(["download", "extract", "preflight", "preflight", "accept"]);
     }),
   );
 

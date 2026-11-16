@@ -204,6 +204,43 @@ describe("DesktopLinuxUrlHandler", () => {
     assert.include(entry, "Icon=/home/al ice/icons/Vetra\\\\x.png");
   });
 
+  it.each([
+    { from: "Vetra-Code-0.1.8-x86_64.AppImage", to: "Vetra-Code-x86_64.AppImage", restored: true },
+    {
+      from: "Vetra-Code-0.1.9-nightly.20261110.4449-arm64.AppImage",
+      to: "Vetra-Code-Nightly-arm64.AppImage",
+      restored: true,
+    },
+    {
+      from: "Vetra-Code-0.1.8-x86_64.AppImage",
+      to: "Vetra-Code-0.1.9-x86_64.AppImage",
+      restored: false,
+    },
+    { from: "vetra.AppImage", to: "Vetra-Code-x86_64.AppImage", restored: false },
+    { from: "Vetra-Code-x86_64.AppImage", to: "Vetra-Code-x86_64.AppImage", restored: false },
+    {
+      from: "../Vetra-Code-0.1.8-x86_64.AppImage",
+      to: "Vetra-Code-x86_64.AppImage",
+      restored: false,
+    },
+  ])("finds the launch path an update from $from to $to removed", ({ from, to, restored }) => {
+    for (const dir of ["/home/alice/Applications", '/home/al ice/My "100%" $Apps\\x']) {
+      const previous = dir + "/" + from;
+      const previousEntry = DesktopLinuxUrlHandler.renderUrlHandlerDesktopEntry({
+        displayName: "Vetra Code (Beta)",
+        execTarget: previous,
+        scheme: "t3code",
+      });
+      assert.equal(
+        DesktopLinuxUrlHandler.replacedVersionedAppImagePath({
+          previousEntry,
+          appImagePath: dir + "/" + to,
+        }),
+        restored ? previous : null,
+      );
+    }
+  });
+
   it.effect(
     "writes the handler entry, refreshes the MIME cache, and claims the scheme default",
     () => {
@@ -599,7 +636,7 @@ it.layer(NodeServices.layer)("DesktopLinuxUrlHandler theme icons", (it) => {
       assert.equal(Option.getOrThrow(info.mtime).getTime(), fixture.pastSeconds * 1000);
       assert.isFalse(yield* fileSystem.exists(fixture.cachePath));
       assert.equal(iconCacheRuns(run), 0);
-    }).pipe(Effect.scoped),
+    }),
   );
 
   it.effect("replaces a same-length stale icon and refreshes an existing cache once", () =>
@@ -625,7 +662,7 @@ it.layer(NodeServices.layer)("DesktopLinuxUrlHandler theme icons", (it) => {
         run.commands.filter(({ command }) => command === "gtk-update-icon-cache"),
         [{ command: "gtk-update-icon-cache", args: ["-f", "-t", fixture.hicolorDir] }],
       );
-    }).pipe(Effect.scoped),
+    }),
   );
 
   it.effect("refreshes when this launch changed an icon even if the cache looks newer", () =>
@@ -646,7 +683,7 @@ it.layer(NodeServices.layer)("DesktopLinuxUrlHandler theme icons", (it) => {
 
       assert.isTrue(yield* fileSystem.exists(path.join(fixture.appsDir, "com.vetra.code.png")));
       assert.equal(iconCacheRuns(run), 1);
-    }).pipe(Effect.scoped),
+    }),
   );
 
   it.effect("retries a failed icon cache refresh on the next launch", () =>
@@ -669,7 +706,7 @@ it.layer(NodeServices.layer)("DesktopLinuxUrlHandler theme icons", (it) => {
       yield* registerWithRealFileSystem(recovering);
       yield* registerWithRealFileSystem(recovering);
       assert.equal(iconCacheRuns(recovering), 1);
-    }).pipe(Effect.scoped),
+    }),
   );
 
   it.effect("still registers the handler when the theme icon install fails", () =>
@@ -693,6 +730,6 @@ it.layer(NodeServices.layer)("DesktopLinuxUrlHandler theme icons", (it) => {
         missingTool.commands.map(({ command }) => command),
         ["gtk-update-icon-cache", "update-desktop-database", "xdg-mime"],
       );
-    }).pipe(Effect.scoped),
+    }),
   );
 });

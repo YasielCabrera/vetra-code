@@ -321,6 +321,7 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                     composerSubmissionIntentForKey({
                       event,
                       keybindings,
+                      context: {},
                       isSoftwareKeyboardOpen,
                       isDraftThread: false,
                       sendShortcut: settings.sendShortcut,

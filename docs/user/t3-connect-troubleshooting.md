@@ -80,6 +80,10 @@ Fix:
 3. If the check fails only on the host, check the host's DNS, VPN, or proxy.
    If it says the host's network has an old cached answer, wait: it usually
    clears within about 30 minutes.
+4. If it says the address no longer points to this machine's tunnel, the
+   environment was likely removed from Vetra Connect. Link it again: on a desktop
+   host, turn **Vetra Connect** off and on in **Settings > Connections**. On a
+   command-line host, run `vetra connect link`, then restart Vetra Code.
 
 ## This device can't reach Vetra Connect
 
@@ -118,6 +122,10 @@ an active link between your account and the host.
 - **This device is still loading its Vetra Connect sign-in.** Wait a moment;
   Vetra Code retries on its own. If it keeps waiting, reload or restart Vetra Code on
   this device.
+- **The host is waiting for you to approve this device.** The host requires
+  approval for new devices. Approve the code this device shows from a device
+  that is already connected, or run `vetra auth connect-device approve <code>` on
+  the host. See [Approve new devices](./remote-access.md#approve-new-devices).
 - **Your account reached its tunnel limit.** Remove an environment you do not
   use from your Vetra Connect account's Vetra Connect page, then restart Vetra Code on the host.
 
@@ -134,13 +142,13 @@ This app needs a newer Vetra Code on the host. Update Vetra Code on the host. Se
 
 ## Vetra Connect returned an error
 
-| Error                                                     | Fix                                                                                                                                                  |
-| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `environment_link_limit_exceeded` or managed tunnel limit | Remove an unused environment, then restart Vetra Code on the host.                                                                                   |
-| `auth_invalid` or `invalid_bearer`                        | Run `vetra connect login`. If credentials were revoked, run `vetra connect logout`, then `vetra connect` again. Restart the server after signing in. |
-| Expired or invalid link proof                             | Check the host's date and time, update Vetra Code, then restart it.                                                                                  |
-| HTTP 403 without a recognized error                       | Check relay access, proxies, and firewall rules. Keep any Cloudflare Ray ID for a bug report.                                                        |
-| HTTP 408, 429, or 5xx                                     | Wait a few minutes. Vetra Code retries temporary failures on its own.                                                                                |
+| Error                                                     | Fix                                                                                                                                                                                                     |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `environment_link_limit_exceeded` or managed tunnel limit | Remove an unused environment, then restart Vetra Code on the host.                                                                                                                                      |
+| `auth_invalid` or `invalid_bearer`                        | Run `vetra connect login`. If credentials were revoked, run `vetra connect logout`, then `vetra connect` again. Restart the server after signing in.                                                    |
+| Expired or invalid link proof                             | Check the host's date and time, update Vetra Code, then restart it.                                                                                                                                     |
+| HTTP 403 without a recognized error                       | If the host requires approval for new devices, update Vetra Code on this device and approve it. Otherwise check relay access, proxies, and firewall rules. Keep any Cloudflare Ray ID for a bug report. |
+| HTTP 408, 429, or 5xx                                     | Wait a few minutes. Vetra Code retries temporary failures on its own.                                                                                                                                   |
 
 After you fix a permanent rejection, restart the host's server with
 `vetra service restart`. For a foreground server, stop it and run `vetra serve` again.

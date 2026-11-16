@@ -4,7 +4,7 @@ import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/sql/SqlClient";
 
-import { migrationEntries, runMigrations } from "../Migrations.ts";
+import { migrationEntries, migrationManifest, runMigrations } from "../Migrations.ts";
 import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 
 const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
@@ -15,7 +15,7 @@ layer("056_OrchestrationV2", (it) => {
     Effect.sync(() => {
       assert.deepStrictEqual(
         migrationEntries.map(([id]) => id),
-        Array.from({ length: 68 }, (_, index) => index + 1),
+        Array.from({ length: migrationEntries.length }, (_, index) => index + 1),
       );
     }),
   );
@@ -26,22 +26,10 @@ layer("056_OrchestrationV2", (it) => {
       yield* runMigrations({ toMigrationInclusive: 54 });
 
       const executed = yield* runMigrations();
-      assert.deepStrictEqual(executed, [
-        [55, "ProjectionThreadsAutoSettleDisabledAt"],
-        [56, "OrchestrationV2"],
-        [57, "RemoveRedundantProjectionIndexes"],
-        [58, "ScheduledTaskWebhooks"],
-        [59, "WebhookRelayDeliveries"],
-        [60, "McpAppModelContext"],
-        [61, "ThreadSnapshotWindowIndexes"],
-        [62, "PullRequestReviewGuides"],
-        [63, "ThreadFailureLookupIndex"],
-        [64, "DropUnusedV1Projections"],
-        [65, "CanonicalizeThreadPullRequestLinks"],
-        [66, "CodexUsageNativeTurnIndex"],
-        [67, "RepairClientSettlementTimestamps"],
-        [68, "WebhookDedupe"],
-      ]);
+      assert.deepStrictEqual(
+        executed,
+        migrationManifest.filter(([id]) => id >= 55),
+      );
       assert.deepStrictEqual(yield* runMigrations(), []);
 
       const migrations = yield* sql<{
@@ -53,28 +41,12 @@ layer("056_OrchestrationV2", (it) => {
         WHERE migration_id >= 49
         ORDER BY migration_id
       `;
-      assert.deepStrictEqual(migrations, [
-        { migration_id: 49, name: "ProjectionThreadBranchPullRequest" },
-        { migration_id: 50, name: "ProjectionThreadsActiveOrderKey" },
-        { migration_id: 51, name: "ProjectionThreadPullRequests" },
-        { migration_id: 52, name: "ProjectionThreadMessageContext" },
-        { migration_id: 53, name: "ProjectionThreadTitleState" },
-        { migration_id: 54, name: "PullRequestFilesViewed" },
-        { migration_id: 55, name: "ProjectionThreadsAutoSettleDisabledAt" },
-        { migration_id: 56, name: "OrchestrationV2" },
-        { migration_id: 57, name: "RemoveRedundantProjectionIndexes" },
-        { migration_id: 58, name: "ScheduledTaskWebhooks" },
-        { migration_id: 59, name: "WebhookRelayDeliveries" },
-        { migration_id: 60, name: "McpAppModelContext" },
-        { migration_id: 61, name: "ThreadSnapshotWindowIndexes" },
-        { migration_id: 62, name: "PullRequestReviewGuides" },
-        { migration_id: 63, name: "ThreadFailureLookupIndex" },
-        { migration_id: 64, name: "DropUnusedV1Projections" },
-        { migration_id: 65, name: "CanonicalizeThreadPullRequestLinks" },
-        { migration_id: 66, name: "CodexUsageNativeTurnIndex" },
-        { migration_id: 67, name: "RepairClientSettlementTimestamps" },
-        { migration_id: 68, name: "WebhookDedupe" },
-      ]);
+      assert.deepStrictEqual(
+        migrations,
+        migrationManifest
+          .filter(([id]) => id >= 49)
+          .map(([migration_id, name]) => ({ migration_id, name })),
+      );
 
       const tables = yield* sql<{ readonly name: string }>`
         SELECT name

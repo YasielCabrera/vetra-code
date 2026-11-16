@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import { HttpClient, HttpClientResponse } from "effect/http";
@@ -87,7 +88,7 @@ const callTool = Effect.fn("Web3Handlers.test.callTool")(function* (
     | "preview_wallet_requests"
     | "preview_wallet_approve"
     | "preview_wallet_reject",
-  payload: Record<string, unknown>,
+  payload: Schema.Json,
 ) {
   const built = yield* PreviewWalletToolkit;
   return yield* built.handle(name, payload).pipe(
@@ -101,7 +102,7 @@ const callTool = Effect.fn("Web3Handlers.test.callTool")(function* (
 /** What the MCP server answers a tool call with; constructing it validates `structuredContent`. */
 const callToolResult = Effect.fn("Web3Handlers.test.callToolResult")(function* (
   name: "preview_wallet_status" | "preview_wallet_requests",
-  payload: Record<string, unknown>,
+  payload: Schema.Json,
 ) {
   const built = yield* PreviewWalletToolkit;
   const last = Option.getOrThrow(

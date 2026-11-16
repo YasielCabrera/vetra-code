@@ -25,9 +25,10 @@ Run `vetra help` or `vetra --help` for the full reference. To start in a new wor
 directory, use an explicit path such as `vetra ./my-project`. A bare directory name
 is accepted only if it already exists.
 
-If `vetra` or `vetra start` reports an already running server, connect to that server
-instead. Stop it before starting a replacement, or use a different `--base-dir`
-for an independent server.
+If `vetra` or `vetra start` reports an already running server, run the `vetra pair`
+command it names and open the pairing URL to connect to that server. Stop it
+before starting a replacement, or use a different `--base-dir` for an
+independent server.
 
 `vetra update` and the background service do not apply to a server run this way;
 update it with `git pull` and a rebuild.
@@ -125,6 +126,10 @@ Cursor and Antigravity update with Vetra Code. Homebrew and Chocolatey installs
 compare against the version their package manager offers, which can trail the
 npm release; update Claude installed with Chocolatey through Chocolatey.
 
+The managed runtimes for Antigravity and for Codex connected through ChatGPT
+first install the release Vetra Code tested. When Vetra Code finds a newer compatible
+release, their setup in **Settings → Providers** offers an update.
+
 Add another provider instance for a separate account or configuration. Each
 instance can have its own environment variables, such as API keys or a custom
 base URL. Mark secret values as sensitive; after saving, Vetra Code does not display
@@ -134,6 +139,47 @@ For provider-specific setup and accounts, see [Codex](./providers-codex.md),
 [Claude](./providers-claude.md), [OpenCode](./providers-opencode.md),
 [Antigravity](./providers-antigravity.md), [Kiro](./providers-kiro.md),
 [Pi](./providers-pi.md), [Muse Code](./providers-muse.md), and [fx](./providers-fx.md).
+
+### Provider check timeouts
+
+If a provider works in its CLI but Vetra Code reports a timeout while checking it,
+allow more time in the Vetra Code server's environment. For example, give Codex and
+Claude readiness checks 60 seconds:
+
+```bash
+VETRA_CODEX_PROBE_TIMEOUT_MS=60000 VETRA_CLAUDE_PROBE_TIMEOUT_MS=60000 vetra serve
+```
+
+For a remote environment, set these on the machine running the Vetra Code server.
+Keep them in your launcher or service configuration to retain them across
+updates, then restart the server. For systemd, add
+`Environment=VETRA_CODEX_PROBE_TIMEOUT_MS=60000` under `[Service]` in a service
+override, reload systemd, and restart the service. Provider instances can also
+set their own overrides in Settings → Providers.
+
+Each variable extends that provider's readiness-probe deadlines; a phase whose
+default is already longer keeps its default. Providers with several phases can
+take longer than one deadline in total. Values must be whole milliseconds no
+greater than 2147483647; unset or invalid values keep the defaults.
+
+| Provider            | Environment variable                  |
+| ------------------- | ------------------------------------- |
+| Codex               | `VETRA_CODEX_PROBE_TIMEOUT_MS`        |
+| Claude              | `VETRA_CLAUDE_PROBE_TIMEOUT_MS`       |
+| Cursor              | `VETRA_CURSOR_PROBE_TIMEOUT_MS`       |
+| Antigravity         | `VETRA_ANTIGRAVITY_PROBE_TIMEOUT_MS`  |
+| Grok                | `VETRA_GROK_PROBE_TIMEOUT_MS`         |
+| Kiro                | `VETRA_KIRO_PROBE_TIMEOUT_MS`         |
+| fx                  | `VETRA_FX_PROBE_TIMEOUT_MS`           |
+| Pi                  | `VETRA_PI_PROBE_TIMEOUT_MS`           |
+| Muse Code           | `VETRA_MUSE_PROBE_TIMEOUT_MS`         |
+| OpenCode            | `VETRA_OPENCODE_PROBE_TIMEOUT_MS`     |
+| ACP Registry agents | `VETRA_ACP_REGISTRY_PROBE_TIMEOUT_MS` |
+
+Longer deadlines also take longer to report a stalled check. These overrides
+cover readiness and discovery, including OpenCode server startup. Usage and
+config enrichment retain their own shorter limits. Turn execution, package
+installation, update checks, and shutdown limits keep their existing behavior.
 
 ## Next steps
 

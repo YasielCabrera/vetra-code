@@ -134,8 +134,10 @@ The server shows the exact line for how you started it, and keeps your `PATH`
 when Node is installed only for your user. Where `vetra` is not on your `PATH`,
 such as with only the desktop app installed, it names the full path of the
 app's own `vetra` instead. It allows Chrome's sandbox with an AppArmor profile
-and installs any missing libraries and system fonts with apt. Pages without text can mean the host has no fonts. It is safe to run again. Without
-`sudo`, it only reports what it would change.
+and installs any missing libraries and system fonts with apt. Pages without text can mean the host has no fonts. It is safe to run again, and each run reloads
+the AppArmor profile: run it again if the browser reports a blocked sandbox on a
+host restored from an image or snapshot, where the profile can be on disk
+without being loaded. Without `sudo`, it only reports what it would change.
 
 The browser runs in Chrome's sandbox by default. Chrome cannot start that sandbox
 as root. If your Vetra Code server runs as root, run it as a nonroot user to keep
@@ -283,6 +285,31 @@ registered to your account.
 When Vetra Connect is configured and a connection fails, see
 [Vetra Connect troubleshooting](./t3-connect-troubleshooting.md). It explains each
 error, where the problem is, and how to fix it.
+
+## Approve new devices
+
+When Vetra Connect is configured, any device signed in to your Vetra Connect account
+can open a linked machine by default. To require approval instead, turn on **Require
+approval for new devices** with the Vetra Connect settings in **Settings → Sharing &
+access** on the host, or when you first set up Vetra Connect. Then someone who takes
+over your Vetra Connect account cannot reach the machine from a new device without
+your approval. Review the devices that are already approved, described below.
+
+A new device waits and shows a code such as `K7QM-2XFD`. Approve it from a
+device that is already connected, using the prompt or **Settings → Sharing &
+access**. Check that the code matches the one on the waiting device. On a
+headless host, run `vetra auth connect-device list` and then
+`vetra auth connect-device approve K7QM-2XFD`. A request expires after 10 minutes,
+and the device asks again when it retries. Deny keeps that device out until its
+request expires.
+
+Each device is approved once. Revoke it from **Vetra Connect devices** in the same
+settings page, or with `vetra auth connect-device revoke <code>`. With approval on,
+it has to ask again. With approval off, it can connect again on its own, so
+revoking in the app offers to turn approval on first. Devices that connected through Vetra Connect while approval was off stay
+approved and appear in that list for you to review. A device that has not
+connected since you updated Vetra Code asks for approval like a new one. Older apps
+cannot show the code, so update them before you turn approval on.
 
 ## Using the Desktop App as a Remote Only
 

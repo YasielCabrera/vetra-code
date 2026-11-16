@@ -160,7 +160,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
         expect(yield* fs.exists(upgradedLink)).toBe(false);
         expect((yield* upgraded.install).installedPath).toBe(upgradedLink);
       }
-    }).pipe(Effect.scoped),
+    }),
   );
 
   it.effect("never replaces or removes a vetra it did not create", () =>
@@ -203,7 +203,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
       expect((yield* Effect.flip(command.install)).message).toContain("Could not set up");
       yield* command.uninstall;
       expect(yield* fs.readFileString(launcher)).toBe("npm's vetra\n");
-    }).pipe(Effect.scoped),
+    }),
   );
 
   it.effect("installs beside an upstream t3 command without touching it", () =>
@@ -227,7 +227,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
       );
       yield* command.uninstall;
       expect(yield* fs.readLink(t3Link)).toBe(t3Launcher);
-    }).pipe(Effect.scoped),
+    }),
   );
 
   it.effect("finds and removes a link left by a previous Vetra home", () =>
@@ -287,7 +287,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
       );
       expect(yield* fs.exists(path.join(home, ".local", "bin", "vetra"))).toBe(false);
       expect(yield* fs.readFileString(path.join(home, "bin", "vetra.staging"))).toBe("mine");
-    }).pipe(Effect.scoped),
+    }),
   );
 
   it.effect("refuses to install behind another vetra that runs first", () =>
@@ -337,7 +337,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
         installedPath: path.join(home, ".local", "bin", "vetra"),
       });
       expect(installed.shadowedBy).toBeUndefined();
-    }).pipe(Effect.scoped),
+    }),
   );
 
   it.effect.skipIf(HostProcess.Platform.defaultValue() === "win32")(
@@ -371,7 +371,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
           onPath: true,
           installedPath: path.join(home, ".local", "bin", "vetra"),
         });
-      }).pipe(Effect.scoped),
+      }),
   );
 
   it.effect(
@@ -402,7 +402,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
         expect(yield* command.state).toEqual(removed);
         expect(yield* fs.exists(installed.installedPath!)).toBe(false);
         expect(yield* fs.exists(launcher)).toBe(true);
-      }).pipe(Effect.scoped),
+      }),
   );
 
   it.effect("leaves the Windows PATH alone when it cannot be read", () =>
@@ -445,7 +445,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
       const reader = yield* commandIn({ home, platform: "win32" }, inherited.spawner);
       yield* reader.install;
       expect(inherited.registry).toMatchObject({ path: `${userPath};${launcherDir}`, writes: 1 });
-    }).pipe(Effect.scoped),
+    }),
   );
 
   it.effect("does not claim or remove a Windows PATH entry the user added", () =>
@@ -482,6 +482,6 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
       yield* (yield* commandIn({ home: besideHome, platform: "win32" }, beside.spawner))
         .installOnFirstLaunch;
       expect(beside.registry).toMatchObject({ path: "C:\\Tools", writes: 0 });
-    }).pipe(Effect.scoped),
+    }),
   );
 });

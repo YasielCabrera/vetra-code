@@ -156,10 +156,7 @@ const decodePrepareInput = Schema.decodeUnknownEffect(
   AttachmentToolkit.tools.t3_attachment_prepare_upload.parametersSchema,
 );
 const encodeGitHubSnapshot = Schema.encodeEffect(Schema.fromJsonString(GitHubIssueSnapshot));
-const call = <Name extends keyof Tools & string>(
-  name: Name,
-  raw: Tool.ParametersEncoded<Tools[Name]>,
-) =>
+const call = <Name extends keyof Tools & string>(name: Name, raw: Schema.Json) =>
   Effect.gen(function* () {
     const toolkit = yield* TicketsToolkit;
     const results = yield* toolkit.handle(name, raw).pipe(Stream.unwrap, Stream.runCollect);

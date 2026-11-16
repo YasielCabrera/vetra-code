@@ -386,6 +386,8 @@ RENAMES=(
   # Fixture identity for the relay and the ACP test client.
   't3code.test=vetra-code.test'
   't3-relay=vetra-relay'
+  # The relay provider kind on the wire (RelayProviderKind in contracts).
+  't3_relay=vetra_relay'
   't3-test=vetra-test'
   't3code-pr-=vetra-code-pr-'
   # Local branches for pull request checkouts, from PRODUCT_WORKTREE_BRANCH_PREFIX.

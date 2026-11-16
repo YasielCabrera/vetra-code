@@ -15,6 +15,8 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
+import { supportsEnvChdir } from "@t3tools/shared/envTrampoline";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 
 import { resolveClaudeSdkExecutablePath } from "../Drivers/ClaudeExecutable.ts";
 import { makeClaudeEnvironment } from "../Drivers/ClaudeHome.ts";
@@ -299,6 +301,13 @@ export const makeClaudeSubscriptionUsageCapability = (input: {
       input.settings.binaryPath,
       claudeEnvironment,
     );
+    const platform = yield* HostProcess.Platform;
+    const spawnVia =
+      platform === "win32"
+        ? "launcher-thread"
+        : platform === "linux" && (yield* Effect.promise(supportsEnvChdir))
+          ? "env"
+          : undefined;
     return yield* Effect.tryPromise({
       try: async (signal) => {
         const abort = new AbortController();
@@ -315,6 +324,7 @@ export const makeClaudeSubscriptionUsageCapability = (input: {
             environment: claudeEnvironment,
             cwd: input.cwd,
             managedMcpConfig: input.managedMcpConfig,
+            spawnVia,
           }),
         });
         try {

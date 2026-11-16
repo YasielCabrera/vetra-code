@@ -18,17 +18,11 @@ export async function copyThreadReference(target: ThreadReferenceCopyTarget): Pr
       ? target.value
       : shareableThreadLink({ environmentId: link.environmentId, threadId: link.threadId });
   try {
-    const didCopy = await writeTextToClipboard(
+    await writeTextToClipboard(
       value,
       target.clipboardTarget,
       fragment ? { [COMPOSER_CONTEXT_CLIPBOARD_MIME]: fragment } : undefined,
     );
-    if (!didCopy) return;
-    toastManager.add({
-      type: "success",
-      title: target.successTitle,
-      description: target.description,
-    });
   } catch (error) {
     console.error(error);
     toastManager.add(

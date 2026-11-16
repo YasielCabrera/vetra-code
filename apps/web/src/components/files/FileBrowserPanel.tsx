@@ -38,7 +38,7 @@ import {
   writeExpandedDirectories,
 } from "./fileTreeExpansion";
 import { buildFileTreeGitStatus } from "./fileTreeGitStatus";
-import { buildFileTreePathUpdates } from "./fileTreePathReconciliation";
+import { buildFileTreePathUpdates, shouldRebuildFileTree } from "./fileTreePathReconciliation";
 import { loadFileAncestors } from "./loadFileAncestors";
 import { useDirectoryEntries } from "./useDirectoryEntries";
 import { useProjectPathSearch } from "~/state/queries";
@@ -266,11 +266,6 @@ export default function FileBrowserPanel({
         if (clicked === "copy-mention") {
           try {
             await writeTextToClipboard(mention);
-            toastManager.add({
-              type: "success",
-              title: "Mention copied",
-              description: relativePath,
-            });
           } catch (error) {
             toastManager.add({
               type: "error",
@@ -486,6 +481,14 @@ export default function FileBrowserPanel({
       return;
     }
     const updates = buildFileTreePathUpdates(previousTreePaths, treePaths);
+    if (shouldRebuildFileTree(previousTreePaths, treePaths, updates)) {
+      // A reset keeps old search matches, so search closes first and recomputes afterwards.
+      const activeSearch = model.isSearchOpen() ? model.getSearchValue() : null;
+      if (activeSearch !== null) model.closeSearch();
+      model.resetPaths(treePaths, { initialExpandedPaths: [...expandedPathsRef.current] });
+      if (activeSearch !== null) model.setSearch(activeSearch);
+      return;
+    }
     if (updates.length > 0) model.batch(updates);
   }, [ready, entryKinds, entryKindsRef, model, treePaths, selectedPath]);
 

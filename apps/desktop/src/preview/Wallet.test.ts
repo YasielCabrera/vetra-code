@@ -163,6 +163,8 @@ const withBridge = <A, E>(
       loadFailed: () => {},
       placeDownload: () => false,
       humanStartedDownload: () => false,
+      setCaptureDrawn: () => {},
+      agentLedPage: () => false,
       walletState: () => state,
       walletStates: Stream.fromPubSub(states),
       walletRequest: (input) =>
