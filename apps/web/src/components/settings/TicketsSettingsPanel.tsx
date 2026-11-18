@@ -45,7 +45,7 @@ import { RefreshIcon } from "../ui/refresh-icon";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
-import { searchableSetting } from "./settingsSearch";
+import { useSearchableSetting } from "./settingsSearch";
 import { useSettingsScope } from "./SettingsScopeContext";
 import {
   enqueueTicketStatusEdit,
@@ -70,6 +70,7 @@ const CLOSE_REASON_OPTIONS: ReadonlyArray<{ value: TicketCloseReason; label: str
 ];
 
 export function TicketsSettingsPanel() {
+  const searchableSetting = useSearchableSetting();
   const { scope, environment } = useSettingsScope();
   const environmentId =
     scope.environmentIds.length === 1 ? (environment?.environmentId ?? null) : null;
@@ -329,6 +330,7 @@ function TicketAutoAdvanceRows(props: {
   readonly environmentId: EnvironmentId;
   readonly statusSet: TicketStatusSet;
 }) {
+  const searchableSetting = useSearchableSetting();
   const settings = useEnvironmentSettings(props.environmentId, (all) => all.ticketAutoAdvance);
   const updateSettings = useUpdateEnvironmentSettings(props.environmentId);
   const statuses = props.statusSet.statuses;

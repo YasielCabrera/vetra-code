@@ -8,7 +8,7 @@ import {
 import { thrownErrorMessage } from "@t3tools/client-runtime/errors";
 
 import { resolveDiffPathForWorkspace } from "./diffFileActions";
-import { writeTextToClipboard } from "./hooks/useCopyToClipboard";
+import { namedClipboardTarget, writeTextToClipboard } from "./hooks/useCopyToClipboard";
 import {
   revealInFileExplorerLabelForKind,
   revealInFileExplorerLabelForOs,
@@ -143,7 +143,7 @@ async function copyFileContextMenuPath(
     action === "copy-path" ? resolveFileContextMenuAbsolutePath(target) : target.filePath;
   if (value === null || value === "") return;
   try {
-    await writeTextToClipboard(value, copied.label);
+    await writeTextToClipboard(value, namedClipboardTarget(copied.label));
     toastManager.add({ type: "success", title: m(copied.done), description: value });
   } catch (error) {
     toastManager.add({

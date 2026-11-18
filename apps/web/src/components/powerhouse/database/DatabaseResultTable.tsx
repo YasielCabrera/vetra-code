@@ -1,8 +1,10 @@
 import type { PowerhouseDatabaseQueryResult } from "@t3tools/contracts";
+import { m } from "~/i18n/messages";
+import { msg } from "gt-react";
 import { MessageSquarePlus } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
-import { writeTextToClipboard } from "~/hooks/useCopyToClipboard";
+import { namedClipboardTarget, writeTextToClipboard } from "~/hooks/useCopyToClipboard";
 import { cn } from "~/lib/utils";
 
 function withOccurrenceKeys<T>(items: ReadonlyArray<T>, signature: (item: T) => string) {
@@ -91,7 +93,7 @@ export function DatabaseResultTable({
                           type="button"
                           className="block w-full truncate px-2.5 py-1.5 text-left outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                           aria-label={`Copy ${column.name || `column ${columnIndex + 1}`} cell`}
-                          onClick={() => void writeTextToClipboard(value, "database cell")}
+                          onClick={() => void writeTextToClipboard(value, namedClipboardTarget(m(msg("database cell"))))}
                         >
                           {value}
                         </button>

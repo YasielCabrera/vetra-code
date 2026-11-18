@@ -1,4 +1,5 @@
 import { buildFileContextMenuItems } from "./fileContextMenu";
+import { m } from "./i18n/messages";
 const EMPTY_CAPABILITIES = {
   revealLabel: undefined,
   canOpenDefault: false,
@@ -52,6 +53,7 @@ describe("resolveFileContextMenuAbsolutePath", () => {
 describe("buildFileContextMenuItems", () => {
   it("keeps only the relative-path copy when the path cannot be resolved", () => {
     const items = buildFileContextMenuItems({
+      resolve: m,
       hasAbsolutePath: false,
       capabilities: {
         revealLabel: "Reveal in Finder",
@@ -66,6 +68,7 @@ describe("buildFileContextMenuItems", () => {
 
   it("offers the copy actions without a leading divider when no shell action exists", () => {
     const items = buildFileContextMenuItems({
+      resolve: m,
       hasAbsolutePath: true,
       capabilities: EMPTY_CAPABILITIES,
     });

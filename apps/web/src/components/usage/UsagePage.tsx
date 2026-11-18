@@ -1157,6 +1157,7 @@ function CursorEnableButton({
   readonly tooltip: boolean;
   readonly buttonText?: string;
 }) {
+  const gt = useGT();
   const updateSettings = useAtomCommand(serverEnvironment.updateSettings, {
     label: "enable Cursor account usage",
   });
@@ -1239,6 +1240,7 @@ function CursorEnableLimits({
   readonly environments: readonly EnvironmentUsageStatus[];
   readonly onEnabled: () => void;
 }) {
+  const gt = useGT();
   return (
     <section className="flex flex-col gap-3">
       <h2 className="flex items-center gap-2 text-sm font-medium text-foreground">

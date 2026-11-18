@@ -1,4 +1,5 @@
-import type { EnvironmentId, ThreadContextRecord } from "@t3tools/contracts";
+import type { EnvironmentId } from "@t3tools/contracts";
+import type { AttachedContextRecord } from "../../composerDraftStore";
 import { msg } from "gt-react";
 import { m, type MessageResolver } from "../../i18n/messages";
 import { collectInlineContextIds } from "../../lib/composerContextReferences";
@@ -40,7 +41,7 @@ export function referencedThreadContexts(draft: {
 export function loadBalancingSendWarning(
   input: {
     readonly pending: boolean;
-    readonly threadContexts: ReadonlyArray<ThreadContextRecord>;
+    readonly threadContexts: ReadonlyArray<AttachedContextRecord>;
     readonly candidateEnvironmentIds: ReadonlyArray<EnvironmentId>;
   },
   resolve: MessageResolver = m,

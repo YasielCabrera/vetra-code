@@ -725,6 +725,8 @@ export function IssuesPage() {
             open={rightPanelState.isOpen}
             keybindings={keybindings}
             getShortcutContext={getShortcutContext}
+            powerhouseAvailable={false}
+            onAddPowerhouse={() => {}}
             widthStorageKey="vetra:issue-panel-width"
             defaultWidth={typeof window === "undefined" ? 640 : Math.floor(window.innerWidth / 2)}
             surfaces={presence.value?.surfaces ?? []}

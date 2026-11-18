@@ -7,6 +7,7 @@ import type {
   SelectedLineRange,
 } from "@pierre/diffs";
 import type { CodeViewHandle, CodeViewProps } from "@pierre/diffs/react";
+import { useGT } from "gt-react";
 import type { EnvironmentId, ProjectId, ScopedThreadRef } from "@t3tools/contracts";
 import { SquareKanbanIcon } from "lucide-react";
 import { useState, type ReactNode, type Ref } from "react";
@@ -129,6 +130,7 @@ export function AnnotatableCodeView({
   onCreateTicket,
   onFileCollapsedChange,
 }: AnnotatableCodeViewProps) {
+  const gt = useGT();
   const addReviewComment = useComposerDraftStore((store) => store.addReviewComment);
   const removeReviewComment = useComposerDraftStore((store) => store.removeReviewComment);
   const reviewComments = useComposerDraftStore(

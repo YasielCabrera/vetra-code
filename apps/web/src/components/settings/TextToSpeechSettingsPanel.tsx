@@ -12,6 +12,7 @@ import {
   type TextToSpeechVoice,
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
+import { useGT } from "gt-react";
 import type { AtomCommandResult } from "@t3tools/client-runtime/state/runtime";
 import { DownloadIcon, SquareIcon, Trash2Icon, Volume2Icon } from "lucide-react";
 import { useState } from "react";
@@ -31,7 +32,7 @@ import {
   SettingsRow,
   SettingsSection,
 } from "./settingsLayout";
-import { searchableSetting } from "./settingsSearch";
+import { useSearchableSetting } from "./settingsSearch";
 import { useSettingsScope } from "./SettingsScopeContext";
 
 const DEFAULTS = DEFAULT_SERVER_SETTINGS.textToSpeech;
@@ -46,6 +47,7 @@ const voiceLabel = (voice: TextToSpeechVoice) =>
   `${voice.name} · ${voice.accent} ${voice.gender.toLowerCase()}`;
 
 export function TextToSpeechSettingsPanel() {
+  const searchableSetting = useSearchableSetting();
   const { scope, environment } = useSettingsScope();
   const environmentId =
     scope.environmentIds.length === 1 ? (environment?.environmentId ?? null) : null;
@@ -67,6 +69,8 @@ export function TextToSpeechSettingsPanel() {
 }
 
 function ReadAloudSettings({ environmentId }: { environmentId: EnvironmentId }) {
+  const gt = useGT();
+  const searchableSetting = useSearchableSetting();
   const settings = useEnvironmentSettings(environmentId, (all) => all.textToSpeech);
   const updateSettings = useUpdateEnvironmentSettings(environmentId);
   const model = TEXT_TO_SPEECH_MODELS[settings.model];
@@ -211,7 +215,7 @@ function ReadAloudSettings({ environmentId }: { environmentId: EnvironmentId }) 
         resetAction={
           settings.voice !== DEFAULTS.voice ? (
             <SettingResetButton
-              label="voice"
+              ariaLabel={gt("Reset voice")}
               onClick={() => updateSettings({ textToSpeech: { voice: DEFAULTS.voice } })}
             />
           ) : null
@@ -264,7 +268,7 @@ function ReadAloudSettings({ environmentId }: { environmentId: EnvironmentId }) 
         resetAction={
           settings.speed !== DEFAULTS.speed ? (
             <SettingResetButton
-              label="reading speed"
+              ariaLabel={gt("Reset reading speed")}
               onClick={() => updateSettings({ textToSpeech: { speed: DEFAULTS.speed } })}
             />
           ) : null

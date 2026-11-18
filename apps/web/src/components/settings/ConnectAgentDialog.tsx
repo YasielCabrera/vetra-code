@@ -16,7 +16,7 @@ import {
   createServerPairingCredential,
   isLoopbackHostname,
 } from "~/environments/primary";
-import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
+import { namedClipboardTarget, useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useNowSecond } from "~/hooks/useNowSecond";
 import { formatExpiresInLabel } from "~/timestampFormat";
 import { McpClientGrantFields, type McpToolsChoice } from "../auth/McpClientGrantFields";
@@ -35,7 +35,7 @@ import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { formatAccessTimestamp } from "./ConnectionsSettings.logic";
 import { SettingsRow } from "./settingsLayout";
-import { searchableSetting } from "./settingsSearch";
+import { useSearchableSetting } from "./settingsSearch";
 
 const SERVER_NAME = "vetra-code";
 
@@ -50,6 +50,7 @@ export function McpServerRow({
   readonly delegatableScopes: ReadonlyArray<AuthEnvironmentScope>;
   readonly onPairingLinkCreated: (created: AuthPairingCredentialResult) => void;
 }) {
+  const searchableSetting = useSearchableSetting();
   return (
     <SettingsRow
       title={searchableSetting("mcp-server").title}
@@ -343,7 +344,7 @@ function AccessToken({
 function useCopyWithFeedback(target: string) {
   return useCopyToClipboard({
     timeout: 1500,
-    target,
+    target: namedClipboardTarget(target),
     onError: (error) => {
       toastManager.add(
         stackedThreadToast({

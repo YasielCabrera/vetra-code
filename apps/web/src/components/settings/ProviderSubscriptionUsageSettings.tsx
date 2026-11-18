@@ -1,10 +1,11 @@
 import type { ProviderUsageRefreshIntervalMinutes } from "@t3tools/contracts";
+import { useGT } from "gt-react";
 import { DEFAULT_UNIFIED_SETTINGS } from "@t3tools/contracts/settings";
 
 import { useClientSettings, updateClientSettings } from "../../hooks/useSettings";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
-import { searchableSetting } from "./settingsSearch";
+import { useSearchableSetting } from "./settingsSearch";
 import { SettingResetButton, SettingsRow, SettingsSection } from "./settingsLayout";
 
 /**
@@ -30,6 +31,8 @@ const DEFAULT_REFRESH_INTERVAL_MINUTES =
 const DEFAULT_ALERTS_ENABLED = DEFAULT_UNIFIED_SETTINGS.providerUsageAlertsEnabled;
 
 export function ProviderSubscriptionUsageSettings() {
+  const gt = useGT();
+  const searchableSetting = useSearchableSetting();
   const refreshIntervalMinutes = useClientSettings(
     (settings) => settings.providerUsageRefreshIntervalMinutes,
   );
@@ -46,7 +49,7 @@ export function ProviderSubscriptionUsageSettings() {
         resetAction={
           refreshIntervalMinutes !== DEFAULT_REFRESH_INTERVAL_MINUTES ? (
             <SettingResetButton
-              label="subscription usage refresh interval"
+              ariaLabel={gt("Reset subscription usage refresh interval")}
               onClick={() =>
                 updateClientSettings({
                   providerUsageRefreshIntervalMinutes: DEFAULT_REFRESH_INTERVAL_MINUTES,
@@ -87,7 +90,7 @@ export function ProviderSubscriptionUsageSettings() {
         resetAction={
           alertsEnabled !== DEFAULT_ALERTS_ENABLED ? (
             <SettingResetButton
-              label="subscription limit alerts"
+              ariaLabel={gt("Reset subscription limit alerts")}
               onClick={() =>
                 updateClientSettings({ providerUsageAlertsEnabled: DEFAULT_ALERTS_ENABLED })
               }

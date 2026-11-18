@@ -1,4 +1,6 @@
 import type { EnvironmentId, TicketLinkedIssueRef } from "@t3tools/contracts";
+import { m } from "~/i18n/messages";
+import { msg } from "gt-react";
 import {
   ArrowDownUpIcon,
   ArrowUpRightIcon,
@@ -18,7 +20,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
-import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
+import { namedClipboardTarget, useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useLiveRefresh } from "~/hooks/useLiveRefresh";
 import { readLocalApi } from "~/localApi";
 import { ticketEnvironment } from "~/state/tickets";
@@ -155,7 +157,7 @@ export function TicketIssueDetailPanel({
     }
   };
 
-  const { copyToClipboard } = useCopyToClipboard({ target: "issue link" });
+  const { copyToClipboard } = useCopyToClipboard({ target: namedClipboardTarget(m(msg("issue link"))) });
   const openExternal = (raw: string) => {
     const url = normalizeIssueExternalUrl(raw);
     if (url !== null)

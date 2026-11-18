@@ -7,6 +7,7 @@
  * MCP tools.
  */
 import { useAtomValue } from "@effect/atom-react";
+import { useGT } from "gt-react";
 import { DEFAULT_SERVER_SETTINGS, type EnvironmentId } from "@t3tools/contracts";
 import {
   DEFAULT_WEB3_NETWORKS,
@@ -65,7 +66,7 @@ import {
   SettingsRow,
   SettingsSection,
 } from "./settingsLayout";
-import { searchableSetting } from "./settingsSearch";
+import { useSearchableSetting } from "./settingsSearch";
 import {
   APPROVAL_MODE_OPTIONS,
   describeWalletChain,
@@ -245,6 +246,8 @@ function CustomNetworkDialog({
 
 /** Settings > Web3 for one environment: its server holds the wallet and its preferences. */
 export function Web3SettingsPanel({ environmentId }: { readonly environmentId: EnvironmentId }) {
+  const gt = useGT();
+  const searchableSetting = useSearchableSetting();
   const wallet = useEnvironmentSettings(environmentId, (settings) => settings.web3Wallet);
   const updateSettings = useUpdateEnvironmentSettings(environmentId);
   const status = usePreviewWalletStatus(environmentId);
@@ -411,7 +414,7 @@ export function Web3SettingsPanel({ environmentId }: { readonly environmentId: E
           resetAction={
             wallet.enabled !== DEFAULTS.enabled ? (
               <SettingResetButton
-                label="the preview wallet"
+                ariaLabel={gt("Reset the preview wallet")}
                 onClick={() => updateSettings({ web3Wallet: { enabled: DEFAULTS.enabled } })}
               />
             ) : null
@@ -433,7 +436,7 @@ export function Web3SettingsPanel({ environmentId }: { readonly environmentId: E
           resetAction={
             wallet.approvalMode !== DEFAULTS.approvalMode ? (
               <SettingResetButton
-                label="wallet approvals"
+                ariaLabel={gt("Reset wallet approvals")}
                 onClick={() =>
                   updateSettings({ web3Wallet: { approvalMode: DEFAULTS.approvalMode } })
                 }
@@ -474,7 +477,7 @@ export function Web3SettingsPanel({ environmentId }: { readonly environmentId: E
           resetAction={
             wallet.autoConnectLoopback !== DEFAULTS.autoConnectLoopback ? (
               <SettingResetButton
-                label="localhost auto-connect"
+                ariaLabel={gt("Reset localhost auto-connect")}
                 onClick={() =>
                   updateSettings({
                     web3Wallet: { autoConnectLoopback: DEFAULTS.autoConnectLoopback },
@@ -606,7 +609,7 @@ export function Web3SettingsPanel({ environmentId }: { readonly environmentId: E
           resetAction={
             wallet.disabledBuiltInChainIds.length > 0 ? (
               <SettingResetButton
-                label="built-in networks"
+                ariaLabel={gt("Reset built-in networks")}
                 onClick={() => updateSettings({ web3Wallet: { disabledBuiltInChainIds: [] } })}
               />
             ) : null
