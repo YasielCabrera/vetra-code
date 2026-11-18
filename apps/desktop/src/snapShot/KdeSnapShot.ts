@@ -15,6 +15,10 @@ import { startNativeCaptureFeedback } from "./NativeCaptureFeedback.ts";
 export { isKdeCaptureSession } from "./linuxCaptureSession.ts";
 
 export const KDE_CAPTURE_EXECUTABLE = "vetra-kde-snap-shot";
+// Installs from before the helper was renamed left this beside it. The desktop entry
+// is rewritten on install, so KDE never runs it again; delete it so it does not sit
+// in the user's data home forever.
+const LEGACY_KDE_CAPTURE_EXECUTABLE = "t3-kde-snap-shot";
 const DESKTOP_FILE = "com.vetra.code.KdeCapture.desktop";
 const MARKER = "X-VetraCode-Capture-Helper=true";
 const decodeCapabilities = Schema.decodeUnknownSync(
@@ -151,11 +155,13 @@ export class KdeCaptureSetup {
     if (existing && (!existing.isDirectory() || existing.isSymbolicLink()))
       throw new Error("The capture helper directory is not a regular directory.");
     await regularFile(executable);
+    const legacyExecutable = NodePath.join(directory, LEGACY_KDE_CAPTURE_EXECUTABLE);
     if (action === "remove-kde-helper") {
       if (entry) await NodeFSP.unlink(desktop);
       await NodeFSP.unlink(executable).catch((error: NodeJS.ErrnoException) => {
         if (error.code !== "ENOENT") throw error;
       });
+      await NodeFSP.rm(legacyExecutable, { force: true });
     } else {
       const bundle = await regularFile(this.paths.bundle);
       if (!bundle)
@@ -175,6 +181,7 @@ export class KdeCaptureSetup {
           flag: "wx",
         });
         await NodeFSP.rename(stagedDesktop, desktop);
+        await NodeFSP.rm(legacyExecutable, { force: true });
       } finally {
         await NodeFSP.rm(stagedDesktop, { force: true });
         await NodeFSP.rm(staging, { recursive: true, force: true });

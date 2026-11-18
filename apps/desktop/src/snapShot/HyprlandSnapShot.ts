@@ -13,6 +13,9 @@ import { HYPRLAND_CAPTURE_ACTION } from "./linuxCaptureSession.ts";
 export { isHyprlandCaptureSession } from "./linuxCaptureSession.ts";
 
 export const HYPRLAND_CAPTURE_EXECUTABLE = "vetra-hyprland-snap-shot";
+// Installs from before the helper was renamed left this beside it; the binding names
+// the new path, so delete the old file rather than leave it in the user's data home.
+const LEGACY_HYPRLAND_CAPTURE_EXECUTABLE = "t3-hyprland-snap-shot";
 export type HyprlandCapturePaths = { readonly bundle: string; readonly dataHome: string };
 export function hyprlandCaptureExecutable(paths: HyprlandCapturePaths) {
   return NodePath.join(
@@ -131,8 +134,10 @@ export class HyprlandCaptureSetup {
     if (stat && (!stat.isDirectory() || stat.isSymbolicLink()))
       throw new Error("The capture helper directory must not be a link.");
     await regularFile(executable);
+    const legacyExecutable = NodePath.join(directory, LEGACY_HYPRLAND_CAPTURE_EXECUTABLE);
     if (action === "remove-hyprland-helper") {
       await NodeFSP.rm(executable, { force: true });
+      await NodeFSP.rm(legacyExecutable, { force: true });
       return;
     }
     const bundle = await regularFile(this.paths.bundle);
@@ -143,6 +148,7 @@ export class HyprlandCaptureSetup {
       const staged = NodePath.join(staging, HYPRLAND_CAPTURE_EXECUTABLE);
       await NodeFSP.writeFile(staged, bundle, { mode: 0o755, flag: "wx" });
       await NodeFSP.rename(staged, executable);
+      await NodeFSP.rm(legacyExecutable, { force: true });
     } finally {
       await NodeFSP.rm(staging, { recursive: true, force: true });
     }

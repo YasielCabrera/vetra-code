@@ -67,6 +67,21 @@ afterEach(async () => {
   await NodeFSP.rm(directory, { recursive: true, force: true });
 });
 
+it("clears the helper left by installs from before the binary was renamed", async () => {
+  const { executable } = kdeCapturePaths(paths);
+  const legacy = NodePath.join(NodePath.dirname(executable), "t3-kde-snap-shot");
+  await NodeFSP.mkdir(NodePath.dirname(executable), { recursive: true });
+  await NodeFSP.writeFile(legacy, "old executable", { mode: 0o755 });
+
+  await setup.perform("install-kde-helper");
+  expect(await NodeFSP.readFile(executable, "utf8")).toBe("bundled executable");
+  await expect(NodeFSP.stat(legacy)).rejects.toMatchObject({ code: "ENOENT" });
+
+  await NodeFSP.writeFile(legacy, "old executable", { mode: 0o755 });
+  await setup.perform("remove-kde-helper");
+  await expect(NodeFSP.stat(legacy)).rejects.toMatchObject({ code: "ENOENT" });
+});
+
 it("does not mistake installed files for KDE authorization, or fall back to a picker on denial", async () => {
   await setup.perform("install-kde-helper");
   denial = true;
