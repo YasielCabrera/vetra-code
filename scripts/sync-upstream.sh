@@ -322,6 +322,11 @@ RENAMES=(
   '.t3-capture-=.vetra-capture-'
   't3-snap-shot-=vetra-snap-shot-'
   't3-kde-bus-=vetra-kde-bus-'
+  # Capture helper binaries, installed into a user's data home and named in the
+  # KDE authorization entry. Cargo.toml, Cargo.lock, and the runtime constants
+  # must agree, or `cargo build --locked` and the packaged lookup both break.
+  't3-kde-snap-shot=vetra-kde-snap-shot'
+  't3-hyprland-snap-shot=vetra-hyprland-snap-shot'
 
   # Product name, in every spelling that reaches a user. The all-caps form is
   # the wordmark in the DMG installer artwork; neither `T3 Code` nor the

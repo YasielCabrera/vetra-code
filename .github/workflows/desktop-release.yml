@@ -149,8 +149,8 @@ jobs:
         uses: actions/cache@v6
         with:
           path: |
-            native/kde-snap-shot/target/${{ matrix.rust_target }}/release/t3-kde-snap-shot
-            native/hyprland-snap-shot/target/${{ matrix.rust_target }}/release/t3-hyprland-snap-shot
+            native/kde-snap-shot/target/${{ matrix.rust_target }}/release/vetra-kde-snap-shot
+            native/hyprland-snap-shot/target/${{ matrix.rust_target }}/release/vetra-hyprland-snap-shot
           key: linux-capture-helpers-${{ matrix.rust_target }}-${{ hashFiles('native/kde-snap-shot/Cargo.lock', 'native/kde-snap-shot/Cargo.toml', 'native/kde-snap-shot/src/**', 'native/hyprland-snap-shot/Cargo.lock', 'native/hyprland-snap-shot/Cargo.toml', 'native/hyprland-snap-shot/src/**', 'native/hyprland-snap-shot/protocols/**') }}
 
       - name: Cache Linux packaging tool archives

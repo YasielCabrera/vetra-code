@@ -14,7 +14,7 @@ import { CaptureSetupRequiredError, readPortalPng } from "./linuxCaptureSession.
 import { startNativeCaptureFeedback } from "./NativeCaptureFeedback.ts";
 export { isKdeCaptureSession } from "./linuxCaptureSession.ts";
 
-export const KDE_CAPTURE_EXECUTABLE = "t3-kde-snap-shot";
+export const KDE_CAPTURE_EXECUTABLE = "vetra-kde-snap-shot";
 const DESKTOP_FILE = "com.vetra.code.KdeCapture.desktop";
 const MARKER = "X-VetraCode-Capture-Helper=true";
 const decodeCapabilities = Schema.decodeUnknownSync(

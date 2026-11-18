@@ -388,6 +388,7 @@ list):
 | `t3-citation` / `t3-context` / `t3-assistant-citation` | `vetra-citation` / `vetra-context` / `vetra-assistant-citation` |
 | `t3-thread://` / `"t3-thread"`                         | `vetra-thread://` / `"vetra-thread"`                            |
 | `.t3-capture-` / `t3-snap-shot-` / `t3-kde-bus-`       | `.vetra-capture-` / `vetra-snap-shot-` / `vetra-kde-bus-`       |
+| `t3-kde-snap-shot` / `t3-hyprland-snap-shot`           | `vetra-kde-snap-shot` / `vetra-hyprland-snap-shot`              |
 | `t3-relay` / `t3_relay` / `t3-test`                    | `vetra-relay` / `vetra_relay` / `vetra-test`                    |
 | `t3code/pr-` (pull request branches)                   | `vetra/pr-`                                                     |
 
@@ -401,7 +402,7 @@ cheap:
 | Internal symbols    | `t3Home`, `T3ProjectFile*`, `RemoteT3Runner`, `T3Connect*` components, `T3Wordmark`, `allT3`     |
 | Effect service keys | `t3/<path>` and `@t3tools/<package>/<path>`, enforced by the `deterministicKeys` diagnostic      |
 | Scratch prefixes    | `t3code-*` and `t3-*` mkdtemp names, `t3env_*` test credentials                                  |
-| Native crates       | `t3-resource-monitor`, `t3-kde-snap-shot`, `t3-hyprland-snap-shot`                               |
+| Native crates       | `t3-resource-monitor`                                                                            |
 | File paths          | every path upstream also ships, including `T3Wordmark.tsx` and `.agents/skills/test-t3-app`      |
 
 Runtime constants that must not drift, even if a merge conflict "resolves" them back:

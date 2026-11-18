@@ -658,17 +658,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "t3-kde-snap-shot"
-version = "0.1.0"
-dependencies = [
- "async-channel",
- "png",
- "serde",
- "serde_json",
- "zbus",
-]
-
-[[package]]
 name = "tempfile"
 version = "3.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -768,6 +757,17 @@ dependencies = [
  "js-sys",
  "serde_core",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "vetra-kde-snap-shot"
+version = "0.1.0"
+dependencies = [
+ "async-channel",
+ "png",
+ "serde",
+ "serde_json",
+ "zbus",
 ]
 
 [[package]]
