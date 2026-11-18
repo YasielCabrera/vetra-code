@@ -6,14 +6,17 @@ import {
   AuthMcpClientAccess,
   AuthMcpAuthorizationRequest,
   isRuntimeModeAbove,
-  managedRuntimeModeCeilingMessage,
   parseMcpApprovalCode,
 } from "@t3tools/contracts";
+import { managedRuntimeModeCeilingMessage } from "@t3tools/client-runtime/contract-labels";
 import { isLoopbackHost } from "@t3tools/shared/preview";
 import type * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import { msg, T, useGT, useMessages, Var } from "gt-react";
 import { type ReactNode, useEffect, useState } from "react";
+
+import { m, type MessageResolver } from "../../i18n/messages";
 
 import { PrimaryEnvironmentHttpClient } from "~/environments/primary/httpClient";
 import { runPrimaryHttp } from "~/lib/runtime";
@@ -36,8 +39,8 @@ export const accessConfig: Record<
   { readonly label: string; readonly description: string; readonly icon: LucideIcon }
 > = {
   "read-only": {
-    label: "Read only",
-    description: "Read projects and threads. Cannot start, message or change anything.",
+    label: msg("Read only"),
+    description: msg("Read projects and threads. Cannot start, message or change anything."),
     icon: EyeIcon,
   },
   ...runtimeModeConfig,
@@ -45,7 +48,7 @@ export const accessConfig: Record<
 import { McpClientGrantFields, type McpToolsChoice } from "./McpClientGrantFields";
 
 const ARM_DELAY_MS = 700;
-const UNSAFE_REDIRECT = "The environment returned an address this page will not open.";
+const UNSAFE_REDIRECT = msg("The environment returned an address this page will not open.");
 
 function followRedirect(url: string): boolean {
   const safe = agentRedirectUrl(url);
@@ -62,7 +65,7 @@ type Loaded =
   | { readonly status: "invalid"; readonly message: string }
   | { readonly status: "ready"; readonly details: AuthMcpApprovalDetails };
 
-const UNREACHABLE = "Could not reach this environment. Try again.";
+const UNREACHABLE = msg("Could not reach this environment. Try again.");
 const isApprovalError = Schema.is(AuthMcpApprovalError);
 
 export type McpApprovalAnswer<A> =
@@ -97,11 +100,11 @@ function runApproval<A>(
       Effect.catch((error) =>
         Effect.succeed<McpApprovalAnswer<A>>({
           kind: "error",
-          message: isApprovalError(error) ? error.message : UNREACHABLE,
+          message: isApprovalError(error) ? error.message : m(UNREACHABLE),
         }),
       ),
     ),
-  ).catch((): McpApprovalAnswer<A> => ({ kind: "error", message: UNREACHABLE }));
+  ).catch((): McpApprovalAnswer<A> => ({ kind: "error", message: m(UNREACHABLE) }));
 }
 
 /** This environment's own page, approving with a code or this browser's session. */
@@ -145,6 +148,8 @@ export function McpConsent({
   readonly environmentLabel?: string | undefined;
   readonly footer?: ReactNode;
 }) {
+  const gt = useGT();
+  const messages = useMessages();
   const [loaded, setLoaded] = useState<Loaded>({ status: "loading" });
   const [requestedAccess, setAccess] = useState<AuthMcpClientAccess | null>(null);
   const [tools, setTools] = useState<McpToolsChoice>("all");
@@ -167,7 +172,9 @@ export function McpConsent({
     void transport.load(authorization).then((answer) => {
       if (cancelled) return;
       if (answer.kind === "redirect") {
-        if (!followRedirect(answer.url)) setLoaded({ status: "invalid", message: UNSAFE_REDIRECT });
+        if (!followRedirect(answer.url)) {
+          setLoaded({ status: "invalid", message: m(UNSAFE_REDIRECT) });
+        }
         return;
       }
       setLoaded(
@@ -221,8 +228,8 @@ export function McpConsent({
       answer.kind === "error"
         ? answer.message
         : answer.kind === "redirect"
-          ? UNSAFE_REDIRECT
-          : "The sign-in could not continue.",
+          ? messages(UNSAFE_REDIRECT)
+          : gt("The sign-in could not continue."),
     );
   };
 
@@ -230,8 +237,8 @@ export function McpConsent({
     return (
       <StandalonePage>
         <ConnectAgentHeading
-          title="Checking the sign-in request"
-          description="One moment while this environment verifies the agent's request."
+          title={gt("Checking the sign-in request")}
+          description={gt("One moment while this environment verifies the agent's request.")}
         />
         <Spinner className="mt-6" size="lg" tone="muted" />
       </StandalonePage>
@@ -241,9 +248,12 @@ export function McpConsent({
   if (loaded.status === "invalid") {
     return (
       <StandalonePage>
-        <ConnectAgentHeading title="This sign-in cannot continue" description={loaded.message} />
+        <ConnectAgentHeading
+          title={gt("This sign-in cannot continue")}
+          description={loaded.message}
+        />
         <p className="mt-4 text-sm text-muted-foreground">
-          Close this page and start the sign-in again from your agent.
+          <T>Close this page and start the sign-in again from your agent.</T>
         </p>
         {footer}
       </StandalonePage>
@@ -263,11 +273,14 @@ export function McpConsent({
   return (
     <StandalonePage>
       <ConnectAgentHeading
-        title={`Connect ${details.clientName}`}
+        title={gt("Connect {app}", { app: details.clientName })}
         description={
           <>
-            This agent wants to use the {tools === "tickets" ? "tickets" : "threads"} in every
-            project on{" "}
+            {tools === "tickets" ? (
+              <T>This agent wants to use the tickets in every project on </T>
+            ) : (
+              <T>This agent wants to use the threads in every project on </T>
+            )}
             <span className="font-medium text-foreground">
               {environmentLabel ?? details.environmentHost}
             </span>
@@ -276,27 +289,41 @@ export function McpConsent({
         }
       />
       <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
-        <dt className="text-muted-foreground">App</dt>
+        <dt className="text-muted-foreground">
+          <T context="the app requesting access">App</T>
+        </dt>
         <dd className="min-w-0 break-words">
-          {details.clientName} <span className="text-muted-foreground">· name set by the app</span>
+          <T>
+            <Var>{details.clientName}</Var>{" "}
+            <span className="text-muted-foreground">· name set by the app</span>
+          </T>
         </dd>
-        <dt className="text-muted-foreground">Access goes to</dt>
+        <dt className="text-muted-foreground">
+          <T>Access goes to</T>
+        </dt>
         <dd className="min-w-0 break-words font-medium">
-          {details.redirectHost}
           {redirectsToThisComputer(details.redirectHost) ? (
-            <span className="font-normal text-muted-foreground">
-              {" "}
-              on the computer that opened this page
-            </span>
+            <T>
+              <Var>{details.redirectHost}</Var>
+              <span className="font-normal text-muted-foreground">
+                {" "}
+                on the computer that opened this page
+              </span>
+            </T>
           ) : (
-            <span className="font-normal text-muted-foreground">
-              {" "}
-              · whoever runs it gets this access
-            </span>
+            <T>
+              <Var>{details.redirectHost}</Var>
+              <span className="font-normal text-muted-foreground">
+                {" "}
+                · whoever runs it gets this access
+              </span>
+            </T>
           )}
         </dd>
       </dl>
-      <p className="mt-2 text-xs text-muted-foreground">Only approve a sign-in you just started.</p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        <T>Only approve a sign-in you just started.</T>
+      </p>
 
       <form
         className="mt-6 space-y-5"
@@ -308,7 +335,7 @@ export function McpConsent({
         {acceptsCode ? (
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="connect-agent-pairing-code">
-              Sign-in code
+              <T>Sign-in code</T>
             </label>
             <Input
               id="connect-agent-pairing-code"
@@ -318,13 +345,15 @@ export function McpConsent({
               disabled={pending !== null}
               nativeInput
               onChange={(event) => setPairingCode(event.currentTarget.value)}
-              placeholder="Paste a code"
+              placeholder={gt("Paste a code")}
               spellCheck={false}
               value={pairingCode}
             />
             <p className="text-xs text-muted-foreground">
-              Get one from Use Vetra Code in another app (MCP), Settings → Sharing & access, or{" "}
-              <code>vetra auth pairing create</code> on this machine.
+              <T>
+                Get one from Use Vetra Code in another app (MCP), Settings → Sharing & access, or{" "}
+                <code>vetra auth pairing create</code> on this machine.
+              </T>
             </p>
           </div>
         ) : null}
@@ -333,7 +362,7 @@ export function McpConsent({
           access={codeAccess ?? access}
           onAccessChange={setAccess}
           accessOptions={codeAccess ? [codeAccess] : AuthMcpClientAccess.literals}
-          accessDisabledReason={(option) => ceilingReason(details, option)}
+          accessDisabledReason={(option) => ceilingReason(details, option, messages)}
           tools={tools}
           onToolsChange={setTools}
         />
@@ -347,10 +376,10 @@ export function McpConsent({
         <div className="flex flex-wrap gap-2">
           <Button disabled={!canApprove} type="submit">
             {pending === "approve"
-              ? "Approving…"
+              ? gt("Approving…")
               : approveLevel === null
-                ? "Choose what it may do"
-                : `Approve ${accessConfig[approveLevel].label}`}
+                ? gt("Choose what it may do")
+                : gt("Approve {level}", { level: messages(accessConfig[approveLevel].label) })}
           </Button>
           <Button
             disabled={pending !== null}
@@ -358,7 +387,7 @@ export function McpConsent({
             type="button"
             variant="outline"
           >
-            {pending === "deny" ? "Denying…" : "Deny"}
+            {pending === "deny" ? gt("Denying…") : gt("Deny")}
           </Button>
         </div>
       </form>
@@ -374,17 +403,24 @@ function ConnectAgentHeading({
   readonly title: string;
   readonly description: ReactNode;
 }) {
-  return <StandalonePageHeader context="Agent sign-in" title={title} description={description} />;
+  const gt = useGT();
+  return (
+    <StandalonePageHeader context={gt("Agent sign-in")} title={title} description={description} />
+  );
 }
 
 /** Why a managed policy keeps `access` from being granted, or undefined when it may be. */
-function ceilingReason(details: AuthMcpApprovalDetails, access: AuthMcpClientAccess) {
+function ceilingReason(
+  details: AuthMcpApprovalDetails,
+  access: AuthMcpClientAccess,
+  resolve: MessageResolver,
+) {
   const ceiling = details.runtimeModeCeiling;
   return ceiling === undefined ||
     access === "read-only" ||
     !isRuntimeModeAbove(access, ceiling.maxRuntimeMode)
     ? undefined
-    : managedRuntimeModeCeilingMessage(ceiling.organization, ceiling.maxRuntimeMode);
+    : managedRuntimeModeCeilingMessage(ceiling.organization, ceiling.maxRuntimeMode, resolve);
 }
 
 /** One access level in a radio group; `description` replaces the level's own, null hides it. */
@@ -399,9 +435,11 @@ export function AccessOption({
   readonly disabledReason: string | undefined;
   readonly description?: string | null;
 }) {
+  const messages = useMessages();
   const { label, icon: Icon } = accessConfig[access];
   const detail =
-    disabledReason ?? (description === undefined ? accessConfig[access].description : description);
+    disabledReason ??
+    (description === undefined ? messages(accessConfig[access].description) : description);
   return (
     <RadioPrimitive.Root
       value={access}
@@ -422,7 +460,7 @@ export function AccessOption({
         )}
       />
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-foreground">{label}</span>
+        <span className="block text-sm font-medium text-foreground">{messages(label)}</span>
         {detail === null ? null : (
           <span className="block text-xs text-muted-foreground">{detail}</span>
         )}

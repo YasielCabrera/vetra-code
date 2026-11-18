@@ -1,19 +1,32 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as Schema from "effect/Schema";
 
-import { GitCommandError } from "./git.ts";
-import { GitPreparePullRequestThreadResult } from "./git.ts";
-import { GitRunStackedActionInput } from "./git.ts";
-import { VcsFileAnnotationError } from "./git.ts";
-import { VcsFileBlameResult } from "./git.ts";
-import { VcsFileLineChangesResult } from "./git.ts";
-import { VcsStatusLocalResult } from "./git.ts";
+import {
+  GitCommandError,
+  GitPreparePullRequestThreadResult,
+  GitRunStackedActionInput,
+  VcsFileAnnotationError,
+  VcsFileBlameResult,
+  VcsFileLineChangesResult,
+  VcsStatusLocalResult,
+} from "./git.ts";
+import { PullRequestDiffFileContentsInput } from "./pullRequest.ts";
+import { ReviewDiffFileContentsInput } from "./review.ts";
 
 const decodeGitCommandError = Schema.decodeUnknownSync(Schema.toCodecJson(GitCommandError));
 const decodePreparePullRequestThreadResult = Schema.decodeUnknownSync(
   GitPreparePullRequestThreadResult,
 );
 const decodeRunStackedActionInput = Schema.decodeUnknownSync(GitRunStackedActionInput);
+const encodeRunStackedActionInput = Schema.encodeUnknownSync(GitRunStackedActionInput);
+const decodeReviewDiffFileContentsInput = Schema.decodeUnknownSync(ReviewDiffFileContentsInput);
+const encodeReviewDiffFileContentsInput = Schema.encodeUnknownSync(ReviewDiffFileContentsInput);
+const decodePullRequestDiffFileContentsInput = Schema.decodeUnknownSync(
+  PullRequestDiffFileContentsInput,
+);
+const encodePullRequestDiffFileContentsInput = Schema.encodeUnknownSync(
+  PullRequestDiffFileContentsInput,
+);
 
 const decodeStatusLocalResult = Schema.decodeUnknownSync(VcsStatusLocalResult);
 const decodeFileLineChangesResult = Schema.decodeUnknownSync(VcsFileLineChangesResult);
@@ -194,15 +207,48 @@ describe("GitPreparePullRequestThreadResult", () => {
   });
 });
 
-describe("GitRunStackedActionInput", () => {
-  it("preserves leading and trailing whitespace in file paths", () => {
-    const parsed = decodeRunStackedActionInput({
-      actionId: "action-1",
-      cwd: "/repo",
-      action: "commit",
-      filePaths: [" leading.txt", "trailing.txt "],
-    });
-
-    expect(parsed.filePaths).toEqual([" leading.txt", "trailing.txt "]);
+describe("Git file paths", () => {
+  it.each([
+    {
+      operation: "commit",
+      decode: decodeRunStackedActionInput,
+      encode: encodeRunStackedActionInput,
+      input: {
+        actionId: "action-1",
+        cwd: "/repo",
+        action: "commit",
+        filePaths: [" leading.txt", "trailing.txt "],
+      },
+    },
+    {
+      operation: "local diff expansion",
+      decode: decodeReviewDiffFileContentsInput,
+      encode: encodeReviewDiffFileContentsInput,
+      input: {
+        cwd: "/repo",
+        sourceKind: "working-tree",
+        changeType: "rename-changed",
+        baseRef: "HEAD",
+        headRef: null,
+        oldPath: " leading.txt",
+        newPath: "trailing.txt ",
+      },
+    },
+    {
+      operation: "pull request diff expansion",
+      decode: decodePullRequestDiffFileContentsInput,
+      encode: encodePullRequestDiffFileContentsInput,
+      input: {
+        projectId: "project-1",
+        repository: "owner/repo",
+        number: 1,
+        changeType: "rename-changed",
+        oldPath: " leading.txt",
+        newPath: "trailing.txt ",
+      },
+    },
+  ])("preserves leading and trailing whitespace for $operation", ({ decode, encode, input }) => {
+    expect(decode(input)).toEqual(input);
+    expect(encode(input)).toEqual(input);
   });
 });

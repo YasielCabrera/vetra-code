@@ -106,6 +106,16 @@ const isClosedViewEntry = (entry: unknown): entry is ClosedViewEntry => {
       return (
         surface.id.startsWith(`${surface.kind}:`) && surface.id.length > surface.kind.length + 1
       );
+    case "issue":
+      return (
+        typeof surface.projectId === "string" &&
+        typeof surface.tracker === "string" &&
+        typeof surface.scope === "string" &&
+        typeof surface.key === "string" &&
+        (surface.environmentId === undefined || typeof surface.environmentId === "string") &&
+        (surface.host === undefined || typeof surface.host === "string") &&
+        (surface.url === undefined || typeof surface.url === "string")
+      );
     default:
       return false;
   }

@@ -379,7 +379,7 @@ function ComboboxChipRemove({
       {...props}
     >
       <span id={removeLabelId} className="sr-only">
-        Remove
+        <T>Remove</T>
       </span>
       <XIcon aria-hidden="true" />
     </ComboboxPrimitive.ChipRemove>

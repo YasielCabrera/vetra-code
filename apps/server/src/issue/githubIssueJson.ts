@@ -3,16 +3,16 @@ import * as Exit from "effect/Exit";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import type {
-  IssueActor,
-  IssueAssigneeCandidate,
-  IssueAssigneeCandidateList,
-  IssueComment,
-  IssueLabel,
-  IssueMilestone,
-  IssueState,
-  IssueTimelineEvent,
-  IssueTimelineItem,
-  IssueTimelineSource,
+  TicketIssueActor,
+  TicketIssueAssigneeCandidate,
+  TicketIssueAssigneeCandidateList,
+  TicketIssueComment,
+  TicketIssueLabel,
+  TicketIssueMilestone,
+  TicketIssueState,
+  TicketIssueTimelineEvent,
+  TicketIssueTimelineItem,
+  TicketIssueTimelineSource,
 } from "@t3tools/contracts";
 import { decodeJsonResult } from "@t3tools/shared/schemaJson";
 import type { ProviderIssue } from "./IssueProvider.ts";
@@ -234,18 +234,18 @@ export interface GitHubIssue {
   readonly number: number;
   readonly title: string;
   readonly url: string;
-  readonly author: IssueActor | null;
-  readonly state: IssueState;
+  readonly author: TicketIssueActor | null;
+  readonly state: TicketIssueState;
   /** Lowercase, as `completed`, `not_planned`, `duplicate` or `reopened`. */
   readonly stateReason?: string;
   readonly body: string;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly closedAt: string | null;
-  readonly labels: ReadonlyArray<IssueLabel>;
-  readonly assignees: ReadonlyArray<IssueActor>;
-  readonly milestone: IssueMilestone | null;
-  readonly comments: ReadonlyArray<IssueComment>;
+  readonly labels: ReadonlyArray<TicketIssueLabel>;
+  readonly assignees: ReadonlyArray<TicketIssueActor>;
+  readonly milestone: TicketIssueMilestone | null;
+  readonly comments: ReadonlyArray<TicketIssueComment>;
   readonly commentCount: number;
   readonly commentsTruncated: boolean;
 }
@@ -262,7 +262,7 @@ export interface GitHubIssueListBatch {
 }
 
 export interface GitHubIssueTimelinePage {
-  readonly items: ReadonlyArray<IssueTimelineItem>;
+  readonly items: ReadonlyArray<TicketIssueTimelineItem>;
   /** Counted before malformed rows are skipped so pagination follows the host, not the decoder. */
   readonly rawCount: number;
 }
@@ -275,7 +275,7 @@ const decodeDetail = decodeJsonResult(RawIssueDetail);
 const decodeAssigneeCandidates = decodeJsonResult(RawAssigneeCandidates);
 type DecodeFailure = Cause.Cause<Schema.SchemaError>;
 
-function actorOf(raw: typeof RawActor.Type | null | undefined): IssueActor | null {
+function actorOf(raw: typeof RawActor.Type | null | undefined): TicketIssueActor | null {
   const login = raw?.login?.trim();
   if (!login) return null;
   return {
@@ -285,7 +285,7 @@ function actorOf(raw: typeof RawActor.Type | null | undefined): IssueActor | nul
   };
 }
 
-function timelineLabelOf(raw: typeof RawLabel.Type | null | undefined): IssueLabel | null {
+function timelineLabelOf(raw: typeof RawLabel.Type | null | undefined): TicketIssueLabel | null {
   if (raw === null || raw === undefined) return null;
   const [label] = labelsOf([raw]);
   return label ?? null;
@@ -294,7 +294,7 @@ function timelineLabelOf(raw: typeof RawLabel.Type | null | undefined): IssueLab
 function timelineSourceOf(
   raw: typeof RawTimelineSourceIssue.Type | null | undefined,
   host: string,
-): IssueTimelineSource | null {
+): TicketIssueTimelineSource | null {
   const urlText = raw?.html_url?.trim();
   if (!raw || raw.number < 1 || !urlText) return null;
   try {
@@ -321,7 +321,7 @@ function timelineItemOf(
   raw: typeof RawTimelineItem.Type,
   host: string,
   index: number,
-): IssueTimelineItem | null {
+): TicketIssueTimelineItem | null {
   const event = raw.event?.trim();
   if (!event || event.length > 100) return null;
   const id = String(raw.id ?? raw.node_id ?? `${event}:${raw.created_at}:${index}`).trim();
@@ -358,10 +358,10 @@ function timelineItemOf(
     lockReason: raw.lock_reason?.trim() || null,
     projectColumnName: raw.project_card?.column_name?.trim() || null,
     previousProjectColumnName: raw.project_card?.previous_column_name?.trim() || null,
-  } satisfies IssueTimelineEvent;
+  } satisfies TicketIssueTimelineEvent;
 }
 
-function stateOf(raw: string): IssueState | null {
+function stateOf(raw: string): TicketIssueState | null {
   switch (raw.trim().toLowerCase()) {
     case "open":
       return "open";
@@ -374,7 +374,7 @@ function stateOf(raw: string): IssueState | null {
 
 function labelsOf(
   raw: ReadonlyArray<typeof RawLabel.Type | null> | undefined,
-): ReadonlyArray<IssueLabel> {
+): ReadonlyArray<TicketIssueLabel> {
   return (raw ?? []).flatMap((label) => {
     if (label === null) return [];
     const name = label.name.trim();
@@ -390,7 +390,7 @@ function labelsOf(
   });
 }
 
-function milestoneOf(raw: RawIssue["milestone"]): IssueMilestone | null {
+function milestoneOf(raw: RawIssue["milestone"]): TicketIssueMilestone | null {
   if (!raw || raw.number < 1 || !raw.title.trim()) return null;
   const state = stateOf(raw.state ?? "open");
   if (state === null) return null;
@@ -402,7 +402,7 @@ function milestoneOf(raw: RawIssue["milestone"]): IssueMilestone | null {
   };
 }
 
-function commentOf(raw: typeof RawComment.Type): IssueComment | null {
+function commentOf(raw: typeof RawComment.Type): TicketIssueComment | null {
   const id = String(raw.id).trim();
   if (!id) return null;
   const url = raw.url?.trim();
@@ -504,7 +504,7 @@ export function decodeIssueTimelineJson(
 ): Result.Result<GitHubIssueTimelinePage, DecodeFailure> {
   const decoded = decodeUnknownList(raw);
   if (!Result.isSuccess(decoded)) return Result.fail(decoded.failure);
-  const items: IssueTimelineItem[] = [];
+  const items: TicketIssueTimelineItem[] = [];
   for (const [index, value] of decoded.success.entries()) {
     const row = decodeTimelineItem(value);
     if (!Exit.isSuccess(row)) continue;
@@ -517,14 +517,14 @@ export function decodeIssueTimelineJson(
 /** Assigned people lead the picker so an assignment can always be removed again. */
 export function decodeIssueAssigneeCandidatesJson(
   raw: string,
-): Result.Result<IssueAssigneeCandidateList, DecodeFailure> {
+): Result.Result<TicketIssueAssigneeCandidateList, DecodeFailure> {
   const decoded = decodeAssigneeCandidates(raw);
   if (!Result.isSuccess(decoded)) return Result.fail(decoded.failure);
   const repository = decoded.success.data.repository;
   if (repository === null) return Result.succeed({ candidates: [], truncated: false });
 
   const viewerLogin = actorOf(decoded.success.data.viewer)?.login.toLowerCase() ?? null;
-  const candidates = new Map<string, IssueAssigneeCandidate>();
+  const candidates = new Map<string, TicketIssueAssigneeCandidate>();
   for (const node of repository.issue?.assignees?.nodes ?? []) {
     const actor = actorOf(node);
     if (actor === null) continue;

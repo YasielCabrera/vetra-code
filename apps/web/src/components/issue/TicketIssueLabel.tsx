@@ -1,9 +1,9 @@
 import type { CSSProperties } from "react";
-import type { IssueLabel as IssueLabelValue } from "@t3tools/contracts";
+import type { TicketIssueLabel as IssueLabelValue } from "@t3tools/contracts";
 
 const HEX_COLOR = /^[0-9a-f]{6}$/iu;
 
-export function IssueLabel({ label }: { readonly label: IssueLabelValue }) {
+export function TicketIssueLabel({ label }: { readonly label: IssueLabelValue }) {
   const color = label.color !== null && HEX_COLOR.test(label.color) ? label.color : null;
   const style: CSSProperties | undefined =
     color === null ? undefined : { backgroundColor: `#${color}` };

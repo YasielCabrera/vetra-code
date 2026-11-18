@@ -10,8 +10,8 @@ import {
   type TicketIssueLinkCandidates,
   type TicketSubscribeDetailInput,
   type OrchestrationProjectShell,
-  type IssueActivity,
-  type IssueAssigneeCandidateList,
+  type TicketIssueActivity,
+  type TicketIssueAssigneeCandidateList,
   ChatAttachmentId,
   formatTicketPlanRef,
   GitHubIssueSnapshot,
@@ -217,10 +217,10 @@ export class TicketService extends Context.Service<
     ) => Effect.Effect<TicketGitHubIssueDetail, TicketWriteError>;
     readonly githubIssueActivity: (
       input: TicketGitHubIssueRef,
-    ) => Effect.Effect<IssueActivity, TicketWriteError>;
+    ) => Effect.Effect<TicketIssueActivity, TicketWriteError>;
     readonly githubIssueAssigneeCandidates: (
       input: TicketGitHubIssueRef,
-    ) => Effect.Effect<IssueAssigneeCandidateList, TicketWriteError>;
+    ) => Effect.Effect<TicketIssueAssigneeCandidateList, TicketWriteError>;
     readonly githubIssueSetAssignees: (
       input: TicketGitHubIssueAssigneeChangeInput,
     ) => Effect.Effect<void, TicketGitHubWriteError>;

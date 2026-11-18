@@ -9,7 +9,10 @@ import {
   serializeAssistantCitation,
   withAssistantCitationComment,
 } from "@t3tools/shared/assistantCitations";
-import { isCurrencyAmountQuery, isPathWord } from "@t3tools/shared/composerTrigger";
+import {
+  isCurrencyAmountQuery,
+  isPathWord,
+} from "@t3tools/shared/composerTrigger";
 import {
   splitPromptIntoComposerSegments,
   type ComposerPromptSegment,
@@ -263,7 +266,7 @@ const TICKET_PLAN_REFERENCE_QUERY = new RegExp(`^${TICKET_PLAN_REFERENCE_PREFIX}
 
 // A slash only continues a plan reference such as `#T-42/P1`; elsewhere it ends the search.
 const PULL_REQUEST_TRIGGER = new RegExp(
-  `^#(${TICKET_PLAN_REFERENCE_PREFIX}(?:p\\d*)?|[\\p{L}\\p{N}][\\p{L}\\p{N}_-]*)?$`,
+  `(?:^|\\p{Ps})#(${TICKET_PLAN_REFERENCE_PREFIX}(?:p\\d*)?|[\\p{L}\\p{N}][\\p{L}\\p{N}_-]*)?$`,
   "iu",
 );
 
@@ -284,14 +287,17 @@ export function detectComposerTrigger(text: string, cursorInput: number): Compos
       rangeEnd: cursor,
     };
   }
-  const pullRequestMatch = PULL_REQUEST_TRIGGER.exec(token);
-  if (pullRequestMatch) {
-    return {
-      kind: "pull-request",
-      query: pullRequestMatch[1] ?? "",
-      rangeStart: tokenStart,
-      rangeEnd: cursor,
-    };
+  if (!/^[@\p{Sc}]/u.test(token)) {
+    const pullRequestMatch = PULL_REQUEST_TRIGGER.exec(token);
+    if (pullRequestMatch) {
+      const query = pullRequestMatch[1] ?? "";
+      return {
+        kind: "pull-request",
+        query,
+        rangeStart: cursor - query.length - 1,
+        rangeEnd: cursor,
+      };
+    }
   }
   const skillPrefix = /^\p{Sc}/u.exec(token);
   if (skillPrefix) {

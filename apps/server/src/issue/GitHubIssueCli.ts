@@ -5,10 +5,10 @@ import * as Layer from "effect/Layer";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import {
-  ISSUE_ASSIGNEE_NOBODY,
-  ISSUE_ASSIGNEE_VIEWER,
-  type IssueActivity,
-  type IssueAssigneeCandidateList,
+  TICKET_ISSUE_ASSIGNEE_NOBODY,
+  TICKET_ISSUE_ASSIGNEE_VIEWER,
+  type TicketIssueActivity,
+  type TicketIssueAssigneeCandidateList,
 } from "@t3tools/contracts";
 
 import * as GitHubApi from "@t3tools/source-control-github/server/GitHubApi";
@@ -90,13 +90,13 @@ export class GitHubIssueCli extends Context.Service<
       readonly host: string;
       readonly repository: string;
       readonly number: number;
-    }) => Effect.Effect<IssueActivity, GitHubIssueCliError>;
+    }) => Effect.Effect<TicketIssueActivity, GitHubIssueCliError>;
     readonly listAssigneeCandidates: (input: {
       readonly cwd: string;
       readonly host: string;
       readonly repository: string;
       readonly number: number;
-    }) => Effect.Effect<IssueAssigneeCandidateList, GitHubIssueCliError>;
+    }) => Effect.Effect<TicketIssueAssigneeCandidateList, GitHubIssueCliError>;
     readonly setAssignees: (input: {
       readonly cwd: string;
       readonly host: string;
@@ -142,8 +142,8 @@ function searchPhrase(query: string): string {
  * name is quoted, which the contract's pattern has already made redundant.
  */
 function assigneeQualifier(assignee: string): string {
-  if (assignee === ISSUE_ASSIGNEE_VIEWER) return "assignee:@me";
-  if (assignee === ISSUE_ASSIGNEE_NOBODY) return "no:assignee";
+  if (assignee === TICKET_ISSUE_ASSIGNEE_VIEWER) return "assignee:@me";
+  if (assignee === TICKET_ISSUE_ASSIGNEE_NOBODY) return "no:assignee";
   return `assignee:"${assignee.replaceAll('"', "").trim()}"`;
 }
 
@@ -337,7 +337,7 @@ export const make = Effect.gen(function* () {
     if (!validRepository(input.repository)) {
       return yield* unaddressable(input.cwd, "getIssueActivity");
     }
-    const items: IssueActivity["items"][number][] = [];
+    const items: TicketIssueActivity["items"][number][] = [];
     for (let page = 1; page <= MAX_TIMELINE_PAGES; page += 1) {
       const response = yield* api.rest({
         host: input.host,

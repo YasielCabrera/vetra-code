@@ -17,7 +17,7 @@ import { useProject, useThreadShell } from "../../state/entities";
 import { useTicketIssueLinksSupported } from "../../state/tickets";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
-import { IssueDetailPanel } from "../issue/IssueDetailPanel";
+import { TicketIssueDetailPanel } from "../issue/TicketIssueDetailPanel";
 import { PullRequestDetailPanel } from "../pullRequest/PullRequestDetailPanel";
 import { resolveThreadStatusPill } from "../Sidebar.logic";
 import { Button } from "../ui/button";
@@ -65,7 +65,7 @@ export function TicketLinkPreview(props: {
         getShortcutContext={getShortcutContext}
       />
     ) : issueReference !== null && issueLinksSupported ? (
-      <IssueDetailPanel environmentId={props.environmentId} reference={issueReference} />
+      <TicketIssueDetailPanel environmentId={props.environmentId} reference={issueReference} />
     ) : null;
 
   return (

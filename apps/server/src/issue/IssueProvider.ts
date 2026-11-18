@@ -1,14 +1,14 @@
 import * as Schema from "effect/Schema";
 import type * as Effect from "effect/Effect";
 import {
-  type IssueActor,
-  type IssueActivity,
-  type IssueAssigneeCandidateList,
-  type IssueComment,
-  type IssueLabel,
-  type IssueListState,
-  type IssueMilestone,
-  type IssueState,
+  type TicketIssueActor,
+  type TicketIssueActivity,
+  type TicketIssueAssigneeCandidateList,
+  type TicketIssueComment,
+  type TicketIssueLabel,
+  type TicketIssueListState,
+  type TicketIssueMilestone,
+  type TicketIssueState,
   SourceControlProviderKind as SourceControlProviderKindSchema,
   type SourceControlProviderKind,
 } from "@t3tools/contracts";
@@ -36,16 +36,16 @@ export interface ProviderIssue {
   readonly number: number;
   readonly title: string;
   readonly url: string;
-  readonly author: IssueActor | null;
-  readonly state: IssueState;
+  readonly author: TicketIssueActor | null;
+  readonly state: TicketIssueState;
   /** The host's lowercase close reason, such as `completed` or `not_planned`. */
   readonly stateReason?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly closedAt: string | null;
-  readonly labels: ReadonlyArray<IssueLabel>;
-  readonly assignees: ReadonlyArray<IssueActor>;
-  readonly milestone: IssueMilestone | null;
+  readonly labels: ReadonlyArray<TicketIssueLabel>;
+  readonly assignees: ReadonlyArray<TicketIssueActor>;
+  readonly milestone: TicketIssueMilestone | null;
   readonly commentCount?: number;
   /** Present on metadata reads and when `listIssues` was asked for bodies. */
   readonly body?: string;
@@ -53,7 +53,7 @@ export interface ProviderIssue {
 
 export interface ProviderIssueDetail extends ProviderIssue {
   readonly body: string;
-  readonly comments: ReadonlyArray<IssueComment>;
+  readonly comments: ReadonlyArray<TicketIssueComment>;
   readonly commentCount: number;
   readonly commentsTruncated: boolean;
 }
@@ -85,7 +85,7 @@ export interface IssueProviderApi {
     readonly cwd: string;
     readonly host: string;
     readonly repository: string;
-    readonly state: IssueListState;
+    readonly state: TicketIssueListState;
     readonly limit: number;
     readonly query?: string;
     /** One `assignee:` narrowing, applied by the host. See `IssueAssigneeFilter`. */
@@ -115,14 +115,14 @@ export interface IssueProviderApi {
     readonly host: string;
     readonly repository: string;
     readonly number: number;
-  }) => Effect.Effect<IssueActivity, IssueProviderError>;
+  }) => Effect.Effect<TicketIssueActivity, IssueProviderError>;
   /** People the host permits this issue to be assigned to. Read only when the picker opens. */
   readonly listAssigneeCandidates: (input: {
     readonly cwd: string;
     readonly host: string;
     readonly repository: string;
     readonly number: number;
-  }) => Effect.Effect<IssueAssigneeCandidateList, IssueProviderError>;
+  }) => Effect.Effect<TicketIssueAssigneeCandidateList, IssueProviderError>;
   readonly setAssignees: (input: {
     readonly cwd: string;
     readonly host: string;

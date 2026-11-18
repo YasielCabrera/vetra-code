@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { ProjectId, TicketId } from "./baseSchemas.ts";
 import { SourceControlProviderKind } from "./sourceControl.ts";
-import { IssueDetail } from "./issue.ts";
+import { TicketIssueDetail } from "./ticketIssue.ts";
 import {
   TicketGitHubIssueDetail,
   TicketGitHubIssueRef,
@@ -40,7 +40,7 @@ describe("ticket issue RPC contracts", () => {
   });
 
   it("carries complete preview metadata without repeating description or comments", () => {
-    const issue: IssueDetail = {
+    const issue: TicketIssueDetail = {
       projectId: ProjectId.make("project"),
       projectTitle: "Web",
       provider: SourceControlProviderKind.make("github"),

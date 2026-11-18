@@ -331,7 +331,7 @@ export function AnnotatableCodeView({
                 {...(entry.kind === "draft" && onCreateTicket
                   ? {
                       secondaryAction: {
-                        label: "Create ticket",
+                        label: gt("Create ticket"),
                         icon: <SquareKanbanIcon />,
                         allowEmpty: true,
                         onAction: (text: string) => createTicketFromEntry(entry.id, text),

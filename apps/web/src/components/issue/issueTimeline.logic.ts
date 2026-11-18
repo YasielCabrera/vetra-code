@@ -1,7 +1,7 @@
-import type { IssueActivity, IssueTimelineEvent, IssueTimelineItem } from "@t3tools/contracts";
+import type { TicketIssueActivity, TicketIssueTimelineEvent, TicketIssueTimelineItem } from "@t3tools/contracts";
 
 /** The host usually answers oldest-first, but timestamps are the contract and the order is not. */
-export function buildIssueTimeline(activity: IssueActivity): ReadonlyArray<IssueTimelineItem> {
+export function buildIssueTimeline(activity: TicketIssueActivity): ReadonlyArray<TicketIssueTimelineItem> {
   return activity.items.toSorted((left, right) => left.createdAt.localeCompare(right.createdAt));
 }
 
@@ -14,7 +14,7 @@ function friendlyKind(kind: string): string {
 }
 
 /** A host event stays readable even when GitHub adds a kind this client has never seen. */
-export function issueTimelineEventLabel(event: IssueTimelineEvent): string {
+export function issueTimelineEventLabel(event: TicketIssueTimelineEvent): string {
   switch (event.kind) {
     case "assigned":
       return `assigned ${event.assignee?.login ?? "someone"}`;

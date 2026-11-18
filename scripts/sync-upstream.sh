@@ -183,6 +183,12 @@ RENAMES=(
   'mcp add --transport http t3 =mcp add --transport http vetra-code '
   'mcp add t3 =mcp add vetra-code '
   're:mcp login t3(?![A-Za-z0-9_.-])=mcp login vetra-code'
+  # Outside agents that register the server under a slug rather than a bare name
+  # (OpenClaw, Hermes). Same reason as the pairs above: the name is the tool prefix
+  # agents see, so it must match the `vetra-code` name every adapter uses.
+  'mcp add t3code=mcp add vetra-code'
+  'mcp login t3code=mcp login vetra-code'
+  'Add t3code under mcp_servers=Add vetra-code under mcp_servers'
   'mcp list` shows `t3`=mcp list` shows `vetra-code`'
   'Package the t3 single-executable=Package the vetra single-executable'
   'Notarized t3=Notarized vetra'

@@ -9,6 +9,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
 
@@ -187,8 +188,9 @@ it.layer(NodeServices.layer)("DesktopBrowserChannel", (it) => {
       yield* attach("sentinel-1");
       expect(channel.isShown(key)).toBe(false);
 
+      const shown = yield* channel.awaitShown(key, "5 seconds").pipe(Effect.forkChild);
       yield* send([{ type: "shown", ...key, shown: true }]);
-      yield* attach("sentinel-2");
+      expect(yield* Fiber.join(shown)).toBe(true);
       expect(channel.isShown(key)).toBe(true);
 
       yield* send([

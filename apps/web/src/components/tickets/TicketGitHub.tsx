@@ -1,7 +1,7 @@
 import type {
   EnvironmentId,
   GitHubIssueSnapshot,
-  IssueActor,
+  TicketIssueActor,
   TicketGitHubIssueRef,
 } from "@t3tools/contracts";
 import { CircleCheckIcon, CircleDotIcon, CircleHelpIcon } from "lucide-react";
@@ -110,7 +110,7 @@ export function TicketGitHubProperties(props: {
   readonly onRefresh: () => void;
 }) {
   const { ticket } = props;
-  const assignees: ReadonlyArray<IssueActor> =
+  const assignees: ReadonlyArray<TicketIssueActor> =
     props.reads.issue?.assignees ??
     ticket.github.assignees.map((login) => ({ login, name: null, avatarUrl: null }));
   return (

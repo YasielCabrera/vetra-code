@@ -1,5 +1,5 @@
 import { scopeProjectRef } from "@t3tools/client-runtime/environment";
-import type { EnvironmentId, IssueDetail } from "@t3tools/contracts";
+import type { EnvironmentId, TicketIssueDetail } from "@t3tools/contracts";
 import { BookOpenIcon, MessageCircleQuestionIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -16,7 +16,7 @@ export function IssueHandoffMenuItems({
   detail,
   environmentId,
 }: {
-  readonly detail: IssueDetail;
+  readonly detail: TicketIssueDetail;
   readonly environmentId: EnvironmentId;
 }) {
   const newThread = useNewThreadHandler();

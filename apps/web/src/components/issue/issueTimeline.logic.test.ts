@@ -1,9 +1,9 @@
-import type { IssueActivity, IssueTimelineEvent } from "@t3tools/contracts";
+import type { TicketIssueActivity, TicketIssueTimelineEvent } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { buildIssueTimeline, issueTimelineEventLabel } from "./issueTimeline.logic";
 
-function event(overrides: Partial<IssueTimelineEvent> = {}): IssueTimelineEvent {
+function event(overrides: Partial<TicketIssueTimelineEvent> = {}): TicketIssueTimelineEvent {
   return {
     type: "event",
     id: "event-1",
@@ -25,7 +25,7 @@ function event(overrides: Partial<IssueTimelineEvent> = {}): IssueTimelineEvent 
 
 describe("issue timeline", () => {
   it("sorts only host activity in chronological order", () => {
-    const activity: IssueActivity = {
+    const activity: TicketIssueActivity = {
       items: [
         event(),
         {

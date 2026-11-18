@@ -18,7 +18,7 @@ import {
   ChatImageAttachment,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
 } from "./chatAttachment.ts";
-import { IssueState } from "./issue.ts";
+import { TicketIssueState } from "./ticketIssue.ts";
 import { PullRequestState } from "./pullRequest.ts";
 
 /**
@@ -112,7 +112,7 @@ export const TicketLinkTarget = Schema.Union([
     ref: TicketGitHubRef,
     snapshot: Schema.Struct({
       title: Schema.String,
-      state: IssueState,
+      state: TicketIssueState,
       url: TrimmedNonEmptyString,
     }),
   }),
@@ -154,7 +154,7 @@ export const GitHubIssueSnapshot = Schema.Struct({
   /** A failed post-write read leaves updatedAt stale; sync must confirm contradictory state. */
   stateNeedsConfirmation: Schema.optional(Schema.Boolean),
   ...TicketGitHubRef.fields,
-  state: IssueState,
+  state: TicketIssueState,
   /** GitHub's close reason, or `missing` when issue access is intact but the issue is absent. */
   stateReason: Schema.NullOr(Schema.String),
   author: Schema.NullOr(Schema.String),

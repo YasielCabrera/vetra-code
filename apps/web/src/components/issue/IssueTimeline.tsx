@@ -1,8 +1,8 @@
 import type {
   EnvironmentId,
-  IssueActivity,
-  IssueTimelineComment,
-  IssueTimelineEvent,
+  TicketIssueActivity,
+  TicketIssueTimelineComment,
+  TicketIssueTimelineEvent,
 } from "@t3tools/contracts";
 import {
   ArchiveRestoreIcon,
@@ -37,7 +37,7 @@ function TimelineMarker({ children }: { readonly children: ReactNode }) {
   );
 }
 
-function EventIcon({ event }: { readonly event: IssueTimelineEvent }) {
+function EventIcon({ event }: { readonly event: TicketIssueTimelineEvent }) {
   const className = "size-3.5";
   switch (event.kind) {
     case "assigned":
@@ -79,7 +79,7 @@ function EventIcon({ event }: { readonly event: IssueTimelineEvent }) {
   }
 }
 
-function CommentMarker({ comment }: { readonly comment: IssueTimelineComment }) {
+function CommentMarker({ comment }: { readonly comment: TicketIssueTimelineComment }) {
   const actor = comment.actor;
   return (
     <TimelineMarker>
@@ -100,7 +100,7 @@ function ConversationItem({
   environmentId,
   onOpen,
 }: {
-  readonly item: IssueTimelineComment;
+  readonly item: TicketIssueTimelineComment;
   readonly environmentId: EnvironmentId;
   readonly onOpen: (url: string) => void;
 }) {
@@ -124,7 +124,7 @@ function EventItem({
   event,
   onOpen,
 }: {
-  readonly event: IssueTimelineEvent;
+  readonly event: TicketIssueTimelineEvent;
   readonly onOpen: (url: string) => void;
 }) {
   const sourceUrl = event.source?.url ?? null;
@@ -173,7 +173,7 @@ export function IssueTimeline({
   order,
   onOpen,
 }: {
-  readonly activity: IssueActivity;
+  readonly activity: TicketIssueActivity;
   readonly environmentId: EnvironmentId;
   readonly order: "newest" | "oldest";
   readonly onOpen: (url: string) => void;

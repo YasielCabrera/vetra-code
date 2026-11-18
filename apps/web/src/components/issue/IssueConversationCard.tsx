@@ -1,4 +1,4 @@
-import type { EnvironmentId, IssueActor } from "@t3tools/contracts";
+import type { EnvironmentId, TicketIssueActor } from "@t3tools/contracts";
 import { ExternalLinkIcon } from "lucide-react";
 
 import { formatRelativeTimeLabel } from "~/timestampFormat";
@@ -16,7 +16,7 @@ export function IssueConversationCard({
   url = null,
   onOpen,
 }: {
-  readonly actor: IssueActor | null;
+  readonly actor: TicketIssueActor | null;
   readonly createdAt: string;
   readonly body: string;
   readonly action: "opened" | "commented";

@@ -1,9 +1,9 @@
 import * as Effect from "effect/Effect";
 import {
   SourceControlProviderKind,
-  type IssueActivity,
-  type IssueActor,
-  type IssueComment,
+  type TicketIssueActivity,
+  type TicketIssueActor,
+  type TicketIssueComment,
 } from "@t3tools/contracts";
 
 import { gitHubLoginAvatarUrl } from "@t3tools/shared/githubActor";
@@ -76,7 +76,7 @@ function providerError(operation: string) {
   };
 }
 
-function withAvatar(actor: IssueActor | null, host: string): IssueActor | null {
+function withAvatar(actor: TicketIssueActor | null, host: string): TicketIssueActor | null {
   if (actor === null || actor.avatarUrl !== null) return actor;
   const avatarUrl = gitHubLoginAvatarUrl(actor.login, host);
   return avatarUrl === null ? actor : { ...actor, avatarUrl };
@@ -91,7 +91,7 @@ function issueAvatars(issue: ProviderIssue, host: string) {
 }
 
 function withAvatars(issue: GitHubIssue, host: string): GitHubIssue {
-  const commentWithAvatar = (comment: IssueComment): IssueComment => ({
+  const commentWithAvatar = (comment: TicketIssueComment): TicketIssueComment => ({
     ...comment,
     author: withAvatar(comment.author, host),
   });
@@ -102,7 +102,7 @@ function withAvatars(issue: GitHubIssue, host: string): GitHubIssue {
   };
 }
 
-function activityWithAvatars(activity: IssueActivity, host: string): IssueActivity {
+function activityWithAvatars(activity: TicketIssueActivity, host: string): TicketIssueActivity {
   return {
     ...activity,
     items: activity.items.map((item) =>

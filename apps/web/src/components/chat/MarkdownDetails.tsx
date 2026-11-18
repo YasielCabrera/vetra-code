@@ -1,3 +1,4 @@
+import { useGT } from "gt-react";
 import { ChevronRightIcon } from "lucide-react";
 import {
   Children,
@@ -19,6 +20,7 @@ export function MarkdownDetails({
 }: Pick<ComponentProps<"details">, "children" | "open" | "dir"> & {
   attributes?: Record<string, unknown>;
 }) {
+  const gt = useGT();
   const [isOpen, setIsOpen] = useState(open);
   const searching = use(MarkdownFindContext);
   const expanded = isOpen;
@@ -34,7 +36,7 @@ export function MarkdownDetails({
   const summary =
     isValidElement<{ children?: ReactNode }>(summaryNode) && summaryNode.props.children
       ? summaryNode.props.children
-      : "Details";
+      : gt("Details", { $context: "fallback title of a collapsible section" });
   const content = childNodes.filter((_, index) => index !== summaryIndex);
 
   return (

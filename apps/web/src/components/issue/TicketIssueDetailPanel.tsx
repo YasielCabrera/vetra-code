@@ -1,0 +1,505 @@
+import type { EnvironmentId, TicketLinkedIssueRef } from "@t3tools/contracts";
+import {
+  ArrowDownUpIcon,
+  ArrowUpRightIcon,
+  CheckCircle2Icon,
+  ChevronRightIcon,
+  CircleDotIcon,
+  FlagIcon,
+  FolderGit2Icon,
+  HistoryIcon,
+  LinkIcon,
+  MessageSquareIcon,
+  MoreHorizontalIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  TagIcon,
+  UserRoundIcon,
+} from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+
+import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
+import { useLiveRefresh } from "~/hooks/useLiveRefresh";
+import { readLocalApi } from "~/localApi";
+import { ticketEnvironment } from "~/state/tickets";
+import { useEnvironmentQuery } from "~/state/query";
+import { useAtomCommand } from "~/state/use-atom-command";
+import { formatRelativeTimeLabel } from "~/timestampFormat";
+import { cn } from "~/lib/utils";
+
+import ChatMarkdown from "../ChatMarkdown";
+import { SourceControlActorAvatar } from "../SourceControlActorAvatar";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../ui/empty";
+import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { normalizeIssueExternalUrl } from "./issueExternalUrl";
+import { IssueAssigneePicker } from "./IssueAssigneePicker";
+import { IssueConversationCard } from "./IssueConversationCard";
+import { IssueDetailGhost, IssueTimelineGhost } from "./IssueGhosts";
+import { IssueHandoffMenuItems } from "./IssueHandoffActions";
+import { TicketIssueLabel } from "./TicketIssueLabel";
+import { IssueTimeline } from "./IssueTimeline";
+
+type IssueDetailTab = "summary" | "timeline";
+
+const COMMENT_PAGE = 30;
+
+function MetaRow({
+  icon,
+  label,
+  children,
+}: {
+  readonly icon: ReactNode;
+  readonly label: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2 py-1.5 text-xs">
+      <span className="flex w-24 shrink-0 items-center gap-1.5 text-muted-foreground">
+        {icon}
+        {label}
+      </span>
+      <span className="min-w-0 flex-1 text-foreground">{children}</span>
+    </div>
+  );
+}
+
+function IssueSection({
+  title,
+  count,
+  actions,
+  children,
+}: {
+  readonly title: string;
+  readonly count?: number;
+  readonly actions?: ReactNode;
+  readonly children: ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div className="flex w-full items-center border-t border-border/60 bg-background pr-4">
+        <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-1.5 px-4 py-3 text-left text-sm font-medium">
+          <span>{title}</span>
+          <ChevronRightIcon
+            aria-hidden
+            className={cn(
+              "size-3.5 text-muted-foreground transition-transform",
+              open && "rotate-90",
+            )}
+          />
+          {count === undefined ? null : (
+            <span className="text-xs tabular-nums text-muted-foreground">{count}</span>
+          )}
+        </CollapsibleTrigger>
+        {open ? actions : null}
+      </div>
+      <CollapsiblePanel>
+        <div className="px-4 pb-4">{children}</div>
+      </CollapsiblePanel>
+    </Collapsible>
+  );
+}
+
+export function TicketIssueDetailPanel({
+  environmentId,
+  reference,
+}: {
+  readonly environmentId: EnvironmentId;
+  readonly reference: TicketLinkedIssueRef;
+}) {
+  const [tab, setTab] = useState<IssueDetailTab>("summary");
+  const [timelineOrder, setTimelineOrder] = useState<"newest" | "oldest">("newest");
+  const [commentOrder, setCommentOrder] = useState<"newest" | "oldest">("newest");
+  const [shown, setShown] = useState<{ readonly url: string; readonly count: number } | null>(null);
+
+  const target = useMemo(() => ({ environmentId, input: reference }), [environmentId, reference]);
+  const detailQuery = useEnvironmentQuery(ticketEnvironment.githubIssueDetail(target));
+  const activityQuery = useEnvironmentQuery(ticketEnvironment.githubIssueActivity(target));
+  const response = detailQuery.data;
+  const detail = useMemo(
+    () =>
+      response?.preview === undefined
+        ? null
+        : {
+            ...response.preview,
+            title: response.title,
+            body: response.body,
+            assignees: response.assignees,
+            comments: response.comments,
+          },
+    [response],
+  );
+  const activity = activityQuery.data;
+  const activityPending = activityQuery.isPending && activity === null;
+  const activityError = activity === null ? activityQuery.error : null;
+
+  const issueKey = `${environmentId}:${reference.ticketId}:${reference.linkedIssue.host}/${reference.linkedIssue.repository}#${reference.linkedIssue.number}`;
+  useLiveRefresh(detailQuery.refresh, { key: `issue:${issueKey}` });
+
+  const invalidate = useAtomCommand(ticketEnvironment.invalidateGitHubIssue, {
+    reportFailure: false,
+  });
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshFromHost = async () => {
+    setRefreshing(true);
+    try {
+      await invalidate({ environmentId, input: reference });
+    } finally {
+      setRefreshing(false);
+      detailQuery.refresh();
+      activityQuery.refresh();
+    }
+  };
+
+  const { copyToClipboard } = useCopyToClipboard({ target: "issue link" });
+  const openExternal = (raw: string) => {
+    const url = normalizeIssueExternalUrl(raw);
+    if (url !== null)
+      void readLocalApi()
+        ?.shell.openExternal(url)
+        .catch(() => undefined);
+  };
+
+  if (detail === null) {
+    const error =
+      detailQuery.error ??
+      (response === null ? null : "Issue preview unavailable on this environment.");
+    if (error !== null) {
+      return (
+        <div className="flex h-full min-h-0 w-full flex-col items-center justify-center bg-background">
+          <Empty>
+            <EmptyMedia variant="icon">
+              <CircleDotIcon />
+            </EmptyMedia>
+            <EmptyHeader>
+              <EmptyTitle>Issue unavailable</EmptyTitle>
+              <EmptyDescription>{error}</EmptyDescription>
+            </EmptyHeader>
+            <Button size="sm" variant="outline" onClick={() => detailQuery.refresh()}>
+              <RefreshCwIcon className="size-3.5" />
+              Retry
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                openExternal(
+                  `https://${reference.linkedIssue.host}/${reference.linkedIssue.repository}/issues/${reference.linkedIssue.number}`,
+                )
+              }
+            >
+              <ArrowUpRightIcon aria-hidden />
+              {reference.linkedIssue.host === "github.com"
+                ? "Open on GitHub"
+                : `Open on ${reference.linkedIssue.host}`}
+            </Button>
+          </Empty>
+        </div>
+      );
+    }
+    return <IssueDetailGhost />;
+  }
+
+  const shownComments = shown?.url === detail.url ? shown.count : COMMENT_PAGE;
+  const recentComments = detail.comments.slice(Math.max(0, detail.comments.length - shownComments));
+  const hiddenCommentCount = detail.comments.length - recentComments.length;
+  const visibleComments = commentOrder === "newest" ? recentComments.toReversed() : recentComments;
+  const StateIcon = detail.state === "open" ? CircleDotIcon : CheckCircle2Icon;
+
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col bg-background">
+      <header className="shrink-0 border-b border-border/60">
+        <div className="flex h-7 min-w-0 items-center gap-1 px-4 text-xs text-muted-foreground">
+          <Tooltip>
+            <TooltipTrigger
+              render={<span className="min-w-0 truncate font-medium">{detail.repository}</span>}
+            />
+            <TooltipPopup side="bottom">{detail.repository}</TooltipPopup>
+          </Tooltip>
+          <button
+            type="button"
+            className={cn(
+              "shrink-0 font-medium underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              detail.state === "open" ? "text-success" : "text-merged",
+            )}
+            aria-label={`Open issue #${detail.number} on its host`}
+            onClick={() => openExternal(detail.url)}
+          >
+            #{detail.number}
+          </button>
+
+          <div className="ml-auto flex shrink-0 items-center">
+            <Menu>
+              <MenuTrigger
+                render={
+                  <Button
+                    aria-label="More issue actions"
+                    className="size-6"
+                    size="icon-xs"
+                    variant="ghost-muted"
+                  />
+                }
+              >
+                <MoreHorizontalIcon className="size-4" />
+              </MenuTrigger>
+              <MenuPopup align="end" side="bottom" className="min-w-72">
+                <MenuItem disabled={refreshing} onClick={() => void refreshFromHost()}>
+                  <RefreshCwIcon className="size-3.5" />
+                  {refreshing ? "Refreshing..." : "Refresh"}
+                </MenuItem>
+                <IssueHandoffMenuItems detail={detail} environmentId={environmentId} />
+                <MenuSeparator />
+                <MenuItem onClick={() => openExternal(detail.url)}>
+                  <ArrowUpRightIcon className="size-3.5" />
+                  Open on GitHub
+                </MenuItem>
+                <MenuItem onClick={() => copyToClipboard(detail.url, undefined)}>
+                  <LinkIcon className="size-3.5" />
+                  Copy link
+                </MenuItem>
+                <MenuSeparator />
+                <MenuItem onClick={() => openExternal(detail.newIssueUrl)}>
+                  <PlusIcon className="size-3.5" />
+                  New issue
+                </MenuItem>
+              </MenuPopup>
+            </Menu>
+          </div>
+        </div>
+
+        <div className="min-w-0 px-4 pt-1 pb-4">
+          <div className="flex min-w-0 items-start gap-2">
+            <h1 className="min-w-0 flex-1 text-base leading-snug font-semibold text-foreground">
+              {detail.title}
+            </h1>
+            <Badge
+              variant={detail.state === "open" ? "success" : "secondary"}
+              size="sm"
+              className="shrink-0"
+            >
+              <StateIcon
+                aria-hidden
+                className={cn("size-3", detail.state === "closed" && "text-merged opacity-100")}
+              />
+              {detail.state === "open" ? "Open" : "Closed"}
+            </Badge>
+          </div>
+          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <SourceControlActorAvatar actor={detail.author} />
+            <span className="font-medium text-foreground">
+              {detail.author?.login ?? "Unknown author"}
+            </span>
+            <span>opened {formatRelativeTimeLabel(detail.createdAt)}</span>
+          </div>
+        </div>
+
+        <nav
+          aria-label="Issue tabs"
+          className="flex min-w-0 items-center gap-1 overflow-x-auto border-t border-border/60 px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {(["summary", "timeline"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={tab === value}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs transition-colors",
+                tab === value
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              onClick={() => setTab(value)}
+            >
+              {value === "summary" ? "Summary" : "Timeline"}
+            </button>
+          ))}
+          {tab === "timeline" ? (
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <span
+                className="inline-flex items-center gap-1 text-2xs text-muted-foreground"
+                aria-label={
+                  activityError
+                    ? "Issue activity unavailable"
+                    : activityPending
+                      ? "Loading issue activity"
+                      : `${activity?.items.length ?? 0} history entries`
+                }
+              >
+                <HistoryIcon aria-hidden className="size-3" />
+                {activityError ? "—" : activityPending ? "…" : (activity?.items.length ?? 0)}
+              </span>
+              <Button
+                aria-label={
+                  timelineOrder === "newest"
+                    ? "Show oldest activity first"
+                    : "Show newest activity first"
+                }
+                size="xs"
+                variant="ghost-muted"
+                onClick={() =>
+                  setTimelineOrder((value) => (value === "newest" ? "oldest" : "newest"))
+                }
+              >
+                <ArrowDownUpIcon aria-hidden className="size-3" />
+                {timelineOrder === "newest" ? "Newest first" : "Oldest first"}
+              </Button>
+            </div>
+          ) : null}
+        </nav>
+      </header>
+
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8">
+        {tab === "summary" ? (
+          <div>
+            <section aria-label="Issue metadata" className="px-4 py-3">
+              <MetaRow icon={<UserRoundIcon className="size-3.5" />} label="Assignees">
+                <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  {detail.assignees.length === 0 ? (
+                    <span className="text-muted-foreground">None</span>
+                  ) : (
+                    <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                      {detail.assignees.map((assignee) => (
+                        <span key={assignee.login} className="inline-flex items-center gap-1.5">
+                          <SourceControlActorAvatar actor={assignee} />
+                          <span>{assignee.login}</span>
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                  <IssueAssigneePicker
+                    environmentId={environmentId}
+                    reference={reference}
+                    onAssigned={() => {
+                      detailQuery.refresh();
+                      activityQuery.refresh();
+                    }}
+                  />
+                </span>
+              </MetaRow>
+              <MetaRow icon={<TagIcon className="size-3.5" />} label="Labels">
+                {detail.labels.length === 0 ? (
+                  <span className="text-muted-foreground">None</span>
+                ) : (
+                  <span className="flex min-w-0 flex-wrap items-center gap-1">
+                    {detail.labels.map((label) => (
+                      <TicketIssueLabel key={label.name} label={label} />
+                    ))}
+                  </span>
+                )}
+              </MetaRow>
+              <MetaRow icon={<FlagIcon className="size-3.5" />} label="Milestone">
+                <span className={cn(detail.milestone === null && "text-muted-foreground")}>
+                  {detail.milestone?.title ?? "None"}
+                </span>
+              </MetaRow>
+              <MetaRow icon={<MessageSquareIcon className="size-3.5" />} label="Comments">
+                {detail.commentCount === 1 ? "1 comment" : `${detail.commentCount} comments`}
+              </MetaRow>
+              <MetaRow icon={<FolderGit2Icon className="size-3.5" />} label="Project">
+                {detail.projectTitle}
+              </MetaRow>
+            </section>
+
+            <IssueSection title="Description">
+              {detail.body.trim().length > 0 ? (
+                <ChatMarkdown
+                  className="max-w-none text-sm"
+                  cwd={undefined}
+                  environmentId={environmentId}
+                  text={detail.body}
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground">No description provided.</p>
+              )}
+            </IssueSection>
+
+            <IssueSection
+              title="Comments"
+              count={detail.commentCount}
+              actions={
+                detail.comments.length > 1 ? (
+                  <Button
+                    size="xs"
+                    variant="ghost-muted"
+                    className="shrink-0"
+                    aria-label={
+                      commentOrder === "newest"
+                        ? "Show oldest comments first"
+                        : "Show newest comments first"
+                    }
+                    onClick={() =>
+                      setCommentOrder((value) => (value === "newest" ? "oldest" : "newest"))
+                    }
+                  >
+                    <ArrowDownUpIcon aria-hidden className="size-3" />
+                    {commentOrder === "newest" ? "Newest first" : "Oldest first"}
+                  </Button>
+                ) : null
+              }
+            >
+              {detail.commentsTruncated ? (
+                <p className="mb-2 rounded-md border border-warning/30 bg-warning/5 px-2 py-1.5 text-xs">
+                  This conversation is longer than this panel reads in one go. Open it on GitHub to
+                  read the rest.
+                </p>
+              ) : null}
+              {detail.comments.length === 0 ? (
+                <p className="py-2 text-xs text-muted-foreground">No comments yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {hiddenCommentCount > 0 ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() =>
+                        setShown({ url: detail.url, count: shownComments + COMMENT_PAGE })
+                      }
+                    >
+                      Show {Math.min(hiddenCommentCount, COMMENT_PAGE)} earlier{" "}
+                      {hiddenCommentCount === 1 ? "comment" : "comments"}
+                    </Button>
+                  ) : null}
+                  {visibleComments.map((comment) => (
+                    <IssueConversationCard
+                      key={comment.id}
+                      action="commented"
+                      actor={comment.author}
+                      body={comment.body}
+                      createdAt={comment.createdAt}
+                      environmentId={environmentId}
+                      url={comment.url}
+                      onOpen={openExternal}
+                    />
+                  ))}
+                </div>
+              )}
+            </IssueSection>
+          </div>
+        ) : activityPending ? (
+          <IssueTimelineGhost />
+        ) : activityError !== null ? (
+          <div className="flex min-h-56 flex-col items-center justify-center gap-2 px-4 py-10 text-center">
+            <p className="text-sm font-medium text-foreground">Could not load issue activity</p>
+            <p className="max-w-md text-xs text-muted-foreground">{activityError}</p>
+            <Button size="sm" variant="outline" onClick={activityQuery.refresh}>
+              <RefreshCwIcon aria-hidden className="size-3.5" />
+              Retry
+            </Button>
+          </div>
+        ) : activity !== null ? (
+          <IssueTimeline
+            activity={activity}
+            environmentId={environmentId}
+            order={timelineOrder}
+            onOpen={openExternal}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}

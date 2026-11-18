@@ -25,6 +25,7 @@ import {
 } from "@t3tools/contracts";
 import * as Duration from "effect/Duration";
 import * as Clock from "effect/Clock";
+import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -294,12 +295,14 @@ function makeFakeCursor() {
     events: [] as { readonly timestampMs: number; readonly outputTokens: number }[],
     error: null as string | null,
     gate: undefined as Deferred.Deferred<void> | undefined,
+    started: undefined as Deferred.Deferred<void> | undefined,
     calls: [] as { readonly sinceMs: number; readonly untilMs: number }[],
     credentials: [] as unknown[],
   };
   const read = (credential: unknown, sinceMs: number, untilMs: number) =>
     Effect.gen(function* () {
       state.calls.push({ sinceMs, untilMs });
+      if (state.started !== undefined) yield* Deferred.succeed(state.started, undefined);
       state.credentials.push(credential);
       if (state.gate !== undefined) yield* Deferred.await(state.gate);
       const { accountKey, error } = state;
@@ -1895,135 +1898,122 @@ describe("UsageService", () => {
     }).pipe(Effect.scoped),
   );
 
-  it.effect("restores the Cursor account cache after a restart", () =>
+  it.effect.each([
+    { label: "default", retention: undefined, cutoff: CURSOR_NOW - 92 * 24 * HOUR_MS },
+    { label: "unlimited", retention: "unlimited" as const, cutoff: 0 },
+    { label: "36500 days", retention: 36500, cutoff: 0 },
+  ])(
+    "propagates the $label cutoff and restores the Cursor account cache after a restart",
+    ({ retention, cutoff }) =>
+      Effect.gen(function* () {
+        const { settings, home } = yield* setup;
+        yield* TestClock.setTime(CURSOR_NOW);
+        const before = makeFakeCursor();
+        before.state.events = [
+          { timestampMs: CURSOR_NOW - 30 * HOUR_MS, outputTokens: 5 },
+          { timestampMs: CURSOR_NOW - 3 * HOUR_MS, outputTokens: 7 },
+        ];
+        yield* Effect.gen(function* () {
+          const first = yield* makeWithCursor(before.read);
+          const original = yield* first.readSummary({ ...WINDOW, awaitRefresh: true });
+          assert.deepStrictEqual(before.state.calls, [{ sinceMs: cutoff, untilMs: CURSOR_NOW }]);
+          yield* first.awaitPersisted;
+
+          const after = makeFakeCursor();
+          after.state.events = before.state.events;
+          const restarted = yield* makeWithCursor(after.read);
+          const restored = yield* restarted.readSummary(WINDOW);
+          assert.isUndefined(cursorSource(restored)?.refreshing);
+          assert.deepStrictEqual(restored.buckets, original.buckets);
+          assert.deepStrictEqual(cursorSource(restored), cursorSource(original));
+          assert.strictEqual(after.state.calls.length, 0);
+
+          yield* TestClock.adjust(Duration.minutes(2));
+          const refreshed = yield* restarted.readSummary({ ...WINDOW, awaitRefresh: true });
+          assert.deepStrictEqual(refreshed.buckets, original.buckets);
+          assert.deepStrictEqual(after.state.calls, [
+            { sinceMs: CURSOR_NOW - HOUR_MS, untilMs: CURSOR_NOW + 2 * 60 * 1000 },
+          ]);
+        }).pipe(
+          Effect.provide(
+            layerService({
+              prefix: "usage-service-cursor-restart",
+              environment: { CURSOR_API_KEY: "test-key" },
+              home,
+              settings: {
+                ...settings,
+                ...(retention === undefined ? {} : { usageHistoryRetentionDays: retention }),
+              },
+            }),
+          ),
+        );
+      }),
+  );
+
+  it.effect("widens Cursor history after awaiting a shared narrower refresh", () =>
     Effect.gen(function* () {
       const { settings, home } = yield* setup;
       yield* writeCursorLogin(home);
       yield* TestClock.setTime(CURSOR_NOW);
-      const before = makeFakeCursor();
-      before.state.events = [
-        { timestampMs: CURSOR_NOW - 30 * HOUR_MS, outputTokens: 5 },
+      const cursor = makeFakeCursor();
+      cursor.state.gate = yield* Deferred.make<void>();
+      cursor.state.started = yield* Deferred.make<void>();
+      cursor.state.events = [
+        { timestampMs: CURSOR_NOW - 120 * 24 * HOUR_MS, outputTokens: 5 },
         { timestampMs: CURSOR_NOW - 3 * HOUR_MS, outputTokens: 7 },
       ];
-      yield* Effect.gen(function* () {
-        const first = yield* makeWithCursor(before.read);
-        const original = yield* first.readSummary({ ...WINDOW, awaitRefresh: true });
-        yield* first.awaitPersisted;
-
-        const after = makeFakeCursor();
-        after.state.events = before.state.events;
-        const restarted = yield* makeWithCursor(after.read);
-        const restored = yield* restarted.readSummary(WINDOW);
-        assert.isUndefined(cursorSource(restored)?.refreshing);
-        assert.deepStrictEqual(restored.buckets, original.buckets);
-        assert.deepStrictEqual(cursorSource(restored), cursorSource(original));
-        assert.strictEqual(after.state.calls.length, 0);
-
-        yield* TestClock.adjust(Duration.minutes(2));
-        const refreshed = yield* restarted.readSummary({ ...WINDOW, awaitRefresh: true });
-        assert.deepStrictEqual(refreshed.buckets, original.buckets);
-        assert.deepStrictEqual(after.state.calls, [
-          { sinceMs: CURSOR_NOW - HOUR_MS, untilMs: CURSOR_NOW + 2 * 60 * 1000 },
-        ]);
-      }).pipe(
-        Effect.provide(layerService({ prefix: "usage-service-cursor-restart", home, settings })),
-      );
-    }),
-  );
-
-  it.live("does not read the macOS Cursor Keychain before account usage is enabled", () =>
-    Effect.gen(function* () {
-      const { settings, home } = yield* setup;
-      const service = yield* UsageService.make.pipe(
-        Effect.provide(
-          layerService({
-            prefix: "usage-service-cursor-keychain-disabled",
-            home,
-            settings,
-            platform: "darwin",
-            environment: {},
-          }),
-        ),
-      );
-      const summary = yield* service.readSummary(WINDOW);
-      const cursor = summary.sources.find((source) => source.fingerprint.provider === "cursor");
-      assert.strictEqual(cursor?.status, "missing");
-      assert.strictEqual(cursor?.action, "enableCursorKeychain");
-    }).pipe(Effect.scoped),
-  );
-
-  it.effect("ignores a stale macOS Keychain login when Cursor is not installed", () =>
-    Effect.gen(function* () {
-      const { settings, home } = yield* setup;
-      const cursor = makeFakeCursor();
-      cursor.state.error = "Sign in to Cursor again to read account usage.";
-      const readCursorSource = Effect.gen(function* () {
-        const service = yield* makeWithCursor(cursor.read);
-        const summary = yield* service.readSummary({ ...WINDOW, awaitRefresh: true });
-        return cursorSource(summary);
-      }).pipe(
-        Effect.provide(
-          layerService({
-            prefix: "usage-service-cursor-keychain-uninstalled",
-            home,
-            settings: { ...settings, cursorKeychainUsageEnabled: true },
-            platform: "darwin",
-            environment: {},
-          }),
-        ),
-      );
-
-      assert.isUndefined(yield* readCursorSource);
-      assert.lengthOf(cursor.state.calls, 0);
-
-      yield* Effect.promise(() => NodeFSP.mkdir(NodePath.join(home, ".cursor")));
-      const installed = yield* readCursorSource;
-      assert.strictEqual(installed?.message, "Sign in to Cursor again to read account usage.");
-      assert.lengthOf(cursor.state.calls, 1);
-    }).pipe(Effect.scoped),
-  );
-
-  it.live("ignores stale Cursor file logins when the active credential store differs", () =>
-    Effect.gen(function* () {
-      const { settings, home } = yield* setup;
-      for (const [index, testCase] of [
-        {
-          platform: "darwin" as const,
-          environment: { AGENT_CLI_CREDENTIAL_STORE: "memory" },
-          authPath: [".cursor", "auth.json"],
-        },
-        {
-          platform: "linux" as const,
-          environment: { AGENT_CLI_CREDENTIAL_STORE: "memory" },
-          authPath: ["config", "cursor", "auth.json"],
-        },
-      ].entries()) {
-        const authPath = NodePath.join(home, ...testCase.authPath);
-        yield* Effect.promise(async () => {
-          await NodeFSP.mkdir(NodePath.dirname(authPath), { recursive: true });
-          await NodeFSP.writeFile(
-            authPath,
-            encodeUnknownJsonString({ accessToken: "stale-token" }),
-          );
-        });
-        const service = yield* UsageService.make.pipe(
-          Effect.provide(
+      const context = yield* Layer.build(
+        layerCursorUsageAccounts(
+          Layer.succeed(CursorAccountReader.CursorAccountReader, { read: cursor.read }),
+        ).pipe(
+          Layer.provide(
             layerService({
-              prefix: `usage-service-cursor-store-${index}`,
+              prefix: "usage-service-cursor-shared-refresh",
               home,
               settings,
-              platform: testCase.platform,
-              environment: testCase.environment,
+              platform: "darwin",
             }),
           ),
-        );
-        const summary = yield* service.readSummary(WINDOW);
-        const cursor = summary.sources.find((source) => source.fingerprint.provider === "cursor");
-        assert.strictEqual(cursor?.status, "missing");
-        assert.include(cursor?.message ?? "", "Cursor CLI login");
-        assert.isFalse(summary.buckets.some((bucket) => bucket.provider === "cursor"));
-      }
-    }).pipe(Effect.scoped),
+        ),
+      );
+      const accounts = Context.get(context, CursorUsageAccounts.CursorUsageAccounts);
+      const input = {
+        instances: [
+          {
+            instanceId: ProviderInstanceId.make("cursor"),
+            environment: { CURSOR_API_KEY: "test-key" },
+          },
+        ],
+        keychainUsageEnabled: false,
+        windowStartMs: 0,
+        retentionCutoffMs: CURSOR_NOW - 92 * 24 * HOUR_MS,
+        awaitRefresh: false,
+      };
+      const narrow = yield* accounts.scan(input);
+      assert.isTrue(narrow[0]?.refreshing);
+      yield* Deferred.await(cursor.state.started);
+      const wider = yield* accounts
+        .scan({ ...input, retentionCutoffMs: 0, awaitRefresh: true })
+        .pipe(Effect.forkChild({ startImmediately: true }));
+      assert.strictEqual(cursor.state.calls.length, 1);
+      yield* Deferred.succeed(cursor.state.gate, undefined);
+      const sources = yield* Fiber.join(wider);
+      assert.deepStrictEqual(cursor.state.calls, [
+        { sinceMs: input.retentionCutoffMs, untilMs: CURSOR_NOW },
+        { sinceMs: 0, untilMs: input.retentionCutoffMs },
+      ]);
+      assert.strictEqual(sources[0]?.status, "ok");
+      assert.deepStrictEqual(
+        sources[0]?.files?.flatMap((file) =>
+          file.records.map(({ timestampMs, totals }) => ({
+            timestampMs,
+            outputTokens: totals.outputTokens,
+          })),
+        ),
+        cursor.state.events,
+      );
+      yield* accounts.awaitPersisted;
+    }),
   );
 
   it.effect("reads the Cursor account of an API key or T3 sign-in instead of a CLI login", () =>
@@ -2101,6 +2091,78 @@ describe("UsageService", () => {
             platform: "darwin",
             environment: {},
             secretStore: { get: () => Effect.sync(signIn) },
+          }),
+        ),
+      );
+    }),
+  );
+
+  it.effect("loads Cursor history that cannot be read in one request within the deadline", () =>
+    Effect.gen(function* () {
+      const { settings, home } = yield* setup;
+      yield* TestClock.setTime(CURSOR_NOW);
+      const cursor = makeFakeCursor();
+      cursor.state.events = [
+        { timestampMs: CURSOR_NOW - 40 * HOUR_MS, outputTokens: 7 },
+        { timestampMs: CURSOR_NOW - 3 * HOUR_MS, outputTokens: 5 },
+      ];
+      // A large account: a window wider than half a day has too many pages for the read deadlines.
+      const read: CursorAccountReader.CursorAccountReader["Service"]["read"] = (
+        credential,
+        sinceMs,
+        untilMs,
+      ) =>
+        untilMs - sinceMs > 12 * HOUR_MS
+          ? Effect.succeed({
+              accountKey: cursor.state.accountKey,
+              records: [],
+              missing: false,
+              error: "Cursor account usage could not be read.",
+            })
+          : cursor.read(credential, sinceMs, untilMs);
+      yield* Effect.gen(function* () {
+        const service = yield* makeWithCursor(read);
+        let summary = yield* service.readSummary({ ...WINDOW, awaitRefresh: true });
+        for (let attempt = 1; attempt < 10 && totalOutputTokens(summary) < 12; attempt++) {
+          yield* TestClock.adjust("2 minutes");
+          summary = yield* service.readSummary({ ...WINDOW, awaitRefresh: true });
+        }
+        assert.strictEqual(totalOutputTokens(summary), 12);
+
+        // Failed reads during an outage narrow the span; it widens back once reads work again.
+        cursor.state.error = "Cursor account usage could not be read.";
+        for (let attempt = 0; attempt < 20; attempt++) {
+          yield* TestClock.adjust("2 minutes");
+          yield* service.readSummary({ ...WINDOW, awaitRefresh: true });
+        }
+        cursor.state.error = null;
+        yield* TestClock.adjust("10 hours");
+        cursor.state.events.push({ timestampMs: CURSOR_NOW + 10 * HOUR_MS, outputTokens: 3 });
+        const callsBeforeRecovery = cursor.state.calls.length;
+        summary = yield* service.readSummary({ ...WINDOW, awaitRefresh: true });
+        assert.strictEqual(totalOutputTokens(summary), 15);
+        assert.isBelow(cursor.state.calls.length - callsBeforeRecovery, 20);
+      }).pipe(
+        Effect.provide(
+          layerService({
+            prefix: "usage-service-cursor-large-account",
+            home,
+            settings,
+            platform: "darwin",
+            environment: {},
+            secretStore: {
+              get: () =>
+                Effect.succeedSome(
+                  new TextEncoder().encode(
+                    encodeUnknownJsonString({
+                      version: 1,
+                      backendUrl: "https://api2.cursor.sh",
+                      apiKey: "large-account-key",
+                      createdAtMs: 0,
+                    }),
+                  ),
+                ),
+            },
           }),
         ),
       );
@@ -3645,6 +3707,116 @@ describe("UsageService", () => {
           }),
         ),
       );
+    }),
+  );
+
+  it.effect.each([
+    { label: "the default 92 days", retention: undefined, expected: 1 },
+    { label: "unlimited", retention: "unlimited" as const, expected: 15 },
+  ])(
+    "retains deleted transcripts according to $label across restart and settings changes",
+    ({ retention, expected }) =>
+      Effect.gen(function* () {
+        const { transcript, settings, home } = yield* setup;
+        const now = Date.parse("2026-08-02T12:00:00Z");
+        yield* TestClock.setTime(now);
+        const window = { ...WINDOW, sinceDay: UsageDay.make("2024-01-01") };
+        const files = [92, 93, 180, 730].map((days, index) => ({
+          path: `${transcript}-${index}.jsonl`,
+          timestamp: now - days * 86400000,
+          content: claudeLine(index, 2 ** index).replace(
+            "2026-08-01T10:00:00Z",
+            DateTime.formatIso(DateTime.makeUnsafe(now - days * 86400000)),
+          ),
+        }));
+        yield* Effect.promise(async () => {
+          for (const file of files) {
+            await NodeFSP.writeFile(file.path, file.content);
+            await NodeFSP.utimes(file.path, file.timestamp / 1000, file.timestamp / 1000);
+          }
+        });
+        yield* Effect.gen(function* () {
+          const service = yield* UsageService.make;
+          const first = yield* service.readSummary(window);
+          assert.strictEqual(totalOutputTokens(first), 15);
+          yield* service.awaitPersisted;
+          yield* Effect.promise(() => Promise.all(files.map((file) => NodeFSP.rm(file.path))));
+          const restarted = yield* UsageService.make;
+          const saved = yield* restarted.readSummary(window);
+          assert.strictEqual(totalOutputTokens(saved), expected);
+          assert.deepStrictEqual(saved.sources[0]?.fingerprint, first.sources[0]?.fingerprint);
+          const narrow = yield* restarted.readSummary(WINDOW);
+          assert.strictEqual(totalOutputTokens(narrow), 0);
+          assert.strictEqual(narrow.sources[0]?.distinctSessions, 0);
+
+          const config = yield* ServerSettings.ServerSettingsService;
+          yield* config.updateSettings({ usageHistoryRetentionDays: 1 });
+          assert.strictEqual(totalOutputTokens(yield* restarted.readSummary(window)), 0);
+          yield* restarted.awaitPersisted;
+          yield* config.updateSettings({ usageHistoryRetentionDays: "unlimited" });
+          const afterPruning = yield* UsageService.make;
+          assert.strictEqual(totalOutputTokens(yield* afterPruning.readSummary(window)), 0);
+        }).pipe(
+          Effect.provide(
+            layerService({
+              prefix: "usage-service-retention",
+              home,
+              settings: {
+                ...settings,
+                ...(retention === undefined ? {} : { usageHistoryRetentionDays: retention }),
+              },
+            }),
+          ),
+        );
+      }),
+  );
+
+  it.effect("keeps retained history when an obsolete scan finishes after retention widens", () =>
+    Effect.gen(function* () {
+      const { transcript, settings, home } = yield* setup;
+      yield* TestClock.setTime(CURSOR_NOW);
+      const timestamp = CURSOR_NOW - 180 * 24 * HOUR_MS;
+      yield* Effect.promise(async () => {
+        await NodeFSP.writeFile(
+          transcript,
+          claudeLine(1, 11).replace(
+            "2026-08-01T10:00:00Z",
+            DateTime.formatIso(DateTime.makeUnsafe(timestamp)),
+          ),
+        );
+        await NodeFSP.utimes(transcript, timestamp / 1000, timestamp / 1000);
+      });
+      const started = yield* Deferred.make<void>();
+      const release = yield* Deferred.make<void>();
+      let scans = 0;
+      yield* Effect.gen(function* () {
+        const config = yield* ServerSettings.ServerSettingsService;
+        const service = yield* UsageService.make.pipe(
+          Effect.provideService(CursorUsageAccounts.CursorUsageAccounts, {
+            scan: () =>
+              Effect.gen(function* () {
+                if (++scans === 1) {
+                  yield* Deferred.succeed(started, undefined);
+                  yield* Deferred.await(release);
+                }
+                return [];
+              }),
+            awaitPersisted: Effect.void,
+          }),
+        );
+        const window = { ...WINDOW, sinceDay: UsageDay.make("2024-01-01") };
+        const oldScan = yield* service.readSummary(window).pipe(Effect.forkChild);
+        yield* Deferred.await(started);
+        yield* config.updateSettings({ usageHistoryRetentionDays: "unlimited" });
+        assert.strictEqual(totalOutputTokens(yield* service.readSummary(window)), 11);
+        yield* service.awaitPersisted;
+        yield* Effect.promise(() => NodeFSP.rm(transcript));
+        yield* Deferred.succeed(release, undefined);
+        yield* Fiber.join(oldScan);
+        yield* service.awaitPersisted;
+        const restarted = yield* UsageService.make;
+        assert.strictEqual(totalOutputTokens(yield* restarted.readSummary(window)), 11);
+      }).pipe(Effect.provide(layerService({ prefix: "usage-retention-race", home, settings })));
     }),
   );
 

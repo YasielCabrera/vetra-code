@@ -1,9 +1,9 @@
-import type { IssueDetail } from "@t3tools/contracts";
+import type { TicketIssueDetail } from "@t3tools/contracts";
 
 import type { ReviewCommentContext } from "~/reviewCommentContext";
 
 type IssueHandoffInput = Pick<
-  IssueDetail,
+  TicketIssueDetail,
   | "assignees"
   | "author"
   | "body"

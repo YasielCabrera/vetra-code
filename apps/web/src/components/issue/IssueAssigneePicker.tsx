@@ -1,7 +1,7 @@
 /** Assigning an issue from the same compact people picker used for pull-request reviewers. */
 import type {
   EnvironmentId,
-  IssueAssigneeCandidate,
+  TicketIssueAssigneeCandidate,
   TicketGitHubIssueRef,
 } from "@t3tools/contracts";
 import { CheckIcon, UserPlusIcon } from "lucide-react";
@@ -18,9 +18,9 @@ import { Input } from "../ui/input";
 import { Menu, MenuPopup, MenuTrigger } from "../ui/menu";
 import { toastManager } from "../ui/toast";
 
-const EMPTY_ASSIGNEE_CANDIDATES: ReadonlyArray<IssueAssigneeCandidate> = [];
+const EMPTY_ASSIGNEE_CANDIDATES: ReadonlyArray<TicketIssueAssigneeCandidate> = [];
 
-function matches(candidate: IssueAssigneeCandidate, query: string): boolean {
+function matches(candidate: TicketIssueAssigneeCandidate, query: string): boolean {
   const needle = query.trim().toLowerCase();
   return (
     needle.length === 0 ||
@@ -69,7 +69,7 @@ export function IssueAssigneePicker({
     [allCandidates, query],
   );
 
-  const toggle = async (candidate: IssueAssigneeCandidate) => {
+  const toggle = async (candidate: TicketIssueAssigneeCandidate) => {
     if (!canAssign || pending !== null) return;
     setPending(candidate.id);
     const assigned = !candidate.isAssigned;

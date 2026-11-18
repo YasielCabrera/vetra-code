@@ -4,6 +4,7 @@ import {
   type AssistantCitation,
   type ScopedThreadRef,
 } from "@t3tools/contracts";
+import { useGT } from "gt-react";
 import { QuoteIcon, SquareKanbanIcon } from "lucide-react";
 import { use } from "react";
 import {
@@ -24,6 +25,7 @@ export function AssistantSelectionToolbar({
   onCite: (citation: AssistantCitation, sourceAnchor: AssistantCitationSourceAnchor) => boolean;
   onCreateTicket?: ((citation: AssistantCitation) => void) | undefined;
 }) {
+  const gt = useGT();
   const background = use(BackgroundThreadContext);
   const capture = (selection: Selection | null, viewport: HTMLElement) => {
     const captured = captureAssistantTextSelection(viewport, selection);
@@ -52,8 +54,10 @@ export function AssistantSelectionToolbar({
         const tooLong = citation.text.length > ASSISTANT_CITATION_MAX_TEXT_LENGTH;
         return [
           {
-            label: tooLong ? "Shorten selection" : "Cite",
-            ariaLabel: tooLong ? "Selection is too long to cite" : "Cite selection in composer",
+            label: tooLong ? gt("Shorten selection") : gt("Cite"),
+            ariaLabel: tooLong
+              ? gt("Selection is too long to cite")
+              : gt("Cite selection in composer"),
             icon: QuoteIcon,
             disabled: tooLong,
             run: () => !tooLong && onCite(citation, sourceAnchor),
@@ -61,8 +65,8 @@ export function AssistantSelectionToolbar({
           ...(onCreateTicket && !tooLong
             ? [
                 {
-                  label: "Create ticket",
-                  ariaLabel: "Create a ticket from the selection",
+                  label: gt("Create ticket"),
+                  ariaLabel: gt("Create a ticket from the selection"),
                   icon: SquareKanbanIcon,
                   run: () => {
                     onCreateTicket(citation);

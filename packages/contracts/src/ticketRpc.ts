@@ -3,7 +3,7 @@ import * as Struct from "effect/Struct";
 import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
 
-import { IssueActivity, IssueActor, IssueAssigneeCandidateList, IssueDetail } from "./issue.ts";
+import { TicketIssueActivity, TicketIssueActor, TicketIssueAssigneeCandidateList, TicketIssueDetail } from "./ticketIssue.ts";
 import { ProjectId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { EnvironmentAuthorizationError } from "./auth.ts";
 import {
@@ -76,10 +76,10 @@ export type TicketGitHubIssueAssigneeChangeInput = typeof TicketGitHubIssueAssig
 export const TicketGitHubIssueDetail = Schema.Struct({
   title: Schema.String,
   body: Schema.String,
-  assignees: Schema.Array(IssueActor),
-  comments: IssueDetail.fields.comments,
+  assignees: Schema.Array(TicketIssueActor),
+  comments: TicketIssueDetail.fields.comments,
   preview: Schema.optional(
-    IssueDetail.mapFields(Struct.omit(["title", "body", "assignees", "comments"])),
+    TicketIssueDetail.mapFields(Struct.omit(["title", "body", "assignees", "comments"])),
   ),
 });
 export type TicketGitHubIssueDetail = typeof TicketGitHubIssueDetail.Type;
@@ -87,9 +87,9 @@ export const TicketIssueLinkCandidates = Schema.Struct({
   entries: Schema.Array(
     Schema.Struct({
       ...TicketGitHubRef.fields,
-      title: IssueDetail.fields.title,
-      state: IssueDetail.fields.state,
-      url: IssueDetail.fields.url,
+      title: TicketIssueDetail.fields.title,
+      state: TicketIssueDetail.fields.state,
+      url: TicketIssueDetail.fields.url,
     }),
   ),
   errors: Schema.Array(
@@ -283,12 +283,12 @@ const WsTicketGitHubIssueDetailRpc = Rpc.make(TICKET_WS_METHODS.ticketsGitHubIss
 });
 const WsTicketGitHubIssueActivityRpc = Rpc.make(TICKET_WS_METHODS.ticketsGitHubIssueActivity, {
   payload: TicketGitHubIssueRef,
-  success: IssueActivity,
+  success: TicketIssueActivity,
   error: TicketRpcError,
 });
 const WsTicketGitHubIssueAssigneeCandidatesRpc = Rpc.make(
   TICKET_WS_METHODS.ticketsGitHubIssueAssigneeCandidates,
-  { payload: TicketGitHubIssueRef, success: IssueAssigneeCandidateList, error: TicketRpcError },
+  { payload: TicketGitHubIssueRef, success: TicketIssueAssigneeCandidateList, error: TicketRpcError },
 );
 const WsTicketGitHubIssueSetAssigneesRpc = Rpc.make(
   TICKET_WS_METHODS.ticketsGitHubIssueSetAssignees,

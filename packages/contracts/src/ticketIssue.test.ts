@@ -1,22 +1,15 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
-import { IssueActivity } from "./issue.ts";
+import { TicketIssueActivity } from "./ticketIssue.ts";
 import { WS_METHODS, WsRpcGroup } from "./rpc.ts";
 
 describe("issue RPC registration", () => {
-  it("serves ticket workflows without the standalone Issues API", () => {
+  it("serves the ticket workflows alongside the standalone Issues API", () => {
     for (const method of [
-      "issues.list",
-      "issues.detail",
-      "issues.activity",
-      "issues.assigneeCandidates",
-      "issues.setAssignees",
-      "issues.invalidate",
-    ]) {
-      expect(WsRpcGroup.requests.has(method)).toBe(false);
-    }
-    for (const method of [
+      WS_METHODS.issuesList,
+      WS_METHODS.issuesDetail,
+      WS_METHODS.issueTrackersList,
       WS_METHODS.ticketsIssueLinkCandidates,
       WS_METHODS.ticketsGitHubIssueDetail,
       WS_METHODS.ticketsGitHubIssueActivity,
@@ -30,7 +23,7 @@ describe("issue RPC registration", () => {
   });
 });
 
-describe("IssueActivity", () => {
+describe("TicketIssueActivity", () => {
   it("round-trips comments and host events through the RPC JSON codec", () => {
     const activity = {
       items: [
@@ -62,7 +55,7 @@ describe("IssueActivity", () => {
       ],
       truncated: false,
     };
-    const codec = Schema.toCodecJson(IssueActivity);
+    const codec = Schema.toCodecJson(TicketIssueActivity);
 
     expect(Schema.decodeSync(codec)(Schema.encodeUnknownSync(codec)(activity))).toStrictEqual(
       activity,
