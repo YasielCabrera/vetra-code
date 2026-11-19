@@ -70,9 +70,8 @@ describe("codexExecLaunchArgs", () => {
   });
 });
 
-describe("codex exec and mcp list launch args", () => {
-  const launchArgs =
-    "--strict-config --oss --local-provider ollama --profile local -p=work --listen off --enable foo";
+describe.each(["", "="])("codex exec and mcp list launch args with -p%swork", (separator) => {
+  const launchArgs = `--strict-config --oss --local-provider ollama --profile local -p${separator}work -c${separator}model_provider=ollama --listen off --enable foo`;
 
   it("keeps the local model provider flags for codex exec", () => {
     NodeAssert.deepStrictEqual(codexExecLaunchArgs(launchArgs), [
@@ -83,6 +82,7 @@ describe("codex exec and mcp list launch args", () => {
       "--profile",
       "local",
       "-p=work",
+      "-c=model_provider=ollama",
       "--enable",
       "foo",
     ]);
@@ -93,6 +93,7 @@ describe("codex exec and mcp list launch args", () => {
       "--profile",
       "local",
       "-p=work",
+      "-c=model_provider=ollama",
       "--enable",
       "foo",
     ]);

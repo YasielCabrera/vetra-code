@@ -11,6 +11,7 @@ import {
   AuthPreviewOperateScope,
   AuthProvidersManageScope,
   AuthRelayReadScope,
+  AuthRelayConfigureScope,
   AuthRelayWriteScope,
   AuthSettingsWriteScope,
   AuthSourceControlWriteScope,
@@ -103,7 +104,14 @@ export const AUTH_SCOPE_OPTIONS: ReadonlyArray<{
   {
     scope: AuthRelayWriteScope,
     title: msg("Manage relay"),
-    description: msg("Change managed tunnel connectivity."),
+    description: msg("Update relay preferences or unlink Vetra Connect."),
+  },
+  {
+    scope: AuthRelayConfigureScope,
+    title: msg("Configure relay (admin)"),
+    description: msg(
+      "Set up or replace Vetra Connect, including its trusted pairing credential issuer.",
+    ),
   },
 ];
 

@@ -1,15 +1,18 @@
-import { ASSISTANT_CITATION_CONTEXT_LENGTH, type AssistantCitation } from "@t3tools/contracts";
-import { matchQuote, normalizeWhitespace, searchText } from "@t3tools/shared/quoteMatch";
+import { type AssistantCitation } from "@t3tools/contracts";
+import { matchQuote, searchText } from "@t3tools/shared/quoteMatch";
 
 import { mathWrapperOf } from "../markdown-clipboard";
 
-export type AssistantTextSelector = {
-  readonly text: string;
-  readonly start: number;
-  readonly end: number;
-  readonly prefix: string;
-  readonly suffix: string;
-};
+export {
+  createAssistantTextSelector,
+  findAssistantCitationText,
+} from "@t3tools/shared/assistantCitations";
+import {
+  createAssistantTextSelector,
+  splitsSurrogatePair,
+  type AssistantTextSelector,
+} from "@t3tools/shared/assistantCitations";
+export type { AssistantTextSelector } from "@t3tools/shared/assistantCitations";
 
 export type AssistantCitationSourceAnchor = {
   source: HTMLElement;
@@ -39,40 +42,6 @@ const CONTROL_SELECTOR = "button, input, textarea, select, [role=button], [conte
 const EXCLUDED_SELECTOR = `${CONTROL_SELECTOR}, [hidden], [aria-hidden=true], script, style, template, noscript, svg`;
 const BLOCK_SELECTOR =
   "address, article, aside, blockquote, dd, div, dl, dt, figcaption, figure, footer, h1, h2, h3, h4, h5, h6, header, hr, li, main, nav, ol, p, pre, section, table, td, th, tr, ul";
-
-function splitsSurrogatePair(text: string, offset: number): boolean {
-  const before = text.charCodeAt(offset - 1);
-  const after = text.charCodeAt(offset);
-  return before >= 0xd800 && before <= 0xdbff && after >= 0xdc00 && after <= 0xdfff;
-}
-
-export function createAssistantTextSelector(
-  text: string,
-  rawStart: number,
-  rawEnd: number,
-): AssistantTextSelector | null {
-  const quote = text.slice(rawStart, rawEnd);
-  if (quote.trim().length === 0) return null;
-
-  const normalized = normalizeWhitespace(text);
-  let start = normalizeWhitespace(text.slice(0, rawStart)).length;
-  if (rawStart > 0 && /\s/.test(text[rawStart - 1]!) && /\s/.test(text[rawStart]!)) {
-    start -= 1;
-  }
-  const end = normalizeWhitespace(text.slice(0, rawEnd)).length;
-  let prefixStart = Math.max(0, start - ASSISTANT_CITATION_CONTEXT_LENGTH);
-  let suffixEnd = Math.min(normalized.length, end + ASSISTANT_CITATION_CONTEXT_LENGTH);
-  // A split pair becomes a replacement character when the context enters a URL.
-  if (splitsSurrogatePair(normalized, prefixStart)) prefixStart += 1;
-  if (splitsSurrogatePair(normalized, suffixEnd)) suffixEnd -= 1;
-  return {
-    text: quote,
-    start,
-    end,
-    prefix: normalized.slice(prefixStart, start),
-    suffix: normalized.slice(end, suffixEnd),
-  };
-}
 
 /** A text node, or a whole rendered formula standing for its TeX. */
 type TextChunk = { node: Text | Element; start: number; end: number };

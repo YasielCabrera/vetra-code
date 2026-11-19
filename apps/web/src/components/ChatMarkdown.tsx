@@ -169,6 +169,8 @@ import { cn } from "../lib/utils";
 import { resolveRemoteOpenState, useRemoteOpenResolution } from "../remoteOpen";
 import { useRightPanelStore } from "../rightPanelStore";
 import { useOpenIssueLink } from "../lib/openIssueLink";
+import { issueTrackerEnvironment } from "../state/issueTrackers";
+import { useEnvironmentQuery } from "../state/query";
 import { readThreadShell, useProjects } from "../state/entities";
 import { serverEnvironment } from "../state/server";
 import { shellEnvironment } from "../state/shell";
@@ -193,6 +195,10 @@ import {
   workspaceLinkLookupQuery,
 } from "@t3tools/client-runtime/workspace-basename-lookup";
 import { resolvePullRequestPreviewTarget } from "@t3tools/client-runtime/change-request-links";
+import {
+  mayContainStandaloneIssueLink,
+  resolveIssueLinkTarget,
+} from "@t3tools/client-runtime/issue-links";
 import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 import { useOpenChangeRequestLink } from "~/lib/openPullRequestLink";
 import { textDirection } from "~/textDirection";
@@ -208,6 +214,7 @@ import {
 } from "../browser/openFileInPreview";
 import { resolveLinkTarget } from "../browser/browserLinkTarget";
 import { PullRequestLinkPreview } from "./pullRequest/PullRequestLinkPreview";
+import { IssueLinkPreview, IssueLinkPreviewFallback } from "./issue/IssueLinkPreview";
 import { MarkdownCodeBlock, SuspenseShikiCodeBlock } from "./chat/MarkdownCodeBlock";
 import { createMarkdownRenderer, type MarkdownUrlTransform } from "./chat/markdownRenderer";
 import { splitMarkdownBlocks } from "./chat/markdownStreamBlocks";
@@ -491,6 +498,7 @@ type MarkdownServerConfigFields = ReturnType<typeof markdownServerConfigFields>;
 function markdownServerConfigFields(config: ServerConfig | null) {
   return {
     pullRequestsEnabled: config !== null,
+    issuesEnabled: config?.environment.capabilities.issues === true,
     isMacOS: config?.environment.platform.os === "darwin",
     availableEditors: config?.availableEditors ?? NO_MARKDOWN_EDITORS,
     revealInFileManager:
@@ -506,6 +514,7 @@ function markdownServerConfigFieldsEqual(
 ): boolean {
   return (
     previous.pullRequestsEnabled === next.pullRequestsEnabled &&
+    previous.issuesEnabled === next.issuesEnabled &&
     previous.isMacOS === next.isMacOS &&
     previous.revealInFileManager === next.revealInFileManager &&
     previous.availableEditors.length === next.availableEditors.length &&
@@ -711,9 +720,8 @@ function useChatMarkdownState({
       },
     );
   };
-  const { pullRequestsEnabled, availableEditors, revealInFileManager, isMacOS } = useAtomValue(
-    markdownServerConfigFieldsAtom(environmentId),
-  );
+  const { pullRequestsEnabled, issuesEnabled, availableEditors, revealInFileManager, isMacOS } =
+    useAtomValue(markdownServerConfigFieldsAtom(environmentId));
   const revealInFileManagerLabel =
     revealInFileManager === undefined
       ? undefined
@@ -723,6 +731,14 @@ function useChatMarkdownState({
         ? revealInFileExplorerLabelForKind(revealInFileManager, messages)
         : revealInFileExplorerLabelForOs(revealInFileManager, messages);
   const projects = useProjects();
+  const issueProjects = projects.filter((project) => project.environmentId === environmentId);
+  // Only text naming a standalone tracker asks for its bindings, whose read probes the tracker.
+  const issueTrackers =
+    useEnvironmentQuery(
+      issuesEnabled && environmentId !== null && mayContainStandaloneIssueLink(text)
+        ? issueTrackerEnvironment.connections({ environmentId, input: {} })
+        : null,
+    ).data ?? undefined;
   const [preferredEditor] = usePreferredEditor(availableEditors);
   const preferredEditorMenuLabel = openInEditorMenuLabel(preferredEditor, messages);
   const openInPreferredEditor = useOpenInPreferredEditor(environmentId, availableEditors, cwd);
@@ -1074,10 +1090,13 @@ function useChatMarkdownState({
     openExternalLinkInPreview,
     openMarkdownMedia,
     projects,
+    issueProjects,
+    issueTrackers,
     linkedThreadPullRequestFor,
     resolveThreadPullRequest,
     resolvedTheme,
     pullRequestsEnabled,
+    issuesEnabled,
     skills,
     threadRef,
     updateThreadPullRequestLink,
@@ -1248,9 +1267,12 @@ const CHAT_MARKDOWN_COMPONENTS = {
       linkTargetPreference,
       openExternalLinkInPreview,
       projects,
+      issueProjects,
+      issueTrackers,
       linkedThreadPullRequestFor,
       resolveThreadPullRequest,
       pullRequestsEnabled,
+      issuesEnabled,
       updateThreadPullRequestLink,
       fileLinkChip,
       renderContextReference,
@@ -1338,6 +1360,18 @@ const CHAT_MARKDOWN_COMPONENTS = {
             url: pullRequestCandidateUrl,
           })
         : null;
+      const issueTarget =
+        issuesEnabled && environmentId !== null && href
+          ? resolveIssueLinkTarget({
+              url: href,
+              projects: issueProjects,
+              trackers: issueTrackers,
+            })
+          : null;
+      const issuePreviewTarget =
+        issueTarget === null || environmentId === null
+          ? null
+          : { environmentId, input: issueTarget.ref };
       const isSameDocumentLink = href?.startsWith("#") ?? false;
       const onClick = props.onClick;
       const canOpenInPreview =
@@ -1383,7 +1417,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
             if (
               !href ||
               openChangeRequestLink(event, href, undefined, environmentId ?? undefined) ||
-              openIssueLink(event, href, environmentId ?? undefined)
+              openIssueLink(event, href, environmentId ?? undefined, issueTrackers)
             ) {
               return;
             }
@@ -1524,11 +1558,20 @@ const CHAT_MARKDOWN_COMPONENTS = {
                 },
                 url,
                 environmentId ?? undefined,
+                issueTrackers,
               );
               if (!opened) await openDeferredMarkdownLink(url);
             }}
+            fallback={
+              issuePreviewTarget === null ? undefined : (
+                <IssueLinkPreviewFallback originalUrl={href} target={issuePreviewTarget} />
+              )
+            }
           />
         );
+      }
+      if (issuePreviewTarget !== null) {
+        return <IssueLinkPreview link={link} originalUrl={href} target={issuePreviewTarget} />;
       }
       return (
         <Tooltip>

@@ -153,7 +153,15 @@ export type PreparedHttpAuthorization =
       readonly _tag: "Dpop";
       readonly accessToken: string;
       readonly expiresAtEpochMs: number;
+      /** Set when the token renews directly with the host instead of through Vetra Connect. */
+      readonly directConnection?: DirectDpopConnection;
     };
+
+export interface DirectDpopConnection {
+  /** The credential store key. */
+  readonly connectionId: string;
+  readonly httpBaseUrl: string;
+}
 
 export interface PreparedConnection {
   readonly environmentId: EnvironmentId;

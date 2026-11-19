@@ -49,6 +49,7 @@
   "5966632c90a997d3": "Vetra Code could not save this approval, so the page stays blocked. Check that the disk is not full and its data folder is writable, then try again.",
   "a0315d43e8e5be7e": "허용",
   "2ec823ca24387055": "차단",
+  "709219ff9ff49a4f": "{origin}에서 위치 정보에 접근하려고 합니다",
   "8fc0b116123fb50b": "{origin}에서 클립보드에 복사된 텍스트와 이미지를 보려고 합니다",
   "c0f756221736393f": "미리 보기 · {title}",
   "6994444f4fec4070": "브라우저 미리 보기",

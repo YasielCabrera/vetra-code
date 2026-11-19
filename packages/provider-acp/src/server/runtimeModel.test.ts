@@ -1376,6 +1376,7 @@ describe("extractMcpToolCallIdentity", () => {
     });
     const merged = mergeToolCallState(created, completed);
 
+    expect(merged.title).toBe(created.title);
     expect(extractMcpToolCallIdentity(merged)).toEqual({
       server: "vetra-code",
       tool: "orchestrator_capabilities",
@@ -1395,6 +1396,10 @@ describe("extractMcpToolCallIdentity", () => {
       // Kimi retitles with partial JSON and middle-truncates args over 50 characters.
       'delegate_task: {"mode":"async","task":"Ru',
       'delegate_task: {"mode":"async","task":"Ru...cho child-result-42\'"}',
+      // Antigravity: "Running <tool>" before agy 1.5.8, "Run mcp_<server>_<tool>" since, "?" on prompts.
+      "Running delegate_task",
+      "Run mcp_vetra-code_delegate_task",
+      "Run mcp_vetra-code_delegate_task?",
     ]) {
       const toolCall = toolCallFromUpdate({
         sessionUpdate: "tool_call",
@@ -1616,7 +1621,12 @@ describe("extractMcpToolCallIdentity", () => {
   });
 
   it("does not brand path-like or unknown-tool titles", () => {
-    for (const title of ["vetra-code/README.md", "vetra-code_not_a_real_tool"]) {
+    for (const title of [
+      "vetra-code/README.md",
+      "vetra-code_not_a_real_tool",
+      "Run mcp_vetra-code_not_a_real_tool",
+      "Run manage_task",
+    ]) {
       const toolCall = toolCallFromUpdate({
         sessionUpdate: "tool_call",
         toolCallId: "path-1",
