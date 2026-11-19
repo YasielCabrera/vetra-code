@@ -15,11 +15,6 @@ import type {
   AnyProviderDriver,
   ProviderUsageReaderEnv,
 } from "@t3tools/provider-core/server/driver";
-import {
-  CursorDriverWithSubscriptionUsage,
-  GrokDriverWithSubscriptionUsage,
-  OpenCodeDriverWithSubscriptionUsage,
-} from "./usage/ProviderPackageSubscriptionUsage.ts";
 import { KiroDriver, type KiroDriverEnv } from "@t3tools/provider-kiro/server";
 
 export type BuiltInDriversEnv =
@@ -38,10 +33,10 @@ export type BuiltInDriversEnv =
 export const BUILT_IN_DRIVERS: ReadonlyArray<AnyProviderDriver<BuiltInDriversEnv>> = [
   CodexDriver,
   ClaudeDriver,
-  CursorDriverWithSubscriptionUsage,
-  GrokDriverWithSubscriptionUsage,
-  OpenCodeDriverWithSubscriptionUsage,
+  CursorDriver,
+  GrokDriver,
   FxDriver,
+  OpenCodeDriver,
   AntigravityDriver,
   KiroDriver,
   PiDriver,

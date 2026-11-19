@@ -30,15 +30,6 @@ export function useAvailableSettingsSearchItems() {
       }),
     ) === true;
   // Any machine that offers it; the row then shows for a settings scope where all selected ones do.
-  const hasMacProviderSettingsEnvironment =
-    environments.some(
-      (environment) =>
-        environment.serverConfig?.environment.platform.os === "darwin" &&
-        isProviderSettingsEnvironmentAvailable({
-          connectionPhase: environment.connection.phase,
-          hasServerConfig: true,
-        }),
-    ) === true;
   const hasFastWorktreeCheckoutEnvironment =
     environments.some(
       (environment) =>
@@ -76,7 +67,6 @@ export function useAvailableSettingsSearchItems() {
     hasCloudPublicConfig: cloudPublicConfig,
     hasEnvironment,
     hasProviderSettingsEnvironment,
-    hasMacProviderSettingsEnvironment,
     canManageLocalBackend,
     isWslSettingsRowVisible: wslSettingsRowVisible,
     hasThreadAutoSettlement,

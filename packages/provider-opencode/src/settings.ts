@@ -50,23 +50,13 @@ export const OpenCodeSettings = makeProviderSettingsSchema(
         },
       }),
     ),
-    goWorkspaceId: Schema.optionalKey(TrimmedString).pipe(
-      Schema.annotateKey({
-        title: "OpenCode Go workspace",
-        description: "Optional wrk_… workspace override for OpenCode Go subscription limits.",
-        providerSettingsForm: {
-          placeholder: "wrk_…",
-          clearWhenEmpty: "omit",
-        },
-      }),
-    ),
     customModels: Schema.Array(CustomModelSetting).pipe(
       Schema.withDecodingDefault(Effect.succeed([])),
       Schema.annotateKey({ providerSettingsForm: { hidden: true } }),
     ),
   },
   {
-    order: ["binaryPath", "serverUrl", "serverPassword", "goWorkspaceId"],
+    order: ["binaryPath", "serverUrl", "serverPassword"],
   },
 );
 export type OpenCodeSettings = typeof OpenCodeSettings.Type;

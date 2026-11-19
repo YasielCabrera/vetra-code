@@ -56,9 +56,6 @@ const clientSettings: ClientSettings = {
   showSkillsInSlashMenu: false,
   persistComposerContextStrip: true,
   providerModelPreferences: {},
-  providerUsageAlertTransitions: {},
-  providerUsageAlertsEnabled: true,
-  providerUsageRefreshIntervalMinutes: 5,
   sidebarProjectGroupingMode: "repository_path",
   sidebarProjectGroupingOverrides: {
     "environment-1:/tmp/project-a": "separate",

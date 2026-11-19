@@ -12,7 +12,6 @@ const repoRoot = NodePath.resolve(
 
 // Fork features retain manual memoization until their compiler migration.
 const manualMemoizationFiles = new Set([
-  "apps/web/src/components/ProviderSubscriptionUsageMonitor.tsx",
   "apps/web/src/components/files/useFileLineDecorations.ts",
   "apps/web/src/components/issue/IssueDetailPanel.tsx",
   "apps/web/src/components/issue/IssueHandoffActions.tsx",

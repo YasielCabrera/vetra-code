@@ -32,13 +32,9 @@ databases, including Vetra-managed profiles. Set `OPENCODE_DATA_DIR` or `ANTIGRA
 server to read a different data directory; comma-separated paths read multiple directories.
 
 Cursor reads account usage from Cursor's API for the account you signed in with in Vetra Code or set as
-`CURSOR_API_KEY`, or otherwise the CLI login saved on the server.
-This includes headless Vetra Code sessions and desktop usage across machines; the same account counts
-once across connected environments. Without any of these, Vetra Code shows a
-notice instead of incomplete local totals. Vetra Code does not estimate missing tokens from conversation text.
-On macOS without a Vetra Code sign-in, choose **Enable Cursor usage** on Usage to allow Vetra Code to read your
-existing CLI login from Keychain. You can turn it off in **Settings → Providers → Usage providers**. macOS may ask
-you to allow access on the server Mac.
+`CURSOR_API_KEY`. This includes headless Vetra Code sessions and desktop usage across machines; the same
+account counts once across connected environments. Vetra Code does not estimate missing tokens from
+conversation text.
 
 Usage includes each configured account's history, including disabled accounts. Custom homes follow
 the account's home setting or its `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, or `GROK_HOME` environment
@@ -168,10 +164,9 @@ in OpenCode with an API key. A Console browser sign-in alone does not report the
 your Go API key as `OPENCODE_API_KEY` in the OpenCode instance's **Environment variables**, then
 refresh provider status. Cursor reports
 its monthly allowance, including separate Auto and API usage, for `CURSOR_AUTH_TOKEN` when it is set,
-otherwise for the account you signed in with in Vetra Code or set as `CURSOR_API_KEY`, otherwise for the CLI
-login. On macOS, this includes the default Keychain login after you enable Cursor usage. Sign-in, API key,
-and Keychain login report limits only with Cursor's default API endpoint. If you configure a custom
-Cursor endpoint, use an explicit token or file-based CLI login for limits.
+otherwise for the account you signed in with in Vetra Code or set as `CURSOR_API_KEY`.
+Sign-in and API keys report limits only with Cursor's default API endpoint. If you configure a custom
+Cursor endpoint, use an explicit `CURSOR_AUTH_TOKEN` for limits.
 
 Grok reports the remaining subscription allowance and reset time for its current billing period
 after signing in with `grok login`. Explicit `XAI_API_KEY` connections and custom authentication
@@ -195,39 +190,6 @@ account and choose **Use reset** to redeem one. No hub plugin is required.
 This connection supplies usage information; configure
 the provider separately to send agent requests through the hub. Remove the hub from the same
 settings section when you no longer need it.
-
-## Subscription usage in threads
-
-On wider thread views, a small ring in the bottom-left corner shows the remaining subscription
-allowance for the exact provider instance selected in the composer. Codex, Claude, Cursor, Grok,
-and OpenCode Go report these allowances. The ring uses the account's primary window (the current
-session window when one is available); hover, focus, or click it to open the account's card.
-Switching models within one provider instance keeps the same account limits, while switching
-provider instances changes the card. Narrow thread columns hide the ring so it does not overlap the
-composer.
-
-The ring uses a dashed neutral state while limits are loading or when the selected provider is
-offline, unsupported, missing authentication, unavailable, or has no percentage window. Opening it
-explains the state without combining limits from another environment. A **Stale** card contains
-the last successful reading after a temporary network, rate-limit, or provider-server failure.
-Authentication failures and account changes do not reuse old data.
-
-Codex, Claude, and Grok use the authentication already owned by their configured provider CLI.
-Cursor first checks the signed-in Cursor desktop session on that environment. You can save an
-instance-specific Cursor Cookie header in **Settings → Providers** as an explicit override; clearing
-it restores desktop-session discovery. OpenCode Go requires an instance-specific `opencode.ai`
-Cookie header. If automatic workspace selection is not the workspace you expect, set the optional
-OpenCode Go workspace ID on that provider instance. Saved Cookie headers stay in the selected
-environment's secret store. They are not copied to other environments, returned to the client, or
-added to the provider's normal runtime configuration.
-
-Polling and alerts are configured in **Settings → Providers → Subscription usage**, and apply to
-the device you set them on. **Subscription usage refresh** can poll every 5, 15, 30, or 60 minutes,
-or use **On load only** to stop background polling. With **Subscription limit alerts** enabled,
-connected clients show an in-app alert when a fresh window first has 5% or less remaining in its
-reset cycle, and again when a window previously observed at 0% becomes available. After an alert
-for a provider instance, the client waits at least 10 minutes before showing another for that
-instance. Alerts are not OS notifications and are not queued while the client is offline.
 
 ## Keyboard shortcuts
 

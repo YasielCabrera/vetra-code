@@ -1,8 +1,8 @@
+import { T, useGT } from "gt-react";
 import { Button } from "../ui/button";
 import type { ContextWindowSnapshot } from "@t3tools/client-runtime/state/context-window";
 import { formatContextWindowTokens } from "~/lib/contextWindow";
 import { formatThreadCostUsd } from "@t3tools/shared/usageFormat";
-import { CircularUsageMeterButton } from "../ui/circular-usage-meter";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Skeleton } from "../ui/skeleton";
 import {
@@ -40,8 +40,12 @@ export function ContextWindowMeter(props: {
     compactDisabled,
     compactDisabledReason,
   } = props;
+  const gt = useGT();
   const usedPercentage = formatPercentage(usage.usedPercentage);
   const normalizedPercentage = Math.max(0, Math.min(100, usage.usedPercentage ?? 0));
+  const radius = 9.75;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - normalizedPercentage / 100);
   const totalProcessedTokens = usage.totalProcessedTokens ?? null;
   const showTotalProcessed = totalProcessedTokens !== null && totalProcessedTokens > 0;
   const threadCostUsd =
@@ -61,15 +65,47 @@ export function ContextWindowMeter(props: {
         delay={150}
         closeDelay={onCompact ? 150 : 0}
         render={
-          <CircularUsageMeterButton
-            value={normalizedPercentage}
-            indicatorColor={usageColor}
+          <Button
+            size="icon-sm"
+            variant="ghost-muted"
+            className="size-7"
             aria-label={
               usage.maxTokens !== null && usedPercentage
-                ? `Context window ${usedPercentage} used`
-                : `Context window ${formatContextWindowTokens(usage.usedTokens)} tokens used`
+                ? gt("Context window {percentage} used", { percentage: usedPercentage })
+                : gt("Context window {tokens} tokens used", {
+                    tokens: formatContextWindowTokens(usage.usedTokens),
+                  })
             }
-          />
+          >
+            <span className="relative flex size-5 items-center justify-center">
+              <svg
+                viewBox="0 0 24 24"
+                className="-rotate-90 absolute inset-0 size-full transform-gpu mx-0!"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r={radius}
+                  fill="none"
+                  className="stroke-muted-foreground/24"
+                  strokeWidth="3"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r={radius}
+                  fill="none"
+                  stroke={usageColor}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={dashOffset}
+                  className="transition-[stroke-dashoffset,stroke] duration-500 ease-out motion-reduce:transition-none"
+                />
+              </svg>
+            </span>
+          </Button>
         }
       />
       <PopoverPopup
@@ -83,7 +119,7 @@ export function ContextWindowMeter(props: {
       >
         <div className="flex flex-col gap-2 p-(--floating-content-inset)">
           <div className="flex items-center justify-between gap-3">
-            <div className="font-medium text-muted-foreground text-xs">Context Window</div>
+            <div className="font-medium text-muted-foreground text-xs">{gt("Context window")}</div>
             {usage.maxTokens !== null && usedPercentage ? (
               <div className="text-secondary-label text-2xs tabular-nums">
                 <span>{usedPercentage}</span>
@@ -106,7 +142,7 @@ export function ContextWindowMeter(props: {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={Math.round(normalizedPercentage)}
-              aria-label="Context window usage"
+              aria-label={gt("Context window usage")}
             >
               <div
                 className="h-full rounded-full transition-[width,background-color] duration-500 ease-out motion-reduce:transition-none"
@@ -116,7 +152,9 @@ export function ContextWindowMeter(props: {
           ) : null}
           {showTotalProcessed ? (
             <div className="flex items-center justify-between gap-3 text-2xs leading-4">
-              <span className="text-secondary-label">Total processed</span>
+              <span className="text-secondary-label">
+                <T>Total processed</T>
+              </span>
               <span className="font-medium tabular-nums text-secondary-label">
                 {formatContextWindowTokens(totalProcessedTokens)}
               </span>
@@ -124,25 +162,29 @@ export function ContextWindowMeter(props: {
           ) : null}
           {showThreadCost || showThreadCostLoading ? (
             <div className="flex items-center justify-between gap-3 text-2xs leading-4">
-              <span className="text-secondary-label">Thread cost</span>
+              <span className="text-secondary-label">
+                <T>Thread cost</T>
+              </span>
               {showThreadCost ? (
                 <span className="font-medium tabular-nums text-secondary-label">
                   {formatThreadCostUsd(threadCostUsd)}
                   {showApiRateFootnote ? "*" : ""}
                 </span>
               ) : (
-                <Skeleton className="h-3 w-10" aria-label="Loading thread cost" />
+                <Skeleton className="h-3 w-10" aria-label={gt("Loading thread cost")} />
               )}
             </div>
           ) : null}
           {showApiRateFootnote ? (
             <div className="text-pretty text-secondary-label text-2xs font-medium">
-              * if billed at full API rate
+              <T>* if billed at full API rate</T>
             </div>
           ) : null}
           {!showThreadCost && !showThreadCostLoading && usage.cost != null ? (
             <div className="flex items-center justify-between gap-3 text-2xs leading-4">
-              <span className="text-secondary-label">Cost</span>
+              <span className="text-secondary-label">
+                <T>Cost</T>
+              </span>
               <span className="font-medium tabular-nums text-secondary-label">
                 {formatContextWindowCost(usage.cost)}
               </span>
@@ -163,7 +205,7 @@ export function ContextWindowMeter(props: {
                 onClick={onCompact}
               >
                 <Minimize2Icon aria-hidden="true" />
-                Compact context
+                <T>Compact context</T>
               </Button>
               {compactDisabled && compactDisabledReason ? (
                 <div className="text-pretty text-secondary-label text-2xs">

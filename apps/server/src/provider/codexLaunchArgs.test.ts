@@ -1,4 +1,3 @@
-import { codexSubscriptionUsageAppServerArgs } from "./codexLaunchArgs.ts";
 import * as NodeAssert from "node:assert/strict";
 
 import { describe, it } from "vite-plus/test";
@@ -27,21 +26,6 @@ describe("codexAppServerArgs", () => {
       "-c",
       "thread_unload_delay_secs=0",
       ...row.expected,
-    ]);
-  });
-});
-
-describe("codexSubscriptionUsageAppServerArgs", () => {
-  it("uses the non-interactive approval policy supported by current Codex CLIs", () => {
-    NodeAssert.deepStrictEqual(codexSubscriptionUsageAppServerArgs("--strict-config"), [
-      "-s",
-      "read-only",
-      "-a",
-      "never",
-      "app-server",
-      "-c",
-      "thread_unload_delay_secs=0",
-      "--strict-config",
     ]);
   });
 });

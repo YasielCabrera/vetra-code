@@ -218,12 +218,9 @@ import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
 import * as AntigravityUsage from "./provider/Drivers/AntigravityUsage.ts";
 import { MuseUsageHome } from "@t3tools/provider-muse/server";
 import * as CursorAccountReader from "@t3tools/provider-cursor/server/CursorAccountReader";
-import * as CursorKeychain from "@t3tools/provider-cursor/server/CursorKeychain";
 import * as CursorUsageAccounts from "@t3tools/provider-cursor/server/CursorUsageAccounts";
 import * as UsageService from "./usage/UsageService.ts";
 import * as ProviderTurnPricing from "./usage/providerTurnPricing.ts";
-import * as ProviderSubscriptionCredentialStore from "./provider/usage/ProviderSubscriptionCredentialStore.ts";
-import * as ProviderSubscriptionUsageService from "./provider/usage/ProviderSubscriptionUsageService.ts";
 import * as CodexUsageHistory from "./usage/CodexUsageHistory.ts";
 import * as RuntimeLayer from "./orchestration-v2/runtimeLayer.ts";
 import * as ProjectStore from "./orchestration-v2/ProjectStore.ts";
@@ -326,15 +323,10 @@ const layerUsage = UsageService.layer.pipe(
       AntigravityUsage.layer,
       MuseUsageHome.layer,
       CodexUsageHistory.layer,
-      CursorUsageAccounts.layer.pipe(
-        Layer.provide(CursorAccountReader.layer.pipe(Layer.provide(CursorKeychain.layer))),
-      ),
+      CursorUsageAccounts.layer.pipe(Layer.provide(CursorAccountReader.layer)),
     ).pipe(Layer.provide(ProviderHostLive.layer.pipe(Layer.provide(ServerSecretStore.layer)))),
   ),
   Layer.provide(layerServerSettings),
-);
-const layerProviderSubscriptionCredentialStore = ProviderSubscriptionCredentialStore.layer.pipe(
-  Layer.provide(ServerSecretStore.layer),
 );
 
 const layerResourceDiagnostics = Layer.mergeAll(
@@ -789,7 +781,6 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   Layer.provideMerge(layerPersistence),
   Layer.provideMerge(Layer.mergeAll(Keybindings.layer, UsageLimitSources.layer)),
   Layer.provideMerge(ProviderRegistry.layer),
-  Layer.provideMerge(ProviderSubscriptionUsageService.layer),
   Layer.provideMerge(
     ProviderInstanceRegistryHydration.layer.pipe(Layer.provide(SqlitePersistence.layerConfig)),
   ),
@@ -834,7 +825,6 @@ const layerRuntimeCoreDependencies = layerRuntimeCoreDependenciesBase.pipe(
       ),
     ),
   ),
-  Layer.provideMerge(layerProviderSubscriptionCredentialStore),
   Layer.provideMerge(layerWorkspace),
   Layer.provideMerge(layerPowerhouse),
   Layer.provideMerge(layerFileAnnotation),

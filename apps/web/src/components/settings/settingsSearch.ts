@@ -71,7 +71,6 @@ export interface SettingsSearchItem {
   readonly cloudOnly?: boolean;
   readonly environmentOnly?: boolean;
   readonly providerSettingsOnly?: boolean;
-  readonly macProviderSettingsOnly?: boolean;
   readonly localBackendManagementOnly?: boolean;
   readonly localEnvironmentOnly?: boolean;
   readonly primaryEnvironmentOnly?: boolean;
@@ -89,7 +88,6 @@ export interface SettingsSearchAvailability {
   readonly hasCloudPublicConfig: boolean;
   readonly hasEnvironment: boolean;
   readonly hasProviderSettingsEnvironment: boolean;
-  readonly hasMacProviderSettingsEnvironment?: boolean;
   readonly canManageLocalBackend: boolean;
   readonly isWslSettingsRowVisible: boolean;
   readonly hasThreadAutoSettlement: boolean;
@@ -264,14 +262,6 @@ const SOURCE_CONTROL_HOST_TERMS = sourceControlClients.definitions
   .join(" ");
 
 export const SETTINGS_SEARCH_ITEMS = [
-  {
-    id: "cursor-keychain-usage",
-    title: msg("Cursor account usage"),
-    to: "/settings/providers",
-    searchTerms: ["cursor macOS keychain usage tokens cost limits permission"],
-    providerSettingsOnly: true,
-    macProviderSettingsOnly: true,
-  },
   {
     id: "context-window-indicator",
     title: msg("Context window indicator"),
@@ -982,7 +972,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     desktopOnly: true,
   },
   {
-
     id: "welcome-page",
     title: msg("Welcome page"),
     to: "/settings/about",
@@ -1095,16 +1084,6 @@ export const SETTINGS_SEARCH_ITEMS = [
       msg("refresh availability versions auth state models background probes seconds off"),
     ],
     providerSettingsOnly: true,
-  },
-  {
-    id: "subscription-usage-refresh",
-    title: msg("Subscription usage refresh"),
-    to: "/settings/providers",
-  },
-  {
-    id: "subscription-limit-alerts",
-    title: msg("Subscription limit alerts"),
-    to: "/settings/providers",
   },
   {
     id: "scheduled-tasks",
@@ -1756,7 +1735,6 @@ export function filterAvailableSettingsSearchItems(
       (!item.cloudOnly || availability.hasCloudPublicConfig) &&
       (!item.environmentOnly || availability.hasEnvironment) &&
       (!item.providerSettingsOnly || availability.hasProviderSettingsEnvironment) &&
-      (!item.macProviderSettingsOnly || availability.hasMacProviderSettingsEnvironment === true) &&
       (!item.localBackendManagementOnly || availability.canManageLocalBackend) &&
       (!item.localEnvironmentOnly || !availability.localEnvironmentDisabled) &&
       (!item.primaryEnvironmentOnly || availability.hasPrimaryEnvironment === true) &&

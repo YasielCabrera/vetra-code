@@ -41,7 +41,6 @@ import { HttpClient, HttpClientResponse } from "effect/http";
 import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
 import * as ServerConfig from "../config.ts";
 import * as ServerSettings from "../serverSettings.ts";
-import * as UsageService from "../usage/UsageService.ts";
 import { ClaudeDriver, type ClaudeDriverEnv } from "./Drivers/ClaudeDriver.ts";
 import { CodexDriver, type CodexDriverEnv } from "./Drivers/CodexDriver.ts";
 import * as ModelManifest from "./ModelManifest.ts";
@@ -205,7 +204,6 @@ describe("ProviderInstanceRegistry — multi-instance codex slice", () => {
         ProviderEventLoggers.NoOpProviderEventLoggers,
       ),
     ),
-    Layer.provideMerge(UsageService.layerTest),
     Layer.provideMerge(ProviderLatestVersions.layer),
     Layer.provideMerge(McpProviderSessions.layer),
     Layer.provideMerge(ProviderInstallationGate.layer),

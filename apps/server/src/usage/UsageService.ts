@@ -3,7 +3,6 @@ import {
   ProviderInstanceId,
   USAGE_CONTRACT_VERSION,
   type ServerSettings as ServerSettingsValue,
-  UsageDay,
   type UsageProviderKind,
   type UsageSource,
   type UsagePricing,
@@ -85,18 +84,23 @@ const STALE_TEMP_DIRECTORY_MS = 60 * 60 * 1000;
 
 const TRANSCRIPT_READ_CONCURRENCY = 4;
 
-/** Resolves the Claude transcript root for a concrete provider instance. */
-export const resolveClaudeUsageTranscriptDir = Effect.fn(
-  "UsageService.resolveClaudeUsageTranscriptDir",
-)(function* (homePath: string): Effect.fn.Return<string, never, FileSystem.FileSystem | Path.Path> {
-  const fileSystem = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const nested = path.join(homePath, ".claude", "projects");
-  const nestedExists = yield* fileSystem
-    .exists(nested)
-    .pipe(Effect.catchCause(() => Effect.succeed(false)));
-  return nestedExists ? nested : path.join(homePath, "projects");
-});
+const transcriptReaders = BUILT_IN_USAGE_DRIVERS.flatMap((driver) =>
+  driver.usage?.kind === "transcripts" ? [{ driver, reader: driver.usage }] : [],
+);
+
+const scanReaders = BUILT_IN_USAGE_DRIVERS.flatMap((driver) =>
+  driver.usage?.kind === "scan" ? [{ driver, reader: driver.usage }] : [],
+);
+
+const providerRateModels = new Map(
+  BUILT_IN_USAGE_DRIVERS.flatMap(({ usage }) =>
+    usage?.rateModel === undefined ? [] : [[usage.provider, usage.rateModel] as const],
+  ),
+);
+
+const transcriptFormats = new Map(
+  transcriptReaders.map(({ reader }) => [reader.provider, reader.format] as const),
+);
 
 interface TranscriptSource {
   readonly provider: UsageProviderKind;
@@ -123,14 +127,15 @@ function isLaterRead(a: CachedFile, b: CachedFile): boolean {
   return a.mtimeMs > b.mtimeMs || (a.mtimeMs === b.mtimeMs && a.size > b.size);
 }
 
-/**
- * Only these need cross-file dedupe keys: within one file the occurrence count
- * already keeps every key unique, so keying the rest would only build and hash
- * a string for each of their records.
- */
+const sharedSessionProviders: ReadonlySet<UsageProviderKind> = new Set(
+  transcriptReaders.flatMap(({ reader }) =>
+    reader.format.sharedSessionsAcrossFiles ? [reader.provider] : [],
+  ),
+);
+
+// Only shared sessions need cross-file dedupe; per-file occurrence counts make other keys unique.
 function sharedSessions(
   files: readonly { readonly records: readonly UsageRecord[] }[],
-  sharedSessionProviders: ReadonlySet<UsageProviderKind>,
 ): ReadonlySet<string> {
   const firstFile = new Map<string, number>();
   const shared = new Set<string>();
@@ -158,8 +163,6 @@ export class UsageService extends Context.Service<
   UsageService,
   {
     readonly readSummary: (input: UsageSummaryInput) => Effect.Effect<UsageSummary, UsageReadError>;
-    /** Shared one-hour snapshot used to enrich subscription cards without duplicate scans. */
-    readonly readSubscriptionSummary: Effect.Effect<UsageSummary, UsageReadError>;
     /**
      * Prices one billable token bundle with the same LiteLLM table and
      * `priceUsage` arithmetic the Usage page uses. Adapters must not keep a
@@ -184,78 +187,7 @@ export class UsageService extends Context.Service<
   }
 >()("t3/usage/UsageService") {}
 
-const EMPTY_PRICING: UsagePricing = {
-  status: "unavailable",
-  source: LITELLM_RATES_URL,
-  fetchedAt: null,
-  knownModels: 0,
-};
-
-/** Empty summary, for suites that only need the RPC surface to resolve. */
-export const layerTest = Layer.succeed(
-  UsageService,
-  UsageService.of({
-    readSummary: Effect.fn("UsageService.readSummary")((input) =>
-      Effect.succeed({
-        contractVersion: USAGE_CONTRACT_VERSION,
-        readAt: "1970-01-01T00:00:00.000Z",
-        timeZone: input.timeZone,
-        sinceDay: input.sinceDay,
-        untilDay: input.untilDay,
-        buckets: [],
-        sources: [],
-        pricing: EMPTY_PRICING,
-        scanDurationMs: 0,
-      }),
-    ),
-    readSubscriptionSummary: Effect.succeed({
-      contractVersion: USAGE_CONTRACT_VERSION,
-      readAt: "1970-01-01T00:00:00.000Z",
-      timeZone: "UTC",
-      sinceDay: UsageDay.make("1970-01-01"),
-      untilDay: UsageDay.make("1970-01-30"),
-      buckets: [],
-      sources: [],
-      pricing: EMPTY_PRICING,
-      scanDurationMs: 0,
-    }),
-    price: Effect.fn("UsageService.price")((model, totals, reportedCostUsd) =>
-      Effect.succeed(priceUsage(new Map(), { model, totals, speed: "standard", reportedCostUsd })),
-    ),
-    priceCached: Effect.fn("UsageService.priceCached")(() => Effect.succeed(null)),
-    refreshRates: Effect.succeed(EMPTY_PRICING),
-  }),
-);
-
 export const make = Effect.gen(function* () {
-  /** The transcript readers, in driver order. */
-  const transcriptReaders = BUILT_IN_USAGE_DRIVERS.flatMap((driver) =>
-    driver.usage?.kind === "transcripts" ? [{ driver, reader: driver.usage }] : [],
-  );
-
-  /** The scan readers, in driver order. */
-  const scanReaders = BUILT_IN_USAGE_DRIVERS.flatMap((driver) =>
-    driver.usage?.kind === "scan" ? [{ driver, reader: driver.usage }] : [],
-  );
-
-  const providerRateModels = new Map(
-    BUILT_IN_USAGE_DRIVERS.flatMap(({ usage }) =>
-      usage?.rateModel === undefined ? [] : [[usage.provider, usage.rateModel] as const],
-    ),
-  );
-
-  /** Transcript formats by provider, for decoding the persisted scan cache. */
-  const transcriptFormats = new Map(
-    transcriptReaders.map(({ reader }) => [reader.provider, reader.format] as const),
-  );
-
-  /** Providers whose format lets one session's records appear in several files. */
-  const sharedSessionProviders: ReadonlySet<UsageProviderKind> = new Set(
-    transcriptReaders.flatMap(({ reader }) =>
-      reader.format.sharedSessionsAcrossFiles ? [reader.provider] : [],
-    ),
-  );
-
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const config = yield* ServerConfig.ServerConfig;
@@ -774,7 +706,6 @@ export const make = Effect.gen(function* () {
     readonly hostId?: string;
     readonly status?: UsageSource["status"];
     readonly message?: string;
-    readonly action?: UsageSource["action"];
     readonly files:
       | readonly {
           readonly path: string;
@@ -1144,7 +1075,7 @@ export const make = Effect.gen(function* () {
         cacheDirty = true;
       }
     }
-    const crossFileSessions = sharedSessions(filesByDir.flat(), sharedSessionProviders);
+    const crossFileSessions = sharedSessions(filesByDir.flat());
 
     for (const [
       index,
@@ -1156,7 +1087,6 @@ export const make = Effect.gen(function* () {
         files,
         status,
         message,
-        action,
         refreshing,
         hostId: sourceHostId,
       },
@@ -1231,7 +1161,6 @@ export const make = Effect.gen(function* () {
                 .filter(Boolean)
                 .join(" ")
             : sourceMessage,
-        ...(action ? { action } : {}),
         // A saved answer misses what changed since its scan, so the client must ask again. An
         // empty source stays unmarked: it would only flash a loading row.
         ...(refreshing || (fromMemory && counted && transcriptFormats.has(provider))
@@ -1367,29 +1296,10 @@ export const make = Effect.gen(function* () {
       : priceUsage(rates, { model, totals, speed: "standard", reportedCostUsd: null });
   });
 
-  const readSubscriptionSummary = yield* Effect.cachedWithTTL(
-    Effect.gen(function* () {
-      const zone = DateTime.zoneMakeLocal();
-      const now = yield* DateTime.now;
-      const zonedNow = DateTime.makeZonedUnsafe(DateTime.toEpochMillis(now), { timeZone: zone });
-      const untilDay = DateTime.formatIsoDate(zonedNow);
-      const sinceDay = DateTime.formatIsoDate(DateTime.subtract(zonedNow, { days: 29 }));
-      // A cached hour must not hold a slow source's placeholder, so wait for it.
-      return yield* readSummary({
-        sinceDay: UsageDay.make(sinceDay),
-        untilDay: UsageDay.make(untilDay),
-        timeZone: DateTime.zoneToString(zone),
-        awaitRefresh: true,
-      });
-    }),
-    "1 hour",
-  );
-
   // `awaitPersisted` is outside the service interface: tests use it to restart
   // against what a previous instance wrote.
   return {
     readSummary,
-    readSubscriptionSummary,
     price,
     priceCached,
     refreshRates,

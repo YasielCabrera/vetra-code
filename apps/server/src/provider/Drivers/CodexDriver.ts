@@ -24,7 +24,6 @@ import {
   createCodexAdapterV2,
   type CodexAdapterV2DriverEnv,
 } from "../../orchestration-v2/Adapters/CodexAdapterV2.ts";
-import * as UsageService from "../../usage/UsageService.ts";
 import { ProviderDriverError } from "../Errors.ts";
 import * as ResetCreditCoordinator from "../resetCreditCoordinator.ts";
 import {
@@ -58,8 +57,6 @@ import {
   materializeCodexShadowHome,
   resolveCodexHomeLayout,
 } from "./CodexHomeLayout.ts";
-import { makeCodexSubscriptionUsageCapability } from "../usage/CodexSubscriptionUsage.ts";
-import { readProviderLocalUsageCost } from "../usage/ProviderLocalUsageCost.ts";
 import { makeManagedCodexProvider } from "./CodexManagedProvider.ts";
 import { codexUsageReader } from "./codexUsage.ts";
 import * as CodexInstallation from "../CodexInstallation.ts";
@@ -145,7 +142,6 @@ export type CodexDriverEnv =
   | Path.Path
   | ProviderEventLoggers.ProviderEventLoggers
   | ServerConfig.ServerConfig
-  | UsageService.UsageService
   | ServerSecretStore.ServerSecretStore
   | ServerEnvironment.ServerEnvironmentIdentity
   | CodexInstallation.CodexInstallation
@@ -182,12 +178,10 @@ export const CodexDriver: ProviderDriver<
         config,
       });
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-    const serverConfig = yield* ServerConfig.ServerConfig;
     const resetCreditCoordinator = yield* ResetCreditCoordinator.ResetCreditCoordinator;
     const fileSystem = yield* FileSystem.FileSystem;
     const pathService = yield* Path.Path;
     const httpClient = yield* HttpClient.HttpClient;
-    const usage = yield* UsageService.UsageService;
     const latestVersions = yield* ProviderLatestVersions.ProviderLatestVersions;
     const installation = yield* CodexInstallation.CodexInstallation;
     const modelCatalog = yield* ModelCatalog.ModelCatalog;
@@ -245,20 +239,6 @@ export const CodexDriver: ProviderDriver<
       resolveInstallation(options).pipe(
         Effect.map((capabilities) => withCodexNativeLatestVersion(capabilities, httpClient)),
       );
-
-    const subscriptionUsage = makeCodexSubscriptionUsageCapability({
-      instance: { instanceId, driverKind: DRIVER_KIND, displayName },
-      settings: effectiveConfig,
-      environment: processEnv,
-      cwd: serverConfig.cwd,
-      homeDirectory: yield* HostProcess.HomeDirectory,
-      spawner,
-      localCost: readProviderLocalUsageCost({
-        usage,
-        provider: "codex",
-        transcriptRoot: pathService.join(homeLayout.sharedHomePath, "sessions"),
-      }),
-    });
 
     const orchestrationAdapter = yield* createCodexAdapterV2(
       {
@@ -446,7 +426,6 @@ export const CodexDriver: ProviderDriver<
       consumeResetCredit,
       orchestrationAdapter,
       textGeneration,
-      subscriptionUsage,
     } satisfies ProviderInstance;
   }),
 };

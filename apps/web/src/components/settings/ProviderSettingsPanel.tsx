@@ -101,8 +101,6 @@ import { useManagedPolicy } from "~/state/managedPolicy";
 import { ExpandableText } from "./ExpandableText";
 import { IntervalSecondsField } from "./IntervalSecondsField";
 import { ProviderInstanceCard } from "./ProviderInstanceCard";
-import { ProviderSubscriptionCredentialControl } from "./ProviderSubscriptionCredentialControl";
-import { ProviderSubscriptionUsageSettings } from "./ProviderSubscriptionUsageSettings";
 import { useSecretSources } from "./SecretSourceInput";
 import { TextGeneratorsSettings } from "./TextGeneratorsSettings";
 import { UsageProviderSettings } from "./UsageProviderSettings";
@@ -380,25 +378,9 @@ function ProviderSettingsPanelContent(target: ProviderSettingsTarget) {
       hasServerConfig: environment.serverConfig !== null,
     }),
   )?.environmentId;
-  const searchableCursorEnvironmentId = options.find(
-    (environment) =>
-      environment.serverConfig?.environment.platform.os === "darwin" &&
-      isProviderSettingsEnvironmentAvailable({
-        connectionPhase: environment.connection.phase,
-        hasServerConfig: true,
-      }),
-  )?.environmentId;
   let searchRedirectEnvironmentId: EnvironmentId | undefined;
   {
     if (
-      !target.scoped &&
-      searchTargetId === searchableSetting("cursor-keychain-usage").id &&
-      (!selectedEnvironmentCanRenderSettings ||
-        selectedEnvironment?.serverConfig?.environment.platform.os !== "darwin") &&
-      searchableCursorEnvironmentId !== undefined
-    ) {
-      searchRedirectEnvironmentId = searchableCursorEnvironmentId;
-    } else if (
       !target.scoped &&
       (searchTargetId === searchableSetting("provider-health-check-interval").id ||
         searchTargetId === searchableSetting("usage-providers").id) &&
@@ -504,8 +486,6 @@ function ProviderSettingsPanelContent(target: ProviderSettingsTarget) {
           projectIds={target.projectIds ?? []}
         />
       ) : null}
-
-      <ProviderSubscriptionUsageSettings />
     </>
   );
 }
@@ -1170,7 +1150,6 @@ export function EnvironmentProviderSettings({
         environmentId={environmentId}
         environmentLabel={environmentLabel}
         sources={settings.usageLimitSources}
-        cursorKeychainUsageEnabled={settings.cursorKeychainUsageEnabled}
         readOnly={readOnly}
       />
 
@@ -1491,16 +1470,6 @@ function ProviderInstanceRow({
             onClick={() => actions.resetDefaultInstance(driver)}
           />
         ) : null
-      }
-      subscriptionCredentialControl={
-        mode === "editor" && (driver === "cursor" || driver === "opencode") ? (
-          <ProviderSubscriptionCredentialControl
-            environmentId={environmentId}
-            instanceId={instanceId}
-            driver={driver}
-            readOnly={readOnly}
-          />
-        ) : undefined
       }
       hiddenModels={hiddenModels}
       favoriteModels={favoriteModels}

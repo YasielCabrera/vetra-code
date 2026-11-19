@@ -24,7 +24,6 @@ import {
   createClaudeAdapterV2,
   type ClaudeAdapterV2DriverEnv,
 } from "../../orchestration-v2/Adapters/ClaudeAdapterV2.ts";
-import * as UsageService from "../../usage/UsageService.ts";
 import { ProviderDriverError } from "../Errors.ts";
 import { claudeUsageReader } from "./claudeUsage.ts";
 import { makeClaudeScopedLimitNames } from "../claudeUsageLimits.ts";
@@ -56,14 +55,11 @@ import {
   makeProviderSnapshotSettingsSource,
   type ProviderSnapshotSettings,
 } from "@t3tools/provider-core/server/snapshotSettings";
-import { makeClaudeSubscriptionUsageCapability } from "../usage/ClaudeSubscriptionUsage.ts";
-import { readProviderLocalUsageCost } from "../usage/ProviderLocalUsageCost.ts";
 import {
   makeClaudeCapabilitiesCacheKey,
   makeClaudeContinuationGroupKey,
   mergeClaudeProcessEnvironment,
   resolveClaudeHomePath,
-  hasClaudeManagedMcpConfig,
 } from "./ClaudeHome.ts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { makeClaudeMaintenanceResolution } from "./ClaudeMaintenance.ts";
@@ -90,8 +86,7 @@ export type ClaudeDriverEnv =
   | ModelCatalog.ModelCatalog
   | Path.Path
   | ProviderEventLoggers.ProviderEventLoggers
-  | ServerConfig.ServerConfig
-  | UsageService.UsageService;
+  | ServerConfig.ServerConfig;
 
 export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.Path> = {
   driverKind: DRIVER_KIND,
@@ -119,7 +114,6 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
     const httpClient = yield* HttpClient.HttpClient;
     const latestVersions = yield* ProviderLatestVersions.ProviderLatestVersions;
     const resetCreditCoordinator = yield* ResetCreditCoordinator.ResetCreditCoordinator;
-    const usage = yield* UsageService.UsageService;
     const catalogService = yield* ModelCatalog.ModelCatalog;
     const modelCatalog = catalogService
       .current(DRIVER_KIND)
@@ -150,7 +144,6 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
         ? configDir
         : undefined,
     );
-    const transcriptRoot = yield* UsageService.resolveClaudeUsageTranscriptDir(configDir);
     const stampIdentity = withInstanceIdentity({
       instanceId,
       driverKind: DRIVER_KIND,
@@ -213,19 +206,6 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
       modelCatalog,
       modelRoutes.route,
     );
-    const subscriptionUsage = makeClaudeSubscriptionUsageCapability({
-      instance: { instanceId, driverKind: DRIVER_KIND, displayName },
-      settings: effectiveConfig,
-      environment: processEnv,
-      cwd: stateDir,
-      managedMcpConfig: yield* hasClaudeManagedMcpConfig(),
-      path,
-      localCost: readProviderLocalUsageCost({
-        usage,
-        provider: "claude",
-        transcriptRoot,
-      }),
-    });
 
     // Per-instance capabilities cache: keyed on binary + resolved HOME so
     // account-specific probes never share auth metadata across instances.
@@ -450,7 +430,6 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
         ),
       orchestrationAdapter,
       textGeneration,
-      subscriptionUsage,
       consumeResetCredit,
     } satisfies ProviderInstance;
   }),

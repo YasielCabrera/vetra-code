@@ -63,21 +63,6 @@ describe("RPC authorization scopes", () => {
     );
   });
 
-  it("separates subscription usage reads from credential writes", () => {
-    expect(requiredScopeForRpcMethod(WS_METHODS.serverGetProviderSubscriptionUsage)).toBe(
-      AuthOrchestrationReadScope,
-    );
-    expect(
-      requiredScopeForRpcMethod(WS_METHODS.serverGetProviderSubscriptionCredentialStatus),
-    ).toBe(AuthOrchestrationReadScope);
-    expect(requiredScopeForRpcMethod(WS_METHODS.serverSetProviderSubscriptionCredential)).toBe(
-      AuthProvidersManageScope,
-    );
-    expect(requiredScopeForRpcMethod(WS_METHODS.serverClearProviderSubscriptionCredential)).toBe(
-      AuthProvidersManageScope,
-    );
-  });
-
   it("reads file blame and line changes under the same scope as the file", () => {
     for (const method of [WS_METHODS.vcsGetFileBlame, WS_METHODS.vcsGetFileLineChanges]) {
       expect(requiredScopeForRpcMethod(method)).toBe(

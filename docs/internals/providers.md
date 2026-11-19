@@ -9,10 +9,6 @@ A driver kind identifies an integration; an instance identifies one configuratio
 lifecycle. Route work by instance, so two accounts using the same driver do not share mutable
 session or catalog state. For a new driver, start with [adding a provider](./adding-a-provider.md).
 
-Live provider-owned allowance windows are a separate, optional capability on each materialized
-instance. See [Provider subscription usage](./provider-subscription-usage.md) for its adapter,
-caching, identity, and credential boundaries.
-
 ## Process and account isolation
 
 The `opencode` driver probes the installed version and runs the 1.x or 2.x runtime. OpenCode's MCP

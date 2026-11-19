@@ -298,7 +298,6 @@ import {
   PullRequestThreadDialogHost,
   RevertConfirmHost,
 } from "./chat/ChatOverlayHosts";
-import { ThreadSubscriptionUsageIndicator } from "./chat/ThreadSubscriptionUsageIndicator";
 import type { AssistantCitationRequest } from "./chat/AssistantCitationSource";
 import { useCitedHistory } from "./chat/citationProcedure";
 import type { MessagesTimelineHistoryControls } from "./chat/MessagesTimeline";
@@ -3491,7 +3490,7 @@ export default function ChatView(props: ChatViewProps) {
           </header>
         )}
 
-        <div className="@container/thread-content relative flex min-h-0 min-w-0 flex-1">
+        <div className="relative flex min-h-0 min-w-0 flex-1">
           <ThreadFindCanvas
             findOptions={{
               skills: timelineSkills,
@@ -3977,19 +3976,6 @@ export default function ChatView(props: ChatViewProps) {
                 </div>
               </div>
             </div>
-
-            {activeProviderInstanceId ? (
-              <div
-                // Align the ring’s optical center with the header favicon and sidebar footer controls.
-                className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+var(--sidebar-content-inset)+1rem)] left-[calc(env(safe-area-inset-left)+1.25rem+0.4375rem)] z-30 hidden -translate-x-1/2 translate-y-1/2 @min-[56rem]/thread-content:block"
-              >
-                <ThreadSubscriptionUsageIndicator
-                  environmentId={activeThread.environmentId}
-                  providerInstanceId={activeProviderInstanceId}
-                  providerDisplayName={activeProviderStatus?.displayName ?? null}
-                />
-              </div>
-            ) : null}
 
             {canOperatePreview && activeThreadRef && activeEnvironmentServerBrowser && !embedded ? (
               <PreviewSessionSync threadRef={activeThreadRef} />

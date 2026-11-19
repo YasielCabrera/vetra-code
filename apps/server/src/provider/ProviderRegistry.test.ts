@@ -70,7 +70,6 @@ import * as ProviderInstanceRegistryHydration from "./ProviderInstanceRegistryHy
 import * as PortScanner from "../preview/PortScanner.ts";
 import * as ServerConfig from "../config.ts";
 import * as ServerSettingsModule from "../serverSettings.ts";
-import * as UsageService from "../usage/UsageService.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import {
   readProviderStatusCache,
@@ -563,7 +562,6 @@ const layerTestNodeServices = Layer.mergeAll(
     managedDirectory: "unused-managed-installation",
   }),
   Layer.mock(ServerSecretStore.ServerSecretStore)({}),
-  UsageService.layerTest,
   Layer.succeed(ServerEnvironment.ServerEnvironmentIdentity, {
     getEnvironmentId: Effect.succeed(EnvironmentId.make("00000000-0000-4000-8000-000000000001")),
   }),

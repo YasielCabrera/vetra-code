@@ -218,21 +218,6 @@ export const EnvironmentIdentificationMode = Schema.Literals([
 export type EnvironmentIdentificationMode = typeof EnvironmentIdentificationMode.Type;
 export const DEFAULT_ENVIRONMENT_IDENTIFICATION_MODE: EnvironmentIdentificationMode = "artwork";
 
-export const ProviderUsageRefreshIntervalMinutes = Schema.NullOr(Schema.Literals([5, 15, 30, 60]));
-export type ProviderUsageRefreshIntervalMinutes = typeof ProviderUsageRefreshIntervalMinutes.Type;
-export const DEFAULT_PROVIDER_USAGE_REFRESH_INTERVAL_MINUTES: ProviderUsageRefreshIntervalMinutes = 5;
-
-export const ProviderUsageAlertTransitionMarker = Schema.Struct({
-  cycleKey: Schema.String,
-  lowNotified: Schema.Boolean,
-  exhausted: Schema.Boolean,
-  restorationNotified: Schema.Boolean,
-  lastUsedPercent: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
-  /** Epoch milliseconds for the last usage toast shown for this provider instance. */
-  lastNotifiedAt: Schema.optionalKey(Schema.Number.check(Schema.isGreaterThanOrEqualTo(0))),
-});
-export type ProviderUsageAlertTransitionMarker = typeof ProviderUsageAlertTransitionMarker.Type;
-
 export const SnapShotKeyChord = KeybindingShortcut.check(
   Schema.makeFilter(
     (shortcut) =>
@@ -536,15 +521,6 @@ export const ClientSettingsSchema = Schema.Struct({
   providerModelPreferences: ProviderModelPreferences.pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
   ),
-  providerUsageRefreshIntervalMinutes: ProviderUsageRefreshIntervalMinutes.pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROVIDER_USAGE_REFRESH_INTERVAL_MINUTES)),
-  ),
-  providerUsageAlertsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
-  /** Internal client-local transition memory; never sent to an environment. */
-  providerUsageAlertTransitions: Schema.Record(
-    Schema.String,
-    ProviderUsageAlertTransitionMarker,
-  ).pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   pullRequestMergeMethodOverrides: Schema.Record(
     TrimmedNonEmptyString,
     PullRequestMergeMethod,
@@ -1628,9 +1604,6 @@ export const ServerSettings = Schema.Struct({
   usageLimitSources: Schema.Record(UsageLimitSourceId, UsageLimitSourceConfig).pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
   ),
-  cursorKeychainUsageEnabled: Schema.Boolean.pipe(
-    Schema.withDecodingDefault(Effect.succeed(false)),
-  ),
   textGenerators: Schema.Record(ProviderInstanceId, TextGeneratorConfig).pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
   ),
@@ -2036,7 +2009,6 @@ export const ServerSettingsPatch = Schema.Struct({
     Schema.Record(UsageLimitSourceId, Schema.NullOr(UsageLimitSourceConfig)),
   ),
   // Merge per entry like usageLimitSources; null removes an entry.
-  cursorKeychainUsageEnabled: Schema.optionalKey(Schema.Boolean),
   textGenerators: Schema.optionalKey(
     Schema.Record(ProviderInstanceId, Schema.NullOr(TextGeneratorConfig)),
   ),
@@ -2155,11 +2127,6 @@ export const ClientSettingsPatch = Schema.Struct({
   persistComposerContextStrip: Schema.optionalKey(Schema.Boolean),
   favorites: Schema.optionalKey(ModelFavorites),
   providerModelPreferences: Schema.optionalKey(ProviderModelPreferences),
-  providerUsageRefreshIntervalMinutes: Schema.optionalKey(ProviderUsageRefreshIntervalMinutes),
-  providerUsageAlertsEnabled: Schema.optionalKey(Schema.Boolean),
-  providerUsageAlertTransitions: Schema.optionalKey(
-    Schema.Record(Schema.String, ProviderUsageAlertTransitionMarker),
-  ),
   pullRequestMergeMethodOverrides: Schema.optionalKey(
     Schema.Record(TrimmedNonEmptyString, PullRequestMergeMethod),
   ),

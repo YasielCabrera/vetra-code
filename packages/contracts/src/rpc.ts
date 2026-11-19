@@ -398,14 +398,6 @@ import {
   ResourceTelemetrySnapshot,
 } from "./resourceTelemetry.ts";
 import {
-  ProviderSubscriptionCredentialInput,
-  ProviderSubscriptionCredentialSetInput,
-  ProviderSubscriptionCredentialStatus,
-  ProviderSubscriptionUsageError,
-  ProviderSubscriptionUsageReadInput,
-  ProviderSubscriptionUsageReport,
-} from "./providerSubscriptionUsage.ts";
-import {
   UsageLimitSourceError,
   ProviderConsumeResetCreditInput,
   ProviderConsumeResetCreditResult,
@@ -615,10 +607,6 @@ export const WS_METHODS = {
   serverSignalProcess: "server.signalProcess",
   serverReportClientActivity: "server.reportClientActivity",
   serverGetUsageSummary: "server.getUsageSummary",
-  serverGetProviderSubscriptionUsage: "server.getProviderSubscriptionUsage",
-  serverGetProviderSubscriptionCredentialStatus: "server.getProviderSubscriptionCredentialStatus",
-  serverSetProviderSubscriptionCredential: "server.setProviderSubscriptionCredential",
-  serverClearProviderSubscriptionCredential: "server.clearProviderSubscriptionCredential",
   serverRefreshUsageRates: "server.refreshUsageRates",
 
   scheduledTasksSubscribe: "scheduledTasks.subscribe",
@@ -1155,41 +1143,6 @@ const WsServerGetUsageSummaryRpc = Rpc.make(WS_METHODS.serverGetUsageSummary, {
   error: Schema.Union([EnvironmentAuthorizationError, UsageReadError]),
 });
 
-export const WsServerGetProviderSubscriptionUsageRpc = Rpc.make(
-  WS_METHODS.serverGetProviderSubscriptionUsage,
-  {
-    payload: ProviderSubscriptionUsageReadInput,
-    success: ProviderSubscriptionUsageReport,
-    error: Schema.Union([EnvironmentAuthorizationError, ProviderSubscriptionUsageError]),
-  },
-);
-
-export const WsServerGetProviderSubscriptionCredentialStatusRpc = Rpc.make(
-  WS_METHODS.serverGetProviderSubscriptionCredentialStatus,
-  {
-    payload: ProviderSubscriptionCredentialInput,
-    success: ProviderSubscriptionCredentialStatus,
-    error: Schema.Union([EnvironmentAuthorizationError, ProviderSubscriptionUsageError]),
-  },
-);
-
-export const WsServerSetProviderSubscriptionCredentialRpc = Rpc.make(
-  WS_METHODS.serverSetProviderSubscriptionCredential,
-  {
-    payload: ProviderSubscriptionCredentialSetInput,
-    success: ProviderSubscriptionCredentialStatus,
-    error: Schema.Union([EnvironmentAuthorizationError, ProviderSubscriptionUsageError]),
-  },
-);
-
-export const WsServerClearProviderSubscriptionCredentialRpc = Rpc.make(
-  WS_METHODS.serverClearProviderSubscriptionCredential,
-  {
-    payload: ProviderSubscriptionCredentialInput,
-    success: ProviderSubscriptionCredentialStatus,
-    error: Schema.Union([EnvironmentAuthorizationError, ProviderSubscriptionUsageError]),
-  },
-);
 /**
  * Refetches the model rate table ahead of its daily TTL, so a model released
  * since the last fetch gets priced. The next usage summary uses the new table.
@@ -2489,10 +2442,6 @@ export const WsCoreRpcGroup = RpcGroup.make(
   WsServerListTextGeneratorModelsRpc,
   WsServerPrepareTriageRpc,
   WsServerGetUsageSummaryRpc,
-  WsServerGetProviderSubscriptionUsageRpc,
-  WsServerGetProviderSubscriptionCredentialStatusRpc,
-  WsServerSetProviderSubscriptionCredentialRpc,
-  WsServerClearProviderSubscriptionCredentialRpc,
   WsServerRefreshUsageRatesRpc,
   WsServerSignalProcessRpc,
   WsScheduledTasksSubscribeRpc,

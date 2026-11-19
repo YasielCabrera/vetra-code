@@ -17,14 +17,6 @@ export const codexAppServerArgs = (launchArgs?: string) => [
   ...codexLaunchArgv(launchArgs),
 ];
 
-export const codexSubscriptionUsageAppServerArgs = (launchArgs?: string) => [
-  "-s",
-  "read-only",
-  "-a",
-  "never",
-  ...codexAppServerArgs(launchArgs),
-];
-
 interface LaunchArgFilter {
   readonly switches: ReadonlySet<string>;
   readonly valueFlags: ReadonlySet<string>;

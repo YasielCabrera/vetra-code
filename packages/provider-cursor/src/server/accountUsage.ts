@@ -8,17 +8,14 @@ import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Base64Url from "effect/encoding/Base64Url";
 import * as Fiber from "effect/Fiber";
-import * as FileSystem from "effect/FileSystem";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import * as HttpClient from "effect/http/HttpClient";
 import * as HttpClientRequest from "effect/http/HttpClientRequest";
-import * as PlatformError from "effect/PlatformError";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 
 import type { CursorCredentialSource } from "./accountCache.ts";
 import { DEFAULT_CURSOR_API_ENDPOINT, exchangeCursorApiKey } from "./apiKey.ts";
-import * as CursorKeychain from "./CursorKeychain.ts";
 
 function object(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -102,14 +99,10 @@ function boundaryOverlap(previous: readonly string[], current: readonly string[]
   return lengths.at(-1) ?? 0;
 }
 
-const DASHBOARD_USAGE_URL = "https://cursor.com/api/dashboard/get-filtered-usage-events";
-
-/** Never forward the access token or session cookie through a redirect. */
+/** Never forward the access token through a redirect. */
 const NO_REDIRECT: RequestInit = { redirect: "error" };
 
 export const makeCursorAccountUsageReader = Effect.gen(function* () {
-  const fileSystem = yield* FileSystem.FileSystem;
-  const keychain = yield* CursorKeychain.CursorKeychain;
   const httpClient = yield* HttpClient.HttpClient;
   const digest = yield* Digest.Digest;
   // Per-event hashes share the scan span and use the native hex encoder.
@@ -166,104 +159,18 @@ export const makeCursorAccountUsageReader = Effect.gen(function* () {
       typeof authentication.exp === "number"
         ? Math.max(0, Math.min(5 * 60_000, authentication.exp * 1000 - nowMs - 30_000))
         : 5 * 60_000;
-    const pageRequest = HttpClientRequest.post(
-      `${DEFAULT_CURSOR_API_ENDPOINT}/aiserver.v1.DashboardService/GetFilteredUsageEvents`,
-    ).pipe(
-      HttpClientRequest.bearerToken(accessToken),
-      HttpClientRequest.setHeader("connect-protocol-version", "1"),
-    );
-    return { pageRequest, accountKey, teamIds, userId, ttlMs };
+    return { accessToken, accountKey, teamIds, userId, ttlMs };
   });
   const sessions = yield* Cache.makeWith(readSession, {
     capacity: 16,
     timeToLive: (exit) =>
       Exit.isSuccess(exit) ? Duration.millis(exit.value.ttlMs) : Duration.zero,
   });
-  // A Cursor CLI login reads personal history from the web dashboard, which rejects API-key tokens.
-  const readLocalLogin = Effect.fn("CursorAccountUsage.readLocalLogin")(function* (
-    credentialSource: string | { readonly kind: "keychain" },
-  ): Effect.fn.Return<
-    CursorAccountUsageReadResult | { readonly kind: "local"; readonly accessToken: string }
-  > {
-    const credential = yield* Effect.result<
-      unknown,
-      | PlatformError.PlatformError
-      | Schema.SchemaError
-      | CursorKeychain.CursorKeychainTimeoutError
-      | CursorKeychain.CursorKeychainReadError,
-      never
-    >(
-      typeof credentialSource === "string"
-        ? fileSystem.readFileString(credentialSource).pipe(
-            Effect.flatMap(decodeJson),
-            Effect.map((credentials) => object(credentials).accessToken),
-          )
-        : keychain.accessToken,
-    );
-    if (Result.isFailure(credential)) {
-      const cause = credential.failure;
-      const missing =
-        typeof credentialSource === "string" &&
-        PlatformError.isPlatformError(cause) &&
-        cause.reason._tag === "NotFound";
-      return {
-        accountKey: null,
-        records: [],
-        missing,
-        error: missing
-          ? null
-          : typeof credentialSource === "string"
-            ? "Cursor credentials could not be read."
-            : CursorKeychain.isCursorKeychainTimeoutError(cause)
-              ? "Allow Keychain access on the Mac running Vetra Code, then refresh."
-              : "Cursor Keychain credentials could not be read.",
-      } satisfies CursorAccountUsageReadResult;
-    }
-    const accessToken = credential.success;
-    if (typeof accessToken !== "string" || !accessToken) {
-      return {
-        accountKey: null,
-        records: [],
-        missing: true,
-        error:
-          typeof credentialSource === "string"
-            ? null
-            : "Cursor account history needs a macOS Keychain CLI login on this server.",
-      } satisfies CursorAccountUsageReadResult;
-    }
-    return { kind: "local", accessToken } as const;
-  });
-  const readLocalSession = Effect.fn("CursorAccountUsage.readLocalSession")(function* (
-    accessToken: string,
-  ) {
-    const payload = Base64Url.decodeString(accessToken.split(".")[1] ?? "");
-    if (Result.isFailure(payload)) return yield* invalid("Invalid authentication");
-    const subject = object(
-      yield* decodeJson(payload.success).pipe(
-        Effect.catch(() => invalid("Invalid authentication")),
-      ),
-    ).sub;
-    if (typeof subject !== "string" || !subject) return yield* invalid("Invalid authentication");
-    const userId = subject.split("|").at(-1);
-    if (!userId) return yield* invalid("Invalid authentication");
-    const pageRequest = HttpClientRequest.post(DASHBOARD_USAGE_URL).pipe(
-      HttpClientRequest.setHeaders({
-        Origin: "https://cursor.com",
-        Cookie: `WorkosCursorSessionToken=${encodeURIComponent(`${userId}::${accessToken}`)}`,
-      }),
-    );
-    return { pageRequest, accountKey: yield* accountHash(subject), teamIds: [], userId: undefined };
-  });
   return Effect.fn("readCursorAccountUsage")(function* (
     credentialSource: CursorCredentialSource,
     sinceMs: number,
     endDate: number,
   ) {
-    const login =
-      typeof credentialSource === "string" || credentialSource.kind === "keychain"
-        ? yield* readLocalLogin(credentialSource)
-        : credentialSource;
-    if ("records" in login) return login;
     let accountKey: string | null = null;
     const read = Effect.gen(function* () {
       if (
@@ -273,15 +180,18 @@ export const makeCursorAccountUsageReader = Effect.gen(function* () {
         sinceMs > endDate
       )
         return yield* invalid("Invalid date window");
-      const session =
-        login.kind === "apiKey"
-          ? yield* Cache.get(sessions, login.apiKey)
-          : yield* readLocalSession(login.accessToken);
-      const { pageRequest, teamIds, userId } = session;
+      const session = yield* Cache.get(sessions, credentialSource.apiKey);
+      const { accessToken, teamIds, userId } = session;
       accountKey = session.accountKey;
       const pageSlots = yield* Semaphore.make(6);
       // Omitting teamId returns personal history; team history also needs the current user filter.
       const readScope = Effect.fn("CursorAccountUsage.readScope")(function* (teamId?: number) {
+        const pageRequest = HttpClientRequest.post(
+          `${DEFAULT_CURSOR_API_ENDPOINT}/aiserver.v1.DashboardService/GetFilteredUsageEvents`,
+        ).pipe(
+          HttpClientRequest.bearerToken(accessToken),
+          HttpClientRequest.setHeader("connect-protocol-version", "1"),
+        );
         const records: UsageRecord[] = [];
         const occurrences = new Map<string, number>();
         const normalized: Array<(Omit<UsageRecord, "dedupeKey"> & { dedupeKey: string }) | null> =
@@ -314,7 +224,7 @@ export const makeCursorAccountUsageReader = Effect.gen(function* () {
                 ),
               );
             if (response.status === 401 || response.status === 403) {
-              if (login.kind === "apiKey") yield* Cache.invalidate(sessions, login.apiKey);
+              yield* Cache.invalidate(sessions, credentialSource.apiKey);
               return {
                 accountKey,
                 records: [],

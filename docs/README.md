@@ -61,7 +61,6 @@ source alone does not explain. Most code changes do not need an internal documen
 - [Adding a provider](./internals/adding-a-provider.md)
 - [Pull request file revisions](./internals/pull-request-file-revisions.md)
 - [Model classification](./internals/model-manifest.md)
-- [Provider subscription usage](./internals/provider-subscription-usage.md)
 - [Remote environments](./internals/remote.md)
 - [Terminal runtime](./internals/terminal-runtime.md)
 - [Terminal renderers](./architecture/terminal-renderers.md)

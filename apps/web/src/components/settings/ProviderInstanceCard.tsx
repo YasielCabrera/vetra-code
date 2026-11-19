@@ -717,7 +717,6 @@ interface ProviderInstanceCardProps {
   readonly onDelete?: (() => void) | undefined;
   readonly headerAction?: ReactNode | undefined;
   readonly setup?: ReactNode;
-  readonly subscriptionCredentialControl?: ReactNode | undefined;
   readonly runtime?: ReactNode;
   readonly hiddenModels: ReadonlyArray<string>;
   readonly favoriteModels: ReadonlyArray<string>;
@@ -792,7 +791,6 @@ export function ProviderInstanceCard({
   onDelete,
   headerAction,
   setup,
-  subscriptionCredentialControl,
   runtime,
   hiddenModels,
   favoriteModels,
@@ -1423,12 +1421,6 @@ export function ProviderInstanceCard({
               ))}
             </div>
           ) : null}
-        </SettingsSection>
-      ) : null}
-
-      {subscriptionCredentialControl ? (
-        <SettingsSection title={gt("Subscription")}>
-          <div className="px-3 py-3 sm:px-4">{subscriptionCredentialControl}</div>
         </SettingsSection>
       ) : null}
 

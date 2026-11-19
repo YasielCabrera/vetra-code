@@ -1,6 +1,5 @@
 // Context tags are runtime singletons; drivers need multiple instances.
 import type {
-  ProviderSubscriptionUsageInstanceResult,
   ProviderConsumeResetCreditOutcome,
   AcpRegistryListSessionsResult,
   AcpRegistryListProvidersResult,
@@ -64,8 +63,6 @@ export interface ProviderInstance {
   ) => Effect.Effect<ProviderConsumeResetCreditOutcome, ProviderDriverError>;
   readonly orchestrationAdapter: ProviderAdapter.ProviderAdapterV2["Service"];
   readonly textGeneration: ProviderTextGeneration;
-  /** Optional live quota reader captured from this exact materialized instance. */
-  readonly subscriptionUsage?: ProviderSubscriptionUsageCapability;
   readonly auth?: ProviderAuthController;
   readonly acpSessionManagement?: {
     readonly listSessions: (input: {
@@ -90,23 +87,6 @@ export interface ProviderInstance {
       readonly providerId: string;
     }) => Effect.Effect<void, AcpRegistryOperationError>;
   };
-}
-
-/**
- * One settled provider read. `transient` stays off the wire contract because it
- * is a caching decision, not something a client may act on.
- */
-export interface ProviderSubscriptionUsageProbe {
-  readonly result: ProviderSubscriptionUsageInstanceResult;
-  /** Only network, timeout, rate-limit, and server failures may reuse last-good data. */
-  readonly transient?: boolean;
-}
-
-export interface ProviderSubscriptionUsageCapability {
-  /** Non-secret fingerprint of all auth/config inputs that affect the probe. */
-  readonly fingerprint: Effect.Effect<string, never>;
-  /** A settled probe. Provider and transport failures are represented in-band. */
-  readonly read: Effect.Effect<ProviderSubscriptionUsageProbe, never>;
 }
 
 export interface ProviderContinuationIdentity {

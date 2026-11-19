@@ -57,7 +57,7 @@ export function grokAcpSpawnArgs(runtimeMode?: RuntimeMode): ReadonlyArray<strin
   }
 }
 
-export function buildGrokAcpSpawnInput(
+function buildGrokAcpSpawnInput(
   grokSettings: GrokAcpRuntimeGrokSettings | null | undefined,
   cwd: string,
   environment?: NodeJS.ProcessEnv,

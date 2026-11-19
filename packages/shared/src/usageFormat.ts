@@ -52,11 +52,10 @@ export function usageSourceMessages(
   const malformedBySource = new Map<string, number>();
   for (const source of sources) {
     if (
-      source.action ||
-      (source.status !== "partial" &&
-        source.status !== "failed" &&
-        source.fingerprint.provider !== "cursor" &&
-        !(source.status === "missing" && source.malformedRecords > 0))
+      source.status !== "partial" &&
+      source.status !== "failed" &&
+      source.fingerprint.provider !== "cursor" &&
+      !(source.status === "missing" && source.malformedRecords > 0)
     ) {
       continue;
     }
@@ -214,10 +213,10 @@ function hourOptions(hour12: boolean): Intl.DateTimeFormatOptions {
 function formatHour(formatter: Intl.DateTimeFormat, date: Date, hour12: boolean): string {
   if (hour12) return formatter.format(date);
   // Rolling buckets can start between whole hours, but their labels always name the hour.
-  const parts = formatter.formatToParts(date);
-  const hour = parts.find((part) => part.type === "hour")?.value;
-  const zone = parts.find((part) => part.type === "timeZoneName")?.value;
-  return `${hour}:00${zone ? ` ${zone}` : ""}`;
+  return formatter
+    .formatToParts(date)
+    .map((part) => (part.type === "hour" ? `${part.value}:00` : part.value))
+    .join("");
 }
 
 /**
