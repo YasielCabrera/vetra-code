@@ -397,6 +397,7 @@
   "apps/web/src/components/sidebar/SidebarUpdatePill.tsx": 1,
   "apps/web/src/components/sidebar/mainAppLocation.ts": 1,
   "apps/web/src/components/sidebar/updateEverythingRun.tsx": 2,
+  "apps/web/src/components/sourceControl/ListPageChrome.tsx": 2,
   "apps/web/src/components/ui/middle-truncate.tsx": 1,
   "apps/web/src/components/ui/sidebar.tsx": 3,
   "apps/web/src/components/ui/toast.tsx": 2,

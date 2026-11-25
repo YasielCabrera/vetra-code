@@ -2,6 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import type { ManagedUpdatesPolicy } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import { PRODUCT_CLI_NAME } from "@t3tools/shared/productIdentity";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -251,6 +252,32 @@ it.layer(NodeServices.layer)("t3 update launcher", (it) => {
       // Replaced, not written through.
       assert.equal(yield* fs.readFileString(oldExe), "");
     }).pipe(Effect.scoped, Effect.provideService(HostProcess.Platform, "linux")),
+  );
+
+  it.effect("repoints a recorded Windows launcher outside PATH", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const root = yield* fs.makeTempDirectoryScoped();
+      const baseDir = path.join(root, "home");
+      const runtimeDir = path.join(baseDir, "runtime");
+      const launcher = path.join(root, "custom bin", "vetra.cmd");
+      const launchedAs = path.join(runtimeDir, "versions", "1.0.0", "vetra.exe");
+      const targetEntryPath = path.join(runtimeDir, "versions", "2.0.0", "vetra.exe");
+      yield* fs.makeDirectory(runtimeDir, { recursive: true });
+      yield* fs.makeDirectory(path.dirname(launcher), { recursive: true });
+      yield* fs.writeFileString(launcher, `@echo off\r\n"${launchedAs}" %*`);
+      yield* fs.writeFileString(path.join(runtimeDir, "launchers"), `${launcher}\r\n`);
+
+      const repointed = yield* repointLauncher({ launchedAs, baseDir, targetEntryPath });
+
+      assert.equal(Option.getOrUndefined(repointed), launcher);
+      assert.equal(yield* fs.readFileString(launcher), `@echo off\r\n"${targetEntryPath}" %*`);
+    }).pipe(
+      Effect.scoped,
+      Effect.provideService(HostProcess.Platform, "win32"),
+      Effect.provideService(HostProcess.Environment, { PATH: "" }),
+    ),
   );
 
   it.effect.skipIf(HostProcess.Platform.defaultValue() === "win32")(
@@ -680,8 +707,7 @@ it.layer(NodeServices.layer)("t3 update checks the database before switching", (
       targetVersion: "0.1.8",
       launcherProtocol: 3,
       preflight: preflightOutput("", 1),
-      failure:
-        "t3@0.1.8 could not confirm it supports this database (its check exited with code 1), so t3 did not switch to it.",
+      failure: `${PRODUCT_CLI_NAME}@0.1.8 could not confirm it supports this database (its check exited with code 1), so ${PRODUCT_CLI_NAME} did not switch to it.`,
     },
     {
       // Newer builds keep accepting the current launcher protocol, which may drop 3.

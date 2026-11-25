@@ -1,4 +1,5 @@
 import { EnvironmentId } from "@t3tools/contracts";
+import { GTProvider } from "gt-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vite-plus/test";
 
@@ -30,6 +31,10 @@ vi.mock("@pierre/trees/react", () => ({
   useFileTreeSelector: (model: unknown, select: (model: unknown) => unknown) => select(model),
 }));
 
+// Reaches `window` at module scope for its editor probe, which this markup test never needs.
+vi.mock("~/fileContextMenu", () => ({
+  useFileContextMenu: () => ({ buildItems: () => [], activate: async () => {} }),
+}));
 vi.mock("~/composerHandleContext", () => ({
   useComposerHandleContext: () => null,
 }));
@@ -86,15 +91,17 @@ import FileBrowserPanel from "./FileBrowserPanel";
 describe("FileBrowserPanel", () => {
   it("passes working-tree status and changed-folder styling to Pierre", () => {
     const markup = renderToStaticMarkup(
-      <FileBrowserPanel
-        environmentId={EnvironmentId.make("environment-1")}
-        cwd="/repo"
-        projectName="Project"
-        selectedPath={null}
-        selectedPathRevealId={0}
-        workspaceMutationId={null}
-        onOpenFile={() => {}}
-      />,
+      <GTProvider locale="en" translations={{}}>
+        <FileBrowserPanel
+          environmentId={EnvironmentId.make("environment-1")}
+          cwd="/repo"
+          projectName="Project"
+          selectedPath={null}
+          selectedPathRevealId={0}
+          workspaceMutationId={null}
+          onOpenFile={() => {}}
+        />
+      </GTProvider>,
     );
 
     expect(markup).toContain('data-mock-file-tree="Project files"');

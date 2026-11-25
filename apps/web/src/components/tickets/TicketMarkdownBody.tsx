@@ -1,53 +1,12 @@
 import type { EnvironmentId, TicketAttachment } from "@t3tools/contracts";
-import { setMarkdownTaskChecked } from "@t3tools/shared/markdownTaskList";
+import { setMarkdownTaskChecked } from "@t3tools/shared/markdownTaskEdits";
 import type { PlanSourceSpan } from "@t3tools/shared/ticketPlanAnchors";
 import { memo, useState } from "react";
 
 import ChatMarkdown, { type ChatMarkdownAttachmentReference } from "../ChatMarkdown";
 import { TicketAttachmentReference } from "./ticketAttachments";
 
-type PlanHastNode = {
-  type: string;
-  tagName?: string;
-  properties?: Record<string, unknown>;
-  children?: PlanHastNode[];
-  position?: { start: { offset?: number }; end: { offset?: number } };
-};
-
-export type PlanBlockKind = "diagram" | "code" | "image";
-
-function planBlockKind(node: PlanHastNode): PlanBlockKind | undefined {
-  if (node.tagName === "pre") {
-    const code = node.children?.find((child) => child.tagName === "code");
-    const className = code?.properties?.className;
-    return Array.isArray(className) && className.includes("language-mermaid") ? "diagram" : "code";
-  }
-  const hasStandaloneImage = (parent: PlanHastNode): boolean =>
-    parent.children?.some((child) =>
-      child.tagName === "img"
-        ? child.properties?.dataStandalone === true
-        : hasStandaloneImage(child),
-    ) ?? false;
-  return node.tagName === "p" && hasStandaloneImage(node) ? "image" : undefined;
-}
-
-function rehypePlanSourcePositions() {
-  return (tree: PlanHastNode) => {
-    for (const node of tree.children ?? []) {
-      const start = node.position?.start.offset;
-      const end = node.position?.end.offset;
-      if (node.type !== "element" || start === undefined || end === undefined) continue;
-      node.properties = {
-        ...node.properties,
-        dataPlanSourceStart: start,
-        dataPlanSourceEnd: end,
-        dataPlanBlock: planBlockKind(node),
-      };
-    }
-  };
-}
-
-const PLAN_REHYPE_PLUGINS = [rehypePlanSourcePositions];
+export type { PlanBlockKind } from "~/markdown/wordsHast";
 
 export const PLAN_SOURCE_SELECTOR = "[data-plan-source-start]";
 
@@ -99,7 +58,7 @@ export const TicketMarkdownBody = memo(function TicketMarkdownBody(props: {
       environmentId={environmentId}
       renderAttachmentReference={renderAttachment}
       onTaskListChange={onBodyChange === undefined ? undefined : onTaskListChange}
-      {...(props.sourcePositions ? { extraRehypePlugins: PLAN_REHYPE_PLUGINS } : {})}
+      {...(props.sourcePositions ? { sourcePositions: true } : {})}
     />
   );
 });

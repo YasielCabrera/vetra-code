@@ -104,7 +104,11 @@ vi.mock("../../state/server", async () => {
   const { Atom: RuntimeAtom } = await import("effect/reactivity");
   const configs = RuntimeAtom.make(new Map<string, CapabilityConfig>());
   capabilityAtom.install(configs);
-  return { environmentServerConfigsAtom: configs };
+  // state/threads reads this through serverEnvironment; these tests never hide tags.
+  return {
+    environmentServerConfigsAtom: configs,
+    serverEnvironment: { hiddenThreadTagsAtom: () => RuntimeAtom.make(null) },
+  };
 });
 vi.mock("../../state/query", () => ({
   useEnvironmentQuery: (atom: QueryAtom | null) => {

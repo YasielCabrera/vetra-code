@@ -54,6 +54,9 @@ PRUNE_PATHS=(
   # policy while still pointing at T3, which is worse than shipping none.
   # Restore this file only once Vetra owns a reporting destination.
   .github/SECURITY.md
+  # Upstream's trademark policy asserts T3 Tools, Inc.'s marks. The rename pass would make it
+  # read as Vetra Code's policy while still claiming T3's ownership.
+  TRADEMARK.md
   apps/mobile
   apps/marketing
   scripts/export-android-icons.ts
@@ -62,6 +65,8 @@ PRUNE_PATHS=(
   scripts/scenarios/t3-mobile.ts
   scripts/scenarios/mobile-opens-a-seeded-thread.e2e.ts
   apps/server/src/triage
+  scripts/mobile-audit.ts
+  scripts/mobile-audit
   scripts/mobile-e2e.ts
   scripts/mobile-e2e
   scripts/mobile-showcase.ts
@@ -78,6 +83,9 @@ PRUNE_PATHS=(
   docs/internals/mobile-development.md
   docs/internals/mobile-navigation.md
   docs/internals/mobile-layout.md
+  docs/internals/11_mobile-layout.md
+  docs/internals/12_mobile-navigation.md
+  docs/internals/13_mobile-development.md
   docs/internals/images/mobile-layers.png
   docs/internals/images/mobile-workspace-split.png
   docs/internals/voice-input.md
@@ -90,10 +98,12 @@ PRUNE_PATHS=(
   # Upstream's Connect operator guide is written for T3's hosted Clerk and
   # relay. Restore it only once Vetra owns those destinations.
   docs/operations/connect-setup.md
+  docs/operations/02_connect-setup.md
   # Upstream's AUR packaging. The fork owns no AUR package, and the PKGBUILD
   # directories carry T3 identity in their *paths*, which the rename pass below
   # never rewrites.
   packaging/aur
+  scripts/aur-release.test.ts
   # Upstream's one-line installers. They default to downloading and executing
   # pingdotgg/t3code release binaries, and are only reachable from the t3.codes
   # pages that serve them. Restore once Vetra publishes its own archives.
@@ -107,6 +117,7 @@ PRUNE_PATHS=(
   # Deleted during fork isolation: the fork's dev setup lives in AGENTS.md, and
   # upstream's file documents the T3 CLI and t3.json worktree scripts.
   docs/operations/development.md
+  docs/operations/00_development.md
   # Nightly toast and settings row promoting T3's beta mobile app through T3's
   # TestFlight and Google Play links. The fork ships no mobile app.
   # Vetra already owns a side-aware, resizable file tree.
@@ -221,6 +232,8 @@ RENAMES=(
   # rebases). Must not attribute fork commits to T3's domain; `vetra.invalid`
   # matches the other placeholders until Vetra owns a mail domain.
   'noreply@t3.codes=noreply@vetra.invalid'
+  # Committer identity for commits the server writes on a user's behalf.
+  't3code@users.noreply.github.com=vetra@users.noreply.github.com'
   # Upstream spells its URL scheme with the same word as its product slug. This
   # fork splits them: the slug is `vetra-code` but the scheme is
   # PRODUCT_DESKTOP_PROTOCOL, `vetra`. A bare `scheme: "t3code"` literal still
@@ -360,6 +373,9 @@ RENAMES=(
   'T3 thread=Vetra Code thread'
   'T3-owned=Vetra-owned'
   'T3 tool=Vetra Code tool'
+  'T3 MCP tools=Vetra Code MCP tools'
+  'in T3 is a T3 bug=in Vetra Code is a Vetra Code bug'
+  'approvals in T3=approvals in Vetra Code'
   'T3 delegated review=Vetra Code delegated review'
   'T3 orchestration=Vetra Code orchestration'
   'T3 transport=Vetra Code transport'
@@ -426,6 +442,11 @@ done
 for glob in "${PRUNE_GLOBS[@]}"; do
   git rm -rf --quiet --ignore-unmatch -- $glob 2>/dev/null || true
 done
+# Upstream adds mobile scenarios every few syncs. Each one drives the pruned
+# scripts/scenarios/t3-mobile.ts, so it cannot build here whatever it is named.
+while IFS= read -r scenario; do
+  git rm -rf --quiet --ignore-unmatch -- "$scenario" 2>/dev/null || true
+done < <(grep -rl "t3-mobile" scripts/scenarios 2>/dev/null || true)
 
 say "Resetting fork-owned GitHub Actions to HEAD"
 for path in "${FORK_OWNED_PATHS[@]}"; do

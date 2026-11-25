@@ -61,13 +61,4 @@ describe("ExecutionEnvironmentDescriptor", () => {
       }).capabilities.ticketIssueLinks,
     ).toBe(true);
   });
-
-  it("decodes old descriptors carrying the removed issues capability", () => {
-    expect(
-      decodeDescriptor({
-        ...descriptor,
-        capabilities: { ...descriptor.capabilities, issues: true },
-      }).capabilities,
-    ).toEqual({ repositoryIdentity: true });
-  });
 });

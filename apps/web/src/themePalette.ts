@@ -442,10 +442,20 @@ export function getStandardThemeColors(appearance: ThemeAppearance): ThemeColors
   return (standardLightThemeColors ??= decodeThemeColors(VETRA_CODE_LIGHT_THEME_COLORS));
 }
 
-// index.css paints the light bubble a step darker than the shared palette mobile uses.
+// index.css paints Vetra's green identity over the neutral palette the shared themes carry.
 const STANDARD_WEB_PAINTED_COLORS: Record<ThemeAppearance, Partial<ThemeColors>> = {
-  light: { messageSurface: "#ebebed" },
-  dark: { canvas: "#000000", messageSurface: "#1e1e1e" },
+  light: {
+    canvas: "#f6faf7",
+    surface: "#ffffff",
+    surfaceRaised: "#ffffff",
+    messageSurface: "#e2f7ea",
+  },
+  dark: {
+    canvas: "#0b1510",
+    surface: "#111d16",
+    surfaceRaised: "#15231a",
+    messageSurface: "#173522",
+  },
 };
 
 /** The standard theme as index.css paints it, for solves that measure the page. */

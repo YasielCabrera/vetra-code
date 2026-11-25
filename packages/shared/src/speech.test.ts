@@ -53,7 +53,7 @@ describe("speech PCM request framing", () => {
 });
 
 describe("resolveSpeechVocabulary", () => {
-  it("prefers project spellings, keeps hints under the cap, and drops duplicates", () => {
+  it("prefers project spellings and keeps hints out of the dictionary", () => {
     const personal = Array.from({ length: 100 }, (_, index) => ({
       term: `word${index}`,
       aliases: index === 0 ? ["Effect"] : [],
@@ -61,16 +61,15 @@ describe("resolveSpeechVocabulary", () => {
     const resolved = resolveSpeechVocabulary({
       personal,
       project: [{ term: "effect", aliases: ["a fact"] }],
-      hints: ["  Vetra   Code ", "word1", "", "x".repeat(51)],
+      hints: ["  Vetra   Code ", "word1", "", "x".repeat(51), "vetra code"],
     });
-    expect(resolved).toHaveLength(100);
-    expect(resolved.slice(0, 3)).toEqual([
-      { term: "Vetra Code", aliases: [] },
+    expect(resolved.speechHints).toEqual(["Vetra Code"]);
+    expect(resolved.speechCustomWords).toHaveLength(100);
+    expect(resolved.speechCustomWords.slice(0, 2)).toEqual([
       { term: "effect", aliases: ["a fact"] },
       { term: "word0", aliases: [] },
     ]);
-    expect(resolved.filter(({ term }) => term === "word1")).toHaveLength(1);
-    expect(resolved.at(-1)?.term).toBe("word97");
+    expect(resolved.speechCustomWords.at(-1)?.term).toBe("word98");
   });
 });
 

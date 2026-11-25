@@ -87,7 +87,9 @@ Surfaces this fork deleted and will not ship:
 | `scripts/mobile-showcase*` and `scripts/mobile-native-static-check*`         | Mobile-only tooling.              |
 | `t3.json`                                                                    | Replaced by `vetra.json`.         |
 | `docs/user/mobile-*`, `docs/operations/android-notifications.md`             | Mobile-only guidance.             |
-| `docs/operations/connect-setup.md`                                           | Written for T3's Clerk and relay. |
+| `docs/internals/11_mobile-*`, `12_mobile-*`, `13_mobile-*`                   | Mobile-only internals.            |
+| `TRADEMARK.md`                                                               | Asserts T3 Tools, Inc.'s marks.   |
+| `docs/operations/02_connect-setup.md`                                        | Written for T3's Clerk and relay. |
 | `patches/*react-navigation*`, `patches/*react-native*`, and `patches/*expo*` | Mobile dependency patches.        |
 | `apps/web/src/components/NightlyMobileBeta.tsx`                              | Promotes T3's beta mobile app.    |
 
@@ -118,10 +120,10 @@ must not send users, tokens, or events to T3 until we configure Vetra-owned repl
 | Desktop auto-update         | On. The feed is this repository's releases.                                             | Only the Desktop Release workflow sets `VETRA_DESKTOP_UPDATE_REPOSITORY`, to this repository. The build never infers a feed, so any other build has none. `VETRA_DISABLE_AUTO_UPDATE=true` turns checks off at runtime.                                                                       |
 | Product analytics (PostHog) | Off until we own a PostHog project. Do not ship the inherited T3 project key.           | `VETRA_TELEMETRY_ENABLED` defaults to false and `VETRA_POSTHOG_KEY` has no default; a blank key is treated as disabled, so opting in without your own project sends nothing. Upstream defaults the other way, so a merge touching `AnalyticsService` is a required review item every sync.    |
 | Model manifest refresh      | Off until we host a manifest. Upstream fetches its own repository on `main`.            | `ModelManifest` reads its bundled `model-manifest.json` and only fetches when `VETRA_MODEL_MANIFEST_URL` is set; a blank URL skips the network entirely. Upstream hardcodes `raw.githubusercontent.com/pingdotgg/t3code`, so a merge touching `ModelManifest.ts` is a review item every sync. |
-| OTLP / Grafana              | Optional, and only to endpoints we own.                                                 | Unset by default. See [observability](../operations/observability.md).                                                                                                                                                                                                                        |
+| OTLP / Grafana              | Optional, and only to endpoints we own.                                                 | Unset by default. See [observability](../operations/04_observability.md).                                                                                                                                                                                                                     |
 | Release / relay-deploy CI   | Desktop installers and their update feed only, until we own every other publish target. | Upstream's workflows never land (see [Own](#own)). The manual Desktop Release workflow publishes installers and update files to this repository's releases and nothing else.                                                                                                                  |
 
-Canonical disable-list for publishing is [Desktop releases](../operations/release.md).
+Canonical disable-list for publishing is [Desktop releases](../operations/03_release.md).
 Identity constants live in [`packages/shared/src/productIdentity.ts`](../../packages/shared/src/productIdentity.ts).
 Optional cloud/update env vars are documented in [`.env.example`](../../.env.example); that file
 must stay commented and must never contain T3 production identifiers.
@@ -174,7 +176,8 @@ backends leak back in.
 - Renumber an incoming migration. This fork inserted `041_ProjectionAutomations`, so every upstream
   migration after it collides one number low (upstream's `055_OrchestrationV2` is our `056`). Take
   the incoming file, `git mv` it past our highest number, and shift the `toMigrationInclusive`
-  boundaries in its test, and in any test that imports migrations by file name, by the same offset —
+  boundaries in its test, and in any test that imports migrations by file name (the workflow tests
+  do), by the same offset —
   the migration test asserts on the schema _before_ and _after_ its own migration, so a stale
   boundary fails with a missing table rather than a wrong number. Do not add fork migrations to
   upstream's ledger: fork-owned schema goes in the fork ledger, `VetraMigrations.ts` (see
@@ -199,6 +202,32 @@ backends leak back in.
 - Review lockfile, `package.json` workspace members, or root scripts that mention `mobile` /
   `marketing`.
 - Touch binaries. The rename pass skips non-text files.
+- Split a layer composition the merge pushed past 20 arguments. `Layer.mergeAll` and `pipe` stop
+  at 20 overloads; past that TypeScript infers `any`, which spreads silently through the server's
+  layer graph and surfaces far away as `any` in unrelated CLI files. Combining this fork's services
+  with upstream's is what crosses that line, so a sync that adds layers to
+  [`server.ts`](../../apps/server/src/server.ts) may need one split into nested groups.
+- Re-point the fork's markdown extensions. Upstream's web renderer parses with its own
+  [`wordsHast`](../../apps/web/src/markdown/wordsHast.ts) and takes a closed `MarkdownExtensions`
+  set, not remark/rehype plugin lists. Fork behaviour that used to be a plugin — untrusted ticket
+  and issue bodies (`localFileLinks`), plan comment anchors (`planSourcePositions`) — is an
+  extension there now. Words positions only code blocks, links, list items and math, so plan
+  comments anchor to those and not to prose.
+
+- Re-point upstream tests that build fixtures from T3 identity. `RENAMES` rewrites the strings it
+  knows, but a test that writes a fake CLI at `bin/t3`, a home at `~/.t3`, a port `3773`, or a
+  branch `t3-abcd1234` keeps working against a name this fork does not use, and then fails far from
+  the cause — a launcher "not found" becomes a download attempt against `releases.vetra.invalid`, a
+  missing runtime becomes a 60s timeout. Point them at
+  [`productIdentity.ts`](../../packages/shared/src/productIdentity.ts) rather than the fork's
+  literals, so the next rename moves them too.
+- Drop upstream tests for things this fork does not ship. The fork owns `.github/`, has no AUR
+  packaging and no `triage` command, so tests that read an upstream workflow file or list every CLI
+  command fail by construction. Prune the test with the feature, and keep the fork's own command
+  list (`VETRA_CLI_COMMANDS`) in step with the CLI the fork actually builds.
+- Re-check capability and settings lists the fork narrowed. A merge restores upstream's full
+  `ExecutionEnvironmentDescriptor` capabilities and settings groups; two Settings nav groups with
+  the same heading, or a capability the fork folded into tickets, come back silently.
 
 If a miss is mechanical (same string, many files), extend `RENAMES` and re-run the leftover grep.
 Do not hand-edit a hundred occurrences of a new pattern.
@@ -481,6 +510,6 @@ Runtime constants that must not drift, even if a merge conflict "resolves" them 
 
 - [Workspace layout](./workspace-layout.md)
 - [Scripts](./scripts.md)
-- [Desktop releases](../operations/release.md)
+- [Desktop releases](../operations/03_release.md)
 - [Safe first run](../../re-making-plan/03-safe-first-run.md) (why identity isolation exists)
 - [Bootstrap progress](../../re-making-plan/08-bootstrap-progress.md)

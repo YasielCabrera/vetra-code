@@ -21,7 +21,13 @@ import { TicketPlanPreview, TicketPlanPreviewHeader } from "./TicketPlans";
 vi.mock("../../hooks/useTicketActions", () => ({ useTicketActions: () => ({}) }));
 vi.mock("../../state/tickets", () => ({ useTicketPlan: () => result }));
 vi.mock("../../env", () => ({ isElectron: false }));
-vi.mock("../../lib/utils", async () => ({ cn: (await import("class-variance-authority")).cx }));
+vi.mock("../../lib/utils", async () => {
+  let uuidCounter = 0;
+  return {
+    cn: (await import("class-variance-authority")).cx,
+    randomUUID: () => `0000-${(uuidCounter += 1).toString().padStart(4, "0")}`,
+  };
+});
 vi.mock("../../components/ui/toast", () => ({ toastManager: { add: vi.fn() } }));
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
 vi.mock("./TicketStartThreadMenu", () => ({ TicketStartThreadSubmenu: () => null }));

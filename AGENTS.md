@@ -38,7 +38,7 @@ The rest of this document is meant to help you navigate the codebase and make ch
 
 Most Vetra Code contributions are made from a running coding-agent workspace, often controlled remotely. Be careful when accessing data or stopping development servers so you do not damage the application instance the contributor is actively using.
 
-## A small glossary
+## Terminology
 
 We need to be on the same page with terminology. When communicating, use this language:
 
@@ -74,14 +74,14 @@ The most common defect in this repo is a change that works on the path you teste
 - **Languages.** User-facing text ships in every locale: translate new keys in `apps/web/src/i18n/translations` after `vp run i18n:generate` (`vp run i18n:check` gates it).
 - **Docs.** Check whether the change makes existing guidance inaccurate. Apply the [documentation rules](#documentation) before adding anything. Recurring Vetra Code merges belong in [docs/internals/upstream-sync.md](docs/internals/upstream-sync.md); do not raw-merge `upstream/main`.
 
-## Dev servers
+## Dev servers and test data
 
 - `vp i` installs. Worktrees get this from the vetra.json setup script; if module resolution looks broken, it probably did not run.
 - Setup runs in the background. While `.vetra-code/setup-running` names a live PID, wait for it and do not run `vp i`. It ends with `.vetra-code/setup-done` or `.vetra-code/setup-failed` (with the error tail). With no marker at all, setup never ran here, so run `vp i` yourself.
 - `vp run dev` starts server and web. In a worktree, state defaults to that worktree's gitignored `.vetra-code`, which deliberately outranks an ambient `VETRA_HOME` so you cannot land on shared state by accident. An explicit `--home-dir` still wins.
 - Ports derive from the worktree path and are stable across restarts, but read the real ones from the `[dev-runner]` line since occupied ports shift.
 - Sharing over the tailnet is three steps: run `vp run dev --share` in the background, wait for the `pairingUrl:` line in its output, then give that full URL to an unpaired browser. Do not wire up `tailscale serve` by hand, open the URL yourself, or consume the user's pairing link. A browser with the reusable dev cookie can use the bare origin. If a normal one-time token was consumed, mint a fresh one with `node apps/server/src/bin.ts pair`. Both links carry standard scopes, including Connections management.
-- To reuse web dev auth across worktrees, configure one fixed `VETRA_DEV_AUTH_TOKEN` in the main checkout's gitignored `.env`. The `vetra.json` setup links that file into worktrees. Never commit or publish the token or a startup URL. See [Reusable dev credential](docs/operations/development.md#reusable-dev-credential).
+- To reuse web dev auth across worktrees, configure one fixed `VETRA_DEV_AUTH_TOKEN` in the main checkout's gitignored `.env`. The `vetra.json` setup links that file into worktrees. Never commit or publish the token or a startup URL. See [Reusable dev credential](docs/internals/04_environment-auth.md#reusable-dev-credential).
 - Stop what you started, by the PID you tracked. See rule 1. `vp` does not pass SIGTERM on, so signalling the `vp run dev` PID alone leaves Vite and the server running. Stop the background task with your harness's own stop, which ends the whole tree.
 - Run dev servers, Metro, and builds from your own shell so they end with your session. Do not detach them with `systemd-run`, `nohup`, `setsid`, or `tmux` unless the user asks for one that outlives the session. Detached servers ran for weeks and filled RAM and swap. The dev runner stops itself above `--memory-limit-gb` (half of RAM, at most 16 GiB) on Linux.
 - Need a second checkout? `git worktree add` it next to this worktree, not in `/tmp`. Remove it when done.
@@ -106,7 +106,7 @@ An empty database is a bad test. Seed your worktree's `.vetra-code` with a copy 
 - Extend before you add. When an existing test or table covers the behavior, add a row or an assertion there. Write a new `it` only when no case fits.
 - Test at one layer: the lowest one that fails on `main`. Do not repeat the case in a wrapper test, at each call site, or in web and mobile copies of the same logic.
 - Write a browser test only for behavior that needs a real browser: layout and scrolling, focus and pointer input, real workers, or a component wired to its hooks. Logic a component calls gets a unit test beside it (`*.logic.test.ts`). A browser test file spends seconds in CI loading its module graph before its first test runs; a unit test takes milliseconds.
-- [Testing](docs/internals/testing.md) carries these same test rules, plus review guidance, for review bots. Change both together.
+- [Testing](docs/internals/15_testing.md) carries these same test rules, plus review guidance, for review bots. Change both together.
 - **Do not run repo-wide checks.** No `vp check`, no `vp run -r test`, no `vp run -r typecheck` unless I ask. CI owns the full suite.
 - Backend behavior changes ship with focused tests for that behavior.
 - Proof for a bug fix depends on the bug. Logic, data, state, and protocol bugs get a failing test first (the fewest that fail on `main` for that reason, in an existing case of the module's test file where one fits), then the fix. Purely visual bugs (spacing, colour, alignment, a layout shift) get before/after captures as their proof and no test: do not add UI tests for nitpicks, and do not ask for one in review when a capture already shows it. A server-only fix with no visible surface ships the test plus a short runtime transcript. For a bug a user can reproduce in the web client, `vp run scenarios:prove` shows it failing on base and passing on the fix in the real app; see [Scenarios](docs/operations/scenarios.md).
@@ -147,7 +147,7 @@ An empty database is a bad test. Seed your worktree's `.vetra-code` with a copy 
 ## Pull requests
 
 - Never make a PR unless the developer explicitly asks you to do so.
-- `origin` is not always GitHub. Check `git remote get-url origin` before your first forge command and use that forge's CLI and skill. See [Forge mirror](docs/operations/development.md#forge-mirror-optional).
+- `origin` is not always GitHub. Check `git remote get-url origin` before your first forge command and use that forge's CLI and skill.
 - Conventional commit titles, plain language: `fix(web): new threads no longer spike CPU`.
 - Body: the problem in a sentence or two, then how you fixed it. End with the model and harness that did the work.
 - UI changes need before/after images. Motion or timing needs a short video.
@@ -160,7 +160,7 @@ An empty database is a bad test. Seed your worktree's `.vetra-code` with a copy 
 Most code changes do not need an internal documentation change. Agents can read the code.
 
 - `docs/internals/` is for architectural decisions and their reasons, constraints that span components, and implementation traps that are hard to discover from the source. Before adding a paragraph, ask what a maintainer would get wrong without it. If reading the relevant code answers the question, leave it out.
-- Do not document every feature, enumerate fields or methods, narrate control flow, maintain file catalogs, or append PR summaries. Types, tests, and code already record the implementation. The glossary defines shared vocabulary; it is not a feature index.
+- Do not document every feature, enumerate fields, methods, constants, timeouts, or migration numbers, narrate control flow, maintain file catalogs, or append PR summaries. Anything that can drift will drift; types, tests, and code already record the implementation. The glossary defines shared vocabulary; it is not a feature index.
 - A local reason the code can't show goes in a short nearby code comment. Use an internal doc when the reasoning crosses boundaries or needs context the code cannot carry well. Link to the relevant source instead of copying it.
 - When a documented decision or constraint changes, rewrite or remove the affected text. Do not append another account of the new behavior. A new internal page needs a distinct, durable reason to exist.
 - `docs/user/` helps users accomplish tasks. Give each major feature a concise section explaining what it does, how to start, and anything unintuitive. A settings path is useful; descriptions of visible buttons, icons, layouts, animations, or every UI state are not. Before adding text, ask what task or decision it helps the user with.
@@ -169,24 +169,38 @@ Most code changes do not need an internal documentation change. Agents can read 
 
 ## Plans and work artifacts
 
-- Do not commit implementation plans, research notes, or agent scratch files. Keep temporary working material outside the worktree. `.plans/` is gitignored only as a safety net for legacy tooling.
-- Track active maintainer work in the GitHub issue or project item that owns it. External proposals follow `CONTRIBUTING.md` and belong in Ideas discussions.
-- A merged PR is the implementation record. Close or update its tracking item when the work lands; do not preserve a second checklist in the repository.
-
-## How it works
-
-Clients send typed WebSocket requests. The server turns them into _commands_. The _orchestrator_ (`apps/server/src/orchestration-v2/Orchestrator.ts`) serializes commands and decides _events_ without doing any I/O. The _event sink_ commits those events, the _projections_ the UI reads, the _command receipt_, and _outbox_ effects in one transaction. The _effect worker_ then runs the effects, such as starting a provider turn or capturing a checkpoint, and feeds results back as commands. Provider CLIs run as subprocesses; per-provider _adapters_ translate their native protocols into orchestration events. Each turn ends with a _checkpoint_, a hidden git ref, so the app can diff and restore.
-
-Architecture and its constraints: `docs/internals/overview.md`. Glossary: `docs/internals/glossary.md`
+- Do not commit implementation plans, research notes, or agent scratch files (keep temporary material outside the worktree).
+- Track active maintainer work in its GitHub issue or project item; external proposals belong in Ideas discussions. A merged PR is the implementation record.
 
 ## Where code lives
 
-- `apps/server` - WebSocket, orchestration, providers, checkpointing. Effect-heavy: read [Effect services](docs/internals/effect-services.md) before adding server code, and `.repos/effect/LLMS.md` for the Effect library itself.
+- `apps/server` - WebSocket, orchestration, providers, checkpointing. Effect-heavy: read [Effect services](docs/internals/02_effect-services.md) before adding server code, and `.repos/effect/LLMS.md` for the Effect library itself.
 - `apps/web` - React/Vite UI. `apps/desktop` wraps it with Electron.
 - `packages/contracts` - Effect/Schema contracts plus small derived helpers. No heavy runtime logic.
 - `packages/shared` - shared runtime utils, subpath exports, no barrel.
 - `packages/client-runtime` - non-visual client runtime used by the web renderer.
 - `.repos/` - vendored read-only references. Prefer their patterns over invented ones. Never edit or import from them. Sync with `vpr sync:repos` when bumping the matching dependency. If it is missing (sparse checkout), read a file with `git show origin/main:.repos/<path>`.
+
+### Internal docs by area
+
+Read the matching doc before changing code in that area; code review enforces them.
+
+| Area                                       | Read first                                                                                               |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| Architecture & orchestration               | [00_glossary.md](docs/internals/00_glossary.md), [01_architecture.md](docs/internals/01_architecture.md) |
+| Server Effect services & errors            | [02_effect-services.md](docs/internals/02_effect-services.md)                                            |
+| Providers & ACP                            | [03_providers.md](docs/internals/03_providers.md)                                                        |
+| Auth, MCP, guest links, assets, security   | [04_environment-auth.md](docs/internals/04_environment-auth.md), [SECURITY.md](SECURITY.md)              |
+| Remote routes, peer links, previews        | [05_remote.md](docs/internals/05_remote.md)                                                              |
+| Vetra Connect & relay                      | [06_t3-connect.md](docs/internals/06_t3-connect.md)                                                      |
+| Server updates & crash recovery            | [07_server-updates.md](docs/internals/07_server-updates.md)                                              |
+| Telemetry & analytics                      | [08_product-analytics.md](docs/internals/08_product-analytics.md)                                        |
+| Client connection & sync runtime           | [09_connection-runtime.md](docs/internals/09_connection-runtime.md)                                      |
+| Web UI primitives, styles & React Compiler | [10_web-ui.md](docs/internals/10_web-ui.md)                                                              |
+| Translations & UI copy                     | [14_i18n.md](docs/internals/14_i18n.md)                                                                  |
+| Writing & reviewing tests                  | [15_testing.md](docs/internals/15_testing.md)                                                            |
+| Wire budgets, server metrics & perf        | [16_performance-regressions.md](docs/internals/16_performance-regressions.md)                            |
+| Repo & package scripts                     | [17_scripts.md](docs/internals/17_scripts.md)                                                            |
 
 ## Upstream sync
 
@@ -197,22 +211,11 @@ Internal names stay upstream's on purpose: workspace packages (`@t3tools/*`, `t3
 ## Taste
 
 - Complexity belongs at the adapter boundary. Orchestration stays pure, UI stays dumb.
-- Client mutations use `createEnvironmentRpcCommand`. Add protected methods to `CLIENT_GUARDED_RPC_SCOPES` in contracts and use the command's `permissionAtom` for UI availability. Grants are checked at execution against the destination environment; the server remains authoritative. Keep raw RPC clients inside `rpc/`, and extend the permission behavior tests when adding a protected method.
-- Server features are services; transports stay thin. A `ws.ts` RPC handler, HTTP route, or MCP tool decodes input, calls one service method, and maps errors. See [Effect services](docs/internals/effect-services.md).
-- `apps/web/src/components/ui` exports own their look. Pick a `variant` or `size`; do not restyle one with `className`. If none fits and the look is a generic concept, add a variant to the component; a look that belongs to one feature stays in that feature's own component, not in `components/ui`. Layout classes (width, flex, margin, position) belong on the parent. `shadcn/no-restyle` fails lint on violations. See [Web UI](docs/internals/web-ui.md).
-- Reusable Effect functions use `Effect.fn("Service.operation")` with a stable span name, not a
-  function wrapping `Effect.gen`. Keep `Effect.gen` for inline programs and layer construction.
-  Use `Effect.fnUntraced` only when spans would be too frequent (stream chunks, per-event
-  projection, tight loops) or duplicate an existing tracing boundary; explain that choice nearby.
-  Named `Effect.fn` creates a span; the unnamed form does not. Preserve existing span names and
-  options, and pass combinators as additional function-builder arguments.
+- Client mutations use `createEnvironmentRpcCommand`, declare protected methods in `CLIENT_GUARDED_RPC_SCOPES`, and gate UI with `permissionAtom` (server stays authoritative). Keep raw RPC clients inside `rpc/`.
+- Server features are Effect services using `Effect.fn("Service.operation")` with thin transport handlers; see [02_effect-services.md](docs/internals/02_effect-services.md).
+- `apps/web/src/components/ui` exports own their look (`shadcn/no-restyle` enforces this); see [10_web-ui.md](docs/internals/10_web-ui.md).
 - Inferred types over annotations. `any` is the enemy.
 - Default to no comment. Write one only for a constraint, an external quirk, or an invariant the code can't show, in one line where you can and four at most. Don't restate names or signatures, narrate steps, record history, or explain the fix you just made; the PR carries that. `t3code/no-low-value-comments` enforces the length cap and the mechanical cases.
 - React effects are for synchronizing with something outside React. Derive in render and act in handlers instead of syncing state, but don't hide real lifecycle work in refs or stores to dodge one. The `t3code/react-effect-budget` lint rule holds each file to its count in `scripts/effect-budget.json`; a new effect states its reason with `// oxlint-disable-next-line t3code/react-effect-budget -- <why>`.
 - Our users drive agents all day and notice a dropped frame, a lying spinner, and a stale label. No continuously repainting animations; they peg the GPU on high-refresh displays.
 - If a rule here fights the task in front of you, say so loudly and get a human sign-off before breaking it.
-
-## Additional tips
-
-- Security is important, but should not be over-indexed on, especially for dev mode/maintainer-only features.
-- Before a security audit or triaging a vulnerability report, read [SECURITY.md](SECURITY.md) for the trust model and what is intended.

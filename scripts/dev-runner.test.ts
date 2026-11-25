@@ -6,6 +6,7 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as NetService from "@t3tools/shared/Net";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import { PRODUCT_DEV_SERVER_PORT } from "@t3tools/shared/productIdentity";
 import { assert, describe, it } from "@effect/vitest";
 import * as ByteSize from "effect/ByteSize";
 import * as ConfigProvider from "effect/ConfigProvider";
@@ -210,7 +211,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           devUrl: undefined,
         });
 
-        assert.equal(env.VETRA_PORT, "13773");
+        assert.equal(env.VETRA_PORT, String(PRODUCT_DEV_SERVER_PORT));
         assert.equal(env.VETRA_HOST, undefined);
         assert.equal(env.VETRA_LAN, undefined);
       }),
@@ -552,6 +553,9 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
         assert.equal(yield* homeFor("~someone/t3-dev"), path.resolve("~someone/t3-dev"));
         assert.equal(yield* homeFor("relative/t3-dev"), path.resolve("relative/t3-dev"));
         assert.equal(yield* homeFor("/tmp/t3-dev"), path.resolve("/tmp/t3-dev"));
+        // An explicit ~/.t3 would put state in the live userdata; leaving it implicit selects ~/.t3/dev.
+        assert.equal(yield* homeFor("~/.t3"), undefined);
+        assert.equal(yield* homeFor("/home/dev/.t3/"), undefined);
       }),
     );
 
@@ -798,7 +802,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
             Effect.provideService(HostProcess.Platform, "linux"),
             Effect.provideService(HostProcess.WorkingDirectory, input.cwd),
             // No ~/.vetra-code here, so these runs never seed from this machine's install.
-            Effect.provideService(HostProcess.HomeDirectory, input.cwd),
+            Effect.provideService(HostProcess.HomeDirectory, NodePath.join(input.cwd, "home")),
             Effect.provideService(
               HostProcess.Environment,
               input.ambientHome === undefined ? {} : { VETRA_HOME: input.ambientHome },

@@ -13,6 +13,7 @@ import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+import type { createNavigationDrafts } from "../../lib/navigationDrafts";
 import { setupSpeechTest, speechTest } from "../../readAloud.test-support";
 
 import type { useTicketActions } from "../../hooks/useTicketActions";
@@ -34,7 +35,34 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("../../lib/utils", async () => {
   const { cx } = await import("class-variance-authority");
-  return { cn: cx };
+  let nextId = 0;
+  return { cn: cx, randomUUID: () => `0000-${(nextId += 1).toString().padStart(4, "0")}` };
+});
+// Drafts survive a page's unmount on purpose, so each test needs its own store.
+const navigationDrafts = vi.hoisted(() => {
+  type Store = ReturnType<typeof createNavigationDrafts<never>>;
+  const slot: { make: (() => Store) | null; current: Store | null } = { make: null, current: null };
+  const store = () => (slot.current ??= slot.make?.() ?? null);
+  return {
+    install: (make: () => Store) => {
+      slot.make = make;
+    },
+    clear: () => {
+      slot.current = null;
+    },
+    proxy: {
+      get: (key: string) => store()?.get(key),
+      take: (draft: never) => store()?.take(draft) ?? false,
+      stage: (key: string, value: never) => store()?.stage(key, value),
+      settle: (draft: never, value: never, retain: boolean) =>
+        store()?.settle(draft, value, retain) ?? false,
+    } as Store,
+  };
+});
+vi.mock("../../lib/navigationDrafts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/navigationDrafts")>();
+  navigationDrafts.install(() => actual.createNavigationDrafts());
+  return { ...actual, createNavigationDrafts: () => navigationDrafts.proxy };
 });
 vi.mock("../../env", () => ({ isElectron: false }));
 vi.mock("../../hooks/useViewportWidth", () => ({ useViewportWidth: () => 800 }));
@@ -151,6 +179,7 @@ let container: HTMLDivElement;
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.useFakeTimers();
+  navigationDrafts.clear();
   setupSpeechTest();
   actions.updatePlan.mockReset();
   actions.addPlanComment.mockReset();

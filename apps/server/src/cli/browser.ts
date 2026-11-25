@@ -42,7 +42,7 @@ const runStep = Effect.fn("browserSetup.runStep")(function* (
   }
 });
 
-/** Under sudo, an unspecified home uses the invoking user's ~/.t3. */
+/** Under sudo, an unspecified home uses the invoking user's ~/.vetra-code. */
 const setupBaseDir = Effect.fn("browserSetup.baseDir")(function* (explicit: Option.Option<string>) {
   const env = yield* HostProcess.Environment;
   const raw = Option.getOrUndefined(explicit) ?? env.VETRA_HOME;

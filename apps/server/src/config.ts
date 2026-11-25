@@ -46,6 +46,8 @@ export interface ServerDerivedPaths {
   readonly worktreesDir: string;
   /** Root for the projects automations create for themselves. */
   readonly automationsDir: string;
+  /** Where workflow definition files live. In the home itself: they are the user's own code. */
+  readonly workflowsDir: string;
   readonly worktreeCheckoutCacheDir: string;
   readonly attachmentsDir: string;
   readonly browserArtifactsDir: string;
@@ -101,6 +103,7 @@ export class ServerConfig extends Context.Service<
     readonly startupPresentation: StartupPresentation;
     readonly desktopBootstrapToken: string | undefined;
     readonly desktopBootstrapSecret?: string | undefined;
+    readonly desktopReadinessSecret?: string | undefined;
     readonly shellEnvironmentPrepared?: boolean | undefined;
     readonly desktopTelemetryFd?: number | undefined;
     readonly desktopTelemetryControlFd?: number | undefined;
@@ -165,6 +168,7 @@ export const deriveServerPaths = Effect.fn(function* (
     providerStatusCacheDir,
     worktreesDir: join(baseDir, "worktrees"),
     automationsDir: join(stateDir, "automations"),
+    workflowsDir: join(baseDir, "workflows"),
     worktreeCheckoutCacheDir: join(providerStatusCacheDir, "worktree-checkouts"),
     attachmentsDir,
     browserArtifactsDir: join(stateDir, "browser-artifacts"),

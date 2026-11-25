@@ -12,6 +12,14 @@ import { useClosedViewStore } from "./closedViewStore";
 import { usePowerhousePanelStore } from "./components/powerhouse/powerhousePanelStore";
 import { m } from "./i18n/messages";
 import { resolveStorage } from "./lib/storage";
+import type { LinkedThreadTarget } from "@t3tools/client-runtime/linked-thread";
+import {
+  decodeLinkedThreadSurface,
+  linkedThreadSurface,
+  type LinkedThreadSurface,
+} from "./linkedThreadSurface";
+import { decodeThreadSurface, threadSurface, type ThreadSurface } from "./threadSurface";
+export type { ThreadSurface };
 import type { ThreadPanelPresentation } from "./rightPanelLayout";
 import type { ChatFileAttachment } from "./types";
 import {
@@ -43,7 +51,8 @@ const RIGHT_PANEL_KINDS = [
   "ticket-plan",
   "issue",
   ...POWERHOUSE_PANEL_KINDS,
-  "side-chat",
+  "thread",
+  "linked-thread",
 ] as const;
 export type RightPanelKind = (typeof RIGHT_PANEL_KINDS)[number];
 
@@ -128,11 +137,17 @@ export type RightPanelSurface =
       key: string;
       url?: string;
     }
-  | { id: `side-chat:${string}`; kind: "side-chat"; threadId: ThreadId };
+  /**
+   * A thread of the panel's environment shown beside it: a side chat or a subagent. Which one is
+   * the thread's own lineage, so the surface only names it.
+   */
+  | ThreadSurface
+  /** A linked environment's thread, read through `viaEnvironmentId`; it has no thread here. */
+  | LinkedThreadSurface;
 
 const RIGHT_PANEL_STORAGE_KEY = "vetra:right-panel-state:v2";
 
-const RIGHT_PANEL_STORAGE_VERSION = 17;
+const RIGHT_PANEL_STORAGE_VERSION = 18;
 
 export const PULL_REQUESTS_PANEL_REF = scopeThreadRef(
   EnvironmentId.make("pull-requests-panel"),
@@ -195,7 +210,8 @@ interface RightPanelStoreState {
       | "ticket"
       | "ticket-plan"
       | "issue"
-      | "side-chat"
+      | "thread"
+      | "linked-thread"
       | PowerhousePanelKind
     >,
   ) => void;
@@ -204,7 +220,11 @@ interface RightPanelStoreState {
     ref: ScopedThreadRef,
     surface: Exclude<RightPanelSurface, { kind: "terminal" }>,
   ) => void;
-  openSideChat: (ref: ScopedThreadRef, threadId: ThreadId) => void;
+  /** Opens a side chat or subagent of `ref`'s environment as a tab; `ref` itself has no tab. */
+  openThread: (ref: ScopedThreadRef, threadId: ThreadId) => void;
+  openLinkedThread: (ref: ScopedThreadRef, target: LinkedThreadTarget) => void;
+  /** Records the title the linked environment gave, so the tab and a reopened one show it. */
+  setLinkedThreadTitle: (ref: ScopedThreadRef, surfaceId: string, title: string) => void;
   openDevice: (ref: ScopedThreadRef, target: DeviceTabTarget, automatic?: boolean) => void;
   renameDevice: (ref: ScopedThreadRef, surfaceId: string, title: string) => void;
   openBrowser: (ref: ScopedThreadRef, tabId: string | null) => void;
@@ -296,7 +316,8 @@ interface RightPanelStoreState {
       | "ticket"
       | "ticket-plan"
       | "issue"
-      | "side-chat"
+      | "thread"
+      | "linked-thread"
       | PowerhousePanelKind
     >,
   ) => void;
@@ -330,7 +351,8 @@ const singletonSurface = (
     | "ticket"
     | "ticket-plan"
     | "issue"
-    | "side-chat"
+    | "thread"
+    | "linked-thread"
     | PowerhousePanelKind
   >,
 ): RightPanelSurface => {
@@ -681,8 +703,9 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                 threadState && typeof threadState === "object" ? threadState : null;
               const surfaces = Array.isArray(validThreadState?.surfaces)
                 ? validThreadState.surfaces.flatMap<RightPanelSurface>((surface) => {
+                    if (!surface || typeof surface !== "object") return [];
                     const kind = (surface as { kind?: string }).kind;
-                    if (kind === "plan" || kind === "agents" || kind === "issue") return [];
+                    if (kind === "plan" || kind === "agents") return [];
                     // The old panel held all three tools behind an inner tab.
                     // Keep it as one Models instance, which was also its
                     // default and fallback view.
@@ -692,6 +715,16 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                     if (surface.kind === "ticket" || surface.kind === "ticket-plan") {
                       const resource = parseTicketResourceSurface(surface);
                       return resource === null ? [] : [resource];
+                    }
+                    if (kind === "thread" || kind === "side-chat") {
+                      const decoded = decodeThreadSurface(surface);
+                      return decoded === null ? [] : [decoded];
+                    }
+                    // Also drops kinds this build does not know, such as one a newer build saved.
+                    if (!(RIGHT_PANEL_KINDS as ReadonlyArray<unknown>).includes(kind)) return [];
+                    if (surface.kind === "linked-thread") {
+                      const decoded = decodeLinkedThreadSurface(surface);
+                      return decoded === null ? [] : [decoded];
                     }
                     if (
                       (surface.kind === "file" || surface.kind === "files") &&
@@ -792,7 +825,12 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                     ];
                   })
                 : [];
-              const rawActiveSurfaceId = validThreadState?.activeSurfaceId;
+              const savedActiveSurfaceId = validThreadState?.activeSurfaceId;
+              const rawActiveSurfaceId =
+                typeof savedActiveSurfaceId === "string" &&
+                savedActiveSurfaceId.startsWith("side-chat:")
+                  ? `thread:${savedActiveSurfaceId.slice("side-chat:".length)}`
+                  : savedActiveSurfaceId;
               const normalizedActiveSurfaceId =
                 rawActiveSurfaceId === "powerhouse"
                   ? powerhouseSurface("powerhouse-models", "legacy").id
@@ -987,12 +1025,46 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
             );
           }),
         ),
-      openSideChat: (ref, threadId) =>
+      openThread: (ref, threadId) =>
         set((state) =>
-          userAction(state, scopedThreadKey(ref), (current) =>
-            upsertSurface(current, { id: `side-chat:${threadId}`, kind: "side-chat", threadId }),
-          ),
+          rightPanelHostRef(ref).threadId === threadId
+            ? state
+            : userAction(state, scopedThreadKey(ref), (current) =>
+                upsertSurface(current, threadSurface(threadId)),
+              ),
         ),
+      openLinkedThread: (ref, target) =>
+        set((state) =>
+          userAction(state, scopedThreadKey(ref), (current) => {
+            const surface = linkedThreadSurface(target);
+            const next = upsertSurface(current, surface);
+            return {
+              ...next,
+              // A later click may know the title or label an earlier one did not.
+              surfaces: next.surfaces.map((entry) =>
+                entry.id === surface.id && entry.kind === "linked-thread"
+                  ? { ...surface, title: surface.title ?? entry.title }
+                  : entry,
+              ),
+            };
+          }),
+        ),
+      setLinkedThreadTitle: (ref, surfaceId, title) =>
+        set((state) => {
+          const threadKey = scopedThreadKey(rightPanelHostRef(ref));
+          const existing = state.byThreadKey[threadKey]?.surfaces.find(
+            (surface) => surface.id === surfaceId,
+          );
+          if (existing?.kind !== "linked-thread" || existing.title === title) return state;
+          return automaticUpdate(state, threadKey, (current) => ({
+            ...current,
+            surfaces: current.surfaces.map((surface) =>
+              surface.id === surfaceId && surface.kind === "linked-thread"
+                ? { ...surface, title }
+                : surface,
+            ),
+          }));
+        }),
       renameDevice: (ref, surfaceId, title) =>
         set((state) =>
           userAction(state, scopedThreadKey(ref), (current) => ({

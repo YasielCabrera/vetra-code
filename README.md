@@ -93,7 +93,7 @@ pnpm dev --dry-run
 
 - [Remaking plan](./re-making-plan/README.md)
 - [Bootstrap progress and handoff](./re-making-plan/08-bootstrap-progress.md)
-- [Architecture overview](./docs/internals/overview.md)
+- [Architecture overview](./docs/internals/01_architecture.md)
 - [Workspace layout](./docs/internals/workspace-layout.md)
 - [Syncing upstream Vetra Code](./docs/internals/upstream-sync.md)
 - [Contributing](./CONTRIBUTING.md)

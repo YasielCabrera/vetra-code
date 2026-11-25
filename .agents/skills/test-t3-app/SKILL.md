@@ -54,6 +54,14 @@ Exercise the affected flow and capture the state that proves it works.
 
 ### Verify a shared environment before human handoff
 
+Exercise the affected flow and capture the state that proves it works. Actually
+look at the rendered result and think as a user using the feature—check layout,
+visual hierarchy, alignment, and end-to-end flow—and iterate on anything that
+feels awkward or unfinished until you are satisfied before handing back. Keep
+the server, state, and panel available while the user inspects or iterates.
+An assistant turn ending is not teardown. Stop only processes you started,
+using retained terminal sessions or captured PIDs.
+
 When another person will use the printed pairing URL, first open the shared origin without the pairing path or fragment in the controlled browser and confirm the Vetra Code app loads. This browser navigation is required even when curl succeeds because browsers block some otherwise reachable ports before making a network request.
 
 Do not open the other person's complete pairing URL during this reachability check; doing so consumes its one-time token. If the agent also needs an authenticated browser, create and consume a separate pairing token, then leave a fresh token for the other person.

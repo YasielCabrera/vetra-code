@@ -1,7 +1,7 @@
 // Scenarios: e2e tests that run against the real dev stack. See docs/operations/scenarios.md.
-import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { web } from "@e2e-dev/web";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import type { E2EConfig } from "e2e";
 import * as Effect from "effect/Effect";
 import * as Path from "effect/Path";

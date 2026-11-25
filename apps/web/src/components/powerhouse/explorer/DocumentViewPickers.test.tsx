@@ -1,3 +1,4 @@
+import { GTProvider } from "gt-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vite-plus/test";
 
@@ -6,7 +7,9 @@ import { BranchPicker, ScopePicker } from "./DocumentViewPickers";
 describe("BranchPicker", () => {
   it("shows Powerhouse's friendly default and exact branch value", () => {
     const markup = renderToStaticMarkup(
-      <BranchPicker id="branch" value="main" invalid={false} onChange={vi.fn()} />,
+      <GTProvider locale="en" translations={{}}>
+        <BranchPicker id="branch" value="main" invalid={false} onChange={vi.fn()} />
+      </GTProvider>,
     );
 
     expect(markup).toContain("Main branch");
@@ -15,7 +18,9 @@ describe("BranchPicker", () => {
 
   it("preserves a custom branch", () => {
     const markup = renderToStaticMarkup(
-      <BranchPicker id="branch" value="review" invalid={false} onChange={vi.fn()} />,
+      <GTProvider locale="en" translations={{}}>
+        <BranchPicker id="branch" value="review" invalid={false} onChange={vi.fn()} />
+      </GTProvider>,
     );
 
     expect(markup).toContain("Custom branch");
@@ -24,7 +29,9 @@ describe("BranchPicker", () => {
 
   it("prompts for a branch when the filter is empty", () => {
     const markup = renderToStaticMarkup(
-      <BranchPicker id="branch" value="" invalid={false} onChange={vi.fn()} />,
+      <GTProvider locale="en" translations={{}}>
+        <BranchPicker id="branch" value="" invalid={false} onChange={vi.fn()} />
+      </GTProvider>,
     );
 
     expect(markup).toContain("Choose branch…");
@@ -34,7 +41,9 @@ describe("BranchPicker", () => {
 describe("ScopePicker", () => {
   it("renders selected default and custom scopes as removable chips", () => {
     const markup = renderToStaticMarkup(
-      <ScopePicker id="scopes" value="global, private" invalid={false} onChange={vi.fn()} />,
+      <GTProvider locale="en" translations={{}}>
+        <ScopePicker id="scopes" value="global, private" invalid={false} onChange={vi.fn()} />
+      </GTProvider>,
     );
 
     expect(markup).toContain("global");
@@ -45,7 +54,9 @@ describe("ScopePicker", () => {
 
   it("prompts for scopes when the filter is empty", () => {
     const markup = renderToStaticMarkup(
-      <ScopePicker id="scopes" value="" invalid={false} onChange={vi.fn()} />,
+      <GTProvider locale="en" translations={{}}>
+        <ScopePicker id="scopes" value="" invalid={false} onChange={vi.fn()} />
+      </GTProvider>,
     );
 
     expect(markup).toContain("Choose scopes…");

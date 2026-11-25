@@ -65,8 +65,12 @@ function recoveryHint(error: RelayProtectedError): string {
       return "Unlink an unused environment in Vetra Connect, then restart Vetra Code on this machine.";
     case "RelayAuthInvalidError":
       return "Run `vetra connect login` to check this machine's authorization. If the stored credential was revoked, sign out with `vetra connect logout`, then run `vetra connect` again. Restart Vetra Code after signing in.";
-    case "RelayEnvironmentLinkProofExpiredError":
     case "RelayEnvironmentLinkProofInvalidError":
+      if (error.reason === "environment_key_mismatch") {
+        return "Vetra Connect already has this environment linked with a different key. Unlink it in Vetra Connect, then restart Vetra Code on this machine.";
+      }
+      return "Check this machine's date and time, update Vetra Code, then restart it.";
+    case "RelayEnvironmentLinkProofExpiredError":
       return "Check this machine's date and time, update Vetra Code, then restart it.";
     default:
       return "Retry when the relay is available. If this continues, include the trace ID when reporting it.";

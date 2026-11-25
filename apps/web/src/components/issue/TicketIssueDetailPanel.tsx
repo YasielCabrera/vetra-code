@@ -148,16 +148,17 @@ export function TicketIssueDetailPanel({
   const [refreshing, setRefreshing] = useState(false);
   const refreshFromHost = async () => {
     setRefreshing(true);
-    try {
-      await invalidate({ environmentId, input: reference });
-    } finally {
+    // React Compiler does not support `try`/`finally` without a `catch`.
+    await invalidate({ environmentId, input: reference }).finally(() => {
       setRefreshing(false);
       detailQuery.refresh();
       activityQuery.refresh();
-    }
+    });
   };
 
-  const { copyToClipboard } = useCopyToClipboard({ target: namedClipboardTarget(m(msg("issue link"))) });
+  const { copyToClipboard } = useCopyToClipboard({
+    target: namedClipboardTarget(m(msg("issue link"))),
+  });
   const openExternal = (raw: string) => {
     const url = normalizeIssueExternalUrl(raw);
     if (url !== null)

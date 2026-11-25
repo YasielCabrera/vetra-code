@@ -486,6 +486,7 @@ describe("TicketLinkReactor", () => {
         }),
         Layer.mock(PullRequestService.PullRequestService)({
           withSharedProjectReads: (effect) => effect,
+          batchesReads: () => Effect.succeed(false),
           summary: (ref) => Effect.succeed({ ...pullRequestSummary(ref, "merged"), stack: null }),
           invalidate: () => Effect.void,
         }),

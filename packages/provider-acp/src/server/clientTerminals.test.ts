@@ -123,7 +123,7 @@ describe("AcpClientTerminals", () => {
           command: process.execPath,
           args: [
             "-e",
-            "const env = process.env; process.stdout.write([env.VETRA_ACP_MCP_AUTHORIZATION ?? '', env.t3_Acp_Mcp_Endpoint ?? '', env.VETRA_THREAD_ID ?? '', env.VETRA_TEST_INHERITED, ...Object.keys(env).filter((name) => name.toUpperCase() === 'VETRA_TEST_OVERRIDE').map((name) => name + '=' + env[name])].join('|'))",
+            "const env = process.env; process.stdout.write([env.VETRA_ACP_MCP_AUTHORIZATION ?? '', env.vetra_Acp_Mcp_Endpoint ?? '', env.VETRA_THREAD_ID ?? '', env.VETRA_TEST_INHERITED, ...Object.keys(env).filter((name) => name.toUpperCase() === 'VETRA_TEST_OVERRIDE').map((name) => name + '=' + env[name])].join('|'))",
           ],
           ...(sessionId === "unknown"
             ? {}
@@ -143,7 +143,7 @@ describe("AcpClientTerminals", () => {
       Effect.provideService(HostProcess.Environment, {
         ...process.env,
         VETRA_ACP_MCP_AUTHORIZATION: "launching-thread-token",
-        t3_Acp_Mcp_Endpoint: "launching-thread-endpoint",
+        vetra_Acp_Mcp_Endpoint: "launching-thread-endpoint",
         VETRA_THREAD_ID: "launching-thread",
         VETRA_TEST_INHERITED: "kept",
         VETRA_TEST_OVERRIDE: "inherited",

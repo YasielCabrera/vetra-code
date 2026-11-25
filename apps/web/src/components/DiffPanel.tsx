@@ -42,6 +42,7 @@ import { useCheckpointDiff, useTurnItemDetail } from "~/state/queries";
 import { revisionedQuery } from "~/state/revisionedQuery";
 import { cn } from "~/lib/utils";
 import {
+  type DiffPanelSelection,
   resolveToolCallDiffTarget,
   selectThreadBranchBaseRef,
   selectThreadDiffPanelSelection,
@@ -57,6 +58,7 @@ import {
   buildFileDiffEntries,
   getDiffLineStat,
   getRenderablePatch,
+  getRenderablePatchSections,
   resolveDiffThemeName,
   resolveFileDiffPath,
 } from "../lib/diffRendering";
@@ -67,6 +69,7 @@ import {
   useProject,
   useThreadCheckpointSummaries,
   useQuietThreadVisibleTurnItems,
+  useQuietThreadProjection,
 } from "../state/entities";
 import { useClientSettings, updateClientSettings } from "../hooks/useSettings";
 import { formatRelativeTimeLabel, formatShortTimestamp } from "../timestampFormat";
@@ -84,7 +87,7 @@ import {
 } from "./fileTreePaneWidth";
 import { ResizableFileTreePane } from "./ResizableFileTreePane";
 import { getDiffHeaderClickAction } from "./diffs/diffHeaderClick";
-import { Button } from "./ui/button";
+import { Button, InlineButton } from "./ui/button";
 import { ToggleGroup, Toggle } from "./ui/toggle-group";
 import { Switch } from "./ui/switch";
 import {
@@ -108,10 +111,11 @@ import {
   DropdownMenuTrigger,
 } from "./ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
-import { useEnvironmentQuery } from "../state/query";
+import { useEnvironmentQuery, useEnvironmentQueryRefresh } from "../state/query";
 import { useAtomCommand } from "../state/use-atom-command";
 import { serverEnvironment } from "../state/server";
 import { reviewEnvironment } from "../state/review";
+import { filesystemEnvironment } from "../state/filesystem";
 import { vcsEnvironment } from "../state/vcs";
 import { buildBaseRefChoices, filterBaseRefChoices } from "../lib/baseRefChoices";
 import { createGitDiffFileContentsLoader } from "../lib/diffFileContents";
@@ -122,10 +126,22 @@ import { DiffFileLoadingBoundary } from "./diffs/DiffFileLoadingBoundary";
 import { DiffFileStatus } from "./diffs/DiffFileStatus";
 import { FindScope } from "./find/FindScope";
 import { projectCommitUrl } from "@t3tools/client-runtime/change-request-links";
+import {
+  isRelativePathInsideFolder,
+  repositorySectionForPath,
+  threadChangedRepositories,
+  threadGitRepositories,
+  turnDiffSections,
+  type TurnDiffSection,
+} from "@t3tools/client-runtime/state/thread-repositories";
 import { useOpenLink } from "../browser/useOpenLink";
 
 type DiffThemeType = "light" | "dark";
 const AUTOMATIC_BASE_REF = "__automatic_base_ref__";
+const ALL_REPOSITORIES = "__all_repositories__";
+const THREAD_FOLDER = "__thread_folder__";
+const NO_GIT_REPOSITORIES: ReturnType<typeof threadChangedRepositories> = Object.freeze([]);
+const NO_TURN_DIFF_SECTIONS: ReadonlyArray<TurnDiffSection> = [];
 const DIFF_FILE_TREE_STORAGE_KEY = "vetra.diffFileTreeOpen";
 
 const EMPTY_COLLAPSED_DIFF_FILE_KEYS: ReadonlySet<string> = new Set();
@@ -305,9 +321,68 @@ export default function DiffPanel({
   const activeRepositoryRoot =
     gitStatusQuery.data?.workingTree.rootPath ??
     (activeThread?.worktreePath ? undefined : activeProject?.repositoryIdentity?.rootPath);
-  const diffSelection = useDiffPanelStore((state) =>
+  const storedDiffSelection = useDiffPanelStore((state) =>
     selectThreadDiffPanelSelection(state.byThreadKey, activeThreadRef),
   );
+  const threadFolderIsRepo = gitStatusQuery.data?.isRepo ?? true;
+  // The checkout the Git scopes read: the thread's folder, or a repository the thread changed.
+  // A plain folder has no history of its own, so it starts on the latest one changed.
+  const repositoryStructure = useQuietThreadProjection(activeThreadRef);
+  const tracksFolders = (activeProject?.trackedFolders?.length ?? 0) > 0;
+  const threadWorktreePath = activeThread?.worktreePath ?? null;
+  // Unchanged repositories are listed too: work done outside a turn only shows in these scopes.
+  const taskFolderQuery = useEnvironmentQuery(
+    visible && tracksFolders && activeThread != null && threadWorktreePath !== null
+      ? filesystemEnvironment.taskFolder({
+          environmentId: activeThread.environmentId,
+          input: { worktreePath: threadWorktreePath },
+        })
+      : null,
+  );
+  const projectFoldersQuery = useEnvironmentQuery(
+    visible && tracksFolders && activeThread != null && threadWorktreePath === null
+      ? filesystemEnvironment.listFolders({
+          environmentId: activeThread.environmentId,
+          input: { projectId: activeThread.projectId },
+        })
+      : null,
+  );
+  const gitRepositories = threadGitRepositories({
+    changed:
+      repositoryStructure === null
+        ? NO_GIT_REPOSITORIES
+        : threadChangedRepositories(repositoryStructure.projection),
+    taskFolder: taskFolderQuery.data?.taskFolder ?? null,
+    folders: projectFoldersQuery.data?.folders ?? null,
+    threadCwd: activeCwd ?? null,
+  });
+  const [gitRepositoryPath, setGitRepositoryPath] = useState<string | null>(null);
+  const gitRepository =
+    gitRepositories.find((repository) => repository.repositoryPath === gitRepositoryPath) ??
+    (threadFolderIsRepo ? null : (gitRepositories[0] ?? null));
+  const gitCwd = gitRepository?.cwd ?? activeCwd;
+  const isGitRepo = threadFolderIsRepo || gitRepository !== null;
+  const turnDiffSummaries = useThreadCheckpointSummaries(activeThreadRef);
+  const orderedTurnDiffSummaries = turnDiffSummaries.toSorted((left, right) => {
+    if (left.checkpointTurnCount !== right.checkpointTurnCount) {
+      return right.checkpointTurnCount - left.checkpointTurnCount;
+    }
+    return right.completedAt.localeCompare(left.completedAt);
+  });
+  const latestTurn = orderedTurnDiffSummaries[0];
+  const hasRepositoryChanges = turnDiffSummaries.some(
+    (summary) => summary.repositories !== undefined,
+  );
+  // A plain folder holding tracked repositories has no branch or working tree of its own; every
+  // way into the panel lands on its latest turn.
+  const turnDiffsOnly = !isGitRepo && hasRepositoryChanges;
+  const diffSelection: DiffPanelSelection =
+    turnDiffsOnly &&
+    latestTurn !== undefined &&
+    storedDiffSelection.kind !== "turn" &&
+    storedDiffSelection.kind !== "tool-call"
+      ? { kind: "turn", turnId: latestTurn.runId, filePath: null, revealRequestId: 0 }
+      : storedDiffSelection;
   const rememberedBaseRef = useDiffPanelStore((state) =>
     selectThreadBranchBaseRef(state, activeThreadRef),
   );
@@ -330,23 +405,15 @@ export default function DiffPanel({
       : null,
   );
   const toolCallItem = toolCallDetail.data?.item;
-  const isGitRepo = gitStatusQuery.data?.isRepo ?? true;
-  const turnDiffSummaries = useThreadCheckpointSummaries(activeThreadRef);
-  const orderedTurnDiffSummaries = turnDiffSummaries.toSorted((left, right) => {
-    if (left.checkpointTurnCount !== right.checkpointTurnCount) {
-      return right.checkpointTurnCount - left.checkpointTurnCount;
-    }
-    return right.completedAt.localeCompare(left.completedAt);
-  });
 
   // oxlint-disable-next-line t3code/react-effect-budget -- rewrites the persisted diff store selection to the latest turn when the selected turn disappears
   useEffect(() => {
-    if (!activeThreadRef || diffSelection.kind !== "turn") return;
+    if (!activeThreadRef || storedDiffSelection.kind !== "turn") return;
     useDiffPanelStore.getState().reconcileTurnSelection(
       activeThreadRef,
       orderedTurnDiffSummaries.map((summary) => summary.runId),
     );
-  }, [diffSelection, orderedTurnDiffSummaries, activeThreadRef]);
+  }, [storedDiffSelection, orderedTurnDiffSummaries, activeThreadRef]);
 
   const selectedRunId = diffSelection.kind === "turn" ? diffSelection.turnId : null;
   const selectedGitScope =
@@ -367,7 +434,6 @@ export default function DiffPanel({
       : (orderedTurnDiffSummaries.find((summary) => summary.runId === selectedRunId) ??
         orderedTurnDiffSummaries[0]);
   const selectedCheckpointTurnCount = selectedTurn?.checkpointTurnCount;
-  const latestTurn = orderedTurnDiffSummaries[0];
   const reviewSectionId = toolCallSelection
     ? `tool-call:${toolCallSelection.threadId}:${toolCallSelection.itemId}`
     : selectedTurn
@@ -395,12 +461,12 @@ export default function DiffPanel({
       ignoreWhitespace: diffIgnoreWhitespace,
       cacheScope: selectedTurn ? `turn:${selectedTurn.runId}` : null,
     },
-    { enabled: isGitRepo && selectedTurn !== undefined },
+    { enabled: (isGitRepo || hasRepositoryChanges) && selectedTurn !== undefined },
   );
   const branchDiffPreviewInput =
-    canReadFiles && isGitSelection && activeThread && activeCwd
+    canReadFiles && isGitSelection && activeThread && gitCwd
       ? {
-          cwd: activeCwd,
+          cwd: gitCwd,
           ...(selectedBaseRef ? { baseRef: selectedBaseRef } : {}),
           ...(selectedCommitSha !== null ? { commitSha: selectedCommitSha } : {}),
           ignoreWhitespace: diffIgnoreWhitespace,
@@ -415,11 +481,10 @@ export default function DiffPanel({
             : {}),
         }
       : undefined;
-  const canRefreshGitDiff =
-    isGitRepo && isGitSelection && activeThread != null && activeCwd != null;
+  const canRefreshGitDiff = isGitRepo && isGitSelection && activeThread != null && gitCwd != null;
   // Read under the workspace mutation id, so each mutation refetches the diff; the panel stays
   // mounted while hidden, so a mutation made then is already reflected when it shows.
-  const branchDiffPreview = useEnvironmentQuery(
+  const branchDiffPreviewAtom =
     branchDiffPreviewInput && activeThread
       ? revisionedQuery(
           reviewEnvironment.diffPreview({
@@ -428,15 +493,15 @@ export default function DiffPanel({
           }),
           canRefreshGitDiff ? workspaceMutationId : undefined,
         )
-      : null,
-    messages,
-  );
+      : null;
+  const branchDiffPreview = useEnvironmentQuery(branchDiffPreviewAtom, messages);
+  const branchDiffPreviewIsPending = useEnvironmentQueryRefresh(branchDiffPreviewAtom).isPending;
   const branchCommitsQuery = useEnvironmentQuery(
-    visible && isGitRepo && canReadFiles && activeThread && activeCwd
+    visible && isGitRepo && canReadFiles && activeThread && gitCwd
       ? reviewEnvironment.branchCommits({
           environmentId: activeThread.environmentId,
           input: {
-            cwd: activeCwd,
+            cwd: gitCwd,
             ...(rememberedBaseRef ? { baseRef: rememberedBaseRef } : {}),
           },
         })
@@ -457,7 +522,10 @@ export default function DiffPanel({
           ? "commit"
           : "branch-range"),
   );
-  const comparisonHeadRef = selectedGitSource?.headRef ?? gitStatusQuery.data?.refName ?? "HEAD";
+  const comparisonHeadRef =
+    selectedGitSource?.headRef ??
+    (gitRepository === null ? gitStatusQuery.data?.refName : null) ??
+    "HEAD";
   const comparisonBaseRef =
     selectedGitSource?.baseRef ??
     selectedBaseRef ??
@@ -488,10 +556,10 @@ export default function DiffPanel({
       ? selectedTurnLabel
       : selectedGitScopeLabel;
   const headerCommitSha = selectedRunId === null ? selectedCommitSha : null;
+  // The project's remote is the thread folder's; another repository's commits are not on it.
+  const commitLinkIdentity = gitRepository === null ? activeProject?.repositoryIdentity : null;
   const selectedCommitUrl =
-    headerCommitSha !== null
-      ? projectCommitUrl(activeProject?.repositoryIdentity, headerCommitSha)
-      : null;
+    headerCommitSha !== null ? projectCommitUrl(commitLinkIdentity, headerCommitSha) : null;
   const openLink = useOpenLink(activeThreadRef);
   // A SHA link goes to the code host; it must not route back into this pane's commit selection.
   const openCommitUrl = (event: MouseEvent<HTMLElement>, url: string) => {
@@ -504,17 +572,33 @@ export default function DiffPanel({
   const refreshPreviewQuery = branchDiffPreview.refresh;
   const refreshDiffFromUserAction = refreshPreviewQuery;
 
+  const threadFolderName = activeProject?.title ?? gt("Project folder");
   const preview = branchDiffPreview.data;
   const gitDiff = selectedGitSource?.diff;
 
   const toolCallPreview =
     toolCallSelection && toolCallItem?.type === "file_change"
-      ? toolCallDiff(toolCallItem, messages)
+      ? toolCallDiff(toolCallItem, activeCwd, messages)
       : null;
+  const turnSections =
+    selectedTurn && activeCheckpointDiff.data
+      ? turnDiffSections(activeCheckpointDiff.data, threadFolderName)
+      : NO_TURN_DIFF_SECTIONS;
+  // Sections only matter when a repository changed; otherwise the turn has its one patch.
+  const repositorySections = turnSections.some((section) => section.repositoryPath !== null)
+    ? turnSections
+    : NO_TURN_DIFF_SECTIONS;
+  const repositoryFilter =
+    diffSelection.kind === "turn" ? (diffSelection.repository ?? null) : null;
+  const selectedSection =
+    repositorySections.find((section) => section.key === repositoryFilter) ?? null;
+  const shownSections = selectedSection ? [selectedSection] : repositorySections;
   const selectedPatch = toolCallSelection
     ? toolCallPreview?.patch
     : selectedTurn
-      ? activeCheckpointDiff.data?.diff
+      ? shownSections.length > 0
+        ? shownSections.map((section) => section.diff).join("\n")
+        : activeCheckpointDiff.data?.diff
       : gitDiff;
   const isSelectedPatchTruncated =
     toolCallPreview?.truncated === true ||
@@ -548,15 +632,18 @@ export default function DiffPanel({
     selectedGitSource.files?.length
       ? selectedGitSource
       : null;
-  const renderablePatch = getRenderablePatch(
-    lazySource ? undefined : selectedPatch,
-    `diff-panel:${resolvedTheme}`,
-    {
-      compactPartialHunkOffsets: isGitSelection,
-      ...(toolCallSelection ? { ignoreWhitespace: diffIgnoreWhitespace } : {}),
-    },
-    messages,
-  );
+  const renderablePatch =
+    shownSections.length > 0
+      ? getRenderablePatchSections(shownSections, `diff-panel:${resolvedTheme}`)
+      : getRenderablePatch(
+          lazySource ? undefined : selectedPatch,
+          `diff-panel:${resolvedTheme}`,
+          {
+            compactPartialHunkOffsets: isGitSelection,
+            ...(toolCallSelection ? { ignoreWhitespace: diffIgnoreWhitespace } : {}),
+          },
+          messages,
+        );
   const recordedToolCallFileCount =
     toolCallSelection && toolCallItem?.type === "file_change"
       ? (toolCallItem.changes?.length ?? 0)
@@ -594,7 +681,7 @@ export default function DiffPanel({
     return currentLoadDiffFiles(fileDiff);
   });
   const canSelectBranchBase = canReadFiles && canRefreshGitDiff && selectedGitScope === "branch";
-  const branchRefsCwd = branchDiffPreview.data?.cwd ?? activeCwd;
+  const branchRefsCwd = branchDiffPreview.data?.cwd ?? gitCwd;
   const localBranchRefs = useEnvironmentQuery(
     canSelectBranchBase && activeThread && branchRefsCwd
       ? vcsEnvironment.listRefs({
@@ -666,6 +753,8 @@ export default function DiffPanel({
   useLiveRefresh(
     branchDiffPreview.data !== null && !branchDiffPreview.isPending
       ? () => {
+          // A read that began after this render, as a thread switch's, is that revalidation.
+          if (branchDiffPreviewIsPending()) return;
           if (Date.now() - branchDiffPreview.dataUpdatedAt < LIVE_REFRESH_MIN_INTERVAL_MS) return;
           refreshBranchDiffPreview();
         }
@@ -744,8 +833,15 @@ export default function DiffPanel({
     codeViewScroll.attach(handle);
     codeViewReveal.attach(handle);
   });
+  const revealFileKeyForPath = useStableCallback(
+    (filePath: string) =>
+      renderableFileEntries.find(
+        (candidate) => resolveFileDiffPath(candidate.fileDiff) === filePath,
+      )?.fileKey,
+  );
   const flushCodeView = useStableCallback(() => {
     codeViewScroll.flush();
+    codeViewReveal.retarget(revealFileKeyForPath);
     codeViewReveal.flush();
   });
   const revealDiffFile = (filePath: string) => {
@@ -761,7 +857,7 @@ export default function DiffPanel({
       return next;
     });
     if (lazySource) requestFile(filePath);
-    codeViewReveal.request(file.fileKey);
+    codeViewReveal.request(file.fileKey, undefined, filePath);
     return true;
   };
 
@@ -781,12 +877,31 @@ export default function DiffPanel({
     }
   }, [collapseScopeKey, selectedFilePath, selectedFileRevealRequestId, revealDiffFile]);
 
+  // A tracked repository's file is named from the thread's folder; on disk it belongs to the
+  // repository's own folder, which may sit outside the thread's.
+  const repositoryFileTarget = (filePath: string) => {
+    // A Git scope of a repository lists paths from that repository's folder.
+    if (isGitSelection && gitRepository !== null) {
+      return { path: filePath, insideThreadFolder: false, cwd: gitRepository.cwd };
+    }
+    const match = repositorySectionForPath(repositorySections, filePath);
+    if (match === null) return null;
+    return {
+      path: match.path,
+      insideThreadFolder: isRelativePathInsideFolder(match.section.relativePath),
+      cwd: selectedTurn?.repositories?.find(
+        (repository) => repository.repositoryPath === match.section.repositoryPath,
+      )?.cwd,
+    };
+  };
   const openDiffFile = (filePath: string) => {
+    const repositoryFile = repositoryFileTarget(filePath);
     openDiffFilePrimaryAction({
-      threadRef: activeThreadRef,
-      filePath,
-      activeCwd,
-      repositoryRoot: diffPathRepositoryRoot,
+      // The file viewer reads below the thread's folder; a repository outside it opens in the editor.
+      threadRef: repositoryFile?.insideThreadFolder === false ? null : activeThreadRef,
+      filePath: repositoryFile?.insideThreadFolder === false ? repositoryFile.path : filePath,
+      activeCwd: repositoryFile?.insideThreadFolder === false ? repositoryFile.cwd : activeCwd,
+      repositoryRoot: repositoryFile ? undefined : diffPathRepositoryRoot,
       openInEditor: (targetPath) => {
         void (async () => {
           const result = await openInPreferredEditor(targetPath);
@@ -847,6 +962,15 @@ export default function DiffPanel({
     if (!activeThreadRef) return;
     useDiffPanelStore.getState().selectBranchBaseRef(activeThreadRef, baseRef);
   };
+  const selectGitRepository = (value: string) => {
+    const nextPath = value === THREAD_FOLDER ? null : value;
+    if (nextPath === (gitRepository?.repositoryPath ?? null)) return;
+    setGitRepositoryPath(nextPath);
+    // A commit or base ref of the repository being left means nothing in the next one.
+    if (selectedCommitSha === null && rememberedBaseRef === null) return;
+    selectBranchBaseRef(null);
+    if (selectedGitScope === "unstaged") selectGitScope("unstaged");
+  };
   const selectedTurnValue = selectedTurn ? `turn:${selectedTurn.runId}` : "";
   const selectedCommitValue = selectedCommitSha !== null ? `commit:${selectedCommitSha}` : "";
   const selectedScopeValue = toolCallSelection
@@ -856,6 +980,16 @@ export default function DiffPanel({
       : selectedTurn?.runId === latestTurn?.runId
         ? "latest"
         : selectedTurnValue;
+  const selectRepository = (key: string) => {
+    if (!activeThreadRef || !selectedTurn) return;
+    useDiffPanelStore
+      .getState()
+      .selectTurnRepository(
+        activeThreadRef,
+        selectedTurn.runId,
+        key === ALL_REPOSITORIES ? null : key,
+      );
+  };
   const selectScopeValue = (value: string) => {
     if (value === "unstaged" || value === "branch") {
       selectGitScope(value);
@@ -873,13 +1007,20 @@ export default function DiffPanel({
     }
   };
 
+  // Two pickers leave no room for these in a phone-width panel, where a split view cannot fit anyway.
+  const narrowHeaderHidden =
+    repositorySections.length > 0 ? "@max-[30rem]/diff-header:hidden" : undefined;
   const headerRow = (
     <>
       <div className="@container/diff-refs flex min-w-0 flex-1 items-center gap-3 [-webkit-app-region:no-drag]">
         <DropdownMenu>
           <DropdownMenuTrigger
             render={<Button size="xs" variant="secondary" />}
-            className={cn("max-w-full", headerCommitSha !== null && "min-w-0 shrink")}
+            className={cn(
+              "max-w-full",
+              headerCommitSha !== null && "min-w-0 shrink",
+              repositorySections.length > 0 && "min-w-14 shrink",
+            )}
             aria-label={gt("Diff scope: {scope}", { scope: selectedScopeLabel })}
             data-workspace-focus-default
           >
@@ -912,16 +1053,20 @@ export default function DiffPanel({
           ) : null}
           <DropdownMenuContent align="start">
             <DropdownMenuRadioGroup value={selectedScopeValue} onValueChange={selectScopeValue}>
-              <DropdownMenuRadioItem value="branch" closeOnClick>
-                <span>
-                  <T>Changes</T>
-                </span>
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="unstaged" closeOnClick>
-                <span>
-                  <T>Uncommitted</T>
-                </span>
-              </DropdownMenuRadioItem>
+              {turnDiffsOnly ? null : (
+                <>
+                  <DropdownMenuRadioItem value="branch" closeOnClick>
+                    <span>
+                      <T>Changes</T>
+                    </span>
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="unstaged" closeOnClick>
+                    <span>
+                      <T>Uncommitted</T>
+                    </span>
+                  </DropdownMenuRadioItem>
+                </>
+              )}
               <DropdownMenuRadioItem value="latest" closeOnClick>
                 <span>
                   <T>Latest turn</T>
@@ -958,112 +1103,184 @@ export default function DiffPanel({
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
-            <DropdownMenuSub
-              onOpenChange={(open) => {
-                setOpenCommitMenu(open ? (branchCommitsQuery.data ?? null) : null);
-                if (!open) return;
-                // The menu keeps the list it opened with; the refreshed one shows next time.
-                branchCommitsQuery.refresh();
-              }}
-            >
-              <DropdownMenuSubTrigger>
-                <T>Commits</T>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="max-h-80 max-w-96">
-                <DropdownMenuRadioGroup
-                  value={selectedCommitValue}
-                  onValueChange={selectScopeValue}
-                >
-                  {branchCommits?.commits.map((commit) => {
-                    const commitUrl = projectCommitUrl(
-                      activeProject?.repositoryIdentity,
-                      commit.sha,
-                    );
-                    return (
-                      <div
-                        key={commit.sha}
-                        className={cn(
-                          "flex items-center rounded-sm hover:bg-accent has-data-highlighted:bg-accent has-focus-visible:bg-accent [&_[data-checked]]:bg-transparent [&_[data-highlighted]]:bg-transparent",
-                          selectedCommitSha === commit.sha && "bg-foreground/[0.08]",
-                        )}
-                      >
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <DropdownMenuRadioItem
-                                className="min-w-0 flex-1"
-                                value={`commit:${commit.sha}`}
-                                closeOnClick
-                              />
-                            }
-                          >
-                            <span className="flex items-center gap-3">
-                              <span className="min-w-0 flex-1 truncate">{commit.subject}</span>
-                              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                                {formatRelativeTimeLabel(commit.committedAt, undefined, messages)}
+            {turnDiffsOnly ? null : (
+              <DropdownMenuSub
+                onOpenChange={(open) => {
+                  setOpenCommitMenu(open ? (branchCommitsQuery.data ?? null) : null);
+                  if (!open) return;
+                  // The menu keeps the list it opened with; the refreshed one shows next time.
+                  branchCommitsQuery.refresh();
+                }}
+              >
+                <DropdownMenuSubTrigger>
+                  <T>Commits</T>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="max-h-80 max-w-96">
+                  <DropdownMenuRadioGroup
+                    value={selectedCommitValue}
+                    onValueChange={selectScopeValue}
+                  >
+                    {branchCommits?.commits.map((commit) => {
+                      const commitUrl = projectCommitUrl(commitLinkIdentity, commit.sha);
+                      return (
+                        <div
+                          key={commit.sha}
+                          className={cn(
+                            "flex items-center rounded-sm hover:bg-accent has-data-highlighted:bg-accent has-focus-visible:bg-accent [&_[data-checked]]:bg-transparent [&_[data-highlighted]]:bg-transparent",
+                            selectedCommitSha === commit.sha && "bg-foreground/[0.08]",
+                          )}
+                        >
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <DropdownMenuRadioItem
+                                  className="min-w-0 flex-1"
+                                  value={`commit:${commit.sha}`}
+                                  closeOnClick
+                                />
+                              }
+                            >
+                              <span className="flex items-center gap-3">
+                                <span className="min-w-0 flex-1 truncate">{commit.subject}</span>
+                                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                                  {formatRelativeTimeLabel(commit.committedAt, undefined, messages)}
+                                </span>
                               </span>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipPopup side="right" className="max-w-80">
-                            {commit.subject}
-                          </TooltipPopup>
-                        </Tooltip>
-                        {commitUrl ? (
-                          <DropdownMenuItem
-                            className="shrink-0"
-                            render={
-                              <a
-                                href={commitUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={gt("Open commit {sha}", {
-                                  sha: commit.sha.slice(0, 7),
-                                })}
-                              />
-                            }
-                            onClick={(event) => openCommitUrl(event, commitUrl)}
-                          >
-                            <span className="font-mono text-xs text-muted-foreground underline underline-offset-4">
+                            </TooltipTrigger>
+                            <TooltipPopup side="right" className="max-w-80">
+                              {commit.subject}
+                            </TooltipPopup>
+                          </Tooltip>
+                          {commitUrl ? (
+                            <DropdownMenuItem
+                              className="shrink-0"
+                              render={
+                                <a
+                                  href={commitUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label={gt("Open commit {sha}", {
+                                    sha: commit.sha.slice(0, 7),
+                                  })}
+                                />
+                              }
+                              onClick={(event) => openCommitUrl(event, commitUrl)}
+                            >
+                              <span className="font-mono text-xs text-muted-foreground underline underline-offset-4">
+                                {commit.sha.slice(0, 7)}
+                              </span>
+                            </DropdownMenuItem>
+                          ) : (
+                            <span className="shrink-0 px-2 font-mono text-xs text-muted-foreground">
                               {commit.sha.slice(0, 7)}
                             </span>
-                          </DropdownMenuItem>
-                        ) : (
-                          <span className="shrink-0 px-2 font-mono text-xs text-muted-foreground">
-                            {commit.sha.slice(0, 7)}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </DropdownMenuRadioGroup>
-                {branchCommitsQuery.error ? (
-                  <DropdownMenuItem disabled>{branchCommitsQuery.error}</DropdownMenuItem>
-                ) : !canReadFiles ? (
-                  <DropdownMenuItem disabled>
-                    {fileAccess.isPending
-                      ? gt("Checking file access...")
-                      : (fileAccess.error ?? gt("This connection cannot read local diffs."))}
-                  </DropdownMenuItem>
-                ) : branchCommits === null ? (
-                  <DropdownMenuItem disabled>
-                    <T>Loading commits...</T>
-                  </DropdownMenuItem>
-                ) : branchCommits.commits.length === 0 ? (
-                  <DropdownMenuItem disabled>
-                    <T>No commits on this branch.</T>
-                  </DropdownMenuItem>
-                ) : branchCommits.truncated ? (
-                  <DropdownMenuItem disabled>
-                    {gt(
-                      "{count, plural, one {Showing latest {count} commits} other {Showing latest {count} commits}}",
-                      { count: branchCommits.commits.length },
-                    )}
-                  </DropdownMenuItem>
-                ) : null}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </DropdownMenuRadioGroup>
+                  {branchCommitsQuery.error ? (
+                    <DropdownMenuItem disabled>{branchCommitsQuery.error}</DropdownMenuItem>
+                  ) : !canReadFiles ? (
+                    <DropdownMenuItem disabled>
+                      {fileAccess.isPending
+                        ? gt("Checking file access...")
+                        : (fileAccess.error ?? gt("This connection cannot read local diffs."))}
+                    </DropdownMenuItem>
+                  ) : branchCommits === null ? (
+                    <DropdownMenuItem disabled>
+                      <T>Loading commits...</T>
+                    </DropdownMenuItem>
+                  ) : branchCommits.commits.length === 0 ? (
+                    <DropdownMenuItem disabled>
+                      <T>No commits on this branch.</T>
+                    </DropdownMenuItem>
+                  ) : branchCommits.truncated ? (
+                    <DropdownMenuItem disabled>
+                      {gt(
+                        "{count, plural, one {Showing latest {count} commits} other {Showing latest {count} commits}}",
+                        { count: branchCommits.commits.length },
+                      )}
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
+        {isGitSelection && gitRepositories.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<Button size="xs" variant="ghost-muted" />}
+              className="min-w-14 max-w-48 shrink"
+              aria-label={gt("Repository: {name}", {
+                name: gitRepository?.name ?? threadFolderName,
+              })}
+            >
+              <span className="truncate">{gitRepository?.name ?? threadFolderName}</span>
+              <ChevronDownIcon className="size-3.5 shrink-0 opacity-70" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-80 max-w-72">
+              <DropdownMenuRadioGroup
+                value={gitRepository?.repositoryPath ?? THREAD_FOLDER}
+                onValueChange={selectGitRepository}
+              >
+                {threadFolderIsRepo ? (
+                  <DropdownMenuRadioItem value={THREAD_FOLDER} closeOnClick>
+                    <span className="min-w-0 truncate">{threadFolderName}</span>
+                  </DropdownMenuRadioItem>
+                ) : null}
+                {gitRepositories.map((repository) => (
+                  <DropdownMenuRadioItem
+                    key={repository.repositoryPath}
+                    value={repository.repositoryPath}
+                    closeOnClick
+                  >
+                    <span className="min-w-0 truncate">{repository.name}</span>
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {repositorySections.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<Button size="xs" variant="ghost-muted" />}
+              className="min-w-14 max-w-48 shrink"
+              aria-label={gt("Repository: {name}", {
+                name: selectedSection?.name ?? gt("All repositories"),
+              })}
+            >
+              <span className="truncate">{selectedSection?.name ?? gt("All repositories")}</span>
+              <ChevronDownIcon className="size-3.5 shrink-0 opacity-70" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-80 max-w-72">
+              <DropdownMenuRadioGroup
+                value={selectedSection?.key ?? ALL_REPOSITORIES}
+                onValueChange={selectRepository}
+              >
+                <DropdownMenuRadioItem value={ALL_REPOSITORIES} closeOnClick>
+                  <span>
+                    <T>All repositories</T>
+                  </span>
+                </DropdownMenuRadioItem>
+                {repositorySections.map((section) => (
+                  <DropdownMenuRadioItem key={section.key} value={section.key} closeOnClick>
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className="min-w-0 truncate">{section.name}</span>
+                      {section.relativePath !== "" && section.relativePath !== section.name ? (
+                        <span className="ml-auto min-w-0 truncate text-xs text-muted-foreground">
+                          {section.relativePath}
+                        </span>
+                      ) : null}
+                    </span>
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {canSelectBranchBase && (
           <div
             className="flex min-w-0 max-w-full items-center gap-2 overflow-hidden text-xs text-muted-foreground"
@@ -1218,12 +1435,14 @@ export default function DiffPanel({
         )}
       >
         {codeViewFiles.length > 0 || (isGitSelection && selectedGitSource?.files?.length) ? (
-          <DiffStatLabel
-            additions={diffLineStat.additions}
-            deletions={diffLineStat.deletions}
-            className="mr-1 text-2xs"
-            layout="inline"
-          />
+          <span className={cn("contents", narrowHeaderHidden)}>
+            <DiffStatLabel
+              additions={diffLineStat.additions}
+              deletions={diffLineStat.deletions}
+              className="mr-1 text-2xs"
+              layout="inline"
+            />
+          </span>
         ) : null}
         {canRefreshGitDiff && (
           <Tooltip>
@@ -1271,25 +1490,27 @@ export default function DiffPanel({
             </TooltipPopup>
           </Tooltip>
         )}
-        <ToggleGroup
-          aria-label={gt("Diff layout")}
-          className="shrink-0"
-          variant="segmented"
-          value={[diffLayout]}
-          onValueChange={(value) => {
-            const next = value[0];
-            if (next === "stacked" || next === "split") {
-              updateClientSettings({ diffLayout: next });
-            }
-          }}
-        >
-          <Toggle aria-label={gt("Stacked diff view")} value="stacked">
-            <Rows3Icon className="size-3.5" />
-          </Toggle>
-          <Toggle aria-label={gt("Split diff view")} value="split">
-            <Columns2Icon className="size-3.5" />
-          </Toggle>
-        </ToggleGroup>
+        <span className={cn("contents", narrowHeaderHidden)}>
+          <ToggleGroup
+            aria-label={gt("Diff layout")}
+            className="shrink-0"
+            variant="segmented"
+            value={[diffLayout]}
+            onValueChange={(value) => {
+              const next = value[0];
+              if (next === "stacked" || next === "split") {
+                updateClientSettings({ diffLayout: next });
+              }
+            }}
+          >
+            <Toggle aria-label={gt("Stacked diff view")} value="stacked">
+              <Rows3Icon className="size-3.5" />
+            </Toggle>
+            <Toggle aria-label={gt("Split diff view")} value="split">
+              <Columns2Icon className="size-3.5" />
+            </Toggle>
+          </ToggleGroup>
+        </span>
         <Tooltip>
           <TooltipTrigger
             render={
@@ -1391,7 +1612,7 @@ export default function DiffPanel({
         <div className="flex flex-1 items-center justify-center px-5 text-center text-xs text-muted-foreground/70">
           <T>Select a thread to inspect turn diffs.</T>
         </div>
-      ) : !isGitRepo && !toolCallSelection ? (
+      ) : !isGitRepo && !hasRepositoryChanges && !toolCallSelection ? (
         <div className="flex flex-1 items-center justify-center px-5 text-center text-xs text-muted-foreground/70">
           <T>Turn diffs are unavailable because this project is not a git repository.</T>
         </div>
@@ -1487,6 +1708,18 @@ export default function DiffPanel({
                   </p>
                 </div>
               )
+            ) : shownFileEntries.length === 0 && testFileCount > 0 ? (
+              <div className="flex h-full flex-wrap items-center justify-center gap-2 px-3 py-2 text-xs text-muted-foreground/70">
+                <p>
+                  {gt(
+                    "{count, plural, one {{count} test file hidden} other {{count} test files hidden}}",
+                    { count: testFileCount },
+                  )}
+                </p>
+                <InlineButton onClick={() => setHideTestFiles(false)}>
+                  {gt("Show test files")}
+                </InlineButton>
+              </div>
             ) : lazySource || renderablePatch?.kind === "files" ? (
               <div className="flex min-h-0 flex-1 overflow-hidden">
                 <div
@@ -1505,13 +1738,20 @@ export default function DiffPanel({
                     const filePath = title?.textContent?.trim();
                     if (!filePath) return;
                     event.preventDefault();
+                    const repositoryFile = repositoryFileTarget(filePath);
                     onFileContextMenu(
-                      {
-                        environmentId: activeThread?.environmentId ?? null,
-                        filePath,
-                        workspaceRoot: activeCwd,
-                        repositoryRoot: diffPathRepositoryRoot,
-                      },
+                      repositoryFile?.cwd === undefined
+                        ? {
+                            environmentId: activeThread?.environmentId ?? null,
+                            filePath,
+                            workspaceRoot: activeCwd,
+                            repositoryRoot: repositoryFile ? undefined : diffPathRepositoryRoot,
+                          }
+                        : {
+                            environmentId: activeThread?.environmentId ?? null,
+                            filePath: repositoryFile.path,
+                            workspaceRoot: repositoryFile.cwd,
+                          },
                       event,
                     );
                   }}

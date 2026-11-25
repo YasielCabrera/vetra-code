@@ -65,6 +65,7 @@ export function createCodeViewFileReveal() {
   let detachedInstance: object | undefined;
   let pending: {
     id: string;
+    path?: string;
     range?: SelectedLineRange;
     positionedFile?: boolean;
     loadingFile?: boolean;
@@ -163,8 +164,23 @@ export function createCodeViewFileReveal() {
       viewer = next;
       flush();
     },
-    request(fileKey: string, range?: SelectedLineRange) {
-      pending = { id: fileKey, ...(range ? { range } : {}) };
+    request(fileKey: string, range?: SelectedLineRange, path?: string) {
+      pending = {
+        id: fileKey,
+        ...(path === undefined ? {} : { path }),
+        ...(range ? { range } : {}),
+      };
+      flush();
+    },
+    /**
+     * An item's id carries its change type, so a file whose patch loads lazily is a new item once
+     * it arrives. Callers that load patches lazily re-point the pending reveal as they render.
+     */
+    retarget(fileKeyForPath: (path: string) => string | undefined) {
+      if (pending?.path === undefined) return;
+      const next = fileKeyForPath(pending.path);
+      if (next === undefined || next === pending.id) return;
+      pending = { ...pending, id: next, loadingFile: false };
       flush();
     },
     /** The user scrolled; a reveal still being positioned must not pull them back. */

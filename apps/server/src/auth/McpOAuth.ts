@@ -98,6 +98,7 @@ export const authorizationServerMetadata = (
   authorization_endpoint: `${urls.issuer}/oauth/mcp/authorize`,
   token_endpoint: `${urls.issuer}/oauth/mcp/token`,
   registration_endpoint: `${urls.issuer}/oauth/mcp/register`,
+  revocation_endpoint: `${urls.issuer}/oauth/mcp/revoke`,
   response_types_supported: ["code"],
   grant_types_supported: ["authorization_code"],
   code_challenge_methods_supported: ["S256"],
@@ -198,6 +199,7 @@ interface PendingCode {
   readonly resource: string;
   readonly access: AuthMcpClientAccess;
   readonly tools: AuthMcpClientTools | undefined;
+  readonly approvedAtRevocationCount: number;
   readonly expiresAtMs: number;
 }
 
@@ -353,7 +355,7 @@ const make = Effect.gen(function* () {
         return yield* new AuthMcpRegistrationError({
           error: "invalid_client_metadata",
           error_description:
-            "Linked environments is off on that machine. Turn it on in its Settings → Labs.",
+            'Linked environments is off on that machine. Turn it on in its Settings → Labs, or without a desktop, set "linkedEnvironmentsEnabled": true in userdata/settings.json in its Vetra home (~/.t3 by default).',
         });
       }
       const clientId = yield* signClientId(name, redirectUris, peerLink);
@@ -446,6 +448,7 @@ const make = Effect.gen(function* () {
   const mintCode = Effect.fn("McpOAuth.mintCode")(function* (
     authorization: AuthorizationRequest,
     { access, tools }: ApprovalDecision,
+    approvedAtRevocationCount: number,
   ) {
     const now = yield* Clock.currentTimeMillis;
     const code = Buffer.from(yield* random.randomBytes(32)).toString("base64url");
@@ -460,6 +463,7 @@ const make = Effect.gen(function* () {
         resource: authorization.resource,
         access,
         tools,
+        approvedAtRevocationCount,
         expiresAtMs: now + AUTHORIZATION_CODE_TTL_MS,
       });
       return next;
@@ -469,6 +473,9 @@ const make = Effect.gen(function* () {
 
   const approve: McpOAuth["Service"]["approve"] = Effect.fn("McpOAuth.approve")(function* (input) {
     const { decision } = input;
+    // Read before the approver is checked: "revoke all others" then ends this sign-in whether
+    // it lands before the check or after the code is handed out.
+    const approvedAtRevocationCount = yield* environmentAuth.otherSessionRevocationCount;
     let access = decision.access;
     if (decision._tag === "pairing-code") {
       // An approval code is for one app's sign-in, never for linking another environment.
@@ -504,7 +511,11 @@ const make = Effect.gen(function* () {
         });
       }
     }
-    const code = yield* mintCode(input.authorization, { ...decision, access });
+    const code = yield* mintCode(
+      input.authorization,
+      { ...decision, access },
+      approvedAtRevocationCount,
+    );
     yield* Effect.logInfo("Approved an MCP client sign-in.", {
       client: input.authorization.client.name,
       access,
@@ -571,14 +582,17 @@ const make = Effect.gen(function* () {
           ...(pending.tools === undefined ? {} : { tools: pending.tools }),
           peerLink: pending.peerLink,
           client: deriveAuthClientMetadata({ request }),
+          approvedAtRevocationCount: pending.approvedAtRevocationCount,
         })
         .pipe(
           Effect.catch((cause) =>
-            Effect.logError("Could not issue an MCP client session.", { cause }).pipe(
-              Effect.andThen(
-                Effect.fail(fail("invalid_grant", "The session could not be issued.")),
-              ),
-            ),
+            cause._tag === "ServerAuthInvalidCredentialError"
+              ? Effect.fail(fail("invalid_grant", "The authorization code is invalid or expired."))
+              : Effect.logError("Could not issue an MCP client session.", { cause }).pipe(
+                  Effect.andThen(
+                    Effect.fail(fail("invalid_grant", "The session could not be issued.")),
+                  ),
+                ),
           ),
         );
       return {
@@ -639,6 +653,7 @@ export const layerMcpClientAuthenticator = Layer.effect(
                     label: client.label,
                     access: client.access,
                     linked: client.peerLink,
+                    linkExpiresAt: client.linkExpiresAt,
                     ...(client.peerLink
                       ? {}
                       : { hostedAppUrl: hostedAppUrl ?? requestUrls(request).issuer }),

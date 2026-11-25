@@ -1,6 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import { PRODUCT_CLI_NAME } from "@t3tools/shared/productIdentity";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -8,6 +9,7 @@ import * as Path from "effect/Path";
 import packageJson from "../../package.json" with { type: "json" };
 import { posixLauncherScript } from "../cloud/pinnedRuntime.ts";
 import {
+  hostShellWord,
   resolveHostCliCommand,
   resolveRootCliCommand,
   resolveServerInstallation,
@@ -197,6 +199,43 @@ it.layer(NodeServices.layer)("host CLI commands", (it) => {
         / doctor --base-dir 'C:\\Users\\Jane Doe\\\.vetra-code'$/,
       );
     }),
+  );
+
+  it.effect.skipIf(HostProcess.Platform.defaultValue() === "win32")(
+    "names the absolute path of a CLI found through a relative PATH entry",
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const bin = yield* fs.makeTempDirectoryScoped();
+        yield* fs.writeFileString(path.join(bin, PRODUCT_CLI_NAME), "#!/bin/sh\n", { mode: 0o755 });
+        const hostCommand = (searchPath: string) =>
+          resolveHostCliCommand("doctor").pipe(
+            Effect.provideService(HostProcess.ExecutablePath, "/usr/bin/node"),
+            Effect.provideService(HostProcess.Arguments, [
+              "/usr/bin/node",
+              "/opt/t3/lib/node_modules/t3/dist/bin.mjs",
+            ]),
+            Effect.provideService(HostProcess.IsExecutable, false),
+            Effect.provideService(HostProcess.Platform, "linux"),
+            Effect.provideService(HostProcess.Environment, { PATH: searchPath }),
+          );
+
+        // A relative entry was searched from this process's directory, unlike the user's shell.
+        expect(yield* hostCommand(path.relative(process.cwd(), bin))).toEqual({
+          command: `${hostShellWord("linux", path.join(bin, PRODUCT_CLI_NAME))} doctor`,
+          launcher: false,
+        });
+        // An empty entry makes the shell search its own directory first, wherever that is.
+        expect(yield* hostCommand(`:${bin}`)).toEqual({
+          command: `${hostShellWord("linux", path.join(bin, PRODUCT_CLI_NAME))} doctor`,
+          launcher: false,
+        });
+        expect(yield* hostCommand(bin)).toEqual({
+          command: `${PRODUCT_CLI_NAME} doctor`,
+          launcher: false,
+        });
+      }),
   );
 });
 

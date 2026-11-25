@@ -31,6 +31,7 @@ import * as SqlClient from "effect/sql/SqlClient";
 
 import { issueAssetUrl } from "../../../assets/AssetAccess.ts";
 import * as AssetSigner from "../../../assets/AssetSigner.ts";
+import * as WorkspacePreviewRevisions from "../../../assets/WorkspacePreviewRevisions.ts";
 import * as NativeAppIconResolver from "../../../assets/NativeAppIconResolver.ts";
 import { resolveAttachmentPathById } from "../../../attachmentStore.ts";
 import * as ServerSecretStore from "../../../auth/ServerSecretStore.ts";
@@ -135,7 +136,12 @@ const layerWithAssetSigner = (assetSigner: typeof AssetSigner.layer) =>
   ).pipe(
     Layer.provideMerge(assetSigner),
     Layer.provideMerge(
-      Layer.mergeAll(TicketService.layer, ServerSecretStore.layer, WorkspacePaths.layer),
+      Layer.mergeAll(
+        TicketService.layer,
+        ServerSecretStore.layer,
+        WorkspacePaths.layer,
+        WorkspacePreviewRevisions.layer,
+      ),
     ),
     Layer.provideMerge(externalLayers),
     Layer.provideMerge(configLayer),

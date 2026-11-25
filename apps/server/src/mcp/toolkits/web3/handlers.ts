@@ -27,6 +27,8 @@ const withWallet = Effect.fn("withWallet")(function* <A, E, R>(
 ) {
   const agent = yield* callerAgent(tabId);
   const wallet = yield* ServerPreviewWallet.ServerPreviewWallet;
+  // The wallet applies its settings on a forked fiber; a call before that reads it as off.
+  yield* wallet.ready;
   return yield* use(wallet, agent);
 });
 

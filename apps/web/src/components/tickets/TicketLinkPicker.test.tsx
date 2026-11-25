@@ -50,7 +50,7 @@ const capabilityAtom = vi.hoisted(() => {
 });
 
 const boundary = vi.hoisted(() => {
-  const queries: string[] = [];
+  const queries: Array<{ query: string; input: unknown }> = [];
   const threads: Array<{
     environmentId: string;
     id: string;
@@ -78,20 +78,49 @@ vi.mock("../../state/server", async () => {
   const { Atom: RuntimeAtom } = await import("effect/reactivity");
   const configs = RuntimeAtom.make(new Map<string, CapabilityConfig>());
   capabilityAtom.install(configs);
-  return { environmentServerConfigsAtom: configs };
+  // state/threads reads this through serverEnvironment; these tests never hide tags.
+  return {
+    environmentServerConfigsAtom: configs,
+    serverEnvironment: { hiddenThreadTagsAtom: () => RuntimeAtom.make(null) },
+  };
 });
 vi.mock("../../state/entities", () => ({
   useThreadShells: () => boundary.threads,
   useProjects: () => boundary.projects,
 }));
+vi.mock("../../state/pullRequests", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../state/pullRequests")>();
+  return {
+    ...actual,
+    pullRequestEnvironment: {
+      ...actual.pullRequestEnvironment,
+      list: (target: { readonly input: unknown }) => {
+        boundary.queries.push({ query: "pull-requests:list", input: target.input });
+        return { query: "pull-requests:list" };
+      },
+    },
+  };
+});
+vi.mock("../../state/tickets", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../state/tickets")>();
+  return {
+    ...actual,
+    ticketEnvironment: {
+      ...actual.ticketEnvironment,
+      issueLinkCandidates: (target: { readonly input: unknown }) => {
+        boundary.queries.push({ query: "tickets:issue-link-candidates", input: target.input });
+        return { query: "tickets:issue-link-candidates" };
+      },
+    },
+  };
+});
 vi.mock("../../state/query", () => ({
   useEnvironmentQuery: (atom: QueryAtom | null) => {
-    const label = atom?.label?.[0] ?? "";
-    if (label.length > 0) boundary.queries.push(label);
-    if (label.startsWith("environment-data:pull-requests:list:")) {
+    const query = (atom as { query?: string } | null)?.query;
+    if (query === "pull-requests:list") {
       return ready({ entries: boundary.pullRequests });
     }
-    if (label.startsWith("environment-data:tickets:issue-link-candidates:")) {
+    if (query === "tickets:issue-link-candidates") {
       return ready({ entries: boundary.issues, errors: [] });
     }
     return {
@@ -133,16 +162,14 @@ function ready<T>(data: T) {
   };
 }
 
-function queryInputs(prefix: string): unknown[] {
-  return boundary.queries.flatMap((label) => {
-    if (!label.startsWith(`${prefix}:`)) return [];
-    const parsed: unknown = JSON.parse(label.slice(prefix.length + 1));
-    return Array.isArray(parsed) ? [parsed[1]] : [];
-  });
+function queryInputs(query: string): unknown[] {
+  return boundary.queries.flatMap((entry) => (entry.query === query ? [entry.input] : []));
 }
 
 function ticketIssueQueries(): readonly string[] {
-  return boundary.queries.filter((label) => label.startsWith("environment-data:tickets:"));
+  return boundary.queries.flatMap((entry) =>
+    entry.query.startsWith("tickets:") ? [entry.query] : [],
+  );
 }
 
 function publishCapability(supported: boolean) {
@@ -264,7 +291,7 @@ describe("TicketLinkPicker issue capability", () => {
     await press("PRs");
     expect(document.body.textContent).toContain("Fix the widget");
     expect(document.body.textContent).not.toContain("Unlinked host issue");
-    expect(queryInputs("environment-data:pull-requests:list")).toContainEqual({
+    expect(queryInputs("pull-requests:list")).toContainEqual({
       state: "open",
       projectIds: [ownerProjectId],
       limit: 30,
@@ -285,7 +312,7 @@ describe("TicketLinkPicker issue capability", () => {
 
     await press("Issues");
     expect(document.body.textContent).toContain("Unlinked host issue");
-    expect(queryInputs("environment-data:tickets:issue-link-candidates")).toContainEqual({
+    expect(queryInputs("tickets:issue-link-candidates")).toContainEqual({
       ticketId,
     });
     expect(controlNamed("Threads")).toBeInstanceOf(HTMLButtonElement);

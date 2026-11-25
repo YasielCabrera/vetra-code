@@ -1,7 +1,7 @@
 import type { FileDiffMetadata } from "@pierre/diffs";
+import type { CodeViewScrollTarget } from "@pierre/diffs";
 import type { CodeViewHandle, CodeViewDiffItem } from "@pierre/diffs/react";
 import { parsePatchFiles } from "@pierre/diffs/utils/parsePatchFiles";
-import { createRef } from "react";
 import { expect, it, vi } from "vite-plus/test";
 
 import "~/index.css";
@@ -54,7 +54,7 @@ function RevealHarness({
           ariaLabel="Changed files"
           onSelectFile={(path) => {
             const file = files.find((file) => resolveFileDiffPath(file) === path);
-            if (file) reveal.request(buildFileDiffIdentityKey(file));
+            if (file) reveal.request(buildFileDiffIdentityKey(file), undefined, path);
           }}
         />
       </div>
@@ -67,7 +67,13 @@ function RevealHarness({
         items={items}
         style={{ flex: 1, minWidth: 0, height: 400, overflow: "auto" }}
         options={{
-          onPostRender: reveal.flush,
+          onPostRender: () => {
+            reveal.retarget((path) => {
+              const file = readyFiles.find((entry) => resolveFileDiffPath(entry) === path);
+              return file ? buildFileDiffIdentityKey(file) : undefined;
+            });
+            reveal.flush();
+          },
           diffStyle: "unified",
           theme: "github-light",
           disableFileHeader: false,
@@ -186,16 +192,24 @@ it("reveals only the latest tree selection when lazy files become ready together
 it("cancels a pending reveal when the scope changes and accepts a fresh click", async () => {
   const files = fixture(tallPatch("02-target.txt"));
   const readyPaths = ["01-first.txt", "99-last.txt"];
-  const viewer = createRef<CodeViewHandle<undefined, undefined>>();
+  // The viewer hands out a new handle on every render, so each one records into one list.
+  const scrollTargets: CodeViewScrollTarget[] = [];
+  let recording = false;
+  const wrapped = new WeakSet<object>();
   const onViewer = (next: CodeViewHandle<undefined, undefined> | null) => {
-    viewer.current = next;
+    if (next === null || wrapped.has(next)) return;
+    wrapped.add(next);
+    const scrollTo = next.scrollTo.bind(next);
+    next.scrollTo = (target: CodeViewScrollTarget) => {
+      if (recording) scrollTargets.push(target);
+      scrollTo(target);
+    };
   };
   await using screen = await render(
     <RevealHarness files={files} readyPaths={readyPaths} onViewer={onViewer} />,
   );
   await expectRevealed(screen, "01-first.txt");
-  if (!viewer.current) throw new Error("Missing code view handle");
-  using scrollTo = vi.spyOn(viewer.current, "scrollTo");
+  recording = true;
   await selectFile(screen, "02-target.txt");
   await screen.rerender(
     <RevealHarness
@@ -214,7 +228,7 @@ it("cancels a pending reveal when the scope changes and accepts a fresh click", 
   );
   await selectFile(screen, "02-target.txt");
   await expectRevealed(screen, "02-target.txt");
-  expect(scrollTo.mock.calls).toEqual([
-    [{ type: "item", id: "02-target.txt\u000002-target.txt\u0000change", align: "start" }],
+  expect(scrollTargets).toEqual([
+    { type: "item", id: "02-target.txt\u000002-target.txt\u0000change", align: "start" },
   ]);
 });

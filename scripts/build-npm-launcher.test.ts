@@ -2,6 +2,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import { PRODUCT_CLI_NAME } from "@t3tools/shared/productIdentity";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -118,9 +119,11 @@ it.layer(NodeServices.layer)("build-npm-launcher", (it) => {
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
-        const root = yield* fs
-          .makeTempDirectoryScoped({ prefix: "t3-npm-launcher-test-" })
-          .pipe(Effect.flatMap(fs.realPath));
+        // macOS temp directories sit under /var, a link to /private/var, and the launcher
+        // reports the resolved path it runs from.
+        const root = yield* fs.realPath(
+          yield* fs.makeTempDirectoryScoped({ prefix: "t3-npm-launcher-test-" }),
+        );
         const output = yield* buildNpmLauncher({
           version: VERSION,
           outputDir: path.join(root, "out"),
@@ -437,7 +440,7 @@ fs.readFileSync = (file, ...rest) => {
         const orphaned = "provider outlived the runtime by 30s";
         const provider = `process.on("SIGTERM", () => {}); setTimeout(() => { console.log(${JSON.stringify(orphaned)}); process.exit(0); }, 30_000);`;
         yield* fs.writeFileString(
-          path.join(versionDir, "t3"),
+          path.join(versionDir, PRODUCT_CLI_NAME),
           `#!${process.execPath}
 const provider = require("node:child_process").spawn(process.execPath, ["-e", ${JSON.stringify(provider)}], { stdio: "inherit" });
 process.on("SIGTERM", () => setTimeout(() => { console.log(${JSON.stringify(stuck)}); process.exit(0); }, 30_000));
@@ -445,11 +448,11 @@ setInterval(() => {}, 1 << 30);
 console.log(process.pid, provider.pid);
 `,
         );
-        yield* fs.chmod(path.join(versionDir, "t3"), 0o755);
+        yield* fs.chmod(path.join(versionDir, PRODUCT_CLI_NAME), 0o755);
 
         const launcher = NodeChildProcess.spawn(
           process.execPath,
-          [path.join(installed, "package/bin/t3.mjs"), "serve"],
+          [path.join(installed, `package/bin/${PRODUCT_CLI_NAME}.mjs`), "serve"],
           { cwd: root, env: { PATH: hostPath, VETRA_HOME: home }, stdio: "pipe" },
         );
         let pids: Array<number> = [];

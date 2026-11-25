@@ -13,10 +13,7 @@ import * as Hash from "effect/Hash";
 import pkg from "./package.json" with { type: "json" };
 import pdfjsPkg from "pdfjs-dist/package.json" with { type: "json" };
 
-import {
-  DEV_PROXIED_ORIGIN_PRESERVING_PREFIXES,
-  DEV_PROXIED_PATH_PREFIXES,
-} from "@t3tools/shared/devProxy";
+import { DEV_PROXIED_PATH_PREFIXES } from "@t3tools/shared/devProxy";
 
 import { loadRepoEnv } from "../../scripts/lib/public-config";
 import { resolveTaggedSourceVersion } from "../../scripts/lib/tagged-source-version";
@@ -86,18 +83,21 @@ const buildSourcemap: boolean | "hidden" =
       ? "hidden"
       : true;
 
+const compilerCoverageFile = "src/reactCompilerCoverage.test.ts";
+
 const unitTestProject = {
   extends: true,
   test: {
     name: "unit",
     include: ["src/**/*.test.{ts,tsx}"],
-    exclude: ["src/**/*.browser.test.{ts,tsx}"],
+    exclude: ["src/**/*.browser.test.{ts,tsx}", compilerCoverageFile],
     hookTimeout: 15_000,
     testTimeout: 15_000,
     setupFiles: [
       "../../packages/shared/src/testing/longTempDir.ts",
       "../../packages/shared/src/testing/providerEnv.ts",
       "../../packages/shared/src/testing/gitEnv.ts",
+      "./test/i18nSetup.ts",
     ],
   },
 } satisfies TestProjectInlineConfiguration;
@@ -113,6 +113,10 @@ const browserTestProject = {
     include: [
       "vite-plus/test/browser",
       "@base-ui/react/autocomplete",
+      "@effect/vitest",
+      "@pierre/diffs/ssr",
+      "@pierre/trees/react",
+      "effect/testing",
       "saxes",
       "@betteroffice/docx/editor",
       "@betteroffice/docx/layout",
@@ -127,9 +131,20 @@ const browserTestProject = {
       "dompurify",
       "heic-to/csp",
       "jszip",
+      "mdast-util-directive",
+      "micromark-extension-directive",
+      "micromark-util-character",
+      "micromark-util-decode-string",
       "pdfjs-dist",
+      "rehype-raw",
+      "rehype-sanitize",
+      "remark-breaks",
+      "remark-gfm",
+      "remark-parse",
+      "remark-rehype",
       "sql.js",
       "tiff",
+      "unified",
     ],
   },
   test: {
@@ -151,8 +166,27 @@ const browserTestProject = {
         resetPointer: async ({ page }) => {
           await page.mouse.move(-1, -1);
         },
+        // A press held across a render: userEvent only offers whole clicks.
+        pointerDown: async ({ page }) => {
+          await page.mouse.down();
+        },
+        pointerUp: async ({ page }) => {
+          await page.mouse.up();
+        },
       },
     },
+  },
+} satisfies TestProjectInlineConfiguration;
+
+// The React Compiler runs over every web source file here. Our largest components take seconds
+// each, which outlasts a unit test's 15s on a loaded machine.
+const compilerCoverageProject = {
+  extends: true,
+  test: {
+    name: "compiler",
+    include: [compilerCoverageFile],
+    hookTimeout: 60_000,
+    testTimeout: 60_000,
   },
 } satisfies TestProjectInlineConfiguration;
 
@@ -407,7 +441,9 @@ export default defineConfig(({ command }) => {
                 prefix,
                 {
                   target: devProxyTarget,
-                  changeOrigin: !DEV_PROXIED_ORIGIN_PRESERVING_PREFIXES.has(prefix),
+                  // Keep the client's Host: OAuth metadata, cookie Origin checks and DPoP proofs
+                  // all compare against the URL the client used.
+                  changeOrigin: false,
                   ...(prefix === "/ws" || prefix === "/api" ? { ws: true } : {}),
                 },
               ]),
@@ -449,6 +485,7 @@ export default defineConfig(({ command }) => {
     test: {
       projects: [
         defineProject(unitTestProject),
+        defineProject(compilerCoverageProject),
         defineProject(browserTestProject),
         defineProject(renderScenariosProject),
       ],

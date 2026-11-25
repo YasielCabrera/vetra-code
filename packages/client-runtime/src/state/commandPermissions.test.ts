@@ -11,6 +11,7 @@ import {
   AuthAccessWriteScope,
   AuthEnvironmentMaintainScope,
   AuthOrchestrationOperateScope,
+  AuthTerminalOperateScope,
   AuthOrchestrationReadScope,
   AuthPreviewOperateScope,
   AuthProvidersManageScope,
@@ -33,7 +34,7 @@ import { Atom, AtomRegistry, AsyncResult } from "effect/reactivity";
 import { EnvironmentRegistry } from "../connection/registry.ts";
 import { createCommandPermissions } from "./commandPermissions.ts";
 import { createPreviewWalletEnvironmentAtoms } from "./previewWallet.ts";
-import { createEnvironmentRpcCommand } from "./runtime.ts";
+import { createEnvironmentRpcCommand, runAtomCommand } from "./runtime.ts";
 import { AVAILABLE_CONNECTION_STATE, BearerConnectionTarget } from "../connection/model.ts";
 import { createPeerLinkEnvironmentAtoms } from "./peerLinks.ts";
 
@@ -156,6 +157,9 @@ describe("command permissions", () => {
   it.effect.each([
     { method: WS_METHODS.serverRunStorageCleanup, scope: AuthSettingsWriteScope },
     { method: WS_METHODS.serverReclaimDatabaseSpace, scope: AuthEnvironmentMaintainScope },
+    { method: WS_METHODS.workspaceAddTaskFolderRepository, scope: AuthSourceControlWriteScope },
+    { method: WS_METHODS.providerMcpSignInStart, scope: AuthProvidersManageScope },
+    { method: WS_METHODS.providerMcpSignInComplete, scope: AuthProvidersManageScope },
   ])("requires the destination $scope grant for $method", ({ method, scope }) =>
     Effect.gen(function* () {
       const registry = yield* setup;
@@ -222,21 +226,43 @@ describe("command permissions", () => {
     ),
   );
 
-  it.effect.each([WS_METHODS.scheduledTasksDelete, ORCHESTRATION_V2_WS_METHODS.stopWorkflow])(
-    "uses the target grant for both availability and execution of %s",
-    (method) =>
-      Effect.gen(function* () {
-        const registry = yield* setup;
-        const permissions = createCommandPermissions(runtime, method);
-        registry.set(sessions(env), AsyncResult.success(grant(true)));
-        expect(registry.get(permissions.permissionAtom(env))).toBe(true);
-        expect(permissions.permissionAtom(env)).toBe(permissions.permissionAtom(env));
-        yield* permissions.authorize(registry, env);
-        registry.set(sessions(other), AsyncResult.success(grant(false)));
-        expect(registry.get(permissions.permissionAtom(other))).toBe(false);
-        const denied = yield* permissions.authorize(registry, other).pipe(Effect.flip);
-        expect(denied._tag).toBe("EnvironmentAuthorizationError");
-      }),
+  it.effect.each([
+    WS_METHODS.scheduledTasksDelete,
+    ORCHESTRATION_V2_WS_METHODS.stopWorkflow,
+    WS_METHODS.workflowsAnswer,
+    WS_METHODS.workflowsResume,
+    WS_METHODS.workflowsCancel,
+  ])("uses the target grant for both availability and execution of %s", (method) =>
+    Effect.gen(function* () {
+      const registry = yield* setup;
+      const permissions = createCommandPermissions(runtime, method);
+      registry.set(sessions(env), AsyncResult.success(grant(true)));
+      expect(registry.get(permissions.permissionAtom(env))).toBe(true);
+      expect(permissions.permissionAtom(env)).toBe(permissions.permissionAtom(env));
+      yield* permissions.authorize(registry, env);
+      registry.set(sessions(other), AsyncResult.success(grant(false)));
+      expect(registry.get(permissions.permissionAtom(other))).toBe(false);
+      const denied = yield* permissions.authorize(registry, other).pipe(Effect.flip);
+      expect(denied._tag).toBe("EnvironmentAuthorizationError");
+    }),
+  );
+  it.effect("saving workflow definitions takes more than operating threads", () =>
+    Effect.gen(function* () {
+      const registry = yield* setup;
+      const saving = createCommandPermissions(runtime, WS_METHODS.workflowsSaveDefinition);
+      // The server runs that file, so the grant that answers a question does not cover it.
+      registry.set(sessions(env), AsyncResult.success(grant(true)));
+      expect(registry.get(saving.permissionAtom(env))).toBe(false);
+      registry.set(
+        sessions(env),
+        AsyncResult.success({
+          ...grant(true),
+          scopes: [AuthTerminalOperateScope],
+          permissions: [AuthTerminalOperateScope],
+        }),
+      );
+      expect(registry.get(saving.permissionAtom(env))).toBe(true);
+    }),
   );
   it.effect("waits for an initial grant", () =>
     Effect.gen(function* () {
@@ -291,9 +317,10 @@ describe("command permissions", () => {
     });
     const target = { environmentId: env, input: { id: ScheduledTaskId.make("task") } };
     try {
-      const first = command.run(registry, target);
+      const quiet = { reportFailure: false, reportDefect: false };
+      const first = runAtomCommand(registry, command, target, quiet);
       await entered;
-      const second = command.run(registry, target);
+      const second = runAtomCommand(registry, command, target, quiet);
       registry.set(sessions(env), AsyncResult.success(grant(false)));
       release();
       expect((await first)._tag).toBe("Success");
@@ -469,10 +496,10 @@ it.effect(
       setAccess(false);
       expect(yield* readLinks).toEqual({ links: [] });
       const linkInput = { url: peer.urls[0]!, pairingCode: "test-code", access: peer.access };
-      const link = Effect.promise(() =>
+      const link = Effect.exit(
         peerLinks.link.run(registry, { environmentId: env, input: linkInput }),
       );
-      const unlink = Effect.promise(() =>
+      const unlink = Effect.exit(
         peerLinks.unlink.run(registry, {
           environmentId: env,
           input: { environmentId: peer.environmentId },
@@ -533,6 +560,21 @@ it.effect("requires access management to answer a link request", () =>
         permissions: [AuthAccessWriteScope],
       }),
     );
+    expect(registry.get(answer.permissionAtom(env))).toBe(true);
+    yield* answer.authorize(registry, env);
+  }),
+);
+
+it.effect("requires thread operation to answer a feedback card", () =>
+  Effect.gen(function* () {
+    const registry = yield* setup;
+    registry.set(sessions(env), AsyncResult.success(grant(false)));
+    const answer = createCommandPermissions(runtime, WS_METHODS.agentFeedbackAnswerRequest);
+    expect(registry.get(answer.permissionAtom(env))).toBe(false);
+    expect((yield* answer.authorize(registry, env).pipe(Effect.flip)).requiredPermission).toBe(
+      AuthOrchestrationOperateScope,
+    );
+    registry.set(sessions(env), AsyncResult.success(grant(true)));
     expect(registry.get(answer.permissionAtom(env))).toBe(true);
     yield* answer.authorize(registry, env);
   }),
@@ -646,7 +688,7 @@ it("lets a read-only connection watch the wallet but not approve, reject, or cha
       false,
       false,
     ]);
-    const denied = await wallet.approve.run(registry, {
+    const denied = await runAtomCommand(registry, wallet.approve, {
       environmentId: env,
       input: { requestId: "request-1" },
     });

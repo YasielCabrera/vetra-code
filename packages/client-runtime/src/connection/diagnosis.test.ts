@@ -1,4 +1,5 @@
 import { EnvironmentAuthInvalidError } from "@t3tools/contracts";
+import { PRODUCT_CLI_NAME } from "@t3tools/shared/productIdentity";
 import {
   RelayEnvironmentEndpointUnavailableError,
   type RelayProtectedError,
@@ -161,7 +162,9 @@ describe("presentConnectionDiagnosis", () => {
       ),
     );
     expect(diagnosis?.headline).toBe("Mac mini is waiting for someone to approve this device");
-    expect(diagnosis?.steps.join(" ")).toContain("t3 auth connect-device approve K7QM-2XFD");
+    expect(diagnosis?.steps.join(" ")).toContain(
+      `${PRODUCT_CLI_NAME} auth connect-device approve K7QM-2XFD`,
+    );
   });
 
   it("tells a host that refused this device's login to sign in again, not to start Vetra Code", () => {

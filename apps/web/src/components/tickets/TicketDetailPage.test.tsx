@@ -41,7 +41,19 @@ vi.mock("../../lib/utils", async () => {
   return { ...actual, cn: cx };
 });
 vi.mock("../../env", () => ({ isElectron: false }));
-vi.mock("../../hooks/useViewportWidth", () => ({ useViewportWidth: () => viewportWidth }));
+vi.mock("../../hooks/useViewportWidth", async () => {
+  const { useSyncExternalStore } = await import("react");
+  return {
+    useViewportWidth: () =>
+      useSyncExternalStore(
+        (onChange: () => void) => {
+          viewportListeners.add(onChange);
+          return () => viewportListeners.delete(onChange);
+        },
+        () => viewportWidth,
+      ),
+  };
+});
 vi.mock("../ui/sidebar", () => ({
   SidebarInset: ({ children }: { children: ReactNode }) => <main>{children}</main>,
 }));
@@ -87,6 +99,12 @@ const actions = {
   comment: vi.fn<ReturnType<typeof useTicketActions>["comment"]>(),
 };
 let viewportWidth = 800;
+const viewportListeners = new Set<() => void>();
+/** Notifies like the real hook's resize listener, so the page re-renders without remounting. */
+function setViewportWidth(width: number) {
+  viewportWidth = width;
+  for (const notify of viewportListeners) notify();
+}
 let currentEnvironmentState = "supported";
 let currentDetail: AsyncResult.AsyncResult<TicketDetail, unknown>;
 const plan: TicketPlan = {
@@ -349,10 +367,10 @@ describe("TicketDetailPage", () => {
     expect(container.querySelector("output")?.textContent).toBe(
       "plan:environment-1:plan-1 playing",
     );
-    viewportWidth = 1280;
+    await act(async () => setViewportWidth(1280));
     await renderPage();
     expect(container.querySelector('aside button[aria-label="Pause reading"]')).not.toBeNull();
-    viewportWidth = 800;
+    await act(async () => setViewportWidth(800));
     await renderPage();
     expect(container.querySelector("output")?.textContent).toBe(
       "plan:environment-1:plan-1 playing",

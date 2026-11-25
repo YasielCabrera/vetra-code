@@ -15,6 +15,7 @@
 - [Run work on a schedule](./user/automations.md)
 - [Track work with tickets](./user/tickets.md)
 - [Project settings](./user/project-settings.md)
+- [Projects with several repositories](./user/multi-repo-projects.md)
 - [Appearance and themes](./user/appearance.md)
 - [Environment themes](./user/environment-theme.md)
 - [Keyboard shortcuts](./user/keybindings.md)
@@ -45,40 +46,55 @@
 
 ## Working on Vetra Code
 
-Start with the [workspace layout](./internals/workspace-layout.md), [scripts](./internals/scripts.md),
-and [contribution policy](../CONTRIBUTING.md).
+Start with the [workspace layout](./internals/workspace-layout.md),
+[scripts](./internals/scripts.md), and [contribution policy](../CONTRIBUTING.md).
 
-Internal notes preserve architectural decisions, constraints, and implementation traps that the
-source alone does not explain. Most code changes do not need an internal documentation update. Follow the
-[documentation rules](../AGENTS.md#documentation) before adding one.
+Internal docs preserve architectural decisions, trust boundaries, conventions, and cross-cutting
+traps that the source alone does not explain. Most code changes do not need an internal
+documentation update. Follow the [documentation rules](../AGENTS.md#documentation) before adding
+anything.
 
-- [Architecture overview](./internals/overview.md)
-- [Glossary](./internals/glossary.md)
+### Internals (in reading order)
+
+- [00 · Glossary](./internals/00_glossary.md)
+- [01 · Architecture](./internals/01_architecture.md)
+- [02 · Effect services](./internals/02_effect-services.md)
+- [03 · Providers](./internals/03_providers.md)
+- [04 · Environment auth](./internals/04_environment-auth.md)
+- [05 · Remote environments](./internals/05_remote.md)
+- [06 · Vetra Connect](./internals/06_t3-connect.md)
+- [07 · Server updates](./internals/07_server-updates.md)
+- [08 · Product analytics](./internals/08_product-analytics.md)
+- [09 · Connection runtime](./internals/09_connection-runtime.md)
+- [10 · Web UI](./internals/10_web-ui.md)
+- [14 · Translating the UI (i18n)](./internals/14_i18n.md)
+- [15 · Testing](./internals/15_testing.md)
+- [16 · Performance regression checks](./internals/16_performance-regressions.md)
+- [17 · Scripts](./internals/17_scripts.md)
+
+Numbers follow upstream so merges stay mechanical; the gaps are upstream's mobile docs, which this
+fork does not ship.
+
+### Vetra-owned internals
+
 - [Workspace layout](./internals/workspace-layout.md)
-- [Scripts](./internals/scripts.md)
-- [Connection runtime](./internals/connection-runtime.md)
-- [Providers](./internals/providers.md)
+- [Scripts (maintainer runbook)](./internals/scripts.md)
 - [Adding a provider](./internals/adding-a-provider.md)
-- [Pull request file revisions](./internals/pull-request-file-revisions.md)
-- [Model classification](./internals/model-manifest.md)
-- [Remote environments](./internals/remote.md)
-- [Terminal runtime](./internals/terminal-runtime.md)
+- [Composer context references](./internals/composer-context-references.md)
+- [Legacy orchestration migration](./internals/legacy-orchestration-migration.md)
+- [Linux SnapShot](./internals/linux-snap-shot.md)
+- [Devices](./internals/devices.md)
 - [Terminal renderers](./architecture/terminal-renderers.md)
-- [Assistant citations](./internals/assistant-citations.md)
 - [Preview wallet](./internals/preview-wallet.md)
 - [Powerhouse panel](./internals/powerhouse-panel.md)
-- [Server updates](./internals/server-updates.md)
-- [Resource telemetry](./internals/resource-telemetry.md)
-- [Product analytics](./internals/product-analytics.md)
-- [Environment auth](./internals/environment-auth.md)
-- [Vetra Connect](./internals/t3-connect.md)
-- [Devices](./internals/devices.md)
 - [Engineering work artifacts](./internals/work-artifacts.md)
 
 ### Runbooks
 
 - [Syncing upstream T3 Code](./internals/upstream-sync.md)
+- [01 · Dev container](./operations/01_devcontainer.md)
+- [03 · Release](./operations/03_release.md)
+- [04 · Observability](./operations/04_observability.md)
+- [05 · Relay observability](./operations/05_relay-observability.md)
 - [Scenarios: real-app proof for a fix](./operations/scenarios.md)
-- [Release](./operations/release.md)
-- [Observability](./operations/observability.md)
-- [Relay observability](./operations/relay-observability.md)
+- [Background verification](./operations/background-verification.md)
