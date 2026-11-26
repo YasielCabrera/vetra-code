@@ -59,6 +59,7 @@ import {
   WindowsPrimaryNativeProbeError,
   WindowsDesktopBuildPrerequisitesMissingError,
   WindowsPackagedPayloadValidationError,
+  WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT,
   stageCursorSdkPlatformPackages,
   WINDOWS_SERVER_ASAR_IGNORE_GLOBS,
   WINDOWS_SERVER_ASAR_RESOURCE,
@@ -1505,7 +1506,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
   );
 
   it.effect.each([
-    { fileCount: 101, options: {}, expectedLimit: 100 },
+    {
+      fileCount: WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT + 1,
+      options: {},
+      expectedLimit: WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT,
+    },
     { fileCount: 5, options: { fileLimit: 2 }, expectedLimit: 2 },
   ])(
     "rejects a Windows payload above its file-count budget (%j)",

@@ -1106,7 +1106,11 @@ export function resolveWindowsServerAsarIgnoreGlobs(arch: typeof BuildArch.Type)
   ];
 }
 
-export const WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT = 100;
+// Updates copy and verify loose files one by one, so the payload is budgeted. A third of it is
+// server-compile-cache, startup bytecode that tracks the server's module graph and grows with each
+// sync; growth anywhere else is a packaging regression, which the failure's per-directory list
+// names. Upstream budgets 80, without this fork's Vulkan transcription and Cursor SDK natives.
+export const WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT = 130;
 export const WINDOWS_SERVER_RESOURCE_SOURCE_DIR = "apps/desktop/prod-resources/windows-server";
 export const WINDOWS_SERVER_EXTRA_RESOURCES = [
   {
