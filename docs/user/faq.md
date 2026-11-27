@@ -2,22 +2,15 @@
 
 ## Is Vetra Code a harness?
 
-No. A harness is what turns an LLM into an agent: it gives the model tools, a way to call them, runs them, and hands the results back. Claude Code is kind of a harness. It is an interface (the TUI, the Code tab in the desktop app) plus a harness underneath (the Anthropic Agent SDK). Codex is the same split: the app plus the Codex App Server. Vetra Code uses those harnesses. It is not a harness, and it does not work without one.
+No. A harness turns an LLM into an agent (tools, execution loop, and results)—like Claude Code's Agent SDK or Codex App Server. Vetra Code drives those harnesses through one fast interface; it does not work without at least one installed agent.
 
-Chef = LLM. Kitchen = harness. Vetra Code = the restaurant that lets you bring whatever kitchen you want. Our MCP is a cookbook we hand the kitchen, but the chef won't open it unless you tell them to :) I wrote the long version here: [What is a harness?](https://t3.gg/blog/post/what-is-a-harness)
-
-Bring your own: Claude Code, Codex, Cursor, Grok Build, OpenCode, Google Antigravity, Kiro, Pi, Muse Code, or fx. [Provider setup](./install.md#providers)
+Bring your own: Claude Code, Codex, Cursor, Grok Build, OpenCode, Google Antigravity, Kiro, Pi, Muse Code, fx, or any [ACP agent](./providers-acp.md). See [Provider setup](./install.md#providers). (Longer read: [What is a harness?](https://t3.gg/blog/post/what-is-a-harness))
 
 ## Why use Vetra Code instead of Claude Code or the Codex app?
 
-We were inspired by the Codex desktop app, Conductor, Claude Desktop, and Cursor Glass, but none met our bar. What you get:
-
-- Bring your own sub. Claude, Codex, and whatever else you already have installed.
-- Best in class remote. Run `vetra up` on any box and drive it from anywhere.
-- Best in class mobile app.
-- Truly 100% open source code (MIT). If we go the wrong direction, fork it under your own branding.
-
-Every harness feels nearly identical in here, so you can stop worrying about harnesses and focus on building :) [Install](./install.md)
+- **Bring your own subscription**: Use Claude, Codex, and every other agent you already have installed in one place.
+- **Remote-first**: Run `vetra up` on any box and drive it from anywhere.
+- **Open source (MIT)**: Fork the source code under your own branding if you ever want something different.
 
 ## Can I use Vetra Code with my Claude Code subscription?
 
@@ -25,68 +18,66 @@ Yes.
 
 ## How much does Vetra Code cost?
 
-Nothing. There's no way to pay us to use Vetra Code. You bring your own sub. The source code is free and open source (MIT). You still pay your provider like you already do. Vetra Connect is free too, for now. Every account can connect up to 3 machines running Vetra Code. Phones and browsers that connect to them do not count. Need more? Link a paid Vetra Chat account. [More machines](#can-i-connect-more-than-3-machines-with-vetra-connect) We don't want to charge for this, but if the bill gets unacceptable we may have to change course. If you hit limits or have issues, you can always fork the source code (under your own branding), self host, or use Tailscale. [Install](./install.md)
+Nothing. You pay your own model/agent providers. Vetra Connect is free for up to 3 connected host machines per account (phones and browsers don't count). You can also self-host or use LAN/Tailscale.
 
 ## Can I fork or redistribute Vetra Code?
 
-Yes, for the source code. The [MIT License](../../LICENSE) applies only to the source code, not to the Vetra Code name, wordmark, logos, or branding. If you publish a fork or custom build, you must replace Vetra Code's branding with your own and make it unmistakably clear that your project is unofficial and not affiliated with T3 Tools, Inc. Using the Vetra Code name, wordmark, logo, or branding without being explicitly clear that your project is unofficial, or indicating that an unofficial project is an official version of Vetra Code, is unlawful and will be pursued to the full extent of the law. See [TRADEMARK.md](../../TRADEMARK.md).
+Yes, for the source code. The [MIT License](../../LICENSE) covers source code only—not Vetra Code's trademarks, name, wordmark, logos, or icons. Any public fork or build must use its own branding and clearly state that it is unofficial and not affiliated with T3 Tools, Inc.
 
 ## Can I connect more than 3 machines with Vetra Connect?
 
-Yes. Link your Vetra Chat account and Vetra Connect raises your limit: up to 10 machines with Vetra Chat Pro, or 100 with Premier. Open your account menu in Vetra Code, go to **Vetra Chat**, and select **Link Vetra Chat**. Sign in to Vetra Chat and approve. The free Vetra Chat plan keeps the normal limit of 3. [More machines with Vetra Chat](./remote-access.md#more-machines-with-vetra-chat)
+Yes. Link a paid Vetra Chat account from your account menu → **Vetra Chat → Link Vetra Chat**: Vetra Chat Pro raises the limit to 10 machines, and Premier raises it to 100. See [More machines with Vetra Chat](./remote-access.md#more-machines-with-vetra-chat).
 
 ## Why is my Claude 5-hour limit draining so fast?
 
-It shouldn't anymore. Vetra Code drives Claude through Anthropic's Agent SDK, and Anthropic's 5h meter used to charge Agent SDK usage about 1.7x more than using Claude Code directly. Weekly limits were never affected. Since v0.1.7, Claude in Vetra Code drains your 5h limit at the same rate as Claude Code. Still seeing it? [Update Vetra Code](./updating.md) on the machine that runs your agents. [My post on it](https://x.com/theo/status/2114166439813017873) · [Tracking issue](https://github.com/pingdotgg/t3code/issues/24649)
+Since v0.1.7, Claude in Vetra Code drains your 5-hour limit at the same rate as Claude Code directly (an earlier Anthropic Agent SDK discrepancy has been resolved). If you still see it, [update Vetra Code](./updating.md) on the machine running your agents.
 
 ## How do I use Vetra Code remotely?
 
-Your agents run wherever Vetra Code runs: your desktop, a server, a VPS. You connect to it from anywhere. I do this constantly. Less than 5% of my prompts run on my laptop. Run `vetra up` on that machine and you get really good remote support. Vetra Connect is the easy path. LAN pairing and Tailscale work too, and [app.t3.codes](https://app.t3.codes) is the web client. [Remote access](./remote-access.md)
+Your agents run wherever the Vetra Code server runs (desktop, server, or VPS). Run `vetra up` on that machine and connect via Vetra Connect, LAN, or Tailscale. See [Remote access](./remote-access.md).
 
 ## How do I use Vetra Code on my phone?
 
-Get the [iOS](https://apps.apple.com/us/app/vetra-code-remote-claude-more/id6787819824) or [Android](https://play.google.com/store/apps/details?id=com.vetra.code) app, then connect it to your computer with Vetra Connect or a pairing link. The phone is a remote. Your computer does the work and needs to stay on. [Mobile setup](./install.md#mobile-app) · [Remote access](./remote-access.md)
+Open the web app from your phone's browser over [remote access](./remote-access.md). Vetra Code ships no phone app; your host computer runs the agents and must stay on.
 
 ## Why does Vetra Connect keep disconnecting?
 
-Vetra Connect is our built-in alternative to Tailscale for remote connections. If it keeps dropping, open **Settings > Environments**, find the machine, and select **Details**. The first part marked as failed is the cause. I will not be disappointed if you set up Tailscale as a fallback (I do this personally). [Vetra Connect troubleshooting](./t3-connect-troubleshooting.md)
+Open **Settings → Environments**, select the machine, and choose **Details**—the first failed check identifies the cause. See [Vetra Connect troubleshooting](./t3-connect-troubleshooting.md). Tailscale also works great as a direct fallback.
 
 ## Will I get banned for using my subscription?
 
-No. We work with all of the labs and Vetra Code is within the TOS of Claude Code, Codex, and Google Antigravity. We worked directly with [SpaceXAI](https://x.com/SpaceXSI/status/2070195830192320600) to collaborate on the Grok Build and Cursor integrations. Everything else uses official ACP bindings.
-
-If it works in Vetra Code, you can trust it is safe.
+No. Vetra Code stays within the TOS of Claude Code, Codex, Google Antigravity, Grok Build, Cursor, and official ACP bindings.
 
 ## Can I add a bunch of accounts for one provider?
 
-I don't think Vetra Code is the right place to manage a pile of accounts. If we add an auto-switcher, we are risking TOS bans for our users.
-
-A separate work account is fine. Setup for two: [Codex](./providers-codex.md#use-multiple-accounts) · [Claude](./providers-claude.md#separate-accounts-or-configurations). For a bigger pool, manage them outside Vetra Code with a self-hosted proxy like [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI). I walked through how I use 6 Claude subs and 3 Codex subs in [this video](https://www.youtube.com/watch?v=D8PikZ1KhUo), and wrote up the setup in [this guide](https://gist.github.com/t3dotgg/59a521d2ee8d70aaf90e280c175072af). Hand it to your agent and it will walk you through it. Early apologies if it gets you banned 💀 After you set up a hub, Vetra Code can show its pooled limits under Usage. [Connect a hub](./usage.md#connect-a-cliproxyapi-hub)
+Vetra Code intentionally does not include an automatic multi-account switcher to avoid risking provider TOS bans. Adding a separate work/personal account is supported ([Codex](./providers-codex.md#use-multiple-accounts), [Claude](./providers-claude.md#multiple-accounts-and-presets)). For larger pools managed externally (e.g. via [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)), Vetra Code can display pooled limits under Usage ([Connect a hub](./usage.md#connect-a-cliproxyapi-hub)).
 
 ## Can I use an API key or OpenRouter instead of a subscription?
 
-Yes. Add another provider instance in Settings and give it its own keys and endpoint. Claude has a full OpenRouter recipe. Your subscription setup stays untouched. [OpenRouter](./providers-claude.md#openrouter) · [Provider instances](./install.md#providers)
+Yes. Add another provider instance in **Settings → Providers** with its own environment variables and endpoint (your subscription setup stays untouched). See [OpenRouter for Claude](./providers-claude.md#openrouter-and-local-routers) and [Providers](./install.md#providers).
 
 ## Does Vetra Code support local models?
 
-No. Vetra Code is a serious developer tool. Locally runnable models are not capable of meaningful engineering work.
+No. Vetra Code focuses on frontier coding agents.
 
 ## Does my code go to Vetra Code servers?
 
-No. Your code and prompts go from your machine to your provider (Anthropic, OpenAI, etc.), not to us. With Vetra Connect, traffic rides a Cloudflare tunnel (`cloudflared` on your machine). Our relay sets up the link. It does not proxy your HTTP or WebSocket sessions. Vetra Code does send basic product usage events (provider, model, token totals, that kind of thing). No prompts, no file contents. That is the same on Tailscale, LAN, or Vetra Connect. Set `VETRA_TELEMETRY_ENABLED=false` or `DO_NOT_TRACK=1` if you want it off. [Product usage data](./telemetry.md)
+No. Code and prompts go directly from your machine to your chosen provider. With Vetra Connect, traffic travels over a Cloudflare tunnel (`cloudflared` on your machine); T3's relay coordinates the link without proxying your HTTP/WebSocket sessions.
+
+Vetra Code sends basic product usage events (provider, model, token totals—no prompts or file contents). Disable with `VETRA_TELEMETRY_ENABLED=false` or `DO_NOT_TRACK=1`. See [Product usage data](./telemetry.md).
 
 ## Worktrees are eating my disk. How do I clean them up?
 
-Open **Settings → Worktrees → Cleanup** and turn on automatic worktree cleanup. You can also run it now from there. Worktrees add up fast. One user cleared 500 GB. [Storage cleanup](./project-settings.md#storage-cleanup)
+Enable automatic cleanup or run **Delete now** in **Settings → Worktrees → Cleanup**. See [Storage cleanup](./project-settings.md#storage-cleanup).
 
 ## Is there voice input?
 
-Yes. On iPhone and Android, dictation uses on-device speech by default, with the option to use a paired environment. On macOS 26 or later, desktop users can choose Apple Speech directly under **On this Mac** or choose an environment. Web and other desktop users can enable dictation by choosing an environment. The transcript goes into your draft for review. See [Voice input](./voice-input.md).
+Yes—on-device speech on macOS 26+ desktop, or via a paired environment. See [Voice input](./voice-input.md).
 
 ## Does it work on Windows, Mac, and Linux?
 
-Yes, all three. Desktop app, CLI, the works. One catch: there is no `vetra` binary for Intel Macs, so use the desktop app there. Windows folks can also run agents inside WSL. [Install](./install.md)
+Yes, all three (desktop app and CLI). Note: there is no standalone `vetra` binary for Intel Macs (use the desktop app there), and Windows users can also run agents inside WSL. See [Install](./install.md).
 
 ## Why is my provider not showing up?
 
-Almost always, the CLI is not installed or not on the `PATH` of the machine that runs the server. (Not your phone. The computer.) Log in on that machine first, like `codex login` or `claude auth login`. Still missing? Point **Binary path** at it in provider settings. Version managers love to cause this one. [Provider setup](./install.md#providers)
+Usually the provider CLI is not installed, not signed in, or not on the `PATH` of the **server machine** (especially with version managers). Authenticate on the server machine first (e.g. `codex login` or `claude auth login`) and set **Binary path** in **Settings → Providers** if needed.

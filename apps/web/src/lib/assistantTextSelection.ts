@@ -3,10 +3,7 @@ import { matchQuote, searchText } from "@t3tools/shared/quoteMatch";
 
 import { mathWrapperOf } from "../markdown-clipboard";
 
-export {
-  createAssistantTextSelector,
-  findAssistantCitationText,
-} from "@t3tools/shared/assistantCitations";
+export { createAssistantTextSelector } from "@t3tools/shared/assistantCitations";
 import {
   createAssistantTextSelector,
   splitsSurrogatePair,

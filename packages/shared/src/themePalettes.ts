@@ -917,11 +917,3 @@ export const BUILT_IN_THEMES: ReadonlyArray<ThemeDefinition> = [
   EMBER_THEME,
   IRIS_THEME,
 ];
-
-export function getThemeColorsForAppearance(
-  theme: ThemeDefinition,
-  appearance: ThemeAppearance,
-): ThemeColors | null {
-  if (theme.appearance === appearance) return theme.colors;
-  return theme.variants?.[appearance] ?? null;
-}

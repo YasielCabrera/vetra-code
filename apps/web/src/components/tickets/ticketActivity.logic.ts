@@ -6,12 +6,12 @@ import type {
   TicketPlanId,
 } from "@t3tools/contracts";
 
-export const ACTIVITY_GROUP_GAP_MS = 5 * 60_000;
+const ACTIVITY_GROUP_GAP_MS = 5 * 60_000;
 /** A group never spans longer than this from its first entry, so a slow drip keeps splitting. */
-export const ACTIVITY_GROUP_SPAN_MS = 30 * 60_000;
-export const ACTIVITY_RECENT_ROWS = 8;
+const ACTIVITY_GROUP_SPAN_MS = 30 * 60_000;
+const ACTIVITY_RECENT_ROWS = 8;
 /** Fewer hidden rows than this are not worth a fold. */
-export const ACTIVITY_MIN_FOLDED_ROWS = 4;
+const ACTIVITY_MIN_FOLDED_ROWS = 4;
 
 export type TicketActivityFamily =
   | { readonly type: "link"; readonly key: string; readonly kind: TicketLinkKind }
@@ -31,7 +31,7 @@ const EDIT_FAMILY = { type: "edit", key: "edit" } as const;
 const STATUS_FAMILY = { type: "status", key: "status" } as const;
 const SYNC_FAMILY = { type: "sync", key: "sync" } as const;
 
-export function ticketActivityFamily(entry: TicketActivityEntry): TicketActivityFamily | null {
+function ticketActivityFamily(entry: TicketActivityEntry): TicketActivityFamily | null {
   switch (entry.type) {
     case "created":
     case "comment":

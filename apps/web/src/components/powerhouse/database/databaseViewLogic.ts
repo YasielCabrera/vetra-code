@@ -6,6 +6,9 @@ import type {
   PowerhouseDatabaseTarget,
   PowerhouseDatabaseTargetId,
 } from "@t3tools/contracts";
+import { msg } from "gt-react";
+
+import { m } from "../../../i18n/messages";
 
 const CHAT_CONTEXT_CHARACTER_LIMIT = 12_000;
 
@@ -38,8 +41,7 @@ export function makePowerhouseSqlCompletionSchema(catalog: PowerhouseDatabaseCat
   );
 }
 
-export const quoteDatabaseIdentifier = (identifier: string) =>
-  `"${identifier.replaceAll('"', '""')}"`;
+const quoteDatabaseIdentifier = (identifier: string) => `"${identifier.replaceAll('"', '""')}"`;
 
 export function makePowerhouseRelationSelectSql(relation: {
   readonly schema: string;
@@ -64,13 +66,13 @@ export function formatPowerhouseDatabaseTargetStatus(
   target: PowerhouseDatabaseTarget,
   locale?: string,
 ) {
-  if (target.backend === "postgres") return "Live Postgres";
-  if (target.snapshotWrittenAtUtcIso === null) return "Snapshot unavailable";
+  if (target.backend === "postgres") return m(msg("Live Postgres"));
+  if (target.snapshotWrittenAtUtcIso === null) return m(msg("Snapshot unavailable"));
   const date = new Date(target.snapshotWrittenAtUtcIso);
   const written = Number.isNaN(date.valueOf())
     ? target.snapshotWrittenAtUtcIso
     : new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(date);
-  return `Snapshot · written ${written}`;
+  return m(msg("Snapshot · written {written}", { written }));
 }
 
 const capChatContext = (text: string, kind: "schema" | "result") =>

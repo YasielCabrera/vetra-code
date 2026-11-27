@@ -42,7 +42,7 @@ const WORKING_RUN_STATUSES: ReadonlySet<string> = new Set([
 ]);
 
 /** Whether a run thread's latest run is still working, waiting on approval included. */
-export function isAutomationRunWorking(thread: EnvironmentThreadShell): boolean {
+function isAutomationRunWorking(thread: EnvironmentThreadShell): boolean {
   const status = thread.latestRun?.status;
   return status !== undefined && WORKING_RUN_STATUSES.has(status);
 }
@@ -52,16 +52,9 @@ export function automationRunVisitKey(thread: EnvironmentThreadShell): string {
 }
 
 /**
- * A finished run whose result nobody has looked at: its thread has not been
- * opened since the run completed.
- *
- * A never-opened run counts as unread, which is the opposite of the rule for
- * threads you started yourself — the schedule fired while nobody was watching,
- * so "never opened" is exactly the state worth reporting. Archiving a run is
- * how you say you are done with it, so archived runs are read by definition.
- *
- * The server's visited stamp on the shell wins when it tracks visits; the
- * browser-local stamp only carries servers that do not.
+ * A never-opened run counts as unread, unlike a thread you started yourself: the
+ * schedule fired while nobody watched. Archiving says you are done, so archived
+ * runs read. The server's visited stamp wins where it tracks visits.
  */
 export function isAutomationRunUnread(input: {
   readonly thread: EnvironmentThreadShell;

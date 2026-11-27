@@ -25,19 +25,3 @@ export const EMPTY_ENVIRONMENT_THREAD_STATE: EnvironmentThreadState = {
   history: EMPTY_THREAD_HISTORY_META,
   sequence: 0,
 };
-
-/**
- * A thread holds a write once it has applied the write's commit sequence. A bounded
- * projection can page the message out later, so finding it is only a fallback for
- * servers that do not report the sequence.
- */
-export function threadHasCaughtUpTo(
-  write: { readonly messageId: string; readonly sequence?: number | undefined },
-  thread: {
-    readonly sequence: number;
-    readonly messages: ReadonlyArray<{ readonly id: string }> | undefined;
-  },
-): boolean {
-  if (write.sequence !== undefined && thread.sequence >= write.sequence) return true;
-  return thread.messages?.some((entry) => entry.id === write.messageId) ?? false;
-}

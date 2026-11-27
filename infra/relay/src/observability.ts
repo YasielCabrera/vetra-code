@@ -34,7 +34,8 @@ export const RelayObservability = Effect.gen(function* () {
     name: relayResourceNameForStage("vetra-code-relay-traces", stage),
     kind: "otel:traces:v1",
     description: "Vetra Code relay Worker HTTP request spans.",
-    retentionDays: 30,
+    // Spans carry user ids; this keeps them inside the 30 days we promise for deleting account data.
+    retentionDays: 28,
     useRetentionPeriod: true,
   });
 

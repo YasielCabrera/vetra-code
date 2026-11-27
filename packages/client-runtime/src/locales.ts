@@ -40,7 +40,7 @@ export function resolveLocale(
 }
 
 /** Keep the matching system tag for regional formats while loading a supported catalog. */
-export function resolveLocaleSelection(
+function resolveLocaleSelection(
   language: string,
   systemLocales: ReadonlyArray<string>,
   supported: ReadonlyArray<string>,

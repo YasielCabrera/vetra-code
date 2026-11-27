@@ -1,4 +1,7 @@
 import type { PowerhouseDocumentModelSummary } from "@t3tools/contracts";
+import { msg } from "gt-react";
+
+import { m } from "../../../i18n/messages";
 
 export type PowerhouseDocumentTypeSource = "system" | "model";
 
@@ -10,20 +13,20 @@ export interface PowerhouseDocumentTypeOption {
 
 export type PowerhouseDocumentTypeCatalogStatus = "loading" | "ready" | "partial" | "error";
 
-export const SYSTEM_POWERHOUSE_DOCUMENT_TYPE_OPTIONS = [
+const SYSTEM_POWERHOUSE_DOCUMENT_TYPE_OPTIONS = [
   {
     value: "powerhouse/document-drive",
-    label: "Document drive",
+    label: m(msg("Document drive")),
     source: "system",
   },
   {
     value: "powerhouse/reactor-drive",
-    label: "Reactor drive",
+    label: m(msg("Reactor drive")),
     source: "system",
   },
   {
     value: "powerhouse/folder",
-    label: "Folder",
+    label: m(msg("Folder")),
     source: "system",
   },
 ] as const satisfies ReadonlyArray<PowerhouseDocumentTypeOption>;

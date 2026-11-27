@@ -22,7 +22,7 @@ export interface TextToSpeechModel {
 }
 
 /** Kokoro's voices by published grade. The server pins one file per id. */
-export const KOKORO_VOICES = [
+const KOKORO_VOICES = [
   ["af_heart", "Heart"],
   ["af_bella", "Bella"],
   ["af_nicole", "Nicole"],
@@ -69,7 +69,7 @@ export const TEXT_TO_SPEECH_MODELS: Readonly<Record<TextToSpeechModelId, TextToS
   },
 };
 
-export const DEFAULT_TEXT_TO_SPEECH_MODEL: TextToSpeechModelId = "kokoro-82m";
+const DEFAULT_TEXT_TO_SPEECH_MODEL: TextToSpeechModelId = "kokoro-82m";
 
 /** Playback rate relative to the voice's natural pace; 1.2 speaks 20% faster. */
 export const TextToSpeechSpeed = Schema.Number.check(

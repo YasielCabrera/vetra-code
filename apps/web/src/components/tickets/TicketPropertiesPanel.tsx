@@ -18,7 +18,10 @@ import {
   MessageSquareIcon,
   XIcon,
 } from "lucide-react";
-import { memo, useMemo, useState, type ReactNode } from "react";
+import { msg, T, useGT } from "gt-react";
+import { memo, useState, type ReactNode } from "react";
+
+import { m } from "../../i18n/messages";
 
 import { useThreadShells } from "../../state/entities";
 import { useTicketGitHubWriteAllowed, useTicketIssueLinksSupported } from "../../state/tickets";
@@ -55,12 +58,13 @@ function PanelSection(props: {
   );
 }
 
-export function TicketStatusSelect(props: {
+function TicketStatusSelect(props: {
   readonly statusSet: TicketStatusSet | null;
   readonly value: TicketStatusId;
   readonly onChange: (statusId: TicketStatusId) => void;
   readonly isDisabled?: (status: TicketStatusDefinition) => boolean;
 }) {
+  const gt = useGT();
   const statuses = props.statusSet?.statuses ?? [];
   const selected = statuses.find((status) => status.id === props.value);
   const items = statuses.map((status) => ({ value: status.id, label: status.name }));
@@ -73,7 +77,7 @@ export function TicketStatusSelect(props: {
         if (status) props.onChange(status.id);
       }}
     >
-      <SelectTrigger variant="ghost" size="compact" aria-label="Status">
+      <SelectTrigger variant="ghost" size="compact" aria-label={gt("Status")}>
         <span className="flex min-w-0 max-w-48 flex-1 items-center gap-2">
           {selected ? (
             <TicketStatusIcon color={selected.color} category={selected.category} />
@@ -103,6 +107,7 @@ export function TicketLabelsEditor(props: {
   readonly readOnly: boolean;
   readonly onChange: (update: (labels: ReadonlyArray<string>) => ReadonlyArray<string>) => void;
 }) {
+  const gt = useGT();
   const [draft, setDraft] = useState("");
   return (
     <div className="flex flex-wrap items-center gap-1 pt-1">
@@ -115,7 +120,7 @@ export function TicketLabelsEditor(props: {
           {props.readOnly ? null : (
             <button
               type="button"
-              aria-label={`Remove label ${label}`}
+              aria-label={gt("Remove label {label}", { label })}
               className="-me-0.5 shrink-0 rounded-sm text-muted-foreground hover:text-foreground"
               onClick={() =>
                 props.onChange((labels) => labels.filter((existing) => existing !== label))
@@ -128,14 +133,16 @@ export function TicketLabelsEditor(props: {
       ))}
       {props.readOnly ? (
         props.labels.length === 0 ? (
-          <span className="text-xs text-muted-foreground">None</span>
+          <span className="text-xs text-muted-foreground">
+            <T>None</T>
+          </span>
         ) : null
       ) : (
         <Input
           size="compact"
           value={draft}
-          placeholder="Add label"
-          aria-label="Add label"
+          placeholder={gt("Add label")}
+          aria-label={gt("Add label")}
           className="w-28 min-w-0 max-w-full"
           onChange={(event) => setDraft(event.currentTarget.value)}
           onKeyDown={(event) => {
@@ -161,6 +168,7 @@ function LinkRow(props: {
   readonly onOpen: (() => void) | null;
   readonly onUnlink: () => void;
 }) {
+  const gt = useGT();
   const label = (
     <>
       <span
@@ -207,7 +215,7 @@ function LinkRow(props: {
       {props.onPreview ? (
         <button
           type="button"
-          aria-label={`Preview ${props.title}`}
+          aria-label={gt("Preview {title}", { title: props.title })}
           className="min-w-0 flex-1 text-left"
           onClick={props.onPreview}
         >
@@ -220,7 +228,7 @@ function LinkRow(props: {
         <Button
           size="icon-xs"
           variant="ghost"
-          aria-label={`Open ${props.title}`}
+          aria-label={gt("Open {title}", { title: props.title })}
           onClick={props.onOpen}
         >
           <ExternalLinkIcon aria-hidden />
@@ -229,7 +237,7 @@ function LinkRow(props: {
       <Button
         size="icon-xs"
         variant="ghost"
-        aria-label={`Unlink ${props.title}`}
+        aria-label={gt("Unlink {title}", { title: props.title })}
         onClick={props.onUnlink}
       >
         <XIcon aria-hidden />
@@ -257,6 +265,7 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
   readonly onPreview: (target: TicketLinkPreviewTarget) => void;
   readonly githubProperties?: ReactNode;
 }) {
+  const gt = useGT();
   const navigate = useNavigate();
   const threads = useThreadShells();
   const issueLinksSupported = useTicketIssueLinksSupported(props.environmentId);
@@ -274,14 +283,10 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
             : summary.createdBy.type === "automation"
               ? "Auto-advance"
               : "GitHub sync";
-  const threadById = useMemo(
-    () =>
-      new Map(
-        threads
-          .filter((thread) => thread.environmentId === props.environmentId)
-          .map((thread) => [thread.id, thread]),
-      ),
-    [props.environmentId, threads],
+  const threadById = new Map(
+    threads
+      .filter((thread) => thread.environmentId === props.environmentId)
+      .map((thread) => [thread.id, thread]),
   );
   const otherLinks = LINK_KIND_ORDER.flatMap((kind) =>
     links.filter((link) => link.target.kind === kind),
@@ -294,7 +299,7 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
         const thread = threadById.get(target.threadId);
         return {
           icon: <MessageSquareIcon aria-hidden className="size-3.5" />,
-          title: thread?.title ?? "Missing thread",
+          title: thread?.title ?? m(msg("Missing thread")),
           detail: null,
           threadStatus: thread === undefined ? null : resolveTicketThreadStatus(thread),
           missing: thread === undefined,
@@ -331,8 +336,8 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PanelSection title="Properties">
-        <TicketPropertyRow label="Status">
+      <PanelSection title={gt("Properties")}>
+        <TicketPropertyRow label={gt("Status")}>
           <TicketStatusSelect
             statusSet={props.statusSet}
             value={summary.statusId}
@@ -340,32 +345,32 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
             isDisabled={(status) => !canWriteGitHub && ticketStatusWritesGitHub(summary, status)}
           />
         </TicketPropertyRow>
-        <TicketPropertyRow label="Labels">
+        <TicketPropertyRow label={gt("Labels")}>
           <TicketLabelsEditor
             labels={summary.labels}
             readOnly={summary.kind === "github"}
             onChange={props.onLabelsChange}
           />
         </TicketPropertyRow>
-        <TicketPropertyRow label="Projects">
+        <TicketPropertyRow label={gt("Projects")}>
           <TicketProjectsEditor environmentId={props.environmentId} detail={props.detail} />
         </TicketPropertyRow>
-        <TicketPropertyRow label="Source">
-          {summary.kind === "github" ? "GitHub" : "Local ticket"}
+        <TicketPropertyRow label={gt("Source")}>
+          {summary.kind === "github" ? gt("GitHub") : gt("Local ticket")}
         </TicketPropertyRow>
-        <TicketPropertyRow label="Author">{author}</TicketPropertyRow>
-        <TicketPropertyRow label="Created">
+        <TicketPropertyRow label={gt("Author")}>{author}</TicketPropertyRow>
+        <TicketPropertyRow label={gt("Created")}>
           <time
             dateTime={summary.createdAt}
-            aria-label={`Created ${new Date(summary.createdAt).toLocaleString()}`}
+            aria-label={gt("Created {at}", { at: new Date(summary.createdAt).toLocaleString() })}
           >
             {formatRelativeTimeLabel(summary.createdAt)}
           </time>
         </TicketPropertyRow>
-        <TicketPropertyRow label="Updated">
+        <TicketPropertyRow label={gt("Updated")}>
           <time
             dateTime={summary.updatedAt}
-            aria-label={`Updated ${new Date(summary.updatedAt).toLocaleString()}`}
+            aria-label={gt("Updated {at}", { at: new Date(summary.updatedAt).toLocaleString() })}
           >
             {formatRelativeTimeLabel(summary.updatedAt)}
           </time>
@@ -373,11 +378,11 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
       </PanelSection>
 
       {props.githubProperties ? (
-        <PanelSection title="GitHub">{props.githubProperties}</PanelSection>
+        <PanelSection title={gt("GitHub")}>{props.githubProperties}</PanelSection>
       ) : null}
 
       <PanelSection
-        title="Links"
+        title={gt("Links")}
         action={
           <TicketLinkPicker
             environmentId={props.environmentId}
@@ -389,7 +394,7 @@ export const TicketPropertiesPanel = memo(function TicketPropertiesPanel(props: 
       >
         {otherLinks.length === 0 ? (
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Link a thread, pull request or issue to keep related work together.
+            <T>Link a thread, pull request or issue to keep related work together.</T>
           </p>
         ) : (
           <ul className="m-0 flex list-none flex-col p-0 text-sm">

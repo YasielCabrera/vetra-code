@@ -8,7 +8,7 @@ import type { ProjectScopedServerSettingKey, ServerSettings } from "./settings.t
 export const VETRA_PROJECT_FILE_NAME = "vetra.json";
 
 /** Public URL of the published JSON Schema for {@link T3ProjectFile}. */
-export const VETRA_PROJECT_FILE_SCHEMA_URL = "https://schema.vetra.invalid/vetra.json";
+const VETRA_PROJECT_FILE_SCHEMA_URL = "https://schema.vetra.invalid/vetra.json";
 
 const VETRA_PROJECT_FILE_PATH_MAX_LENGTH = 512;
 const VETRA_PROJECT_FILE_COMMAND_MAX_LENGTH = 4096;

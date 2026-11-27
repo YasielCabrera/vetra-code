@@ -340,7 +340,7 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
     if (changed) return replacement;
   });
 
-  // Pi deliberately leaves permission policy to extensions. Vetra Code's injected
+  // Pi deliberately leaves permission policy to extensions. T3's injected
   // bridge uses Pi's public blocking tool hook so the shared runtime modes
   // keep their normal meaning without replacing or shadowing Pi's runtime.
   // Only Pi's own search is known to be read-only. An extension that replaces
@@ -432,7 +432,7 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
           label: name,
           // Pi records active declarations in the transcript even when hidden, and
           // estimates context from them. The model sees only the public schema;
-          // Vetra Code's server still validates the arguments.
+          // T3's server still validates the arguments.
           description: isAlias ? "Same as mcp__vetra-code__" + name + "." : (tool.description ?? name),
           parameters: jsonSchemaToTypebox(isAlias ? { type: "object" } : tool.inputSchema),
           ...(supportsExposure ? { outputSchema: mcpOutputSchema(tool) } : {}),
@@ -498,22 +498,26 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
     // in history or guidance. Eagerly load T3 schemas, including after tree
     // restores, while retaining deferred exposure for Pi's allowlist rules.
     // Pi still applies --tools/--exclude-tools to this active loadout.
+    const eagerSchemas = ctx.model?.api === "openai-completions";
     const required = [
       ...(hasToolSearch ? ["tool_search"] : []),
-      ...(ctx.model?.api === "openai-completions" ? catalog.map((tool) => "mcp__vetra-code__" + tool.name) : []),
+      ...(eagerSchemas ? catalog.map((tool) => "mcp__vetra-code__" + tool.name) : []),
     ];
     const current = pi.getActiveTools();
     const missing = required.filter((name) => !current.includes(name));
     if (missing.length > 0) pi.setActiveTools([...current, ...missing]);
     // An alias is callable only while active, and Pi records every active
     // declaration in the transcript, hidden or not. Calls to the alias of an
-    // active public tool are renamed at message_end instead.
+    // active public tool are renamed at message_end instead. Once tool_search
+    // loads a deferred tool, its alias is already in the transcript: dropping it
+    // re-declares it in the prompt head, so the next request misses the cache.
     const registered = new Set(pi.getAllTools().map((tool) => tool.name));
     const loaded = pi.getActiveTools();
     const aliases = catalog
       .filter((tool) => registered.has(ALIAS_PREFIX + tool.name) &&
         followsPublicTool(tool.name, registered, loaded) &&
-        !loaded.includes("mcp__vetra-code__" + tool.name))
+        (!loaded.includes("mcp__vetra-code__" + tool.name) ||
+          (!eagerSchemas && isDeferred(tool.name) && loaded.includes(ALIAS_PREFIX + tool.name))))
       .map((tool) => ALIAS_PREFIX + tool.name);
     const kept = loaded.filter((name) => !name.startsWith(ALIAS_PREFIX) || aliases.includes(name));
     const added = aliases.filter((name) => !loaded.includes(name));

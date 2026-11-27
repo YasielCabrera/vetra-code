@@ -94,7 +94,7 @@ export function continueIssuePage(
 }
 
 /** Newest first by the date the trackers were asked to sort on, so merged rows keep that order. */
-export function issueOrder(sort: IssueListSort) {
+function issueOrder(sort: IssueListSort) {
   const date = (issue: IssueListEntry) =>
     Date.parse(sort === "created" ? issue.createdAt : issue.updatedAt);
   return (left: IssueListEntry, right: IssueListEntry) => date(right) - date(left);

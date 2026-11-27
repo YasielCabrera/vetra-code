@@ -467,7 +467,7 @@ function listKeeps(
  * Listing rows with an action's reply applied, the same array when it changes none, and `refresh`
  * when the reply adds the pull request to a listing, which only a read can place.
  */
-export function patchPullRequestListEntries<Entry extends PullRequestListEntry>(
+function patchPullRequestListEntries<Entry extends PullRequestListEntry>(
   input: PullRequestListInput,
   entries: ReadonlyArray<Entry>,
   reference: PullRequestRef,

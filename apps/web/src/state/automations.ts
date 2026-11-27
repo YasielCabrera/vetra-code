@@ -40,7 +40,7 @@ const automationRunsAtom = Atom.family((environmentId: EnvironmentId) =>
   }).pipe(Atom.withLabel(`web-automations:runs:${environmentId}`)),
 );
 
-export const environmentAutomations = createEnvironmentAutomationAtoms({
+const environmentAutomations = createEnvironmentAutomationAtoms({
   catalogValueAtom: environmentCatalog.catalogValueAtom,
   tasksAtom: automationTasksAtom,
   runsAtom: automationRunsAtom,

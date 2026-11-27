@@ -142,7 +142,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: native/resource-monitor/target/${{ matrix.rust_target }}/release/t3-resource-monitor${{ matrix.platform == 'win' && '.exe' || '' }}
-          key: resource-monitor-${{ matrix.rust_target }}-${{ hashFiles('native/resource-monitor/Cargo.lock', 'native/resource-monitor/Cargo.toml', 'native/resource-monitor/src/**') }}
+          key: resource-monitor-${{ matrix.rust_target }}-${{ hashFiles('native/resource-monitor/Cargo.lock', 'native/resource-monitor/Cargo.toml', 'native/resource-monitor/build.rs', 'native/resource-monitor/src/**') }}
 
       - name: Cache Linux capture helpers
         if: matrix.platform == 'linux'

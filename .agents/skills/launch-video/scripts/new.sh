@@ -9,12 +9,12 @@ skill=$(cd "$(dirname "$0")/.." && pwd)
 repo=$(cd "$skill/../../.." && pwd)
 if [ -e "$dir/story.html" ]; then echo "$dir/story.html already exists" >&2; exit 1; fi
 case "$mode" in
-  real) template=real.html ;;
-  mock) template=story.html ;;
+  real) template=template/real.html ;;
+  mock) template=template/story.html ;;
   *) echo "mode is real or mock" >&2; exit 2 ;;
 esac
 mkdir -p "$dir"
-cp "$skill/template/$template" "$dir/story.html"
+cp "$skill/$template" "$dir/story.html"
 cp "$skill/assets/kit.js" "$skill/assets/inter.woff2" "$skill/assets/jbmono.woff2" "$dir/"
 cp "$repo/assets/prod/black-macos-1024.png" "$dir/logo-prod.png"
 echo "$dir is ready ($mode): edit $dir/story.html"

@@ -139,10 +139,3 @@ export function formatLicenseBundles(
 export function thirdPartyLicenseEntryKey(entry: ThirdPartyLicenseEntry): string {
   return encodeURIComponent(JSON.stringify([entry.kind, entry.name, entry.version]));
 }
-
-export function findThirdPartyLicenseEntry(
-  entries: ReadonlyArray<ThirdPartyLicenseEntry>,
-  key: string,
-): ThirdPartyLicenseEntry | undefined {
-  return entries.find((entry) => thirdPartyLicenseEntryKey(entry) === key);
-}

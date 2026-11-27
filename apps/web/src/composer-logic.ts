@@ -9,10 +9,7 @@ import {
   serializeAssistantCitation,
   withAssistantCitationComment,
 } from "@t3tools/shared/assistantCitations";
-import {
-  isCurrencyAmountQuery,
-  isPathWord,
-} from "@t3tools/shared/composerTrigger";
+import { isCurrencyAmountQuery, isPathWord } from "@t3tools/shared/composerTrigger";
 import {
   splitPromptIntoComposerSegments,
   type ComposerPromptSegment,
@@ -108,7 +105,7 @@ function clampCursor(text: string, cursor: number): number {
 }
 
 function isWhitespace(char: string): boolean {
-  return char === " " || char === "\n" || char === "\t" || char === "\r";
+  return /\s/.test(char);
 }
 
 function tokenStartForCursor(text: string, cursor: number): number {

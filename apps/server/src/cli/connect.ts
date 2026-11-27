@@ -474,11 +474,11 @@ const reportCloudDisconnectResults = Effect.fn("cloud.cli.report_disconnect_resu
       yield* Console.warn(
         input.clearAuthorization
           ? "Could not revoke the relay-side environment record before signing out.\nThe stored CLI authorization was still removed locally."
-          : "Could not revoke the relay-side environment record yet.\nRun `vetra connect unlink` again when the relay is reachable, or deregister it from the Vetra Connect page of your account.",
+          : "Could not revoke the relay-side environment record yet.\nRun `vetra connect unlink` again when the relay is reachable, or deregister it from the Vetra Connect page of your Vetra Connect account.",
       );
     } else if (input.relayResult.value.status === "not-authenticated") {
       yield* Console.warn(
-        "The relay-side environment record was not revoked.\nDeregister it from the Vetra Connect page of your account, or run `vetra connect login` and retry.",
+        "The relay-side environment record was not revoked.\nDeregister it from the Vetra Connect page of your Vetra Connect account, or run `vetra connect login` and retry.",
       );
     } else if (input.relayResult.value.status === "revoked") {
       yield* Console.log("Revoked the relay-side environment record.");
@@ -649,12 +649,17 @@ const connectLinkCommand = Command.make("link", {
         yield* Console.log("Vetra Connect\n");
         const linked = yield* linkEnvironmentForConnect(flags);
         if (linked) {
-          const serveCommand = yield* resolveHostCliHint("serve", flags.baseDir);
-          yield* Console.log(
-            flags.publishOnly
-              ? `✓ Authorized${connectedAs(linked.identity)}\n\nNext\n  Start Vetra to publish agent activity (no managed tunnel).`
-              : `✓ Authorized${connectedAs(linked.identity)}\n\nNext\n  Start the server with \`${serveCommand}\` to make this machine reachable.`,
-          );
+          const config = yield* ServerConfig.ServerConfig;
+          const running = yield* readLiveServerRuntimeState(config.serverRuntimeStatePath);
+          const purpose = flags.publishOnly
+            ? "publish agent activity (no managed tunnel)"
+            : "make this machine reachable";
+          const next = Option.isSome(running)
+            ? `A Vetra Code server is already running. Restart it to ${purpose}: run \`${yield* resolveHostCliHint("service restart", flags.baseDir)}\` for the background service, or stop the server and start it again.`
+            : flags.publishOnly
+              ? `Start Vetra to ${purpose}.`
+              : `Start the server with \`${yield* resolveHostCliHint("serve", flags.baseDir)}\` to ${purpose}.`;
+          yield* Console.log(`✓ Authorized${connectedAs(linked.identity)}\n\nNext\n  ${next}`);
         }
       }),
     ),

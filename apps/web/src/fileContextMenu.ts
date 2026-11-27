@@ -10,7 +10,6 @@ import {
 
 import { thrownErrorMessage } from "@t3tools/client-runtime/errors";
 
-import { contextMenuSourceOf } from "./contextMenuSource";
 import { resolveDiffPathForWorkspace } from "./diffFileActions";
 import { namedClipboardTarget, writeTextToClipboard } from "./hooks/useCopyToClipboard";
 import {
@@ -302,19 +301,5 @@ export function useFileContextMenu(environmentId: EnvironmentId | null) {
     capabilities,
     activate,
     show,
-  };
-}
-
-export function useFileContextMenuHandler(environmentId: EnvironmentId | null) {
-  const contextMenu = useFileContextMenu(environmentId);
-  return (
-    target: FileContextMenuTarget,
-    event?: Pick<MouseEvent, "type" | "button" | "detail" | "clientX" | "clientY">,
-  ) => {
-    void contextMenu.show(
-      target,
-      event ? { x: event.clientX, y: event.clientY } : undefined,
-      event ? contextMenuSourceOf(event) : undefined,
-    );
   };
 }

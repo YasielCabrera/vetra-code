@@ -1,14 +1,7 @@
 /**
- * Powerhouse panel contracts.
- *
- * Four Powerhouse panel surfaces share this module: document models parsed from
- * a project's working tree; reactor data and general GraphQL operations the
- * Vetra server carries on the client's behalf; and bounded database inspection.
- * Remote and relay browsers cannot reach the environment's loopback ports
- * themselves, so every live operation crosses a typed RPC.
- *
- * Everything the panel puts on the wire lives here so the whole surface can be
- * lifted out in one deletion — see `docs/internals/powerhouse-panel.md`.
+ * Every Powerhouse panel operation crosses a typed RPC: remote and relay
+ * browsers cannot reach the environment's loopback ports themselves. The whole
+ * wire surface lives here so it lifts out in one deletion.
  */
 import * as Schema from "effect/Schema";
 import * as Predicate from "effect/Predicate";
@@ -29,8 +22,8 @@ export const POWERHOUSE_DATABASE_SQL_MAX_LENGTH = 64 * 1024;
 export const POWERHOUSE_GRAPHQL_DOCUMENT_MAX_LENGTH = 256 * 1024;
 export const POWERHOUSE_GRAPHQL_VARIABLES_MAX_LENGTH = 512 * 1024;
 export const POWERHOUSE_GRAPHQL_HEADER_MAX_COUNT = 64;
-export const POWERHOUSE_GRAPHQL_HEADER_VALUE_MAX_LENGTH = 16 * 1024;
-export const POWERHOUSE_DATABASE_ROW_LIMITS = [50, 100, 200] as const;
+const POWERHOUSE_GRAPHQL_HEADER_VALUE_MAX_LENGTH = 16 * 1024;
+const POWERHOUSE_DATABASE_ROW_LIMITS = [50, 100, 200] as const;
 const POWERHOUSE_DATABASE_IDENTIFIER_MAX_LENGTH = 255;
 const POWERHOUSE_DATABASE_TYPE_MAX_LENGTH = 1024;
 const POWERHOUSE_DATABASE_DEFINITION_MAX_LENGTH = 256 * 1024;
@@ -715,12 +708,9 @@ export const PowerhouseReactorListDocumentsInput = Schema.Struct({
 export type PowerhouseReactorListDocumentsInput = typeof PowerhouseReactorListDocumentsInput.Type;
 
 /**
- * No total: the reactor reports the page length as `totalCount`, so a "N of M"
- * would be a lie.
- *
- * `nextCursor` is honoured when present, but `findDocuments` does not issue one
- * even when it has capped a result, so a listing is normally a single bounded
- * response and `truncated` is what says whether children were left behind.
+ * No total: the reactor reports the page length as `totalCount`. `findDocuments`
+ * issues no `nextCursor` even when it caps a result, so `truncated` is what says
+ * whether children were left behind.
  */
 export const PowerhouseReactorListDocumentsResult = Schema.Struct({
   documents: Schema.Array(PowerhouseReactorDocumentSummary),

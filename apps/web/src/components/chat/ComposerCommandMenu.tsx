@@ -129,6 +129,13 @@ export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
   const gt = useGT();
   const m = useMessages();
   const listRef = useRef<HTMLDivElement>(null);
+  const highlightScrollTopRef = useRef<number | null>(null);
+  const [descriptionDismissed, setDescriptionDismissed] = useState(false);
+  const [highlightedItemId, setHighlightedItemId] = useState(props.activeItemId);
+  if (highlightedItemId !== props.activeItemId) {
+    setHighlightedItemId(props.activeItemId);
+    setDescriptionDismissed(false);
+  }
 
   // oxlint-disable-next-line t3code/react-effect-budget -- scrolls the highlighted menu item's DOM node into view
   useLayoutEffect(() => {
@@ -137,6 +144,8 @@ export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
       `[data-composer-item-id="${CSS.escape(props.activeItemId)}"]`,
     );
     el?.scrollIntoView({ block: "nearest" });
+    highlightScrollTopRef.current =
+      el?.closest('[data-slot="scroll-area-viewport"]')?.scrollTop ?? null;
   }, [props.activeItemId]);
 
   return (
@@ -153,6 +162,16 @@ export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
         ref={listRef}
         className="flex min-h-0 w-full flex-col overflow-hidden pb-(--chat-composer-attachment-overlap) **:data-[slot=command-item]:rounded-lg **:data-[slot=scroll-area-scrollbar]:data-[orientation=vertical]:my-4"
         data-composer-command-drawer="true"
+        onScrollCapture={(event) => {
+          // Keeping the highlighted row in view must not close the tooltip it just opened.
+          if (
+            event.target instanceof HTMLElement &&
+            event.target.scrollTop === highlightScrollTopRef.current
+          ) {
+            return;
+          }
+          setDescriptionDismissed(true);
+        }}
       >
         {props.items.length > 0 ? (
           <CommandList
@@ -164,7 +183,8 @@ export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
                   ? m(LISTBOX_LABEL_BY_TRIGGER[props.triggerKind])
                   : undefined
             }
-            className="max-h-72 min-h-0 scroll-pb-6"
+            className="min-h-0 scroll-pb-6"
+            scrollAreaClassName="max-h-72"
           >
             {groupComposerItems(props.items).map((group) => (
               <CommandGroup key={group.items[0]!.id}>
@@ -177,6 +197,7 @@ export const ComposerCommandMenu = memo(function ComposerCommandMenu(props: {
                     triggerKind={props.triggerKind}
                     resolvedTheme={props.resolvedTheme}
                     isActive={props.activeItemId === item.id}
+                    descriptionDismissed={props.activeItemId === item.id && descriptionDismissed}
                     onHighlight={props.onHighlightedItemChange}
                     onSelect={props.onSelect}
                   />
@@ -213,6 +234,7 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
   triggerKind: ComposerTriggerKind | null;
   resolvedTheme: "light" | "dark";
   isActive: boolean;
+  descriptionDismissed: boolean;
   onHighlight: (itemId: string | null) => void;
   onSelect: (item: ComposerCommandItem) => void;
 }) {
@@ -301,7 +323,7 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
             props.item.label
           )}
         </span>
-        <Tooltip open={descriptionTruncated}>
+        <Tooltip open={descriptionTruncated && !props.descriptionDismissed}>
           <TooltipTrigger
             tabIndex={-1}
             render={

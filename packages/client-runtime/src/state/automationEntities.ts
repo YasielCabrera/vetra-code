@@ -28,7 +28,7 @@ export interface ScopedAutomationRef {
   readonly automationId: ScheduledTaskId;
 }
 
-export function automationKey(ref: ScopedAutomationRef): string {
+function automationKey(ref: ScopedAutomationRef): string {
   return `${ref.environmentId}:${ref.automationId}`;
 }
 

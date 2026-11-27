@@ -64,13 +64,13 @@ export const POWERHOUSE_WS_METHODS = {
   powerhouseDatabaseRefreshSnapshot: "powerhouse.databaseRefreshSnapshot",
 } as const;
 
-export const WsPowerhouseListProjectsRpc = Rpc.make(POWERHOUSE_WS_METHODS.powerhouseListProjects, {
+const WsPowerhouseListProjectsRpc = Rpc.make(POWERHOUSE_WS_METHODS.powerhouseListProjects, {
   payload: PowerhouseListProjectsInput,
   success: PowerhouseListProjectsResult,
   error: Schema.Union([PowerhouseProjectError, EnvironmentAuthorizationError]),
 });
 
-export const WsPowerhouseListDocumentModelsRpc = Rpc.make(
+const WsPowerhouseListDocumentModelsRpc = Rpc.make(
   POWERHOUSE_WS_METHODS.powerhouseListDocumentModels,
   {
     payload: PowerhouseListDocumentModelsInput,
@@ -79,16 +79,13 @@ export const WsPowerhouseListDocumentModelsRpc = Rpc.make(
   },
 );
 
-export const WsPowerhouseGetDocumentModelRpc = Rpc.make(
-  POWERHOUSE_WS_METHODS.powerhouseGetDocumentModel,
-  {
-    payload: PowerhouseGetDocumentModelInput,
-    success: PowerhouseDocumentModel,
-    error: Schema.Union([PowerhouseProjectError, EnvironmentAuthorizationError]),
-  },
-);
+const WsPowerhouseGetDocumentModelRpc = Rpc.make(POWERHOUSE_WS_METHODS.powerhouseGetDocumentModel, {
+  payload: PowerhouseGetDocumentModelInput,
+  success: PowerhouseDocumentModel,
+  error: Schema.Union([PowerhouseProjectError, EnvironmentAuthorizationError]),
+});
 
-export const WsPowerhouseReactorProbeRpc = Rpc.make(POWERHOUSE_WS_METHODS.powerhouseReactorProbe, {
+const WsPowerhouseReactorProbeRpc = Rpc.make(POWERHOUSE_WS_METHODS.powerhouseReactorProbe, {
   payload: PowerhouseReactorProbeInput,
   success: PowerhouseReactorConnection,
   error: Schema.Union([
@@ -98,7 +95,7 @@ export const WsPowerhouseReactorProbeRpc = Rpc.make(POWERHOUSE_WS_METHODS.powerh
   ]),
 });
 
-export const WsPowerhouseReactorListDrivesRpc = Rpc.make(
+const WsPowerhouseReactorListDrivesRpc = Rpc.make(
   POWERHOUSE_WS_METHODS.powerhouseReactorListDrives,
   {
     payload: PowerhouseReactorListDrivesInput,
@@ -107,7 +104,7 @@ export const WsPowerhouseReactorListDrivesRpc = Rpc.make(
   },
 );
 
-export const WsPowerhouseReactorListDocumentsRpc = Rpc.make(
+const WsPowerhouseReactorListDocumentsRpc = Rpc.make(
   POWERHOUSE_WS_METHODS.powerhouseReactorListDocuments,
   {
     payload: PowerhouseReactorListDocumentsInput,
@@ -116,7 +113,7 @@ export const WsPowerhouseReactorListDocumentsRpc = Rpc.make(
   },
 );
 
-export const WsPowerhouseReactorGetDocumentRpc = Rpc.make(
+const WsPowerhouseReactorGetDocumentRpc = Rpc.make(
   POWERHOUSE_WS_METHODS.powerhouseReactorGetDocument,
   {
     payload: PowerhouseReactorGetDocumentInput,
@@ -125,7 +122,7 @@ export const WsPowerhouseReactorGetDocumentRpc = Rpc.make(
   },
 );
 
-export const WsPowerhouseReactorGetOperationsRpc = Rpc.make(
+const WsPowerhouseReactorGetOperationsRpc = Rpc.make(
   POWERHOUSE_WS_METHODS.powerhouseReactorGetOperations,
   {
     payload: PowerhouseReactorGetOperationsInput,
@@ -134,7 +131,7 @@ export const WsPowerhouseReactorGetOperationsRpc = Rpc.make(
   },
 );
 
-export const WsPowerhouseReactorExecuteGraphqlRpc = Rpc.make(
+const WsPowerhouseReactorExecuteGraphqlRpc = Rpc.make(
   POWERHOUSE_WS_METHODS.powerhouseReactorExecuteGraphql,
   {
     payload: PowerhouseReactorExecuteGraphqlInput,
@@ -143,33 +140,27 @@ export const WsPowerhouseReactorExecuteGraphqlRpc = Rpc.make(
   },
 );
 
-export const WsPowerhouseDatabaseDiscoverRpc = Rpc.make(
-  POWERHOUSE_WS_METHODS.powerhouseDatabaseDiscover,
-  {
-    payload: PowerhouseDatabaseDiscoverInput,
-    success: PowerhouseDatabaseDiscoverResult,
-    error: Schema.Union([
-      PowerhouseDatabaseError,
-      PowerhouseProjectError,
-      EnvironmentAuthorizationError,
-    ]),
-  },
-);
+const WsPowerhouseDatabaseDiscoverRpc = Rpc.make(POWERHOUSE_WS_METHODS.powerhouseDatabaseDiscover, {
+  payload: PowerhouseDatabaseDiscoverInput,
+  success: PowerhouseDatabaseDiscoverResult,
+  error: Schema.Union([
+    PowerhouseDatabaseError,
+    PowerhouseProjectError,
+    EnvironmentAuthorizationError,
+  ]),
+});
 
-export const WsPowerhouseDatabaseCatalogRpc = Rpc.make(
-  POWERHOUSE_WS_METHODS.powerhouseDatabaseCatalog,
-  {
-    payload: PowerhouseDatabaseCatalogInput,
-    success: PowerhouseDatabaseCatalogResult,
-    error: Schema.Union([
-      PowerhouseDatabaseError,
-      PowerhouseProjectError,
-      EnvironmentAuthorizationError,
-    ]),
-  },
-);
+const WsPowerhouseDatabaseCatalogRpc = Rpc.make(POWERHOUSE_WS_METHODS.powerhouseDatabaseCatalog, {
+  payload: PowerhouseDatabaseCatalogInput,
+  success: PowerhouseDatabaseCatalogResult,
+  error: Schema.Union([
+    PowerhouseDatabaseError,
+    PowerhouseProjectError,
+    EnvironmentAuthorizationError,
+  ]),
+});
 
-export const WsPowerhouseDatabaseGetRelationRpc = Rpc.make(
+const WsPowerhouseDatabaseGetRelationRpc = Rpc.make(
   POWERHOUSE_WS_METHODS.powerhouseDatabaseGetRelation,
   {
     payload: PowerhouseDatabaseGetRelationInput,
@@ -182,7 +173,7 @@ export const WsPowerhouseDatabaseGetRelationRpc = Rpc.make(
   },
 );
 
-export const WsPowerhouseDatabasePreviewRelationRpc = Rpc.make(
+const WsPowerhouseDatabasePreviewRelationRpc = Rpc.make(
   POWERHOUSE_WS_METHODS.powerhouseDatabasePreviewRelation,
   {
     payload: PowerhouseDatabasePreviewRelationInput,
@@ -195,7 +186,7 @@ export const WsPowerhouseDatabasePreviewRelationRpc = Rpc.make(
   },
 );
 
-export const WsPowerhouseDatabaseExecuteQueryRpc = Rpc.make(
+const WsPowerhouseDatabaseExecuteQueryRpc = Rpc.make(
   POWERHOUSE_WS_METHODS.powerhouseDatabaseExecuteQuery,
   {
     payload: PowerhouseDatabaseExecuteQueryInput,
@@ -208,7 +199,7 @@ export const WsPowerhouseDatabaseExecuteQueryRpc = Rpc.make(
   },
 );
 
-export const WsPowerhouseDatabaseRefreshSnapshotRpc = Rpc.make(
+const WsPowerhouseDatabaseRefreshSnapshotRpc = Rpc.make(
   POWERHOUSE_WS_METHODS.powerhouseDatabaseRefreshSnapshot,
   {
     payload: PowerhouseDatabaseRefreshSnapshotInput,

@@ -1,5 +1,6 @@
 import type { EnvironmentId, PullRequestLinkedThreadsResult } from "@t3tools/contracts";
 
+import type { DraftId } from "./composerDraftStore";
 import { dispatchCommandPalette, isCommandPaletteMounted } from "./commandPaletteStore";
 
 export interface CommandPaletteLinkedThreads {
@@ -15,6 +16,8 @@ export interface CommandPaletteOpenDetail {
    * can reuse the import-source flow to fill in a field.
    */
   readonly completion?: "open-thread" | "select";
+  /** With add-project: the draft the new project is picked for. */
+  readonly draftId?: DraftId | null;
   readonly query?: string;
   readonly linkedThreads?: CommandPaletteLinkedThreads;
 }
@@ -29,6 +32,7 @@ export function openCommandPalette(detail: CommandPaletteOpenDetail = {}): void 
     dispatchCommandPalette({
       _tag: "OpenAddProject",
       ...(detail.completion ? { completion: detail.completion } : {}),
+      ...(detail.draftId ? { draftId: detail.draftId } : {}),
     });
   } else if (detail.query !== undefined) {
     dispatchCommandPalette({

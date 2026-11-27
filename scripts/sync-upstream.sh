@@ -62,6 +62,13 @@ PRUNE_PATHS=(
   scripts/export-android-icons.ts
   scripts/mobile-behavior.ts
   scripts/mobile-behavior
+  # The mobile surface of upstream's shared metrics core, and the launch-video
+  # material for mobile releases. The fork ships no mobile client.
+  scripts/metrics/mobile
+  .agents/skills/launch-video/stagings/mobile-2.4
+  .agents/skills/launch-video/scripts/mobile-composite.sh
+  .agents/skills/launch-video/scripts/phone-3d.mjs
+  .agents/skills/launch-video/assets/tablet-mask.png
   scripts/scenarios/t3-mobile.ts
   scripts/scenarios/mobile-opens-a-seeded-thread.e2e.ts
   apps/server/src/triage

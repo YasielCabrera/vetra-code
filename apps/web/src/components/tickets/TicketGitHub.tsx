@@ -5,7 +5,10 @@ import type {
   TicketGitHubIssueRef,
 } from "@t3tools/contracts";
 import { CircleCheckIcon, CircleDotIcon, CircleHelpIcon } from "lucide-react";
-import { memo, useCallback, useMemo } from "react";
+import { msg, T, useGT } from "gt-react";
+
+import { m } from "../../i18n/messages";
+import { memo } from "react";
 
 import { readLocalApi } from "../../localApi";
 import { ticketEnvironment } from "../../state/tickets";
@@ -35,10 +38,7 @@ export function useTicketIssueReads(
   environmentId: EnvironmentId,
   reference: TicketGitHubIssueRef | null,
 ) {
-  const target = useMemo(
-    () => (reference === null ? null : { environmentId, input: reference }),
-    [environmentId, reference],
-  );
+  const target = reference === null ? null : { environmentId, input: reference };
   const detail = useEnvironmentQuery(
     target === null ? null : ticketEnvironment.githubIssueDetail(target),
   );
@@ -48,41 +48,38 @@ export function useTicketIssueReads(
   const { refreshGitHubIssue: refreshTicket } = useTicketActions();
   const refreshDetail = detail.refresh;
   const refreshActivity = activity.refresh;
-  const refresh = useCallback(async () => {
+  const refresh = async () => {
     if (target === null) return;
     await refreshTicket({ environmentId: target.environmentId, ticketId: target.input.ticketId });
     refreshDetail();
     refreshActivity();
-  }, [refreshTicket, refreshActivity, refreshDetail, target]);
-  return useMemo(
-    () => ({
-      issue: detail.data,
-      activity: activity.data,
-      activityError: activity.error,
-      refreshActivity,
-      refresh,
-    }),
-    [activity.data, activity.error, detail.data, refresh, refreshActivity],
-  );
+  };
+  return {
+    issue: detail.data,
+    activity: activity.data,
+    activityError: activity.error,
+    refreshActivity,
+    refresh,
+  };
 }
 
 type TicketIssueReads = ReturnType<typeof useTicketIssueReads>;
 
 function describeIssueState(github: GitHubIssueSnapshot): string {
-  if (github.state === "open") return "Open";
+  if (github.state === "open") return m(msg("Open"));
   switch (github.stateReason) {
     case "missing":
-      return "Missing on GitHub";
+      return m(msg("Missing on GitHub"));
     case "not_planned":
-      return "Closed as not planned";
+      return m(msg("Closed as not planned"));
     case "duplicate":
-      return "Closed as duplicate";
+      return m(msg("Closed as duplicate"));
     default:
-      return "Closed";
+      return m(msg("Closed"));
   }
 }
 
-export function TicketGitHubStateBadge(props: { readonly github: GitHubIssueSnapshot }) {
+function TicketGitHubStateBadge(props: { readonly github: GitHubIssueSnapshot }) {
   const open = props.github.state === "open";
   const missing = props.github.stateReason === "missing";
   return (
@@ -109,16 +106,17 @@ export function TicketGitHubProperties(props: {
   readonly refreshing: boolean;
   readonly onRefresh: () => void;
 }) {
+  const gt = useGT();
   const { ticket } = props;
   const assignees: ReadonlyArray<TicketIssueActor> =
     props.reads.issue?.assignees ??
     ticket.github.assignees.map((login) => ({ login, name: null, avatarUrl: null }));
   return (
     <>
-      <TicketPropertyRow label="Repository">
+      <TicketPropertyRow label={gt("Repository")}>
         <span className="block truncate">{ticket.github.repository}</span>
       </TicketPropertyRow>
-      <TicketPropertyRow label="Issue">
+      <TicketPropertyRow label={gt("Issue")}>
         <button
           type="button"
           className="hover:underline"
@@ -127,13 +125,15 @@ export function TicketGitHubProperties(props: {
           #{ticket.github.number}
         </button>
       </TicketPropertyRow>
-      <TicketPropertyRow label="State">
+      <TicketPropertyRow label={gt("State")}>
         <TicketGitHubStateBadge github={ticket.github} />
       </TicketPropertyRow>
-      <TicketPropertyRow label="Assignees">
+      <TicketPropertyRow label={gt("Assignees")}>
         <div className="flex flex-wrap items-center gap-1.5">
           {assignees.length === 0 ? (
-            <span className="text-xs text-muted-foreground">None</span>
+            <span className="text-xs text-muted-foreground">
+              <T>None</T>
+            </span>
           ) : (
             assignees.map((assignee) => (
               <span key={assignee.login} className="flex items-center gap-1 text-xs">
@@ -151,18 +151,18 @@ export function TicketGitHubProperties(props: {
           )}
         </div>
       </TicketPropertyRow>
-      <TicketPropertyRow label="Last sync">
+      <TicketPropertyRow label={gt("Last sync")}>
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs text-muted-foreground">
             {props.hasSource
               ? props.lastSyncedAt === null
-                ? "Never"
+                ? gt("Never")
                 : formatRelativeTimeLabel(props.lastSyncedAt)
-              : "Not synced"}
+              : gt("Not synced")}
           </span>
           <Button size="xs" variant="ghost" disabled={props.refreshing} onClick={props.onRefresh}>
             <RefreshIcon refreshing={props.refreshing} />
-            Refresh
+            <T>Refresh</T>
           </Button>
         </div>
       </TicketPropertyRow>
@@ -180,11 +180,11 @@ export const TicketGitHubActivity = memo(function TicketGitHubActivity(props: {
     <div className="flex flex-col gap-2 border-t border-border/60 pt-4">
       <h3 className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <GitHubIcon aria-hidden className="size-3.5" />
-        On GitHub
+        <T>On GitHub</T>
       </h3>
       {!props.hasReference ? (
         <p className="text-xs text-muted-foreground">
-          Link a project with this repository to see the issue's comments.
+          <T>Link a project with this repository to see the issue's comments.</T>
         </p>
       ) : activity !== null ? (
         <IssueTimeline
@@ -195,9 +195,11 @@ export const TicketGitHubActivity = memo(function TicketGitHubActivity(props: {
         />
       ) : activityError !== null ? (
         <div className="flex flex-col items-start gap-2 text-xs text-muted-foreground">
-          <p>Could not load the issue's comments. {activityError}</p>
+          <p>
+            <T>Could not load the issue's comments.</T> {activityError}
+          </p>
           <Button size="xs" variant="outline" onClick={refreshActivity}>
-            Retry
+            <T>Retry</T>
           </Button>
         </div>
       ) : (

@@ -12,6 +12,7 @@ import {
 } from "@t3tools/shared/paletteSearch";
 import { threadSearchSubject } from "@t3tools/client-runtime/state/thread-search";
 import type { CommandPaletteLinkedThreads } from "../commandPaletteBus";
+import type { DraftId } from "../composerDraftStore";
 import {
   addProjectRemoteSourceLabel,
   addProjectRemoteSourcePathHint,
@@ -88,7 +89,12 @@ export type SearchOverlayMode = "command" | "files" | "content";
 export type CommandPaletteAddProjectCompletion = "open-thread" | "select";
 
 export type CommandPaletteOpenIntent =
-  | { readonly kind: "add-project" | "new-thread-in" | "change-theme" }
+  | { readonly kind: "new-thread-in" | "change-theme" }
+  | {
+      readonly kind: "add-project";
+      /** The draft a project is being picked for; one with user content moves to it. */
+      readonly draftId?: DraftId;
+    }
   | {
       readonly kind: "search";
       readonly query: string;
@@ -124,6 +130,7 @@ export type CommandPaletteUiAction =
   | {
       readonly _tag: "OpenAddProject";
       readonly completion?: CommandPaletteAddProjectCompletion;
+      readonly draftId?: DraftId;
     }
   | { readonly _tag: "ClearOpenIntent" }
   | { readonly _tag: "OpenNewThreadIn" }
@@ -208,7 +215,10 @@ export function reduceCommandPaletteUiState(
       });
     case "OpenAddProject":
       return {
-        ...openWithIntent({ kind: "add-project" }),
+        ...openWithIntent({
+          kind: "add-project",
+          ...(action.draftId ? { draftId: action.draftId } : {}),
+        }),
         addProjectCompletion: action.completion ?? "open-thread",
       };
     case "OpenNewThreadIn":

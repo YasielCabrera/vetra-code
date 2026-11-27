@@ -71,6 +71,7 @@ const CORE_WHEN_VARIABLES = [
   "terminalFocus",
   "terminalOpen",
   "previewOpen",
+  "composerEmpty",
   "isWeb",
   "isDesktop",
   "true",
@@ -218,7 +219,9 @@ function keybindingRowId(command: KeybindingCommand, key: string, when: string):
 
 function conflictsWithWhen(leftWhen: string, rightWhen: string): boolean {
   if (leftWhen === "false" || rightWhen === "false") return false;
-  return leftWhen.length === 0 || rightWhen.length === 0 || leftWhen === rightWhen;
+  // An empty condition and "true" are both always active.
+  const always = (when: string) => when.length === 0 || when === "true";
+  return always(leftWhen) || always(rightWhen) || leftWhen === rightWhen;
 }
 
 export function keybindingConflictLabels(
@@ -392,6 +395,7 @@ export function filterKeybindingRows(
   rows: ReadonlyArray<KeybindingRow>,
   query: string,
   resolve: MessageResolver = m,
+  platform = navigator.platform,
 ): ReadonlyArray<KeybindingRow> {
   const normalizedQuery = query.trim().toLowerCase();
   if (normalizedQuery.length === 0) return rows;
@@ -400,6 +404,8 @@ export function filterKeybindingRows(
       row.command.toLowerCase().includes(normalizedQuery) ||
       commandLabel(row.command, resolve).toLowerCase().includes(normalizedQuery) ||
       row.key.toLowerCase().includes(normalizedQuery) ||
+      // The row shows the platform label ("Ctrl+K"), not the stored "mod+k".
+      formatShortcutLabel(row.binding.shortcut, platform).toLowerCase().includes(normalizedQuery) ||
       row.when.toLowerCase().includes(normalizedQuery) ||
       row.source.toLowerCase().includes(normalizedQuery)
     );
@@ -483,6 +489,8 @@ const COMMAND_LABELS: Partial<Record<KeybindingCommand, string>> = {
   "terminal.splitVertical": msg("Terminal: Split Vertical"),
   "terminal.new": msg("Terminal: New"),
   "terminal.close": msg("Terminal: Close"),
+  "terminal.previous": msg("Terminal: Previous"),
+  "terminal.next": msg("Terminal: Next"),
   "rightPanel.toggle": msg("Right Panel: Toggle"),
   "rightPanel.new": msg("Right Panel: New"),
   "threadPanel.toggle": msg("Thread Panel: Toggle"),
@@ -547,6 +555,11 @@ const LATE_COMMAND_LABELS: Partial<Record<KeybindingCommand, string>> = {
   "view.reopenClosed": msg("Reopen Closed Tab"),
   "preview.focusUrl": msg("Preview: Focus URL"),
   "preview.find": msg("Preview: Find on Page"),
+  "powerhouse.openModels": msg("Powerhouse: Open Document Models"),
+  "powerhouse.openExplorer": msg("Powerhouse: Open Document Explorer"),
+  "powerhouse.openDatabase": msg("Powerhouse: Open Database"),
+  "powerhouse.openSwitchboard": msg("Powerhouse: Open Switchboard"),
+  "ticket.new": msg("Ticket: New"),
 };
 
 export function commandLabel(command: KeybindingCommand, resolve: MessageResolver = m): string {
@@ -590,6 +603,10 @@ function recordedLayoutShortcutKey(
   const physicalKey = shortcutKeyFromEvent(event, platform);
   const layoutKey = event.key.toLowerCase();
   if (event.altKey || layoutKey.length !== 1) return physicalKey;
+  // A non-Latin letter (Cyrillic, Greek, ...) stops matching once the user switches to a Latin layout.
+  if (/^\p{L}$/u.test(layoutKey) && !/\p{Script=Latin}/u.test(layoutKey)) {
+    return /^Key[A-Z]$/.test(event.code) ? event.code.slice(3).toLowerCase() : physicalKey;
+  }
   // Normalize only US shifted glyphs at their US position. Other layouts can
   // produce the same glyph without Shift or at a different position.
   const unshiftedKey = event.shiftKey ? US_SHIFTED_TO_UNSHIFTED_KEYS.get(layoutKey) : undefined;

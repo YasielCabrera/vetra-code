@@ -32,6 +32,7 @@ import {
 import type { AcpSessionModeState } from "@t3tools/provider-acp/server/runtimeModel";
 import { VETRA_MCP_TOOL_NAMES } from "@t3tools/shared/t3McpToolPresentation";
 import packageJson from "../../../package.json" with { type: "json" };
+import { TOOL_CALL, TOOL_SEARCH } from "../../mcp/McpToolExposure.ts";
 import { normalizeAntigravitySessionUpdate } from "./AntigravityProtocol.ts";
 
 export interface AntigravityAcpRuntimeInput extends Omit<
@@ -52,15 +53,13 @@ export interface AntigravityAcpRuntimeInput extends Omit<
   /** Serve `fs/read_text_file` from T3 instead of the agent's native reader. */
   readonly clientFileReads?: boolean;
   readonly clientCapabilities?: AcpSessionRuntime.AcpSessionRuntimeOptions["clientCapabilities"];
-  /** The installed version, known before `initialize`; it picks the client name. */
-  readonly runtimeVersion?: string | null;
   /** Conversational sessions only; helpers and probes leave the system prompt untouched. */
   readonly sessionSystemPromptAppend?: string;
   readonly authMethod?: AntigravityAuthMethod;
 }
 
 function parseAntigravityVersion(version: string | null | undefined) {
-  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version?.trim() ?? "");
+  const match = /^(?:v|agy_acp_server_)?(\d+)\.(\d+)\.(\d+)/.exec(version?.trim() ?? "");
   return match === null ? undefined : [Number(match[1]), Number(match[2]), Number(match[3])];
 }
 
@@ -73,7 +72,7 @@ function compareVersions(left: ReadonlyArray<number>, right: ReadonlyArray<numbe
 }
 
 // `agy acp` 1.5.1 offers every model to every ACP client; older runtimes allowlist editors.
-const OPEN_MODEL_ACCESS_RELEASE = [1, 5, 1] as const;
+export const OPEN_MODEL_ACCESS_RELEASE = [1, 5, 1] as const;
 // `agy acp` 1.5.0 steers a running turn with the next prompt; the 1.4 harness queues it.
 const PROMPT_STEERING_RELEASE = [1, 5, 0] as const;
 
@@ -82,6 +81,12 @@ export const antigravitySteersWithPrompt = (
 ) => {
   const parsed = parseAntigravityVersion(initializeResult.agentInfo?.version);
   return parsed !== undefined && compareVersions(parsed, PROMPT_STEERING_RELEASE) >= 0;
+};
+
+/** Whether a runtime that reported its version serves Vetra Code, not only allowlisted editors. */
+export const antigravityServesT3Code = (version: string) => {
+  const parsed = parseAntigravityVersion(version);
+  return parsed === undefined || compareVersions(parsed, OPEN_MODEL_ACCESS_RELEASE) >= 0;
 };
 
 export const antigravityAppendsSystemPrompt = (
@@ -104,14 +109,6 @@ export function antigravitySessionMeta(
     : undefined;
 }
 
-/** Older releases offer non-Gemini models only to allowlisted clients such as Zed. */
-export function antigravityClientInfo(version: string | null | undefined) {
-  const parsed = parseAntigravityVersion(version);
-  return parsed !== undefined && compareVersions(parsed, OPEN_MODEL_ACCESS_RELEASE) >= 0
-    ? { name: "vetra-code", title: "Vetra Code", version: packageJson.version }
-    : { name: "zed", version: "0.0.0" };
-}
-
 export const makeAntigravityAcpRuntime = Effect.fn("makeAntigravityAcpRuntime")(function* (
   input: AntigravityAcpRuntimeInput,
 ): Effect.fn.Return<
@@ -126,7 +123,7 @@ export const makeAntigravityAcpRuntime = Effect.fn("makeAntigravityAcpRuntime")(
       authenticateEagerly: true,
       resumeMethod: "resume",
       cancelBehavior: "wait-for-prompt",
-      clientInfo: antigravityClientInfo(input.runtimeVersion),
+      clientInfo: { name: "vetra-code", title: "Vetra Code", version: packageJson.version },
       sessionMeta: (initializeResult) =>
         antigravitySessionMeta(initializeResult, input.sessionSystemPromptAppend),
       clientCapabilities: {
@@ -184,13 +181,28 @@ export function antigravitySessionMode(
   return modeId === "yolo" || modeId === "auto_edit" ? "default" : modeId;
 }
 
-// Only calls that name Vetra Code's server: before agy 1.5.8 "Running <tool>" names no server, so another
+// Only calls that name T3's server: before agy 1.5.8 "Running <tool>" names no server, so another
 // MCP server's tool of the same name would pass.
 const ANTIGRAVITY_VETRA_MCP_TITLE = /^Run mcp_vetra-code_(?<tool>[A-Za-z0-9_]+)\??$/;
 
 // call_mcp_tool is the one call whose rawInput names a server and tool; in every other call
 // rawInput is the tool's own arguments.
 const ANTIGRAVITY_PROXIED_MCP_TITLE = /^MCP Tool (?<tool>[A-Za-z0-9_]+)\??$/;
+
+const isAntigravityT3McpTool = (
+  tool: string,
+  toolArgs: Record<string, unknown> | undefined,
+): boolean => {
+  if (VETRA_MCP_TOOL_NAMES.has(tool) || tool === TOOL_SEARCH) return true;
+  if (tool !== TOOL_CALL) return false;
+  const target = typeof toolArgs?.name === "string" ? toolArgs.name.trim() : "";
+  return (
+    target.length > 0 &&
+    target !== TOOL_CALL &&
+    target !== TOOL_SEARCH &&
+    VETRA_MCP_TOOL_NAMES.has(target)
+  );
+};
 
 function isAntigravityT3McpRequest(request: EffectAcpSchema.RequestPermissionRequest): boolean {
   const title = request.toolCall.title?.trim() ?? "";
@@ -200,12 +212,12 @@ function isAntigravityT3McpRequest(request: EffectAcpSchema.RequestPermissionReq
     return (
       rawInput?.ServerName === "vetra-code" &&
       rawInput.ToolName === proxiedTool &&
-      VETRA_MCP_TOOL_NAMES.has(proxiedTool)
+      isAntigravityT3McpTool(proxiedTool, unknownRecord(rawInput.Arguments))
     );
   }
   if (typeof rawInput?.CommandLine === "string") return false;
   const tool = ANTIGRAVITY_VETRA_MCP_TITLE.exec(title)?.groups?.tool;
-  return tool !== undefined && VETRA_MCP_TOOL_NAMES.has(tool);
+  return tool !== undefined && isAntigravityT3McpTool(tool, rawInput);
 }
 
 export function antigravityPermissionDisposition(

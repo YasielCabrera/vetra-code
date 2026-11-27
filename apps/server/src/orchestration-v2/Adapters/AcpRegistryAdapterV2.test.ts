@@ -1479,7 +1479,7 @@ describe("AcpRegistryAdapterV2", () => {
     }).pipe(Effect.provide(layerTest)),
   );
 
-  it.effect("gives HTTP-capable agents Vetra Code's MCP server over HTTP", () =>
+  it.effect("gives HTTP-capable agents T3's MCP server over HTTP", () =>
     Effect.gen(function* () {
       const selfInvocation = yield* resolveSelfInvocation();
       const mockAgentPath = yield* (yield* Path.Path).fromFileUrl(
@@ -1619,6 +1619,30 @@ describe("AcpRegistryAdapterV2", () => {
           new: stdio("Bearer opened-token"),
           load: stdio("Bearer rotated-token"),
         },
+      );
+      // Local agy / antigravity commands defer optional tools through tool_call, as the Antigravity provider does.
+      const agyStdio = stdio("Bearer opened-token");
+      const expectedAgyStdio = [
+        {
+          ...agyStdio[0],
+          env: [
+            ...agyStdio[0]!.env,
+            { name: "VETRA_ACP_MCP_TOOL_EXPOSURE", value: "deferred-proxy" },
+          ],
+        },
+      ];
+      assert.deepEqual(
+        (yield* sessionMcpServers({ source: "local", commandPath: "agy", commandArgs: ["acp"] }))
+          .new,
+        expectedAgyStdio,
+      );
+      assert.deepEqual(
+        (yield* sessionMcpServers({
+          source: "local",
+          commandPath: "antigravity",
+          commandArgs: ["acp"],
+        })).new,
+        expectedAgyStdio,
       );
       // Command Code cannot start the stdio bridge on Windows: it spawns MCP commands through
       // cmd.exe, which splits the unquoted T3 executable path at the space.

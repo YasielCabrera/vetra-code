@@ -4,10 +4,10 @@ import { Suspense, use, useState, type ReactNode } from "react";
 
 import { RenderErrorBoundary } from "../RenderErrorBoundary";
 import { Button } from "../ui/button";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { MarkdownCodeBlock } from "./MarkdownCodeBlock";
 import { findRevealRef, MarkdownFindContext } from "./markdownFindContext";
 import { MermaidDiagram } from "./MermaidDiagram";
+import { SharedTooltipTrigger } from "../ui/shared-tooltip";
 
 export function MarkdownMermaidCodeBlock({
   code,
@@ -45,22 +45,20 @@ export function MarkdownMermaidCodeBlock({
       attributes={attributes}
       viewToggle={
         isStreaming ? null : (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="ghost-muted"
-                  size="icon-xs"
-                  onClick={() => setShowCode((value) => !value)}
-                  aria-label={toggleLabel}
-                />
-              }
-            >
-              {showCode ? <WorkflowIcon className="size-3" /> : <CodeIcon className="size-3" />}
-            </TooltipTrigger>
-            <TooltipPopup side="top">{toggleLabel}</TooltipPopup>
-          </Tooltip>
+          <SharedTooltipTrigger
+            render={
+              <Button
+                type="button"
+                variant="ghost-muted"
+                size="icon-xs"
+                onClick={() => setShowCode((value) => !value)}
+                aria-label={toggleLabel}
+              />
+            }
+            label={toggleLabel}
+          >
+            {showCode ? <WorkflowIcon className="size-3" /> : <CodeIcon className="size-3" />}
+          </SharedTooltipTrigger>
         )
       }
     >

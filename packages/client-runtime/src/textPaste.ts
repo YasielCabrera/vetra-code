@@ -1,4 +1,4 @@
-export const PASTED_TEXT_ATTACHMENT_THRESHOLD_BYTES = 32 * 1024;
+const PASTED_TEXT_ATTACHMENT_THRESHOLD_BYTES = 32 * 1024;
 
 const textEncoder = new TextEncoder();
 
@@ -55,19 +55,6 @@ export function nextPastedTextFileName(existingNames: ReadonlyArray<string>): st
       return candidate;
     }
   }
-}
-
-export function replaceTextSelection(input: {
-  readonly value: string;
-  readonly selection: { readonly start: number; readonly end: number };
-  readonly text: string;
-}): { readonly value: string; readonly cursor: number } {
-  const start = Math.max(0, Math.min(input.value.length, input.selection.start));
-  const end = Math.max(start, Math.min(input.value.length, input.selection.end));
-  return {
-    value: `${input.value.slice(0, start)}${input.text}${input.value.slice(end)}`,
-    cursor: start + input.text.length,
-  };
 }
 
 export function wouldTextPasteExceedLimit(input: {

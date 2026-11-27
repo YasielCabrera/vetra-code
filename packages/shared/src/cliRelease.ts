@@ -15,7 +15,6 @@ import { compareSemverVersions } from "./semver.ts";
  * Vetra publishes CLI archives. `VETRA_RELEASE_BASE_URL` overrides downloads.
  */
 const CLI_RELEASE_ORIGIN = "https://releases.vetra.invalid";
-export const CLI_RELEASES_PAGE_URL = `${CLI_RELEASE_ORIGIN}/releases`;
 export const CLI_RELEASE_CHECKSUMS_FILE = "SHA256SUMS";
 export const CLI_RELEASE_BASE_URL_ENV = "VETRA_RELEASE_BASE_URL";
 

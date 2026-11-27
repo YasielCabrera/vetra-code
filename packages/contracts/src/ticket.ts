@@ -379,9 +379,9 @@ export type TicketWriteResult = typeof TicketWriteResult.Type;
 
 export const TicketTitle = TrimmedNonEmptyString.check(Schema.isMaxLength(500));
 export const TICKET_BODY_MAX_CHARS = 100_000;
-export const TICKET_LABELS_MAX_COUNT = 50;
+const TICKET_LABELS_MAX_COUNT = 50;
 export const TICKET_LINKS_MAX_COUNT = 100;
-export const TICKET_REMOVE_ATTACHMENT_IDS_MAX_COUNT = 100;
+const TICKET_REMOVE_ATTACHMENT_IDS_MAX_COUNT = 100;
 
 const TicketBody = Schema.String.check(
   Schema.isMaxLength(TICKET_BODY_MAX_CHARS, {

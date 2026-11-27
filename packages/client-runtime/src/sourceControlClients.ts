@@ -9,7 +9,6 @@ import type { ServerSettings, SourceControlAppAccessInput } from "@t3tools/contr
 import { parseGitRemoteRepository } from "@t3tools/shared/git";
 
 export {
-  isMonochromeSourceControlIcon,
   UNKNOWN_SOURCE_CONTROL_CLIENT,
   type ChangeRequestLink,
   type ChangeRequestTerminology,

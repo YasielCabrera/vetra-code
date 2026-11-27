@@ -1,5 +1,4 @@
-import { mFallback, msg } from "gt-i18n";
-import type { MFunctionType } from "gt-i18n/types";
+import { msg } from "gt-i18n";
 
 import type { ZipErrorCode } from "./zipError.ts";
 
@@ -11,12 +10,11 @@ export const ZIP_ERROR_MESSAGES: Record<ZipErrorCode, string> = {
   "archive-expanded-too-large": msg(
     "The expanded archive exceeds the preview size or compression ratio limit.",
   ),
+  "password-required": msg("This file requires a password."),
+  "password-incorrect": msg("Incorrect password. Try again."),
+  "encryption-unsupported": msg("This file uses encryption that the preview cannot open."),
   "zip-unreadable": msg("This is not a readable ZIP archive."),
   "zip64-unsupported": msg("Unsupported ZIP64 directory."),
   "zip64-damaged": msg("This ZIP64 directory is too large or damaged."),
   "zip-directory-damaged": msg("This ZIP directory is damaged."),
 };
-
-export function zipErrorText(code: ZipErrorCode, resolve: MFunctionType = mFallback): string {
-  return resolve(ZIP_ERROR_MESSAGES[code]);
-}

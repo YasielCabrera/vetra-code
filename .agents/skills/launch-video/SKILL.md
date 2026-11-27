@@ -9,7 +9,7 @@ A launch video is 20–30 seconds: the app goes through one story in two or thre
 the camera punches in on each, a caption names it, and an outro card closes. Frames are
 rendered one by one in headless Chromium, so the result is deterministic.
 
-There are two ways to build one:
+There are three ways to build one:
 
 - **Real app (default).** A staging script runs the real server and web client with fictional
   data and the free replay agent, drives the flow in a browser, and freezes the page at each
@@ -42,8 +42,12 @@ There are two ways to build one:
      for real, e.g. `delegate_task`; with `server` and `output` it plays another MCP server's
      tool instead. `<var:name>` is filled from the JSON file at `FAKE_CLAUDE_VARS`, for ids
      that change every run. `bash` with `run: true` executes the command in the session's cwd
-     (to push a branch or open a pull request with a forge CLI); `as: "name"` keeps its output,
-     or the `pick` regex match in it, as `<var:name>` for the turn's later steps. A workflow
+     (to push a branch or open a pull request with a forge CLI); `as: "name"` on it or on a
+     `tool` step keeps the output, or the `pick` regex match in it, as `<var:name>` for the
+     turn's later steps (`delegate_task` then `task_status` with the picked `taskId` finishes
+     the parent in one turn, before the wake-up turn the app shows only as "Background activity
+     updated"). A `/btw` side chat's prompt carries the parent's history, so give its turn a
+     match only the question has and put it before the parent's turn. A workflow
      `agent` step with `returns` finishes on `submit: { ... }`, which hands it that value
      through `t3_submit_output`. `fake-claude.log` in the home records the protocol, for debugging.
    - Titles, commit messages and branch names come from `claude -p --json-schema`: answer them

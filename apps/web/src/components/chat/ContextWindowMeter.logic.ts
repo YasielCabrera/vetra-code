@@ -3,9 +3,12 @@ import {
   resolveSelectableProviderInstanceEntry,
   type ProviderInstanceEntry,
 } from "../../providerInstances";
+import { msg } from "gt-react";
+
+import { m } from "../../i18n/messages";
 import { getDisplayModelName, type ModelEsque } from "./providerIconUtils";
 
-export function providerSupportsManualCompaction(
+function providerSupportsManualCompaction(
   provider: ProviderInstanceEntry | null | undefined,
 ): boolean {
   return provider?.snapshot.slashCommands.some((command) => command.name === "compact") ?? false;
@@ -55,11 +58,15 @@ export function formatContextWindowCompactionMessage(
   autoCompactThreshold?: number | null,
 ): string {
   if (typeof autoCompactThreshold === "number" && autoCompactThreshold > 0) {
-    return `Compacts automatically at about ${autoCompactThreshold.toLocaleString("en-US")} tokens.`;
+    return m(
+      msg("Compacts automatically at about {tokens} tokens.", {
+        tokens: autoCompactThreshold.toLocaleString("en-US"),
+      }),
+    );
   }
   return modelDisplayName
-    ? `Context for ${modelDisplayName} compacts automatically when needed.`
-    : "Context compacts automatically when needed.";
+    ? m(msg("Context for {model} compacts automatically when needed.", { model: modelDisplayName }))
+    : m(msg("Context compacts automatically when needed."));
 }
 
 export function shouldReserveContextWindowMeter(input: {

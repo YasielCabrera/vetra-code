@@ -41,7 +41,7 @@ export function createAttachmentEnvironmentAtoms<R, E>(
  * lookup. A structural `_tag` check rather than a schema check: the squashed cause of a failed
  * RPC is not guaranteed to be a decoded error class instance, only a tagged value.
  */
-export function isAssetAttachmentNotFoundFailure(error: unknown): boolean {
+function isAssetAttachmentNotFoundFailure(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
@@ -208,6 +208,7 @@ export function formatAttachmentSize(
   sizeBytes: number,
   resolve: MFunctionType = mFallback,
 ): string {
+  if (sizeBytes === 0) return resolve(msg("0 bytes"));
   const kilobytes = Math.max(1, Math.ceil(sizeBytes / 1024));
   // Pick the unit after rounding, so 1023.5 KB reads "1.0 MB", not "1024 KB".
   return kilobytes >= 1024

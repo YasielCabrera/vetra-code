@@ -1,278 +1,52 @@
 # Codex
 
-Use your ChatGPT plan or an existing Codex CLI login to code in Vetra Code.
+Use your ChatGPT plan or an existing Codex CLI login to run Codex in Vetra Code.
 
 ## Connect with ChatGPT
 
-Connect during onboarding or in **Settings → Providers**. For a remote machine,
-select that environment first. Vetra Code handles Codex installation; sign in on
-OpenAI and allow sharing of your ChatGPT plan.
+Connect during onboarding or in **Settings → Providers** (select your target environment first for remote machines). Vetra Code manages the Codex runtime and signs you in via OpenAI.
 
-Manage shared usage and credits in ChatGPT through **Manage usage** in Vetra Code.
-If a request uses a feature that ChatGPT sharing does not support, use another
-provider for that request.
-
-Fast and Ultrafast speeds are unavailable with this connection. To use the speed
-options your account supports, [use an existing Codex login](#use-an-existing-codex-login).
-
-When reconnecting, choose the same account in Vetra Code and on OpenAI's sign-in
-page. Disconnecting stops running threads but keeps their history and lets you
-reconnect later.
-
-If remote sign-in cannot return automatically, paste the full URL from the final
-localhost page into the sign-in panel, even if that page could not load.
+- Manage shared usage and credits through **Manage usage** in Vetra Code.
+- **Remote sign-in**: If sign-in doesn't return automatically, paste the full `localhost` redirect URL into the sign-in panel.
+- **Speed options**: Fast and Ultrafast speeds are not available through ChatGPT sharing—[use an existing Codex login](#use-an-existing-codex-login) instead.
+- Disconnecting stops running threads while preserving history.
 
 ## Use an existing Codex login
 
-Vetra Code can use your installed Codex and its existing login. Run `codex login`
-on the environment's machine to sign in. [Provider setup](./install.md#providers)
-covers installation and custom configuration.
+Run `codex login` on the environment's machine, then add a Codex instance in **Settings → Providers** via **Configure manually**. See [provider setup](./install.md#providers) for installation details.
 
-Running `codex login` does not change a managed ChatGPT connection. In
-**Settings > Providers**, add a Codex instance, choose **Configure manually**,
-and complete the wizard. Then select that instance from the thread's model
-picker. See [Use multiple accounts](#use-multiple-accounts).
-
-## Allow more time for provider checks
-
-If an authenticated Codex installation reports “Timed out while checking Codex
-app-server provider status,” set `VETRA_CODEX_PROBE_TIMEOUT_MS=60000` in the
-Vetra Code server's environment and restart it. See [Provider check timeouts](./install.md#provider-check-timeouts)
-for configuration and other providers.
-
-## Generate images
-
-Codex can generate images directly in a Vetra Code thread when your Codex version,
-model, and account support native image generation.
-
-If Codex reports that its image tool is unavailable, image generation may be
-disabled in its configuration. In **Settings → Providers**, edit your existing
-Codex provider and add this to **Launch arguments**, keeping any other arguments:
-
-```text
--c features.image_generation=true
-```
-
-This enables the feature for that Vetra Code provider without changing your shared
-Codex configuration. You do not need another provider instance or a separate image
-API key. The flag does not add image support to an unsupported model or account.
-
-Launch arguments apply to Codex sessions started after you save them. Start a new
-thread with the same Codex provider and ask it to generate an image. The completed
-image appears in the thread.
+If provider status checks time out on a slower machine, set `VETRA_CODEX_PROBE_TIMEOUT_MS=60000` in the server environment and restart. See [Provider check timeouts](./install.md#provider-check-timeouts).
 
 ## Use multiple accounts
 
-Add another ChatGPT account in **Settings → Providers**, then select the account
-from the thread's model picker. Compatible accounts can continue the same thread.
-Connecting accounts through Vetra Code leaves your CLI login unchanged.
-
-### Multiple CLI logins
-
-A shared Codex home with a shadow home lets work and personal accounts continue
-the same threads. The accounts share Codex sessions and configuration while keeping
-their own login and available models.
-
-Keep your first account in `~/.codex`. On the environment's machine, sign the
-second account into a fresh directory:
+Add another ChatGPT account in **Settings → Providers**, or configure multiple CLI logins with a **shadow home** so work and personal accounts can continue the same threads:
 
 ```bash
 mkdir -p ~/.codex_personal
 CODEX_HOME=~/.codex_personal codex login
 ```
 
-Then add a second Codex instance in **Settings > Providers**:
+| Instance       | CODEX_HOME path | Shadow home path    |
+| -------------- | --------------- | ------------------- |
+| Codex Work     | `~/.codex`      | _(leave empty)_     |
+| Codex Personal | `~/.codex`      | `~/.codex_personal` |
 
-In an existing Codex thread, send `/feedback` or `/feedback` followed by a description of the
-issue. Vetra Code uploads the thread and Codex logs to OpenAI and shows a thread ID that you can copy
-and share with OpenAI employees.
+- Both instances must share the same **CODEX_HOME path**. Keep the shadow directory fresh—don't copy your full Codex home into it.
+- The shadow account needs file-based credential storage (`auth.json`); see [OpenAI's credential storage guide](https://learn.chatgpt.com/docs/auth#credential-storage).
+- Use a separate **CODEX_HOME path** (no shadow home) if you want completely isolated sessions.
 
-## Answer questions while Codex works
+To switch accounts mid-thread, pick another compatible Codex instance sharing the same **CODEX_HOME path** from the model picker.
 
-Codex can ask a question and keep working. Answer it in the thread's question
-panel. The answer becomes a new message: it reaches the active turn, or starts
-another turn if Codex has finished. Unanswered questions survive reconnects.
-If you do not want to answer, dismiss the question from its panel. Dismissing
-closes it without sending anything to Codex. This requires a Codex version that
-supports async questions.
+## Features and options
 
-## Approve app access
+- **Image generation**: Supported when your Codex version, model, and account allow it. If disabled in Codex config, add `-c features.image_generation=true` to the instance's **Launch arguments** (applies to new sessions).
+- **Async questions**: Codex can ask a question while continuing to work; answer in the question panel (steers the active turn or starts a new one) or dismiss it without sending.
+- **App access approvals**: Respond to external app access requests directly in chat (one-time, session, or permanent depending on the tool).
+- **MCP OAuth sign-in**: Click **Sign in** on the thread notice, approve in your browser, and paste the final redirect URL into **Finish sign-in** (requires provider management permission).
+- **Daybreak**: Models with cyber access programs show a **Cyber Access** option (`Standard` or `Daybreak`, initialized from `daybreak = true` in `config.toml`).
+- **Usage limits**: Limit stops display the exhausted window, reset time, and (on workspace plans) whether credits or spend limits need adjustment.
+- **Feedback to OpenAI**: Send `/feedback <description>` in an existing Codex thread to upload conversation and Codex logs to OpenAI.
 
-Codex tools can request access to another app. Respond to the named app's request
-in the thread on web, desktop, or mobile. Some tools offer access for one request,
-the current session, or permanently. See [Permission modes](./permission-modes.md)
-for command and file approvals.
+## OpenAI Chrome extension
 
-The web and desktop Agents panel shows each sub-agent's model and reasoning effort when Codex
-reports them. If Codex does not report either value, Vetra Code leaves it out instead of using the
-parent agent's settings.
-
-## Sign in to an MCP server
-
-When an MCP server you added to Codex needs you to sign in, the thread shows a notice with
-**Sign in**; on mobile, tap the notice. Approve access on the page it opens. Your browser then goes
-to a page that may not load, especially when Codex runs on another machine: copy that page's
-address, paste it into Vetra Code, and choose **Finish sign-in**. Codex reconnects the server in that
-thread and keeps the sign-in for other threads on the same Codex instance; an instance with its own
-home, such as a second account, may need to sign in separately. Signing in needs permission to
-manage providers.
-
-## Use the OpenAI Chrome extension
-
-Connecting ChatGPT in **Settings → Providers** signs in the Codex provider.
-Using your signed-in Chrome profile through the extension requires a browser
-connection for the current Codex thread.
-
-If a Vetra Code thread reports `The browser access host is unavailable`, its browser
-host is unavailable; this does not identify an extension connection failure.
-For a task that requested Chrome, follow [OpenAI's setup guide](https://learn.chatgpt.com/docs/chrome-extension),
-then select Chrome in a Codex chat in the ChatGPT desktop app.
-If the task runs on a remote environment, `localhost` in the desktop browser
-refers to your computer. Forward the remote page's port or use a URL reachable
-from your computer before repeating the task. Connecting to Vetra Code through a
-relay or tunnel does not by itself expose that page. Vetra Code's built-in browser
-preview uses its own browser session.
-
-## Use Daybreak
-
-Models with cyber access programs show a Cyber Access option in the model
-options. It starts on Standard, or on Daybreak when `config.toml` in your Codex
-home sets `daybreak = true` or the model only runs under Daybreak. Your choice carries
-over to new threads. Custom models do not offer it. If Codex rejects a turn
-because your login lacks the program, switch Cyber Access back to Standard or
-sign in to Codex with an account that has it.
-
-## Codex says I hit a usage limit
-
-When Codex stops on a usage limit, the thread names the window that ran out and when it resets, when
-Codex reports them. Send the message again after the reset. On a workspace plan the message also
-says whether your workspace owner needs to add credits or raise the spend limit to continue sooner.
-
-## Browser and computer activity
-
-Browser and Computer Use calls show their user-facing task title when Codex provides one. Expanded
-activity groups show an icon for every call. Website calls use the active page's favicon when it is
-available, and desktop app calls use the app's native icon on macOS when available. Other hosts use
-a generic fallback glyph.
-
-Collapsed activity groups are summarized by source, such as `Used Chrome integration`, instead of
-showing the underlying tool name. Website favicons and native app icons keep their original colors;
-integrations that provide separate light and dark logos use the logo for the current appearance.
-
-## Approve access to other apps
-
-When a Codex tool needs access to an app such as Safari, Vetra Code shows the app name and asks for
-approval. You can approve, decline, or cancel the request from the desktop app, web app, or mobile
-app. Some tools also offer approval for the current session or permanent approval.
-
-## I Want Work And Personal Codex Accounts
-
-Use one real Codex home and one shadow home.
-
-Recommended setup:
-
-```text
-~/.codex      shared Codex home
-~/.codex_p    second account auth
-```
-
-The idea is:
-
-- both accounts can see the same Vetra/Codex sessions
-- each account keeps its own login
-- existing threads can continue with either account
-
-### Set Up The First Account
-
-Log in normally:
-
-```bash
-codex login
-```
-
-This is the account used by `~/.codex`.
-
-In Vetra Code Settings, name it something obvious:
-
-```text
-Display name: Codex Work
-CODEX_HOME path: ~/.codex
-Shadow home path: empty
-```
-
-### Set Up The Second Account
-
-Log in with a separate Codex home:
-
-```bash
-mkdir -p ~/.codex_p
-CODEX_HOME=~/.codex_p codex login
-```
-
-In Vetra Code Settings, add another Codex provider:
-
-```text
-Display name: Codex Personal
-CODEX_HOME path: ~/.codex
-Shadow home path: ~/.codex_p
-```
-
-The important part is that both providers use the same `CODEX_HOME path`, but only the second one
-has a `Shadow home path`.
-
-## Which Account Am I Using?
-
-Open Settings and look at the provider row.
-
-Vetra Code shows the authenticated email for providers that report one. Emails are blurred by default;
-click the blurred email to reveal it.
-
-Use display names and accent colors to make accounts easy to tell apart in the model picker.
-
-## I Need A Different API Key Or Endpoint
-
-Use the provider's Environment variables section in Settings.
-
-This is useful when a Codex-compatible setup needs account-specific variables. Add the variables to
-the provider instance that should receive them, and mark API keys or tokens as sensitive. Sensitive
-values are stored as server secrets and are not sent back to the app after saving.
-
-## Can I Switch Accounts In An Existing Thread?
-
-Yes, when both Codex providers share the same `CODEX_HOME path`.
-
-For example:
-
-```text
-Codex Work      CODEX_HOME path: ~/.codex
-Codex Personal  CODEX_HOME path: ~/.codex, Shadow home path: ~/.codex_p
-```
-
-Those two providers are considered compatible for continuation, so the locked model picker can show
-both.
-
-If you add a third Codex provider with a completely different `CODEX_HOME path`, Vetra Code treats it
-as a different workspace. It will not be offered for existing threads created under `~/.codex`.
-
-## If Both Accounts Look The Same
-
-If two Codex providers show the same account or the same unexpected model list:
-
-1. Check the email in Settings.
-2. Refresh provider status.
-3. Confirm the second provider has `Shadow home path` set.
-4. Confirm the shadow directory has its own `auth.json`.
-5. If you copied `~/.codex` into the shadow directory, remove everything except `auth.json`.
-
-Example cleanup:
-
-```bash
-find ~/.codex_p -mindepth 1 ! -name auth.json -exec rm -rf {} +
-```
-
-## When To Use A Separate CODEX_HOME
-
-Use a totally separate `CODEX_HOME path` only when you want a separate Codex workspace.
-
-That means separate sessions and less account switching inside old threads. Most dual-account users
-should use the shared-home plus shadow-home setup instead.
+Using your signed-in Chrome profile via [OpenAI's Chrome extension](https://learn.chatgpt.com/docs/chrome-extension) requires a browser connection for the Codex thread. For remote environments, forward the remote page's port or use a reachable URL—Vetra Code's built-in preview browser uses its own separate session.

@@ -774,24 +774,7 @@ export interface EnvironmentShellSummary {
   readonly firstError: string | null;
 }
 
-const EMPTY_ENVIRONMENT_SHELL_SUMMARY: EnvironmentShellSummary = Object.freeze({
-  hasSnapshot: false,
-  hasSynchronizingShell: false,
-  firstError: null,
-});
-
 const EMPTY_SERVER_CONFIGS: ReadonlyMap<EnvironmentId, ServerConfig> = new Map();
-
-function shellSummariesEqual(
-  left: EnvironmentShellSummary,
-  right: EnvironmentShellSummary,
-): boolean {
-  return (
-    left.hasSnapshot === right.hasSnapshot &&
-    left.hasSynchronizingShell === right.hasSynchronizingShell &&
-    left.firstError === right.firstError
-  );
-}
 
 function mapsEqual<K, V>(left: ReadonlyMap<K, V>, right: ReadonlyMap<K, V>): boolean {
   if (left.size !== right.size) {
@@ -803,41 +786,6 @@ function mapsEqual<K, V>(left: ReadonlyMap<K, V>, right: ReadonlyMap<K, V>): boo
     }
   }
   return true;
-}
-
-export function createEnvironmentShellSummaryAtom(input: {
-  readonly catalogValueAtom: Atom.Atom<EnvironmentCatalogState>;
-  readonly shellStateValueAtom: (environmentId: EnvironmentId) => Atom.Atom<EnvironmentShellState>;
-}) {
-  let previousSummary = EMPTY_ENVIRONMENT_SHELL_SUMMARY;
-  return Atom.make((get) => {
-    let hasSnapshot = false;
-    let hasSynchronizingShell = false;
-    let firstError: string | null = null;
-
-    for (const environmentId of enabledEnvironmentIds(get(input.catalogValueAtom))) {
-      const state = get(input.shellStateValueAtom(environmentId));
-      hasSynchronizingShell ||= state.status === "synchronizing";
-      if (firstError === null) {
-        firstError = Option.getOrNull(state.error);
-      }
-      if (Option.isNone(state.snapshot)) {
-        continue;
-      }
-      hasSnapshot = true;
-    }
-
-    const next: EnvironmentShellSummary = {
-      hasSnapshot,
-      hasSynchronizingShell,
-      firstError,
-    };
-    if (shellSummariesEqual(previousSummary, next)) {
-      return previousSummary;
-    }
-    previousSummary = next;
-    return previousSummary;
-  }).pipe(Atom.withLabel("environment-shell-summary"));
 }
 
 export function createEnvironmentServerConfigsAtom(input: {

@@ -10,6 +10,7 @@ The local trace file is the persisted source of truth for normal local launches.
 write a separate server log file, but SSH-managed launches also persist the remote process's
 stdout/stderr at `~/.vetra-code/ssh-launch/<state>/server.log`. Each managed launch starts that file
 empty, so it holds only the latest launch's output.
+
 - Production / explicit `--home-dir` / `VETRA_HOME`: `<home>/userdata/logs/server.trace.ndjson`
 - Linked worktree dev run: `<worktree>/.vetra-code/userdata/logs/server.trace.ndjson`
 - Non-worktree dev run: `~/.vetra-code/dev/logs/server.trace.ndjson`
@@ -169,6 +170,7 @@ node --run dev
 ```bash
 node --run dev:desktop
 ```
+
 ```sh
 vetra trace summary --since 30m --limit 40
 # Set VETRA_TRACE_FILE=/path/to/server.trace.ndjson for dev or copied traces
@@ -177,6 +179,8 @@ vetra trace summary --since 30m --limit 40
 Logs emitted inside an active span (`Effect.log*`) attach as span events unless `VETRA_OTLP_LOGS_URL` is configured (which exports all log records directly to avoid duplicates).
 
 Event-loop stalls (>2 s) write `server.eventLoop.stall` spans and append to `event-loop-stalls.ndjson` beside the trace file. SQLite spans carry `db.connection` (`writer`/`reader`) and `db.lock_wait_ms` (queue wait off the event loop—subtract it before blaming query speed). Metrics live only in-process unless OTLP export is enabled.
+
+At trace level Info or above (the default), with timing enabled, the local server file samples routine spans: SQLite, workflow runs (step code, retry schedules, cleanup and the agent threads a run starts are excluded; spans an author adds in the workflow body itself are sampled), and spans marked with `routineSpan` from `@t3tools/shared/observability` (high-volume lookups and sweeps). A routine span that succeeds in under 10 ms without events is kept only when its own span ID ends in `00` (about one in 256). The key is per span, not per trace or parent, because background fibers share the server's boot trace and recurring ticks reuse one parent span. Counts and averages for these spans in the local file and Settings → Diagnostics are therefore a biased sample. `VETRA_TRACE_MIN_LEVEL=Debug` keeps everything. This sampling does not apply to OTLP export.
 
 ## Local OTLP stack (Grafana LGTM)
 
@@ -267,6 +271,7 @@ A dev server started from a linked worktree defaults to that worktree's local ho
 ```bash
 TRACE_FILE="$WORKTREE/.vetra-code/userdata/logs/server.trace.ndjson"
 ```
+
 ## OTLP configuration and kill switches
 
 - **Endpoints:** `VETRA_OTLP_{TRACES,METRICS,LOGS}_URL` outrank standard `OTEL_EXPORTER_OTLP_{TRACES,METRICS,LOGS}_ENDPOINT` and `OTEL_EXPORTER_OTLP_ENDPOINT`. `VETRA_OTLP_HEADERS` / `VETRA_OTLP_PROTOCOL` (`http/json` default) apply only to `VETRA_OTLP_*` endpoints; `OTEL_EXPORTER_OTLP_*` endpoints read `OTEL_EXPORTER_OTLP_*` headers/protocol (`http/protobuf` default). See [user telemetry](../user/telemetry.md#export-diagnostics-to-your-own-receiver) for Settings precedence.

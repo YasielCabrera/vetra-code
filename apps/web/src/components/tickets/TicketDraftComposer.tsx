@@ -13,6 +13,7 @@ import {
 import { createModelSelection } from "@t3tools/shared/model";
 import { formatComposerContextReference } from "@t3tools/shared/composerContextReferences";
 import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
+import { T, useGT } from "gt-react";
 import { FolderIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ComponentProps } from "react";
 
@@ -33,7 +34,7 @@ import { useComposerPathSearch } from "../../state/queries";
 import { useEnvironments } from "../../state/environments";
 import { primaryServerKeybindingsAtom } from "../../state/server";
 import { useEnvironmentTickets } from "../../state/tickets";
-import { readPastedComposerContext } from "../composerInlineTokenPaste";
+import { readPastedComposerClipboard } from "../composerInlineTokenPaste";
 import {
   ComposerPromptEditorTiptap as ComposerPromptEditor,
   type ComposerPromptEditorHandle,
@@ -87,6 +88,7 @@ interface TicketDraftComposerProps {
 
 /** A controlled composer: its lifetime is the dialog, with no real-thread draft or send machinery. */
 export function TicketDraftComposer(props: TicketDraftComposerProps) {
+  const gt = useGT();
   const settings = useEnvironmentSettings(props.environmentId);
   const linkedEnvironments = useLinkedEnvironments(props.environmentId);
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
@@ -248,10 +250,12 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
     if (!input.attachment && !input.other) return;
     toastManager.add({
       type: "error",
-      title: input.attachment ? "Files can't be attached here" : "Some pasted context was left out",
+      title: input.attachment
+        ? gt("Files can't be attached here")
+        : gt("Some pasted context was left out"),
       description: input.attachment
-        ? "Ticket drafts can't include files. Add them on the ticket after it's created."
-        : "Only threads, tickets, and review comments from this environment can be pasted.",
+        ? gt("Ticket drafts can't include files. Add them on the ticket after it's created.")
+        : gt("Only threads, tickets, and review comments from this environment can be pasted."),
     });
   };
 
@@ -279,8 +283,8 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                 contextRecords={promptContextRecords}
                 skills={[]}
                 disabled={props.disabled}
-                ariaLabel="What should the ticket cover?"
-                placeholder="Describe the ticket, @tag files or threads, #T-123 for tickets"
+                ariaLabel={gt("What should the ticket cover?")}
+                placeholder={gt("Describe the ticket, @tag files or threads, #T-123 for tickets")}
                 className="min-h-24 max-h-60"
                 suggestionListId={listId}
                 activeSuggestionId={
@@ -350,7 +354,7 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                 onPaste={(event) => {
                   const files = Array.from(event.clipboardData.files);
                   const plainText = event.clipboardData.getData("text/plain");
-                  const fragment = readPastedComposerContext(event.clipboardData);
+                  const { context: fragment } = readPastedComposerClipboard(event.clipboardData);
                   const filePaste =
                     files.length > 0 && shouldHandleComposerAttachmentPaste({ files, plainText });
                   const prepared = prepareTicketDraftPaste({
@@ -382,8 +386,8 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                     isLoading={trigger.kind === "path" && paths.isPending}
                     emptyStateText={
                       trigger.kind === "path"
-                        ? (paths.error ?? "No matching files or threads")
-                        : "Type a ticket reference or title"
+                        ? (paths.error ?? gt("No matching files or threads"))
+                        : gt("Type a ticket reference or title")
                     }
                     activeItemId={activeItem?.id ?? null}
                     onHighlightedItemChange={setHighlightedId}
@@ -427,7 +431,9 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                     ) : null}
                   </>
                 ) : (
-                  <span className="text-xs text-muted-foreground">No model is available.</span>
+                  <span className="text-xs text-muted-foreground">
+                    <T>No model is available.</T>
+                  </span>
                 )}
                 <Select
                   items={props.projects.map((project) => ({
@@ -441,9 +447,9 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                     if (project) props.onProjectChange(project.id);
                   }}
                 >
-                  <ComposerSelectControl aria-label="Project">
+                  <ComposerSelectControl aria-label={gt("Project")}>
                     <ComposerControlIcon icon={FolderIcon} />
-                    <SelectValue placeholder="Choose a project" />
+                    <SelectValue placeholder={gt("Choose a project")} />
                   </ComposerSelectControl>
                   <SelectPopup>
                     {props.projects.map((project) => (
@@ -466,7 +472,7 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                       if (next) props.onEnvironmentChange?.(next.environmentId);
                     }}
                   >
-                    <ComposerSelectControl size="xs" aria-label="Run on">
+                    <ComposerSelectControl size="xs" aria-label={gt("Run on")}>
                       <SelectValue />
                     </ComposerSelectControl>
                     <SelectPopup>
@@ -488,9 +494,11 @@ export function TicketDraftComposer(props: TicketDraftComposerProps) {
                         kind={resolveEnvironmentMachineKind(environment?.serverConfig ?? null)}
                         className="size-3"
                       />
-                      {environment?.label ?? "Source environment"}
+                      {environment?.label ?? gt("Source environment")}
                     </TooltipTrigger>
-                    <TooltipPopup>Captured context belongs to this environment.</TooltipPopup>
+                    <TooltipPopup>
+                      <T>Captured context belongs to this environment.</T>
+                    </TooltipPopup>
                   </Tooltip>
                 )}
               </div>

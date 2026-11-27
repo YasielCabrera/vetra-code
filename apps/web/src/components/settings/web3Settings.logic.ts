@@ -2,6 +2,9 @@
  * Pure helpers for Web3 wallet UI (settings and the preview popover), split
  * out so they can be unit tested without rendering.
  */
+import { msg } from "gt-react";
+
+import { m } from "../../i18n/messages";
 import {
   findCustomNetwork,
   isBuiltInChainId,
@@ -18,9 +21,9 @@ export const APPROVAL_MODE_OPTIONS: ReadonlyArray<{
   readonly value: Web3ApprovalMode;
   readonly label: string;
 }> = [
-  { value: "auto-for-agents", label: "Approve for agents" },
-  { value: "always-ask", label: "Always ask" },
-  { value: "always-auto", label: "Approve everything" },
+  { value: "auto-for-agents", label: m(msg("Approve for agents")) },
+  { value: "always-ask", label: m(msg("Always ask")) },
+  { value: "always-auto", label: m(msg("Approve everything")) },
 ];
 
 export function shortenAddress(address: string): string {
@@ -92,18 +95,33 @@ export function parseRpcUrlInput(raw: string): ParsedSetting<string | null> {
  */
 export function describeWalletChain(status: Web3WalletStatus | null): string {
   if (!status) return "";
-  if (!status.enabled) return "The wallet is off.";
+  if (!status.enabled) return m(msg("The wallet is off."));
   if (status.chain === null) {
-    return "No chain resolved yet: enable a built-in network, add a custom one, start a local node, or let the page add one.";
+    return m(
+      msg(
+        "No chain resolved yet: enable a built-in network, add a custom one, start a local node, or let the page add one.",
+      ),
+    );
   }
-  const target = status.chain.rpcUrl ?? "no endpoint";
+  const target = status.chain.rpcUrl ?? m(msg("no endpoint"));
   return status.rpcReachable
-    ? `Currently on ${status.chain.name} (${status.chain.chainId}) via ${target}.`
-    : `Currently on ${status.chain.name} (${status.chain.chainId}), but ${target} did not answer — reads and transactions will fail.`;
+    ? m(
+        msg("Currently on {name} ({chainId}) via {target}.", {
+          name: status.chain.name,
+          chainId: status.chain.chainId,
+          target,
+        }),
+      )
+    : m(
+        msg(
+          "Currently on {name} ({chainId}), but {target} did not answer: reads and transactions will fail.",
+          { name: status.chain.name, chainId: status.chain.chainId, target },
+        ),
+      );
 }
 
 /** Empty is invalid here: adding a network requires an endpoint. */
-export function parseRequiredRpcUrlInput(raw: string): ParsedSetting<string> {
+function parseRequiredRpcUrlInput(raw: string): ParsedSetting<string> {
   const parsed = parseRpcUrlInput(raw);
   if (!parsed.valid || parsed.value === null) return { valid: false };
   return { valid: true, value: parsed.value };
@@ -129,36 +147,36 @@ export function parseCustomNetworkDraft(
   editingChainId: number | null = null,
 ): ParsedCustomNetwork {
   const name = draft.name.trim();
-  if (name.length === 0) return { valid: false, error: "Enter a network name." };
+  if (name.length === 0) return { valid: false, error: m(msg("Enter a network name.")) };
   if (name.length > CUSTOM_NETWORK_NAME_MAX_LENGTH) {
-    return { valid: false, error: "Network name is too long." };
+    return { valid: false, error: m(msg("Network name is too long.")) };
   }
 
   const chainId = parseChainIdInput(draft.chainId);
   if (!chainId.valid || chainId.value === null) {
-    return { valid: false, error: "Enter a positive chain ID." };
+    return { valid: false, error: m(msg("Enter a positive chain ID.")) };
   }
   if (isBuiltInChainId(chainId.value)) {
     return {
       valid: false,
-      error: "That chain ID is already a built-in network. Enable it in the list above.",
+      error: m(msg("That chain ID is already a built-in network. Enable it in the list above.")),
     };
   }
   if (
     findCustomNetwork(customNetworks, chainId.value) !== null &&
     chainId.value !== editingChainId
   ) {
-    return { valid: false, error: "A custom network with that chain ID already exists." };
+    return { valid: false, error: m(msg("A custom network with that chain ID already exists.")) };
   }
 
   const rpcUrl = parseRequiredRpcUrlInput(draft.rpcUrl);
   if (!rpcUrl.valid) {
-    return { valid: false, error: "Enter an http(s) RPC URL." };
+    return { valid: false, error: m(msg("Enter an http(s) RPC URL.")) };
   }
 
   const symbol = draft.currencySymbol.trim();
   if (symbol.length > CUSTOM_NETWORK_SYMBOL_MAX_LENGTH) {
-    return { valid: false, error: "Currency symbol is too long." };
+    return { valid: false, error: m(msg("Currency symbol is too long.")) };
   }
 
   return {
@@ -258,25 +276,25 @@ export function pendingRequestTitle(method: string): string {
   switch (method) {
     case "eth_requestAccounts":
     case "wallet_requestPermissions":
-      return "Connection request";
+      return m(msg("Connection request"));
     case "personal_sign":
     case "eth_sign":
-      return "Signature request";
+      return m(msg("Signature request"));
     case "eth_signTypedData":
     case "eth_signTypedData_v1":
     case "eth_signTypedData_v3":
     case "eth_signTypedData_v4":
-      return "Typed data signature";
+      return m(msg("Typed data signature"));
     case "eth_sendTransaction":
-      return "Transaction request";
+      return m(msg("Transaction request"));
     case "eth_signTransaction":
-      return "Sign transaction";
+      return m(msg("Sign transaction"));
     case "wallet_switchEthereumChain":
-      return "Switch network";
+      return m(msg("Switch network"));
     case "wallet_addEthereumChain":
-      return "Add network";
+      return m(msg("Add network"));
     case "wallet_watchAsset":
-      return "Add token";
+      return m(msg("Add token"));
     default:
       return method;
   }
